@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx @angular/cli@latest new:*)",
+      "Bash(npm install:*)",
+      "Bash(ng generate:*)",
+      "Bash(mkdir:*)",
+      "Bash(ng serve:*)",
+      "Bash(ng add:*)",
+      "Bash(npm run build:*)",
+      "Bash(curl:*)",
+      "Bash(python:*)",
+      "Bash(npm start)",
+      "Bash(copy:*)",
+      "Bash(cp:*)",
+      "Bash(timeout 5 npm run start)",
+      "Bash(grep:*)"
+    ],
+    "deny": []
+  }
+}

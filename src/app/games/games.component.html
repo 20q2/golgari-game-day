@@ -1,0 +1,158 @@
+<div class="games-container">
+  <div class="filters-section">
+    <h2>🎯 <span class="gradient-text">Game Inventory</span></h2>
+    
+    <div class="filter-controls">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Search games</mat-label>
+        <input matInput 
+               [(ngModel)]="searchText" 
+               (ngModelChange)="onFilterChange()"
+               placeholder="Type to search...">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="sort-field">
+        <mat-label>Sort by</mat-label>
+        <mat-select [(ngModel)]="currentSort" (ngModelChange)="onSortChange()">
+          <mat-option *ngFor="let option of sortOptions" [value]="option.value">
+            {{ option.label }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="duration-field">
+        <mat-label>Duration</mat-label>
+        <mat-select [(ngModel)]="selectedDuration" (ngModelChange)="onDurationFilterChange()">
+          <mat-option [value]="undefined">All Durations</mat-option>
+          <mat-option *ngFor="let duration of durations" [value]="duration">
+            {{ duration }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+    </div>
+
+    <div class="genre-filter-section">
+      <h4>Filter by Genres:</h4>
+      <mat-chip-set class="genre-filter-chips" multiple>
+        <mat-chip *ngFor="let genre of alphabetizedGenres" 
+                  [color]="isGenreSelected(genre) ? 'primary' : undefined"
+                  variant="outlined"
+                  (click)="onGenreFilterChange(genre)"
+                  class="genre-filter-chip"
+                  [class.selected]="isGenreSelected(genre)">
+          <mat-icon matChipAvatar>{{ getGenreIcon(genre) }}</mat-icon>
+          {{ genre }}
+        </mat-chip>
+      </mat-chip-set>
+    </div>
+
+    <div class="player-count-filters">
+      <mat-form-field appearance="outline" class="players-field">
+        <mat-label>Min Players</mat-label>
+        <input matInput 
+               type="number" 
+               [(ngModel)]="currentFilter.minPlayers" 
+               (ngModelChange)="onFilterChange()"
+               min="1" max="8">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="players-field">
+        <mat-label>Max Players</mat-label>
+        <input matInput 
+               type="number" 
+               [(ngModel)]="currentFilter.maxPlayers" 
+               (ngModelChange)="onFilterChange()"
+               min="1" max="8">
+      </mat-form-field>
+
+      <button mat-raised-button color="accent" (click)="clearFilters()" class="clear-btn">
+        <mat-icon>clear</mat-icon>
+        Clear Filters
+      </button>
+    </div>
+  </div>
+
+  <div class="games-grid">
+    <mat-card *ngFor="let game of games$ | async; trackBy: trackByGameId" 
+              class="game-card" 
+              (click)="openGameDetails(game)">
+      <div class="card-header">
+        <img mat-card-image 
+             [src]="game.imageUrl" 
+             [alt]="game.title"
+             class="game-image"
+             loading="lazy">
+        <div class="rating-overlay" *ngIf="game.bggRating">
+          <span class="rating-text">{{ game.bggRating }}/10</span>
+          <div class="rating-stars">{{ getRatingStars(game.bggRating) }}</div>
+        </div>
+      </div>
+      
+      <mat-card-header>
+        <mat-card-title>{{ game.title }}</mat-card-title>
+        <mat-card-subtitle>
+          <mat-chip-set class="genre-chip">
+            <mat-chip *ngFor="let genre of game.genres" 
+                      [color]="getGenreColor(genre)" 
+                      variant="outlined"
+                      (click)="onGenreChipClick($event, genre)"
+                      class="clickable-chip"
+                      [class.selected-filter]="isGenreSelected(genre)">
+              <mat-icon matChipAvatar>{{ getGenreIcon(genre) }}</mat-icon>
+              {{ genre }}
+            </mat-chip>
+          </mat-chip-set>
+        </mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="game-info">
+          <div class="info-row clickable-info" 
+               [class.active-filter]="currentFilter.minPlayers === game.minPlayers && currentFilter.maxPlayers === game.maxPlayers"
+               (click)="onPlayerCountClick($event, game.minPlayers, game.maxPlayers)">
+            <mat-icon>group</mat-icon>
+            <span>{{ game.minPlayers }}-{{ game.maxPlayers }} players</span>
+          </div>
+          <div class="info-row clickable-info" 
+               [class.active-filter]="isDurationActive(game.playTime)"
+               (click)="onDurationClick($event, game.playTime)">
+            <mat-icon>schedule</mat-icon>
+            <span>{{ game.playTime }}</span>
+          </div>
+          <div class="info-row" *ngIf="game.comments.length > 0">
+            <mat-icon>comment</mat-icon>
+            <span>{{ game.comments.length }} comment(s)</span>
+          </div>
+        </div>
+        
+        <p class="description">{{ game.description }}</p>
+      </mat-card-content>
+
+      <mat-card-actions align="end">
+        <button mat-raised-button color="primary" class="card-action-btn">
+          <mat-icon>info</mat-icon>
+          Details
+        </button>
+        <button mat-raised-button color="accent" class="card-action-btn" *ngIf="game.comments.length > 0">
+          <mat-icon>comment</mat-icon>
+          {{ game.comments.length }} Comment{{ game.comments.length !== 1 ? 's' : '' }}
+        </button>
+        <button mat-raised-button color="accent" class="card-action-btn" *ngIf="game.comments.length === 0">
+          <mat-icon>add_comment</mat-icon>
+          Add Comment
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <div class="no-games" *ngIf="(games$ | async)?.length === 0">
+    <mat-icon class="no-games-icon">sports_esports</mat-icon>
+    <h3>No games found</h3>
+    <p>Try adjusting your filters or search terms</p>
+    <button mat-raised-button color="primary" (click)="clearFilters()">
+      Clear Filters
+    </button>
+  </div>
+</div>

@@ -1,0 +1,70 @@
+<div class="home-container">
+  <div class="hero-section">
+    <h1> 🏰 <span class="gradient-text">Welcome to the Golgari Palace</span></h1>
+    <p class="hero-description">
+      Join us for epic board game sessions at the Golgari Palace. Discover our game collection, 
+      share photos from past events, and prepare for your next adventure!
+    </p>
+  </div>
+
+  <div class="features-grid">
+    <mat-card class="feature-card" routerLink="/games">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>sports_esports</mat-icon>
+        <mat-card-title><span class="gradient-text">Game Inventory</span></mat-card-title>
+        <mat-card-subtitle>Browse our collection</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p>Explore our extensive board game library. Filter by genre, player count, and find the perfect game for your group!</p>
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-button color="primary">
+          View Games
+          <mat-icon>arrow_forward</mat-icon>
+        </button>
+      </mat-card-actions>
+    </mat-card>
+
+    <mat-card class="feature-card" routerLink="/photos">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>photo_library</mat-icon>
+        <mat-card-title>Photo Gallery</mat-card-title>
+        <mat-card-subtitle>Memories from game nights</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p>Check out photos from our previous game days and upload your own memories to share with the community!</p>
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-button color="primary">
+          View Photos
+          <mat-icon>arrow_forward</mat-icon>
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <div class="info-section">
+    <mat-card class="info-card">
+      <mat-card-header>
+        <mat-card-title>📅 Next Game Day</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p>Game days are typically held monthly. Check back here for updates on the next event!</p>
+        <div class="event-details">
+          <div class="detail-item">
+            <mat-icon>access_time</mat-icon>
+            <span>Usually Saturdays, 2-8 PM</span>
+          </div>
+          <div class="detail-item">
+            <mat-icon>location_on</mat-icon>
+            <span>The Golgari Palace</span>
+          </div>
+          <div class="detail-item">
+            <mat-icon>group</mat-icon>
+            <span>All skill levels welcome!</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
