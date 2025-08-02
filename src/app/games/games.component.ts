@@ -137,6 +137,19 @@ export class GamesComponent implements OnInit, OnDestroy {
     return '★'.repeat(Math.min(stars, 5)) + '☆'.repeat(Math.max(5 - stars, 0));
   }
 
+  getUserRating(game: Game): number | null {
+    const ratingsFromComments = game.comments
+      .map(comment => comment.rating)
+      .filter(rating => rating !== undefined) as number[];
+    
+    if (ratingsFromComments.length === 0) {
+      return null;
+    }
+    
+    const sum = ratingsFromComments.reduce((acc, rating) => acc + rating, 0);
+    return Math.round((sum / ratingsFromComments.length) * 10) / 10; // Round to 1 decimal place
+  }
+
   getGenreColor(genre: GameGenre): 'primary' | 'accent' | 'warn' | undefined {
     const genreColorMap: { [key in GameGenre]: 'primary' | 'accent' | 'warn' | undefined } = {
       [GameGenre.STRATEGY]: 'primary',

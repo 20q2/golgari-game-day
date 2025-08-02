@@ -162,25 +162,58 @@
       transition: var(--transition-medium);
     }
 
-    .rating-overlay {
+    .ratings-overlay {
       position: absolute;
       top: var(--spacing-sm);
       right: var(--spacing-sm);
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: var(--spacing-xs) var(--spacing-sm);
-      border-radius: var(--border-radius-sm);
-      font-size: 0.875rem;
-      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-xs);
 
-      .rating-text {
-        font-weight: 600;
-        display: block;
-      }
+      .rating-item {
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--border-radius-sm);
+        font-size: 0.8rem;
+        backdrop-filter: blur(4px);
+        text-align: center;
+        min-width: 70px;
 
-      .rating-stars {
-        font-size: 0.75rem;
-        color: var(--rating-gold);
+        .rating-label {
+          font-size: 0.65rem;
+          text-transform: uppercase;
+          font-weight: 600;
+          margin-bottom: 2px;
+          opacity: 0.8;
+          letter-spacing: 0.5px;
+        }
+
+        .rating-text {
+          font-weight: 600;
+          display: block;
+          font-size: 0.75rem;
+
+          &.no-rating {
+            font-size: 0.65rem;
+            opacity: 0.7;
+            font-style: italic;
+          }
+        }
+
+        .rating-stars {
+          font-size: 0.7rem;
+          color: var(--rating-gold);
+          margin-top: 2px;
+        }
+
+        &.bgg-rating {
+          background: rgba(255, 87, 34, 0.9);
+        }
+
+        &.user-rating {
+          background: rgba(33, 150, 243, 0.9);
+        }
       }
     }
   }

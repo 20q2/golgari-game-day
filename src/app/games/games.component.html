@@ -84,9 +84,20 @@
              [alt]="game.title"
              class="game-image"
              loading="lazy">
-        <div class="rating-overlay" *ngIf="game.bggRating">
-          <span class="rating-text">{{ game.bggRating }}/10</span>
-          <div class="rating-stars">{{ getRatingStars(game.bggRating) }}</div>
+        <div class="ratings-overlay">
+          <div class="rating-item bgg-rating" *ngIf="game.bggRating">
+            <div class="rating-label">BGG</div>
+            <span class="rating-text">{{ game.bggRating }}/10</span>
+            <div class="rating-stars">{{ getRatingStars(game.bggRating) }}</div>
+          </div>
+          <div class="rating-item user-rating">
+            <div class="rating-label">Users</div>
+            <span class="rating-text" *ngIf="getUserRating(game); else noUserRating">{{ getUserRating(game) }}/10</span>
+            <ng-template #noUserRating>
+              <span class="rating-text no-rating">No ratings</span>
+            </ng-template>
+            <div class="rating-stars" *ngIf="getUserRating(game)">{{ getRatingStars(getUserRating(game)!) }}</div>
+          </div>
         </div>
       </div>
       
