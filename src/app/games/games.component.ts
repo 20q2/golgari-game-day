@@ -10,7 +10,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { GamesService } from '../services/games.service';
+import { DataAggregationService } from '../services/data-aggregation.service';
 import { Game, GameGenre, GameFilter, SortOrder, GameDuration } from '../models/game.model';
 import { GameDetailsDialogComponent } from '../game-details-dialog/game-details-dialog.component';
 
@@ -54,7 +56,8 @@ export class GamesComponent implements OnInit, OnDestroy {
 
   constructor(
     private gamesService: GamesService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private dataAggregation: DataAggregationService
   ) {
     // Get the reactive games observable that responds to all filter/sort changes
     this.games$ = this.gamesService.getGames();
@@ -116,7 +119,11 @@ export class GamesComponent implements OnInit, OnDestroy {
     this.gamesService.setFilter({ ...this.currentFilter });
   }
 
-  openGameDetails(game: Game): void {
+  openGameDetails(game: Game, event?: Event): void {
+    if (event) {
+      event.stopPropagation(); // Prevent card click if called from button
+    }
+
     const dialogRef = this.dialog.open(GameDetailsDialogComponent, {
       data: game,
       width: '900px',
@@ -138,17 +145,40 @@ export class GamesComponent implements OnInit, OnDestroy {
   }
 
   getUserRating(game: Game): number | null {
-    const ratingsFromComments = game.comments
-      .map(comment => comment.rating)
-      .filter(rating => rating !== undefined) as number[];
-    
-    if (ratingsFromComments.length === 0) {
-      return null;
-    }
-    
-    const sum = ratingsFromComments.reduce((acc, rating) => acc + rating, 0);
-    return Math.round((sum / ratingsFromComments.length) * 10) / 10; // Round to 1 decimal place
+    // User ratings now come from AWS data in the dialog
+    // This could be enhanced to show ratings from the aggregated data service
+    return null;
   }
+
+  getCommentCount(game: Game): Observable<number> {
+    return this.dataAggregation.getGameStats(game.id).pipe(
+      map(gameStats => gameStats.totalComments)
+    );
+  }
+
+  getLikeCount(game: Game): Observable<number> {
+    return this.dataAggregation.getGameStats(game.id).pipe(
+      map(gameStats => gameStats.totalLikes || 0)
+    );
+  }
+
+  isLiked(game: Game): Observable<boolean> {
+    return this.dataAggregation.getGameStats(game.id).pipe(
+      map(gameStats => gameStats.isLikedByCurrentUser || false)
+    );
+  }
+
+  async toggleLike(game: Game, event: Event): Promise<void> {
+    event.stopPropagation(); // Prevent card click
+    
+    try {
+      await this.gamesService.toggleLike(game.id);
+      console.log(`✅ Like toggled for game ${game.id}`);
+    } catch (error) {
+      console.error('❌ Failed to toggle like:', error);
+    }
+  }
+
 
   getGenreColor(genre: GameGenre): 'primary' | 'accent' | 'warn' | undefined {
     const genreColorMap: { [key in GameGenre]: 'primary' | 'accent' | 'warn' | undefined } = {
@@ -178,7 +208,8 @@ export class GamesComponent implements OnInit, OnDestroy {
       [GameGenre.NEGOTIATION]: 'accent',
       [GameGenre.ROUTE_BUILDING]: 'primary',
       [GameGenre.SET_COLLECTION]: 'primary',
-      [GameGenre.PUSH_YOUR_LUCK]: undefined
+      [GameGenre.PUSH_YOUR_LUCK]: undefined,
+      [GameGenre.ASYMMETRIC]: 'primary'
     };
     
     return genreColorMap[genre];
@@ -212,7 +243,8 @@ export class GamesComponent implements OnInit, OnDestroy {
       [GameGenre.NEGOTIATION]: 'handshake',
       [GameGenre.ROUTE_BUILDING]: 'route',
       [GameGenre.SET_COLLECTION]: 'collections',
-      [GameGenre.PUSH_YOUR_LUCK]: 'casino'
+      [GameGenre.PUSH_YOUR_LUCK]: 'casino',
+      [GameGenre.ASYMMETRIC]: 'balance'
     };
     
     return genreIconMap[genre] || 'category';
@@ -230,17 +262,25 @@ export class GamesComponent implements OnInit, OnDestroy {
   onPlayerCountClick(event: Event, minPlayers: number, maxPlayers: number): void {
     event.stopPropagation();
     
-    // Check if this same player count is already selected - if so, clear it
-    if (this.currentFilter.minPlayers === minPlayers && this.currentFilter.maxPlayers === maxPlayers) {
-      this.currentFilter.minPlayers = undefined;
-      this.currentFilter.maxPlayers = undefined;
+    // Use the most common player count (middle of the range, or maxPlayers if range is small)
+    const targetPlayerCount = maxPlayers - minPlayers <= 1 ? maxPlayers : Math.ceil((minPlayers + maxPlayers) / 2);
+    
+    // Check if this player count is already selected - if so, clear it
+    if (this.currentFilter.supportedPlayers === targetPlayerCount) {
+      this.currentFilter.supportedPlayers = undefined;
     } else {
-      // Set both min and max player filters based on the clicked game
-      this.currentFilter.minPlayers = minPlayers;
-      this.currentFilter.maxPlayers = maxPlayers;
+      // Set the supported players filter
+      this.currentFilter.supportedPlayers = targetPlayerCount;
     }
     
     this.gamesService.setFilter({ ...this.currentFilter });
+  }
+
+  isPlayerCountActive(minPlayers: number, maxPlayers: number): boolean {
+    if (!this.currentFilter.supportedPlayers) return false;
+    
+    // Check if the current filter value falls within this game's player range
+    return this.currentFilter.supportedPlayers >= minPlayers && this.currentFilter.supportedPlayers <= maxPlayers;
   }
 
   onDurationClick(event: Event, playTime: string): void {

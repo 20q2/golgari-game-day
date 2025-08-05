@@ -1,0 +1,121 @@
+<div class="statistics-container">
+  <h2 class="gradient-text">📊 Game Day Statistics</h2>
+  
+  <!-- Global Stats -->
+  <div *ngIf="globalStats$ | async as stats" class="stats-section">
+    <mat-card class="global-stats-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>analytics</mat-icon>
+        <mat-card-title>Global Statistics</mat-card-title>
+        <mat-card-subtitle>Last updated: {{ stats.lastUpdated | date:'short' }}</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <mat-icon>people</mat-icon>
+            <div class="stat-value">{{ stats.totalUsers }}</div>
+            <div class="stat-label">Active Users</div>
+          </div>
+          <div class="stat-item">
+            <mat-icon>comment</mat-icon>
+            <div class="stat-value">{{ stats.totalComments }}</div>
+            <div class="stat-label">Total Comments</div>
+          </div>
+          <div class="stat-item">
+            <mat-icon>star</mat-icon>
+            <div class="stat-value">{{ stats.totalRatings }}</div>
+            <div class="stat-label">Total Ratings</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Most Active Users -->
+    <mat-card class="ranking-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>emoji_events</mat-icon>
+        <mat-card-title>Most Active Users</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="ranking-list">
+          <div *ngFor="let user of stats.mostActiveUsers; let i = index" 
+               class="ranking-item" 
+               [class.top-rank]="i < 3">
+            <div class="rank">{{ i + 1 }}</div>
+            <div class="user-info">
+              <div class="username">{{ user.username }}</div>
+              <div class="activity">
+                {{ user.totalComments }} comments, {{ user.totalRatings }} ratings
+              </div>
+            </div>
+            <div class="activity-score">{{ user.totalComments + user.totalRatings }}</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Most Commented Games -->
+    <mat-card class="ranking-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>forum</mat-icon>
+        <mat-card-title>Most Discussed Games</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="ranking-list">
+          <div *ngFor="let game of stats.mostCommentedGames; let i = index" 
+               class="ranking-item"
+               [class.top-rank]="i < 3">
+            <div class="rank">{{ i + 1 }}</div>
+            <div class="game-info">
+              <div class="game-id">Game {{ game.gameId }}</div>
+              <div class="game-stats">
+                {{ game.totalComments }} comments
+                <span *ngIf="game.averageRating">
+                  • {{ game.averageRating }}/10 ⭐
+                </span>
+              </div>
+            </div>
+            <div class="comment-count">{{ game.totalComments }}</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Highest Rated Games -->
+    <mat-card class="ranking-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>grade</mat-icon>
+        <mat-card-title>Highest Rated Games</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="ranking-list">
+          <div *ngFor="let game of stats.highestRatedGames; let i = index" 
+               class="ranking-item"
+               [class.top-rank]="i < 3">
+            <div class="rank">{{ i + 1 }}</div>
+            <div class="game-info">
+              <div class="game-id">Game {{ game.gameId }}</div>
+              <div class="game-stats">
+                {{ game.averageRating }}/10 from {{ game.totalRatings }} ratings
+              </div>
+              <div class="rating-stars">{{ getRatingStars(game.averageRating) }}</div>
+            </div>
+            <div class="rating-score">{{ game.averageRating }}</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="!(globalStats$ | async)" class="loading-state">
+    <mat-card>
+      <mat-card-content>
+        <div class="loading-content">
+          <mat-icon>sync</mat-icon>
+          <p>Loading statistics from AWS...</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

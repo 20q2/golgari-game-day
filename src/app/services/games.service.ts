@@ -1,8 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, combineLatest } from 'rxjs';
-import { map, tap, switchMap } from 'rxjs/operators';
+import { BehaviorSubject, Observable, combineLatest, from, of } from 'rxjs';
+import { map, tap, switchMap, catchError } from 'rxjs/operators';
 import { Game, GameGenre, GameFilter, SortOrder, GameComment, GameJson, GameDuration } from '../models/game.model';
+import { AwsApiService } from './aws-api.service';
+import { DataAggregationService } from './data-aggregation.service';
 
 @Injectable({
   providedIn: 'root'
@@ -14,16 +16,35 @@ export class GamesService {
   private filterSubject = new BehaviorSubject<GameFilter>({});
   private sortSubject = new BehaviorSubject<SortOrder>(SortOrder.TITLE_ASC);
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private awsApi: AwsApiService,
+    private dataAggregation: DataAggregationService
+  ) {}
 
   getGames(): Observable<Game[]> {
     if (!this.gamesLoaded) {
       return this.loadGamesFromJson().pipe(
+        tap(() => {
+          // Load all AWS data when games are first loaded
+          this.loadAwsDataOnStartup();
+        }),
         switchMap(() => this.getFilteredAndSortedGames())
       );
     }
     
     return this.getFilteredAndSortedGames();
+  }
+
+  private async loadAwsDataOnStartup(): Promise<void> {
+    try {
+      console.log('🚀 Loading all AWS data on app startup...');
+      await this.dataAggregation.loadAllData();
+      console.log('✅ AWS data loaded successfully');
+    } catch (error) {
+      console.error('❌ Failed to load AWS data on startup:', error);
+      // Continue without AWS data - app should still work with localStorage
+    }
   }
 
   private getFilteredAndSortedGames(): Observable<Game[]> {
@@ -50,16 +71,135 @@ export class GamesService {
     return this.games.find(game => game.id === id);
   }
 
-  addComment(gameId: string, comment: Omit<GameComment, 'id' | 'timestamp'>): void {
-    const game = this.getGameById(gameId);
-    if (game) {
-      const newComment: GameComment = {
-        ...comment,
-        id: Date.now().toString(),
-        timestamp: new Date()
+  // 💬 AWS BACKEND INTEGRATION - Comments
+  async addComment(gameId: string, comment: Omit<GameComment, 'id' | 'timestamp'>): Promise<void> {
+    try {
+      const userId = this.awsApi.generateUserId();
+      // Use provided username or generate one
+      const username = comment.username.trim() || this.awsApi.getUserName();
+      
+      const result = await this.awsApi.addComment(gameId, {
+        userId,
+        username,
+        comment: comment.comment,
+        rating: comment.rating
+      });
+
+      // Update the local aggregated data cache
+      const newComment = {
+        commentId: result.commentId,
+        gameId: gameId,
+        userId,
+        username,
+        comment: comment.comment,
+        rating: comment.rating,
+        timestamp: new Date().toISOString()
       };
-      game.comments.push(newComment);
-      this.saveCommentsToStorage();
+      
+      this.dataAggregation.addComment(newComment);
+    } catch (error) {
+      console.error('Failed to add comment to AWS:', error);
+      throw error;
+    }
+  }
+
+
+  // ⭐ AWS BACKEND INTEGRATION - Ratings  
+  async addRating(gameId: string, rating: number): Promise<void> {
+    try {
+      const userId = this.awsApi.generateUserId();
+      const username = this.awsApi.getUserName();
+      
+      await this.awsApi.addRating(gameId, {
+        userId,
+        username,
+        rating
+      });
+
+      // Update the local aggregated data cache
+      const newRating = {
+        gameId: gameId,
+        userId,
+        username,
+        rating,
+        timestamp: new Date().toISOString()
+      };
+      
+      this.dataAggregation.addRating(newRating);
+
+      console.log(`✅ Rating ${rating} added for game ${gameId}`);
+    } catch (error) {
+      console.error('Failed to add rating to AWS:', error);
+      throw error;
+    }
+  }
+
+  // Get comments from aggregated data for a specific game
+  getCommentsFromAws(gameId: string): Observable<GameComment[]> {
+    return this.dataAggregation.getGameStats(gameId).pipe(
+      map(gameStats => gameStats.comments.map(comment => ({
+        id: comment.commentId,
+        comment: comment.comment,
+        username: comment.username,
+        rating: comment.rating || undefined,
+        timestamp: new Date(comment.timestamp)
+      })))
+    );
+  }
+
+  // Get average rating from aggregated data for a specific game
+  getAverageRatingFromAws(gameId: string): Observable<number | null> {
+    return this.dataAggregation.getGameStats(gameId).pipe(
+      map(gameStats => gameStats.averageRating)
+    );
+  }
+
+  // Get game stats for enhanced features
+  getGameStats(gameId: string) {
+    return this.dataAggregation.getGameStats(gameId);
+  }
+
+  // Get all games stats for rankings and features
+  getAllGamesStats() {
+    return this.dataAggregation.getAllGamesStats();
+  }
+
+  // Get user statistics for rankings
+  getUserStats() {
+    return this.dataAggregation.getUserStats();
+  }
+
+  // Get global statistics
+  getGlobalStats() {
+    return this.dataAggregation.getGlobalStats();
+  }
+
+  // ❤️ AWS BACKEND INTEGRATION - Likes
+  async toggleLike(gameId: string): Promise<void> {
+    try {
+      const result = await this.awsApi.toggleLike(gameId);
+      
+      const userId = this.awsApi.generateUserId();
+      const username = this.awsApi.getUserName();
+      
+      if (result.isLiked) {
+        // Like was added
+        const newLike = {
+          gameId: gameId,
+          userId,
+          username,
+          timestamp: new Date().toISOString()
+        };
+        this.dataAggregation.addLike(newLike);
+      } else {
+        // Like was removed
+        this.dataAggregation.removeLike(gameId, userId);
+      }
+
+      console.log(`✅ Like toggled for game ${gameId}: ${result.isLiked ? 'added' : 'removed'}`);
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+      throw error;
     }
   }
 
@@ -74,17 +214,9 @@ export class GamesService {
           return false;
         }
       }
-      if (filter.minPlayers && filter.maxPlayers) {
-        // If both min and max are set (clicked from a specific game), show games playable "up to" that many players
-        if (game.maxPlayers > filter.maxPlayers) {
-          return false;
-        }
-      } else {
-        // Individual filters
-        if (filter.minPlayers && game.maxPlayers < filter.minPlayers) {
-          return false;
-        }
-        if (filter.maxPlayers && game.minPlayers > filter.maxPlayers) {
+      if (filter.supportedPlayers) {
+        // Check if the game supports the specified number of players
+        if (filter.supportedPlayers < game.minPlayers || filter.supportedPlayers > game.maxPlayers) {
           return false;
         }
       }
@@ -123,26 +255,15 @@ export class GamesService {
     });
   }
 
-  private saveCommentsToStorage(): void {
-    const comments: { [gameId: string]: GameComment[] } = {};
-    this.games.forEach(game => {
-      if (game.comments.length > 0) {
-        comments[game.id] = game.comments;
-      }
-    });
-    localStorage.setItem('gameComments', JSON.stringify(comments));
-  }
 
   private loadGamesFromJson(): Observable<void> {
     return this.http.get<GameJson[]>('data/games.json').pipe(
       tap(gamesData => {
         this.games = gamesData.map(gameData => ({
           ...gameData,
-          genres: this.stringToGameGenres(gameData.genre),
-          comments: []
+          genres: this.stringToGameGenres(gameData.genre)
         }));
         this.gamesLoaded = true;
-        this.loadCommentsFromStorage();
       }),
       map(() => void 0)
     );
@@ -209,7 +330,9 @@ export class GamesService {
         genres.push(GameGenre.ABSTRACT);
       } else if (lowerGenre.includes('family') || lowerGenre.includes('garden')) {
         genres.push(GameGenre.FAMILY);
-      } else if (lowerGenre.includes('war') || lowerGenre.includes('one‑vs‑many') || lowerGenre.includes('asymmetric')) {
+      } else if (lowerGenre.includes('asymmetric')) {
+        genres.push(GameGenre.ASYMMETRIC);
+      } else if (lowerGenre.includes('war') || lowerGenre.includes('one‑vs‑many')) {
         genres.push(GameGenre.WAR_GAME);
       } else {
         // Default fallback for unrecognized genres
@@ -231,7 +354,7 @@ export class GamesService {
     
     switch (duration) {
       case GameDuration.SHORT:
-        return maxTime < 30;
+        return maxTime <= 30;
       case GameDuration.MEDIUM:
         return maxTime >= 30 && maxTime <= 60;
       case GameDuration.LONG:
@@ -243,18 +366,4 @@ export class GamesService {
     }
   }
 
-  private loadCommentsFromStorage(): void {
-    const stored = localStorage.getItem('gameComments');
-    if (stored) {
-      const comments: { [gameId: string]: GameComment[] } = JSON.parse(stored);
-      this.games.forEach(game => {
-        if (comments[game.id]) {
-          game.comments = comments[game.id].map(comment => ({
-            ...comment,
-            timestamp: new Date(comment.timestamp)
-          }));
-        }
-      });
-    }
-  }
 }

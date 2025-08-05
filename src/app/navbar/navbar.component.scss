@@ -4,6 +4,7 @@
   z-index: 1000;
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(8px);
+  background-color: #2d3748 !important; // Nice charcoal color
 }
 
 .spacer {
@@ -35,12 +36,12 @@
   text-decoration: none;
   
   &:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(74, 124, 89, 0.2); // Green tint to complement the theme
     transform: translateY(-1px);
   }
   
   &.active {
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: rgba(74, 124, 89, 0.3); // Stronger green tint for active state
     font-weight: 500;
   }
   

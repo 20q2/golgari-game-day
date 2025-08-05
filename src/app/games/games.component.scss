@@ -2,6 +2,10 @@
   padding: var(--spacing-md);
   max-width: 1200px;
   margin: 0 auto;
+
+  mat-card {
+    position: relative;
+  }
 }
 
 .filters-section {
@@ -104,7 +108,7 @@
 
   .player-count-filters {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr auto;
     gap: var(--spacing-md);
     align-items: end;
 
@@ -144,6 +148,9 @@
   overflow: hidden;
   box-shadow: var(--shadow-sm);
   background-color: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 
   &:hover {
     transform: translateY(-4px);
@@ -269,6 +276,9 @@
 
   mat-card-content {
     padding: 0 var(--spacing-md) var(--spacing-md);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 
     .game-info {
       margin-bottom: var(--spacing-md);
@@ -332,55 +342,103 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
       margin: 0;
+      flex: 1;
     }
   }
 
-  mat-card-actions {
-    padding: 0 var(--spacing-md) var(--spacing-md);
-    gap: var(--spacing-sm);
-    margin-top: auto;
 
-    .card-action-btn {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-xs);
-      min-height: 44px;
-      border-radius: var(--border-radius-md);
-      transition: var(--transition-medium);
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 0.875rem;
-      padding: var(--spacing-sm) var(--spacing-md);
+  // Card stats (likes and comments) at bottom of card
+  .card-stats {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 0 var(--spacing-md) var(--spacing-md);
+    margin-top: auto;
+  }
+
+  .stat-button {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background: var(--background-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 48px;
+    height: 36px;
+    justify-content: center;
+
+    &:hover {
+      background: var(--primary-color-light);
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+      transform: translateY(-1px);
       box-shadow: var(--shadow-sm);
-      border: 2px solid transparent;
+    }
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      margin: 0;
+    }
+
+    span {
+      font-size: 0.75rem;
+      line-height: 1;
+      margin-left: 2px;
+    }
+
+    &.like-button {
+      mat-icon {
+        color: var(--text-secondary);
+      }
+
+      &.liked {
+        background: linear-gradient(45deg, #e91e63, #f06292);
+        border-color: #e91e63;
+        color: white;
+
+        mat-icon {
+          color: white;
+        }
+
+        &:hover {
+          background: linear-gradient(45deg, #c2185b, #e91e63);
+          transform: translateY(-1px) scale(1.05);
+          box-shadow: var(--shadow-md);
+        }
+      }
+
+      &:hover:not(.liked) {
+        background: rgba(233, 30, 99, 0.1);
+        border-color: #e91e63;
+        color: #e91e63;
+        
+        mat-icon {
+          color: #e91e63;
+        }
+      }
+    }
+
+    &.comment-button {
+      mat-icon {
+        color: var(--text-secondary);
+      }
 
       &:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-      }
-
-      &[color="primary"] {
-        border-color: rgba(74, 124, 89, 0.3);
+        background: rgba(78, 205, 196, 0.1);
+        border-color: #4ecdc4;
+        color: #4ecdc4;
         
-        &:hover {
-          border-color: rgba(74, 124, 89, 0.6);
-          background-color: var(--primary-dark);
+        mat-icon {
+          color: #4ecdc4;
         }
-      }
-
-      &[color="accent"] {
-        border-color: rgba(212, 121, 58, 0.3);
-        
-        &:hover {
-          border-color: rgba(212, 121, 58, 0.6);
-          background-color: var(--accent-dark);
-        }
-      }
-
-      mat-icon {
-        font-size: 1.125rem;
-        width: 1.125rem;
-        height: 1.125rem;
       }
     }
   }
@@ -460,17 +518,5 @@
       }
     }
 
-    mat-card-actions {
-      padding: 0 var(--spacing-sm) var(--spacing-sm);
-      flex-direction: column;
-      gap: var(--spacing-sm);
-
-      button {
-        width: 100%;
-        justify-content: center;
-        min-height: 48px;
-        padding: var(--spacing-md);
-      }
-    }
   }
 }

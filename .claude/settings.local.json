@@ -14,7 +14,8 @@
       "Bash(copy:*)",
       "Bash(cp:*)",
       "Bash(timeout 5 npm run start)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }

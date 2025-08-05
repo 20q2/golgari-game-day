@@ -2,7 +2,7 @@
   {
     "id": "1",
     "title": "Wingspan",
-    "genre": "Strategy / Engine-building",
+    "genre": "Strategy / Engine-building / Euro",
     "minPlayers": 1,
     "maxPlayers": 5,
     "playTime": "40-70 minutes",
@@ -14,7 +14,7 @@
   {
     "id": "4",
     "title": "Splendor",
-    "genre": "Euro / Set-collection",
+    "genre": "Euro / Set-collection / Strategy",
     "minPlayers": 2,
     "maxPlayers": 4,
     "playTime": "30 minutes",
@@ -50,7 +50,7 @@
   {
     "id": "8",
     "title": "Gloomhaven",
-    "genre": "Thematic / Campaign",
+    "genre": "Thematic / Campaign / Miniatures / RPG",
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-9999 minutes",
@@ -62,7 +62,7 @@
   {
     "id": "9",
     "title": "Frosthaven",
-    "genre": "Thematic / Legacy",
+    "genre": "Thematic / Legacy / Miniatures / RPG",
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-9999 minutes",
@@ -86,7 +86,7 @@
   {
     "id": "11",
     "title": "Valor & Villainy: Minions of Mordak",
-    "genre": "One-vs-Many / RPG-style",
+    "genre": "One-vs-Many / RPG-style / RPG / Asymmetric",
     "minPlayers": 2,
     "maxPlayers": 6,
     "playTime": "90-150 minutes",
@@ -98,7 +98,7 @@
   {
     "id": "12",
     "title": "Primal: The Awakening",
-    "genre": "Cooperative / Boss-battler",
+    "genre": "Cooperative / Boss-battler / Miniatures",
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-120 minutes",
@@ -122,7 +122,7 @@
   {
     "id": "14",
     "title": "City of the Great Machine",
-    "genre": "One-vs-Many / Steampunk",
+    "genre": "One-vs-Many / Steampunk / Asymmetric",
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "90-120 minutes",
@@ -206,7 +206,7 @@
   {
     "id": "21",
     "title": "Flourish",
-    "genre": "Drafting / Garden",
+    "genre": "Drafting / Garden / Family / Euro",
     "minPlayers": 1,
     "maxPlayers": 7,
     "playTime": "25-45 minutes",
@@ -230,7 +230,7 @@
   {
     "id": "23",
     "title": "EOS: Island of Angels",
-    "genre": "Engine-building / Strategy",
+    "genre": "Engine-building / Strategy / Asymmetric",
     "minPlayers": 2,
     "maxPlayers": 5,
     "playTime": "60-120 minutes",
@@ -278,7 +278,7 @@
   {
     "id": "28",
     "title": "Munchkin",
-    "genre": "Party / Card Game",
+    "genre": "Party / Card Game / RPG",
     "minPlayers": 3,
     "maxPlayers": 6,
     "playTime": "60-120 minutes",
@@ -290,7 +290,7 @@
   {
     "id": "29",
     "title": "Wyrmspan",
-    "genre": "Engine-building / Tableau",
+    "genre": "Engine-building / Tableau / Euro",
     "minPlayers": 1,
     "maxPlayers": 5,
     "playTime": "90-120 minutes",
@@ -326,7 +326,7 @@
   {
     "id": "32",
     "title": "Small World of Warcraft",
-    "genre": "Fantasy / Area Control",
+    "genre": "Fantasy / Area Control / Asymmetric",
     "minPlayers": 2,
     "maxPlayers": 5,
     "playTime": "40-80 minutes",
@@ -350,7 +350,7 @@
   {
     "id": "34",
     "title": "Catacombs (Third Edition)",
-    "genre": "Action / Dexterity / RPG-style",
+    "genre": "Action / Dexterity / RPG-style / RPG",
     "minPlayers": 2,
     "maxPlayers": 5,
     "playTime": "30-90 minutes",
@@ -362,7 +362,7 @@
   {
     "id": "35",
     "title": "Return to Dark Tower",
-    "genre": "Cooperative / Adventure / Electronic",
+    "genre": "Cooperative / Adventure / Electronic / Miniatures",
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "100-120 minutes",
@@ -374,7 +374,7 @@
   {
     "id": "36",
     "title": "Poison",
-    "genre": "Card Game / Risk‑management",
+    "genre": "Card Game / Party",
     "minPlayers": 3,
     "maxPlayers": 6,
     "playTime": "20-30 minutes",
@@ -398,7 +398,7 @@
   {
     "id": "38",
     "title": "Captain’s Gambit: Kings of Infinite Space",
-    "genre": "Social Deduction / Hidden Role",
+    "genre": "Social Deduction / Hidden Role / Asymmetric",
     "minPlayers": 4,
     "maxPlayers": 8,
     "playTime": "40-90 minutes",
@@ -446,7 +446,7 @@
   {
     "id": "42",
     "title": "Heroes of Barcadia",
-    "genre": "Dungeon Crawl / Party / Drinking",
+    "genre": "Dungeon Crawl / Party / Drinking / RPG",
     "minPlayers": 2,
     "maxPlayers": 8,
     "playTime": "30-90 minutes",
@@ -458,7 +458,7 @@
   {
     "id": "43",
     "title": "Dice Forge",
-    "genre": "Dice Crafting / Strategy / Fantasy",
+    "genre": "Dice Crafting / Strategy / Fantasy / Euro",
     "minPlayers": 2,
     "maxPlayers": 4,
     "playTime": "45 minutes",
@@ -470,7 +470,7 @@
   {
     "id": "44",
     "title": "Clank! Adventuring Party",
-    "genre": "Deck-Building / Dungeon Crawl / Fantasy",
+    "genre": "Deck-Building / Dungeon Crawl / Fantasy / Thematic",
     "minPlayers": 2,
     "maxPlayers": 6,
     "playTime": "60-120 minutes",
@@ -482,7 +482,7 @@
   {
     "id": "45",
     "title": "Monster Hunter: World - The Board Game",
-    "genre": "Cooperative / Arena Combat / Miniatures",
+    "genre": "Cooperative / Arena Combat / Miniatures / Thematic",
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-120 minutes",
@@ -494,7 +494,7 @@
   {
     "id": "46",
     "title": "Lunar Base",
-    "genre": "Strategy / Card Drafting / Engine-Building",
+    "genre": "Strategy / Card Drafting / Engine-Building / Euro",
     "minPlayers": 2,
     "maxPlayers": 6,
     "playTime": "30-45 minutes",
@@ -506,7 +506,7 @@
   {
     "id": "47",
     "title": "Pantheum: Demigods of Olympia",
-    "genre": "Strategy / Engine-Building / Area Control",
+    "genre": "Strategy / Engine-Building / Area Control / Euro / Asymmetric",
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "45-60 minutes",
@@ -530,7 +530,7 @@
   {
     "id": "49",
     "title": "Sheriff of Nottingham",
-    "genre": "Bluffing / Negotiation / Party",
+    "genre": "Bluffing / Negotiation / Party / Euro",
     "minPlayers": 3,
     "maxPlayers": 6,
     "playTime": "45-60 minutes",
@@ -542,7 +542,7 @@
   {
     "id": "50",
     "title": "7 Wonders",
-    "genre": "Card Drafting / Civilization Building / Strategy",
+    "genre": "Card Drafting / Civilization Building / Strategy / Euro",
     "minPlayers": 3,
     "maxPlayers": 7,
     "playTime": "30 minutes",

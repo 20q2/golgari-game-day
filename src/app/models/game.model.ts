@@ -8,7 +8,7 @@ export interface Game {
   description: string;
   imageUrl?: string;
   bggRating?: number;
-  comments: GameComment[];
+  comments?: GameComment[]; // Optional - comments now come from AWS
 }
 
 export interface GameComment {
@@ -46,7 +46,8 @@ export enum GameGenre {
   NEGOTIATION = 'Negotiation',
   ROUTE_BUILDING = 'Route Building',
   SET_COLLECTION = 'Set Collection',
-  PUSH_YOUR_LUCK = 'Push Your Luck'
+  PUSH_YOUR_LUCK = 'Push Your Luck',
+  ASYMMETRIC = 'Asymmetric'
 }
 
 export enum GameDuration {
@@ -58,8 +59,7 @@ export enum GameDuration {
 
 export interface GameFilter {
   genres?: GameGenre[];
-  minPlayers?: number;
-  maxPlayers?: number;
+  supportedPlayers?: number;
   duration?: GameDuration;
   searchText?: string;
 }
@@ -83,5 +83,4 @@ export interface GameJson {
   description: string;
   imageUrl?: string;
   bggRating?: number;
-  comments: GameComment[];
 }

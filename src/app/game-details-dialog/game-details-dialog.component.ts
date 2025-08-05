@@ -12,6 +12,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { GamesService } from '../services/games.service';
 import { Game, GameComment, GameGenre } from '../models/game.model';
+import { Rating } from '../services/aws-api.service';
 
 @Component({
   selector: 'app-game-details-dialog',
@@ -40,6 +41,9 @@ export class GameDetailsDialogComponent implements OnInit, OnDestroy {
   };
 
   ratings = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  isSubmitting = false;
+  awsComments: GameComment[] = [];
+  awsAverageRating: number | null = null;
 
   constructor(
     public dialogRef: MatDialogRef<GameDetailsDialogComponent>,
@@ -53,25 +57,53 @@ export class GameDetailsDialogComponent implements OnInit, OnDestroy {
     if (updatedGame) {
       this.game = updatedGame;
     }
+
+    // Load comments and ratings from AWS
+    this.loadAwsData();
+  }
+
+  private loadAwsData(): void {
+    // Load comments from AWS
+    this.gamesService.getCommentsFromAws(this.game.id).subscribe({
+      next: (comments) => {
+        this.awsComments = comments;
+        console.log(`✅ Loaded ${comments.length} comments from AWS for ${this.game.id}`);
+      },
+      error: (error) => {
+        console.error('Failed to load comments from AWS:', error);
+      }
+    });
+
+    // Load average rating from AWS
+    this.gamesService.getAverageRatingFromAws(this.game.id).subscribe({
+      next: (rating) => {
+        this.awsAverageRating = rating;
+        if (rating) {
+          console.log(`✅ Loaded average rating ${rating} from AWS for ${this.game.id}`);
+        }
+      },
+      error: (error) => {
+        console.error('Failed to load rating from AWS:', error);
+      }
+    });
   }
 
   ngOnDestroy(): void {
     // No background changes needed for dialogs
   }
 
-  addComment(): void {
-    if (this.newComment.username.trim() && this.newComment.comment.trim()) {
-      this.gamesService.addComment(this.game.id, {
-        username: this.newComment.username.trim(),
+  async addComment(): Promise<void> {
+    if (!this.newComment.comment.trim()) {
+      return;
+    }
+
+    this.isSubmitting = true;
+    try {
+      await this.gamesService.addComment(this.game.id, {
+        username: this.newComment.username.trim(), // Can be empty, service will handle
         comment: this.newComment.comment.trim(),
         rating: this.newComment.rating
       });
-
-      // Update local game data
-      const updatedGame = this.gamesService.getGameById(this.game.id);
-      if (updatedGame) {
-        this.game = updatedGame;
-      }
 
       // Reset form
       this.newComment = {
@@ -79,6 +111,16 @@ export class GameDetailsDialogComponent implements OnInit, OnDestroy {
         comment: '',
         rating: undefined
       };
+
+      // Reload AWS data to show new comment
+      this.loadAwsData();
+
+      console.log('✅ Comment added successfully!');
+    } catch (error) {
+      console.error('❌ Failed to add comment:', error);
+      alert('Failed to add comment. Please try again.');
+    } finally {
+      this.isSubmitting = false;
     }
   }
 
@@ -89,9 +131,13 @@ export class GameDetailsDialogComponent implements OnInit, OnDestroy {
   }
 
   getAverageRating(): number | null {
-    const ratingsWithValues = this.game.comments.filter(c => c.rating).map(c => c.rating!);
-    if (ratingsWithValues.length === 0) return null;
-    return ratingsWithValues.reduce((sum, rating) => sum + rating, 0) / ratingsWithValues.length;
+    // Use AWS rating only
+    return this.awsAverageRating;
+  }
+
+  getAllComments(): GameComment[] {
+    // Use only AWS comments
+    return this.awsComments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
 
   getGenreIcon(genre: GameGenre): string {
@@ -122,7 +168,8 @@ export class GameDetailsDialogComponent implements OnInit, OnDestroy {
       [GameGenre.NEGOTIATION]: 'handshake',
       [GameGenre.ROUTE_BUILDING]: 'route',
       [GameGenre.SET_COLLECTION]: 'collections',
-      [GameGenre.PUSH_YOUR_LUCK]: 'casino'
+      [GameGenre.PUSH_YOUR_LUCK]: 'casino',
+      [GameGenre.ASYMMETRIC]: 'balance'
     };
     
     return genreIconMap[genre] || 'category';

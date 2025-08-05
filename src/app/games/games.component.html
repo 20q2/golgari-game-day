@@ -50,21 +50,13 @@
 
     <div class="player-count-filters">
       <mat-form-field appearance="outline" class="players-field">
-        <mat-label>Min Players</mat-label>
+        <mat-label>Supported Number of Players</mat-label>
         <input matInput 
                type="number" 
-               [(ngModel)]="currentFilter.minPlayers" 
+               [(ngModel)]="currentFilter.supportedPlayers" 
                (ngModelChange)="onFilterChange()"
-               min="1" max="8">
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="players-field">
-        <mat-label>Max Players</mat-label>
-        <input matInput 
-               type="number" 
-               [(ngModel)]="currentFilter.maxPlayers" 
-               (ngModelChange)="onFilterChange()"
-               min="1" max="8">
+               min="1" max="12"
+               placeholder="e.g. 4">
       </mat-form-field>
 
       <button mat-raised-button color="accent" (click)="clearFilters()" class="clear-btn">
@@ -85,11 +77,6 @@
              class="game-image"
              loading="lazy">
         <div class="ratings-overlay">
-          <div class="rating-item bgg-rating" *ngIf="game.bggRating">
-            <div class="rating-label">BGG</div>
-            <span class="rating-text">{{ game.bggRating }}/10</span>
-            <div class="rating-stars">{{ getRatingStars(game.bggRating) }}</div>
-          </div>
           <div class="rating-item user-rating">
             <div class="rating-label">Users</div>
             <span class="rating-text" *ngIf="getUserRating(game); else noUserRating">{{ getUserRating(game) }}/10</span>
@@ -97,6 +84,11 @@
               <span class="rating-text no-rating">No ratings</span>
             </ng-template>
             <div class="rating-stars" *ngIf="getUserRating(game)">{{ getRatingStars(getUserRating(game)!) }}</div>
+          </div>
+          <div class="rating-item bgg-rating" *ngIf="game.bggRating">
+            <div class="rating-label">BGG</div>
+            <span class="rating-text">{{ game.bggRating }}/10</span>
+            <div class="rating-stars">{{ getRatingStars(game.bggRating) }}</div>
           </div>
         </div>
       </div>
@@ -121,7 +113,7 @@
       <mat-card-content>
         <div class="game-info">
           <div class="info-row clickable-info" 
-               [class.active-filter]="currentFilter.minPlayers === game.minPlayers && currentFilter.maxPlayers === game.maxPlayers"
+               [class.active-filter]="isPlayerCountActive(game.minPlayers, game.maxPlayers)"
                (click)="onPlayerCountClick($event, game.minPlayers, game.maxPlayers)">
             <mat-icon>group</mat-icon>
             <span>{{ game.minPlayers }}-{{ game.maxPlayers }} players</span>
@@ -132,29 +124,25 @@
             <mat-icon>schedule</mat-icon>
             <span>{{ game.playTime }}</span>
           </div>
-          <div class="info-row" *ngIf="game.comments.length > 0">
-            <mat-icon>comment</mat-icon>
-            <span>{{ game.comments.length }} comment(s)</span>
-          </div>
+          <!-- Comment count will be shown via AWS data in the dialog -->
         </div>
         
         <p class="description">{{ game.description }}</p>
       </mat-card-content>
 
-      <mat-card-actions align="end">
-        <button mat-raised-button color="primary" class="card-action-btn">
-          <mat-icon>info</mat-icon>
-          Details
+      <div class="card-stats">
+        <button class="stat-button like-button" 
+                (click)="toggleLike(game, $event)"
+                [class.liked]="isLiked(game) | async">
+          <mat-icon>{{ (isLiked(game) | async) ? 'favorite' : 'favorite_border' }}</mat-icon>
+          <span *ngIf="getLikeCount(game) | async as likeCount">{{ likeCount || 0 }}</span>
         </button>
-        <button mat-raised-button color="accent" class="card-action-btn" *ngIf="game.comments.length > 0">
-          <mat-icon>comment</mat-icon>
-          {{ game.comments.length }} Comment{{ game.comments.length !== 1 ? 's' : '' }}
+        
+        <button class="stat-button comment-button" (click)="openGameDetails(game, $event)">
+          <mat-icon>chat_bubble_outline</mat-icon>
+          <span *ngIf="getCommentCount(game) | async as commentCount">{{ commentCount || 0 }}</span>
         </button>
-        <button mat-raised-button color="accent" class="card-action-btn" *ngIf="game.comments.length === 0">
-          <mat-icon>add_comment</mat-icon>
-          Add Comment
-        </button>
-      </mat-card-actions>
+      </div>
     </mat-card>
   </div>
 

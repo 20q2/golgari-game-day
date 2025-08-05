@@ -270,6 +270,18 @@
       margin-bottom: var(--spacing-md);
     }
 
+    .button-row {
+      display: flex;
+      gap: var(--spacing-md);
+      flex-wrap: wrap;
+      align-items: center;
+
+      button {
+        flex: 1;
+        min-width: 150px;
+      }
+    }
+
     button {
       display: flex;
       align-items: center;
