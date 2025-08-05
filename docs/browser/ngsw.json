@@ -1,7 +1,7 @@
 {
   "configVersion": 1,
-  "timestamp": 1754366194416,
-  "index": "/index.html",
+  "timestamp": 1754367274130,
+  "index": "F:/Program Files/Git/golgari-palace-gameday/index.html",
   "assetGroups": [
     {
       "name": "app",
@@ -11,12 +11,12 @@
         "ignoreVary": true
       },
       "urls": [
-        "/favicon.ico",
-        "/index.html",
-        "/main-CNBPO3VY.js",
-        "/manifest.webmanifest",
-        "/polyfills-B6TNHZQ6.js",
-        "/styles-LBF2RKWZ.css"
+        "F:/Program Files/Git/golgari-palace-gameday/favicon.ico",
+        "F:/Program Files/Git/golgari-palace-gameday/index.html",
+        "F:/Program Files/Git/golgari-palace-gameday/main-CNBPO3VY.js",
+        "F:/Program Files/Git/golgari-palace-gameday/manifest.webmanifest",
+        "F:/Program Files/Git/golgari-palace-gameday/polyfills-B6TNHZQ6.js",
+        "F:/Program Files/Git/golgari-palace-gameday/styles-LBF2RKWZ.css"
       ],
       "patterns": []
     },
@@ -28,42 +28,42 @@
         "ignoreVary": true
       },
       "urls": [
-        "/icons/icon-128x128.png",
-        "/icons/icon-144x144.png",
-        "/icons/icon-152x152.png",
-        "/icons/icon-192x192.png",
-        "/icons/icon-384x384.png",
-        "/icons/icon-512x512.png",
-        "/icons/icon-72x72.png",
-        "/icons/icon-96x96.png",
-        "/images/image1.png",
-        "/images/image2.png",
-        "/images/image3.png",
-        "/images/image4.png"
+        "F:/Program Files/Git/golgari-palace-gameday/icons/icon-128x128.png",
+        "F:/Program Files/Git/golgari-palace-gameday/icons/icon-144x144.png",
+        "F:/Program Files/Git/golgari-palace-gameday/icons/icon-152x152.png",
+        "F:/Program Files/Git/golgari-palace-gameday/icons/icon-192x192.png",
+        "F:/Program Files/Git/golgari-palace-gameday/icons/icon-384x384.png",
+        "F:/Program Files/Git/golgari-palace-gameday/icons/icon-512x512.png",
+        "F:/Program Files/Git/golgari-palace-gameday/icons/icon-72x72.png",
+        "F:/Program Files/Git/golgari-palace-gameday/icons/icon-96x96.png",
+        "F:/Program Files/Git/golgari-palace-gameday/images/image1.png",
+        "F:/Program Files/Git/golgari-palace-gameday/images/image2.png",
+        "F:/Program Files/Git/golgari-palace-gameday/images/image3.png",
+        "F:/Program Files/Git/golgari-palace-gameday/images/image4.png"
       ],
       "patterns": []
     }
   ],
   "dataGroups": [],
   "hashTable": {
-    "/favicon.ico": "9c39f434fe1261f68c5e3eefdf734630d99c5670",
-    "/icons/icon-128x128.png": "f912963bdc6d5a38d8f1dd0afbaab2ce8d657acb",
-    "/icons/icon-144x144.png": "b155fd5f2fd5d2ea7760721063003c4cd95fd783",
-    "/icons/icon-152x152.png": "eae6e0f0c8afb8aaae339e2a569b43e9238e5e6c",
-    "/icons/icon-192x192.png": "15c4180454633880d98674aa7394656196c91584",
-    "/icons/icon-384x384.png": "94a915751ef6c9282df9aea405ad679230631814",
-    "/icons/icon-512x512.png": "1de182f76f7329dfa8f9fcdd1fdcdd695bea6a99",
-    "/icons/icon-72x72.png": "aa88a6096bd973be7f6d7a5489bfa6bc2463f8c4",
-    "/icons/icon-96x96.png": "7fb8f59c30ce2ff12c700321a0b39e14b3dc8f95",
-    "/images/image1.png": "d1ae4f7168143c2bfea6bd247b7fe1ed4474b66d",
-    "/images/image2.png": "6cdea5ec0124862edcd7ab811f6d14c29a5f40e3",
-    "/images/image3.png": "aa095ace0193ec63107eb36274a50377224fa939",
-    "/images/image4.png": "c18c0b25d6760ced538d407ce2e130aabf1cedf7",
-    "/index.html": "d22b6dbc20c971f53027be6f911df958979ff40e",
-    "/main-CNBPO3VY.js": "25c45aed8968abf956f0f3ce7ff5739a7f0eb6e7",
-    "/manifest.webmanifest": "0e7d1a05a129ffe98125dbc9a9eedfe8056c8a6a",
-    "/polyfills-B6TNHZQ6.js": "bf76ac291d7f51c1139b7edcf86b359a30c08c64",
-    "/styles-LBF2RKWZ.css": "f9eef037a4cf70ffd20acc7b914dbf60dcb9b67d"
+    "F:/Program Files/Git/golgari-palace-gameday/favicon.ico": "9c39f434fe1261f68c5e3eefdf734630d99c5670",
+    "F:/Program Files/Git/golgari-palace-gameday/icons/icon-128x128.png": "f912963bdc6d5a38d8f1dd0afbaab2ce8d657acb",
+    "F:/Program Files/Git/golgari-palace-gameday/icons/icon-144x144.png": "b155fd5f2fd5d2ea7760721063003c4cd95fd783",
+    "F:/Program Files/Git/golgari-palace-gameday/icons/icon-152x152.png": "eae6e0f0c8afb8aaae339e2a569b43e9238e5e6c",
+    "F:/Program Files/Git/golgari-palace-gameday/icons/icon-192x192.png": "15c4180454633880d98674aa7394656196c91584",
+    "F:/Program Files/Git/golgari-palace-gameday/icons/icon-384x384.png": "94a915751ef6c9282df9aea405ad679230631814",
+    "F:/Program Files/Git/golgari-palace-gameday/icons/icon-512x512.png": "1de182f76f7329dfa8f9fcdd1fdcdd695bea6a99",
+    "F:/Program Files/Git/golgari-palace-gameday/icons/icon-72x72.png": "aa88a6096bd973be7f6d7a5489bfa6bc2463f8c4",
+    "F:/Program Files/Git/golgari-palace-gameday/icons/icon-96x96.png": "7fb8f59c30ce2ff12c700321a0b39e14b3dc8f95",
+    "F:/Program Files/Git/golgari-palace-gameday/images/image1.png": "d1ae4f7168143c2bfea6bd247b7fe1ed4474b66d",
+    "F:/Program Files/Git/golgari-palace-gameday/images/image2.png": "6cdea5ec0124862edcd7ab811f6d14c29a5f40e3",
+    "F:/Program Files/Git/golgari-palace-gameday/images/image3.png": "aa095ace0193ec63107eb36274a50377224fa939",
+    "F:/Program Files/Git/golgari-palace-gameday/images/image4.png": "c18c0b25d6760ced538d407ce2e130aabf1cedf7",
+    "F:/Program Files/Git/golgari-palace-gameday/index.html": "7c3446c78de525285298c49b09d5e4a6291ad36e",
+    "F:/Program Files/Git/golgari-palace-gameday/main-CNBPO3VY.js": "25c45aed8968abf956f0f3ce7ff5739a7f0eb6e7",
+    "F:/Program Files/Git/golgari-palace-gameday/manifest.webmanifest": "0e7d1a05a129ffe98125dbc9a9eedfe8056c8a6a",
+    "F:/Program Files/Git/golgari-palace-gameday/polyfills-B6TNHZQ6.js": "bf76ac291d7f51c1139b7edcf86b359a30c08c64",
+    "F:/Program Files/Git/golgari-palace-gameday/styles-LBF2RKWZ.css": "f9eef037a4cf70ffd20acc7b914dbf60dcb9b67d"
   },
   "navigationUrls": [
     {
