@@ -1,7 +1,7 @@
 {
   "configVersion": 1,
-  "timestamp": 1755292835918,
-  "index": "/index.html",
+  "timestamp": 1755293264435,
+  "index": "/golgari-game-day/index.html",
   "assetGroups": [
     {
       "name": "app",
@@ -11,13 +11,13 @@
         "ignoreVary": true
       },
       "urls": [
-        "/favicon.ico",
-        "/index.html",
-        "/main.2fb7d22db5c0b904.js",
-        "/manifest.webmanifest",
-        "/polyfills.5196b0bd92381441.js",
-        "/runtime.f9305d7a024dc65c.js",
-        "/styles.5ce55f544b124df2.css"
+        "/golgari-game-day/favicon.ico",
+        "/golgari-game-day/index.html",
+        "/golgari-game-day/main.2fb7d22db5c0b904.js",
+        "/golgari-game-day/manifest.webmanifest",
+        "/golgari-game-day/polyfills.5196b0bd92381441.js",
+        "/golgari-game-day/runtime.f9305d7a024dc65c.js",
+        "/golgari-game-day/styles.5ce55f544b124df2.css"
       ],
       "patterns": []
     },
@@ -29,35 +29,35 @@
         "ignoreVary": true
       },
       "urls": [
-        "/icons/icon-128x128.png",
-        "/icons/icon-144x144.png",
-        "/icons/icon-152x152.png",
-        "/icons/icon-192x192.png",
-        "/icons/icon-384x384.png",
-        "/icons/icon-512x512.png",
-        "/icons/icon-72x72.png",
-        "/icons/icon-96x96.png"
+        "/golgari-game-day/icons/icon-128x128.png",
+        "/golgari-game-day/icons/icon-144x144.png",
+        "/golgari-game-day/icons/icon-152x152.png",
+        "/golgari-game-day/icons/icon-192x192.png",
+        "/golgari-game-day/icons/icon-384x384.png",
+        "/golgari-game-day/icons/icon-512x512.png",
+        "/golgari-game-day/icons/icon-72x72.png",
+        "/golgari-game-day/icons/icon-96x96.png"
       ],
       "patterns": []
     }
   ],
   "dataGroups": [],
   "hashTable": {
-    "/favicon.ico": "9c39f434fe1261f68c5e3eefdf734630d99c5670",
-    "/icons/icon-128x128.png": "f912963bdc6d5a38d8f1dd0afbaab2ce8d657acb",
-    "/icons/icon-144x144.png": "b155fd5f2fd5d2ea7760721063003c4cd95fd783",
-    "/icons/icon-152x152.png": "eae6e0f0c8afb8aaae339e2a569b43e9238e5e6c",
-    "/icons/icon-192x192.png": "15c4180454633880d98674aa7394656196c91584",
-    "/icons/icon-384x384.png": "94a915751ef6c9282df9aea405ad679230631814",
-    "/icons/icon-512x512.png": "1de182f76f7329dfa8f9fcdd1fdcdd695bea6a99",
-    "/icons/icon-72x72.png": "aa88a6096bd973be7f6d7a5489bfa6bc2463f8c4",
-    "/icons/icon-96x96.png": "7fb8f59c30ce2ff12c700321a0b39e14b3dc8f95",
-    "/index.html": "fd67486550aba67b710d520ab3332d76016a57b2",
-    "/main.2fb7d22db5c0b904.js": "d0b3fe20b0660e980a2cfbcdb4553d11fba1d5f2",
-    "/manifest.webmanifest": "0e7d1a05a129ffe98125dbc9a9eedfe8056c8a6a",
-    "/polyfills.5196b0bd92381441.js": "4b6c30536a8464089cb8518a32d0ae689316c446",
-    "/runtime.f9305d7a024dc65c.js": "7bd8ce133ea1574675ded0c4065c5e5a9ef27456",
-    "/styles.5ce55f544b124df2.css": "97c8266cc0ad683d53eb250198aaae390d1e207a"
+    "/golgari-game-day/favicon.ico": "9c39f434fe1261f68c5e3eefdf734630d99c5670",
+    "/golgari-game-day/icons/icon-128x128.png": "f912963bdc6d5a38d8f1dd0afbaab2ce8d657acb",
+    "/golgari-game-day/icons/icon-144x144.png": "b155fd5f2fd5d2ea7760721063003c4cd95fd783",
+    "/golgari-game-day/icons/icon-152x152.png": "eae6e0f0c8afb8aaae339e2a569b43e9238e5e6c",
+    "/golgari-game-day/icons/icon-192x192.png": "15c4180454633880d98674aa7394656196c91584",
+    "/golgari-game-day/icons/icon-384x384.png": "94a915751ef6c9282df9aea405ad679230631814",
+    "/golgari-game-day/icons/icon-512x512.png": "1de182f76f7329dfa8f9fcdd1fdcdd695bea6a99",
+    "/golgari-game-day/icons/icon-72x72.png": "aa88a6096bd973be7f6d7a5489bfa6bc2463f8c4",
+    "/golgari-game-day/icons/icon-96x96.png": "7fb8f59c30ce2ff12c700321a0b39e14b3dc8f95",
+    "/golgari-game-day/index.html": "c6b3585743f07fda72a06b4c894ed8f45ec0e7f6",
+    "/golgari-game-day/main.2fb7d22db5c0b904.js": "d0b3fe20b0660e980a2cfbcdb4553d11fba1d5f2",
+    "/golgari-game-day/manifest.webmanifest": "0e7d1a05a129ffe98125dbc9a9eedfe8056c8a6a",
+    "/golgari-game-day/polyfills.5196b0bd92381441.js": "4b6c30536a8464089cb8518a32d0ae689316c446",
+    "/golgari-game-day/runtime.f9305d7a024dc65c.js": "7bd8ce133ea1574675ded0c4065c5e5a9ef27456",
+    "/golgari-game-day/styles.5ce55f544b124df2.css": "97c8266cc0ad683d53eb250198aaae390d1e207a"
   },
   "navigationUrls": [
     {
