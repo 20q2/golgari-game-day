@@ -15,6 +15,8 @@ export class FloatingParticlesComponent {
     layer: this.getRandomLayer(),
     animation: this.getRandomAnimation(),
     color: this.getRandomColor(),
+    opacity: this.getRandomOpacity(),
+    scale: this.getRandomScale(),
     startPosition: this.getRandomStartPosition()
   }));
 
@@ -27,6 +29,14 @@ export class FloatingParticlesComponent {
     return sizes[Math.floor(Math.random() * sizes.length)];
   }
 
+  private getRandomOpacity(): number {
+    return 0.15 + Math.random() * 0.25;
+  }
+
+  private getRandomScale(): number {
+    return 0.7 + Math.random() * 0.6;
+  }
+
   private getRandomLayer(): number {
     return Math.floor(Math.random() * 3) + 1;
   }
@@ -36,7 +46,7 @@ export class FloatingParticlesComponent {
   }
 
   private getRandomColor(): string {
-    const colors = ['amber', 'gold', 'warm', 'honey', 'light'];
+    const colors = ['amber', 'gold', 'warm', 'honey', 'light', 'amber-dark', 'amber-bright', 'amber-soft'];
     return colors[Math.floor(Math.random() * colors.length)];
   }
 

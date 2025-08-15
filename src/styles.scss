@@ -100,7 +100,7 @@ body {
   
   // Page-specific backgrounds
   &.home-page {
-    background-image: url('/images/image1.png');
+    background-image: url('/assets/image1.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -108,7 +108,7 @@ body {
   }
   
   &.games-page {
-    background-image: url('/images/image2.png');
+    background-image: url('/assets/image2.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -116,7 +116,7 @@ body {
   }
   
   &.photos-page {
-    background-image: url('/images/image3.png');
+    background-image: url('/assets/image3.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -124,7 +124,7 @@ body {
   }
   
   &.dialog-page {
-    background-image: url('/images/image4.png');
+    background-image: url('/assets/image4.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;

@@ -15,7 +15,9 @@
       "Bash(cp:*)",
       "Bash(timeout 5 npm run start)",
       "Bash(grep:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx @angular/cli@latest:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
