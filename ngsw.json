@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1754367670725,
+  "timestamp": 1755292835918,
   "index": "/index.html",
   "assetGroups": [
     {
@@ -13,10 +13,11 @@
       "urls": [
         "/favicon.ico",
         "/index.html",
-        "/main-CNBPO3VY.js",
+        "/main.2fb7d22db5c0b904.js",
         "/manifest.webmanifest",
-        "/polyfills-B6TNHZQ6.js",
-        "/styles-LBF2RKWZ.css"
+        "/polyfills.5196b0bd92381441.js",
+        "/runtime.f9305d7a024dc65c.js",
+        "/styles.5ce55f544b124df2.css"
       ],
       "patterns": []
     },
@@ -35,11 +36,7 @@
         "/icons/icon-384x384.png",
         "/icons/icon-512x512.png",
         "/icons/icon-72x72.png",
-        "/icons/icon-96x96.png",
-        "/images/image1.png",
-        "/images/image2.png",
-        "/images/image3.png",
-        "/images/image4.png"
+        "/icons/icon-96x96.png"
       ],
       "patterns": []
     }
@@ -55,15 +52,12 @@
     "/icons/icon-512x512.png": "1de182f76f7329dfa8f9fcdd1fdcdd695bea6a99",
     "/icons/icon-72x72.png": "aa88a6096bd973be7f6d7a5489bfa6bc2463f8c4",
     "/icons/icon-96x96.png": "7fb8f59c30ce2ff12c700321a0b39e14b3dc8f95",
-    "/images/image1.png": "d1ae4f7168143c2bfea6bd247b7fe1ed4474b66d",
-    "/images/image2.png": "6cdea5ec0124862edcd7ab811f6d14c29a5f40e3",
-    "/images/image3.png": "aa095ace0193ec63107eb36274a50377224fa939",
-    "/images/image4.png": "c18c0b25d6760ced538d407ce2e130aabf1cedf7",
-    "/index.html": "d22b6dbc20c971f53027be6f911df958979ff40e",
-    "/main-CNBPO3VY.js": "25c45aed8968abf956f0f3ce7ff5739a7f0eb6e7",
+    "/index.html": "fd67486550aba67b710d520ab3332d76016a57b2",
+    "/main.2fb7d22db5c0b904.js": "d0b3fe20b0660e980a2cfbcdb4553d11fba1d5f2",
     "/manifest.webmanifest": "0e7d1a05a129ffe98125dbc9a9eedfe8056c8a6a",
-    "/polyfills-B6TNHZQ6.js": "bf76ac291d7f51c1139b7edcf86b359a30c08c64",
-    "/styles-LBF2RKWZ.css": "f9eef037a4cf70ffd20acc7b914dbf60dcb9b67d"
+    "/polyfills.5196b0bd92381441.js": "4b6c30536a8464089cb8518a32d0ae689316c446",
+    "/runtime.f9305d7a024dc65c.js": "7bd8ce133ea1574675ded0c4065c5e5a9ef27456",
+    "/styles.5ce55f544b124df2.css": "97c8266cc0ad683d53eb250198aaae390d1e207a"
   },
   "navigationUrls": [
     {

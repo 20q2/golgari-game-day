@@ -586,5 +586,29 @@
     "imageUrl": "https://cf.geekdo-images.com/HUue04SnaSAo-9SOGG_gCQ__itemrep/img/ZrzTnmpFAclDAZnLXjQXY-dZiU8=/fit-in/246x300/filters:strip_icc()/pic8585530.png",
     "bggRating": 7.5,
     "comments": []
+  },
+  {
+    "id": "55",
+    "title": "Rollplay",
+    "genre": "Party / Social Deduction / Bluffing",
+    "minPlayers": 4,
+    "maxPlayers": 8,
+    "playTime": "20-40 minutes",
+    "description": "A creative party game where players are given secret roles and must act them out while completing various challenges. Think, feel, and behave like your character while other players try to guess your role. Perfect for groups who love improv and creative expression.",
+    "imageUrl": "https://cf.geekdo-images.com/1jGJmvHFOMhEcfqyKNhVtA__itemrep/img/lmfgQWL-jkOzOQ1WyKSP7W0o1No=/fit-in/246x300/filters:strip_icc()/pic3926155.jpg",
+    "bggRating": 7.2,
+    "comments": []
+  },
+  {
+    "id": "56",
+    "title": "BANG!",
+    "genre": "Card Game / Bluffing / Social Deduction / Western",
+    "minPlayers": 4,
+    "maxPlayers": 7,
+    "playTime": "20-40 minutes",
+    "description": "In the wild west, outlaws hunt the sheriff, the sheriff hunts the outlaws, the renegade plots in secret, ready to take one side or the other. But who is who? Each player has a secret role and must eliminate their opponents while concealing their identity.",
+    "imageUrl": "https://cf.geekdo-images.com/ZOLGu1-iHh8WPXdNr7Uv9A__itemrep/img/f-3Y1WE0IzTkmQ0f_S8D7Z7tOHc=/fit-in/246x300/filters:strip_icc()/pic1170986.jpg",
+    "bggRating": 6.4,
+    "comments": []
   }
 ]
