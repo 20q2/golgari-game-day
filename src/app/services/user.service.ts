@@ -47,12 +47,20 @@ export class UserService {
     this._userId.set(userId);
   }
 
-  /**
-   * Resolves true if the user is signed in. STUB: the body is filled in at the end
-   * of Task 2, after SignInDialogComponent exists. For now we just reflect current
-   * state so callers compile and behave correctly when already signed in.
-   */
   async requireSignIn(): Promise<boolean> {
-    return this.isSignedIn();
+    if (this.isSignedIn()) {
+      return true;
+    }
+    const { SignInDialogComponent } = await import(
+      '../components/sign-in-dialog/sign-in-dialog.component'
+    );
+    const result = await this.dialog
+      .open<InstanceType<typeof SignInDialogComponent>, void, string | null>(SignInDialogComponent, {
+        width: '320px',
+        disableClose: false,
+      })
+      .afterClosed()
+      .toPromise();
+    return result != null && this.isSignedIn();
   }
 }

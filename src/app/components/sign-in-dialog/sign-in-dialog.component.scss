@@ -1,0 +1,25 @@
+:host {
+  display: block;
+}
+
+h2[mat-dialog-title] {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: 0;
+
+  .title-icon {
+    color: var(--primary-color, #4a7c59);
+  }
+}
+
+.hint {
+  margin: 0 0 var(--spacing-md);
+  color: rgba(0, 0, 0, 0.7);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.name-field {
+  width: 100%;
+}
