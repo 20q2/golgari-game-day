@@ -269,13 +269,10 @@ export class DataAggregationService {
 
   // Get current user ID (utility method)
   private getCurrentUserId(): string {
-    // Simple user ID generation - in real app you'd use proper auth
-    let userId = localStorage.getItem('gameday-user-id');
-    if (!userId) {
-      userId = 'user-' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('gameday-user-id', userId);
-    }
-    return userId;
+    // Routes through AwsApiService.generateUserId(), which now pass-throughs to UserService.
+    // Returns '' when no user is signed in; callers compare against userIds so an empty
+    // string just yields isLikedByCurrentUser === false, which is the desired behavior.
+    return this.awsApi.generateUserId();
   }
 
   // Refresh data from AWS
