@@ -3,6 +3,13 @@ dist/
 .angular/
 .angular-cache/
 
+# Build output (GitHub Pages artifact rebuilt by CI workflow)
+docs/
+
+# Agent / skills tooling
+.superpowers/
+.claude/settings.local.json
+
 # Node modules
 node_modules/
 
