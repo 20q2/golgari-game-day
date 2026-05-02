@@ -1,0 +1,34 @@
+<ul class="games-list" role="list">
+  <li
+    *ngFor="let g of games; trackBy: trackById"
+    class="games-list-item"
+    (click)="open.emit(g)"
+    (keydown.enter)="open.emit(g)"
+    (keydown.space)="$event.preventDefault(); open.emit(g)"
+    tabindex="0"
+    role="button"
+    [attr.aria-label]="'Open ' + g.title + ' details'"
+  >
+    <img
+      *ngIf="g.imageUrl"
+      class="thumb"
+      [src]="g.imageUrl"
+      [alt]="g.title"
+      loading="lazy"
+    />
+
+    <div class="primary">
+      <div class="title">{{ g.title }}</div>
+      <div class="genres">{{ topGenres(g) }}</div>
+      <div class="meta">{{ playerLabel(g) }} · {{ g.playTime }}</div>
+    </div>
+
+    <div class="trailing">
+      <div class="rating" *ngIf="g.bggRating">★ {{ g.bggRating }}</div>
+      <div class="social" *ngIf="likes(g) || comments(g)">
+        <span *ngIf="likes(g)" class="social-item heart">♥ {{ likes(g) }}</span>
+        <span *ngIf="comments(g)" class="social-item">💬 {{ comments(g) }}</span>
+      </div>
+    </div>
+  </li>
+</ul>
