@@ -1,0 +1,23 @@
+<section class="activity-strip" *ngIf="items.length > 0">
+  <div class="strip-title">
+    <mat-icon>timeline</mat-icon>
+    <span>Latest from the table</span>
+  </div>
+
+  <button
+    type="button"
+    class="activity-item"
+    *ngFor="let item of items; trackBy: trackByIndex"
+    (click)="onSelect(item.gameId)"
+  >
+    <span class="ic" [ngClass]="'ic-' + item.type">
+      <mat-icon>{{ iconFor(item.type) }}</mat-icon>
+    </span>
+    <span class="text">
+      <b>{{ item.username }}</b>
+      {{ verbFor(item.type) }}
+      <b>{{ item.gameTitle }}</b>
+      <span *ngIf="item.detail" class="detail"> — {{ item.detail }}</span>
+    </span>
+  </button>
+</section>
