@@ -1,0 +1,38 @@
+<div class="genre-strip" role="toolbar" aria-label="Genre filter">
+  <button
+    type="button"
+    class="chip"
+    [class.active]="selectedGenre === null && !multipleSelected"
+    (click)="onChipClick(null)"
+  >
+    All <span class="chip-count">{{ totalCount }}</span>
+  </button>
+
+  <button
+    *ngIf="multipleSelected"
+    type="button"
+    class="chip multi"
+    (click)="openFilters.emit()"
+  >
+    Multiple genres
+  </button>
+
+  <button
+    *ngFor="let g of topGenres"
+    type="button"
+    class="chip"
+    [class.active]="!multipleSelected && selectedGenre === g.genre"
+    (click)="onChipClick(g.genre)"
+  >
+    {{ g.genre }} <span class="chip-count">{{ g.count }}</span>
+  </button>
+
+  <button
+    *ngIf="remainingCount > 0"
+    type="button"
+    class="chip more"
+    (click)="openFilters.emit()"
+  >
+    +{{ remainingCount }} more
+  </button>
+</div>

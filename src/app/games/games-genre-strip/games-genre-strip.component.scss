@@ -1,0 +1,75 @@
+:host {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.genre-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-bottom: 2px;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (min-width: 1024px) {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}
+
+.chip {
+  flex-shrink: 0;
+  background: var(--games-surface);
+  color: var(--games-text-secondary);
+  border: 1px solid var(--games-surface-border);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  white-space: nowrap;
+  font-family: inherit;
+
+  @media (min-width: 1024px) {
+    font-size: 13px;
+    padding: 7px 14px;
+  }
+
+  &:hover {
+    background: var(--games-surface-hover);
+    color: var(--games-text-primary);
+  }
+
+  &.active {
+    background: var(--games-action);
+    color: white;
+    border-color: var(--games-action);
+    font-weight: 600;
+  }
+
+  &.multi {
+    background: var(--games-action-hover);
+    color: white;
+    border-color: var(--games-action-hover);
+    font-weight: 600;
+  }
+
+  &.more {
+    color: var(--games-text-muted);
+  }
+
+  .chip-count {
+    opacity: 0.6;
+    margin-left: 2px;
+    font-weight: 400;
+  }
+
+  &.active .chip-count {
+    opacity: 0.85;
+  }
+}
