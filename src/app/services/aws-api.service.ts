@@ -396,25 +396,14 @@ export class AwsApiService {
   }
 
   // 🔧 UTILITY METHODS
+  /** @deprecated Use UserService.userId() instead. Returns the current id or empty string. */
   generateUserId(): string {
-    // Simple user ID generation - in real app you'd use proper auth
-    let userId = localStorage.getItem('gameday-user-id');
-    if (!userId) {
-      userId = 'user-' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('gameday-user-id', userId);
-    }
-    return userId;
+    return this.userService.userId() ?? '';
   }
 
+  /** @deprecated Use UserService.username() instead. Returns the current name or empty string. */
   getUserName(): string {
-    // Simple username - in real app you'd use proper auth
-    let username = localStorage.getItem('gameday-username');
-    if (!username) {
-      const randomNames = ['GameMaster', 'BoardGameFan', 'DiceRoller', 'CardShark', 'MeepleCollector'];
-      username = randomNames[Math.floor(Math.random() * randomNames.length)] + Math.floor(Math.random() * 1000);
-      localStorage.setItem('gameday-username', username);
-    }
-    return username;
+    return this.userService.username() ?? '';
   }
 
   // For easy testing
