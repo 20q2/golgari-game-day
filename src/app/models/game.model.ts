@@ -76,7 +76,7 @@ export enum SortOrder {
 export interface GameJson {
   id: string;
   title: string;
-  genre: string; // String version of GameGenre
+  genres: GameGenre[];
   minPlayers: number;
   maxPlayers: number;
   playTime: string;

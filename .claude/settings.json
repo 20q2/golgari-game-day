@@ -10,7 +10,15 @@
       "Bash(npm ci *)",
       "Bash(git rm *)",
       "Bash(git commit -m ' *)",
-      "WebFetch(domain:taverncrawlgames.com)"
+      "WebFetch(domain:taverncrawlgames.com)",
+      "Bash(git status *)",
+      "Bash(git check-ignore *)",
+      "Read(//c/Users/andje/**)",
+      "Bash(git fetch *)",
+      "Bash(npm --version)",
+      "Edit(/.claude/skills/add-board-game/**)",
+      "Bash(npx eslint *)",
+      "Bash(git commit *)"
     ]
   }
 }
