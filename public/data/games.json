@@ -136,7 +136,7 @@
     "title": "Drinking Quest: Six Pack",
     "genre": "Party / RPG / Drinking",
     "minPlayers": 2,
-    "maxPlayers": 4,
+    "maxPlayers": 8,
     "playTime": "45-60 minutes",
     "description": "Card-based RPG where your hero dying in the dungeon means you chug your drink.",
     "imageUrl": "https://cf.geekdo-images.com/aM-qyDwQt651CVu4xzkCUw__itemrep/img/dBt0AmavInpwTsxw3EYpFHjptk4=/fit-in/246x300/filters:strip_icc()/pic7755668.png",
@@ -242,11 +242,11 @@
   {
     "id": "24",
     "title": "Party Wanted",
-    "genre": "Cooperative / Deck-builder Roguelike",
+    "genre": "Drinking / Party / Cooperative / Deck-Builder / Dungeon Crawl / Fantasy",
     "minPlayers": 1,
     "maxPlayers": 8,
-    "playTime": "30-60 minutes",
-    "description": "Roguelike cooperative deck-builder—survive escalating party chaos as a team.",
+    "playTime": "30-120 minutes",
+    "description": "A cooperative fantasy dungeon-crawler card game from Tavern Crawl Games where heroes pick a class, build a deck, and brave the Pyramid of Chaos to defeat four bosses. Each Land card layers a Social step, an Action step, and a Drinking Option, blending deck-building with party-game challenges.",
     "imageUrl": "https://cf.geekdo-images.com/5EdFZH82PYzvrP3_o1QF-A__itemrep/img/6cdDGQr5Q48bpn5hdbMR-PntHQE=/fit-in/246x300/filters:strip_icc()/pic7529908.jpg",
     "bggRating": 7.9,
     "comments": []
@@ -669,18 +669,6 @@
     "description": "A cooperative deck-building adaptation of the Slay the Spire video game by Contention Games. Pick a hero, craft a unique deck, encounter bizarre creatures, discover relics of immense power, and battle your way to the top of the Spire.",
     "imageUrl": "https://contentiongames.myshopify.com/cdn/shop/files/KSCollectorsBox5d_large_bc1250bf-6147-4ae6-86a4-d61188f26952.png?v=1713369661&width=1945",
     "bggRating": 8.5,
-    "comments": []
-  },
-  {
-    "id": "62",
-    "title": "Party Wanted",
-    "genre": "Drinking / Party / Cooperative / Deck-Building / Dungeon Crawl / Fantasy",
-    "minPlayers": 1,
-    "maxPlayers": 8,
-    "playTime": "30-120 minutes",
-    "description": "A cooperative fantasy dungeon-crawler card game from Tavern Crawl Games where heroes pick a class, build a deck, and brave the Pyramid of Chaos to defeat four bosses. Each Land card layers a Social step, an Action step, and a Drinking Option, blending deck-building with party-game challenges.",
-    "imageUrl": "https://taverncrawlgames.com/cdn/shop/files/PW_Box_Front.png",
-    "bggRating": 7.2,
     "comments": []
   }
 ]

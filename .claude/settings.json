@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:/Users/andje/.claude/plugins/cache/superpowers-marketplace/superpowers/5.0.6/skills/brainstorming/scripts/start-server.sh\" --project-dir \"a:/Coding/game-day-site\")",
+      "Bash(npx ng *)",
+      "Bash(git remote *)",
+      "Bash(gh run *)",
+      "PowerShell(gh run list --limit 5 2>&1)",
+      "PowerShell(if \\($?\\) { \"---\" } else { \"gh not available\" })",
+      "Bash(npm ci *)",
+      "Bash(git rm *)",
+      "Bash(git commit -m ' *)",
+      "WebFetch(domain:taverncrawlgames.com)"
+    ]
+  }
+}

@@ -51,21 +51,7 @@ Stack and free-tier rationale documented in [infrastructure/README.md](infrastru
 
 ## Adding a board game
 
-The catalog lives in [public/data/games.json](public/data/games.json) — append one object to the array.
-
-1. Pick the next free `id`: grep `"id":` in the file and use `max + 1` (ids are string-typed but numeric-valued; gaps exist, don't reuse them).
-2. Look up details on BGG: `boardgamegeek.com/boardgame/<bggId>/<slug>`. BGG blocks WebFetch and its XML API now requires auth, so use WebSearch with the title in quotes — the snippet usually has rating, player count, and playtime. For box art, prefer a `cf.geekdo-images.com/...pic*.jpg` URL; if you can't get one, the publisher's product CDN is an acceptable fallback.
-3. Required fields (match the existing shape exactly — the app does no schema validation):
-   - `id` — string, e.g. `"57"`
-   - `title` — string
-   - `genre` — single string with ` / ` separators (e.g. `"Co-op / Deck-building / Adventure"`); `GamesService.stringToGameGenres()` splits and maps these to the `GameGenre` enum, so include keywords it already matches and put the most specific first
-   - `minPlayers`, `maxPlayers` — numbers
-   - `playTime` — string, format `"<min>-<max> minutes"` or `"<n> minutes"`
-   - `description` — 1–2 sentence string
-   - `imageUrl` — full https URL
-   - `bggRating` — number with one decimal
-   - `comments` — `[]` (social data lives in DynamoDB, not the JSON)
-4. After editing, `npm start` and confirm the card renders on `/games`. Don't touch `docs/data/games.json` — that's build output.
+See [.claude/skills/add-board-game/SKILL.md](.claude/skills/add-board-game/SKILL.md) — covers the JSON shape, the genre-token cascade in `GamesService.stringToGameGenres()`, and the BGG-lookup workaround.
 
 ## Conventions
 
