@@ -98,17 +98,19 @@ body {
     pointer-events: none;
   }
   
-  // Page-specific backgrounds
+  // Page-specific backgrounds. Reference src/assets/ so Angular bundles the
+  // images and rewrites the URL — works on both dev (root) and GitHub Pages
+  // (under /golgari-game-day/) without shell-specific path quirks.
   &.home-page {
-    background: url('/golgari-game-day/images/image1.png') center/cover fixed;
+    background: url('./assets/image1.png') center/cover fixed;
   }
-  
+
   &.games-page {
-    background: url('/golgari-game-day/images/image2.png') center/cover fixed;
+    background: url('./assets/image2.png') center/cover fixed;
   }
 
   &.dialog-page {
-    background: url('/golgari-game-day/images/image4.png') center/cover fixed;
+    background: url('./assets/image4.png') center/cover fixed;
   }
 }
 
