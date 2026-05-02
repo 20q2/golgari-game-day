@@ -614,13 +614,73 @@
   {
     "id": "57",
     "title": "Terraria: The Board Game",
-    "genre": "Co-op / Adventure / Deck-building / Sandbox",
+    "genre": "Cooperative / Adventure / Deck-building / Sandbox",
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "120-180 minutes",
     "description": "A co-operative tabletop adaptation of the Terraria video game by Paper Fort Games and Re-Logic. Dig, fight, explore, and build through a sandbox world generated with Biome Tiles while crafting equipment and assembling decks of action cards.",
     "imageUrl": "https://paperfortgames.store/cdn/shop/files/95853067-0BE7-4A75-905E-C489F673054B.jpg?v=1761646763&width=533",
     "bggRating": 6.6,
+    "comments": []
+  },
+  {
+    "id": "58",
+    "title": "Valheim: The Board Game",
+    "genre": "Cooperative / Adventure / Survival / Exploration / Fantasy",
+    "minPlayers": 1,
+    "maxPlayers": 4,
+    "playTime": "60-120 minutes",
+    "description": "A cooperative survival adventure based on the Valheim video game, published by MOOD Publishing. Assemble warriors to explore uncharted lands, gather resources, craft weapons and armor, expand your homestead, and defeat the Forsaken.",
+    "imageUrl": "https://moodpublishing.com/cdn/shop/files/Deluxe-box_Rendering_v0005_beauty.png?v=1753182447",
+    "bggRating": 9.0,
+    "comments": []
+  },
+  {
+    "id": "59",
+    "title": "Shuffle Dungeons",
+    "genre": "Cooperative / Dungeon Crawl / Adventure / Fantasy",
+    "minPlayers": 1,
+    "maxPlayers": 4,
+    "playTime": "60-90 minutes",
+    "description": "A cooperative dungeon crawler from Zero Strategy Games where 1-4 players work together to fight monsters, build a route through ever-shifting dungeon tiles, and take down the boss waiting in the lair.",
+    "imageUrl": "https://zerostratgames.com/cdn/shop/files/ZSG_-_Shuffle_Dungeon_Tier_squares_11.png?v=1772144138&width=3840",
+    "bggRating": 7.5,
+    "comments": []
+  },
+  {
+    "id": "60",
+    "title": "One Last Fight",
+    "genre": "Cooperative / RPG / Adventure / Card Game / Fantasy",
+    "minPlayers": 1,
+    "maxPlayers": 4,
+    "playTime": "60-120 minutes",
+    "description": "A roguelike card-based roleplaying game from Hit Point Press where 1-4 players cooperatively build unique decks and journey through high-stakes encounters to defeat their final Nemesis - or die trying.",
+    "imageUrl": "https://hitpointpress.com/cdn/shop/files/OLF-Box2-2.png?v=1772832996&width=1206",
+    "bggRating": 7.5,
+    "comments": []
+  },
+  {
+    "id": "61",
+    "title": "Slay the Spire: The Board Game",
+    "genre": "Cooperative / Deck-building / Adventure / Fantasy",
+    "minPlayers": 1,
+    "maxPlayers": 4,
+    "playTime": "30-150 minutes",
+    "description": "A cooperative deck-building adaptation of the Slay the Spire video game by Contention Games. Pick a hero, craft a unique deck, encounter bizarre creatures, discover relics of immense power, and battle your way to the top of the Spire.",
+    "imageUrl": "https://contentiongames.myshopify.com/cdn/shop/files/KSCollectorsBox5d_large_bc1250bf-6147-4ae6-86a4-d61188f26952.png?v=1713369661&width=1945",
+    "bggRating": 8.5,
+    "comments": []
+  },
+  {
+    "id": "62",
+    "title": "Party Wanted",
+    "genre": "Drinking / Party / Cooperative / Deck-Building / Dungeon Crawl / Fantasy",
+    "minPlayers": 1,
+    "maxPlayers": 8,
+    "playTime": "30-120 minutes",
+    "description": "A cooperative fantasy dungeon-crawler card game from Tavern Crawl Games where heroes pick a class, build a deck, and brave the Pyramid of Chaos to defeat four bosses. Each Land card layers a Social step, an Action step, and a Drinking Option, blending deck-building with party-game challenges.",
+    "imageUrl": "https://taverncrawlgames.com/cdn/shop/files/PW_Box_Front.png",
+    "bggRating": 7.2,
     "comments": []
   }
 ]
