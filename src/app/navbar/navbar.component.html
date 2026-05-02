@@ -1,5 +1,8 @@
 <mat-toolbar color="primary" class="navbar">
-  <span class="title">🏰 Golgari Palace Game Day</span>
+  <a routerLink="/home" class="brand" aria-label="Golgari Palace Game Day — home">
+    <span class="brand-logo" aria-hidden="true"></span>
+    <span class="title">Golgari Palace Game Day</span>
+  </a>
   <span class="spacer"></span>
   
   <div class="nav-links">
@@ -11,6 +14,18 @@
       <mat-icon>sports_esports</mat-icon>
       <span class="nav-text">Games</span>
     </a>
+
+    @if (userService.isSignedIn()) {
+      <span class="user-chip" [attr.title]="userService.username()">
+        <mat-icon>person</mat-icon>
+        <span class="user-name">{{ userService.username() }}</span>
+      </span>
+    } @else {
+      <button mat-button class="nav-link sign-in-button" (click)="openSignIn()">
+        <mat-icon>person_outline</mat-icon>
+        <span class="nav-text">Sign in</span>
+      </button>
+    }
   </div>
 </mat-toolbar>
 
