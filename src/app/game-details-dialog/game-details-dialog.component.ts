@@ -12,6 +12,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { GamesService } from '../services/games.service';
 import { GenreIconService } from '../services/genre-icon.service';
+import { UserService } from '../services/user.service';
 import { Game, GameComment, GameGenre } from '../models/game.model';
 import { Rating } from '../services/aws-api.service';
 
@@ -50,7 +51,8 @@ export class GameDetailsDialogComponent implements OnInit, OnDestroy {
     public dialogRef: MatDialogRef<GameDetailsDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public game: Game,
     private gamesService: GamesService,
-    public iconService: GenreIconService
+    public iconService: GenreIconService,
+    private userService: UserService
   ) {}
 
   ngOnInit(): void {
@@ -96,6 +98,10 @@ export class GameDetailsDialogComponent implements OnInit, OnDestroy {
 
   async addComment(): Promise<void> {
     if (!this.newComment.comment.trim()) {
+      return;
+    }
+
+    if (!(await this.userService.requireSignIn())) {
       return;
     }
 
