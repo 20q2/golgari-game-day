@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { UserService } from './user.service';
 
 export interface Comment {
   commentId: string;
@@ -66,7 +67,7 @@ export class AwsApiService {
   private readonly API_BASE_URL = 'https://en53hl67hhzmm5n4ydc26qxeru0doggy.lambda-url.us-east-1.on.aws';
   private readonly isDevMode = false; // Set to true for debugging
 
-  constructor() {}
+  constructor(private userService: UserService) {}
 
   private log(...args: any[]): void {
     if (this.isDevMode) {
@@ -237,7 +238,8 @@ export class AwsApiService {
     console.log(`🔍 Fetching likes for game: ${gameId}`);
     
     try {
-      const response = await fetch(`${this.API_BASE_URL}/likes/${gameId}?userId=${this.generateUserId()}`, {
+      const userId = this.userService.userId() ?? '';
+      const response = await fetch(`${this.API_BASE_URL}/likes/${gameId}?userId=${encodeURIComponent(userId)}`, {
         method: 'GET',
         mode: 'cors',
         headers: {
@@ -276,8 +278,8 @@ export class AwsApiService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: this.generateUserId(),
-          username: this.getUserName()
+          userId: this.userService.userId(),
+          username: this.userService.username(),
         }),
       });
 
@@ -364,7 +366,8 @@ export class AwsApiService {
     this.log('🔍 Fetching all likes from database...');
     
     try {
-      const response = await fetch(`${this.API_BASE_URL}/all-likes?userId=${this.generateUserId()}`, {
+      const userId = this.userService.userId() ?? '';
+      const response = await fetch(`${this.API_BASE_URL}/all-likes?userId=${encodeURIComponent(userId)}`, {
         method: 'GET',
         mode: 'cors',
         headers: {
