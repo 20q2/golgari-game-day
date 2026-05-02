@@ -5,7 +5,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build --configuration development --href='/golgari-game-day/'",
+    "build": "ng build --configuration development --base-href='/golgari-game-day/'",
     "build:prod": "ng build --configuration production --base-href='/golgari-game-day/' && npm run flatten-build",
     "flatten-build": "node -e \"const fs=require('fs'),path=require('path'); if(fs.existsSync('docs/browser')){const files=fs.readdirSync('docs/browser',{withFileTypes:true}); files.forEach(f=>{const src=path.join('docs/browser',f.name), dest=path.join('docs',f.name); if(f.isDirectory()){fs.cpSync(src,dest,{recursive:true})}else{fs.copyFileSync(src,dest)}}); fs.rmSync('docs/browser',{recursive:true})}\"",
     "deploy": "npm run build:prod && npx gh-pages -d docs",

@@ -106,7 +106,32 @@ body {
   }
 
   &.games-page {
-    background: url('./assets/image2.png') center/cover fixed;
+    // Dark Golgari gradient — replaces the photo background to give the
+    // games page a distinct identity (Netflix-style browse surface).
+    background: linear-gradient(180deg, #0a1410 0%, #131c16 60%, #1a2a20 100%) fixed;
+
+    // Page-scoped tokens. Used by the new games components and their children.
+    --games-bg: linear-gradient(180deg, #0a1410 0%, #131c16 60%, #1a2a20 100%);
+    --games-surface: rgba(255, 255, 255, 0.04);
+    --games-surface-hover: rgba(255, 255, 255, 0.07);
+    --games-surface-border: rgba(255, 255, 255, 0.06);
+    --games-text-primary: #e0e8e2;
+    --games-text-secondary: #8aa898;
+    --games-text-muted: #6a8a7a;
+    --games-accent: #4a8a6a;
+    --games-action: #006442;
+    --games-action-hover: #008055;
+    --games-search-border: rgba(74, 138, 106, 0.4);
+    --games-badge-bg: #ffd700;
+    --games-badge-text: #000000;
+    --games-heart: #ff6090;
+    --games-star: #ffd700;
+
+    // Override the default light-overlay ::before so the dark gradient
+    // shows through cleanly.
+    &::before {
+      background: transparent;
+    }
   }
 
   &.dialog-page {
