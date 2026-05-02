@@ -5,6 +5,7 @@ import { map, tap, switchMap, catchError } from 'rxjs/operators';
 import { Game, GameFilter, SortOrder, GameComment, GameJson, GameDuration } from '../models/game.model';
 import { AwsApiService } from './aws-api.service';
 import { DataAggregationService } from './data-aggregation.service';
+import { UserService } from './user.service';
 
 @Injectable({
   providedIn: 'root'
@@ -20,7 +21,8 @@ export class GamesService {
   constructor(
     private http: HttpClient,
     private awsApi: AwsApiService,
-    private dataAggregation: DataAggregationService
+    private dataAggregation: DataAggregationService,
+    private userService: UserService
   ) {}
 
   getGames(): Observable<Game[]> {
@@ -103,10 +105,12 @@ export class GamesService {
   // 💬 AWS BACKEND INTEGRATION - Comments
   async addComment(gameId: string, comment: Omit<GameComment, 'id' | 'timestamp'>): Promise<void> {
     try {
-      const userId = this.awsApi.generateUserId();
-      // Use provided username or generate one
-      const username = comment.username.trim() || this.awsApi.getUserName();
-      
+      const userId = this.userService.userId();
+      const username = this.userService.username();
+      if (!userId || !username) {
+        throw new Error('addComment called without a signed-in user');
+      }
+
       const result = await this.awsApi.addComment(gameId, {
         userId,
         username,
@@ -136,9 +140,12 @@ export class GamesService {
   // ⭐ AWS BACKEND INTEGRATION - Ratings  
   async addRating(gameId: string, rating: number): Promise<void> {
     try {
-      const userId = this.awsApi.generateUserId();
-      const username = this.awsApi.getUserName();
-      
+      const userId = this.userService.userId();
+      const username = this.userService.username();
+      if (!userId || !username) {
+        throw new Error('addRating called without a signed-in user');
+      }
+
       await this.awsApi.addRating(gameId, {
         userId,
         username,
@@ -207,10 +214,13 @@ export class GamesService {
   async toggleLike(gameId: string): Promise<void> {
     try {
       const result = await this.awsApi.toggleLike(gameId);
-      
-      const userId = this.awsApi.generateUserId();
-      const username = this.awsApi.getUserName();
-      
+
+      const userId = this.userService.userId();
+      const username = this.userService.username();
+      if (!userId || !username) {
+        throw new Error('toggleLike called without a signed-in user');
+      }
+
       if (result.isLiked) {
         // Like was added
         const newLike = {
