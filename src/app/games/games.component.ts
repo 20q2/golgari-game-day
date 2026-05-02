@@ -13,6 +13,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { GamesService } from '../services/games.service';
 import { DataAggregationService } from '../services/data-aggregation.service';
+import { GenreIconService } from '../services/genre-icon.service';
 import { Game, GameGenre, GameFilter, SortOrder, GameDuration } from '../models/game.model';
 import { GameDetailsDialogComponent } from '../game-details-dialog/game-details-dialog.component';
 
@@ -57,7 +58,8 @@ export class GamesComponent implements OnInit, OnDestroy {
   constructor(
     private gamesService: GamesService,
     private dialog: MatDialog,
-    private dataAggregation: DataAggregationService
+    private dataAggregation: DataAggregationService,
+    public iconService: GenreIconService,
   ) {
     // Get the reactive games observable that responds to all filter/sort changes
     this.games$ = this.gamesService.getGames();
@@ -179,76 +181,6 @@ export class GamesComponent implements OnInit, OnDestroy {
     }
   }
 
-
-  getGenreColor(genre: GameGenre): 'primary' | 'accent' | 'warn' | undefined {
-    const genreColorMap: { [key in GameGenre]: 'primary' | 'accent' | 'warn' | undefined } = {
-      [GameGenre.STRATEGY]: 'primary',
-      [GameGenre.PARTY]: 'accent', 
-      [GameGenre.COOPERATIVE]: 'primary',
-      [GameGenre.CARD_GAME]: undefined, // Default color
-      [GameGenre.DECK_BUILDING]: 'accent',
-      [GameGenre.EURO]: 'primary',
-      [GameGenre.THEMATIC]: 'warn',
-      [GameGenre.ABSTRACT]: undefined,
-      [GameGenre.FAMILY]: undefined,
-      [GameGenre.WAR_GAME]: 'warn',
-      [GameGenre.DRINKING]: 'accent',
-      [GameGenre.ENGINE_BUILDING]: 'primary',
-      [GameGenre.DEXTERITY]: 'accent',
-      [GameGenre.SOCIAL_DEDUCTION]: 'warn',
-      [GameGenre.BLUFFING]: 'warn',
-      [GameGenre.MEMORY]: undefined,
-      [GameGenre.ADVENTURE]: 'warn',
-      [GameGenre.HORROR]: 'warn',
-      [GameGenre.AREA_CONTROL]: 'primary',
-      [GameGenre.RPG]: 'warn',
-      [GameGenre.CARD_DRAFTING]: 'accent',
-      [GameGenre.MINIATURES]: 'warn',
-      [GameGenre.LEGACY]: 'warn',
-      [GameGenre.NEGOTIATION]: 'accent',
-      [GameGenre.ROUTE_BUILDING]: 'primary',
-      [GameGenre.SET_COLLECTION]: 'primary',
-      [GameGenre.PUSH_YOUR_LUCK]: undefined,
-      [GameGenre.ASYMMETRIC]: 'primary'
-    };
-    
-    return genreColorMap[genre];
-  }
-
-  getGenreIcon(genre: GameGenre): string {
-    const genreIconMap: { [key in GameGenre]: string } = {
-      [GameGenre.STRATEGY]: 'psychology',
-      [GameGenre.PARTY]: 'celebration',
-      [GameGenre.COOPERATIVE]: 'groups',
-      [GameGenre.CARD_GAME]: 'style',
-      [GameGenre.DECK_BUILDING]: 'layers',
-      [GameGenre.EURO]: 'account_balance',
-      [GameGenre.THEMATIC]: 'auto_stories',
-      [GameGenre.ABSTRACT]: 'blur_on',
-      [GameGenre.FAMILY]: 'family_restroom',
-      [GameGenre.WAR_GAME]: 'gps_fixed',
-      [GameGenre.DRINKING]: 'local_bar',
-      [GameGenre.ENGINE_BUILDING]: 'settings',
-      [GameGenre.DEXTERITY]: 'sports_esports',
-      [GameGenre.SOCIAL_DEDUCTION]: 'group_work',
-      [GameGenre.BLUFFING]: 'theater_comedy',
-      [GameGenre.MEMORY]: 'psychology_alt',
-      [GameGenre.ADVENTURE]: 'explore',
-      [GameGenre.HORROR]: 'dark_mode',
-      [GameGenre.AREA_CONTROL]: 'map',
-      [GameGenre.RPG]: 'badge',
-      [GameGenre.CARD_DRAFTING]: 'view_carousel',
-      [GameGenre.MINIATURES]: 'toys',
-      [GameGenre.LEGACY]: 'history_edu',
-      [GameGenre.NEGOTIATION]: 'handshake',
-      [GameGenre.ROUTE_BUILDING]: 'route',
-      [GameGenre.SET_COLLECTION]: 'collections',
-      [GameGenre.PUSH_YOUR_LUCK]: 'casino',
-      [GameGenre.ASYMMETRIC]: 'balance'
-    };
-    
-    return genreIconMap[genre] || 'category';
-  }
 
   trackByGameId(index: number, game: Game): string {
     return game.id;

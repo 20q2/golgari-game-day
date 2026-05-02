@@ -42,7 +42,7 @@
                   (click)="onGenreFilterChange(genre)"
                   class="genre-filter-chip"
                   [class.selected]="isGenreSelected(genre)">
-          <mat-icon matChipAvatar>{{ getGenreIcon(genre) }}</mat-icon>
+          <mat-icon matChipAvatar>{{ iconService.iconFor(genre) }}</mat-icon>
           {{ genre }}
         </mat-chip>
       </mat-chip-set>
@@ -97,13 +97,13 @@
         <mat-card-title>{{ game.title }}</mat-card-title>
         <mat-card-subtitle>
           <mat-chip-set class="genre-chip">
-            <mat-chip *ngFor="let genre of game.genres" 
-                      [color]="getGenreColor(genre)" 
+            <mat-chip *ngFor="let genre of game.genres"
+                      [color]="iconService.colorFor(genre)"
                       variant="outlined"
                       (click)="onGenreChipClick($event, genre)"
                       class="clickable-chip"
                       [class.selected-filter]="isGenreSelected(genre)">
-              <mat-icon matChipAvatar>{{ getGenreIcon(genre) }}</mat-icon>
+              <mat-icon matChipAvatar>{{ iconService.iconFor(genre) }}</mat-icon>
               {{ genre }}
             </mat-chip>
           </mat-chip-set>
