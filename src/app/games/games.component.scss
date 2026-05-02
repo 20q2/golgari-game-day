@@ -3,6 +3,10 @@
   max-width: 1200px;
   margin: 0 auto;
 
+  @media (max-width: 768px) {
+    padding: var(--spacing-lg);
+  }
+
   mat-card {
     position: relative;
   }
@@ -14,6 +18,11 @@
   background-color: var(--background-secondary);
   border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-sm);
+
+  @media (max-width: 768px) {
+    margin-bottom: var(--spacing-2xl);
+    padding: var(--spacing-xl);
+  }
 
   h2 {
     margin-bottom: var(--spacing-lg);
@@ -137,7 +146,8 @@
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
-    gap: var(--spacing-md);
+    gap: var(--spacing-xl);
+    margin-bottom: var(--spacing-2xl);
   }
 }
 
@@ -259,6 +269,9 @@
           &.selected-filter {
             font-weight: 600;
             box-shadow: var(--shadow-sm);
+            background-color: var(--primary-color) !important;
+            color: white !important;
+            border-color: var(--primary-color) !important;
           }
         }
         

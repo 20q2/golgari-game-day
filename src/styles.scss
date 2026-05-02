@@ -100,35 +100,19 @@ body {
   
   // Page-specific backgrounds
   &.home-page {
-    background-image: url('/assets/image1.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+    background: url('/golgari-game-day/images/image1.png') center/cover fixed;
   }
   
   &.games-page {
-    background-image: url('/assets/image2.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+    background: url('/golgari-game-day/images/image2.png') center/cover fixed;
   }
   
   &.photos-page {
-    background-image: url('/assets/image3.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+    background: url('/golgari-game-day/images/image3.png') center/cover fixed;
   }
   
   &.dialog-page {
-    background-image: url('/assets/image4.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+    background: url('/golgari-game-day/images/image4.png') center/cover fixed;
   }
 }
 

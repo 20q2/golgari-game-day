@@ -17,8 +17,21 @@
       "Bash(grep:*)",
       "Bash(npx tsc:*)",
       "Bash(npx @angular/cli@latest:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(npm view:*)",
+      "Bash(npm run lint)",
+      "Bash(node:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(npm run deploy:*)",
+      "WebSearch",
+      "WebFetch(domain:boardgamegeek.com)",
+      "WebFetch(domain:terraria.wiki.gg)",
+      "WebFetch(domain:paperfortgames.store)",
+      "Bash(git ls-remote *)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }

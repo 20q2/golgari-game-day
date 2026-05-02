@@ -64,13 +64,19 @@ export interface AllLikesResponse {
 })
 export class AwsApiService {
   private readonly API_BASE_URL = 'https://en53hl67hhzmm5n4ydc26qxeru0doggy.lambda-url.us-east-1.on.aws';
+  private readonly isDevMode = false; // Set to true for debugging
 
   constructor() {}
 
+  private log(...args: any[]): void {
+    if (this.isDevMode) {
+      console.log(...args);
+    }
+  }
+
   // 💬 COMMENT OPERATIONS
   async getComments(gameId: string): Promise<CommentsResponse> {
-    console.log(`🔍 Fetching comments for game: ${gameId}`);
-    console.log(`🌐 URL: ${this.API_BASE_URL}/comments/${gameId}`);
+    this.log(`🔍 Fetching comments for game: ${gameId}`);
     
     try {
       const response = await fetch(`${this.API_BASE_URL}/comments/${gameId}`, {
@@ -81,7 +87,7 @@ export class AwsApiService {
         },
       });
 
-      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+      this.log(`📡 Response status: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -184,7 +190,7 @@ export class AwsApiService {
         },
       });
 
-      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+      this.log(`📡 Response status: ${response.status} ${response.statusText}`);
       console.log(`📡 Response headers:`, response.headers);
 
       if (!response.ok) {
@@ -291,7 +297,7 @@ export class AwsApiService {
 
   // 📊 BULK DATA OPERATIONS
   async getAllComments(): Promise<AllCommentsResponse> {
-    console.log('🔍 Fetching all comments from database...');
+    this.log('🔍 Fetching all comments from database...');
     
     try {
       const response = await fetch(`${this.API_BASE_URL}/all-comments`, {
@@ -302,7 +308,7 @@ export class AwsApiService {
         },
       });
 
-      console.log(`📡 Bulk comments response status: ${response.status} ${response.statusText}`);
+      this.log(`📡 Bulk comments response status: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -323,7 +329,7 @@ export class AwsApiService {
   }
 
   async getAllRatings(): Promise<AllRatingsResponse> {
-    console.log('🔍 Fetching all ratings from database...');
+    this.log('🔍 Fetching all ratings from database...');
     
     try {
       const response = await fetch(`${this.API_BASE_URL}/all-ratings`, {
@@ -334,7 +340,7 @@ export class AwsApiService {
         },
       });
 
-      console.log(`📡 Bulk ratings response status: ${response.status} ${response.statusText}`);
+      this.log(`📡 Bulk ratings response status: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -355,7 +361,7 @@ export class AwsApiService {
   }
 
   async getAllLikes(): Promise<AllLikesResponse> {
-    console.log('🔍 Fetching all likes from database...');
+    this.log('🔍 Fetching all likes from database...');
     
     try {
       const response = await fetch(`${this.API_BASE_URL}/all-likes?userId=${this.generateUserId()}`, {
@@ -366,7 +372,7 @@ export class AwsApiService {
         },
       });
 
-      console.log(`📡 Bulk likes response status: ${response.status} ${response.statusText}`);
+      this.log(`📡 Bulk likes response status: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
         const errorText = await response.text();

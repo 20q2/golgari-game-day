@@ -259,29 +259,6 @@ export class GamesComponent implements OnInit, OnDestroy {
     this.onGenreFilterChange(genre);
   }
 
-  onPlayerCountClick(event: Event, minPlayers: number, maxPlayers: number): void {
-    event.stopPropagation();
-    
-    // Use the most common player count (middle of the range, or maxPlayers if range is small)
-    const targetPlayerCount = maxPlayers - minPlayers <= 1 ? maxPlayers : Math.ceil((minPlayers + maxPlayers) / 2);
-    
-    // Check if this player count is already selected - if so, clear it
-    if (this.currentFilter.supportedPlayers === targetPlayerCount) {
-      this.currentFilter.supportedPlayers = undefined;
-    } else {
-      // Set the supported players filter
-      this.currentFilter.supportedPlayers = targetPlayerCount;
-    }
-    
-    this.gamesService.setFilter({ ...this.currentFilter });
-  }
-
-  isPlayerCountActive(minPlayers: number, maxPlayers: number): boolean {
-    if (!this.currentFilter.supportedPlayers) return false;
-    
-    // Check if the current filter value falls within this game's player range
-    return this.currentFilter.supportedPlayers >= minPlayers && this.currentFilter.supportedPlayers <= maxPlayers;
-  }
 
   onDurationClick(event: Event, playTime: string): void {
     event.stopPropagation();

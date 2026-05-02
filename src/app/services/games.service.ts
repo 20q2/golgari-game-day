@@ -12,6 +12,7 @@ import { DataAggregationService } from './data-aggregation.service';
 export class GamesService {
   private games: Game[] = [];
   private gamesLoaded = false;
+  private awsDataLoaded = false;
 
   private filterSubject = new BehaviorSubject<GameFilter>({});
   private sortSubject = new BehaviorSubject<SortOrder>(SortOrder.TITLE_ASC);
@@ -26,8 +27,10 @@ export class GamesService {
     if (!this.gamesLoaded) {
       return this.loadGamesFromJson().pipe(
         tap(() => {
-          // Load all AWS data when games are first loaded
-          this.loadAwsDataOnStartup();
+          // Load all AWS data when games are first loaded (only once)
+          if (!this.awsDataLoaded) {
+            this.loadAwsDataOnStartup();
+          }
         }),
         switchMap(() => this.getFilteredAndSortedGames())
       );
@@ -37,12 +40,16 @@ export class GamesService {
   }
 
   private async loadAwsDataOnStartup(): Promise<void> {
+    if (this.awsDataLoaded) return;
+    
     try {
+      this.awsDataLoaded = true;
       console.log('🚀 Loading all AWS data on app startup...');
       await this.dataAggregation.loadAllData();
       console.log('✅ AWS data loaded successfully');
     } catch (error) {
       console.error('❌ Failed to load AWS data on startup:', error);
+      this.awsDataLoaded = false; // Reset on error so it can retry
       // Continue without AWS data - app should still work with localStorage
     }
   }

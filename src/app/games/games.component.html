@@ -112,9 +112,7 @@
 
       <mat-card-content>
         <div class="game-info">
-          <div class="info-row clickable-info" 
-               [class.active-filter]="isPlayerCountActive(game.minPlayers, game.maxPlayers)"
-               (click)="onPlayerCountClick($event, game.minPlayers, game.maxPlayers)">
+          <div class="info-row">
             <mat-icon>group</mat-icon>
             <span>{{ game.minPlayers }}-{{ game.maxPlayers }} players</span>
           </div>
