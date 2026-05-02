@@ -1,0 +1,61 @@
+<div class="sheet">
+  <header class="sheet-header">
+    <h3>Filters</h3>
+    <button type="button" class="close" (click)="cancel()" aria-label="Close filters">
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  <section class="row">
+    <label class="row-label">Sort</label>
+    <mat-form-field appearance="outline" class="full">
+      <mat-select [(ngModel)]="sort">
+        <mat-option *ngFor="let o of sortOptions" [value]="o.value">{{ o.label }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </section>
+
+  <section class="row">
+    <label class="row-label">Duration</label>
+    <mat-form-field appearance="outline" class="full">
+      <mat-select [(ngModel)]="filter.duration" placeholder="Any">
+        <mat-option [value]="undefined">Any</mat-option>
+        <mat-option *ngFor="let d of durations" [value]="d">{{ d }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </section>
+
+  <section class="row">
+    <label class="row-label">Players</label>
+    <mat-form-field appearance="outline" class="full">
+      <input
+        matInput
+        type="number"
+        min="1"
+        max="12"
+        [(ngModel)]="filter.supportedPlayers"
+        placeholder="Any"
+      />
+    </mat-form-field>
+  </section>
+
+  <section class="row">
+    <label class="row-label">Genres</label>
+    <div class="genre-grid">
+      <button
+        *ngFor="let g of genreCounts"
+        type="button"
+        class="genre-chip"
+        [class.selected]="isSelected(g.genre)"
+        (click)="toggleGenre(g.genre)"
+      >
+        {{ g.genre }} <span class="count">{{ g.count }}</span>
+      </button>
+    </div>
+  </section>
+
+  <footer class="sheet-footer">
+    <button type="button" class="secondary" (click)="clearAll()">Clear all</button>
+    <button type="button" class="primary" (click)="done()">Done</button>
+  </footer>
+</div>

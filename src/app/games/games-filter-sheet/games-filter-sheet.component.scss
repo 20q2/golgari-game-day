@@ -1,0 +1,131 @@
+:host {
+  display: block;
+  background: #131c16;
+  color: var(--games-text-primary, #e0e8e2);
+  --games-surface: rgba(255, 255, 255, 0.04);
+  --games-surface-border: rgba(255, 255, 255, 0.08);
+  --games-text-secondary: #8aa898;
+  --games-text-muted: #6a8a7a;
+  --games-action: #006442;
+  --games-action-hover: #008055;
+}
+
+.sheet {
+  padding: 16px 18px 24px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .close {
+    background: transparent;
+    border: none;
+    color: var(--games-text-muted);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+
+    &:hover { color: var(--games-text-primary, #e0e8e2); }
+  }
+}
+
+.row {
+  margin-bottom: 14px;
+
+  .row-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--games-text-muted);
+    margin-bottom: 6px;
+  }
+
+  .full {
+    width: 100%;
+  }
+}
+
+.genre-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.genre-chip {
+  background: var(--games-surface);
+  color: var(--games-text-secondary);
+  border: 1px solid var(--games-surface-border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    color: var(--games-text-primary, #e0e8e2);
+  }
+
+  &.selected {
+    background: var(--games-action);
+    color: white;
+    border-color: var(--games-action);
+    font-weight: 600;
+  }
+
+  .count {
+    opacity: 0.6;
+    margin-left: 2px;
+    font-weight: 400;
+  }
+
+  &.selected .count { opacity: 0.85; }
+}
+
+.sheet-footer {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--games-surface-border);
+
+  button {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .secondary {
+    background: var(--games-surface);
+    color: var(--games-text-primary, #e0e8e2);
+    border: 1px solid var(--games-surface-border);
+
+    &:hover { background: rgba(255, 255, 255, 0.07); }
+  }
+
+  .primary {
+    background: var(--games-action);
+    color: white;
+
+    &:hover { background: var(--games-action-hover); }
+  }
+}
