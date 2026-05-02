@@ -1,155 +1,54 @@
-<div class="games-container">
-  <div class="filters-section">
-    <h2>🎯 <span class="gradient-text">Game Inventory</span></h2>
-    
-    <div class="filter-controls">
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Search games</mat-label>
-        <input matInput 
-               [(ngModel)]="searchText" 
-               (ngModelChange)="onFilterChange()"
-               placeholder="Type to search...">
-        <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="sort-field">
-        <mat-label>Sort by</mat-label>
-        <mat-select [(ngModel)]="currentSort" (ngModelChange)="onSortChange()">
-          <mat-option *ngFor="let option of sortOptions" [value]="option.value">
-            {{ option.label }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="duration-field">
-        <mat-label>Duration</mat-label>
-        <mat-select [(ngModel)]="selectedDuration" (ngModelChange)="onDurationFilterChange()">
-          <mat-option [value]="undefined">All Durations</mat-option>
-          <mat-option *ngFor="let duration of durations" [value]="duration">
-            {{ duration }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-
+<div class="games-page-shell">
+  <header class="page-header">
+    <div class="title-block">
+      <div class="eyebrow">Golgari Palace</div>
+      <h1>The Collection</h1>
     </div>
+    <div class="count" *ngIf="totalCount > 0">{{ totalCount }} games</div>
+  </header>
 
-    <div class="genre-filter-section">
-      <h4>Filter by Genres:</h4>
-      <mat-chip-set class="genre-filter-chips" multiple>
-        <mat-chip *ngFor="let genre of alphabetizedGenres" 
-                  [color]="isGenreSelected(genre) ? 'primary' : undefined"
-                  variant="outlined"
-                  (click)="onGenreFilterChange(genre)"
-                  class="genre-filter-chip"
-                  [class.selected]="isGenreSelected(genre)">
-          <mat-icon matChipAvatar>{{ iconService.iconFor(genre) }}</mat-icon>
-          {{ genre }}
-        </mat-chip>
-      </mat-chip-set>
-    </div>
+  <app-games-search-bar
+    [searchText]="searchText"
+    [activeFilterCount]="activeFilterCount"
+    (searchTextChange)="onSearchTextChange($event)"
+    (openFilters)="openFilters()"
+  ></app-games-search-bar>
 
-    <div class="player-count-filters">
-      <mat-form-field appearance="outline" class="players-field">
-        <mat-label>Supported Number of Players</mat-label>
-        <input matInput 
-               type="number" 
-               [(ngModel)]="currentFilter.supportedPlayers" 
-               (ngModelChange)="onFilterChange()"
-               min="1" max="12"
-               placeholder="e.g. 4">
-      </mat-form-field>
+  <app-games-genre-strip
+    [topGenres]="topGenresList"
+    [totalCount]="totalCount"
+    [remainingCount]="remainingCount"
+    [selectedGenre]="selectedGenre"
+    [multipleSelected]="multipleGenresSelected"
+    (selectGenre)="onSelectGenre($event)"
+    (openFilters)="openFilters()"
+  ></app-games-genre-strip>
 
-      <button mat-raised-button color="accent" (click)="clearFilters()" class="clear-btn">
-        <mat-icon>clear</mat-icon>
-        Clear Filters
-      </button>
-    </div>
-  </div>
+  <ng-container *ngIf="!isFiltered && (hero$ | async) as hero">
+    <app-games-hero
+      [game]="hero.game"
+      [variant]="hero.variant"
+      [likeCount]="hero.likeCount"
+      (open)="onOpenGame($event)"
+    ></app-games-hero>
+  </ng-container>
 
-  <div class="games-grid">
-    <mat-card *ngFor="let game of games$ | async; trackBy: trackByGameId" 
-              class="game-card" 
-              (click)="openGameDetails(game)">
-      <div class="card-header">
-        <img mat-card-image 
-             [src]="game.imageUrl" 
-             [alt]="game.title"
-             class="game-image"
-             loading="lazy">
-        <div class="ratings-overlay">
-          <div class="rating-item user-rating">
-            <div class="rating-label">Users</div>
-            <span class="rating-text" *ngIf="getUserRating(game); else noUserRating">{{ getUserRating(game) }}/10</span>
-            <ng-template #noUserRating>
-              <span class="rating-text no-rating">No ratings</span>
-            </ng-template>
-            <div class="rating-stars" *ngIf="getUserRating(game)">{{ getRatingStars(getUserRating(game)!) }}</div>
-          </div>
-          <div class="rating-item bgg-rating" *ngIf="game.bggRating">
-            <div class="rating-label">BGG</div>
-            <span class="rating-text">{{ game.bggRating }}/10</span>
-            <div class="rating-stars">{{ getRatingStars(game.bggRating) }}</div>
-          </div>
-        </div>
+  <ng-container *ngIf="(filteredGames$ | async) as games">
+    <div class="section-label">{{ isFiltered ? 'Results · ' + games.length : 'All games' }}</div>
+
+    <app-games-list
+      *ngIf="games.length > 0; else empty"
+      [games]="games"
+      [statsById]="(statsById$ | async) ?? {}"
+      (open)="onOpenGame($event)"
+    ></app-games-list>
+
+    <ng-template #empty>
+      <div class="empty-row">
+        <span *ngIf="isFiltered; else emptyCatalog">No games match those filters.</span>
+        <ng-template #emptyCatalog>The collection is empty.</ng-template>
+        <button *ngIf="isFiltered" type="button" class="link-btn" (click)="openFilters()">Adjust filters</button>
       </div>
-      
-      <mat-card-header>
-        <mat-card-title>{{ game.title }}</mat-card-title>
-        <mat-card-subtitle>
-          <mat-chip-set class="genre-chip">
-            <mat-chip *ngFor="let genre of game.genres"
-                      [color]="iconService.colorFor(genre)"
-                      variant="outlined"
-                      (click)="onGenreChipClick($event, genre)"
-                      class="clickable-chip"
-                      [class.selected-filter]="isGenreSelected(genre)">
-              <mat-icon matChipAvatar>{{ iconService.iconFor(genre) }}</mat-icon>
-              {{ genre }}
-            </mat-chip>
-          </mat-chip-set>
-        </mat-card-subtitle>
-      </mat-card-header>
-
-      <mat-card-content>
-        <div class="game-info">
-          <div class="info-row">
-            <mat-icon>group</mat-icon>
-            <span>{{ game.minPlayers }}-{{ game.maxPlayers }} players</span>
-          </div>
-          <div class="info-row clickable-info" 
-               [class.active-filter]="isDurationActive(game.playTime)"
-               (click)="onDurationClick($event, game.playTime)">
-            <mat-icon>schedule</mat-icon>
-            <span>{{ game.playTime }}</span>
-          </div>
-          <!-- Comment count will be shown via AWS data in the dialog -->
-        </div>
-        
-        <p class="description">{{ game.description }}</p>
-      </mat-card-content>
-
-      <div class="card-stats">
-        <button class="stat-button like-button" 
-                (click)="toggleLike(game, $event)"
-                [class.liked]="isLiked(game) | async">
-          <mat-icon>{{ (isLiked(game) | async) ? 'favorite' : 'favorite_border' }}</mat-icon>
-          <span *ngIf="getLikeCount(game) | async as likeCount">{{ likeCount || 0 }}</span>
-        </button>
-        
-        <button class="stat-button comment-button" (click)="openGameDetails(game, $event)">
-          <mat-icon>chat_bubble_outline</mat-icon>
-          <span *ngIf="getCommentCount(game) | async as commentCount">{{ commentCount || 0 }}</span>
-        </button>
-      </div>
-    </mat-card>
-  </div>
-
-  <div class="no-games" *ngIf="(games$ | async)?.length === 0">
-    <mat-icon class="no-games-icon">sports_esports</mat-icon>
-    <h3>No games found</h3>
-    <p>Try adjusting your filters or search terms</p>
-    <button mat-raised-button color="primary" (click)="clearFilters()">
-      Clear Filters
-    </button>
-  </div>
+    </ng-template>
+  </ng-container>
 </div>

@@ -1,232 +1,265 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { MatDialog } from '@angular/material/dialog';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { combineLatest, Observable, Subject } from 'rxjs';
+import { map, takeUntil } from 'rxjs/operators';
+
 import { GamesService } from '../services/games.service';
-import { DataAggregationService } from '../services/data-aggregation.service';
-import { GenreIconService } from '../services/genre-icon.service';
-import { Game, GameGenre, GameFilter, SortOrder, GameDuration } from '../models/game.model';
+import { DataAggregationService, GameStats } from '../services/data-aggregation.service';
+import {
+  Game,
+  GameDuration,
+  GameFilter,
+  GameGenre,
+  SortOrder,
+} from '../models/game.model';
 import { GameDetailsDialogComponent } from '../game-details-dialog/game-details-dialog.component';
+
+import {
+  GamesFilterSheetComponent,
+  FilterSheetData,
+  FilterSheetResult,
+} from './games-filter-sheet/games-filter-sheet.component';
+import { GamesSearchBarComponent } from './games-search-bar/games-search-bar.component';
+import { GamesGenreStripComponent } from './games-genre-strip/games-genre-strip.component';
+import { GamesHeroComponent } from './games-hero/games-hero.component';
+import { GamesListComponent } from './games-list/games-list.component';
+
+import {
+  countActiveFilters,
+  GenreCount,
+  HeroSelection,
+  pickHero,
+  topGenres as topGenresUtil,
+} from './games.utils';
+
+interface PersistedFilter {
+  genres?: GameGenre[];
+  duration?: GameDuration;
+  supportedPlayers?: number;
+  sort: SortOrder;
+}
+
+const STORAGE_KEY = 'gameday-games-filter';
+const SURFACE_GENRE_COUNT = 6;
 
 @Component({
   selector: 'app-games',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
-    MatCardModule,
-    MatButtonModule,
-    MatIconModule,
-    MatSelectModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatChipsModule,
-    MatDialogModule
+    GamesSearchBarComponent,
+    GamesGenreStripComponent,
+    GamesHeroComponent,
+    GamesListComponent,
   ],
   templateUrl: './games.component.html',
-  styleUrls: ['./games.component.scss']
+  styleUrls: ['./games.component.scss'],
 })
 export class GamesComponent implements OnInit, OnDestroy {
-  games$: Observable<Game[]>;
-  genres = Object.values(GameGenre);
-  alphabetizedGenres = Object.values(GameGenre).sort();
-  durations = Object.values(GameDuration);
-  sortOptions = [
-    { value: SortOrder.TITLE_ASC, label: 'Title A-Z' },
-    { value: SortOrder.TITLE_DESC, label: 'Title Z-A' },
-    { value: SortOrder.RATING_DESC, label: 'Rating High-Low' },
-    { value: SortOrder.RATING_ASC, label: 'Rating Low-High' },
-    { value: SortOrder.PLAYERS_ASC, label: 'Players Low-High' },
-    { value: SortOrder.PLAYERS_DESC, label: 'Players High-Low' }
-  ];
+  // Reactive state
+  filteredGames$: Observable<Game[]>;
+  hero$: Observable<HeroSelection | null>;
+  statsById$: Observable<Record<string, GameStats>>;
 
-  currentFilter: GameFilter = {};
-  currentSort: SortOrder = SortOrder.TITLE_ASC;
+  // Mutable filter state (mirrored to GamesService and persisted)
+  filter: GameFilter = {};
+  sort: SortOrder = SortOrder.TITLE_ASC;
   searchText = '';
-  selectedGenres: GameGenre[] = [];
-  selectedDuration?: GameDuration;
+
+  // Catalog-derived (set on first emission, not reactive to filters)
+  totalCount = 0;
+  topGenresList: GenreCount[] = [];
+  allGenreCounts: GenreCount[] = [];
+  remainingCount = 0;
+
+  // Whether any filter beyond search hides the hero
+  get isFiltered(): boolean {
+    return (
+      !!this.searchText ||
+      (!!this.filter.genres && this.filter.genres.length > 0) ||
+      !!this.filter.duration ||
+      this.filter.supportedPlayers != null
+    );
+  }
+
+  get activeFilterCount(): number {
+    return countActiveFilters(this.filter);
+  }
+
+  /** Surface row's selected genre. null = all. Multi-select reflected via multipleSelected flag. */
+  get selectedGenre(): GameGenre | null {
+    if (!this.filter.genres || this.filter.genres.length === 0) return null;
+    if (this.filter.genres.length === 1) return this.filter.genres[0];
+    return null;
+  }
+
+  get multipleGenresSelected(): boolean {
+    return !!this.filter.genres && this.filter.genres.length > 1;
+  }
+
+  private destroy$ = new Subject<void>();
 
   constructor(
     private gamesService: GamesService,
-    private dialog: MatDialog,
     private dataAggregation: DataAggregationService,
-    public iconService: GenreIconService,
+    private dialog: MatDialog,
+    private bottomSheet: MatBottomSheet,
+    private breakpoints: BreakpointObserver,
   ) {
-    // Get the reactive games observable that responds to all filter/sort changes
-    this.games$ = this.gamesService.getGames();
+    this.filteredGames$ = this.gamesService.getGames();
+
+    this.statsById$ = this.dataAggregation.getAllGamesStats().pipe(
+      map(arr => {
+        const out: Record<string, GameStats> = {};
+        for (const s of arr) out[s.gameId] = s;
+        return out;
+      }),
+    );
+
+    // Hero is computed from the unfiltered catalog so it represents
+    // "the most-loved game across the whole collection," not "most-loved
+    // among current results." (The hero is also hidden when filters are
+    // active, but using the catalog keeps the badge stable when the user
+    // clears filters.)
+    this.hero$ = combineLatest([
+      this.gamesService.getCatalog(),
+      this.dataAggregation.getAllGamesStats(),
+    ]).pipe(map(([games, stats]) => pickHero(games, stats)));
   }
 
   ngOnInit(): void {
     document.body.className = 'games-page';
-    this.gamesService.setFilter(this.currentFilter);
-    this.gamesService.setSort(this.currentSort);
+
+    // Restore persisted filter (excluding searchText)
+    const persisted = this.readPersisted();
+    if (persisted) {
+      this.filter = {
+        genres: persisted.genres,
+        duration: persisted.duration,
+        supportedPlayers: persisted.supportedPlayers,
+      };
+      this.sort = persisted.sort;
+    }
+
+    // Derive catalog-wide counts once from the unfiltered catalog.
+    // getCatalog() emits the full list independent of the active filter, so
+    // these numbers stay stable as the user narrows results.
+    this.gamesService.getCatalog()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(catalog => {
+        this.totalCount = catalog.length;
+        this.allGenreCounts = topGenresUtil(catalog, Number.POSITIVE_INFINITY);
+        this.topGenresList = this.allGenreCounts.slice(0, SURFACE_GENRE_COUNT);
+        this.remainingCount = Math.max(0, this.allGenreCounts.length - this.topGenresList.length);
+      });
+
+    this.gamesService.setFilter({ ...this.filter });
+    this.gamesService.setSort(this.sort);
   }
 
   ngOnDestroy(): void {
     document.body.className = '';
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
-  onFilterChange(): void {
-    this.currentFilter.searchText = this.searchText || undefined;
-    this.gamesService.setFilter({ ...this.currentFilter });
+  // ---- Search ----
+
+  onSearchTextChange(value: string): void {
+    this.searchText = value;
+    this.filter.searchText = value || undefined;
+    this.gamesService.setFilter({ ...this.filter });
   }
 
-  onSortChange(): void {
-    this.gamesService.setSort(this.currentSort);
+  // ---- Genre strip (single-select) ----
+
+  onSelectGenre(genre: GameGenre | null): void {
+    this.filter.genres = genre ? [genre] : undefined;
+    this.gamesService.setFilter({ ...this.filter });
+    this.persist();
   }
 
-  clearFilters(): void {
-    this.currentFilter = {};
-    this.searchText = '';
-    this.selectedGenres = [];
-    this.selectedDuration = undefined;
-    this.gamesService.setFilter(this.currentFilter);
-  }
+  // ---- Hero ----
 
-  onGenreFilterChange(genre: GameGenre): void {
-    const index = this.selectedGenres.indexOf(genre);
-    if (index >= 0) {
-      // Remove genre if already selected
-      this.selectedGenres.splice(index, 1);
-    } else {
-      // Add genre if not selected
-      this.selectedGenres.push(genre);
-    }
-    
-    this.currentFilter.genres = this.selectedGenres.length > 0 ? [...this.selectedGenres] : undefined;
-    this.gamesService.setFilter({ ...this.currentFilter });
-  }
-
-  isGenreSelected(genre: GameGenre): boolean {
-    return this.selectedGenres.includes(genre);
-  }
-
-  isDurationActive(playTime: string): boolean {
-    if (!this.selectedDuration) return false;
-    const gameDuration = this.parseDurationFromPlayTime(playTime);
-    return gameDuration === this.selectedDuration;
-  }
-
-  onDurationFilterChange(): void {
-    this.currentFilter.duration = this.selectedDuration;
-    this.gamesService.setFilter({ ...this.currentFilter });
-  }
-
-  openGameDetails(game: Game, event?: Event): void {
-    if (event) {
-      event.stopPropagation(); // Prevent card click if called from button
-    }
-
-    const dialogRef = this.dialog.open(GameDetailsDialogComponent, {
+  onOpenGame(game: Game): void {
+    this.dialog.open(GameDetailsDialogComponent, {
       data: game,
       width: '900px',
       maxWidth: '95vw',
       maxHeight: '95vh',
-      panelClass: 'game-details-dialog'
-    });
-
-    dialogRef.afterClosed().subscribe(() => {
-      // Refresh the games list to show updated comment counts
-      this.games$ = this.gamesService.getGames();
+      panelClass: 'game-details-dialog',
     });
   }
 
-  getRatingStars(rating?: number): string {
-    if (!rating) return '☆☆☆☆☆';
-    const stars = Math.round(rating);
-    return '★'.repeat(Math.min(stars, 5)) + '☆'.repeat(Math.max(5 - stars, 0));
+  // ---- Filter sheet ----
+
+  openFilters(): void {
+    const data: FilterSheetData = {
+      filter: { ...this.filter },
+      sort: this.sort,
+      genreCounts: this.allGenreCounts,
+    };
+
+    const isMobile = this.breakpoints.isMatched(Breakpoints.HandsetPortrait)
+      || this.breakpoints.isMatched(Breakpoints.HandsetLandscape);
+
+    if (isMobile) {
+      const ref = this.bottomSheet.open<GamesFilterSheetComponent, FilterSheetData, FilterSheetResult>(
+        GamesFilterSheetComponent,
+        { data, panelClass: 'games-filter-sheet-panel' },
+      );
+      ref.afterDismissed().subscribe(result => this.applySheetResult(result ?? null));
+    } else {
+      const ref = this.dialog.open<GamesFilterSheetComponent, FilterSheetData, FilterSheetResult>(
+        GamesFilterSheetComponent,
+        {
+          data,
+          width: '480px',
+          maxWidth: '90vw',
+          panelClass: 'games-filter-sheet-panel',
+        },
+      );
+      ref.afterClosed().subscribe(result => this.applySheetResult(result ?? null));
+    }
   }
 
-  getUserRating(game: Game): number | null {
-    // User ratings now come from AWS data in the dialog
-    // This could be enhanced to show ratings from the aggregated data service
-    return null;
+  private applySheetResult(result: FilterSheetResult | null): void {
+    if (!result) return;
+    this.filter = { ...result.filter, searchText: this.searchText || undefined };
+    this.sort = result.sort;
+    this.gamesService.setFilter({ ...this.filter });
+    this.gamesService.setSort(this.sort);
+    this.persist();
   }
 
-  getCommentCount(game: Game): Observable<number> {
-    return this.dataAggregation.getGameStats(game.id).pipe(
-      map(gameStats => gameStats.totalComments)
-    );
-  }
+  // ---- Persistence ----
 
-  getLikeCount(game: Game): Observable<number> {
-    return this.dataAggregation.getGameStats(game.id).pipe(
-      map(gameStats => gameStats.totalLikes || 0)
-    );
-  }
-
-  isLiked(game: Game): Observable<boolean> {
-    return this.dataAggregation.getGameStats(game.id).pipe(
-      map(gameStats => gameStats.isLikedByCurrentUser || false)
-    );
-  }
-
-  async toggleLike(game: Game, event: Event): Promise<void> {
-    event.stopPropagation(); // Prevent card click
-    
+  private readPersisted(): PersistedFilter | null {
     try {
-      await this.gamesService.toggleLike(game.id);
-      console.log(`✅ Like toggled for game ${game.id}`);
-    } catch (error) {
-      console.error('❌ Failed to toggle like:', error);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as PersistedFilter;
+      if (!parsed.sort) return null;
+      return parsed;
+    } catch {
+      return null;
     }
   }
 
-
-  trackByGameId(index: number, game: Game): string {
-    return game.id;
-  }
-
-  onGenreChipClick(event: Event, genre: GameGenre): void {
-    event.stopPropagation();
-    this.onGenreFilterChange(genre);
-  }
-
-
-  onDurationClick(event: Event, playTime: string): void {
-    event.stopPropagation();
-    
-    // Parse the playTime to determine the appropriate duration filter
-    const duration = this.parseDurationFromPlayTime(playTime);
-    
-    // Check if this same duration is already selected - if so, clear it
-    if (this.selectedDuration === duration) {
-      this.selectedDuration = undefined;
-      this.currentFilter.duration = undefined;
-    } else {
-      // Set the duration filter
-      this.selectedDuration = duration;
-      this.currentFilter.duration = duration;
-    }
-    
-    this.gamesService.setFilter({ ...this.currentFilter });
-  }
-
-  private parseDurationFromPlayTime(playTime: string): GameDuration | undefined {
-    // Extract numbers from playTime string
-    const numbers = playTime.match(/\d+/g)?.map(Number) || [];
-    if (numbers.length === 0) return undefined;
-    
-    // Get the maximum time (for ranges, use the higher number)
-    const maxTime = Math.max(...numbers);
-    
-    if (maxTime < 30) {
-      return GameDuration.SHORT;
-    } else if (maxTime >= 30 && maxTime <= 60) {
-      return GameDuration.MEDIUM;
-    } else if (maxTime > 60 && maxTime <= 120) {
-      return GameDuration.LONG;
-    } else {
-      return GameDuration.EPIC;
+  private persist(): void {
+    const payload: PersistedFilter = {
+      genres: this.filter.genres,
+      duration: this.filter.duration,
+      supportedPlayers: this.filter.supportedPlayers,
+      sort: this.sort,
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // localStorage may be unavailable (private mode); silently ignore.
     }
   }
 }

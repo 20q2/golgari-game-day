@@ -1,535 +1,106 @@
-.games-container {
-  padding: var(--spacing-md);
+.games-page-shell {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 16px 14px 32px;
+  color: var(--games-text-primary, #e0e8e2);
 
-  @media (max-width: 768px) {
-    padding: var(--spacing-lg);
+  @media (min-width: 768px) {
+    padding: 20px 20px 40px;
   }
 
-  mat-card {
-    position: relative;
-  }
-}
-
-.filters-section {
-  margin-bottom: var(--spacing-xl);
-  padding: var(--spacing-lg);
-  background-color: var(--background-secondary);
-  border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
-
-  @media (max-width: 768px) {
-    margin-bottom: var(--spacing-2xl);
-    padding: var(--spacing-xl);
-  }
-
-  h2 {
-    margin-bottom: var(--spacing-lg);
-    color: var(--primary-color);
-    font-weight: 600;
-    font-size: 1.5rem;
-    line-height: 1.3;
-  }
-
-  .filter-controls {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr;
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-md);
-
-    @media (max-width: 768px) {
-      grid-template-columns: 1fr;
-      gap: var(--spacing-sm);
-    }
-
-    .search-field {
-      grid-column: 1;
-    }
-
-    .clear-btn {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      height: fit-content;
-      margin-top: var(--spacing-sm);
-      min-height: 44px;
-      border-radius: var(--border-radius-sm);
-      transition: var(--transition-medium);
-      cursor: pointer;
-      
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-sm);
-      }
-    }
-  }
-
-  .genre-filter-section {
-    margin-bottom: var(--spacing-md);
-    
-    h4 {
-      margin-bottom: var(--spacing-sm);
-      color: var(--text-primary);
-      font-weight: 600;
-      font-size: 1rem;
-    }
-    
-    .genre-filter-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--spacing-sm);
-      
-      .genre-filter-chip {
-        cursor: pointer;
-        transition: var(--transition-medium);
-        font-size: 0.75rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        
-        &:hover {
-          transform: translateY(-1px);
-          box-shadow: var(--shadow-sm);
-        }
-        
-        &.selected {
-          font-weight: 600;
-          box-shadow: var(--shadow-sm);
-          transform: translateY(-1px);
-          background-color: var(--primary-color);
-          color: white;
-          border-color: var(--primary-color);
-          
-          mat-icon {
-            color: white;
-          }
-        }
-        
-        mat-icon {
-          font-size: 1rem;
-          width: 1rem;
-          height: 1rem;
-        }
-      }
-    }
-  }
-
-  .player-count-filters {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: var(--spacing-md);
-    align-items: end;
-
-    @media (max-width: 768px) {
-      grid-template-columns: 1fr;
-      gap: var(--spacing-sm);
-    }
-
-    .players-field {
-      width: 100%;
-    }
-
-    .clear-btn {
-      cursor: pointer;
-      margin-bottom: auto;
-      margin-top: 12px;
-    }
+  @media (min-width: 1024px) {
+    padding: 24px 24px 48px;
   }
 }
 
-.games-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-xl);
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-xl);
-    margin-bottom: var(--spacing-2xl);
-  }
-}
-
-.game-card {
-  cursor: pointer;
-  transition: var(--transition-medium);
-  border-radius: var(--border-radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  background-color: var(--background-secondary);
+.page-header {
   display: flex;
-  flex-direction: column;
-  height: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
 
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .card-header {
-    position: relative;
-    overflow: hidden;
-    height: 200px;
-
-    .game-image {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: var(--transition-medium);
-    }
-
-    .ratings-overlay {
-      position: absolute;
-      top: var(--spacing-sm);
-      right: var(--spacing-sm);
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-xs);
-
-      .rating-item {
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: var(--spacing-xs) var(--spacing-sm);
-        border-radius: var(--border-radius-sm);
-        font-size: 0.8rem;
-        backdrop-filter: blur(4px);
-        text-align: center;
-        min-width: 70px;
-
-        .rating-label {
-          font-size: 0.65rem;
-          text-transform: uppercase;
-          font-weight: 600;
-          margin-bottom: 2px;
-          opacity: 0.8;
-          letter-spacing: 0.5px;
-        }
-
-        .rating-text {
-          font-weight: 600;
-          display: block;
-          font-size: 0.75rem;
-
-          &.no-rating {
-            font-size: 0.65rem;
-            opacity: 0.7;
-            font-style: italic;
-          }
-        }
-
-        .rating-stars {
-          font-size: 0.7rem;
-          color: var(--rating-gold);
-          margin-top: 2px;
-        }
-
-        &.bgg-rating {
-          background: rgba(255, 87, 34, 0.9);
-        }
-
-        &.user-rating {
-          background: rgba(33, 150, 243, 0.9);
-        }
-      }
-    }
-  }
-
-  mat-card-header {
-    padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm);
-
-    mat-card-title {
-      font-size: 1.25rem;
+  .title-block {
+    .eyebrow {
+      color: var(--games-accent);
+      font-size: 11px;
       font-weight: 600;
-      line-height: 1.3;
-      margin-bottom: var(--spacing-sm);
-      color: var(--text-primary);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
     }
 
-    .genre-chip {
-      mat-chip-set {
-        justify-content: flex-start;
-      }
-      
-      mat-chip {
-        font-size: 0.75rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        
-        &.clickable-chip {
-          cursor: pointer;
-          transition: var(--transition-medium);
-          
-          &:hover {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-sm);
-          }
-          
-          &.selected-filter {
-            font-weight: 600;
-            box-shadow: var(--shadow-sm);
-            background-color: var(--primary-color) !important;
-            color: white !important;
-            border-color: var(--primary-color) !important;
-          }
-        }
-        
-        // Ensure all chips have pointer cursor
-        cursor: pointer;
-        
-        mat-icon {
-          font-size: 1rem;
-          width: 1rem;
-          height: 1rem;
-        }
-      }
-    }
-  }
-
-  mat-card-content {
-    padding: 0 var(--spacing-md) var(--spacing-md);
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-
-    .game-info {
-      margin-bottom: var(--spacing-md);
-
-      .info-row {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-sm);
-        margin-bottom: var(--spacing-sm);
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        padding: var(--spacing-xs);
-        border-radius: var(--border-radius-sm);
-        transition: var(--transition-fast);
-
-        &:hover {
-          background-color: var(--background-tertiary);
-        }
-
-        &.clickable-info {
-          cursor: pointer;
-          user-select: none;
-          
-          &:hover {
-            background-color: var(--primary-color-light);
-            color: var(--primary-color);
-            transform: translateX(2px);
-          }
-          
-          &:active {
-            transform: translateX(1px);
-          }
-          
-          &.active-filter {
-            background-color: var(--primary-color);
-            color: white;
-            font-weight: 600;
-            box-shadow: var(--shadow-sm);
-            
-            mat-icon {
-              color: white;
-            }
-          }
-        }
-
-        mat-icon {
-          font-size: 1rem;
-          width: 1rem;
-          height: 1rem;
-          color: var(--primary-color);
-        }
-      }
-    }
-
-    .description {
-      font-size: 0.875rem;
-      line-height: 1.4;
-      color: var(--text-secondary);
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+    h1 {
+      color: var(--games-text-primary);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
       margin: 0;
-      flex: 1;
+
+      @media (min-width: 768px) {
+        font-size: 26px;
+      }
+
+      @media (min-width: 1024px) {
+        font-size: 28px;
+      }
     }
   }
 
+  .count {
+    color: var(--games-text-muted);
+    font-size: 11px;
 
-  // Card stats (likes and comments) at bottom of card
-  .card-stats {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    padding: 0 var(--spacing-md) var(--spacing-md);
-    margin-top: auto;
-  }
-
-  .stat-button {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 8px 12px;
-    background: var(--background-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    min-width: 48px;
-    height: 36px;
-    justify-content: center;
-
-    &:hover {
-      background: var(--primary-color-light);
-      border-color: var(--primary-color);
-      color: var(--primary-color);
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-sm);
-    }
-
-    mat-icon {
-      font-size: 16px;
-      width: 16px;
-      height: 16px;
-      margin: 0;
-    }
-
-    span {
-      font-size: 0.75rem;
-      line-height: 1;
-      margin-left: 2px;
-    }
-
-    &.like-button {
-      mat-icon {
-        color: var(--text-secondary);
-      }
-
-      &.liked {
-        background: linear-gradient(45deg, #e91e63, #f06292);
-        border-color: #e91e63;
-        color: white;
-
-        mat-icon {
-          color: white;
-        }
-
-        &:hover {
-          background: linear-gradient(45deg, #c2185b, #e91e63);
-          transform: translateY(-1px) scale(1.05);
-          box-shadow: var(--shadow-md);
-        }
-      }
-
-      &:hover:not(.liked) {
-        background: rgba(233, 30, 99, 0.1);
-        border-color: #e91e63;
-        color: #e91e63;
-        
-        mat-icon {
-          color: #e91e63;
-        }
-      }
-    }
-
-    &.comment-button {
-      mat-icon {
-        color: var(--text-secondary);
-      }
-
-      &:hover {
-        background: rgba(78, 205, 196, 0.1);
-        border-color: #4ecdc4;
-        color: #4ecdc4;
-        
-        mat-icon {
-          color: #4ecdc4;
-        }
-      }
+    @media (min-width: 768px) {
+      font-size: 12px;
     }
   }
 }
 
-.no-games {
-  text-align: center;
-  padding: var(--spacing-2xl) var(--spacing-md);
-  color: var(--text-secondary);
-  background-color: var(--background-secondary);
-  border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
+.section-label {
+  color: var(--games-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin: 4px 0 10px;
 
-  .no-games-icon {
-    font-size: 4rem;
-    width: 4rem;
-    height: 4rem;
-    margin-bottom: var(--spacing-md);
-    color: var(--text-disabled);
+  @media (min-width: 1024px) {
+    font-size: 12px;
+    margin: 4px 0 12px;
   }
+}
 
-  h3 {
-    margin-bottom: var(--spacing-sm);
-    color: var(--text-primary);
+.empty-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px;
+  background: var(--games-surface);
+  border: 1px solid var(--games-surface-border);
+  border-radius: 10px;
+  color: var(--games-text-secondary);
+  font-size: 14px;
+
+  .link-btn {
+    background: transparent;
+    border: none;
+    color: var(--games-action-hover);
+    font-size: 14px;
     font-weight: 600;
-  }
-
-  p {
-    margin-bottom: var(--spacing-lg);
-    line-height: 1.6;
+    cursor: pointer;
+    text-decoration: underline;
+    font-family: inherit;
+    padding: 0;
   }
 }
 
-// Mobile specific adjustments
-@media (max-width: 768px) {
-  .games-container {
-    padding: var(--spacing-sm);
-  }
-
-  .filters-section {
-    padding: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
-    
-    .filter-controls {
-      .clear-btn {
-        width: 100%;
-        justify-content: center;
-        min-height: 48px;
-      }
-    }
-  }
-
-  .game-card {
-    .card-header {
-      height: 150px;
-    }
-
-    mat-card-header {
-      padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-xs);
-
-      mat-card-title {
-        font-size: 1.125rem;
-      }
-    }
-
-    mat-card-content {
-      padding: 0 var(--spacing-sm) var(--spacing-sm);
-
-      .description {
-        -webkit-line-clamp: 2;
-      }
-      
-      .game-info {
-        .info-row {
-          padding: var(--spacing-sm);
-        }
-      }
-    }
-
+// Override Material's white panel for the filter sheet/dialog so it matches the dark theme.
+::ng-deep .games-filter-sheet-panel {
+  .mat-mdc-dialog-surface,
+  .mat-bottom-sheet-container {
+    background: #131c16;
+    color: var(--games-text-primary, #e0e8e2);
+    border-radius: 16px 16px 0 0;
+    padding: 0;
   }
 }
