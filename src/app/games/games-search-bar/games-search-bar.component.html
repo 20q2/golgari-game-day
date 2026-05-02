@@ -1,0 +1,27 @@
+<div class="games-search-bar">
+  <label class="search-input">
+    <mat-icon class="search-icon" aria-hidden="true">search</mat-icon>
+    <input
+      type="text"
+      [value]="searchText"
+      (input)="onInput($any($event.target).value)"
+      placeholder="Search games…"
+      aria-label="Search games"
+    />
+    <button
+      *ngIf="searchText"
+      type="button"
+      class="clear-btn"
+      (click)="onClear()"
+      aria-label="Clear search"
+    >
+      <mat-icon>close</mat-icon>
+    </button>
+  </label>
+
+  <button type="button" class="filter-btn" (click)="openFilters.emit()" aria-label="Open filters">
+    <mat-icon>tune</mat-icon>
+    <span class="filter-label">Filter</span>
+    <span class="filter-badge" *ngIf="activeFilterCount > 0">{{ activeFilterCount }}</span>
+  </button>
+</div>

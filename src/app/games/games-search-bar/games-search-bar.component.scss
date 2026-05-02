@@ -1,0 +1,114 @@
+:host {
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 12px 0 8px;
+  background: rgba(10, 20, 16, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.games-search-bar {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.search-input {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--games-surface);
+  border: 1px solid var(--games-search-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  transition: border-color 0.2s ease;
+
+  &:focus-within {
+    border-color: var(--games-action-hover);
+  }
+
+  .search-icon {
+    color: var(--games-accent);
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+  input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--games-text-primary);
+    font-size: 14px;
+    font-family: inherit;
+
+    &::placeholder {
+      color: var(--games-text-muted);
+    }
+  }
+
+  .clear-btn {
+    background: transparent;
+    border: none;
+    color: var(--games-text-muted);
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      color: var(--games-text-primary);
+    }
+  }
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--games-action);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: var(--games-action-hover);
+  }
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .filter-label {
+    @media (max-width: 480px) {
+      display: none;
+    }
+  }
+
+  .filter-badge {
+    background: var(--games-badge-bg);
+    color: var(--games-badge-text);
+    border-radius: 999px;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+}
