@@ -19,6 +19,13 @@
         history.replaceState(null, null, redirect);
       }
     })();
+    // Unregister any service workers from prior PWA builds so existing
+    // visitors stop seeing stale cached content.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(r) { r.unregister(); });
+      });
+    }
   </script>
 </head>
 <body>
