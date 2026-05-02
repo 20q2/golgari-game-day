@@ -1,0 +1,29 @@
+<button
+  type="button"
+  class="hero"
+  [class.most-loved]="variant === 'most-loved'"
+  [class.top-rated]="variant === 'top-rated'"
+  (click)="onClick()"
+  (keydown)="onKey($event)"
+  [attr.aria-label]="'Open ' + game.title + ' details'"
+>
+  <img *ngIf="game.imageUrl" [src]="game.imageUrl" [alt]="game.title" loading="lazy" />
+  <div class="overlay"></div>
+
+  <div class="badge">
+    <span class="badge-icon" [class.heart]="variant === 'most-loved'" [class.star]="variant === 'top-rated'">{{ badgeIcon }}</span>
+    {{ badgeText }}
+  </div>
+
+  <div class="meta">
+    <h2 class="title">{{ game.title }}</h2>
+    <div class="stats">
+      <span *ngIf="game.bggRating">★ {{ game.bggRating }}</span>
+      <span>{{ playerLabel }}</span>
+      <span>{{ game.playTime }}</span>
+    </div>
+    <div class="genres">
+      <span *ngFor="let g of genresShown" class="genre-pill">{{ g }}</span>
+    </div>
+  </div>
+</button>
