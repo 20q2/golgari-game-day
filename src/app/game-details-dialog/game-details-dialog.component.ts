@@ -11,6 +11,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { GamesService } from '../services/games.service';
+import { GenreIconService } from '../services/genre-icon.service';
 import { Game, GameComment, GameGenre } from '../models/game.model';
 import { Rating } from '../services/aws-api.service';
 
@@ -48,7 +49,8 @@ export class GameDetailsDialogComponent implements OnInit, OnDestroy {
   constructor(
     public dialogRef: MatDialogRef<GameDetailsDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public game: Game,
-    private gamesService: GamesService
+    private gamesService: GamesService,
+    public iconService: GenreIconService
   ) {}
 
   ngOnInit(): void {
@@ -138,41 +140,6 @@ export class GameDetailsDialogComponent implements OnInit, OnDestroy {
   getAllComments(): GameComment[] {
     // Use only AWS comments
     return this.awsComments.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }
-
-  getGenreIcon(genre: GameGenre): string {
-    const genreIconMap: { [key in GameGenre]: string } = {
-      [GameGenre.STRATEGY]: 'psychology',
-      [GameGenre.PARTY]: 'celebration',
-      [GameGenre.COOPERATIVE]: 'groups',
-      [GameGenre.CARD_GAME]: 'style',
-      [GameGenre.DECK_BUILDING]: 'layers',
-      [GameGenre.EURO]: 'account_balance',
-      [GameGenre.THEMATIC]: 'auto_stories',
-      [GameGenre.ABSTRACT]: 'blur_on',
-      [GameGenre.FAMILY]: 'family_restroom',
-      [GameGenre.WAR_GAME]: 'gps_fixed',
-      [GameGenre.DRINKING]: 'local_bar',
-      [GameGenre.ENGINE_BUILDING]: 'settings',
-      [GameGenre.DEXTERITY]: 'sports_esports',
-      [GameGenre.SOCIAL_DEDUCTION]: 'group_work',
-      [GameGenre.BLUFFING]: 'theater_comedy',
-      [GameGenre.MEMORY]: 'psychology_alt',
-      [GameGenre.ADVENTURE]: 'explore',
-      [GameGenre.HORROR]: 'dark_mode',
-      [GameGenre.AREA_CONTROL]: 'map',
-      [GameGenre.RPG]: 'badge',
-      [GameGenre.CARD_DRAFTING]: 'view_carousel',
-      [GameGenre.MINIATURES]: 'toys',
-      [GameGenre.LEGACY]: 'history_edu',
-      [GameGenre.NEGOTIATION]: 'handshake',
-      [GameGenre.ROUTE_BUILDING]: 'route',
-      [GameGenre.SET_COLLECTION]: 'collections',
-      [GameGenre.PUSH_YOUR_LUCK]: 'casino',
-      [GameGenre.ASYMMETRIC]: 'balance'
-    };
-    
-    return genreIconMap[genre] || 'category';
   }
 
   close(): void {

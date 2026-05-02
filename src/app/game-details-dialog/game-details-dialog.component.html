@@ -14,7 +14,7 @@
     <div class="game-info-section">
       <mat-chip-set class="genre-chip">
         <mat-chip *ngFor="let genre of game.genres" variant="outlined">
-          <mat-icon matChipAvatar>{{ getGenreIcon(genre) }}</mat-icon>
+          <mat-icon matChipAvatar>{{ iconService.iconFor(genre) }}</mat-icon>
           {{ genre }}
         </mat-chip>
       </mat-chip-set>
