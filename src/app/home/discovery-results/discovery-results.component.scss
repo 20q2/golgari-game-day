@@ -1,0 +1,260 @@
+.results {
+  padding: 14px 24px;
+
+  @media (max-width: 768px) {
+    padding: 10px 12px 8px;
+  }
+}
+
+.game-row {
+  background: #fff;
+  border: 0;
+  border-radius: 10px;
+  padding: 11px 16px;
+  display: flex;
+  gap: 14px;
+  margin-bottom: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  align-items: center;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.10);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--golgari-green, #006442);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 768px) {
+    padding: 8px 10px;
+    gap: 10px;
+  }
+}
+
+.thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  flex: 0 0 56px;
+  background-color: #1a3a2e;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.85);
+
+  mat-icon {
+    font-size: 26px;
+    width: 26px;
+    height: 26px;
+  }
+
+  @media (max-width: 768px) {
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+
+    mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+    }
+  }
+}
+
+.meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.meta-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary, rgba(0, 0, 0, 0.87));
+
+  @media (max-width: 768px) {
+    font-size: 11px;
+  }
+}
+
+.genre-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+
+  &.secondary {
+    opacity: 0.7;
+
+    @media (max-width: 768px) {
+      display: none;
+    }
+  }
+
+  &.gb-primary {
+    background: rgba(0, 100, 66, 0.15);
+    color: #006442;
+  }
+  &.gb-accent {
+    background: rgba(194, 24, 91, 0.15);
+    color: #c2185b;
+  }
+  &.gb-warn {
+    background: rgba(255, 152, 0, 0.18);
+    color: #b66400;
+  }
+  &.gb-default {
+    background: rgba(45, 45, 45, 0.10);
+    color: #2d2d2d;
+  }
+
+  mat-icon {
+    font-size: 11px;
+    width: 11px;
+    height: 11px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 8.5px;
+    padding: 2px 6px;
+
+    mat-icon {
+      font-size: 9px;
+      width: 9px;
+      height: 9px;
+    }
+  }
+}
+
+.meta-bottom {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-secondary, rgba(0, 0, 0, 0.54));
+
+  @media (max-width: 768px) {
+    font-size: 9.5px;
+    gap: 8px;
+  }
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+
+  mat-icon {
+    font-size: 12px;
+    width: 12px;
+    height: 12px;
+    opacity: 0.7;
+
+    @media (max-width: 768px) {
+      font-size: 10px;
+      width: 10px;
+      height: 10px;
+    }
+  }
+}
+
+.right {
+  text-align: right;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.rating {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--golgari-green, #006442);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: #ffd700;
+  }
+
+  .no-rating {
+    color: rgba(0, 0, 0, 0.38);
+    font-weight: 500;
+    font-size: 14px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 14px;
+
+    mat-icon {
+      font-size: 12px;
+      width: 12px;
+      height: 12px;
+    }
+  }
+}
+
+.like-count {
+  font-size: 11px;
+  color: #c2185b;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+
+  mat-icon {
+    font-size: 12px;
+    width: 12px;
+    height: 12px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 10px;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-secondary, rgba(0, 0, 0, 0.54));
+
+  mat-icon {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    opacity: 0.5;
+    margin-bottom: 8px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 14px;
+  }
+}
