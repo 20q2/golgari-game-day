@@ -35,8 +35,30 @@ export class GamesService {
         switchMap(() => this.getFilteredAndSortedGames())
       );
     }
-    
+
     return this.getFilteredAndSortedGames();
+  }
+
+  /**
+   * Returns the unfiltered, unsorted catalog. Loads JSON on first call and
+   * caches in-memory; subsequent calls emit synchronously from cache.
+   *
+   * Used by callers that need stable catalog-wide derivations (counts,
+   * top-genre lists) that should not change when the active filter narrows
+   * the list. Distinct from getGames(), which always reflects the live filter.
+   */
+  getCatalog(): Observable<Game[]> {
+    if (this.gamesLoaded) {
+      return of([...this.games]);
+    }
+    return this.loadGamesFromJson().pipe(
+      tap(() => {
+        if (!this.awsDataLoaded) {
+          this.loadAwsDataOnStartup();
+        }
+      }),
+      map(() => [...this.games])
+    );
   }
 
   private async loadAwsDataOnStartup(): Promise<void> {
