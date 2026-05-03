@@ -29,6 +29,8 @@ export class GamesFeaturedCarouselComponent implements AfterViewInit, OnDestroy 
 
   activeIndex = 0;
   private observer?: IntersectionObserver;
+  private autoAdvanceTimer?: ReturnType<typeof setInterval>;
+  private static readonly AUTO_ADVANCE_MS = 15_000;
 
   ngAfterViewInit(): void {
     this.observer = new IntersectionObserver(
@@ -43,13 +45,37 @@ export class GamesFeaturedCarouselComponent implements AfterViewInit, OnDestroy 
       { threshold: [0.6] },
     );
     this.slideRefs.forEach(ref => this.observer!.observe(ref.nativeElement));
+    this.startAutoAdvance();
   }
 
   ngOnDestroy(): void {
     this.observer?.disconnect();
+    this.stopAutoAdvance();
   }
 
   scrollTo(index: number): void {
+    const ref = this.slideRefs.get(index);
+    ref?.nativeElement.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    this.startAutoAdvance();
+  }
+
+  private startAutoAdvance(): void {
+    this.stopAutoAdvance();
+    if (this.selections.length <= 1) return;
+    this.autoAdvanceTimer = setInterval(() => {
+      const next = (this.activeIndex + 1) % this.selections.length;
+      this.scrollToSilently(next);
+    }, GamesFeaturedCarouselComponent.AUTO_ADVANCE_MS);
+  }
+
+  private stopAutoAdvance(): void {
+    if (this.autoAdvanceTimer !== undefined) {
+      clearInterval(this.autoAdvanceTimer);
+      this.autoAdvanceTimer = undefined;
+    }
+  }
+
+  private scrollToSilently(index: number): void {
     const ref = this.slideRefs.get(index);
     ref?.nativeElement.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
   }

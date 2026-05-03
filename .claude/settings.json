@@ -29,7 +29,8 @@
       "Bash(npm run *)",
       "Bash(git stash *)",
       "Bash(git reset *)",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "Bash(git log *)"
     ]
   }
 }
