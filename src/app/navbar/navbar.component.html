@@ -14,6 +14,10 @@
       <mat-icon>sports_esports</mat-icon>
       <span class="nav-text">Games</span>
     </a>
+    <a mat-button routerLink="/tv" routerLinkActive="active" class="nav-link desktop-only">
+      <mat-icon>qr_code_2</mat-icon>
+      <span class="nav-text">TV</span>
+    </a>
 
     @if (userService.isSignedIn()) {
       <span class="user-chip" [attr.title]="userService.username()">
