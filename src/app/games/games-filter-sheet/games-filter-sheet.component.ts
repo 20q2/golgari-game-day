@@ -23,6 +23,9 @@ export interface FilterSheetData {
   filter: GameFilter;
   sort: SortOrder;
   genreCounts: GenreCount[]; // all genres, with counts
+  /** Called every time the user mutates filter/sort inside the sheet, so
+   *  the parent can apply changes live without a Done button. */
+  onChange?: (state: FilterSheetResult) => void;
 }
 
 export interface FilterSheetResult {
@@ -48,6 +51,8 @@ export class GamesFilterSheetComponent {
   filter: GameFilter;
   sort: SortOrder;
   genreCounts: GenreCount[];
+
+  private readonly onChange?: (state: FilterSheetResult) => void;
 
   durations = Object.values(GameDuration);
   sortOptions = [
@@ -76,6 +81,12 @@ export class GamesFilterSheetComponent {
     };
     this.sort = data.sort;
     this.genreCounts = data.genreCounts;
+    this.onChange = data.onChange;
+  }
+
+  /** Push the current filter/sort to the parent so changes apply live. */
+  emit(): void {
+    this.onChange?.({ filter: this.filter, sort: this.sort });
   }
 
   toggleGenre(genre: GameGenre): void {
@@ -88,6 +99,7 @@ export class GamesFilterSheetComponent {
     } else {
       this.filter.genres = [...current, genre];
     }
+    this.emit();
   }
 
   isSelected(genre: GameGenre): boolean {
@@ -97,12 +109,7 @@ export class GamesFilterSheetComponent {
   clearAll(): void {
     this.filter = { searchText: this.filter.searchText };
     this.sort = SortOrder.TITLE_ASC;
-  }
-
-  done(): void {
-    const result: FilterSheetResult = { filter: this.filter, sort: this.sort };
-    this.bottomSheetRef?.dismiss(result);
-    this.dialogRef?.close(result);
+    this.emit();
   }
 
   cancel(): void {

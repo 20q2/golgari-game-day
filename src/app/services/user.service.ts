@@ -27,6 +27,14 @@ export class UserService {
     this._username.set(localStorage.getItem(USERNAME_STORAGE_KEY));
   }
 
+  /** Clear identity from localStorage and signals. Used by dev-mode rename / sign-out. */
+  signOut(): void {
+    localStorage.removeItem(USERNAME_STORAGE_KEY);
+    localStorage.removeItem(USER_ID_STORAGE_KEY);
+    this._username.set(null);
+    this._userId.set(null);
+  }
+
   /** One-shot. No-op if already signed in. */
   setUsername(rawName: string): void {
     if (this.isSignedIn()) {

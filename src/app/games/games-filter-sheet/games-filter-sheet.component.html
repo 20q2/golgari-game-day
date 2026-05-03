@@ -1,24 +1,31 @@
 <div class="sheet">
   <header class="sheet-header">
     <h3>Filters</h3>
+    <button type="button" class="header-clear" (click)="clearAll()">Clear all</button>
     <button type="button" class="close" (click)="cancel()" aria-label="Close filters">
       <mat-icon>close</mat-icon>
     </button>
   </header>
 
   <section class="row">
-    <label class="row-label">Sort</label>
+    <label class="row-label">
+      <mat-icon>sort</mat-icon>
+      <span>Sort</span>
+    </label>
     <mat-form-field appearance="outline" class="full">
-      <mat-select [(ngModel)]="sort">
+      <mat-select [(ngModel)]="sort" (ngModelChange)="emit()">
         <mat-option *ngFor="let o of sortOptions" [value]="o.value">{{ o.label }}</mat-option>
       </mat-select>
     </mat-form-field>
   </section>
 
   <section class="row">
-    <label class="row-label">Duration</label>
+    <label class="row-label">
+      <mat-icon>schedule</mat-icon>
+      <span>Duration</span>
+    </label>
     <mat-form-field appearance="outline" class="full">
-      <mat-select [(ngModel)]="filter.duration" placeholder="Any">
+      <mat-select [(ngModel)]="filter.duration" (ngModelChange)="emit()" placeholder="Any">
         <mat-option [value]="undefined">Any</mat-option>
         <mat-option *ngFor="let d of durations" [value]="d">{{ d }}</mat-option>
       </mat-select>
@@ -26,7 +33,10 @@
   </section>
 
   <section class="row">
-    <label class="row-label">Players</label>
+    <label class="row-label">
+      <mat-icon>group</mat-icon>
+      <span>Players</span>
+    </label>
     <mat-form-field appearance="outline" class="full">
       <input
         matInput
@@ -34,13 +44,17 @@
         min="1"
         max="12"
         [(ngModel)]="filter.supportedPlayers"
+        (ngModelChange)="emit()"
         placeholder="Any"
       />
     </mat-form-field>
   </section>
 
   <section class="row">
-    <label class="row-label">Genres</label>
+    <label class="row-label">
+      <mat-icon>category</mat-icon>
+      <span>Genres</span>
+    </label>
     <div class="genre-grid">
       <button
         *ngFor="let g of genreCounts"
@@ -56,8 +70,4 @@
     </div>
   </section>
 
-  <footer class="sheet-footer">
-    <button type="button" class="secondary" (click)="clearAll()">Clear all</button>
-    <button type="button" class="primary" (click)="done()">Done</button>
-  </footer>
 </div>

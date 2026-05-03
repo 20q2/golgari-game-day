@@ -6,20 +6,40 @@
   <span class="spacer"></span>
   
   <div class="nav-links">
-    <a mat-button routerLink="/home" routerLinkActive="active" class="nav-link">
-      <mat-icon>home</mat-icon>
-      <span class="nav-text">Home</span>
-    </a>
     <a mat-button routerLink="/tv" routerLinkActive="active" class="nav-link desktop-only">
       <mat-icon>qr_code_2</mat-icon>
       <span class="nav-text">TV</span>
     </a>
 
     @if (userService.isSignedIn()) {
-      <span class="user-chip" [attr.title]="userService.username()">
-        <mat-icon>person</mat-icon>
-        <span class="user-name">{{ userService.username() }}</span>
-      </span>
+      @if (isDev) {
+        <button
+          type="button"
+          class="user-chip user-chip-button"
+          [matMenuTriggerFor]="userMenu"
+          [attr.title]="userService.username()"
+          aria-label="Open user menu"
+        >
+          <mat-icon>person</mat-icon>
+          <span class="user-name">{{ userService.username() }}</span>
+          <mat-icon class="caret">arrow_drop_down</mat-icon>
+        </button>
+        <mat-menu #userMenu="matMenu" xPosition="before">
+          <button mat-menu-item (click)="rename()">
+            <mat-icon>edit</mat-icon>
+            <span>Rename</span>
+          </button>
+          <button mat-menu-item (click)="signOut()">
+            <mat-icon>logout</mat-icon>
+            <span>Sign out</span>
+          </button>
+        </mat-menu>
+      } @else {
+        <span class="user-chip" [attr.title]="userService.username()">
+          <mat-icon>person</mat-icon>
+          <span class="user-name">{{ userService.username() }}</span>
+        </span>
+      }
     } @else {
       <button mat-button class="nav-link sign-in-button" (click)="openSignIn()">
         <mat-icon>person_outline</mat-icon>

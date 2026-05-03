@@ -137,6 +137,148 @@ body {
   }
 }
 
+// ===== CDK OVERLAY PANEL OVERRIDES =====
+//
+// Material's CDK overlay container is appended directly under <body>, so it
+// sits outside every component's view encapsulation. Component-scoped
+// `::ng-deep` rules don't reach it. These overrides MUST live in this global
+// stylesheet.
+
+// Game details dialog — dark themed surface to match the games page.
+.cdk-overlay-pane.game-details-dialog .mat-mdc-dialog-surface {
+  background: linear-gradient(180deg, #0a1410 0%, #131c16 60%, #1a2a20 100%);
+  color: #e0e8e2;
+  border-radius: var(--border-radius-lg);
+  padding: 0;
+  overflow: hidden;
+}
+
+// Filter sheet (bottom-sheet on mobile, dialog on tablet+) — dark themed.
+.cdk-overlay-pane.games-filter-sheet-panel,
+.mat-bottom-sheet-container-class.games-filter-sheet-panel {
+  .mat-mdc-dialog-surface,
+  &.mat-bottom-sheet-container,
+  .mat-bottom-sheet-container {
+    background: #131c16;
+    color: #e0e8e2;
+    border-radius: 16px 16px 0 0;
+    padding: 0;
+  }
+
+  // Material outlined form-field tokens — Sort/Duration/Players inside the sheet.
+  .mat-mdc-form-field {
+    --mdc-outlined-text-field-input-text-color: #e0e8e2;
+    --mdc-outlined-text-field-input-text-placeholder-color: #8aa898;
+    --mdc-outlined-text-field-disabled-input-text-color: #6a8a7a;
+    --mdc-outlined-text-field-label-text-color: #8aa898;
+    --mdc-outlined-text-field-hover-label-text-color: #b8d0c0;
+    --mdc-outlined-text-field-focus-label-text-color: #6fa46f;
+    --mdc-outlined-text-field-outline-color: rgba(255, 255, 255, 0.22);
+    --mdc-outlined-text-field-hover-outline-color: rgba(255, 255, 255, 0.4);
+    --mdc-outlined-text-field-focus-outline-color: #6fa46f;
+    --mdc-outlined-text-field-caret-color: #6fa46f;
+
+    --mat-form-field-state-layer-color: transparent;
+    --mat-form-field-hover-state-layer-color: transparent;
+    --mat-form-field-focus-state-layer-color: transparent;
+
+    --mat-select-enabled-trigger-text-color: #e0e8e2;
+    --mat-select-disabled-trigger-text-color: #6a8a7a;
+    --mat-select-placeholder-text-color: #8aa898;
+    --mat-select-enabled-arrow-color: #8aa898;
+    --mat-select-focused-arrow-color: #6fa46f;
+    --mat-select-invalid-arrow-color: #ff6090;
+  }
+
+  // Belt-and-suspenders direct rules with !important to defeat Material's
+  // own theme rules that ship with their own specificity.
+  .mat-mdc-select-value,
+  .mat-mdc-select-value-text,
+  .mat-mdc-select-min-line {
+    color: #e0e8e2 !important;
+  }
+
+  .mat-mdc-select-placeholder {
+    color: #8aa898 !important;
+  }
+
+  .mat-mdc-select-arrow,
+  .mat-mdc-select-arrow svg {
+    color: #8aa898 !important;
+    fill: #8aa898 !important;
+  }
+
+  .mat-mdc-input-element,
+  input.mat-mdc-input-element {
+    color: #e0e8e2 !important;
+    caret-color: #6fa46f;
+  }
+
+  .mat-mdc-input-element::placeholder {
+    color: #8aa898 !important;
+    opacity: 1 !important;
+  }
+
+  // The MDC outlined notch border path elements (the visible black border
+  // in the screenshot). Force them light directly so even with stale
+  // Material defaults they render visibly on the dark panel.
+  .mdc-notched-outline__leading,
+  .mdc-notched-outline__notch,
+  .mdc-notched-outline__trailing {
+    border-color: rgba(255, 255, 255, 0.22) !important;
+  }
+
+  .mat-mdc-form-field:hover .mdc-notched-outline__leading,
+  .mat-mdc-form-field:hover .mdc-notched-outline__notch,
+  .mat-mdc-form-field:hover .mdc-notched-outline__trailing {
+    border-color: rgba(255, 255, 255, 0.4) !important;
+  }
+
+  .mdc-text-field--focused .mdc-notched-outline__leading,
+  .mdc-text-field--focused .mdc-notched-outline__notch,
+  .mdc-text-field--focused .mdc-notched-outline__trailing {
+    border-color: #6fa46f !important;
+  }
+
+  // Compact the form fields: hide the always-empty subscript wrapper
+  // (saves ~22px per field) and tighten the infix padding so the field
+  // height drops from ~56px to ~40px. Filter sheet has no hints/errors.
+  .mat-mdc-form-field-subscript-wrapper {
+    display: none;
+  }
+
+  .mat-mdc-text-field-wrapper {
+    height: 40px;
+  }
+
+  .mat-mdc-form-field-infix {
+    min-height: 40px;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  // Float-up label sits in the notched outline; pull it tighter to match.
+  .mat-mdc-floating-label {
+    top: 20px;
+  }
+}
+
+// The mat-select dropdown options panel renders as its own overlay (a
+// sibling of the sheet panel, not a child). Theme it too so opening the
+// Sort dropdown doesn't drop the user back into a white overlay.
+.cdk-overlay-pane .mat-mdc-select-panel {
+  background: #131c16;
+  color: #e0e8e2;
+
+  .mat-mdc-option {
+    --mat-option-label-text-color: #e0e8e2;
+    --mat-option-selected-state-label-text-color: #e0e8e2;
+    --mat-option-hover-state-layer-color: rgba(255, 255, 255, 0.06);
+    --mat-option-focus-state-layer-color: rgba(255, 255, 255, 0.08);
+    --mat-option-selected-state-layer-color: rgba(0, 100, 66, 0.35);
+  }
+}
+
 // ===== TYPOGRAPHY SCALE =====
 
 .display-1 { font-size: 3rem; font-weight: 700; line-height: 1.1; }

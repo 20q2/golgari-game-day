@@ -1,6 +1,20 @@
 <div class="dialog">
   <header class="dialog-header">
     <h2 class="title">{{ game.title }}</h2>
+    <button
+      type="button"
+      class="like-button"
+      [class.is-liked]="isLiked"
+      [disabled]="isTogglingLike"
+      (click)="toggleLike()"
+      [attr.aria-pressed]="isLiked"
+      [attr.aria-label]="isLiked ? 'Remove from favorites' : 'Add to favorites'"
+    >
+      <mat-icon>{{ isLiked ? 'favorite' : 'favorite_border' }}</mat-icon>
+      @if (totalLikes > 0) {
+        <span class="like-count">{{ totalLikes }}</span>
+      }
+    </button>
     <button type="button" class="close" (click)="close()" aria-label="Close">
       <mat-icon>close</mat-icon>
     </button>
@@ -51,6 +65,38 @@
           }
         </div>
       }
+
+      <div class="your-rating">
+        <span class="eyebrow">Your rating</span>
+        <div
+          class="star-row"
+          (mouseleave)="onStarHover(null)"
+          [class.is-saving]="isSettingRating"
+        >
+          @for (slot of ratingSlots; track slot) {
+            <button
+              type="button"
+              class="star-button"
+              [class.is-active]="slot <= displayedRating"
+              [disabled]="isSettingRating"
+              (mouseenter)="onStarHover(slot)"
+              (focus)="onStarHover(slot)"
+              (blur)="onStarHover(null)"
+              (click)="setRating(slot)"
+              [attr.aria-label]="'Rate ' + slot + ' of ' + ratingSlots.length"
+            >
+              <mat-icon>{{ slot <= displayedRating ? 'star' : 'star_border' }}</mat-icon>
+            </button>
+          }
+          <span class="your-rating-value">
+            @if (myRating) {
+              {{ myRating }}/{{ ratingSlots.length }}
+            } @else {
+              Not yet rated
+            }
+          </span>
+        </div>
+      </div>
 
       @if (game.description) {
         <div class="description">

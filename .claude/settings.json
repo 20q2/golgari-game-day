@@ -27,7 +27,9 @@
       "PowerShell(New-Item -ItemType Directory -Path \"docs\\\\superpowers\\\\specs\" -Force)",
       "Bash(echo \"EXITCODE=$?\")",
       "Bash(npm run *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(git reset *)",
+      "Bash(git restore *)"
     ]
   }
 }

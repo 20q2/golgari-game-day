@@ -1,11 +1,6 @@
-// Override Material's white surface for this dialog so it matches the games dark theme.
-::ng-deep .game-details-dialog .mat-mdc-dialog-surface {
-  background: var(--games-bg);
-  color: var(--games-text-primary);
-  border-radius: var(--border-radius-lg);
-  padding: 0;
-  overflow: hidden;
-}
+// NOTE: panel surface override for `.game-details-dialog` lives in
+// `src/styles.scss` (global) — `::ng-deep` from this component doesn't
+// reach the CDK overlay container.
 
 :host {
   display: block;
@@ -23,8 +18,7 @@
 .dialog-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-md);
+  gap: 10px;
   padding: 18px 22px;
   border-bottom: 1px solid var(--games-surface-border);
   position: sticky;
@@ -34,11 +28,55 @@
 
   .title {
     margin: 0;
+    flex: 1;
+    min-width: 0;
     font-size: 22px;
     font-weight: 700;
     letter-spacing: -0.5px;
     line-height: 1.2;
     color: var(--games-text-primary);
+  }
+
+  .like-button {
+    background: transparent;
+    border: 1px solid var(--games-surface-border);
+    color: var(--games-text-secondary);
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+
+    &:hover:not(:disabled) {
+      color: var(--games-text-primary);
+      background: var(--games-surface);
+    }
+
+    &.is-liked {
+      color: #ff5b8a;
+      border-color: rgba(255, 91, 138, 0.5);
+      background: rgba(255, 91, 138, 0.08);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    .like-count {
+      line-height: 1;
+    }
   }
 
   .close {
@@ -79,8 +117,15 @@
   }
 }
 
+.cover {
+  display: flex;
+  justify-content: center;
+}
+
 .cover img {
-  width: 100%;
+  max-width: 100%;
+  max-height: 280px;
+  width: auto;
   border-radius: var(--border-radius-md);
   display: block;
 }
@@ -156,6 +201,62 @@
     width: 16px;
     height: 16px;
   }
+}
+
+.your-rating {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.star-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+
+  &.is-saving {
+    opacity: 0.7;
+  }
+}
+
+.star-button {
+  background: transparent;
+  border: none;
+  padding: 2px;
+  border-radius: 4px;
+  color: var(--games-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, transform 0.15s ease;
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    color: var(--rating-gold, #ff8f00);
+    transform: scale(1.1);
+    outline: none;
+  }
+
+  &.is-active {
+    color: var(--rating-gold, #ff8f00);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+}
+
+.your-rating-value {
+  margin-left: 8px;
+  font-size: 13px;
+  color: var(--games-text-muted);
 }
 
 .description {
