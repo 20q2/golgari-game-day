@@ -24,13 +24,12 @@
     (openFilters)="openFilters()"
   ></app-games-genre-strip>
 
-  <ng-container *ngIf="!isFiltered && (hero$ | async) as hero">
-    <app-games-hero
-      [game]="hero.game"
-      [variant]="hero.variant"
-      [likeCount]="hero.likeCount"
+  <ng-container *ngIf="!isFiltered && (featured$ | async) as featured">
+    <app-games-featured-carousel
+      *ngIf="featured.length > 0"
+      [selections]="featured"
       (open)="onOpenGame($event)"
-    ></app-games-hero>
+    ></app-games-featured-carousel>
   </ng-container>
 
   <ng-container *ngIf="(filteredGames$ | async) as games">

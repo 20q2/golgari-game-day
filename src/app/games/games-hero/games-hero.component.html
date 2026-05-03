@@ -2,7 +2,6 @@
   type="button"
   class="hero"
   [class.most-loved]="variant === 'most-loved'"
-  [class.top-rated]="variant === 'top-rated'"
   [class.highest-rated]="variant === 'highest-rated'"
   [class.recently-hot]="variant === 'recently-hot'"
   (click)="onClick()"
@@ -16,7 +15,7 @@
     <span
       class="badge-icon"
       [class.heart]="variant === 'most-loved'"
-      [class.star]="variant === 'top-rated' || variant === 'highest-rated'"
+      [class.star]="variant === 'highest-rated'"
       [class.fire]="variant === 'recently-hot'"
     >{{ badgeIcon }}</span>
     {{ badgeText }}

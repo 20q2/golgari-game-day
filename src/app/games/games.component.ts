@@ -26,12 +26,13 @@ import { GamesSearchBarComponent } from './games-search-bar/games-search-bar.com
 import { GamesGenreStripComponent } from './games-genre-strip/games-genre-strip.component';
 import { GamesHeroComponent } from './games-hero/games-hero.component';
 import { GamesListComponent } from './games-list/games-list.component';
+import { GamesFeaturedCarouselComponent } from './games-featured-carousel/games-featured-carousel.component';
 
 import {
   countActiveFilters,
   GenreCount,
   HeroSelection,
-  pickHero,
+  pickFeaturedTrio,
   topGenres as topGenresUtil,
 } from './games.utils';
 
@@ -54,6 +55,7 @@ const SURFACE_GENRE_COUNT = 6;
     GamesGenreStripComponent,
     GamesHeroComponent,
     GamesListComponent,
+    GamesFeaturedCarouselComponent,
   ],
   templateUrl: './games.component.html',
   styleUrls: ['./games.component.scss'],
@@ -61,7 +63,7 @@ const SURFACE_GENRE_COUNT = 6;
 export class GamesComponent implements OnInit, OnDestroy {
   // Reactive state
   filteredGames$: Observable<Game[]>;
-  hero$: Observable<HeroSelection | null>;
+  featured$: Observable<HeroSelection[]>;
   statsById$: Observable<Record<string, GameStats>>;
 
   // Mutable filter state (mirrored to GamesService and persisted)
@@ -119,15 +121,15 @@ export class GamesComponent implements OnInit, OnDestroy {
       }),
     );
 
-    // Hero is computed from the unfiltered catalog so it represents
-    // "the most-loved game across the whole collection," not "most-loved
-    // among current results." (The hero is also hidden when filters are
-    // active, but using the catalog keeps the badge stable when the user
-    // clears filters.)
-    this.hero$ = combineLatest([
+    // Featured trio is computed from the unfiltered catalog so the slots
+    // represent "the standouts across the whole collection," not "the
+    // standouts among current results." The carousel is also hidden when
+    // filters are active, but using the catalog keeps each slot stable
+    // when the user clears filters.
+    this.featured$ = combineLatest([
       this.gamesService.getCatalog(),
       this.dataAggregation.getAllGamesStats(),
-    ]).pipe(map(([games, stats]) => pickHero(games, stats)));
+    ]).pipe(map(([games, stats]) => pickFeaturedTrio(games, stats, new Date())));
   }
 
   ngOnInit(): void {
@@ -201,19 +203,19 @@ export class GamesComponent implements OnInit, OnDestroy {
       filter: { ...this.filter },
       sort: this.sort,
       genreCounts: this.allGenreCounts,
+      onChange: (state) => this.applySheetResult(state),
     };
 
     const isMobile = this.breakpoints.isMatched(Breakpoints.HandsetPortrait)
       || this.breakpoints.isMatched(Breakpoints.HandsetLandscape);
 
     if (isMobile) {
-      const ref = this.bottomSheet.open<GamesFilterSheetComponent, FilterSheetData, FilterSheetResult>(
+      this.bottomSheet.open<GamesFilterSheetComponent, FilterSheetData, FilterSheetResult>(
         GamesFilterSheetComponent,
         { data, panelClass: 'games-filter-sheet-panel' },
       );
-      ref.afterDismissed().subscribe(result => this.applySheetResult(result ?? null));
     } else {
-      const ref = this.dialog.open<GamesFilterSheetComponent, FilterSheetData, FilterSheetResult>(
+      this.dialog.open<GamesFilterSheetComponent, FilterSheetData, FilterSheetResult>(
         GamesFilterSheetComponent,
         {
           data,
@@ -222,12 +224,10 @@ export class GamesComponent implements OnInit, OnDestroy {
           panelClass: 'games-filter-sheet-panel',
         },
       );
-      ref.afterClosed().subscribe(result => this.applySheetResult(result ?? null));
     }
   }
 
-  private applySheetResult(result: FilterSheetResult | null): void {
-    if (!result) return;
+  private applySheetResult(result: FilterSheetResult): void {
     this.filter = { ...result.filter, searchText: this.searchText || undefined };
     this.sort = result.sort;
     this.gamesService.setFilter({ ...this.filter });

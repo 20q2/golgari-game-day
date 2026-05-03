@@ -14,7 +14,7 @@ import { GenreIconService } from '../../services/genre-icon.service';
 })
 export class GamesHeroComponent {
   @Input({ required: true }) game!: Game;
-  @Input() variant: HeroVariant = 'top-rated';
+  @Input() variant: HeroVariant = 'most-loved';
   @Input() likeCount = 0;
   @Input() ratingValue?: number;
 
@@ -41,9 +41,6 @@ export class GamesHeroComponent {
         return this.ratingValue != null ? `HIGHEST RATED · ${this.ratingValue.toFixed(1)}` : 'HIGHEST RATED';
       case 'recently-hot':
         return "WHAT'S HOT";
-      case 'top-rated':
-      default:
-        return 'TOP RATED';
     }
   }
 
@@ -52,12 +49,9 @@ export class GamesHeroComponent {
       case 'most-loved':
         return '♥';
       case 'highest-rated':
-      case 'top-rated':
         return '★';
       case 'recently-hot':
         return '🔥';
-      default:
-        return '★';
     }
   }
 

@@ -2,14 +2,13 @@ import { Game, GameFilter, GameGenre } from '../models/game.model';
 import { GameStats } from '../services/data-aggregation.service';
 
 /**
- * Variants used by the featured-trio carousel and the legacy single hero.
+ * Variants used by the featured-trio carousel.
  *
  * - 'most-loved'    : top game by lifetime likes.
  * - 'highest-rated' : top game by community average rating.
  * - 'recently-hot'  : top game by activity (likes + comments + ratings) in the past 14 days.
- * - 'top-rated'     : DEPRECATED — BGG-rating fallback used by the legacy single hero. Removed in step D.
  */
-export type HeroVariant = 'most-loved' | 'top-rated' | 'highest-rated' | 'recently-hot';
+export type HeroVariant = 'most-loved' | 'highest-rated' | 'recently-hot';
 
 export interface HeroSelection {
   game: Game;
@@ -25,45 +24,6 @@ export interface GenreCount {
 }
 
 const RECENT_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
-
-/**
- * Pick the hero game for the page header (legacy single-hero API).
- * - If any game has at least one like, return the most-liked
- *   (ties broken by BGG rating desc, then title asc).
- * - Otherwise fall back to the highest BGG-rated game with the
- *   'top-rated' variant. Designed so the hero looks intentional
- *   even before any social activity has accumulated.
- *
- * Retired in step D in favor of `pickFeaturedTrio`.
- */
-export function pickHero(games: Game[], stats: GameStats[]): HeroSelection | null {
-  if (games.length === 0) return null;
-
-  const likesByGame = new Map<string, number>();
-  for (const s of stats) {
-    if (s.totalLikes > 0) likesByGame.set(s.gameId, s.totalLikes);
-  }
-
-  if (likesByGame.size > 0) {
-    const ranked = games
-      .map(g => ({ game: g, likes: likesByGame.get(g.id) ?? 0 }))
-      .filter(x => x.likes > 0)
-      .sort((a, b) =>
-        b.likes - a.likes ||
-        (b.game.bggRating ?? 0) - (a.game.bggRating ?? 0) ||
-        a.game.title.localeCompare(b.game.title)
-      );
-    if (ranked.length > 0) {
-      return { game: ranked[0].game, variant: 'most-loved', likeCount: ranked[0].likes };
-    }
-  }
-
-  const sorted = [...games].sort((a, b) =>
-    (b.bggRating ?? 0) - (a.bggRating ?? 0) ||
-    a.title.localeCompare(b.title)
-  );
-  return { game: sorted[0], variant: 'top-rated', likeCount: 0 };
-}
 
 /**
  * Pick up to three featured games for the carousel:
