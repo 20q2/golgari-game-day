@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { GameGenre } from '../models/game.model';
-import { MoodFilter } from '../home/home-filter.model';
 
 export type GenreColor = 'primary' | 'accent' | 'warn' | undefined;
 
@@ -73,25 +72,11 @@ export class GenreIconService {
     [GameGenre.ASYMMETRIC]: 'primary',
   };
 
-  readonly moodIcons: Readonly<Record<MoodFilter, string>> = {
-    any: '',
-    strategy: 'psychology',
-    party: 'celebration',
-    family: 'family_restroom',
-    coop: 'groups',
-    heavy: 'fitness_center',
-    card: 'style',
-  };
-
   iconFor(genre: GameGenre): string {
     return this.genreIcons[genre] ?? 'category';
   }
 
   colorFor(genre: GameGenre): GenreColor {
     return this.genreColors[genre];
-  }
-
-  iconForMood(mood: MoodFilter): string {
-    return this.moodIcons[mood] ?? '';
   }
 }
