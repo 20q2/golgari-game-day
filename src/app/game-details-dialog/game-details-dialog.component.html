@@ -17,7 +17,10 @@
       @if (game.genres.length) {
         <div class="genre-chips">
           @for (genre of game.genres; track genre) {
-            <span class="genre-chip">{{ genre }}</span>
+            <span class="genre-chip">
+              <mat-icon class="chip-icon">{{ iconService.iconFor(genre) }}</mat-icon>
+              <span class="chip-label">{{ genre }}</span>
+            </span>
           }
         </div>
       }

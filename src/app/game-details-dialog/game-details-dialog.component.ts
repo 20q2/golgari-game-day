@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { GamesService } from '../services/games.service';
 import { Game, GameComment } from '../models/game.model';
 import { UserService } from '../services/user.service';
+import { GenreIconService } from '../services/genre-icon.service';
 
 @Component({
   selector: 'app-game-details-dialog',
@@ -26,6 +27,7 @@ export class GameDetailsDialogComponent implements OnInit {
   awsAverageRating: number | null = null;
 
   constructor(
+    public iconService: GenreIconService,
     public dialogRef: MatDialogRef<GameDetailsDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public game: Game,
     private gamesService: GamesService,
