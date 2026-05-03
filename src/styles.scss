@@ -101,10 +101,6 @@ body {
   // Page-specific backgrounds. Reference src/assets/ so Angular bundles the
   // images and rewrites the URL — works on both dev (root) and GitHub Pages
   // (under /golgari-game-day/) without shell-specific path quirks.
-  &.home-page {
-    background: url('./assets/image1.png') center/cover fixed;
-  }
-
   &.games-page {
     // Dark Golgari gradient — replaces the photo background to give the
     // games page a distinct identity (Netflix-style browse surface).
