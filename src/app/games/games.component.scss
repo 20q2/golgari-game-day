@@ -99,8 +99,41 @@
   .mat-mdc-dialog-surface,
   .mat-bottom-sheet-container {
     background: #131c16;
-    color: var(--games-text-primary, #e0e8e2);
+    color: #e0e8e2;
     border-radius: 16px 16px 0 0;
     padding: 0;
+  }
+
+  // Material form-field text/outline assume a light background — tint them for dark theme.
+  .mat-mdc-form-field {
+    --mdc-outlined-text-field-input-text-color: #e0e8e2;
+    --mdc-outlined-text-field-label-text-color: #8aa898;
+    --mdc-outlined-text-field-hover-label-text-color: #b8d0c0;
+    --mdc-outlined-text-field-focus-label-text-color: #6fa46f;
+    --mdc-outlined-text-field-outline-color: rgba(255, 255, 255, 0.18);
+    --mdc-outlined-text-field-hover-outline-color: rgba(255, 255, 255, 0.32);
+    --mdc-outlined-text-field-focus-outline-color: #6fa46f;
+    --mdc-outlined-text-field-caret-color: #6fa46f;
+    --mat-form-field-state-layer-color: transparent;
+  }
+
+  .mat-mdc-select-value,
+  .mat-mdc-select-value-text {
+    color: #e0e8e2;
+  }
+
+  .mat-mdc-select-placeholder,
+  .mat-mdc-input-element::placeholder {
+    color: #8aa898;
+    opacity: 1;
+  }
+
+  .mat-mdc-select-arrow {
+    color: #8aa898;
+  }
+
+  .mat-mdc-input-element {
+    color: #e0e8e2;
+    caret-color: #6fa46f;
   }
 }

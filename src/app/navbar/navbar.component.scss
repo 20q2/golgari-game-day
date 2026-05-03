@@ -154,15 +154,15 @@
   }
 }
 
+// Identity indicator — informational, not a button. Aligned with nav-links visually
+// but without the active-state green tint that would make it read as another tab.
 .user-chip {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  color: white;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--border-radius-sm);
-  background-color: rgba(74, 124, 89, 0.25);
-  min-height: 36px;
+  gap: var(--spacing-sm);
+  color: rgba(255, 255, 255, 0.85);
+  padding: var(--spacing-sm) var(--spacing-md);
+  min-height: 44px;
   max-width: 180px;
 
   mat-icon {
@@ -170,6 +170,7 @@
     width: 1.1rem;
     height: 1.1rem;
     flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.7);
   }
 
   .user-name {
@@ -181,24 +182,22 @@
   }
 }
 
-.sign-in-button {
-  // Inherits .nav-link styles. Nothing extra needed unless we want to differentiate.
-}
-
 @media (max-width: 768px) {
   .user-chip {
-    max-width: 110px;
-    padding: var(--spacing-xs);
-    .user-name {
-      font-size: 0.8rem;
-    }
-  }
-}
+    padding: var(--spacing-sm);
+    min-width: 48px;
+    min-height: 48px;
+    justify-content: center;
+    max-width: none;
 
-@media (max-width: 480px) {
-  .user-chip {
+    mat-icon {
+      font-size: 1.25rem;
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
     .user-name {
-      display: none; // icon-only on very small screens, like the route nav-text
+      display: none;
     }
   }
 }

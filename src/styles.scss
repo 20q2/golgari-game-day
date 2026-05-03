@@ -102,9 +102,11 @@ body {
   // images and rewrites the URL — works on both dev (root) and GitHub Pages
   // (under /golgari-game-day/) without shell-specific path quirks.
   &.games-page {
-    // Dark Golgari gradient — replaces the photo background to give the
-    // games page a distinct identity (Netflix-style browse surface).
-    background: linear-gradient(180deg, #0a1410 0%, #131c16 60%, #1a2a20 100%) fixed;
+    // Dark Golgari gradient laid OVER a photo. The dark overlay keeps cards
+    // and text readable; the photo gives the page texture instead of a flat fill.
+    background:
+      linear-gradient(180deg, rgba(10, 20, 16, 0.82) 0%, rgba(19, 28, 22, 0.88) 60%, rgba(26, 42, 32, 0.92) 100%) fixed,
+      url('./assets/image2.png') center/cover fixed;
 
     // Page-scoped tokens. Used by the new games components and their children.
     --games-bg: linear-gradient(180deg, #0a1410 0%, #131c16 60%, #1a2a20 100%);

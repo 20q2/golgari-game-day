@@ -7,19 +7,16 @@
   padding: 0;
   margin: 0;
 
-  // Mobile: vertical list of rows
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  // Phone-first: 2-col tile grid. Tiles scale up to 3 / 5 cols on larger screens.
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
 
-  // Tablet: 3-col tile grid
   @media (min-width: 768px) {
-    display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
   }
 
-  // Desktop: 5-col tile grid
   @media (min-width: 1024px) {
     grid-template-columns: repeat(5, 1fr);
   }
@@ -27,10 +24,14 @@
 
 .games-list-item {
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
   background: var(--games-surface);
   border: 1px solid var(--games-surface-border);
-  border-radius: 10px;
+  border-radius: 8px;
+  display: block;
+  position: relative;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  transition: background 0.2s ease;
 
   &:hover {
     background: var(--games-surface-hover);
@@ -41,129 +42,74 @@
     outline-offset: 2px;
   }
 
-  // Mobile row layout
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 10px;
-
   .thumb {
-    width: 56px;
-    height: 72px;
-    border-radius: 6px;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-    flex-shrink: 0;
+    display: block;
   }
 
   .primary {
-    flex: 1;
-    min-width: 0;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 8px 10px;
+    color: white;
+    background: linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.92) 100%);
 
     .title {
-      color: var(--games-text-primary);
-      font-weight: 600;
-      font-size: 14px;
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
       line-height: 1.2;
       overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
     }
 
-    .genres {
-      color: var(--games-text-secondary);
-      font-size: 11px;
-      margin-top: 2px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
+    .genres,
     .meta {
-      color: var(--games-text-muted);
-      font-size: 11px;
-      margin-top: 3px;
+      display: none;
     }
   }
 
   .trailing {
-    text-align: right;
-    flex-shrink: 0;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
 
     .rating {
-      color: var(--games-star);
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 700;
+      color: var(--games-star);
+      background: rgba(0, 0, 0, 0.65);
+      padding: 2px 8px;
+      border-radius: 999px;
     }
 
     .social {
-      color: var(--games-text-muted);
-      font-size: 10px;
-      margin-top: 4px;
       display: flex;
       gap: 6px;
-      justify-content: flex-end;
-    }
+      font-size: 10px;
+      font-weight: 600;
 
-    .social-item.heart {
-      color: var(--games-heart);
-    }
-  }
-
-  // Tablet+: switch to overlay-on-image tile
-  @media (min-width: 768px) {
-    display: block;
-    position: relative;
-    aspect-ratio: 3 / 4;
-    padding: 0;
-    overflow: hidden;
-    border-radius: 8px;
-
-    .thumb {
-      width: 100%;
-      height: 100%;
-      border-radius: 0;
-    }
-
-    .primary {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      padding: 8px;
-      color: white;
-      background: linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, 0.9) 100%);
-
-      .title {
-        color: white;
-        font-size: 12px;
-        font-weight: 700;
-      }
-
-      .genres {
-        display: none;
-      }
-
-      .meta {
-        display: none;
-      }
-    }
-
-    .trailing {
-      position: absolute;
-      bottom: 8px;
-      right: 8px;
-      text-align: right;
-
-      .rating {
-        font-size: 10px;
-        background: rgba(0, 0, 0, 0.6);
-        padding: 1px 6px;
+      .social-item {
+        background: rgba(0, 0, 0, 0.65);
+        padding: 2px 6px;
         border-radius: 999px;
+        color: var(--games-text-secondary);
       }
 
-      .social {
-        display: none;
+      .social-item.heart {
+        color: var(--games-heart);
       }
     }
   }

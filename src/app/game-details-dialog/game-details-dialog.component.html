@@ -1,145 +1,103 @@
-<div class="dialog-content">
-  <div class="dialog-header">
-    <h2 mat-dialog-title class="gradient-text">{{ game.title }}</h2>
-    <button mat-icon-button (click)="close()" class="close-btn">
+<div class="dialog">
+  <header class="dialog-header">
+    <h2 class="title">{{ game.title }}</h2>
+    <button type="button" class="close" (click)="close()" aria-label="Close">
       <mat-icon>close</mat-icon>
     </button>
-  </div>
+  </header>
 
-  <div class="game-details">
-    <div class="game-image-section">
-      <img [src]="game.imageUrl" [alt]="game.title" class="game-image">
-    </div>
+  <section class="game-section">
+    @if (game.imageUrl) {
+      <div class="cover">
+        <img [src]="game.imageUrl" [alt]="game.title" />
+      </div>
+    }
 
-    <div class="game-info-section">
-      <mat-chip-set class="genre-chip">
-        <mat-chip *ngFor="let genre of game.genres" variant="outlined">
-          <mat-icon matChipAvatar>{{ iconService.iconFor(genre) }}</mat-icon>
-          {{ genre }}
-        </mat-chip>
-      </mat-chip-set>
+    <div class="game-meta">
+      @if (game.genres.length) {
+        <div class="genre-chips">
+          @for (genre of game.genres; track genre) {
+            <span class="genre-chip">{{ genre }}</span>
+          }
+        </div>
+      }
 
-      <div class="game-stats">
-        <div class="stat-item">
-          <mat-icon>group</mat-icon>
-          <span><strong>Players:</strong> {{ game.minPlayers }}-{{ game.maxPlayers }}</span>
-        </div>
-        <div class="stat-item">
-          <mat-icon>schedule</mat-icon>
-          <span><strong>Play Time:</strong> {{ game.playTime }}</span>
-        </div>
-        <div class="stat-item">
-          <mat-icon>comment</mat-icon>
-          <span><strong>Comments:</strong> {{ getAllComments().length }}</span>
-        </div>
+      <div class="meta-row">
+        <span>{{ game.minPlayers }}–{{ game.maxPlayers }} players</span>
+        <span class="dot">·</span>
+        <span>{{ game.playTime }}</span>
+        @if (getAllComments().length) {
+          <span class="dot">·</span>
+          <span>{{ getAllComments().length }} comment{{ getAllComments().length === 1 ? '' : 's' }}</span>
+        }
       </div>
 
-      <div class="description">
-        <h3>Description</h3>
-        <p>{{ game.description }}</p>
-      </div>
-    </div>
-  </div>
-
-  <mat-divider></mat-divider>
-
-  <div class="rating-section">
-    <mat-card class="rating-card bgg-rating" *ngIf="game.bggRating">
-      <mat-card-header>
-        <mat-icon mat-card-avatar>star</mat-icon>
-        <mat-card-title>BGG Rating</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="rating-value">{{ game.bggRating }}/10</div>
-        <div class="rating-stars">{{ getRatingStars(game.bggRating) }}</div>
-      </mat-card-content>
-    </mat-card>
-    
-    <mat-card class="rating-card community-rating">
-      <mat-card-header>
-        <mat-icon mat-card-avatar>people</mat-icon>
-        <mat-card-title>Community Rating</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="rating-value" *ngIf="getAverageRating(); else noRating">
-          {{ getAverageRating()! | number:'1.1-1' }}/10
+      @if (game.bggRating || getAverageRating() != null) {
+        <div class="ratings-row">
+          @if (game.bggRating) {
+            <span class="rating">
+              <mat-icon>star</mat-icon>
+              BGG <strong>{{ game.bggRating | number:'1.1-1' }}</strong>
+            </span>
+          }
+          @if (getAverageRating() != null) {
+            <span class="rating">
+              <mat-icon>star</mat-icon>
+              Community <strong>{{ getAverageRating()! | number:'1.1-1' }}</strong>
+            </span>
+          }
         </div>
-        <ng-template #noRating>
-          <div class="rating-value no-rating">No ratings yet</div>
-        </ng-template>
-        <div class="rating-stars" *ngIf="getAverageRating()">
-          {{ getRatingStars(getAverageRating()!) }}
+      }
+
+      @if (game.description) {
+        <div class="description">
+          <span class="eyebrow">Description</span>
+          <p>{{ game.description }}</p>
         </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
-
-  <mat-divider></mat-divider>
-
-  <div class="comments-section">
-    <h3 class="gradient-text">Game Day Feedback</h3>
-    
-    <div class="add-comment-form">
-      <div class="form-row">
-        <mat-form-field appearance="outline" class="username-field">
-          <mat-label>Name</mat-label>
-          <input matInput [(ngModel)]="newComment.username" placeholder="Enter your name">
-        </mat-form-field>
-        
-        <mat-form-field appearance="outline" class="rating-field">
-          <mat-label>Rating (Optional)</mat-label>
-          <mat-select [(ngModel)]="newComment.rating">
-            <mat-option [value]="undefined">No Rating</mat-option>
-            <mat-option *ngFor="let rating of ratings" [value]="rating">
-              {{ rating }}/10
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
-
-      <mat-form-field appearance="outline" class="comment-field">
-        <mat-label>Your Comment</mat-label>
-        <textarea matInput 
-                  [(ngModel)]="newComment.comment" 
-                  placeholder="Share your thoughts about this game..."
-                  rows="3"></textarea>
-      </mat-form-field>
-
-      <div class="button-row">
-        <button mat-raised-button 
-                color="primary" 
-                (click)="addComment()"
-                [disabled]="!newComment.comment.trim() || isSubmitting">
-          <mat-icon>{{ isSubmitting ? 'sync' : 'send' }}</mat-icon>
-          {{ isSubmitting ? 'Adding...' : 'Add Comment' }}
-        </button>
-      </div>
+      }
     </div>
+  </section>
 
-    <div class="comments-list" *ngIf="getAllComments().length > 0">
-      <h4>💬 Comments ({{ getAllComments().length }})</h4>
-      <mat-card *ngFor="let comment of getAllComments()" class="comment-card">
-        <mat-card-header>
-          <mat-icon mat-card-avatar>person</mat-icon>
-          <mat-card-title class="comment-author">{{ comment.username }}</mat-card-title>
-          <mat-card-subtitle class="comment-date">
-            {{ comment.timestamp | date:'short' }}
-          </mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="comment-rating" *ngIf="comment.rating">
-            <strong>Rating:</strong> {{ comment.rating }}/10
-            <span class="rating-stars">{{ getRatingStars(comment.rating) }}</span>
-          </div>
-          <p class="comment-text">{{ comment.comment }}</p>
-        </mat-card-content>
-      </mat-card>
-    </div>
+  <section class="comments-section">
+    <span class="eyebrow">Comments</span>
 
-    <div class="no-comments" *ngIf="getAllComments().length === 0">
-      <mat-icon>chat_bubble_outline</mat-icon>
-      <p>No comments yet. Be the first to share your thoughts!</p>
-    </div>
-  </div>
+    <form class="comment-form" (ngSubmit)="addComment()">
+      <textarea
+        class="comment-input"
+        [(ngModel)]="newComment.comment"
+        name="comment"
+        placeholder="Share your thoughts about this game…"
+        rows="3"
+      ></textarea>
+      <button
+        type="submit"
+        class="post-button"
+        [disabled]="!newComment.comment.trim() || isSubmitting"
+      >
+        {{ isSubmitting ? 'Posting…' : 'Post' }}
+      </button>
+    </form>
 
+    @if (getAllComments().length) {
+      <ul class="comment-list">
+        @for (comment of getAllComments(); track comment.id) {
+          <li class="comment">
+            <div class="comment-head">
+              <span class="comment-author">{{ comment.username }}</span>
+              <span class="comment-date">{{ comment.timestamp | date:'mediumDate' }}</span>
+              @if (comment.rating) {
+                <span class="comment-rating">
+                  <mat-icon>star</mat-icon>
+                  {{ comment.rating }}/10
+                </span>
+              }
+            </div>
+            <p class="comment-text">{{ comment.comment }}</p>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="empty">No comments yet. Be the first to share your thoughts.</p>
+    }
+  </section>
 </div>
