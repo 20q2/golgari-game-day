@@ -1,12 +1,14 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Game } from '../../models/game.model';
+import { MatIconModule } from '@angular/material/icon';
+import { Game, GameGenre } from '../../models/game.model';
 import { HeroVariant } from '../games.utils';
+import { GenreIconService } from '../../services/genre-icon.service';
 
 @Component({
   selector: 'app-games-hero',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './games-hero.component.html',
   styleUrls: ['./games-hero.component.scss'],
 })
@@ -16,6 +18,8 @@ export class GamesHeroComponent {
   @Input() likeCount = 0;
 
   @Output() open = new EventEmitter<Game>();
+
+  constructor(public iconService: GenreIconService) {}
 
   onClick(): void {
     this.open.emit(this.game);
@@ -39,7 +43,7 @@ export class GamesHeroComponent {
     return this.variant === 'most-loved' ? '♥' : '★';
   }
 
-  get genresShown(): string[] {
+  get genresShown(): GameGenre[] {
     return this.game.genres.slice(0, 3);
   }
 

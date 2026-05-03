@@ -23,7 +23,10 @@
       <span>{{ game.playTime }}</span>
     </div>
     <div class="genres">
-      <span *ngFor="let g of genresShown" class="genre-pill">{{ g }}</span>
+      <span *ngFor="let g of genresShown" class="genre-pill">
+        <mat-icon class="pill-icon">{{ iconService.iconFor(g) }}</mat-icon>
+        <span class="pill-label">{{ g }}</span>
+      </span>
     </div>
   </div>
 </button>
