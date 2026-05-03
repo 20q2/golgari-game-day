@@ -17,6 +17,7 @@ import {
   SortOrder,
 } from '../../models/game.model';
 import { GenreCount } from '../games.utils';
+import { GenreIconService } from '../../services/genre-icon.service';
 
 export interface FilterSheetData {
   filter: GameFilter;
@@ -59,6 +60,7 @@ export class GamesFilterSheetComponent {
   ];
 
   constructor(
+    public iconService: GenreIconService,
     @Optional() private bottomSheetRef: MatBottomSheetRef<GamesFilterSheetComponent, FilterSheetResult>,
     @Optional() private dialogRef: MatDialogRef<GamesFilterSheetComponent, FilterSheetResult>,
     @Optional() @Inject(MAT_BOTTOM_SHEET_DATA) bottomSheetData: FilterSheetData,

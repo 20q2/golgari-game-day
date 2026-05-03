@@ -49,7 +49,9 @@
         [class.selected]="isSelected(g.genre)"
         (click)="toggleGenre(g.genre)"
       >
-        {{ g.genre }} <span class="count">{{ g.count }}</span>
+        <mat-icon class="chip-icon">{{ iconService.iconFor(g.genre) }}</mat-icon>
+        <span class="chip-label">{{ g.genre }}</span>
+        <span class="count">{{ g.count }}</span>
       </button>
     </div>
   </section>

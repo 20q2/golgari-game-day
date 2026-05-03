@@ -66,6 +66,9 @@
 }
 
 .genre-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: var(--games-surface);
   color: var(--games-text-secondary);
   border: 1px solid var(--games-surface-border);
@@ -85,6 +88,13 @@
     color: white;
     border-color: var(--games-action);
     font-weight: 600;
+  }
+
+  .chip-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    line-height: 1;
   }
 
   .count {
