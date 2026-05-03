@@ -272,24 +272,28 @@ git commit -m "feat(tv): register /tv route"
 
 ### Task 6: Add the desktop-only navbar link
 
+**Context:** The navbar has evolved since this plan was first drafted — it now has a `.brand` home link on the left and a sign-in button / user chip block on the right (gated by `@if (userService.isSignedIn())`). Do **not** replace the file wholesale. Splice the TV link in between the existing Games link and the sign-in `@if` block.
+
 **Files:**
 - Modify: `src/app/navbar/navbar.component.html`
 - Modify: `src/app/navbar/navbar.component.scss`
 
-- [ ] **Step 1: Update the navbar template**
+- [ ] **Step 1: Splice the TV link into the navbar template**
 
-Replace the entire contents of `src/app/navbar/navbar.component.html` with:
+In `src/app/navbar/navbar.component.html`, find this block (lines 13-17 at time of writing):
 
 ```html
-<mat-toolbar color="primary" class="navbar">
-  <span class="title">🏰 Golgari Palace Game Day</span>
-  <span class="spacer"></span>
-
-  <div class="nav-links">
-    <a mat-button routerLink="/home" routerLinkActive="active" class="nav-link">
-      <mat-icon>home</mat-icon>
-      <span class="nav-text">Home</span>
+    <a mat-button routerLink="/games" routerLinkActive="active" class="nav-link">
+      <mat-icon>sports_esports</mat-icon>
+      <span class="nav-text">Games</span>
     </a>
+
+    @if (userService.isSignedIn()) {
+```
+
+Replace it with:
+
+```html
     <a mat-button routerLink="/games" routerLinkActive="active" class="nav-link">
       <mat-icon>sports_esports</mat-icon>
       <span class="nav-text">Games</span>
@@ -298,17 +302,15 @@ Replace the entire contents of `src/app/navbar/navbar.component.html` with:
       <mat-icon>qr_code_2</mat-icon>
       <span class="nav-text">TV</span>
     </a>
-  </div>
-</mat-toolbar>
 
-<div class="content">
-  <ng-content></ng-content>
-</div>
+    @if (userService.isSignedIn()) {
 ```
+
+The TV link sits between the Games link and the sign-in conditional. Do not touch the `.brand` link, the sign-in `@if`, or any other existing markup.
 
 - [ ] **Step 2: Add the desktop-only utility to the navbar styles**
 
-Append the following block to the **end** of `src/app/navbar/navbar.component.scss` (after the existing `@media (max-width: 480px)` block):
+Append the following block to the **end** of `src/app/navbar/navbar.component.scss` (after the final `@media (max-width: 480px)` block that styles `.user-chip`):
 
 ```scss
 .desktop-only {
@@ -320,7 +322,17 @@ Append the following block to the **end** of `src/app/navbar/navbar.component.sc
 
 The `!important` is required to override Angular Material's default `display` on `mat-button`-styled anchors (the existing `.nav-link` rule already uses `!important` for the same reason).
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Verify the dev server still renders the navbar without errors**
+
+Run:
+
+```bash
+npx tsc --noEmit -p tsconfig.app.json
+```
+
+Expected: clean exit. (Template type-checking is enabled via `strictTemplates: true` in `tsconfig.json`, so an HTML edit that breaks structural directives or class binding will surface here.)
+
+- [ ] **Step 4: Commit**
 
 ```bash
 git add src/app/navbar/navbar.component.html src/app/navbar/navbar.component.scss
