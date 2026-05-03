@@ -24,7 +24,9 @@
     [class.active]="!multipleSelected && selectedGenre === g.genre"
     (click)="onChipClick(g.genre)"
   >
-    {{ g.genre }} <span class="chip-count">{{ g.count }}</span>
+    <mat-icon class="chip-icon">{{ iconService.iconFor(g.genre) }}</mat-icon>
+    <span class="chip-label">{{ g.genre }}</span>
+    <span class="chip-count">{{ g.count }}</span>
   </button>
 
   <button

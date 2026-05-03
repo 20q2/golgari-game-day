@@ -1,12 +1,14 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { GameGenre } from '../../models/game.model';
 import { GenreCount } from '../games.utils';
+import { GenreIconService } from '../../services/genre-icon.service';
 
 @Component({
   selector: 'app-games-genre-strip',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './games-genre-strip.component.html',
   styleUrls: ['./games-genre-strip.component.scss'],
 })
@@ -26,6 +28,8 @@ export class GamesGenreStripComponent {
   @Output() selectGenre = new EventEmitter<GameGenre | null>();
   /** Open the filter sheet (used by the "+N more" chip). */
   @Output() openFilters = new EventEmitter<void>();
+
+  constructor(public iconService: GenreIconService) {}
 
   onChipClick(genre: GameGenre | null): void {
     if (this.multipleSelected) {

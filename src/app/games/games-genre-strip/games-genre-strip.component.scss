@@ -22,6 +22,9 @@
 }
 
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
   background: var(--games-surface);
   color: var(--games-text-secondary);
@@ -61,6 +64,13 @@
 
   &.more {
     color: var(--games-text-muted);
+  }
+
+  .chip-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    line-height: 1;
   }
 
   .chip-count {
