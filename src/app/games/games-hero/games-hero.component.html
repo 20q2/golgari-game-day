@@ -3,6 +3,8 @@
   class="hero"
   [class.most-loved]="variant === 'most-loved'"
   [class.top-rated]="variant === 'top-rated'"
+  [class.highest-rated]="variant === 'highest-rated'"
+  [class.recently-hot]="variant === 'recently-hot'"
   (click)="onClick()"
   (keydown)="onKey($event)"
   [attr.aria-label]="'Open ' + game.title + ' details'"
@@ -11,7 +13,12 @@
   <div class="overlay"></div>
 
   <div class="badge">
-    <span class="badge-icon" [class.heart]="variant === 'most-loved'" [class.star]="variant === 'top-rated'">{{ badgeIcon }}</span>
+    <span
+      class="badge-icon"
+      [class.heart]="variant === 'most-loved'"
+      [class.star]="variant === 'top-rated' || variant === 'highest-rated'"
+      [class.fire]="variant === 'recently-hot'"
+    >{{ badgeIcon }}</span>
     {{ badgeText }}
   </div>
 

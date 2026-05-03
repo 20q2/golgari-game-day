@@ -16,6 +16,7 @@ export class GamesHeroComponent {
   @Input({ required: true }) game!: Game;
   @Input() variant: HeroVariant = 'top-rated';
   @Input() likeCount = 0;
+  @Input() ratingValue?: number;
 
   @Output() open = new EventEmitter<Game>();
 
@@ -33,14 +34,31 @@ export class GamesHeroComponent {
   }
 
   get badgeText(): string {
-    if (this.variant === 'most-loved') {
-      return this.likeCount === 1 ? 'MOST LOVED · 1 LIKE' : `MOST LOVED · ${this.likeCount} LIKES`;
+    switch (this.variant) {
+      case 'most-loved':
+        return this.likeCount === 1 ? 'MOST LOVED · 1 LIKE' : `MOST LOVED · ${this.likeCount} LIKES`;
+      case 'highest-rated':
+        return this.ratingValue != null ? `HIGHEST RATED · ${this.ratingValue.toFixed(1)}` : 'HIGHEST RATED';
+      case 'recently-hot':
+        return "WHAT'S HOT";
+      case 'top-rated':
+      default:
+        return 'TOP RATED';
     }
-    return 'TOP RATED';
   }
 
-  get badgeIcon(): '♥' | '★' {
-    return this.variant === 'most-loved' ? '♥' : '★';
+  get badgeIcon(): string {
+    switch (this.variant) {
+      case 'most-loved':
+        return '♥';
+      case 'highest-rated':
+      case 'top-rated':
+        return '★';
+      case 'recently-hot':
+        return '🔥';
+      default:
+        return '★';
+    }
   }
 
   get genresShown(): GameGenre[] {
