@@ -18,7 +18,16 @@
       "Bash(npm --version)",
       "Edit(/.claude/skills/add-board-game/**)",
       "Bash(npx eslint *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Read(//a//**)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 7628)",
+      "Bash(npm start *)",
+      "Bash(taskkill //F //PID 27296)",
+      "PowerShell(New-Item -ItemType Directory -Path \"docs\\\\superpowers\\\\specs\" -Force)",
+      "Bash(echo \"EXITCODE=$?\")",
+      "Bash(npm run *)",
+      "Bash(git stash *)"
     ]
   }
 }

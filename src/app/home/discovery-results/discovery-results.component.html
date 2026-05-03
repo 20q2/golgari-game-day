@@ -6,7 +6,13 @@
       *ngFor="let item of rankedGames; trackBy: trackById"
       (click)="onSelect(item.game.id)"
     >
-      <div class="thumb" [style.backgroundImage]="item.game.imageUrl ? 'url(' + item.game.imageUrl + ')' : null">
+      <div class="thumb">
+        <img
+          *ngIf="item.game.imageUrl"
+          [src]="item.game.imageUrl"
+          [alt]="item.game.title"
+          loading="lazy"
+        />
         <mat-icon *ngIf="!item.game.imageUrl && item.primaryGenre">
           {{ iconService.iconFor(item.primaryGenre) }}
         </mat-icon>

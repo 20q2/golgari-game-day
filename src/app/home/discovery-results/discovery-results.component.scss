@@ -44,12 +44,18 @@
   border-radius: 6px;
   flex: 0 0 56px;
   background-color: #1a3a2e;
-  background-size: cover;
-  background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.85);
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
 
   mat-icon {
     font-size: 26px;
