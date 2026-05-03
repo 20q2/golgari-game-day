@@ -1,0 +1,68 @@
+:host {
+  display: block;
+}
+
+.featured {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+
+  @media (min-width: 1024px) {
+    margin-bottom: 22px;
+  }
+}
+
+.track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  // Override the hero's :host margin so we control gutter via the track.
+  > app-games-hero {
+    display: block;
+    margin-bottom: 0;
+  }
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  background: var(--games-surface-border);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    background: var(--games-surface-hover);
+  }
+
+  &.active {
+    background: var(--games-action);
+    transform: scale(1.15);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--games-action-hover);
+    outline-offset: 2px;
+  }
+}

@@ -1,0 +1,23 @@
+<div class="featured" *ngIf="selections.length > 0">
+  <div class="track">
+    <div *ngFor="let s of selections; let i = index" class="slide" #slide>
+      <app-games-hero
+        [game]="s.game"
+        [variant]="s.variant"
+        [likeCount]="s.likeCount"
+        [ratingValue]="s.ratingValue"
+        (open)="open.emit($event)"
+      ></app-games-hero>
+    </div>
+  </div>
+  <nav class="dots" *ngIf="selections.length > 1" aria-label="Featured carousel pagination">
+    <button
+      *ngFor="let s of selections; let i = index"
+      type="button"
+      class="dot"
+      [class.active]="i === activeIndex"
+      [attr.aria-label]="'Go to slide ' + (i + 1) + ' of ' + selections.length"
+      (click)="scrollTo(i)"
+    ></button>
+  </nav>
+</div>
