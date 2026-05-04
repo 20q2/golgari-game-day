@@ -50,7 +50,7 @@
   {
     "id": "8",
     "title": "Gloomhaven",
-    "genres": ["Adventure", "Cooperative", "Strategy"],
+    "genres": ["Adventure", "Strategy", "Cooperative"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-9999 minutes",
@@ -62,7 +62,7 @@
   {
     "id": "9",
     "title": "Frosthaven",
-    "genres": ["Adventure", "Cooperative", "Strategy"],
+    "genres": ["Adventure", "Strategy", "Cooperative"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-9999 minutes",
@@ -122,7 +122,7 @@
   {
     "id": "14",
     "title": "City of the Great Machine",
-    "genres": ["Adventure", "Asymmetric", "Cooperative"],
+    "genres": ["Adventure", "Cooperative", "Asymmetric"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "90-120 minutes",
