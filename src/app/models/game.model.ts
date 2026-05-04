@@ -21,33 +21,16 @@ export interface GameComment {
 
 export enum GameGenre {
   STRATEGY = 'Strategy',
-  PARTY = 'Party',
-  COOPERATIVE = 'Cooperative',
-  CARD_GAME = 'Card Game',
-  DECK_BUILDING = 'Deck Building',
-  EURO = 'Euro',
-  THEMATIC = 'Thematic',
-  ABSTRACT = 'Abstract',
   FAMILY = 'Family',
-  WAR_GAME = 'War Game',
-  DRINKING = 'Drinking',
-  ENGINE_BUILDING = 'Engine Building',
-  DEXTERITY = 'Dexterity',
-  SOCIAL_DEDUCTION = 'Social Deduction',
-  BLUFFING = 'Bluffing',
-  MEMORY = 'Memory',
+  PARTY = 'Party',
   ADVENTURE = 'Adventure',
-  HORROR = 'Horror',
-  AREA_CONTROL = 'Area Control',
-  RPG = 'RPG',
-  CARD_DRAFTING = 'Card Drafting',
-  MINIATURES = 'Miniatures',
-  LEGACY = 'Legacy',
-  NEGOTIATION = 'Negotiation',
-  ROUTE_BUILDING = 'Route Building',
-  SET_COLLECTION = 'Set Collection',
-  PUSH_YOUR_LUCK = 'Push Your Luck',
-  ASYMMETRIC = 'Asymmetric'
+  DRINKING = 'Drinking',
+  COOPERATIVE = 'Cooperative',
+  SOCIAL = 'Social',
+  ASYMMETRIC = 'Asymmetric',
+  DECK_BUILDER = 'Deck Builder',
+  ENGINE_BUILDER = 'Engine Builder',
+  CARD_DRAFTING = 'Card Drafting'
 }
 
 export enum GameDuration {
