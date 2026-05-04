@@ -124,6 +124,7 @@
 
   .stats {
     display: flex;
+    align-items: center;
     gap: 10px;
     font-size: 12px;
     opacity: 0.95;
@@ -133,6 +134,47 @@
       gap: 14px;
       font-size: 13px;
       margin-top: 6px;
+    }
+  }
+
+  .bgg-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+
+    @media (min-width: 768px) {
+      padding: 3px 9px;
+      font-size: 12px;
+      gap: 5px;
+    }
+
+    .bgg-star {
+      color: var(--games-star);
+    }
+
+    .bgg-value {
+      color: white;
+    }
+
+    .bgg-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.18);
+      color: white;
+
+      @media (min-width: 768px) {
+        font-size: 10px;
+      }
     }
   }
 

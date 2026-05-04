@@ -1,12 +1,13 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { Game } from '../../models/game.model';
 import { GameStats } from '../../services/data-aggregation.service';
 
 @Component({
   selector: 'app-games-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './games-list.component.html',
   styleUrls: ['./games-list.component.scss'],
 })

@@ -89,10 +89,39 @@
   }
 }
 
-.genre-grid {
+.genre-grid,
+.value-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.value-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  background: var(--games-surface);
+  color: var(--games-text-secondary);
+  border: 1px solid var(--games-surface-border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    color: var(--games-text-primary, #e0e8e2);
+    border-color: var(--games-action);
+  }
+
+  &.selected {
+    background: var(--games-action);
+    color: white;
+    border-color: var(--games-action);
+  }
 }
 
 .genre-chip {

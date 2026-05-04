@@ -33,7 +33,22 @@
   </ng-container>
 
   <ng-container *ngIf="(filteredGames$ | async) as games">
-    <div class="section-label">{{ isFiltered ? 'Results · ' + games.length : 'All games' }}</div>
+    <div class="section-bar">
+      <div class="section-label">{{ isFiltered ? 'Results · ' + games.length : 'All games' }}</div>
+      <label class="sort-chip" *ngIf="games.length > 0">
+        <mat-icon class="sort-icon">swap_vert</mat-icon>
+        <span class="sort-label">Sort</span>
+        <select
+          class="sort-select"
+          [ngModel]="sort"
+          (ngModelChange)="onSortChange($event)"
+          aria-label="Sort games"
+        >
+          <option *ngFor="let o of sortOptions" [ngValue]="o.value">{{ o.label }}</option>
+        </select>
+        <mat-icon class="sort-caret">expand_more</mat-icon>
+      </label>
+    </div>
 
     <app-games-list
       *ngIf="games.length > 0; else empty"

@@ -24,7 +24,11 @@
   <div class="meta">
     <h2 class="title">{{ game.title }}</h2>
     <div class="stats">
-      <span *ngIf="game.bggRating">★ {{ game.bggRating }}</span>
+      <span *ngIf="game.bggRating" class="bgg-chip">
+        <span class="bgg-star">★</span>
+        <span class="bgg-value">{{ game.bggRating }}</span>
+        <span class="bgg-label">BGG</span>
+      </span>
       <span>{{ playerLabel }}</span>
       <span>{{ game.playTime }}</span>
     </div>

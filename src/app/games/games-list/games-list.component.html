@@ -23,12 +23,17 @@
       <div class="meta">{{ playerLabel(g) }} · {{ g.playTime }}</div>
     </div>
 
+    <div class="social" *ngIf="likes(g) || comments(g)">
+      <span *ngIf="likes(g)" class="social-item heart">
+        <mat-icon class="social-icon">favorite</mat-icon>{{ likes(g) }}
+      </span>
+      <span *ngIf="comments(g)" class="social-item">
+        <mat-icon class="social-icon">mode_comment</mat-icon>{{ comments(g) }}
+      </span>
+    </div>
+
     <div class="trailing">
       <div class="rating" *ngIf="g.bggRating">★ {{ g.bggRating }}</div>
-      <div class="social" *ngIf="likes(g) || comments(g)">
-        <span *ngIf="likes(g)" class="social-item heart">♥ {{ likes(g) }}</span>
-        <span *ngIf="comments(g)" class="social-item">💬 {{ comments(g) }}</span>
-      </div>
     </div>
   </li>
 </ul>

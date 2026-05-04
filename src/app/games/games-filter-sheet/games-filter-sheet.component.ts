@@ -1,9 +1,5 @@
 import { Component, Inject, Optional } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import {
   MatBottomSheetRef,
@@ -36,14 +32,7 @@ export interface FilterSheetResult {
 @Component({
   selector: 'app-games-filter-sheet',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatInputModule,
-    MatIconModule,
-  ],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './games-filter-sheet.component.html',
   styleUrls: ['./games-filter-sheet.component.scss'],
 })
@@ -54,14 +43,20 @@ export class GamesFilterSheetComponent {
 
   private readonly onChange?: (state: FilterSheetResult) => void;
 
-  durations = Object.values(GameDuration);
-  sortOptions = [
-    { value: SortOrder.TITLE_ASC, label: 'Title A–Z' },
-    { value: SortOrder.TITLE_DESC, label: 'Title Z–A' },
-    { value: SortOrder.RATING_DESC, label: 'Rating high → low' },
-    { value: SortOrder.RATING_ASC, label: 'Rating low → high' },
-    { value: SortOrder.PLAYERS_ASC, label: 'Players low → high' },
-    { value: SortOrder.PLAYERS_DESC, label: 'Players high → low' },
+  durationOptions: { value: GameDuration; label: string }[] = [
+    { value: GameDuration.SHORT, label: '< 30m' },
+    { value: GameDuration.MEDIUM, label: '30–60m' },
+    { value: GameDuration.LONG, label: '1–2h' },
+    { value: GameDuration.EPIC, label: '2h+' },
+  ];
+  playerOptions: { value: number; label: string }[] = [
+    { value: 1, label: '1' },
+    { value: 2, label: '2' },
+    { value: 3, label: '3' },
+    { value: 4, label: '4' },
+    { value: 5, label: '5' },
+    { value: 6, label: '6' },
+    { value: 7, label: '7+' },
   ];
 
   constructor(
@@ -87,6 +82,16 @@ export class GamesFilterSheetComponent {
   /** Push the current filter/sort to the parent so changes apply live. */
   emit(): void {
     this.onChange?.({ filter: this.filter, sort: this.sort });
+  }
+
+  selectDuration(d: GameDuration | undefined): void {
+    this.filter.duration = this.filter.duration === d ? undefined : d;
+    this.emit();
+  }
+
+  selectPlayers(n: number | undefined): void {
+    this.filter.supportedPlayers = this.filter.supportedPlayers === n ? undefined : n;
+    this.emit();
   }
 
   toggleGenre(genre: GameGenre): void {

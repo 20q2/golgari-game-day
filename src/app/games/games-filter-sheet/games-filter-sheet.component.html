@@ -9,27 +9,28 @@
 
   <section class="row">
     <label class="row-label">
-      <mat-icon>sort</mat-icon>
-      <span>Sort</span>
-    </label>
-    <mat-form-field appearance="outline" class="full">
-      <mat-select [(ngModel)]="sort" (ngModelChange)="emit()">
-        <mat-option *ngFor="let o of sortOptions" [value]="o.value">{{ o.label }}</mat-option>
-      </mat-select>
-    </mat-form-field>
-  </section>
-
-  <section class="row">
-    <label class="row-label">
       <mat-icon>schedule</mat-icon>
       <span>Duration</span>
     </label>
-    <mat-form-field appearance="outline" class="full">
-      <mat-select [(ngModel)]="filter.duration" (ngModelChange)="emit()" placeholder="Any">
-        <mat-option [value]="undefined">Any</mat-option>
-        <mat-option *ngFor="let d of durations" [value]="d">{{ d }}</mat-option>
-      </mat-select>
-    </mat-form-field>
+    <div class="value-grid">
+      <button
+        type="button"
+        class="value-chip"
+        [class.selected]="filter.duration == null"
+        (click)="selectDuration(undefined)"
+      >
+        Any
+      </button>
+      <button
+        *ngFor="let d of durationOptions"
+        type="button"
+        class="value-chip"
+        [class.selected]="filter.duration === d.value"
+        (click)="selectDuration(d.value)"
+      >
+        {{ d.label }}
+      </button>
+    </div>
   </section>
 
   <section class="row">
@@ -37,17 +38,25 @@
       <mat-icon>group</mat-icon>
       <span>Players</span>
     </label>
-    <mat-form-field appearance="outline" class="full">
-      <input
-        matInput
-        type="number"
-        min="1"
-        max="12"
-        [(ngModel)]="filter.supportedPlayers"
-        (ngModelChange)="emit()"
-        placeholder="Any"
-      />
-    </mat-form-field>
+    <div class="value-grid">
+      <button
+        type="button"
+        class="value-chip"
+        [class.selected]="filter.supportedPlayers == null"
+        (click)="selectPlayers(undefined)"
+      >
+        Any
+      </button>
+      <button
+        *ngFor="let p of playerOptions"
+        type="button"
+        class="value-chip"
+        [class.selected]="filter.supportedPlayers === p.value"
+        (click)="selectPlayers(p.value)"
+      >
+        {{ p.label }}
+      </button>
+    </div>
   </section>
 
   <section class="row">

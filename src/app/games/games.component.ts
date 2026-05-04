@@ -1,5 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
@@ -51,6 +53,8 @@ const SURFACE_GENRE_COUNT = 6;
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
+    MatIconModule,
     GamesSearchBarComponent,
     GamesGenreStripComponent,
     GamesHeroComponent,
@@ -76,6 +80,15 @@ export class GamesComponent implements OnInit, OnDestroy {
   topGenresList: GenreCount[] = [];
   allGenreCounts: GenreCount[] = [];
   remainingCount = 0;
+
+  readonly sortOptions: { value: SortOrder; label: string }[] = [
+    { value: SortOrder.TITLE_ASC, label: 'Title A–Z' },
+    { value: SortOrder.TITLE_DESC, label: 'Title Z–A' },
+    { value: SortOrder.RATING_DESC, label: 'Rating high → low' },
+    { value: SortOrder.RATING_ASC, label: 'Rating low → high' },
+    { value: SortOrder.PLAYERS_ASC, label: 'Players low → high' },
+    { value: SortOrder.PLAYERS_DESC, label: 'Players high → low' },
+  ];
 
   // Whether any filter beyond search hides the hero
   get isFiltered(): boolean {
@@ -181,6 +194,14 @@ export class GamesComponent implements OnInit, OnDestroy {
   onSelectGenre(genre: GameGenre | null): void {
     this.filter.genres = genre ? [genre] : undefined;
     this.gamesService.setFilter({ ...this.filter });
+    this.persist();
+  }
+
+  // ---- Sort ----
+
+  onSortChange(value: SortOrder): void {
+    this.sort = value;
+    this.gamesService.setSort(this.sort);
     this.persist();
   }
 
