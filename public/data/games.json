@@ -2,7 +2,7 @@
   {
     "id": "1",
     "title": "Wingspan",
-    "genres": ["Strategy", "Engine Building", "Euro"],
+    "genres": ["Strategy", "Engine Builder"],
     "minPlayers": 1,
     "maxPlayers": 5,
     "playTime": "40-70 minutes",
@@ -14,7 +14,7 @@
   {
     "id": "4",
     "title": "Splendor",
-    "genres": ["Euro", "Set Collection", "Strategy"],
+    "genres": ["Strategy"],
     "minPlayers": 2,
     "maxPlayers": 4,
     "playTime": "30 minutes",
@@ -38,7 +38,7 @@
   {
     "id": "7",
     "title": "Ticket to Ride: Europe",
-    "genres": ["Family", "Route Building"],
+    "genres": ["Family"],
     "minPlayers": 2,
     "maxPlayers": 5,
     "playTime": "30-60 minutes",
@@ -50,7 +50,7 @@
   {
     "id": "8",
     "title": "Gloomhaven",
-    "genres": ["Thematic", "Legacy", "Miniatures", "RPG"],
+    "genres": ["Adventure", "Cooperative", "Strategy"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-9999 minutes",
@@ -62,7 +62,7 @@
   {
     "id": "9",
     "title": "Frosthaven",
-    "genres": ["Thematic", "Legacy", "Miniatures", "RPG"],
+    "genres": ["Adventure", "Cooperative", "Strategy"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-9999 minutes",
@@ -74,7 +74,7 @@
   {
     "id": "10",
     "title": "Draconis Invasion",
-    "genres": ["Deck Building", "Thematic"],
+    "genres": ["Adventure", "Cooperative", "Deck Builder"],
     "minPlayers": 1,
     "maxPlayers": 6,
     "playTime": "45-60 minutes",
@@ -86,7 +86,7 @@
   {
     "id": "11",
     "title": "Valor & Villainy: Minions of Mordak",
-    "genres": ["Asymmetric", "RPG", "Thematic"],
+    "genres": ["Adventure", "Asymmetric"],
     "minPlayers": 2,
     "maxPlayers": 6,
     "playTime": "90-150 minutes",
@@ -98,7 +98,7 @@
   {
     "id": "12",
     "title": "Primal: The Awakening",
-    "genres": ["Cooperative", "Miniatures", "Thematic"],
+    "genres": ["Adventure", "Cooperative"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-120 minutes",
@@ -110,7 +110,7 @@
   {
     "id": "13",
     "title": "CubeClimbers",
-    "genres": ["Abstract", "Strategy"],
+    "genres": ["Strategy"],
     "minPlayers": 2,
     "maxPlayers": 4,
     "playTime": "20-30 minutes",
@@ -122,7 +122,7 @@
   {
     "id": "14",
     "title": "City of the Great Machine",
-    "genres": ["Asymmetric", "Thematic"],
+    "genres": ["Adventure", "Asymmetric", "Cooperative"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "90-120 minutes",
@@ -134,7 +134,7 @@
   {
     "id": "15",
     "title": "Drinking Quest: Six Pack",
-    "genres": ["Party", "RPG", "Drinking"],
+    "genres": ["Party", "Adventure", "Drinking"],
     "minPlayers": 2,
     "maxPlayers": 8,
     "playTime": "45-60 minutes",
@@ -146,7 +146,7 @@
   {
     "id": "16",
     "title": "Binding of Isaac: Four Souls",
-    "genres": ["Card Game", "Adventure"],
+    "genres": ["Adventure"],
     "minPlayers": 2,
     "maxPlayers": 4,
     "playTime": "30-60 minutes",
@@ -170,7 +170,7 @@
   {
     "id": "18",
     "title": "Stardew Valley: The Board Game",
-    "genres": ["Cooperative", "Family"],
+    "genres": ["Family", "Cooperative"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "45-200 minutes",
@@ -182,7 +182,7 @@
   {
     "id": "19",
     "title": "Betrayal at House on the Hill",
-    "genres": ["Adventure", "Horror"],
+    "genres": ["Adventure", "Social"],
     "minPlayers": 3,
     "maxPlayers": 6,
     "playTime": "30-120 minutes",
@@ -194,7 +194,7 @@
   {
     "id": "20",
     "title": "Calico",
-    "genres": ["Abstract", "Family"],
+    "genres": ["Family"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "30-45 minutes",
@@ -206,7 +206,7 @@
   {
     "id": "21",
     "title": "Flourish",
-    "genres": ["Card Drafting", "Family", "Euro"],
+    "genres": ["Strategy", "Family", "Card Drafting"],
     "minPlayers": 1,
     "maxPlayers": 7,
     "playTime": "25-45 minutes",
@@ -218,7 +218,7 @@
   {
     "id": "22",
     "title": "Beast",
-    "genres": ["Asymmetric", "Thematic"],
+    "genres": ["Adventure", "Asymmetric"],
     "minPlayers": 2,
     "maxPlayers": 4,
     "playTime": "60-90 minutes",
@@ -230,7 +230,7 @@
   {
     "id": "23",
     "title": "EOS: Island of Angels",
-    "genres": ["Engine Building", "Strategy", "Asymmetric"],
+    "genres": ["Strategy", "Asymmetric", "Engine Builder"],
     "minPlayers": 2,
     "maxPlayers": 5,
     "playTime": "60-120 minutes",
@@ -242,7 +242,7 @@
   {
     "id": "24",
     "title": "Party Wanted",
-    "genres": ["Drinking", "Party", "Cooperative", "Deck Building", "Adventure", "Thematic"],
+    "genres": ["Party", "Adventure", "Drinking", "Cooperative", "Deck Builder"],
     "minPlayers": 1,
     "maxPlayers": 8,
     "playTime": "30-120 minutes",
@@ -254,7 +254,7 @@
   {
     "id": "25",
     "title": "Enchanters: East Quest",
-    "genres": ["Card Drafting", "Thematic"],
+    "genres": ["Adventure", "Card Drafting"],
     "minPlayers": 1,
     "maxPlayers": 5,
     "playTime": "25-45 minutes",
@@ -266,7 +266,7 @@
   {
     "id": "27",
     "title": "Unstable Unicorns",
-    "genres": ["Party", "Card Game"],
+    "genres": ["Party"],
     "minPlayers": 2,
     "maxPlayers": 8,
     "playTime": "30-45 minutes",
@@ -278,7 +278,7 @@
   {
     "id": "28",
     "title": "Munchkin",
-    "genres": ["Party", "Card Game", "RPG"],
+    "genres": ["Party", "Adventure"],
     "minPlayers": 3,
     "maxPlayers": 6,
     "playTime": "60-120 minutes",
@@ -290,7 +290,7 @@
   {
     "id": "29",
     "title": "Wyrmspan",
-    "genres": ["Engine Building", "Euro"],
+    "genres": ["Strategy", "Engine Builder"],
     "minPlayers": 1,
     "maxPlayers": 5,
     "playTime": "90-120 minutes",
@@ -302,7 +302,7 @@
   {
     "id": "30",
     "title": "Catharsis",
-    "genres": ["Cooperative", "Adventure"],
+    "genres": ["Adventure", "Cooperative"],
     "minPlayers": 1,
     "maxPlayers": 5,
     "playTime": "45-60 minutes",
@@ -314,7 +314,7 @@
   {
     "id": "31",
     "title": "Overboss: A Boss Monster Adventure",
-    "genres": ["Card Drafting", "Family"],
+    "genres": ["Family", "Card Drafting"],
     "minPlayers": 1,
     "maxPlayers": 5,
     "playTime": "20-30 minutes",
@@ -326,7 +326,7 @@
   {
     "id": "32",
     "title": "Small World of Warcraft",
-    "genres": ["Thematic", "Area Control", "Asymmetric"],
+    "genres": ["Strategy", "Asymmetric"],
     "minPlayers": 2,
     "maxPlayers": 5,
     "playTime": "40-80 minutes",
@@ -338,7 +338,7 @@
   {
     "id": "33",
     "title": "Megaland",
-    "genres": ["Family", "Push Your Luck"],
+    "genres": ["Family"],
     "minPlayers": 2,
     "maxPlayers": 5,
     "playTime": "20-30 minutes",
@@ -350,7 +350,7 @@
   {
     "id": "34",
     "title": "Catacombs (Third Edition)",
-    "genres": ["Dexterity", "RPG", "Adventure"],
+    "genres": ["Adventure"],
     "minPlayers": 2,
     "maxPlayers": 5,
     "playTime": "30-90 minutes",
@@ -362,7 +362,7 @@
   {
     "id": "35",
     "title": "Return to Dark Tower",
-    "genres": ["Cooperative", "Adventure", "Miniatures"],
+    "genres": ["Adventure", "Cooperative"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "100-120 minutes",
@@ -374,7 +374,7 @@
   {
     "id": "36",
     "title": "Poison",
-    "genres": ["Card Game", "Party"],
+    "genres": ["Party"],
     "minPlayers": 3,
     "maxPlayers": 6,
     "playTime": "20-30 minutes",
@@ -386,7 +386,7 @@
   {
     "id": "37",
     "title": "Dragonwood",
-    "genres": ["Card Game", "Family", "Thematic"],
+    "genres": ["Family", "Adventure"],
     "minPlayers": 2,
     "maxPlayers": 4,
     "playTime": "20-30 minutes",
@@ -398,7 +398,7 @@
   {
     "id": "38",
     "title": "Captain’s Gambit: Kings of Infinite Space",
-    "genres": ["Social Deduction", "Asymmetric"],
+    "genres": ["Social", "Asymmetric"],
     "minPlayers": 4,
     "maxPlayers": 8,
     "playTime": "40-90 minutes",
@@ -410,7 +410,7 @@
   {
     "id": "39",
     "title": "Not Enough Mana",
-    "genres": ["Card Game", "Drinking", "Thematic"],
+    "genres": ["Drinking"],
     "minPlayers": 3,
     "maxPlayers": 6,
     "playTime": "60-120 minutes (varies by group)",
@@ -422,7 +422,7 @@
   {
     "id": "40",
     "title": "Here to Slay",
-    "genres": ["Card Game", "Strategy", "Thematic"],
+    "genres": ["Strategy", "Adventure"],
     "minPlayers": 2,
     "maxPlayers": 6,
     "playTime": "30-60 minutes",
@@ -434,7 +434,7 @@
   {
     "id": "41",
     "title": "Exiled Legends",
-    "genres": ["Card Game", "Strategy", "Thematic"],
+    "genres": ["Strategy", "Adventure"],
     "minPlayers": 2,
     "maxPlayers": 5,
     "playTime": "30-60 minutes",
@@ -446,7 +446,7 @@
   {
     "id": "42",
     "title": "Heroes of Barcadia",
-    "genres": ["Adventure", "Party", "Drinking", "RPG"],
+    "genres": ["Party", "Adventure", "Drinking"],
     "minPlayers": 2,
     "maxPlayers": 8,
     "playTime": "30-90 minutes",
@@ -458,7 +458,7 @@
   {
     "id": "43",
     "title": "Dice Forge",
-    "genres": ["Strategy", "Thematic", "Euro"],
+    "genres": ["Strategy"],
     "minPlayers": 2,
     "maxPlayers": 4,
     "playTime": "45 minutes",
@@ -470,7 +470,7 @@
   {
     "id": "44",
     "title": "Clank! Adventuring Party",
-    "genres": ["Deck Building", "Adventure", "Thematic"],
+    "genres": ["Adventure", "Deck Builder"],
     "minPlayers": 2,
     "maxPlayers": 6,
     "playTime": "60-120 minutes",
@@ -482,7 +482,7 @@
   {
     "id": "45",
     "title": "Monster Hunter: World - The Board Game",
-    "genres": ["Cooperative", "Miniatures", "Thematic"],
+    "genres": ["Adventure", "Cooperative"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-120 minutes",
@@ -494,7 +494,7 @@
   {
     "id": "46",
     "title": "Lunar Base",
-    "genres": ["Strategy", "Card Drafting", "Engine Building", "Euro"],
+    "genres": ["Strategy", "Engine Builder", "Card Drafting"],
     "minPlayers": 2,
     "maxPlayers": 6,
     "playTime": "30-45 minutes",
@@ -506,7 +506,7 @@
   {
     "id": "47",
     "title": "Pantheum: Demigods of Olympia",
-    "genres": ["Strategy", "Engine Building", "Area Control", "Euro", "Asymmetric"],
+    "genres": ["Strategy", "Asymmetric", "Engine Builder"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "45-60 minutes",
@@ -518,7 +518,7 @@
   {
     "id": "48",
     "title": "Eldritch Horror",
-    "genres": ["Cooperative", "Adventure", "Horror"],
+    "genres": ["Adventure", "Cooperative"],
     "minPlayers": 1,
     "maxPlayers": 8,
     "playTime": "120-240 minutes",
@@ -530,7 +530,7 @@
   {
     "id": "49",
     "title": "Sheriff of Nottingham",
-    "genres": ["Bluffing", "Negotiation", "Party", "Euro"],
+    "genres": ["Strategy", "Party", "Social"],
     "minPlayers": 3,
     "maxPlayers": 6,
     "playTime": "45-60 minutes",
@@ -542,7 +542,7 @@
   {
     "id": "50",
     "title": "7 Wonders",
-    "genres": ["Card Drafting", "Strategy", "Euro"],
+    "genres": ["Strategy", "Card Drafting"],
     "minPlayers": 3,
     "maxPlayers": 7,
     "playTime": "30 minutes",
@@ -554,7 +554,7 @@
   {
     "id": "51",
     "title": "Tellstones: King's Gambit",
-    "genres": ["Memory", "Bluffing", "Strategy"],
+    "genres": ["Strategy", "Social"],
     "minPlayers": 2,
     "maxPlayers": 4,
     "playTime": "10-20 minutes",
@@ -566,7 +566,7 @@
   {
     "id": "53",
     "title": "The Werewolves of Miller's Hollow",
-    "genres": ["Social Deduction", "Party"],
+    "genres": ["Party", "Social"],
     "minPlayers": 8,
     "maxPlayers": 18,
     "playTime": "30 minutes",
@@ -578,7 +578,7 @@
   {
     "id": "54",
     "title": "Cards vs Gravity",
-    "genres": ["Dexterity", "Party", "Drinking"],
+    "genres": ["Party", "Drinking"],
     "minPlayers": 2,
     "maxPlayers": 8,
     "playTime": "5-15 minutes",
@@ -590,7 +590,7 @@
   {
     "id": "55",
     "title": "BANG!",
-    "genres": ["Card Game", "Bluffing", "Social Deduction", "Thematic"],
+    "genres": ["Social"],
     "minPlayers": 4,
     "maxPlayers": 7,
     "playTime": "20-40 minutes",
@@ -602,7 +602,7 @@
   {
     "id": "56",
     "title": "Roll Player",
-    "genres": ["Strategy", "Thematic"],
+    "genres": ["Strategy", "Adventure"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-90 minutes",
@@ -614,7 +614,7 @@
   {
     "id": "57",
     "title": "Terraria: The Board Game",
-    "genres": ["Cooperative", "Adventure", "Deck Building"],
+    "genres": ["Adventure", "Cooperative", "Deck Builder"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "120-180 minutes",
@@ -626,7 +626,7 @@
   {
     "id": "58",
     "title": "Valheim: The Board Game",
-    "genres": ["Cooperative", "Adventure", "Thematic"],
+    "genres": ["Adventure", "Cooperative"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-120 minutes",
@@ -638,7 +638,7 @@
   {
     "id": "59",
     "title": "Shuffle Dungeons",
-    "genres": ["Cooperative", "Adventure", "Thematic"],
+    "genres": ["Adventure", "Cooperative"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-90 minutes",
@@ -650,7 +650,7 @@
   {
     "id": "60",
     "title": "One Last Fight",
-    "genres": ["Cooperative", "RPG", "Adventure", "Card Game", "Thematic"],
+    "genres": ["Adventure", "Cooperative"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-120 minutes",
@@ -662,7 +662,7 @@
   {
     "id": "61",
     "title": "Slay the Spire: The Board Game",
-    "genres": ["Cooperative", "Deck Building", "Adventure", "Thematic"],
+    "genres": ["Adventure", "Cooperative", "Deck Builder"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "30-150 minutes",
