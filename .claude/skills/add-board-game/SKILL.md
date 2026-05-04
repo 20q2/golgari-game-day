@@ -22,7 +22,7 @@ The catalog is a flat JSON array at [public/data/games.json](../../../public/dat
 {
   "id": "62",
   "title": "Shuffle Dungeons",
-  "genres": ["Cooperative", "Adventure", "Thematic"],
+  "genres": ["Cooperative", "Adventure"],
   "minPlayers": 1,
   "maxPlayers": 4,
   "playTime": "60-90 minutes",
@@ -50,43 +50,30 @@ The catalog is a flat JSON array at [public/data/games.json](../../../public/dat
 
 The `genres` field is a typed array — each entry must be one of the exact strings below. These are the values of the `GameGenre` enum in [src/app/models/game.model.ts](../../../src/app/models/game.model.ts). Anything else won't render correctly.
 
-| Value | Use for |
-|-------|---------|
-| `Strategy` | Strategy-forward games that don't fit a more specific bucket |
-| `Party` | Large-group / quick-play / loud games |
-| `Cooperative` | Players win or lose together |
-| `Card Game` | Card-driven games without a stronger mechanic tag |
-| `Deck Building` | Build a deck during play (e.g. Clank!, Slay the Spire) |
-| `Euro` | Euro-style worker placement / point salads |
-| `Thematic` | Heavy theme — Fantasy, Steampunk, Horror-adjacent |
-| `Abstract` | Pure-puzzle, tile-laying, no theme |
-| `Family` | Light, accessible, all-ages |
-| `War Game` | Wargames / heavy combat sims |
-| `Drinking` | Drinking-mechanic games |
-| `Engine Building` | Build a scoring engine over time (Wingspan, Wyrmspan) |
-| `Dexterity` | Physical skill required (flicking, balancing) |
-| `Social Deduction` | Hidden roles, identify the traitor |
-| `Bluffing` | Lying mechanics central |
-| `Memory` | Memory mechanics central |
-| `Adventure` | Dungeon crawl / quest / exploration |
-| `Horror` | Horror theme |
-| `Area Control` | Territory / map control |
-| `RPG` | Role-playing / character progression |
-| `Card Drafting` | Drafting cards from shared pool (7 Wonders, Sushi Go) |
-| `Miniatures` | Miniature-driven combat / arena |
-| `Legacy` | Legacy / persistent campaign |
-| `Negotiation` | Trading / bargaining central |
-| `Route Building` | Build connected routes (Ticket to Ride) |
-| `Set Collection` | Collect matching sets |
-| `Push Your Luck` | Risk-vs-reward mechanic |
-| `Asymmetric` | Players have different abilities / win conditions |
+The list is intentionally short (11 tags). It's organised as **vibe → style → mechanic** — pick the one or two from each tier that genuinely apply, not every tier.
 
-**Use multiple values.** Most games warrant 2–4 tags. A drinking party deck-builder is `["Drinking", "Party", "Deck Building"]`. A co-op fantasy dungeon crawler is `["Cooperative", "Adventure", "Thematic"]`.
+| Value | Tier | Use for |
+|-------|------|---------|
+| `Strategy` | vibe | Heavy thinky games, long planning horizon |
+| `Family` | vibe | Light, accessible, all-ages |
+| `Party` | vibe | Large group, fast, social, loud |
+| `Adventure` | vibe | Dungeon crawl, story/campaign, RPG, monster-hunting, exploration |
+| `Drinking` | vibe | Drinking-mechanic games (adult silly) |
+| `Cooperative` | style | Players win or lose together |
+| `Social` | style | Bluffing / hidden role / deduction / negotiation as a core mechanic |
+| `Asymmetric` | style | Players have different abilities, roles, or win conditions |
+| `Deck Builder` | mechanic | Build a deck during play (Clank!, Slay the Spire) |
+| `Engine Builder` | mechanic | Build a scoring engine over time (Wingspan, Wyrmspan) |
+| `Card Drafting` | mechanic | Drafting cards from a shared pool (7 Wonders, Sushi Go) |
+
+**Use multiple values.** Most games warrant 2–3 tags spread across tiers. A drinking party deck-builder is `["Party", "Drinking", "Deck Builder"]`. A co-op fantasy dungeon crawler is `["Adventure", "Cooperative"]`. A tactical campaign with unique party roles is `["Adventure", "Cooperative", "Asymmetric"]`.
+
+**Don't force a tag if nothing fits.** A pure mechanics-driven Euro that isn't an engine builder can just be `["Strategy"]`. The catalog used to over-tag with `Thematic` and `Card Game` and the tags became meaningless — keep it lean.
 
 ## Common Mistakes
 
 - **Wrong casing or typos in genre values.** The strings must match exactly — `"Deck-Building"` won't work, it has to be `"Deck Building"`. `"Co-op"` won't work, it has to be `"Cooperative"`.
-- **Using a value not in the table.** There's no `Fantasy`, `Survival`, `Western`, or `Dungeon Crawl` genre — map to `Thematic`, `Adventure`, etc. as appropriate.
+- **Using a value not in the table.** There's no `Fantasy`, `Survival`, `Western`, `Thematic`, `Card Game`, `Euro`, `RPG`, or `Dungeon Crawl` genre. Map to the closest tag in the table — Western/Steampunk theme on a hidden-role game is `Social`; a Fantasy dungeon crawl is `Adventure`; a Euro engine game is `Strategy` + `Engine Builder` if it has an engine, just `Strategy` otherwise.
 - **Editing `docs/data/games.json`.** That's the deployed build output. Edits land in `public/data/games.json`.
 - **Reusing a deleted id.** Ids appear in social-data DynamoDB rows (likes, ratings, comments). Reusing `26` or `52` (gaps in the current file) could resurrect orphaned data. Always pick `max + 1`.
 - **Trying to `WebFetch` BGG.** Returns 403/401. Use `WebSearch` + publisher CDN.
