@@ -71,9 +71,56 @@
       -webkit-box-orient: vertical;
     }
 
-    .genres,
-    .meta {
-      display: none;
+    .genres {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 5px;
+    }
+
+    .genre-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: rgba(255, 255, 255, 0.18);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1;
+
+      @media (min-width: 1024px) {
+        font-size: 10px;
+        padding: 2px 7px;
+      }
+
+      .pill-icon {
+        font-size: 10px;
+        width: 10px;
+        height: 10px;
+        line-height: 1;
+
+        @media (min-width: 1024px) {
+          font-size: 11px;
+          width: 11px;
+          height: 11px;
+        }
+      }
+
+      .pill-label {
+        white-space: nowrap;
+      }
+
+      &.more {
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.75);
+        font-weight: 600;
+      }
+    }
+
+    .players {
+      display: flex;
+      margin-top: 4px;
     }
   }
 

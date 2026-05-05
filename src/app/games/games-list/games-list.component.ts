@@ -1,8 +1,9 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-import { Game } from '../../models/game.model';
+import { Game, GameGenre } from '../../models/game.model';
 import { GameStats } from '../../services/data-aggregation.service';
+import { GenreIconService } from '../../services/genre-icon.service';
 
 @Component({
   selector: 'app-games-list',
@@ -18,6 +19,8 @@ export class GamesListComponent {
 
   @Output() open = new EventEmitter<Game>();
 
+  constructor(public iconService: GenreIconService) {}
+
   trackById(_index: number, g: Game): string {
     return g.id;
   }
@@ -26,8 +29,12 @@ export class GamesListComponent {
     return g.minPlayers === g.maxPlayers ? `${g.minPlayers}` : `${g.minPlayers}–${g.maxPlayers}`;
   }
 
-  topGenres(g: Game): string {
-    return g.genres.slice(0, 2).join(' · ');
+  topGenres(g: Game): GameGenre[] {
+    return g.genres.slice(0, 2);
+  }
+
+  extraGenresCount(g: Game): number {
+    return Math.max(0, g.genres.length - 2);
   }
 
   likes(g: Game): number {

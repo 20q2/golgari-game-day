@@ -30,7 +30,21 @@
       "Bash(git stash *)",
       "Bash(git reset *)",
       "Bash(git restore *)",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(git -C \"a:/Coding/game-day-site\" show --stat 4913ae9bd1a1d59ab69c3196d1f849d677be29d9)",
+      "Bash(git -C \"a:/Coding/game-day-site\" show 4913ae9bd1a1d59ab69c3196d1f849d677be29d9 -- public/data/games.json)",
+      "Bash(git -C \"a:/Coding/game-day-site\" diff 4913ae9b^..4913ae9b -- public/data/games.json)",
+      "Bash(git -C a:/Coding/game-day-site show dd0327a9 --stat)",
+      "Bash(git -C a:/Coding/game-day-site show dd0327a9 -- public/data/games.json)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(git -C \"a:/Coding/game-day-site\" show 0d88559b --stat)",
+      "Bash(git -C \"a:/Coding/game-day-site\" show 0d88559b)",
+      "Bash(git -C \"a:/Coding/game-day-site\" log --oneline -5 main)",
+      "Bash(git -C \"a:/Coding/game-day-site\" show b53631d8 --stat)",
+      "Bash(git -C \"a:/Coding/game-day-site\" show b53631d8)",
+      "Bash(git -C \"a:/Coding/game-day-site\" show b53631d8^:.claude/skills/add-board-game/SKILL.md)",
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:merch.riotgames.com)"
     ]
   }
 }

@@ -22,6 +22,8 @@ export class GenreIconService {
     [GameGenre.DECK_BUILDER]: 'layers',
     [GameGenre.ENGINE_BUILDER]: 'settings',
     [GameGenre.CARD_DRAFTING]: 'view_carousel',
+    [GameGenre.CARD_GAME]: 'style',
+    [GameGenre.DICE_ROLLING]: 'casino',
   };
 
   readonly genreColors: Readonly<Record<GameGenre, GenreColor>> = {
@@ -36,6 +38,8 @@ export class GenreIconService {
     [GameGenre.DECK_BUILDER]: 'accent',
     [GameGenre.ENGINE_BUILDER]: 'primary',
     [GameGenre.CARD_DRAFTING]: 'accent',
+    [GameGenre.CARD_GAME]: 'accent',
+    [GameGenre.DICE_ROLLING]: 'accent',
   };
 
   iconFor(genre: GameGenre): string {

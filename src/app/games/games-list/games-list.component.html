@@ -19,8 +19,21 @@
 
     <div class="primary">
       <div class="title">{{ g.title }}</div>
-      <div class="genres">{{ topGenres(g) }}</div>
-      <div class="meta">{{ playerLabel(g) }} · {{ g.playTime }}</div>
+      <div class="genres">
+        <span *ngFor="let genre of topGenres(g)" class="genre-pill">
+          <mat-icon class="pill-icon">{{ iconService.iconFor(genre) }}</mat-icon>
+          <span class="pill-label">{{ genre }}</span>
+        </span>
+        <span *ngIf="extraGenresCount(g) > 0" class="genre-pill more">
+          +{{ extraGenresCount(g) }}
+        </span>
+      </div>
+      <div class="players">
+        <span class="genre-pill">
+          <mat-icon class="pill-icon">group</mat-icon>
+          <span class="pill-label">{{ playerLabel(g) }}</span>
+        </span>
+      </div>
     </div>
 
     <div class="social" *ngIf="likes(g) || comments(g)">

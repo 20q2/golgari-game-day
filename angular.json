@@ -68,6 +68,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "port": 4242
+          },
           "configurations": {
             "production": {
               "buildTarget": "golgari-palace-gameday:build:production"

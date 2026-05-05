@@ -324,7 +324,7 @@ export class GamesService {
       case GameDuration.LONG:
         return maxTime > 60 && maxTime <= 120;
       case GameDuration.EPIC:
-        return maxTime > 120;
+        return maxTime >= 120;
       default:
         return false;
     }

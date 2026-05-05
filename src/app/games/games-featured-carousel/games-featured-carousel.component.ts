@@ -7,6 +7,7 @@ import {
   OnDestroy,
   Output,
   QueryList,
+  ViewChild,
   ViewChildren,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -25,6 +26,7 @@ export class GamesFeaturedCarouselComponent implements AfterViewInit, OnDestroy 
   @Input({ required: true }) selections: HeroSelection[] = [];
   @Output() open = new EventEmitter<Game>();
 
+  @ViewChild('track') trackRef!: ElementRef<HTMLElement>;
   @ViewChildren('slide') slideRefs!: QueryList<ElementRef<HTMLElement>>;
 
   activeIndex = 0;
@@ -54,8 +56,7 @@ export class GamesFeaturedCarouselComponent implements AfterViewInit, OnDestroy 
   }
 
   scrollTo(index: number): void {
-    const ref = this.slideRefs.get(index);
-    ref?.nativeElement.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    this.scrollTrackTo(index);
     this.startAutoAdvance();
   }
 
@@ -64,7 +65,7 @@ export class GamesFeaturedCarouselComponent implements AfterViewInit, OnDestroy 
     if (this.selections.length <= 1) return;
     this.autoAdvanceTimer = setInterval(() => {
       const next = (this.activeIndex + 1) % this.selections.length;
-      this.scrollToSilently(next);
+      this.scrollTrackTo(next);
     }, GamesFeaturedCarouselComponent.AUTO_ADVANCE_MS);
   }
 
@@ -75,8 +76,14 @@ export class GamesFeaturedCarouselComponent implements AfterViewInit, OnDestroy 
     }
   }
 
-  private scrollToSilently(index: number): void {
-    const ref = this.slideRefs.get(index);
-    ref?.nativeElement.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+  // Scrolls the carousel's own overflow container, not ancestors. Using
+  // scrollIntoView would walk up to the window and snap the page back to the
+  // carousel whenever auto-advance fires.
+  private scrollTrackTo(index: number): void {
+    const track = this.trackRef?.nativeElement;
+    const slide = this.slideRefs.get(index)?.nativeElement;
+    if (!track || !slide) return;
+    track.scrollTo({ left: slide.offsetLeft - track.offsetLeft, behavior: 'smooth' });
+    this.activeIndex = index;
   }
 }

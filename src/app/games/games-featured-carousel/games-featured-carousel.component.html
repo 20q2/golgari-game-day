@@ -1,5 +1,5 @@
 <div class="featured" *ngIf="selections.length > 0">
-  <div class="track">
+  <div class="track" #track>
     <div *ngFor="let s of selections; let i = index" class="slide" #slide>
       <app-games-hero
         [game]="s.game"

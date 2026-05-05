@@ -30,7 +30,9 @@ export enum GameGenre {
   ASYMMETRIC = 'Asymmetric',
   DECK_BUILDER = 'Deck Builder',
   ENGINE_BUILDER = 'Engine Builder',
-  CARD_DRAFTING = 'Card Drafting'
+  CARD_DRAFTING = 'Card Drafting',
+  CARD_GAME = 'Card Game',
+  DICE_ROLLING = 'Dice Rolling'
 }
 
 export enum GameDuration {

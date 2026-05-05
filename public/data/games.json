@@ -74,7 +74,7 @@
   {
     "id": "10",
     "title": "Draconis Invasion",
-    "genres": ["Adventure", "Cooperative", "Deck Builder"],
+    "genres": ["Adventure", "Deck Builder"],
     "minPlayers": 1,
     "maxPlayers": 6,
     "playTime": "45-60 minutes",
@@ -146,7 +146,7 @@
   {
     "id": "16",
     "title": "Binding of Isaac: Four Souls",
-    "genres": ["Adventure"],
+    "genres": ["Card Game"],
     "minPlayers": 2,
     "maxPlayers": 4,
     "playTime": "30-60 minutes",
@@ -278,7 +278,7 @@
   {
     "id": "28",
     "title": "Munchkin",
-    "genres": ["Party", "Adventure"],
+    "genres": ["Party", "Card Game"],
     "minPlayers": 3,
     "maxPlayers": 6,
     "playTime": "60-120 minutes",
@@ -302,7 +302,7 @@
   {
     "id": "30",
     "title": "Catharsis",
-    "genres": ["Adventure", "Cooperative"],
+    "genres": ["Adventure", "Cooperative", "Dice Rolling"],
     "minPlayers": 1,
     "maxPlayers": 5,
     "playTime": "45-60 minutes",
@@ -338,7 +338,7 @@
   {
     "id": "33",
     "title": "Megaland",
-    "genres": ["Family"],
+    "genres": ["Family", "Dice Rolling"],
     "minPlayers": 2,
     "maxPlayers": 5,
     "playTime": "20-30 minutes",
@@ -376,7 +376,7 @@
     "title": "Poison",
     "genres": ["Party"],
     "minPlayers": 3,
-    "maxPlayers": 6,
+    "maxPlayers": 8,
     "playTime": "20-30 minutes",
     "description": "Players add potion cards of colors and Poison cards to cauldrons—if the total exceeds 13, the cauldron “overflows” and you take the cards. The goal is to score the fewest points by avoiding Poison and overflow penalties.",
     "imageUrl": "https://cf.geekdo-images.com/_WnKy4HLlHpbc1wFET6jsw__itemrep/img/AVC00byffxpOWy56MBalKUeZbAM=/fit-in/246x300/filters:strip_icc()/pic4888779.jpg",
@@ -422,7 +422,7 @@
   {
     "id": "40",
     "title": "Here to Slay",
-    "genres": ["Strategy", "Adventure"],
+    "genres": ["Strategy", "Card Game"],
     "minPlayers": 2,
     "maxPlayers": 6,
     "playTime": "30-60 minutes",
@@ -434,7 +434,7 @@
   {
     "id": "41",
     "title": "Exiled Legends",
-    "genres": ["Strategy", "Adventure"],
+    "genres": ["Strategy", "Card Game"],
     "minPlayers": 2,
     "maxPlayers": 5,
     "playTime": "30-60 minutes",
@@ -458,7 +458,7 @@
   {
     "id": "43",
     "title": "Dice Forge",
-    "genres": ["Strategy"],
+    "genres": ["Strategy", "Dice Rolling"],
     "minPlayers": 2,
     "maxPlayers": 4,
     "playTime": "45 minutes",
@@ -567,7 +567,7 @@
     "id": "53",
     "title": "The Werewolves of Miller's Hollow",
     "genres": ["Party", "Social"],
-    "minPlayers": 8,
+    "minPlayers": 6,
     "maxPlayers": 18,
     "playTime": "30 minutes",
     "description": "In The Werewolves of Miller's Hollow, players assume secret roles as villagers or werewolves in a small hamlet. Each night, the werewolves secretly eliminate a villager, while the villagers attempt to identify and eliminate the werewolves during the day. The game involves strategic discussion, deception, and deduction, making it ideal for large groups and party settings.",
@@ -650,7 +650,7 @@
   {
     "id": "60",
     "title": "One Last Fight",
-    "genres": ["Adventure", "Cooperative"],
+    "genres": ["Adventure", "Cooperative", "Card Game"],
     "minPlayers": 1,
     "maxPlayers": 4,
     "playTime": "60-120 minutes",
@@ -669,6 +669,18 @@
     "description": "A cooperative deck-building adaptation of the Slay the Spire video game by Contention Games. Pick a hero, craft a unique deck, encounter bizarre creatures, discover relics of immense power, and battle your way to the top of the Spire.",
     "imageUrl": "https://contentiongames.myshopify.com/cdn/shop/files/KSCollectorsBox5d_large_bc1250bf-6147-4ae6-86a4-d61188f26952.png?v=1713369661&width=1945",
     "bggRating": 8.5,
+    "comments": []
+  },
+  {
+    "id": "62",
+    "title": "Mechs vs. Minions",
+    "genres": ["Adventure", "Cooperative"],
+    "minPlayers": 2,
+    "maxPlayers": 4,
+    "playTime": "60-120 minutes",
+    "description": "A cooperative tabletop campaign by Riot Games set in the League of Legends universe. Players pilot Yordle mechs across 10 escalating missions, programming chaotic action sequences from a shared deck to fend off swarms of minions before their gears spin out of control.",
+    "imageUrl": "https://cdn.sanity.io/images/dsfx7636/consumer_products/655edd6c6f096fd6f837ce9a5440a4ae43c2e791-1000x1000.png",
+    "bggRating": 8.0,
     "comments": []
   }
 ]
