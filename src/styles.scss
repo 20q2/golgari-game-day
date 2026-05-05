@@ -101,13 +101,14 @@ body {
   // Page-specific backgrounds. Reference src/assets/ so Angular bundles the
   // images and rewrites the URL — works on both dev (root) and GitHub Pages
   // (under /golgari-game-day/) without shell-specific path quirks.
+  //
+  // Backgrounds are painted onto the body::before pseudo (already
+  // position:fixed; inset:0) instead of onto body itself. A fixed pseudo is
+  // sized against the layout viewport = the largest possible viewport (URL bar
+  // hidden), so it always covers the full visible area regardless of URL-bar
+  // state on mobile. Painting on body + background-attachment:fixed is
+  // unreliable on iOS Safari and visibly breaks when the URL bar collapses.
   &.games-page {
-    // Dark Golgari gradient laid OVER a photo. The dark overlay keeps cards
-    // and text readable; the photo gives the page texture instead of a flat fill.
-    background:
-      linear-gradient(180deg, rgba(10, 20, 16, 0.82) 0%, rgba(19, 28, 22, 0.88) 60%, rgba(26, 42, 32, 0.92) 100%) fixed,
-      url('./assets/image2.png') center/cover fixed;
-
     // Page-scoped tokens. Used by the new games components and their children.
     --games-bg: linear-gradient(180deg, #0a1410 0%, #131c16 60%, #1a2a20 100%);
     --games-surface: rgba(255, 255, 255, 0.04);
@@ -125,15 +126,24 @@ body {
     --games-heart: #ff6090;
     --games-star: #ffd700;
 
-    // Override the default light-overlay ::before so the dark gradient
-    // shows through cleanly.
+    // Dark Golgari gradient laid OVER a photo. The dark overlay keeps cards
+    // and text readable; the photo gives the page texture instead of a flat fill.
     &::before {
-      background: transparent;
+      background:
+        linear-gradient(180deg, rgba(10, 20, 16, 0.82) 0%, rgba(19, 28, 22, 0.88) 60%, rgba(26, 42, 32, 0.92) 100%),
+        url('./assets/image2.png') center/cover;
     }
   }
 
   &.dialog-page {
-    background: url('./assets/image4.png') center/cover fixed;
+    // Image with the default 15% white overlay on top. Layered as a
+    // gradient-color trick because CSS multi-background only allows a plain
+    // color as the bottom layer.
+    &::before {
+      background:
+        linear-gradient(rgba(250, 250, 250, 0.15), rgba(250, 250, 250, 0.15)),
+        url('./assets/image4.png') center/cover;
+    }
   }
 }
 

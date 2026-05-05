@@ -2,9 +2,10 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { ActivatedRoute, Router } from '@angular/router';
 import { combineLatest, Observable, Subject } from 'rxjs';
 import { map, takeUntil } from 'rxjs/operators';
 
@@ -116,6 +117,8 @@ export class GamesComponent implements OnInit, OnDestroy {
   }
 
   private destroy$ = new Subject<void>();
+  private dialogRef: MatDialogRef<GameDetailsDialogComponent> | null = null;
+  private currentDialogGameId: string | null = null;
 
   constructor(
     private gamesService: GamesService,
@@ -123,6 +126,8 @@ export class GamesComponent implements OnInit, OnDestroy {
     private dialog: MatDialog,
     private bottomSheet: MatBottomSheet,
     private breakpoints: BreakpointObserver,
+    private router: Router,
+    private route: ActivatedRoute,
   ) {
     this.filteredGames$ = this.gamesService.getGames();
 
@@ -173,10 +178,45 @@ export class GamesComponent implements OnInit, OnDestroy {
 
     this.gamesService.setFilter({ ...this.filter });
     this.gamesService.setSort(this.sort);
+
+    // Sync the game-details dialog with a `?game=<id>` query param so the
+    // browser back gesture (especially on mobile) closes the dialog instead
+    // of leaving the page. Also makes deep-links shareable.
+    combineLatest([
+      this.gamesService.getCatalog(),
+      this.route.queryParamMap,
+    ])
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(([catalog, params]) => {
+        const targetId = params.get('game');
+        if (targetId === this.currentDialogGameId) return;
+
+        if (this.dialogRef) {
+          this.dialogRef.close();
+        }
+
+        if (!targetId) return;
+
+        const game = catalog.find(g => g.id === targetId);
+        if (game) {
+          this.openGameDialog(game);
+        } else {
+          // Unknown id in URL — strip it without polluting history.
+          this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: { game: null },
+            queryParamsHandling: 'merge',
+            replaceUrl: true,
+          });
+        }
+      });
   }
 
   ngOnDestroy(): void {
     document.body.className = '';
+    if (this.dialogRef) {
+      this.dialogRef.close();
+    }
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -208,13 +248,53 @@ export class GamesComponent implements OnInit, OnDestroy {
   // ---- Hero ----
 
   onOpenGame(game: Game): void {
-    this.dialog.open(GameDetailsDialogComponent, {
+    // Push the game id into the URL; the queryParamMap subscription opens
+    // the dialog. The `gameDialogPush` history-state marker tells the
+    // close handler that this entry is ours to pop on user-initiated close.
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { game: game.id },
+      queryParamsHandling: 'merge',
+      state: { gameDialogPush: true },
+    });
+  }
+
+  private openGameDialog(game: Game): void {
+    this.currentDialogGameId = game.id;
+    this.dialogRef = this.dialog.open(GameDetailsDialogComponent, {
       data: game,
       width: '900px',
       maxWidth: '95vw',
       maxHeight: '95vh',
       panelClass: 'game-details-dialog',
     });
+
+    const pushedByUs = !!history.state?.gameDialogPush;
+
+    this.dialogRef.afterClosed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.dialogRef = null;
+        this.currentDialogGameId = null;
+
+        // If the URL still carries the param, the close was user-initiated
+        // (X / backdrop / Esc) rather than a back-gesture — clean it up.
+        if (!this.route.snapshot.queryParamMap.get('game')) return;
+
+        if (pushedByUs) {
+          // Pop our pushed entry so back history stays sensible.
+          history.back();
+        } else {
+          // Deep-link entry; replace to strip the param without adding
+          // another history record.
+          this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: { game: null },
+            queryParamsHandling: 'merge',
+            replaceUrl: true,
+          });
+        }
+      });
   }
 
   // ---- Filter sheet ----
