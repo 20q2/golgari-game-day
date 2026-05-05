@@ -5,6 +5,7 @@
 .tv-page {
   background-color: var(--golgari-black, #2d2d2d);
   min-height: calc(100vh - 64px);
+  min-height: calc(100dvh - 64px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -30,6 +31,7 @@
   height: 480px;
   max-width: 90vw;
   max-height: 60vh;
+  max-height: 60dvh;
 }
 
 .tv-url {

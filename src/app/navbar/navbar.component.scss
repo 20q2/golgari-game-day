@@ -154,6 +154,7 @@
 .content {
   padding: 0;
   min-height: calc(100vh - 64px);
+  min-height: calc(100dvh - 64px);
 }
 
 // Tablet and below: route nav-text hides; username and sign-in text stay.
