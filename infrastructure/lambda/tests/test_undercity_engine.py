@@ -1,0 +1,323 @@
+"""Unit tests for the pure Undercity rules engine (GDD §5–§8)."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import undercity_data as data
+from undercity_engine import (
+    Combatant, resolve_battle, legal_destinations, roll_mystery,
+    apply_level_ups, spend_stat, effective_stats, regen_hp, pick_npc,
+    pvp_spore_steal,
+)
+
+
+class FakeRng:
+    """Deterministic rng: uniform() returns 1.0, random()/randint() replay scripts."""
+
+    def __init__(self, randoms=None, randints=None, uniform=1.0):
+        self.randoms = list(randoms or [])
+        self.randints = list(randints or [])
+        self._uniform = uniform
+
+    def uniform(self, a, b):
+        return self._uniform
+
+    def random(self):
+        return self.randoms.pop(0) if self.randoms else 0.99
+
+    def randint(self, a, b):
+        return self.randints.pop(0) if self.randints else a
+
+    def choice(self, seq):
+        return seq[0]
+
+
+def fighter(**kw):
+    base = dict(name='X', hp=30, max_hp=30, atk=6, dfn=5, spd=5,
+                passives=frozenset(), stance='fight', level=1)
+    base.update(kw)
+    return Combatant(**base)
+
+
+# ── Leveling ─────────────────────────────────────────────────────────────────
+
+def test_xp_curve():
+    assert data.xp_to_next(1) == 25
+    assert data.xp_to_next(9) == 65
+
+
+def test_level_up_grants():
+    p = {'level': 1, 'xp': 25, 'maxHp': 30, 'hp': 10, 'statPoints': 0,
+         'spentThisLevel': {'atk': 1, 'def': 0, 'spd': 0}}
+    leveled = apply_level_ups(p)
+    assert leveled == 1
+    assert p['level'] == 2 and p['xp'] == 0
+    assert p['maxHp'] == 33 and p['hp'] == 13
+    assert p['statPoints'] == 2
+    assert p['spentThisLevel'] == {'atk': 0, 'def': 0, 'spd': 0}
+
+
+def test_level_cap():
+    p = {'level': 12, 'xp': 999, 'maxHp': 63, 'hp': 63, 'statPoints': 0,
+         'spentThisLevel': {}}
+    assert apply_level_ups(p) == 0
+    assert p['level'] == 12
+
+
+def test_spend_stat_caps_one_per_stat_per_level():
+    p = {'statPoints': 2, 'atk': 6, 'def': 5, 'spd': 5,
+         'spentThisLevel': {'atk': 0, 'def': 0, 'spd': 0}}
+    assert spend_stat(p, 'atk')
+    assert p['atk'] == 7 and p['statPoints'] == 1
+    assert not spend_stat(p, 'atk')          # second point into same stat blocked
+    assert spend_stat(p, 'spd')
+    assert not spend_stat(p, 'def')          # no points left
+
+
+# ── Movement ─────────────────────────────────────────────────────────────────
+
+def test_exact_count_no_backtrack_on_loop():
+    dests = legal_destinations(data.MAP_NODES, 'n1', 2)
+    assert dests == {'n3', 'n25'}
+
+
+def test_fork_gives_multiple_choices():
+    dests = legal_destinations(data.MAP_NODES, 'n4', 1)
+    assert dests == {'n3', 'n5', 'a0'}
+
+
+def test_dead_end_paths_die_out():
+    # From the island warp, 3 steps hits a wall (warp→ossuary→boss, boss is a
+    # dead end with no backtracking) so only revisits via loops are possible.
+    dests = legal_destinations(data.MAP_NODES, 'isl_warp', 3)
+    assert dests == set()
+
+
+# ── Battle ───────────────────────────────────────────────────────────────────
+
+def test_faster_side_strikes_first():
+    a = fighter(name='A', spd=3, atk=10, dfn=0, hp=8, max_hp=8)
+    b = fighter(name='B', spd=9, atk=10, dfn=0, hp=8, max_hp=8)
+    r = resolve_battle(a, b, FakeRng())
+    # B is faster: kills A before A ever swings.
+    assert r['outcome'] == 'defender'
+    assert r['strikes'][0]['by'] == 'defender'
+    assert len([s for s in r['strikes'] if s['by'] == 'attacker']) == 0
+
+
+def test_first_bite_overrides_round_one():
+    a = fighter(name='A', spd=3, atk=10, dfn=0, hp=8, max_hp=8,
+                passives=frozenset({'first_bite'}))
+    b = fighter(name='B', spd=9, atk=10, dfn=0, hp=8, max_hp=8)
+    r = resolve_battle(a, b, FakeRng())
+    assert r['strikes'][0]['by'] == 'attacker'
+    assert r['outcome'] == 'attacker'
+
+
+def test_damage_floor_and_timeout():
+    a = fighter(name='A', atk=3, dfn=50, hp=40, max_hp=40)
+    b = fighter(name='B', atk=3, dfn=50, hp=40, max_hp=40)
+    r = resolve_battle(a, b, FakeRng())
+    assert all(s['dmg'] == 1 for s in r['strikes'] if not s.get('miss'))
+    assert r['outcome'] == 'timeout'
+    assert len({s['round'] for s in r['strikes']}) == 6
+
+
+def test_defend_stance_reduces_damage_both_ways():
+    # Attacker atk 10 vs def 5: normally 5 dmg; defend => def 7 (5*1.4) → 3 dmg.
+    a = fighter(name='A', atk=10, dfn=0, spd=9, hp=100, max_hp=100)
+    b = fighter(name='B', atk=10, dfn=5, spd=1, hp=100, max_hp=100, stance='defend')
+    r = resolve_battle(a, b, FakeRng())
+    first_a = next(s for s in r['strikes'] if s['by'] == 'attacker')
+    assert first_a['dmg'] == 3
+    # Defender deals -25%: atk 10 vs def 0 = 10 → 8 (round 7.5).
+    first_b = next(s for s in r['strikes'] if s['by'] == 'defender')
+    assert first_b['dmg'] == 8
+
+
+def test_flee_success_and_failure():
+    a = fighter(name='A', spd=5)
+    b = fighter(name='B', spd=5, stance='flee')
+    # base 35% — random() = 0.10 → success
+    r = resolve_battle(a, b, FakeRng(randoms=[0.10]))
+    assert r['outcome'] == 'fled'
+    # random() = 0.90 → failure, battle proceeds
+    r = resolve_battle(a, b, FakeRng(randoms=[0.90]))
+    assert r['outcome'] != 'fled'
+
+
+def test_flee_chance_clamped():
+    from undercity_engine import flee_chance
+    assert flee_chance(99, 1) == 90
+    assert flee_chance(1, 99) == 10
+    assert flee_chance(7, 5) == 45
+
+
+def test_smoke_spore_saves_failed_flee():
+    a = fighter(name='A', spd=5)
+    b = fighter(name='B', spd=5, stance='flee', has_smoke_spore=True)
+    r = resolve_battle(a, b, FakeRng(randoms=[0.90]))
+    assert r['outcome'] == 'fled'
+    assert r['smokeSporeUsed']
+
+
+def test_swarm_grants_extra_strike():
+    a = fighter(name='A', atk=3, dfn=50, hp=40, max_hp=40,
+                passives=frozenset({'swarm'}))
+    b = fighter(name='B', atk=3, dfn=50, hp=40, max_hp=40)
+    r = resolve_battle(a, b, FakeRng())
+    round1 = [s for s in r['strikes'] if s['round'] == 1]
+    assert len([s for s in round1 if s['by'] == 'attacker']) == 2
+    assert len([s for s in round1 if s['by'] == 'defender']) == 1
+
+
+def test_deathtouch_stomp_ignores_def():
+    a = fighter(name='A', atk=6, dfn=0, spd=9, hp=100, max_hp=100,
+                passives=frozenset({'deathtouch_stomp'}))
+    b = fighter(name='B', atk=1, dfn=5, spd=1, hp=100, max_hp=100)
+    r = resolve_battle(a, b, FakeRng())
+    first = next(s for s in r['strikes'] if s['by'] == 'attacker')
+    assert first['dmg'] == 4  # 6 - (5-3)
+
+
+def test_drain_life_heals():
+    a = fighter(name='A', atk=10, dfn=0, spd=9, hp=50, max_hp=100,
+                passives=frozenset({'drain_life'}))
+    b = fighter(name='B', atk=1, dfn=0, spd=1, hp=100, max_hp=100)
+    r = resolve_battle(a, b, FakeRng())
+    # A dealt 10 per strike, healing 5 each time; ended above starting HP.
+    assert r['attackerHp'] > 50 - 6  # took chip damage but healed more
+    heals = [s for s in r['strikes'] if s['by'] == 'attacker' and s.get('heal')]
+    assert heals and heals[0]['heal'] == 5
+
+
+def test_venom_barb_first_strike_bonus():
+    a = fighter(name='A', atk=6, dfn=0, spd=9, hp=100, max_hp=100,
+                passives=frozenset({'venom_barb'}))
+    b = fighter(name='B', atk=1, dfn=0, spd=1, hp=100, max_hp=100)
+    r = resolve_battle(a, b, FakeRng())
+    a_strikes = [s for s in r['strikes'] if s['by'] == 'attacker']
+    assert a_strikes[0]['dmg'] == 9  # 6 + 3
+    assert a_strikes[1]['dmg'] == 6
+
+
+def test_rot_breath_doubles_round_one():
+    a = fighter(name='A', atk=6, dfn=0, spd=9, hp=100, max_hp=100,
+                passives=frozenset({'rot_breath'}))
+    b = fighter(name='B', atk=1, dfn=0, spd=1, hp=100, max_hp=100)
+    r = resolve_battle(a, b, FakeRng())
+    a_strikes = [s for s in r['strikes'] if s['by'] == 'attacker']
+    assert a_strikes[0]['dmg'] == 12
+    assert a_strikes[1]['dmg'] == 6
+
+
+def test_scavenge_retaliates():
+    a = fighter(name='A', atk=10, dfn=0, spd=9, hp=100, max_hp=100)
+    b = fighter(name='B', atk=1, dfn=0, spd=1, hp=100, max_hp=100,
+                passives=frozenset({'scavenge'}))
+    r = resolve_battle(a, b, FakeRng())
+    retaliations = [s for s in r['strikes'] if s.get('retaliation')]
+    assert retaliations and retaliations[0]['dmg'] == 2
+    assert retaliations[0]['by'] == 'defender'
+
+
+def test_regrowth_heals_survivor_after_battle():
+    a = fighter(name='A', atk=10, dfn=0, spd=9, hp=100, max_hp=100,
+                passives=frozenset({'regrowth'}))
+    b = fighter(name='B', atk=5, dfn=0, spd=1, hp=6, max_hp=100)
+    r = resolve_battle(a, b, FakeRng())
+    assert r['outcome'] == 'attacker'
+    assert r['attackerHp'] == 100  # 20% max heal tops it back up past the chip
+
+def test_rootwall_upgrades_regrowth():
+    a = fighter(name='A', atk=10, dfn=0, spd=9, hp=60, max_hp=100,
+                passives=frozenset({'regrowth', 'rootwall'}))
+    b = fighter(name='B', atk=1, dfn=50, spd=1, hp=6, max_hp=100)
+    r = resolve_battle(a, b, FakeRng())
+    # never damaged (def 50 → min 1... actually b atk 1 vs a def 0 = 1/round)
+    # a took ≤6 chip; heal is 35 → capped at 100
+    assert r['attackerHp'] >= 89
+
+
+# ── Spore theft ──────────────────────────────────────────────────────────────
+
+def test_pvp_spore_steal():
+    assert pvp_spore_steal(100, 'fight', frozenset()) == 25
+    assert pvp_spore_steal(100, 'defend', frozenset()) == 10
+    assert pvp_spore_steal(100, 'fight', frozenset({'deathrite'})) == 37
+
+
+# ── Regen ────────────────────────────────────────────────────────────────────
+
+def test_regen_ten_percent_per_ten_minutes():
+    p = {'hp': 10, 'maxHp': 50, 'hpUpdatedAt': '2026-07-06T20:00:00'}
+    regen_hp(p, '2026-07-06T20:25:00')
+    assert p['hp'] == 20  # two full intervals × 5 HP
+    assert p['hpUpdatedAt'] == '2026-07-06T20:20:00'
+
+
+def test_regen_caps_at_max():
+    p = {'hp': 49, 'maxHp': 50, 'hpUpdatedAt': '2026-07-06T20:00:00'}
+    regen_hp(p, '2026-07-06T23:00:00')
+    assert p['hp'] == 50
+
+
+# ── Mystery table ────────────────────────────────────────────────────────────
+
+def test_mystery_drift_rerolls_bad_outcomes():
+    res = roll_mystery(FakeRng(randints=[9, 3]), has_drift=True, has_doubling_rot=False)
+    assert res['roll'] == 3
+    res = roll_mystery(FakeRng(randints=[2]), has_drift=True, has_doubling_rot=False)
+    assert res['roll'] == 2  # good outcomes don't reroll
+
+
+def test_mystery_doubling_rot_doubles_spore_gains():
+    plain = roll_mystery(FakeRng(randints=[1]), has_drift=False, has_doubling_rot=False)
+    doubled = roll_mystery(FakeRng(randints=[1]), has_drift=False, has_doubling_rot=True)
+    assert plain['spores'] == 20 and doubled['spores'] == 40
+    # losses are NOT doubled
+    lose = roll_mystery(FakeRng(randints=[8]), has_drift=False, has_doubling_rot=True)
+    assert lose['spores'] == -10
+
+
+# ── NPCs ─────────────────────────────────────────────────────────────────────
+
+def test_npc_scaling():
+    npc = pick_npc(4, FakeRng())
+    assert npc['id'] == 'drudge_beetle'
+    assert npc['hp'] == 18 + 8 and npc['atk'] == 8 and npc['def'] == 4
+
+
+def test_npc_pool_respects_level():
+    import random
+    for lvl in (1, 6, 12):
+        npc = pick_npc(lvl, random.Random(7))
+        spec = next(n for n in data.NPCS if n['id'] == npc['id'])
+        assert spec['min'] <= lvl <= spec['max']
+
+
+# ── Effective stats ──────────────────────────────────────────────────────────
+
+def test_effective_stats_include_gear_and_buffs():
+    p = {'atk': 6, 'def': 5, 'spd': 5, 'maxHp': 30,
+         'gear': {'fang': 'wurm_tooth', 'carapace': 'troll_hide'},
+         'buffs': [{'kind': 'rot_surge'}]}
+    eff = effective_stats(p)
+    assert eff['atk'] == 6 + 6 + 3
+    assert eff['def'] == 5 + 5
+    assert eff['spd'] == 5 + 1
+    assert eff['maxHp'] == 36
+
+
+def test_cursed_idol_debuff():
+    p = {'atk': 6, 'def': 5, 'spd': 5, 'maxHp': 30, 'gear': {},
+         'buffs': [{'kind': 'cursed_idol'}]}
+    assert effective_stats(p)['atk'] == 5
+
+
+# ── Renown ───────────────────────────────────────────────────────────────────
+
+def test_renown_table():
+    p = {'level': 8, 'pvpWins': 3, 'wildWins': 7, 'spores': 52, 'bossDamage': 45}
+    assert data.compute_renown(p) == 80 + 45 + 21 + 10 + 4
