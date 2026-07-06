@@ -6,6 +6,8 @@ import base64
 from typing import Dict, Any, List, Optional
 from decimal import Decimal
 
+import undercity_db
+
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
 table_name = os.environ.get('TABLE_NAME')
@@ -67,6 +69,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return handle_all_ratings(http_method)
         elif endpoint == 'all-likes':
             return handle_all_likes(http_method, query_params)
+        elif endpoint == 'game':
+            return handle_game(http_method, path_parts, body, query_params)
         else:
             return create_response(404, {'error': 'Endpoint not found'})
             
@@ -199,6 +203,18 @@ def handle_all_likes(method: str, query_params: Dict[str, Any]) -> Dict[str, Any
         return create_response(405, {'error': 'Method not allowed'})
     user_id = query_params.get('userId')
     return get_all_likes(user_id)
+
+# 🍄 THE UNDERCITY SUB-GAME
+def handle_game(method: str, path_parts: List[str], body: str, query_params: Dict[str, Any]) -> Dict[str, Any]:
+    """Route /game/state and /game/action to the Undercity module."""
+    sub = path_parts[1] if len(path_parts) > 1 else ''
+    if sub == 'state' and method == 'GET':
+        status, payload = undercity_db.handle_state(table, query_params)
+        return create_response(status, payload)
+    if sub == 'action' and method == 'POST':
+        status, payload = undercity_db.handle_action(table, body)
+        return create_response(status, payload)
+    return create_response(404, {'error': 'Unknown game endpoint'})
 
 # 📝 COMMENT OPERATIONS
 def get_comments(game_id: str) -> Dict[str, Any]:
