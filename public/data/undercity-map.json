@@ -1,0 +1,415 @@
+{
+ "worldW": 1800,
+ "worldH": 1200,
+ "gate": "n0",
+ "boss": "boss",
+ "shopTiers": {
+  "n5": 1,
+  "n14": 2,
+  "a2": 3
+ },
+ "nodes": [
+  {
+   "id": "n0",
+   "type": "gate",
+   "x": 900,
+   "y": 1040,
+   "neighbors": [
+    "n1",
+    "n25"
+   ]
+  },
+  {
+   "id": "n1",
+   "type": "mystery",
+   "x": 725,
+   "y": 1027,
+   "neighbors": [
+    "n0",
+    "n2"
+   ]
+  },
+  {
+   "id": "n2",
+   "type": "wild",
+   "x": 561,
+   "y": 990,
+   "neighbors": [
+    "n1",
+    "n3"
+   ]
+  },
+  {
+   "id": "n3",
+   "type": "hazard",
+   "x": 416,
+   "y": 929,
+   "neighbors": [
+    "n2",
+    "n4"
+   ]
+  },
+  {
+   "id": "n4",
+   "type": "loot",
+   "x": 299,
+   "y": 850,
+   "neighbors": [
+    "n3",
+    "n5",
+    "a0"
+   ]
+  },
+  {
+   "id": "n5",
+   "type": "shop",
+   "x": 217,
+   "y": 756,
+   "neighbors": [
+    "n4",
+    "n6"
+   ]
+  },
+  {
+   "id": "n6",
+   "type": "wild",
+   "x": 175,
+   "y": 653,
+   "neighbors": [
+    "n5",
+    "n7"
+   ]
+  },
+  {
+   "id": "n7",
+   "type": "warp",
+   "x": 175,
+   "y": 547,
+   "neighbors": [
+    "n6",
+    "n8"
+   ]
+  },
+  {
+   "id": "n8",
+   "type": "mystery",
+   "x": 217,
+   "y": 444,
+   "neighbors": [
+    "n7",
+    "n9"
+   ]
+  },
+  {
+   "id": "n9",
+   "type": "wild",
+   "x": 299,
+   "y": 350,
+   "neighbors": [
+    "n8",
+    "n10"
+   ]
+  },
+  {
+   "id": "n10",
+   "type": "shrine",
+   "x": 416,
+   "y": 271,
+   "neighbors": [
+    "n9",
+    "n11"
+   ]
+  },
+  {
+   "id": "n11",
+   "type": "loot",
+   "x": 561,
+   "y": 210,
+   "neighbors": [
+    "n10",
+    "n12",
+    "b0"
+   ]
+  },
+  {
+   "id": "n12",
+   "type": "hazard",
+   "x": 725,
+   "y": 173,
+   "neighbors": [
+    "n11",
+    "n13"
+   ]
+  },
+  {
+   "id": "n13",
+   "type": "loot",
+   "x": 900,
+   "y": 160,
+   "neighbors": [
+    "n12",
+    "n14"
+   ]
+  },
+  {
+   "id": "n14",
+   "type": "shop",
+   "x": 1075,
+   "y": 173,
+   "neighbors": [
+    "n13",
+    "n15"
+   ]
+  },
+  {
+   "id": "n15",
+   "type": "wild",
+   "x": 1239,
+   "y": 210,
+   "neighbors": [
+    "n14",
+    "n16"
+   ]
+  },
+  {
+   "id": "n16",
+   "type": "mystery",
+   "x": 1384,
+   "y": 271,
+   "neighbors": [
+    "n15",
+    "n17"
+   ]
+  },
+  {
+   "id": "n17",
+   "type": "loot",
+   "x": 1501,
+   "y": 350,
+   "neighbors": [
+    "n16",
+    "n18",
+    "a5"
+   ]
+  },
+  {
+   "id": "n18",
+   "type": "hazard",
+   "x": 1583,
+   "y": 444,
+   "neighbors": [
+    "n17",
+    "n19"
+   ]
+  },
+  {
+   "id": "n19",
+   "type": "loot",
+   "x": 1625,
+   "y": 547,
+   "neighbors": [
+    "n18",
+    "n20"
+   ]
+  },
+  {
+   "id": "n20",
+   "type": "warp",
+   "x": 1625,
+   "y": 653,
+   "neighbors": [
+    "n19",
+    "n21"
+   ]
+  },
+  {
+   "id": "n21",
+   "type": "wild",
+   "x": 1583,
+   "y": 756,
+   "neighbors": [
+    "n20",
+    "n22"
+   ]
+  },
+  {
+   "id": "n22",
+   "type": "mystery",
+   "x": 1501,
+   "y": 850,
+   "neighbors": [
+    "n21",
+    "n23"
+   ]
+  },
+  {
+   "id": "n23",
+   "type": "shrine",
+   "x": 1384,
+   "y": 929,
+   "neighbors": [
+    "n22",
+    "n24"
+   ]
+  },
+  {
+   "id": "n24",
+   "type": "loot",
+   "x": 1239,
+   "y": 990,
+   "neighbors": [
+    "n23",
+    "n25",
+    "b4"
+   ]
+  },
+  {
+   "id": "n25",
+   "type": "wild",
+   "x": 1075,
+   "y": 1027,
+   "neighbors": [
+    "n24",
+    "n0"
+   ]
+  },
+  {
+   "id": "a0",
+   "type": "loot",
+   "x": 486,
+   "y": 815,
+   "neighbors": [
+    "n4",
+    "a1"
+   ]
+  },
+  {
+   "id": "a1",
+   "type": "wild",
+   "x": 669,
+   "y": 772,
+   "neighbors": [
+    "a0",
+    "a2"
+   ]
+  },
+  {
+   "id": "a2",
+   "type": "shop",
+   "x": 848,
+   "y": 717,
+   "neighbors": [
+    "a1",
+    "a3"
+   ]
+  },
+  {
+   "id": "a3",
+   "type": "mystery",
+   "x": 1020,
+   "y": 645,
+   "neighbors": [
+    "a2",
+    "a4"
+   ]
+  },
+  {
+   "id": "a4",
+   "type": "hazard",
+   "x": 1185,
+   "y": 558,
+   "neighbors": [
+    "a3",
+    "a5"
+   ]
+  },
+  {
+   "id": "a5",
+   "type": "mystery",
+   "x": 1344,
+   "y": 457,
+   "neighbors": [
+    "a4",
+    "n17"
+   ]
+  },
+  {
+   "id": "b0",
+   "type": "hazard",
+   "x": 708,
+   "y": 310,
+   "neighbors": [
+    "n11",
+    "b1"
+   ]
+  },
+  {
+   "id": "b1",
+   "type": "loot",
+   "x": 846,
+   "y": 419,
+   "neighbors": [
+    "b0",
+    "b2"
+   ]
+  },
+  {
+   "id": "b2",
+   "type": "shrine",
+   "x": 968,
+   "y": 541,
+   "neighbors": [
+    "b1",
+    "b3"
+   ]
+  },
+  {
+   "id": "b3",
+   "type": "wild",
+   "x": 1072,
+   "y": 679,
+   "neighbors": [
+    "b2",
+    "b4"
+   ]
+  },
+  {
+   "id": "b4",
+   "type": "mystery",
+   "x": 1160,
+   "y": 830,
+   "neighbors": [
+    "b3",
+    "n24"
+   ]
+  },
+  {
+   "id": "isl_warp",
+   "type": "warp",
+   "x": 810,
+   "y": 640,
+   "neighbors": [
+    "isl_ossuary"
+   ]
+  },
+  {
+   "id": "isl_ossuary",
+   "type": "ossuary",
+   "x": 900,
+   "y": 570,
+   "neighbors": [
+    "isl_warp",
+    "boss"
+   ]
+  },
+  {
+   "id": "boss",
+   "type": "boss",
+   "x": 1000,
+   "y": 630,
+   "neighbors": [
+    "isl_ossuary"
+   ]
+  }
+ ]
+}
