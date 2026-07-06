@@ -49,6 +49,16 @@ Stack and free-tier rationale documented in [infrastructure/README.md](infrastru
 ### Build output quirk
 `angular.json` sets `outputPath: docs` so deploys land in the GitHub Pages source folder. Angular's modern browser builder writes to `docs/browser/`, so `npm run build:prod` chains a Node one-liner (`flatten-build` in [package.json](package.json)) that copies everything up one level and removes `browser/`. If you change the output structure, update both that script and any GitHub Actions workflow expecting flat `docs/`. Note: [.github/workflows/deploy.yml](.github/workflows/deploy.yml) currently runs `npm run build` (development config) and uploads from `dist/golgari-palace-gameday` — that path doesn't match the current Angular config and the workflow targets `main` while the active branch is `master`. The working deploy path is the local `npm run deploy` script.
 
+### The Undercity sub-game
+
+A phone-first board sub-game at `/undercity` (lazy-loaded standalone feature in `src/app/undercity/`), entered by clicking the navbar logo. Design doc: `docs/superpowers/plans/2026-07-06-undercity.md` (plan) and the GDD it references.
+
+- **Backend:** all game rules live server-side in `infrastructure/lambda/undercity_engine.py` (pure functions, no boto3) + `undercity_data.py` (balance tables + board graph) + `undercity_db.py` (DynamoDB I/O, action dispatcher). `lambda_function.py` routes `GET /game/state` and `POST /game/action` to it. Tests: `cd infrastructure/lambda && python -m pytest tests -q` (53 tests, includes an in-memory FakeTable integration suite — keep it green).
+- **Board map:** `undercity_data.MAP_NODES` is the source of truth. After changing it, regenerate the client copy: `python infrastructure/lambda/generate_map_json.py` → `public/data/undercity-map.json`.
+- **Sprites:** Dino Party placeholder art in `public/undercity/`; the form→sprite mapping lives in `src/app/undercity/data/species.ts` (swap art there). The canvas engines (`engine/sprite-engine.ts`, `plaza-canvas.ts`, `board-canvas.ts`) are TS ports of `a:\Coding\AlexBirthdayDinos` frontend code.
+- **Balance numbers** (stats, XP, costs, evolution tables) are duplicated for display in `src/app/undercity/data/*.ts` — if you tune `undercity_data.py`, update those mirrors.
+- Boss finale, revenge buffs, achievements, and seal-milestone hats are deliberately stubbed (GDD §14 deferred list).
+
 ## Adding a board game
 
 See [.claude/skills/add-board-game/SKILL.md](.claude/skills/add-board-game/SKILL.md) — covers the JSON shape, the genre-token cascade in `GamesService.stringToGameGenres()`, and the BGG-lookup workaround.
