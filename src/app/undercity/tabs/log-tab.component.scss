@@ -1,0 +1,171 @@
+.log-tab {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  background: rgba(74, 124, 89, 0.08);
+  border: 1px solid rgba(74, 124, 89, 0.3);
+  border-radius: 12px;
+  padding: 14px;
+
+  h3 {
+    margin: 0 0 10px;
+    font-size: 0.95rem;
+    color: #b7e4c7;
+  }
+}
+
+.muted {
+  color: #8a978a;
+  font-size: 0.78rem;
+}
+
+// Claims
+.claim-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.won-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: #d8f3dc;
+  cursor: pointer;
+
+  input {
+    accent-color: #4a7c59;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.claim-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+
+  small {
+    font-weight: 400;
+    font-size: 0.7rem;
+    opacity: 0.8;
+  }
+}
+
+.honor-note {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: #8a978a;
+  text-align: center;
+}
+
+// Leaderboard
+.lb-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+
+  &.own {
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+  }
+
+  .lb-rank {
+    width: 20px;
+    text-align: center;
+    font-weight: 800;
+    color: #fbbf24;
+  }
+
+  .lb-name {
+    flex: 1;
+    min-width: 0;
+    color: #d8f3dc;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    small {
+      display: block;
+      font-weight: 400;
+      color: #8a978a;
+      font-size: 0.72rem;
+    }
+  }
+
+  .lb-stats {
+    font-size: 0.78rem;
+    color: #9aa79a;
+    flex-shrink: 0;
+  }
+
+  .lb-renown {
+    font-weight: 800;
+    color: #a78bfa;
+    min-width: 36px;
+    text-align: right;
+  }
+}
+
+// Feed
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.feed-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 0.84rem;
+
+  .feed-icon {
+    flex-shrink: 0;
+  }
+
+  .feed-text {
+    flex: 1;
+    color: #b7c7b7;
+  }
+
+  .feed-time {
+    flex-shrink: 0;
+    color: #6a776a;
+    font-size: 0.72rem;
+  }
+}
+
+.tab-toast {
+  position: sticky;
+  bottom: 8px;
+  align-self: center;
+  background: rgba(20, 18, 14, 0.95);
+  border: 1px solid rgba(74, 124, 89, 0.5);
+  color: #d8f3dc;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  z-index: 6;
+}

@@ -1,0 +1,105 @@
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { UserService } from '../services/user.service';
+import { UndercityStateService } from './services/undercity-state.service';
+import { preloadAll } from './engine/sprite-engine';
+import { BoardMap } from './engine/board-canvas';
+import { xpToNext, formName } from './data/forms';
+import { HatchFlowComponent } from './hatch/hatch-flow.component';
+import { BoardTabComponent } from './tabs/board-tab.component';
+import { CreatureTabComponent } from './tabs/creature-tab.component';
+import { PlazaTabComponent } from './tabs/plaza-tab.component';
+import { LogTabComponent } from './tabs/log-tab.component';
+import { HostPanelComponent } from './host/host-panel.component';
+import { CeremonyComponent } from './ceremony/ceremony.component';
+
+type Tab = 'board' | 'creature' | 'plaza' | 'log';
+
+@Component({
+  selector: 'app-undercity-page',
+  standalone: true,
+  imports: [
+    CommonModule,
+    HatchFlowComponent,
+    BoardTabComponent,
+    CreatureTabComponent,
+    PlazaTabComponent,
+    LogTabComponent,
+    HostPanelComponent,
+    CeremonyComponent,
+  ],
+  templateUrl: './undercity-page.component.html',
+  styleUrls: ['./undercity-page.component.scss'],
+})
+export class UndercityPageComponent implements OnInit, OnDestroy {
+  protected readonly userService = inject(UserService);
+  protected readonly store = inject(UndercityStateService);
+  private readonly http = inject(HttpClient);
+
+  protected readonly tab = signal<Tab>('board');
+  protected readonly assetsReady = signal(false);
+  protected readonly map = signal<BoardMap | null>(null);
+  protected readonly formName = formName;
+
+  protected readonly phase = computed<'signin' | 'loading' | 'idle' | 'hatch' | 'play' | 'ended'>(
+    () => {
+      if (!this.userService.isSignedIn()) return 'signin';
+      const state = this.store.state();
+      if (!state || !this.assetsReady() || !this.map()) return 'loading';
+      const season = state.season;
+      if (!season) return 'idle';
+      if (season.status === 'ended') return 'ended';
+      if (season.status !== 'active') return 'idle';
+      return state.you ? 'play' : 'hatch';
+    },
+  );
+
+  protected readonly hpPct = computed(() => {
+    const you = this.store.you();
+    if (!you) return 0;
+    return Math.round((you.hp / Math.max(1, this.effectiveMaxHp())) * 100);
+  });
+
+  protected readonly effectiveMaxHp = computed(() => {
+    const you = this.store.you();
+    if (!you) return 1;
+    // Troll Hide is the only gear that raises max HP.
+    return you.maxHp + (you.gear?.['carapace'] === 'troll_hide' ? 6 : 0);
+  });
+
+  protected readonly xpPct = computed(() => {
+    const you = this.store.you();
+    if (!you) return 0;
+    return Math.min(100, Math.round((you.xp / xpToNext(you.level)) * 100));
+  });
+
+  protected readonly xpNext = computed(() => {
+    const you = this.store.you();
+    return you ? xpToNext(you.level) : 0;
+  });
+
+  async ngOnInit(): Promise<void> {
+    void preloadAll().then(() => this.assetsReady.set(true));
+    void firstValueFrom(this.http.get<BoardMap>('data/undercity-map.json')).then((m) =>
+      this.map.set(m),
+    );
+    if (this.userService.isSignedIn()) {
+      this.store.startPolling();
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.store.stopPolling();
+  }
+
+  async signIn(): Promise<void> {
+    const ok = await this.userService.requireSignIn();
+    if (ok) this.store.startPolling();
+  }
+
+  setTab(tab: Tab): void {
+    this.tab.set(tab);
+  }
+}

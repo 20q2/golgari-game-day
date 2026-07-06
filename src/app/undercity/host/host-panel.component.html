@@ -1,0 +1,48 @@
+<div class="host-panel">
+  <button class="host-toggle" (click)="open.set(!open())">
+    🗝️ Host controls {{ open() ? '▾' : '▸' }}
+  </button>
+  @if (open()) {
+    <div class="host-body">
+      <input
+        class="host-input"
+        type="password"
+        placeholder="Host passphrase"
+        [(ngModel)]="hostKey"
+        autocomplete="off"
+      />
+      <div class="host-actions">
+        @if (!seasonActive()) {
+          <button
+            class="uc-btn uc-btn-primary"
+            [disabled]="busy() || !hostKey.trim()"
+            (click)="startNight()"
+          >
+            🌙 New Night
+          </button>
+        } @else {
+          <button
+            class="uc-btn uc-btn-danger"
+            [disabled]="busy() || !hostKey.trim()"
+            (click)="endNight()"
+          >
+            {{ confirmEnd() ? '⚠️ Really end the night?' : '🏁 End Night' }}
+          </button>
+          <button
+            class="uc-btn uc-btn-primary"
+            [disabled]="busy() || !hostKey.trim()"
+            (click)="startNight()"
+          >
+            🌙 New Night (archives current)
+          </button>
+        }
+      </div>
+      @if (message(); as msg) {
+        <p class="host-msg">{{ msg }}</p>
+      }
+      <p class="host-note">
+        First "New Night" ever sets the passphrase. The Behemoth slumbers in this build.
+      </p>
+    </div>
+  }
+</div>

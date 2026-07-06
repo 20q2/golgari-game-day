@@ -1,0 +1,70 @@
+.host-panel {
+  width: min(420px, 100%);
+  margin: 8px auto 0;
+}
+
+.host-toggle {
+  width: 100%;
+  background: none;
+  border: 1px dashed rgba(122, 135, 122, 0.4);
+  border-radius: 10px;
+  color: #7a877a;
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 8px;
+  cursor: pointer;
+
+  &:hover {
+    color: #b7e4c7;
+    border-color: rgba(74, 124, 89, 0.6);
+  }
+}
+
+.host-body {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(74, 124, 89, 0.08);
+  border: 1px solid rgba(74, 124, 89, 0.3);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.host-input {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(74, 124, 89, 0.4);
+  border-radius: 8px;
+  color: #d8f3dc;
+  font-family: inherit;
+  padding: 9px 12px;
+
+  &::placeholder {
+    color: #6a776a;
+  }
+}
+
+.host-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  button {
+    flex: 1;
+    min-width: 140px;
+  }
+}
+
+.host-msg {
+  margin: 0;
+  color: #fbbf24;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.host-note {
+  margin: 0;
+  color: #6a776a;
+  font-size: 0.72rem;
+  text-align: center;
+}

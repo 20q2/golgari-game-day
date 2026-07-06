@@ -1,0 +1,103 @@
+<div class="undercity">
+  @switch (phase()) {
+    @case ('signin') {
+      <div class="gate-screen">
+        <div class="gate-emoji">🐌</div>
+        <h1>The Undercity</h1>
+        <p>Beneath the game table, the swarm stirs. Sign in to hatch your creature.</p>
+        <button class="uc-btn uc-btn-primary" (click)="signIn()">Sign in</button>
+      </div>
+    }
+    @case ('loading') {
+      <div class="gate-screen">
+        <div class="gate-emoji pulse">🍄</div>
+        <p>Descending into the Undercity…</p>
+        @if (store.error(); as err) {
+          <p class="error-text">{{ err }}</p>
+        }
+      </div>
+    }
+    @case ('idle') {
+      <div class="idle-screen">
+        <div class="gate-emoji">🕯️</div>
+        <h1>The Undercity sleeps</h1>
+        <p>No night is underway. The host can wake the swarm below.</p>
+        @if (store.hallOfFame().length) {
+          <h2>Hall of Fame</h2>
+          <div class="hof-list">
+            @for (night of store.hallOfFame(); track night.seasonId) {
+              <div class="hof-entry">
+                <span class="hof-date">{{ night.endedAt | date: 'MMM d, y' }}</span>
+                <span class="hof-champ">👑 {{ night.champion.username }}</span>
+                <span class="hof-form">{{ night.champion.formName }} · {{ night.champion.renown }} Renown</span>
+              </div>
+            }
+          </div>
+        }
+        <app-undercity-host-panel />
+      </div>
+    }
+    @case ('ended') {
+      <app-undercity-ceremony [result]="store.result()" [hallOfFame]="store.hallOfFame()" />
+      <div class="idle-screen">
+        <app-undercity-host-panel />
+      </div>
+    }
+    @case ('hatch') {
+      <app-undercity-hatch-flow />
+    }
+    @case ('play') {
+      @if (store.you(); as you) {
+        <header class="hud">
+          <div class="hud-creature">
+            <span class="hud-name">{{ formName(you.form) }}</span>
+            <span class="hud-level">L{{ you.level }}</span>
+            <div class="bar hp-bar" [title]="you.hp + ' / ' + effectiveMaxHp() + ' HP'">
+              <div class="bar-fill" [style.width.%]="hpPct()"></div>
+              <span class="bar-text">{{ you.hp }}/{{ effectiveMaxHp() }}</span>
+            </div>
+            <div class="bar xp-bar" [title]="you.xp + ' / ' + xpNext() + ' XP'">
+              <div class="bar-fill" [style.width.%]="xpPct()"></div>
+            </div>
+          </div>
+          <div class="hud-stats">
+            <span class="hud-chip" title="Rolls banked">🎲 {{ you.rolls }}</span>
+            <span class="hud-chip" title="Spores">🟢 {{ you.spores }}</span>
+          </div>
+        </header>
+
+        <main class="tab-body">
+          @switch (tab()) {
+            @case ('board') {
+              <app-undercity-board-tab [map]="map()!" />
+            }
+            @case ('creature') {
+              <app-undercity-creature-tab />
+            }
+            @case ('plaza') {
+              <app-undercity-plaza-tab />
+            }
+            @case ('log') {
+              <app-undercity-log-tab />
+            }
+          }
+        </main>
+
+        <nav class="tab-bar">
+          <button [class.active]="tab() === 'board'" (click)="setTab('board')">
+            <span class="tab-icon">🗺️</span><span class="tab-label">Board</span>
+          </button>
+          <button [class.active]="tab() === 'creature'" (click)="setTab('creature')">
+            <span class="tab-icon">🐌</span><span class="tab-label">Creature</span>
+          </button>
+          <button [class.active]="tab() === 'plaza'" (click)="setTab('plaza')">
+            <span class="tab-icon">🍄</span><span class="tab-label">Plaza</span>
+          </button>
+          <button [class.active]="tab() === 'log'" (click)="setTab('log')">
+            <span class="tab-icon">📜</span><span class="tab-label">Log</span>
+          </button>
+        </nav>
+      }
+    }
+  }
+</div>

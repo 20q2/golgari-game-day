@@ -1,0 +1,136 @@
+.ceremony {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 28px 16px 8px;
+}
+
+.champ-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+
+  .champ-crown {
+    font-size: 2.2rem;
+    animation: uc-bob 2s ease-in-out infinite;
+  }
+
+  .champ-sprite-wrap {
+    position: relative;
+  }
+
+  .champ-sprite {
+    width: 140px;
+    height: 140px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 18px rgba(251, 191, 36, 0.45));
+  }
+
+  .champ-hat {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 44px;
+    image-rendering: pixelated;
+  }
+
+  h1 {
+    margin: 0;
+    color: #fbbf24;
+    font-size: 1.7rem;
+  }
+
+  .champ-sub {
+    margin: 0;
+    color: #b7c7b7;
+  }
+}
+
+@keyframes uc-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.podium {
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+}
+
+.podium-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(74, 124, 89, 0.1);
+  border: 1px solid rgba(74, 124, 89, 0.35);
+  border-radius: 10px;
+  padding: 10px 14px;
+
+  &.first {
+    border-color: rgba(251, 191, 36, 0.6);
+    padding-bottom: 22px;
+  }
+
+  img {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+
+  .podium-name {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #d8f3dc;
+  }
+
+  .podium-renown {
+    color: #a78bfa;
+    font-weight: 800;
+    font-size: 0.8rem;
+  }
+}
+
+.renown-table {
+  width: min(560px, 100%);
+  border-collapse: collapse;
+  font-size: 0.82rem;
+
+  th,
+  td {
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid rgba(74, 124, 89, 0.2);
+  }
+
+  th {
+    color: #8a978a;
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  td {
+    color: #b7c7b7;
+  }
+
+  .renown-cell {
+    color: #a78bfa;
+    font-weight: 800;
+  }
+}
+
+.empty-note {
+  color: #8a978a;
+}

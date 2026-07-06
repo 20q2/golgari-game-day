@@ -1,0 +1,185 @@
+<div class="board-tab">
+  <canvas #boardCanvas class="board-canvas"></canvas>
+
+  <!-- Roll / pending banner -->
+  <div class="roll-strip">
+    @if (store.you()?.pendingMove; as pm) {
+      <div class="pending-banner">
+        🎲 You rolled a <strong>{{ pm.value }}</strong> — tap a glowing space
+      </div>
+    } @else {
+      <button
+        class="uc-btn uc-btn-primary roll-btn"
+        [disabled]="busy() || (store.you()?.rolls ?? 0) < 1"
+        (click)="roll()"
+      >
+        🎲 Roll ({{ store.you()?.rolls ?? 0 }})
+      </button>
+    }
+
+    <!-- Contextual facility buttons while parked on a special node -->
+    @if (!store.you()?.pendingMove) {
+      @switch (nodeType()) {
+        @case ('shop') {
+          <button class="uc-btn" (click)="showShop.set(true)">🏪 Bazaar</button>
+        }
+        @case ('shrine') {
+          <button class="uc-btn" (click)="showShrine.set(true)">🕯️ Shrine</button>
+        }
+        @case ('ossuary') {
+          <button class="uc-btn" (click)="showOssuary.set(true)">🎲 Ossuary</button>
+        }
+      }
+    }
+  </div>
+
+  <!-- PvP prompt: someone shares your space -->
+  @if (occupantsHere().length && !store.you()?.pendingMove) {
+    <div class="pvp-strip">
+      @for (o of occupantsHere(); track o.userId) {
+        <div class="pvp-row">
+          <span class="pvp-name">
+            {{ o.username }}'s {{ o.formName }} (L{{ o.level }})
+            @if (o.shielded) {
+              <span title="Compost Shield">🫧</span>
+            }
+          </span>
+          <button
+            class="uc-btn uc-btn-danger pvp-btn"
+            [disabled]="busy() || o.shielded"
+            (click)="attack(o)"
+          >
+            ⚔️ Battle
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  @if (toast(); as t) {
+    <div class="board-toast">{{ t }}</div>
+  }
+
+  <!-- Space event result modal -->
+  @if (spaceModal(); as ev) {
+    <div class="uc-modal-backdrop" (click)="closeSpaceModal()">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3>{{ spaceName(ev.type) }}</h3>
+        @if (ev.roll) {
+          <p class="mystery-roll">d12 → {{ ev.roll }}</p>
+        }
+        <p>{{ ev.text }}</p>
+        <button class="uc-btn uc-btn-primary" (click)="closeSpaceModal()">OK</button>
+      </div>
+    </div>
+  }
+
+  <!-- Shop -->
+  @if (showShop()) {
+    <div class="uc-modal-backdrop" (click)="closeFacilities()">
+      <div class="uc-modal shop-modal" (click)="$event.stopPropagation()">
+        <h3>🏪 Rot-Farm Bazaar (tier {{ shopTier() }})</h3>
+        <p class="modal-sub">You carry 🟢 {{ store.you()?.spores }}</p>
+        <div class="shop-section">Gear (auto-equips; old piece trades in at 50%)</div>
+        @for (g of gear; track g.id) {
+          <div class="shop-row" [class.locked]="g.tier > shopTier()">
+            <span class="shop-name">{{ g.name }} <em>{{ g.desc }}</em></span>
+            @if (g.tier > shopTier()) {
+              <span class="shop-lock">deeper zones only</span>
+            } @else {
+              <button
+                class="uc-btn shop-buy"
+                [disabled]="busy() || store.you()?.gear?.[g.slot] === g.id"
+                (click)="buy(g)"
+              >
+                {{ store.you()?.gear?.[g.slot] === g.id ? 'Equipped' : g.cost + ' 🟢' }}
+              </button>
+            }
+          </div>
+        }
+        <div class="shop-section">Consumables (bag {{ store.you()?.bag?.length ?? 0 }}/3)</div>
+        @for (c of consumables; track c.id) {
+          <div class="shop-row">
+            <span class="shop-name">{{ c.emoji }} {{ c.name }} <em>{{ c.desc }}</em></span>
+            <button class="uc-btn shop-buy" [disabled]="busy()" (click)="buy(c)">
+              {{ c.cost }} 🟢
+            </button>
+          </div>
+        }
+        <button class="uc-btn close-btn" (click)="closeFacilities()">Leave</button>
+      </div>
+    </div>
+  }
+
+  <!-- Shrine -->
+  @if (showShrine()) {
+    <div class="uc-modal-backdrop" (click)="closeFacilities()">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3>🕯️ Shrine of the Swarm</h3>
+        <p class="modal-sub">A blessing costs 15 🟢 — or tithe your own blood.</p>
+        <div class="choice-grid">
+          <button class="uc-btn" [disabled]="busy()" (click)="shrine('atk')">+1 ATK</button>
+          <button class="uc-btn" [disabled]="busy()" (click)="shrine('def')">+1 DEF</button>
+          <button class="uc-btn" [disabled]="busy()" (click)="shrine('spd')">+1 SPD</button>
+          <button class="uc-btn" [disabled]="busy()" (click)="shrine('heal')">Full heal</button>
+          <button class="uc-btn uc-btn-danger tithe-btn" [disabled]="busy()" (click)="shrine('tithe')">
+            🩸 Tithe blood: −25% HP → +8 XP
+          </button>
+        </div>
+        <button class="uc-btn close-btn" (click)="closeFacilities()">Leave</button>
+      </div>
+    </div>
+  }
+
+  <!-- Warp choice -->
+  @if (showWarp(); as options) {
+    <div class="uc-modal-backdrop">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3>🌀 Warp Mushroom</h3>
+        <p class="modal-sub">Step through the spore-veil to…</p>
+        <div class="choice-grid">
+          @for (w of options; track w) {
+            <button class="uc-btn" [disabled]="busy()" (click)="warpTo(w)">
+              {{ w === 'isl_warp' ? '🏝️ The central island' : '🌀 ' + w }}
+            </button>
+          }
+        </div>
+        <button class="uc-btn close-btn" (click)="closeFacilities()">Stay here</button>
+      </div>
+    </div>
+  }
+
+  <!-- Ossuary -->
+  @if (showOssuary()) {
+    <div class="uc-modal-backdrop" (click)="closeFacilities()">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3>🎲 The Ossuary</h3>
+        <p class="modal-sub">Call the bone die. Win = double your bet.</p>
+        <div class="bet-row">
+          <button class="uc-btn" (click)="adjustBet(-5)">−5</button>
+          <span class="bet-amount">{{ bet() }} 🟢</span>
+          <button class="uc-btn" (click)="adjustBet(5)">+5</button>
+        </div>
+        <div class="choice-grid">
+          <button class="uc-btn" [disabled]="busy()" (click)="gamble('low')">Low (1–3)</button>
+          <button class="uc-btn" [disabled]="busy()" (click)="gamble('high')">High (4–6)</button>
+        </div>
+        @if (gambleResult(); as gr) {
+          <p class="gamble-result">{{ gr }}</p>
+        }
+        <button class="uc-btn close-btn" (click)="closeFacilities()">Walk away</button>
+      </div>
+    </div>
+  }
+
+  <!-- Battle playback -->
+  @if (battleView(); as bv) {
+    <app-undercity-battle-playback
+      [battle]="bv.battle"
+      [attacker]="bv.attacker"
+      [defender]="bv.defender"
+      [resultText]="bv.resultText"
+      (closed)="closeBattle()"
+    />
+  }
+</div>

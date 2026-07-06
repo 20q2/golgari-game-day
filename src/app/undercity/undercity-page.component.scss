@@ -1,0 +1,289 @@
+// Shared Undercity look: dark fungal palette layered on the site's Golgari
+// tokens. The page owns the full viewport below the navbar.
+
+.undercity {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 64px);
+  height: calc(100lvh - 64px);
+  background: #12100e;
+  color: #e5f0e5;
+  overflow: hidden;
+}
+
+.gate-screen,
+.idle-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md, 16px);
+  text-align: center;
+  padding: var(--spacing-lg, 24px);
+  overflow-y: auto;
+
+  h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: #b7e4c7;
+  }
+
+  h2 {
+    margin: var(--spacing-md, 16px) 0 0;
+    font-size: 1.1rem;
+    color: #9ac79a;
+  }
+
+  p {
+    margin: 0;
+    color: #9aa79a;
+    max-width: 420px;
+  }
+}
+
+.idle-screen {
+  justify-content: flex-start;
+  padding-top: 12vh;
+}
+
+.gate-emoji {
+  font-size: 4rem;
+
+  &.pulse {
+    animation: uc-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes uc-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+.error-text {
+  color: #f87171;
+}
+
+.hof-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm, 8px);
+  width: min(420px, 100%);
+}
+
+.hof-entry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm, 8px);
+  justify-content: space-between;
+  background: rgba(74, 124, 89, 0.12);
+  border: 1px solid rgba(74, 124, 89, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+
+  .hof-date {
+    color: #8a978a;
+  }
+
+  .hof-champ {
+    font-weight: 600;
+    color: #fbbf24;
+  }
+
+  .hof-form {
+    color: #9ac79a;
+  }
+}
+
+// ── HUD header strip ─────────────────────────────────────────────────────────
+
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md, 16px);
+  padding: 8px 14px;
+  background: #1a1815;
+  border-bottom: 1px solid rgba(74, 124, 89, 0.35);
+  flex-shrink: 0;
+}
+
+.hud-creature {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto auto;
+  column-gap: 8px;
+  row-gap: 3px;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  max-width: 340px;
+
+  .hud-name {
+    font-weight: 700;
+    color: #b7e4c7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hud-level {
+    color: #fbbf24;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+}
+
+.bar {
+  grid-column: 1 / -1;
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.4s ease;
+  }
+
+  .bar-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+  }
+}
+
+.hp-bar .bar-fill {
+  background: linear-gradient(90deg, #6cae75, #99d98c);
+}
+
+.xp-bar {
+  height: 5px;
+
+  .bar-fill {
+    background: #a78bfa;
+  }
+}
+
+.hud-stats {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.hud-chip {
+  background: rgba(74, 124, 89, 0.18);
+  border: 1px solid rgba(74, 124, 89, 0.4);
+  border-radius: 16px;
+  padding: 4px 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+// ── Tab body + bar ───────────────────────────────────────────────────────────
+
+.tab-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.tab-bar {
+  display: flex;
+  flex-shrink: 0;
+  background: #1a1815;
+  border-top: 1px solid rgba(74, 124, 89, 0.35);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+
+  button {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 0 10px;
+    background: none;
+    border: none;
+    color: #7a877a;
+    font-family: inherit;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
+
+    &.active {
+      color: #b7e4c7;
+      background: rgba(74, 124, 89, 0.15);
+    }
+
+    .tab-icon {
+      font-size: 1.3rem;
+    }
+
+    .tab-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+  }
+}
+
+// ── Shared control styles (used by child tabs via :host-context) ────────────
+
+:host ::ng-deep {
+  .uc-btn {
+    font-family: inherit;
+    border: 1px solid rgba(74, 124, 89, 0.5);
+    background: rgba(74, 124, 89, 0.18);
+    color: #d8f3dc;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+
+    &:hover:not(:disabled) {
+      background: rgba(74, 124, 89, 0.35);
+    }
+
+    &:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+  }
+
+  .uc-btn-primary {
+    background: #4a7c59;
+    border-color: #5a8c69;
+
+    &:hover:not(:disabled) {
+      background: #5a8c69;
+    }
+  }
+
+  .uc-btn-danger {
+    background: rgba(150, 50, 50, 0.35);
+    border-color: rgba(200, 80, 80, 0.5);
+  }
+}

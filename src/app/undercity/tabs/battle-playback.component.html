@@ -1,0 +1,64 @@
+<div class="battle-overlay">
+  <div class="battle-card">
+    <div class="arena">
+      <div
+        class="side"
+        [class.lunge-right]="lunge() === 'attacker'"
+        [class.hit]="hit() === 'attacker'"
+      >
+        @if (attacker.spriteUrl) {
+          <img class="sprite" [src]="attacker.spriteUrl" [alt]="attacker.name" />
+        } @else {
+          <span class="sprite-emoji">{{ attacker.emoji ?? '🐌' }}</span>
+        }
+        @if (popup()?.side === 'attacker') {
+          <span class="dmg-pop">{{ popup()?.text }}</span>
+        }
+        <span class="side-name">{{ attacker.name }}</span>
+        <div class="hp-track">
+          <div class="hp-fill" [style.width.%]="hpPct('attacker')"></div>
+        </div>
+        <span class="hp-num">{{ attackerHp() }}/{{ attacker.maxHp }}</span>
+      </div>
+
+      <span class="vs">⚔️</span>
+
+      <div
+        class="side flipped"
+        [class.lunge-left]="lunge() === 'defender'"
+        [class.hit]="hit() === 'defender'"
+      >
+        @if (defender.spriteUrl) {
+          <img class="sprite" [src]="defender.spriteUrl" [alt]="defender.name" />
+        } @else {
+          <span class="sprite-emoji">{{ defender.emoji ?? '👿' }}</span>
+        }
+        @if (popup()?.side === 'defender') {
+          <span class="dmg-pop">{{ popup()?.text }}</span>
+        }
+        <span class="side-name">{{ defender.name }}</span>
+        <div class="hp-track">
+          <div class="hp-fill" [style.width.%]="hpPct('defender')"></div>
+        </div>
+        <span class="hp-num">{{ defenderHp() }}/{{ defender.maxHp }}</span>
+      </div>
+    </div>
+
+    <div class="battle-log">
+      @for (line of lines(); track $index) {
+        <div class="log-line">{{ line }}</div>
+      }
+      @if (done()) {
+        <div class="log-line result">{{ resultText }}</div>
+      }
+    </div>
+
+    <div class="battle-actions">
+      @if (!done()) {
+        <button class="uc-btn" (click)="skip()">Skip ⏩</button>
+      } @else {
+        <button class="uc-btn uc-btn-primary" (click)="close()">Continue</button>
+      }
+    </div>
+  </div>
+</div>

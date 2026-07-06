@@ -1,11 +1,16 @@
 <mat-toolbar color="primary" class="navbar">
-  <a routerLink="/home" class="brand" aria-label="Golgari Palace Game Day — home">
+  <!-- The logo is the secret door: it leads down into The Undercity sub-game. -->
+  <a routerLink="/undercity" class="brand" aria-label="Golgari Palace Game Day — enter The Undercity">
     <span class="brand-logo" aria-hidden="true"></span>
     <span class="title">Golgari Palace Game Day</span>
   </a>
   <span class="spacer"></span>
   
   <div class="nav-links">
+    <a mat-button routerLink="/home" routerLinkActive="active" class="nav-link">
+      <mat-icon>casino</mat-icon>
+      <span class="nav-text">Games</span>
+    </a>
     <a mat-button routerLink="/tv" routerLinkActive="active" class="nav-link desktop-only">
       <mat-icon>qr_code_2</mat-icon>
       <span class="nav-text">TV</span>

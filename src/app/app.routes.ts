@@ -6,5 +6,10 @@ export const routes: Routes = [
   { path: '', redirectTo: '/home', pathMatch: 'full' },
   { path: 'home', component: GamesComponent },
   { path: 'tv', component: TvComponent },
+  {
+    path: 'undercity',
+    loadComponent: () =>
+      import('./undercity/undercity-page.component').then((m) => m.UndercityPageComponent),
+  },
   { path: '**', redirectTo: '/home' }
 ];

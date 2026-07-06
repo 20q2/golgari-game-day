@@ -1,0 +1,63 @@
+<div class="ceremony">
+  @if (champion(); as champ) {
+    <div class="champ-stage">
+      <div class="champ-crown">👑</div>
+      @if (spriteUrl(champ); as url) {
+        <div class="champ-sprite-wrap">
+          <img class="champ-sprite" [src]="url" [alt]="champ.formName" />
+          @if (hatUrl(champ); as hat) {
+            <img class="champ-hat" [src]="hat" alt="" />
+          }
+        </div>
+      }
+      <h1>{{ champ.username }}</h1>
+      <p class="champ-sub">
+        Champion of the Undercity — {{ champ.formName }}, {{ champ.renown }} Renown
+      </p>
+    </div>
+
+    <div class="podium">
+      @for (s of podium(); track s.userId; let i = $index) {
+        <div class="podium-slot" [class.first]="i === 0">
+          <span class="podium-medal">{{ i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉' }}</span>
+          @if (spriteUrl(s); as url) {
+            <img [src]="url" [alt]="s.formName" />
+          }
+          <span class="podium-name">{{ s.username }}</span>
+          <span class="podium-renown">{{ s.renown }}</span>
+        </div>
+      }
+    </div>
+
+    <table class="renown-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Player</th>
+          <th>Creature</th>
+          <th>L</th>
+          <th>⚔️</th>
+          <th>🐛</th>
+          <th>🟢</th>
+          <th>Renown</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of standings(); track s.userId; let i = $index) {
+          <tr>
+            <td>{{ i + 1 }}</td>
+            <td>{{ s.username }}</td>
+            <td>{{ s.formName }}</td>
+            <td>{{ s.level }}</td>
+            <td>{{ s.pvpWins }}</td>
+            <td>{{ s.wildWins }}</td>
+            <td>{{ s.spores }}</td>
+            <td class="renown-cell">{{ s.renown }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  } @else {
+    <p class="empty-note">The night ended before anyone hatched. The swarm shrugs.</p>
+  }
+</div>

@@ -1,0 +1,391 @@
+.creature-tab {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card,
+.portrait-card {
+  background: rgba(74, 124, 89, 0.08);
+  border: 1px solid rgba(74, 124, 89, 0.3);
+  border-radius: 12px;
+  padding: 14px;
+
+  h3 {
+    margin: 0 0 10px;
+    font-size: 0.95rem;
+    color: #b7e4c7;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+}
+
+.muted {
+  color: #8a978a;
+  font-weight: 400;
+  font-size: 0.78rem;
+}
+
+.portrait-card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+
+  .portrait {
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    flex-shrink: 0;
+  }
+
+  .portrait-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: flex-start;
+
+    h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      color: #d8f3dc;
+    }
+
+    .tier-chip {
+      color: #fbbf24;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .xp-line {
+      color: #a78bfa;
+      font-size: 0.8rem;
+    }
+
+    .shield-chip {
+      color: #8cdcaa;
+      font-size: 0.8rem;
+    }
+
+    .wardrobe-btn {
+      padding: 6px 12px;
+      font-size: 0.82rem;
+    }
+  }
+}
+
+.evolve-cta {
+  font-size: 1rem;
+  padding: 14px;
+  animation: uc-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes uc-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 6px rgba(183, 228, 199, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(183, 228, 199, 0.6);
+  }
+}
+
+// Stats
+.points-chip {
+  background: rgba(167, 139, 250, 0.2);
+  border: 1px solid rgba(167, 139, 250, 0.5);
+  color: #c4b5fd;
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+}
+
+.stat-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .stat-name {
+    width: 82px;
+    color: #b7c7b7;
+    font-size: 0.9rem;
+  }
+
+  .stat-val {
+    font-weight: 700;
+    font-size: 1rem;
+    min-width: 56px;
+  }
+
+  .plus-btn {
+    padding: 3px 12px;
+    font-size: 0.85rem;
+  }
+}
+
+.passives {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .passive-row {
+    font-size: 0.8rem;
+    color: #b7c7b7;
+
+    strong {
+      color: #fbbf24;
+    }
+  }
+}
+
+// Stance
+.stance-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stance-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(74, 124, 89, 0.3);
+  border-radius: 10px;
+  padding: 10px 6px;
+  color: #d8f3dc;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  small {
+    font-weight: 400;
+    font-size: 0.65rem;
+    color: #8a978a;
+    line-height: 1.3;
+  }
+
+  &.selected {
+    border-color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+  }
+}
+
+// Gear & bag
+.gear-rows,
+.bag-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.gear-row,
+.bag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.88rem;
+
+  .gear-slot {
+    color: #9aa79a;
+    width: 100px;
+    flex-shrink: 0;
+  }
+
+  .gear-name {
+    color: #d8f3dc;
+  }
+
+  .use-btn {
+    padding: 4px 12px;
+    font-size: 0.8rem;
+  }
+}
+
+.loaded-note {
+  margin: 6px 0 0;
+  color: #fbbf24;
+  font-size: 0.85rem;
+}
+
+.tab-toast {
+  position: sticky;
+  bottom: 8px;
+  align-self: center;
+  background: rgba(20, 18, 14, 0.95);
+  border: 1px solid rgba(74, 124, 89, 0.5);
+  color: #d8f3dc;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  z-index: 6;
+}
+
+// Wardrobe
+.wardrobe-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+
+  .wardrobe-label {
+    width: 60px;
+    font-size: 0.8rem;
+    color: #9aa79a;
+    text-transform: capitalize;
+    flex-shrink: 0;
+  }
+}
+
+.swatch-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.paint-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+
+  &.selected {
+    border-color: #fbbf24;
+  }
+}
+
+.hat-chip {
+  min-width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 2px solid rgba(74, 124, 89, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+  color: #9aa79a;
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+
+  img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+
+  &.selected {
+    border-color: #fbbf24;
+  }
+}
+
+// Evolution overlay
+.evolve-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(8, 6, 4, 0.94);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 20px;
+  overflow-y: auto;
+
+  h2 {
+    margin: 0;
+    color: #b7e4c7;
+    font-size: 1.5rem;
+  }
+}
+
+.evolve-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  width: min(520px, 100%);
+}
+
+.evolve-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(74, 124, 89, 0.12);
+  border: 1px solid rgba(183, 228, 199, 0.4);
+  border-radius: 12px;
+  padding: 16px 10px;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+
+  &:hover:not(:disabled) {
+    border-color: #fbbf24;
+    transform: translateY(-3px);
+  }
+
+  img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+
+  .evolve-name {
+    font-weight: 800;
+    color: #d8f3dc;
+  }
+
+  .evolve-blurb {
+    font-size: 0.78rem;
+    color: #9aa79a;
+  }
+
+  .evolve-bonus {
+    font-size: 0.8rem;
+    color: #fbbf24;
+    font-weight: 600;
+  }
+
+  .evolve-passive {
+    font-size: 0.75rem;
+    color: #b7c7b7;
+
+    strong {
+      color: #a78bfa;
+    }
+  }
+}
+
+.die-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 64px);
+  gap: 10px;
+
+  .die-btn {
+    font-size: 1.3rem;
+    padding: 12px 0;
+  }
+}

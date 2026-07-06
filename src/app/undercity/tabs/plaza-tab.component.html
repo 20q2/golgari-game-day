@@ -1,0 +1,25 @@
+<div class="plaza-tab">
+  <canvas #plazaCanvas class="plaza-canvas"></canvas>
+
+  @if (selected(); as sel) {
+    <div class="poke-card">
+      <span class="poke-name">
+        {{ sel.username }}'s {{ sel.formName }} (L{{ sel.level }})
+        @if (sel.shielded) {
+          🫧
+        }
+      </span>
+      @if (sel.userId !== store.ownUserId) {
+        <button class="uc-btn uc-btn-primary" [disabled]="busy()" (click)="poke()">
+          👉 Poke (gift a roll)
+        </button>
+      } @else {
+        <span class="own-note">That's you! Looking sharp.</span>
+      }
+    </div>
+  }
+
+  @if (toast(); as t) {
+    <div class="plaza-toast">{{ t }}</div>
+  }
+</div>
