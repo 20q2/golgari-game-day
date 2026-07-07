@@ -12,7 +12,7 @@
 import { getRecolored } from './sprite-engine';
 import { formSprite } from '../data/species';
 import { SPACE_ICONS } from '../data/items';
-import { renderTerrain, TerrainArt, TERRAIN_MARGIN } from './board-terrain';
+import { renderTerrain, FloorTextures, TerrainArt, TERRAIN_MARGIN } from './board-terrain';
 
 export interface BoardNode {
   id: string;
@@ -131,6 +131,30 @@ export class BoardCanvas {
     this.ctx = canvas.getContext('2d')!;
     for (const n of map.nodes) this.nodeMap.set(n.id, n);
     this.terrain = renderTerrain(map);
+    // Rebuild the terrain once the per-biome floor paintings arrive — they
+    // replace the flat black with ghosted scenery that cross-fades between
+    // chambers. draw() reads this.terrain fresh each frame, so the swap is
+    // seamless; a failed load just leaves that biome's floor dark.
+    const floorSrc: Record<string, string> = {
+      city: 'undercity/undercity_background.png',
+      cavern: 'undercity/plaza_background.png',
+      bog: 'undercity/swamp_background.png',
+      isle: 'undercity/palace_background.png',
+    };
+    const floors: FloorTextures = {};
+    let pending = Object.keys(floorSrc).length;
+    const done = () => {
+      if (--pending === 0) this.terrain = renderTerrain(map, floors);
+    };
+    for (const [region, src] of Object.entries(floorSrc)) {
+      const img = new Image();
+      img.onload = () => {
+        floors[region] = img;
+        done();
+      };
+      img.onerror = done;
+      img.src = src;
+    }
     this.resize();
     this.initInput();
     window.addEventListener('resize', this.boundResize);

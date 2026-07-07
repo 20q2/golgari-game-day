@@ -37,6 +37,21 @@ export interface TerrainArt {
   glowSpots: GlowSpot[];
 }
 
+/** Floor paintings keyed by region, ghosted onto the cave floor per chamber. */
+export type FloorTextures = Partial<Record<string, HTMLImageElement>>;
+
+/**
+ * Where each region's floor painting sits and how far it reaches. Radii
+ * overlap on purpose: the radial alpha masks cross-fade one biome floor
+ * softly into the next.
+ */
+const FLOOR_ZONES: { region: string; cx: number; cy: number; r: number; alpha: number }[] = [
+  { region: 'city', cx: 900, cy: 880, r: 860, alpha: 0.18 },
+  { region: 'cavern', cx: 420, cy: 320, r: 640, alpha: 0.18 },
+  { region: 'bog', cx: 1370, cy: 310, r: 600, alpha: 0.18 },
+  { region: 'isle', cx: 900, cy: 470, r: 340, alpha: 0.14 },
+];
+
 interface Pt {
   x: number;
   y: number;
@@ -232,7 +247,7 @@ function strokePolyline(
   ctx.stroke();
 }
 
-export function renderTerrain(map: BoardMap): TerrainArt {
+export function renderTerrain(map: BoardMap, floors?: FloorTextures): TerrainArt {
   const w = map.worldW + TERRAIN_MARGIN * 2;
   const h = map.worldH + TERRAIN_MARGIN * 2;
   const canvas = document.createElement('canvas');
@@ -244,9 +259,41 @@ export function renderTerrain(map: BoardMap): TerrainArt {
   const curves = edgeCurves(map);
   const rand = mulberry32(hashStr('undercity-terrain'));
 
-  // 1. Cavern floor + mottling + per-chamber tint washes
+  // 1. Cavern floor: per-biome floor paintings ghosted into the dark, each
+  //    masked by a radial falloff so neighboring biomes cross-fade, then
+  //    mottling and per-chamber tint washes.
   ctx.fillStyle = '#141110';
   ctx.fillRect(-TERRAIN_MARGIN, -TERRAIN_MARGIN, w, h);
+  if (floors) {
+    for (const z of FLOOR_ZONES) {
+      const img = floors[z.region];
+      if (!img || !img.width) continue;
+      const size = z.r * 2;
+      const tmp = document.createElement('canvas');
+      tmp.width = size;
+      tmp.height = size;
+      const tc = tmp.getContext('2d')!;
+      const scale = Math.max(size / img.width, size / img.height);
+      tc.drawImage(
+        img,
+        (size - img.width * scale) / 2,
+        (size - img.height * scale) / 2,
+        img.width * scale,
+        img.height * scale,
+      );
+      const mask = tc.createRadialGradient(z.r, z.r, 0, z.r, z.r, z.r);
+      mask.addColorStop(0, 'rgba(0,0,0,1)');
+      mask.addColorStop(0.55, 'rgba(0,0,0,0.85)');
+      mask.addColorStop(1, 'rgba(0,0,0,0)');
+      tc.globalCompositeOperation = 'destination-in';
+      tc.fillStyle = mask;
+      tc.fillRect(0, 0, size, size);
+      ctx.save();
+      ctx.globalAlpha = z.alpha;
+      ctx.drawImage(tmp, z.cx - z.r, z.cy - z.r);
+      ctx.restore();
+    }
+  }
   for (let i = 0; i < 320; i++) {
     const x = rand() * w - TERRAIN_MARGIN;
     const y = rand() * h - TERRAIN_MARGIN;
