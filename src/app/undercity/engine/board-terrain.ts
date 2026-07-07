@@ -45,42 +45,50 @@ interface Pt {
 interface RegionTheme {
   top: string; // plateau surface
   cliff: string; // pseudo-height rim under the south edge
+  cliffH: number; // how tall the ground reads — chunky stone vs low marsh
   mottle: string; // soft highlight blotches on the surface
-  tint: string; // low-alpha floor wash around the chamber
+  tint: string; // floor wash coloring the cave floor around the chamber
   path: { rim: string; edge: string; fill: string; stud: string };
 }
 
 const REGION_THEMES: Record<string, RegionTheme> = {
   // The Undercity — emerald-teal gothic stone (undercity_background.png).
+  // Shape language: chamfered, angular masonry slabs, tall and chunky.
   city: {
     top: '#22403a',
     cliff: '#0f201c',
+    cliffH: 16,
     mottle: 'rgba(80, 190, 150, 0.13)',
-    tint: 'rgba(30, 95, 78, 0.10)',
+    tint: 'rgba(26, 92, 76, 0.22)',
     path: { rim: '#16241f', edge: '#4fae76', fill: '#3d5148', stud: 'rgba(178, 220, 200, 0.5)' },
   },
   // Mosslight Cavern — the luminous moss look.
+  // Shape language: soft lumpy organic blobs.
   cavern: {
     top: '#24391f',
     cliff: '#151c12',
+    cliffH: 13,
     mottle: 'rgba(88, 138, 70, 0.16)',
-    tint: 'rgba(62, 110, 42, 0.08)',
+    tint: 'rgba(74, 122, 46, 0.16)',
     path: { rim: '#2a2118', edge: '#d99a3d', fill: '#67553c', stud: 'rgba(232, 205, 160, 0.55)' },
   },
   // The Sedgemoor — murky bog (swamp_background.png).
+  // Shape language: low, ragged marsh splats barely above the waterline.
   bog: {
     top: '#2b3520',
     cliff: '#141a0e',
+    cliffH: 7,
     mottle: 'rgba(122, 140, 62, 0.13)',
-    tint: 'rgba(84, 100, 42, 0.08)',
+    tint: 'rgba(96, 104, 40, 0.16)',
     path: { rim: '#1c1710', edge: '#6b5133', fill: '#4a3b28', stud: 'rgba(30, 22, 12, 0.55)' },
   },
-  // Boss island — bare haunted rock.
+  // Boss island — bare haunted rock. Shape language: jagged shards.
   isle: {
     top: '#262024',
     cliff: '#120e11',
+    cliffH: 12,
     mottle: 'rgba(160, 130, 180, 0.10)',
-    tint: 'rgba(70, 50, 80, 0.06)',
+    tint: 'rgba(88, 58, 112, 0.14)',
     path: { rim: '#171218', edge: '#4a3a52', fill: '#38303c', stud: 'rgba(180, 160, 200, 0.4)' },
   },
 };
@@ -250,39 +258,51 @@ export function renderTerrain(map: BoardMap): TerrainArt {
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
   for (const [cx, cy, cr, region] of [
-    [900, 880, 720, 'city'],
-    [420, 320, 470, 'cavern'],
-    [1370, 310, 440, 'bog'],
+    [900, 880, 740, 'city'],
+    [420, 320, 490, 'cavern'],
+    [1370, 310, 460, 'bog'],
+    [900, 470, 300, 'isle'],
   ] as [number, number, number, string][]) {
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr);
-    g.addColorStop(0, theme(region).tint);
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(cx - cr, cy - cr, cr * 2, cr * 2);
+    // Broad wash plus a tighter core so each chamber's floor reads as its
+    // own color, not just its plateaus.
+    for (const scale of [1, 0.55]) {
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr * scale);
+      g.addColorStop(0, theme(region).tint);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(cx - cr, cy - cr, cr * 2, cr * 2);
+    }
   }
 
   // 2. Stalagmite wall ring hugging the world border
   drawWalls(ctx, map, rand);
 
-  // 3. Plateaus, grouped by region so each chamber wears its own palette.
-  //    Cliff pass (offset down, dark) then lit top pass then mottle.
-  const blobs = new Map<string, { x: number; y: number; r: number }[]>();
-  const addBlob = (region: string | undefined, b: { x: number; y: number; r: number }) => {
+  // 3. Plateaus, grouped by region so each chamber wears its own palette AND
+  //    silhouette: angular masonry (city), lumpy organic blobs (cavern), low
+  //    ragged marsh splats (bog), jagged shards (isle). Cliff pass (offset
+  //    down, dark) then lit top pass then mottle. Each blob keeps a seed so
+  //    both passes trace the identical shape.
+  const blobs = new Map<string, TerrainBlob[]>();
+  const addBlob = (region: string | undefined, x: number, y: number, r: number) => {
     const key = region ?? 'cavern';
     const list = blobs.get(key) ?? [];
-    list.push(b);
+    list.push({ x, y, r, seed: Math.floor(rand() * 0xffffffff) });
     blobs.set(key, list);
   };
-  for (const n of map.nodes) addBlob(n.region, { x: n.x, y: n.y, r: 92 + rand() * 26 });
+  for (const n of map.nodes) addBlob(n.region, n.x, n.y, 92 + rand() * 26);
   for (const c of curves) {
     const pts = sampleCurve(c, 55);
     pts.forEach((p, i) => {
       const region = i < pts.length / 2 ? c.a.region : c.b.region;
-      addBlob(region, { x: p.x, y: p.y, r: 64 + rand() * 18 });
+      addBlob(region, p.x, p.y, 64 + rand() * 18);
     });
   }
-  for (const [region, list] of blobs) fillBlobs(ctx, list, 14, theme(region).cliff);
-  for (const [region, list] of blobs) fillBlobs(ctx, list, 0, theme(region).top);
+  for (const [region, list] of blobs) {
+    fillRegionBlobs(ctx, region, list, theme(region).cliffH, theme(region).cliff);
+  }
+  for (const [region, list] of blobs) {
+    fillRegionBlobs(ctx, region, list, 0, theme(region).top);
+  }
   for (const [region, list] of blobs) {
     for (const b of list) {
       if (rand() > 0.4) continue;
@@ -420,17 +440,93 @@ export function renderTerrain(map: BoardMap): TerrainArt {
   return { canvas, glowSpots };
 }
 
-function fillBlobs(
+interface TerrainBlob {
+  x: number;
+  y: number;
+  r: number;
+  seed: number; // shape params derive from this, identical across passes
+}
+
+/**
+ * Fill one region's ground as a single unioned path so overlapping shapes
+ * merge cleanly. The silhouette is the region's shape language.
+ */
+function fillRegionBlobs(
   ctx: CanvasRenderingContext2D,
-  blobs: { x: number; y: number; r: number }[],
+  region: string,
+  list: TerrainBlob[],
   offsetY: number,
   style: string,
 ): void {
   ctx.fillStyle = style;
   ctx.beginPath();
-  for (const b of blobs) {
-    ctx.moveTo(b.x + b.r, b.y + offsetY);
-    ctx.ellipse(b.x, b.y + offsetY, b.r, b.r * 0.78, 0, 0, Math.PI * 2);
+  for (const b of list) {
+    const rnd = mulberry32(b.seed);
+    const y = b.y + offsetY;
+    if (region === 'city') {
+      // Chamfered masonry slab, slightly rotated — sunken-plaza geometry.
+      const rot = (rnd() - 0.5) * 0.3;
+      const w = b.r * 2.05;
+      const h = b.r * 1.4;
+      const ch = Math.min(w, h) * 0.26;
+      ctx.save();
+      ctx.translate(b.x, y);
+      ctx.rotate(rot);
+      ctx.moveTo(-w / 2 + ch, -h / 2);
+      ctx.lineTo(w / 2 - ch, -h / 2);
+      ctx.lineTo(w / 2, -h / 2 + ch);
+      ctx.lineTo(w / 2, h / 2 - ch);
+      ctx.lineTo(w / 2 - ch, h / 2);
+      ctx.lineTo(-w / 2 + ch, h / 2);
+      ctx.lineTo(-w / 2, h / 2 - ch);
+      ctx.lineTo(-w / 2, -h / 2 + ch);
+      ctx.closePath();
+      ctx.restore();
+    } else if (region === 'bog') {
+      // Low ragged marsh splat: flat core plus satellite islets.
+      const ry = b.r * 0.52;
+      ctx.moveTo(b.x + b.r, y);
+      ctx.ellipse(b.x, y, b.r, ry, 0, 0, Math.PI * 2);
+      const sats = 3 + Math.floor(rnd() * 3);
+      for (let i = 0; i < sats; i++) {
+        const ang = rnd() * Math.PI * 2;
+        const d = b.r * (0.7 + rnd() * 0.45);
+        const sr = b.r * (0.18 + rnd() * 0.24);
+        const sx = b.x + Math.cos(ang) * d;
+        const sy = y + Math.sin(ang) * d * 0.52;
+        ctx.moveTo(sx + sr, sy);
+        ctx.ellipse(sx, sy, sr, sr * 0.55, 0, 0, Math.PI * 2);
+      }
+    } else if (region === 'isle') {
+      // Jagged rock shard: straight-edged spiky polygon.
+      const spikes = 9;
+      for (let i = 0; i <= spikes; i++) {
+        const ang = (i / spikes) * Math.PI * 2;
+        const rr = b.r * (i % 2 === 0 ? 1 : 0.68) * (0.85 + rnd() * 0.3);
+        const px = b.x + Math.cos(ang) * rr;
+        const py = y + Math.sin(ang) * rr * 0.78;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+    } else {
+      // Cavern: lumpy organic blob — wobbly radius smoothed with quadratics.
+      const n = 9;
+      const pts: Pt[] = [];
+      for (let i = 0; i < n; i++) {
+        const ang = (i / n) * Math.PI * 2;
+        const rr = b.r * (0.78 + rnd() * 0.34);
+        pts.push({ x: b.x + Math.cos(ang) * rr, y: y + Math.sin(ang) * rr * 0.78 });
+      }
+      const mid = (p: Pt, q: Pt): Pt => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 });
+      let m = mid(pts[n - 1], pts[0]);
+      ctx.moveTo(m.x, m.y);
+      for (let i = 0; i < n; i++) {
+        m = mid(pts[i], pts[(i + 1) % n]);
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, m.x, m.y);
+      }
+      ctx.closePath();
+    }
   }
   ctx.fill();
 }
