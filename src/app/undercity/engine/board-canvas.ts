@@ -49,7 +49,7 @@ export interface NodeInfo {
   body: string;
 }
 
-const MIN_ZOOM = 0.3;
+const MIN_ZOOM = 0.15; // floor for tiny screens; larger screens stop at whole-map fit
 const MAX_ZOOM = 2.5;
 const DRAG_THRESHOLD = 6;
 const NODE_R = 26; // disc rx, also the tap radius
@@ -194,16 +194,26 @@ export class BoardCanvas {
   }
 
   private clampCamera(): void {
-    const dynamicMin = Math.max(
-      this.canvas.width / this.map.worldW,
-      this.canvas.height / this.map.worldH,
-      MIN_ZOOM,
+    // Min zoom = the whole world (terrain margin included) fits on screen;
+    // the letterboxed void matches the wall color so it reads as more cave.
+    const M = TERRAIN_MARGIN;
+    const fit = Math.min(
+      this.canvas.width / (this.map.worldW + 2 * M),
+      this.canvas.height / (this.map.worldH + 2 * M),
     );
-    this.zoom = Math.min(MAX_ZOOM, Math.max(Math.min(dynamicMin, 1), this.zoom));
+    const minZoom = Math.max(Math.min(fit, 1), MIN_ZOOM);
+    this.zoom = Math.min(MAX_ZOOM, Math.max(minZoom, this.zoom));
     const vw = this.canvas.width / this.zoom;
     const vh = this.canvas.height / this.zoom;
-    this.camX = Math.max(-200, Math.min(this.map.worldW + 200 - vw, this.camX));
-    this.camY = Math.max(-200, Math.min(this.map.worldH + 200 - vh, this.camY));
+    // Center any axis whose view is wider than the world; clamp the rest.
+    this.camX =
+      vw >= this.map.worldW + 2 * M
+        ? (this.map.worldW - vw) / 2
+        : Math.max(-M, Math.min(this.map.worldW + M - vw, this.camX));
+    this.camY =
+      vh >= this.map.worldH + 2 * M
+        ? (this.map.worldH - vh) / 2
+        : Math.max(-M, Math.min(this.map.worldH + M - vh, this.camY));
   }
 
   private initInput(): void {
