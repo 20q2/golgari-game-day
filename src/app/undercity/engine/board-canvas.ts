@@ -19,6 +19,8 @@ export interface BoardNode {
   type: string;
   x: number;
   y: number;
+  /** Chamber theme tag from the backend map: city | cavern | bog | isle. */
+  region?: string;
   neighbors: string[];
 }
 

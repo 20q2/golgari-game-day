@@ -140,3 +140,50 @@ token rarely overlaps another node's landmark.
 - three.js / WebGL, real perspective camera.
 - Map/topology changes, new node types, gameplay changes.
 - Plaza and ceremony canvases (board tab only).
+
+---
+
+# v2 Addendum — Three Linked Caverns (approved 2026-07-06)
+
+The ring-with-cross layout is replaced by three themed chambers. This
+revision DOES change map topology (positions + edges in
+`undercity_data._build_map()`), but keeps every node id, type, shop tier,
+and the `BOSS_BRIDGE` anchor, so all map tests and balance stay intact.
+
+## Layout
+
+- **South, 12 spaces — The Undercity** (`n0-n9`, `n24`, `n25`): large loop,
+  gate `n0` bottom center, tier-1 shop `n5`. Theme matches
+  `public/undercity/undercity_background.png`: emerald-teal gothic stone.
+- **Northwest, 10 spaces — Mosslight Cavern** (`n10-n17`, `a5`, `b4`):
+  mid-size loop, tier-2 shop `n14`. Keeps the v1 luminous-cavern look
+  (moss, mushrooms, crystals).
+- **Northeast, 9 spaces — The Sedgemoor** (`n18-n23`, `a1`, `a2`, `b0`):
+  small bog loop, tier-3 shop `a2`. Theme matches
+  `public/undercity/swamp_background.png`: murky pools, lily pads, reeds,
+  gnarled trees, wisps.
+- **Tunnels, 2 nodes each**: south↔NW (`a0`, `a4`), south↔NE (`b1`, `b2`),
+  NW↔NE across the top (`b3`, `a3`). Every walkable node keeps degree ≥ 2 so
+  exact-count movement never strands (the warp-only boss island keeps its
+  existing linear chain, unchanged behavior).
+- **Boss island** (`isl_warp`, `isl_ossuary`, `boss`) floats in the dark
+  central hollow.
+
+## Data
+
+Each node gains a `region` field (`city` | `cavern` | `bog` | `isle`) in
+`MAP_NODES`, flowing into `undercity-map.json` via the existing generator.
+The engine ignores it; the client `BoardNode` type gets an optional
+`region?: string`.
+
+## Terrain theming (board-terrain.ts)
+
+Per-region plateau palettes, path ribbon styles (city cobblestone, cavern
+amber-edged stone, bog planks with cross-ticks), and decoration sets (city:
+ruined pillars/arches, glowing windows, skull piles; cavern: mushrooms +
+crystals; bog: water pools with lily pads, reeds, tree silhouettes, wisp
+glows). The river follows fixed control points: out of the Mosslight
+Cavern, through the hollow south of the island, draining east through the
+Sedgemoor. Each chamber gets a low-alpha painted name label at its hollow
+center. Landmarks and the dynamic layer (discs, tokens, glows) are
+unchanged.

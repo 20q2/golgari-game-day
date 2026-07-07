@@ -1,12 +1,15 @@
 /**
  * Static Dokapon-style terrain prerender for the Undercity board.
  *
- * renderTerrain() paints the entire world once (cavern floor, moss plateaus,
- * underground river, stalagmite wall border, glowing decorations, path
- * ribbons, landmark buildings) into an offscreen canvas that BoardCanvas
- * blits under its camera transform each frame. Everything random is seeded
- * (FNV-1a + mulberry32) so the map never changes between loads. Pure: no DOM
- * lookups, no I/O beyond createElement('canvas').
+ * renderTerrain() paints the entire world once into an offscreen canvas that
+ * BoardCanvas blits under its camera transform each frame. The board is
+ * three themed chambers (each node carries a `region` tag from the backend
+ * map): The Undercity (emerald gothic stone, ruins, glowing windows),
+ * Mosslight Cavern (moss plateaus, mushrooms, crystals) and The Sedgemoor
+ * (bog pools, reeds, gnarled trees), plus the boss island in the dark
+ * hollow. Everything random is seeded (FNV-1a + mulberry32) so the map
+ * never changes between loads. Pure: no DOM lookups, no I/O beyond
+ * createElement('canvas').
  */
 import type { BoardMap, BoardNode } from './board-canvas';
 
@@ -30,13 +33,66 @@ export interface GlowSpot {
 
 export interface TerrainArt {
   canvas: HTMLCanvasElement;
-  /** River shimmer + mushroom/crystal/portal glows, animated by BoardCanvas. */
+  /** River shimmer + flora/window/portal glows, animated by BoardCanvas. */
   glowSpots: GlowSpot[];
 }
 
 interface Pt {
   x: number;
   y: number;
+}
+
+interface RegionTheme {
+  top: string; // plateau surface
+  cliff: string; // pseudo-height rim under the south edge
+  mottle: string; // soft highlight blotches on the surface
+  tint: string; // low-alpha floor wash around the chamber
+  path: { rim: string; edge: string; fill: string; stud: string };
+}
+
+const REGION_THEMES: Record<string, RegionTheme> = {
+  // The Undercity — emerald-teal gothic stone (undercity_background.png).
+  city: {
+    top: '#22403a',
+    cliff: '#0f201c',
+    mottle: 'rgba(80, 190, 150, 0.13)',
+    tint: 'rgba(30, 95, 78, 0.10)',
+    path: { rim: '#16241f', edge: '#4fae76', fill: '#3d5148', stud: 'rgba(178, 220, 200, 0.5)' },
+  },
+  // Mosslight Cavern — the luminous moss look.
+  cavern: {
+    top: '#24391f',
+    cliff: '#151c12',
+    mottle: 'rgba(88, 138, 70, 0.16)',
+    tint: 'rgba(62, 110, 42, 0.08)',
+    path: { rim: '#2a2118', edge: '#d99a3d', fill: '#67553c', stud: 'rgba(232, 205, 160, 0.55)' },
+  },
+  // The Sedgemoor — murky bog (swamp_background.png).
+  bog: {
+    top: '#2b3520',
+    cliff: '#141a0e',
+    mottle: 'rgba(122, 140, 62, 0.13)',
+    tint: 'rgba(84, 100, 42, 0.08)',
+    path: { rim: '#1c1710', edge: '#6b5133', fill: '#4a3b28', stud: 'rgba(30, 22, 12, 0.55)' },
+  },
+  // Boss island — bare haunted rock.
+  isle: {
+    top: '#262024',
+    cliff: '#120e11',
+    mottle: 'rgba(160, 130, 180, 0.10)',
+    tint: 'rgba(70, 50, 80, 0.06)',
+    path: { rim: '#171218', edge: '#4a3a52', fill: '#38303c', stud: 'rgba(180, 160, 200, 0.4)' },
+  },
+};
+
+const REGION_LABELS: { text: string; x: number; y: number }[] = [
+  { text: 'The Undercity', x: 900, y: 905 },
+  { text: 'Mosslight Cavern', x: 420, y: 335 },
+  { text: 'The Sedgemoor', x: 1370, y: 325 },
+];
+
+function theme(region: string | undefined): RegionTheme {
+  return REGION_THEMES[region ?? 'cavern'] ?? REGION_THEMES['cavern'];
 }
 
 function hashStr(s: string): number {
@@ -103,18 +159,37 @@ function sampleCurve(c: EdgeCurve, step = 40): Pt[] {
 }
 
 /**
- * Deterministic river polyline crossing the world left→right. It recovers
- * toward a sine base path (so node repulsion can't pin it against the world
- * edge behind the walls) and only dodges the discs themselves — path ribbons
- * drawn later cross over it like bridges.
+ * The underground river: out of the Mosslight Cavern, through the hollow
+ * south of the boss island, draining east through the Sedgemoor. Follows
+ * fixed control points with seeded wobble, dodging the discs it passes.
  */
+const RIVER_BASE: Pt[] = [
+  { x: -200, y: 420 },
+  { x: 200, y: 470 },
+  { x: 450, y: 540 },
+  { x: 700, y: 600 },
+  { x: 900, y: 620 },
+  { x: 1150, y: 560 },
+  { x: 1330, y: 490 },
+  { x: 1550, y: 430 },
+  { x: 2000, y: 380 },
+];
+
 function riverPoints(map: BoardMap): Pt[] {
   const rand = mulberry32(hashStr('undercity-river'));
   const pts: Pt[] = [];
-  let y = map.worldH * 0.52 + Math.sin(1.2) * 170;
+  const baseAt = (x: number): number => {
+    for (let i = 1; i < RIVER_BASE.length; i++) {
+      if (x <= RIVER_BASE[i].x) {
+        const t = (x - RIVER_BASE[i - 1].x) / (RIVER_BASE[i].x - RIVER_BASE[i - 1].x);
+        return RIVER_BASE[i - 1].y + (RIVER_BASE[i].y - RIVER_BASE[i - 1].y) * t;
+      }
+    }
+    return RIVER_BASE[RIVER_BASE.length - 1].y;
+  };
+  let y = baseAt(-TERRAIN_MARGIN);
   for (let x = -TERRAIN_MARGIN; x <= map.worldW + TERRAIN_MARGIN; x += 60) {
-    const target = map.worldH * 0.52 + Math.sin(x * 0.0035 + 1.2) * 170;
-    y += (target - y) * 0.18 + (rand() - 0.5) * 30;
+    y += (baseAt(x) - y) * 0.3 + (rand() - 0.5) * 26;
     for (const n of map.nodes) {
       const d = Math.hypot(n.x - x, n.y - y);
       if (d < 80) y += Math.sign(y - n.y || 1) * (80 - d) * 0.5;
@@ -161,7 +236,7 @@ export function renderTerrain(map: BoardMap): TerrainArt {
   const curves = edgeCurves(map);
   const rand = mulberry32(hashStr('undercity-terrain'));
 
-  // 1. Cavern floor + mottling
+  // 1. Cavern floor + mottling + per-chamber tint washes
   ctx.fillStyle = '#141110';
   ctx.fillRect(-TERRAIN_MARGIN, -TERRAIN_MARGIN, w, h);
   for (let i = 0; i < 320; i++) {
@@ -174,25 +249,49 @@ export function renderTerrain(map: BoardMap): TerrainArt {
     ctx.fillStyle = g;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
+  for (const [cx, cy, cr, region] of [
+    [900, 880, 720, 'city'],
+    [420, 320, 470, 'cavern'],
+    [1370, 310, 440, 'bog'],
+  ] as [number, number, number, string][]) {
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr);
+    g.addColorStop(0, theme(region).tint);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - cr, cy - cr, cr * 2, cr * 2);
+  }
 
   // 2. Stalagmite wall ring hugging the world border
   drawWalls(ctx, map, rand);
 
-  // 3. Plateaus: cliff pass (offset down, dark) then lit top pass then mottle
-  const blobs: { x: number; y: number; r: number }[] = [];
-  for (const n of map.nodes) blobs.push({ x: n.x, y: n.y, r: 92 + rand() * 26 });
+  // 3. Plateaus, grouped by region so each chamber wears its own palette.
+  //    Cliff pass (offset down, dark) then lit top pass then mottle.
+  const blobs = new Map<string, { x: number; y: number; r: number }[]>();
+  const addBlob = (region: string | undefined, b: { x: number; y: number; r: number }) => {
+    const key = region ?? 'cavern';
+    const list = blobs.get(key) ?? [];
+    list.push(b);
+    blobs.set(key, list);
+  };
+  for (const n of map.nodes) addBlob(n.region, { x: n.x, y: n.y, r: 92 + rand() * 26 });
   for (const c of curves) {
-    for (const p of sampleCurve(c, 55)) blobs.push({ x: p.x, y: p.y, r: 64 + rand() * 18 });
+    const pts = sampleCurve(c, 55);
+    pts.forEach((p, i) => {
+      const region = i < pts.length / 2 ? c.a.region : c.b.region;
+      addBlob(region, { x: p.x, y: p.y, r: 64 + rand() * 18 });
+    });
   }
-  fillBlobs(ctx, blobs, 14, '#151c12'); // cliff shadow under the south rim
-  fillBlobs(ctx, blobs, 0, '#24391f'); // lit top surface
-  for (const b of blobs) {
-    if (rand() > 0.4) continue;
-    const g = ctx.createRadialGradient(b.x, b.y - b.r * 0.2, 0, b.x, b.y, b.r * 0.8);
-    g.addColorStop(0, 'rgba(88, 138, 70, 0.16)');
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+  for (const [region, list] of blobs) fillBlobs(ctx, list, 14, theme(region).cliff);
+  for (const [region, list] of blobs) fillBlobs(ctx, list, 0, theme(region).top);
+  for (const [region, list] of blobs) {
+    for (const b of list) {
+      if (rand() > 0.4) continue;
+      const g = ctx.createRadialGradient(b.x, b.y - b.r * 0.2, 0, b.x, b.y, b.r * 0.8);
+      g.addColorStop(0, theme(region).mottle);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+    }
   }
 
   // 4. Underground river (paths drawn later cross it like bridges)
@@ -204,44 +303,100 @@ export function renderTerrain(map: BoardMap): TerrainArt {
     glowSpots.push({ x: river[i].x, y: river[i].y, r: 46, color: '95, 208, 200', phase: i * 0.9 });
   }
 
-  // 5. Decorations: glowing mushrooms & crystals, kept off nodes/paths/river
+  // 5. Region name labels, painted into the hollow of each chamber loop.
+  ctx.save();
+  ctx.font = 'italic 600 42px Georgia, "Times New Roman", serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(210, 235, 220, 0.16)';
+  for (const l of REGION_LABELS) ctx.fillText(l.text, l.x, l.y);
+  ctx.restore();
+
+  // 6. Decorations, themed by the nearest node's region, kept off
+  //    nodes/paths/river.
   const pathPts = curves.flatMap((c) => sampleCurve(c, 45));
-  const clear = (x: number, y: number) =>
-    map.nodes.every((n) => Math.hypot(n.x - x, n.y - y) > 95) &&
-    pathPts.every((p) => Math.hypot(p.x - x, p.y - y) > 55) &&
-    river.every((p) => Math.hypot(p.x - x, p.y - y) > 60);
-  for (let i = 0; i < 130; i++) {
-    const x = rand() * map.worldW;
-    const y = rand() * map.worldH;
-    if (!clear(x, y)) continue;
-    if (rand() < 0.6) drawMushrooms(ctx, x, y, rand, glowSpots);
-    else drawCrystal(ctx, x, y, rand, glowSpots);
+  for (let i = 0; i < 170; i++) {
+    // Keep clear of the stalagmite wall band on every side.
+    const x = 90 + rand() * (map.worldW - 180);
+    const y = 90 + rand() * (map.worldH - 180);
+    let nearest: BoardNode | null = null;
+    let nd = Infinity;
+    for (const n of map.nodes) {
+      const d = Math.hypot(n.x - x, n.y - y);
+      if (d < nd) {
+        nd = d;
+        nearest = n;
+      }
+    }
+    if (
+      nd < 95 ||
+      nd > 280 ||
+      !nearest ||
+      nearest.region === 'isle' ||
+      !pathPts.every((p) => Math.hypot(p.x - x, p.y - y) > 55) ||
+      !river.every((p) => Math.hypot(p.x - x, p.y - y) > 60)
+    ) {
+      continue;
+    }
+    const roll = rand();
+    if (nearest.region === 'city') {
+      if (roll < 0.4) drawPillar(ctx, x, y, rand);
+      else if (roll < 0.7) drawRuinBlock(ctx, x, y, rand, glowSpots);
+      else drawSkullPile(ctx, x, y, rand);
+    } else if (nearest.region === 'bog') {
+      if (roll < 0.45) drawPool(ctx, x, y, rand, glowSpots);
+      else if (roll < 0.75) drawReeds(ctx, x, y, rand);
+      else drawBogTree(ctx, x, y, rand, glowSpots);
+    } else {
+      if (roll < 0.6) drawMushrooms(ctx, x, y, rand, glowSpots);
+      else drawCrystal(ctx, x, y, rand, glowSpots);
+    }
   }
 
-  // 6. Path ribbons — Dokapon's edge-striped roads, cave-toned
+  // 7. Path ribbons — each edge styled by its chamber (tunnels between two
+  //    regions fall back to raw cavern stone).
   for (const c of curves) {
-    const ribbon = (width: number, style: string, dy = 0): void => {
+    const style =
+      c.a.region === c.b.region ? theme(c.a.region).path : REGION_THEMES['cavern'].path;
+    const bog = c.a.region === 'bog' && c.b.region === 'bog';
+    const ribbon = (width: number, color: string, dy = 0): void => {
       ctx.beginPath();
       ctx.moveTo(c.a.x, c.a.y + dy);
       ctx.quadraticCurveTo(c.cx, c.cy + dy, c.b.x, c.b.y + dy);
       ctx.lineWidth = width;
-      ctx.strokeStyle = style;
+      ctx.strokeStyle = color;
       ctx.lineCap = 'round';
       ctx.stroke();
     };
     ribbon(24, 'rgba(0,0,0,0.35)', 5); // drop shadow
-    ribbon(22, '#2a2118'); // dark rim
-    ribbon(19, '#d99a3d'); // amber lantern edges peeking out each side
-    ribbon(16, '#67553c'); // stone surface
-    for (const p of sampleCurve(c, 55).slice(1, -1)) {
-      ctx.beginPath();
-      ctx.ellipse(p.x, p.y, 3, 2, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(232, 205, 160, 0.55)';
-      ctx.fill();
+    ribbon(22, style.rim);
+    ribbon(19, style.edge);
+    ribbon(16, style.fill);
+    const pts = sampleCurve(c, bog ? 16 : 55);
+    if (bog) {
+      // Plank ticks across a boardwalk instead of studs.
+      ctx.strokeStyle = style.stud;
+      ctx.lineWidth = 2;
+      for (let i = 1; i < pts.length - 1; i++) {
+        const dx = pts[i + 1].x - pts[i - 1].x;
+        const dy = pts[i + 1].y - pts[i - 1].y;
+        const len = Math.hypot(dx, dy) || 1;
+        ctx.beginPath();
+        ctx.moveTo(pts[i].x - (-dy / len) * 7, pts[i].y - (dx / len) * 7);
+        ctx.lineTo(pts[i].x + (-dy / len) * 7, pts[i].y + (dx / len) * 7);
+        ctx.stroke();
+      }
+    } else {
+      for (const p of pts.slice(1, -1)) {
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, 3, 2, 0, 0, Math.PI * 2);
+        ctx.fillStyle = style.stud;
+        ctx.fill();
+      }
     }
   }
 
-  // 7. Landmarks, y-sorted so lower buildings overlap higher ones correctly
+  // 8. Landmarks, y-sorted so lower buildings overlap higher ones correctly
   const landmarkTypes = ['boss', 'gate', 'shop', 'shrine', 'warp', 'ossuary'];
   const landmarks = map.nodes
     .filter((n) => landmarkTypes.includes(n.type))
@@ -312,6 +467,22 @@ function drawWalls(
   spikes(map.worldW, 0, map.worldW, map.worldH, -1, 0);
 }
 
+// ── Decorations (all 2.5D: lit faces, top/side planes, grounded by shadow) ───
+
+/** Soft elliptical contact shadow that seats a decoration on the ground. */
+function groundShadow(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rx: number,
+  alpha = 0.3,
+): void {
+  ctx.beginPath();
+  ctx.ellipse(x, y + 1, rx, rx * 0.36, 0, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+  ctx.fill();
+}
+
 function drawMushrooms(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -323,6 +494,7 @@ function drawMushrooms(
   const cap = teal ? '#3f8f8a' : '#7a5fae';
   const glow = teal ? '95, 208, 200' : '186, 148, 255';
   const count = 2 + Math.floor(rand() * 2);
+  groundShadow(ctx, x, y + 2, 16, 0.25);
   for (let i = 0; i < count; i++) {
     const mx = x + (rand() - 0.5) * 26;
     const my = y + (rand() - 0.5) * 14;
@@ -349,6 +521,7 @@ function drawCrystal(
   glowSpots: GlowSpot[],
 ): void {
   const n = 2 + Math.floor(rand() * 2);
+  groundShadow(ctx, x, y + 1, 14, 0.25);
   for (let i = 0; i < n; i++) {
     const cx = x + (rand() - 0.5) * 20;
     const hgt = 12 + rand() * 14;
@@ -371,6 +544,241 @@ function drawCrystal(
   }
   glowSpots.push({ x, y: y - 10, r: 26, color: '188, 230, 220', phase: rand() * 6.28 });
 }
+
+// ── Undercity (city) decorations ─────────────────────────────────────────────
+
+function drawPillar(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+): void {
+  const hgt = 22 + rand() * 18;
+  const wid = 7 + rand() * 4;
+  groundShadow(ctx, x, y, wid * 1.4);
+  // plinth as a 2.5D slab: top face + front face
+  ctx.fillStyle = '#2a473f';
+  ctx.beginPath();
+  ctx.ellipse(x, y - 4, wid * 0.9 + 2, (wid * 0.9 + 2) * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1f3630';
+  ctx.beginPath();
+  ctx.ellipse(x, y - 1, wid * 0.9 + 2, (wid * 0.9 + 2) * 0.45, 0, 0, Math.PI);
+  ctx.fill();
+  // shaft: lit west flank, shaded east flank
+  ctx.fillStyle = '#2a473f';
+  ctx.fillRect(x - wid / 2, y - hgt, wid, hgt - 3);
+  ctx.fillStyle = 'rgba(120, 200, 170, 0.18)';
+  ctx.fillRect(x - wid / 2, y - hgt, wid * 0.3, hgt - 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.fillRect(x + wid / 2 - wid * 0.25, y - hgt, wid * 0.25, hgt - 3);
+  // broken, jagged top with a pale fracture face catching the light
+  ctx.fillStyle = '#3b5c50';
+  ctx.beginPath();
+  ctx.moveTo(x - wid / 2, y - hgt);
+  ctx.lineTo(x - wid * 0.1, y - hgt - 4 - rand() * 4);
+  ctx.lineTo(x + wid * 0.2, y - hgt + 2);
+  ctx.lineTo(x + wid / 2, y - hgt - 3);
+  ctx.lineTo(x + wid / 2, y - hgt + 3);
+  ctx.lineTo(x - wid / 2, y - hgt + 3);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawRuinBlock(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+  glowSpots: GlowSpot[],
+): void {
+  const wid = 26 + rand() * 18;
+  const hgt = 20 + rand() * 16;
+  const d = 5 + rand() * 3; // 2.5D box depth
+  groundShadow(ctx, x + d / 2, y, wid * 0.62 + d);
+  // front face
+  ctx.fillStyle = '#1c332d';
+  ctx.fillRect(x - wid / 2, y - hgt, wid, hgt);
+  // lit top face (skewed toward the upper-right)
+  ctx.fillStyle = '#31514a';
+  ctx.beginPath();
+  ctx.moveTo(x - wid / 2, y - hgt);
+  ctx.lineTo(x + wid / 2, y - hgt);
+  ctx.lineTo(x + wid / 2 + d, y - hgt - d);
+  ctx.lineTo(x - wid / 2 + d, y - hgt - d);
+  ctx.closePath();
+  ctx.fill();
+  // shaded side face
+  ctx.fillStyle = '#12241f';
+  ctx.beginPath();
+  ctx.moveTo(x + wid / 2, y - hgt);
+  ctx.lineTo(x + wid / 2 + d, y - hgt - d);
+  ctx.lineTo(x + wid / 2 + d, y - d);
+  ctx.lineTo(x + wid / 2, y);
+  ctx.closePath();
+  ctx.fill();
+  // glowing gothic windows
+  const windows = 1 + Math.floor(rand() * 3);
+  ctx.fillStyle = '#a8f0c0';
+  for (let i = 0; i < windows; i++) {
+    const wx = x - wid / 2 + 5 + i * ((wid - 10) / Math.max(1, windows - 1) || 0);
+    const wy = y - hgt + 5 + rand() * (hgt - 14);
+    ctx.beginPath();
+    ctx.moveTo(wx - 2, wy + 6);
+    ctx.lineTo(wx - 2, wy + 1);
+    ctx.arc(wx, wy + 1, 2, Math.PI, 0);
+    ctx.lineTo(wx + 2, wy + 6);
+    ctx.closePath();
+    ctx.fill();
+  }
+  glowSpots.push({ x, y: y - hgt / 2, r: 30, color: '140, 230, 170', phase: rand() * 6.28 });
+}
+
+function drawSkullPile(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+): void {
+  const n = 2 + Math.floor(rand() * 2);
+  groundShadow(ctx, x, y + 3, 12, 0.25);
+  for (let i = 0; i < n; i++) {
+    const sx = x + (rand() - 0.5) * 16;
+    const sy = y - rand() * 8;
+    const r = 3.5 + rand() * 2.5;
+    ctx.fillStyle = '#cfc4a8';
+    ctx.beginPath();
+    ctx.arc(sx, sy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.22)'; // shaded underside
+    ctx.beginPath();
+    ctx.arc(sx, sy + r * 0.45, r * 0.85, 0.35, Math.PI - 0.35);
+    ctx.fill();
+    ctx.fillStyle = '#141110';
+    ctx.beginPath();
+    ctx.arc(sx - r * 0.35, sy - r * 0.1, r * 0.22, 0, Math.PI * 2);
+    ctx.arc(sx + r * 0.35, sy - r * 0.1, r * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ── Sedgemoor (bog) decorations ──────────────────────────────────────────────
+
+function drawPool(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+  glowSpots: GlowSpot[],
+): void {
+  const rx = 20 + rand() * 22;
+  const ry = rx * (0.4 + rand() * 0.15);
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#101f1a';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx * 0.82, ry * 0.78, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a332a';
+  ctx.fill();
+  ctx.beginPath(); // still-water sheen
+  ctx.ellipse(x - rx * 0.2, y - ry * 0.25, rx * 0.42, ry * 0.3, -0.3, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(110, 190, 160, 0.18)';
+  ctx.fill();
+  ctx.beginPath(); // lit far rim sinks the pool below ground level
+  ctx.ellipse(x, y, rx * 0.94, ry * 0.9, 0, Math.PI * 0.15, Math.PI * 0.85);
+  ctx.strokeStyle = 'rgba(150, 190, 140, 0.25)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  const pads = 1 + Math.floor(rand() * 3);
+  ctx.fillStyle = '#4a7a3f';
+  for (let i = 0; i < pads; i++) {
+    const px = x + (rand() - 0.5) * rx * 1.2;
+    const py = y + (rand() - 0.5) * ry * 1.2;
+    ctx.beginPath();
+    ctx.ellipse(px, py, 4 + rand() * 3, 2.5 + rand() * 2, rand(), 0.25, Math.PI * 2);
+    ctx.fill();
+  }
+  glowSpots.push({ x, y, r: 34, color: '150, 220, 180', phase: rand() * 6.28 });
+}
+
+function drawReeds(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+): void {
+  const n = 3 + Math.floor(rand() * 3);
+  for (let i = 0; i < n; i++) {
+    const rx = x + (rand() - 0.5) * 22;
+    const hgt = 12 + rand() * 12;
+    const lean = (rand() - 0.5) * 6;
+    ctx.strokeStyle = '#5a6b3a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(rx, y);
+    ctx.quadraticCurveTo(rx + lean * 0.4, y - hgt * 0.6, rx + lean, y - hgt);
+    ctx.stroke();
+    if (rand() < 0.6) {
+      // cattail tip
+      ctx.fillStyle = '#7a5a3a';
+      ctx.beginPath();
+      ctx.ellipse(rx + lean, y - hgt, 1.8, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawBogTree(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+  glowSpots: GlowSpot[],
+): void {
+  const hgt = 30 + rand() * 22;
+  const lean = (rand() - 0.5) * 16;
+  groundShadow(ctx, x, y + 1, 14, 0.28);
+  ctx.strokeStyle = '#10150c';
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); // gnarled trunk
+  ctx.moveTo(x, y);
+  ctx.quadraticCurveTo(x - lean, y - hgt * 0.55, x + lean, y - hgt);
+  ctx.stroke();
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); // low branch
+  ctx.moveTo(x - lean * 0.3, y - hgt * 0.5);
+  ctx.lineTo(x - lean * 0.3 - 10 - rand() * 8, y - hgt * 0.62);
+  ctx.stroke();
+  // mossy canopy blobs, each with a moonlit top
+  for (let i = 0; i < 3; i++) {
+    const bx = x + lean + (rand() - 0.5) * 20;
+    const by = y - hgt + (rand() - 0.5) * 10;
+    const brx = 10 + rand() * 8;
+    const bry = 6 + rand() * 4;
+    ctx.fillStyle = '#232e18';
+    ctx.beginPath();
+    ctx.ellipse(bx, by, brx, bry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#33421f';
+    ctx.beginPath();
+    ctx.ellipse(bx - brx * 0.15, by - bry * 0.3, brx * 0.65, bry * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (rand() < 0.5) {
+    // a wisp drifting near the tree
+    glowSpots.push({
+      x: x + (rand() - 0.5) * 30,
+      y: y - hgt * 0.4,
+      r: 20,
+      color: '190, 230, 170',
+      phase: rand() * 6.28,
+    });
+  }
+}
+
+// ── Landmarks ────────────────────────────────────────────────────────────────
 
 /** Buildings anchor their base ~24px above the node so the coin disc stays clear. */
 function drawLandmark(

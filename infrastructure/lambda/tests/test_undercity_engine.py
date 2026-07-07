@@ -83,8 +83,9 @@ def test_exact_count_no_backtrack_on_loop():
 
 
 def test_fork_gives_multiple_choices():
+    # n4 is the Undercity-loop junction where the Sedgemoor tunnel (b1) leaves.
     dests = legal_destinations(data.MAP_NODES, 'n4', 1)
-    assert dests == {'n3', 'n5', 'a0'}
+    assert dests == {'n3', 'n5', 'b1'}
 
 
 def test_dead_end_paths_die_out():

@@ -219,6 +219,7 @@ DEFAULT_PAINTS = ['forest', 'gold']  # everyone owns these from their first hatc
 
 # ── Roll economy ─────────────────────────────────────────────────────────────
 
+
 ROLL_CAP = 6
 JOIN_ROLLS = 3
 SEAL_BONUS_CAP = 3
@@ -293,50 +294,61 @@ SHOP_TIERS = {'n5': 1, 'n14': 2, 'a2': 3}
 
 
 def _build_map():
-    world_w, world_h = 1800, 1200
-    cx, cy = world_w / 2, world_h / 2
-    rx, ry = 730, 440
+    """
+    Three linked caverns: The Undercity (large south loop, gate + tier-1
+    shop), Mosslight Cavern (northwest loop, tier-2 shop), and The Sedgemoor
+    bog (northeast loop, tier-3 shop), joined by two-node tunnels, with the
+    warp-only boss island floating in the central hollow. Every walkable node
+    stays on a cycle (degree >= 2) so exact-count movement can't strand; the
+    island keeps its original linear chain. Each node carries a `region` tag
+    (city | cavern | bog | isle) that the client terrain renderer themes by.
+    """
+    city_loop = ['n0', 'n1', 'n2', 'n3', 'n4', 'n5',
+                 'n6', 'n7', 'n8', 'n9', 'n24', 'n25']
+    cavern_loop = ['n10', 'n11', 'n12', 'n13', 'n14',
+                   'n15', 'n16', 'n17', 'a5', 'b4']
+    bog_loop = ['n23', 'a2', 'n22', 'n21', 'n20', 'n19', 'n18', 'b0', 'a1']
 
     nodes = {}
 
-    def add(nid, x, y):
-        nodes[nid] = {'id': nid, 'type': _LOOP_TYPES[nid],
-                      'x': round(x), 'y': round(y), 'neighbors': []}
+    def add(nid, x, y, region):
+        nodes[nid] = {'id': nid, 'type': _LOOP_TYPES[nid], 'x': round(x),
+                      'y': round(y), 'region': region, 'neighbors': []}
 
-    # Outer loop — gate at the bottom center, going clockwise.
-    for i in range(26):
-        ang = math.pi / 2 + i * (2 * math.pi / 26)
-        add(f'n{i}', cx + rx * math.cos(ang), cy + ry * math.sin(ang))
+    def ring(ids, cx, cy, rx, ry, region):
+        # First id sits at the bottom of the ellipse; successive ids walk the
+        # loop counterclockwise (east first in canvas coordinates).
+        step = 2 * math.pi / len(ids)
+        for i, nid in enumerate(ids):
+            ang = math.pi / 2 - i * step
+            add(nid, cx + rx * math.cos(ang), cy + ry * math.sin(ang), region)
 
-    def lerp_chain(prefix, count, start, end, bow):
-        sx, sy = nodes[start]['x'], nodes[start]['y']
-        ex, ey = nodes[end]['x'], nodes[end]['y']
-        dx, dy = ex - sx, ey - sy
-        length = math.hypot(dx, dy) or 1
-        px, py = -dy / length, dx / length  # unit perpendicular
-        for j in range(count):
-            t = (j + 1) / (count + 1)
-            off = bow * math.sin(math.pi * t)
-            add(f'{prefix}{j}', sx + dx * t + px * off, sy + dy * t + py * off)
+    ring(city_loop, 900, 880, 560, 190, 'city')
+    ring(cavern_loop, 420, 320, 300, 180, 'cavern')
+    ring(bog_loop, 1370, 310, 250, 175, 'bog')
 
-    lerp_chain('a', 6, 'n4', 'n17', 90)
-    lerp_chain('b', 5, 'n11', 'n24', -90)
+    # Tunnels — each node leans toward the chamber its end touches.
+    add('a0', 330, 700, 'city')     # Undercity n8 -> Mosslight n10
+    add('a4', 350, 595, 'cavern')
+    add('b1', 1455, 680, 'city')    # Undercity n4 -> Sedgemoor n23
+    add('b2', 1445, 575, 'bog')
+    add('b3', 670, 130, 'cavern')   # Mosslight n15 -> Sedgemoor n18, over the hollow
+    add('a3', 920, 125, 'bog')
 
-    add('isl_warp', cx - 90, cy + 40)
-    add('isl_ossuary', cx, cy - 30)
-    add('boss', cx + 100, cy + 30)
+    # Boss island in the dark hollow between the three chambers.
+    add('isl_warp', 830, 500, 'isle')
+    add('isl_ossuary', 905, 430, 'isle')
+    add('boss', 985, 480, 'isle')
 
     edges = []
-    for i in range(26):
-        edges.append((f'n{i}', f'n{(i + 1) % 26}'))
-    edges.append(('n4', 'a0'))
-    edges.extend((f'a{j}', f'a{j + 1}') for j in range(5))
-    edges.append(('a5', 'n17'))
-    edges.append(('n11', 'b0'))
-    edges.extend((f'b{j}', f'b{j + 1}') for j in range(4))
-    edges.append(('b4', 'n24'))
-    edges.append(('isl_warp', 'isl_ossuary'))
-    edges.append(('isl_ossuary', 'boss'))
+    for loop in (city_loop, cavern_loop, bog_loop):
+        edges.extend((loop[i], loop[(i + 1) % len(loop)]) for i in range(len(loop)))
+    edges += [
+        ('n8', 'a0'), ('a0', 'a4'), ('a4', 'n10'),
+        ('n4', 'b1'), ('b1', 'b2'), ('b2', 'n23'),
+        ('n15', 'b3'), ('b3', 'a3'), ('a3', 'n18'),
+        ('isl_warp', 'isl_ossuary'), ('isl_ossuary', 'boss'),
+    ]
 
     for u, v in edges:
         nodes[u]['neighbors'].append(v)
