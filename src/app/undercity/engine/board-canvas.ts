@@ -332,6 +332,11 @@ export class BoardCanvas {
       this.activeLayerId = target;
       this.clampCamera();
       if (this.ownPosition) this.centerOn(this.ownPosition, false);
+      const b = this.active.spec.bounds;
+      this.ambient.setContext(
+        target === OVERWORLD ? 'overworld' : (this.ownPosition?.split('_')[0] ?? 'overworld'),
+        { x: b.x, y: b.y, w: b.w, h: b.h },
+      );
       if (target !== OVERWORLD && this.ownPosition) {
         this.onEnterDungeonCb?.(this.ownPosition.split('_')[0]);
       }
