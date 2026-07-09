@@ -1065,7 +1065,7 @@ export function renderTerrain(
 
   // 8. Landmarks, y-sorted so lower buildings overlap higher ones correctly
   const landmarkTypes = ['boss', 'gate', 'shop', 'shrine', 'warp', 'ossuary',
-    'lair', 'vault', 'ladder'];
+    'lair', 'vault', 'cache', 'ladder'];
   const landmarks = nodes
     .filter((n) => landmarkTypes.includes(n.type))
     .sort((a, b) => a.y - b.y);
@@ -1647,6 +1647,137 @@ function drawCompostHeap(
   glowSpots.push({ x, y: y - 14, r: 26, color: '180, 200, 90', phase: rand() * 6.28 });
 }
 
+/** v6: each dungeon's lair is a bespoke set-piece (~1.5x a normal landmark). */
+function drawLairSetPiece(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  base: number,
+  biome: string,
+  glowSpots: GlowSpot[],
+): void {
+  ctx.save();
+  if (biome === 'city') {
+    // Broodmother's egg-throne: a heaped clutch around a towering queen egg.
+    groundShadow(ctx, x, base + 4, 64, 0.4);
+    for (const [ox, s] of [[-38, 0.5], [34, 0.55], [-14, 0.7], [16, 0.65]] as [number, number][]) {
+      ctx.beginPath();
+      ctx.ellipse(x + ox, base - 14 * s, 16 * s, 22 * s, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#cbbd9c';
+      ctx.fill();
+    }
+    ctx.beginPath(); // the queen egg
+    ctx.ellipse(x, base - 34, 24, 36, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#e0d2ae';
+    ctx.fill();
+    ctx.beginPath(); // dark shape curled inside
+    ctx.ellipse(x + 2, base - 30, 12, 18, 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(90, 50, 60, 0.5)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(230, 225, 210, 0.4)'; // guy-line silks
+    ctx.lineWidth = 1.5;
+    for (const [tx, ty] of [[-60, -70], [58, -64], [-44, -8], [50, -4]] as [number, number][]) {
+      ctx.beginPath();
+      ctx.moveTo(x + tx, base + ty);
+      ctx.lineTo(x, base - 52);
+      ctx.stroke();
+    }
+    glowSpots.push({ x, y: base - 34, r: 60, color: '235, 190, 160', phase: 0.9 });
+  } else if (biome === 'cavern') {
+    // Gloomglow Tyrant's crystal dais: a ring of shards around a hot core.
+    groundShadow(ctx, x, base + 4, 60, 0.4);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const sx = x + Math.cos(a) * 34;
+      const sy = base - 4 + Math.sin(a) * 14;
+      const h = 26 + (i % 2) * 16;
+      ctx.beginPath();
+      ctx.moveTo(sx - 7, sy);
+      ctx.lineTo(sx, sy - h);
+      ctx.lineTo(sx + 7, sy);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(140, 250, 225, 0.8)';
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.ellipse(x, base - 6, 22, 10, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#0e2b27';
+    ctx.fill();
+    glowSpots.push({ x, y: base - 22, r: 70, color: '120, 250, 220', phase: 1.7 });
+  } else if (biome === 'bog') {
+    // Moor-Wyrm's whirlpool maw: concentric drowned rings with a black eye.
+    groundShadow(ctx, x, base + 4, 62, 0.35);
+    for (const [r, col] of [[52, '#12282a'], [38, '#183a3c'], [24, '#0c1c1e'], [12, '#030808']] as [number, string][]) {
+      ctx.beginPath();
+      ctx.ellipse(x, base - 8, r, r * 0.42, 0, 0, Math.PI * 2);
+      ctx.fillStyle = col;
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(120, 200, 190, 0.35)'; // spiral current
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let t = 0; t < Math.PI * 4; t += 0.3) {
+      const rr = 8 + t * 4.4;
+      const px = x + Math.cos(t) * rr;
+      const py = base - 8 + Math.sin(t) * rr * 0.42;
+      if (t === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    glowSpots.push({ x, y: base - 8, r: 64, color: '90, 190, 180', phase: 2.4 });
+  } else if (biome === 'bone') {
+    // Marrow King's bone throne: stacked femurs, skull crest.
+    groundShadow(ctx, x, base + 4, 56, 0.4);
+    ctx.fillStyle = '#cfc4a8';
+    ctx.fillRect(x - 34, base - 16, 68, 16); // dais of packed bone
+    ctx.fillStyle = '#b8ad91';
+    ctx.fillRect(x - 22, base - 58, 44, 44); // seat back
+    ctx.fillStyle = '#cfc4a8';
+    for (let i = 0; i < 4; i++) {
+      // femur uprights
+      ctx.fillRect(x - 20 + i * 12, base - 56, 5, 42);
+    }
+    ctx.beginPath(); // skull crest
+    ctx.arc(x, base - 64, 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#e2d8bc';
+    ctx.fill();
+    ctx.fillStyle = '#141110';
+    ctx.beginPath();
+    ctx.arc(x - 3.5, base - 65, 2.4, 0, Math.PI * 2);
+    ctx.arc(x + 3.5, base - 65, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+    glowSpots.push({ x, y: base - 44, r: 56, color: '220, 235, 190', phase: 0.3 });
+  } else {
+    // Rot-Shepherd's compost altar: tiered mound, sprouting crook.
+    groundShadow(ctx, x, base + 4, 60, 0.4);
+    for (const [w, y0, h, col] of [
+      [62, 0, 16, '#2e2a12'],
+      [46, -12, 13, '#3a3418'],
+      [30, -22, 11, '#4c4620'],
+    ] as [number, number, number, string][]) {
+      ctx.beginPath();
+      ctx.ellipse(x, base + y0, w / 2, h, 0, Math.PI, 0);
+      ctx.fillStyle = col;
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#7a6a3a'; // the shepherd's crook, planted
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x + 16, base - 8);
+    ctx.lineTo(x + 16, base - 58);
+    ctx.arc(x + 8, base - 58, 8, 0, Math.PI, true);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(190, 210, 90, 0.8)'; // sprouting buds
+    for (const [bx2, by2] of [[-14, -30], [4, -22], [-2, -40]] as [number, number][]) {
+      ctx.beginPath();
+      ctx.arc(x + bx2, base + by2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    glowSpots.push({ x, y: base - 30, r: 58, color: '180, 210, 90', phase: 1.1 });
+  }
+  ctx.restore();
+}
+
 // ── Landmarks ────────────────────────────────────────────────────────────────
 
 /**
@@ -1860,7 +1991,14 @@ function drawLandmark(
       break;
     }
     case 'lair': {
-      // A fanged cave-mouth den with embers glowing inside.
+      const biome = dungeonBiome(n.id, n.region);
+      if (biome) {
+        // v6: each dungeon's lair is a bespoke set-piece.
+        drawLairSetPiece(ctx, x, base, biome, glowSpots);
+        break;
+      }
+      // A fanged cave-mouth den with embers glowing inside (non-dungeon lairs
+      // like Titan's Rest keep this look).
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.beginPath();
       ctx.ellipse(x, base + 3, 52, 11, 0, 0, Math.PI * 2);
@@ -1921,6 +2059,36 @@ function drawLandmark(
       ctx.lineWidth = 2.5;
       ctx.stroke();
       glowSpots.push({ x, y: base - 24, r: 40, color: '240, 205, 110', phase: 0.9 });
+      break;
+    }
+    case 'cache': {
+      // A banded treasure urn, lid ajar.
+      groundShadow(ctx, x, base + 4, 22, 0.35);
+      ctx.fillStyle = '#6a5228';
+      ctx.beginPath();
+      ctx.moveTo(x - 14, base);
+      ctx.quadraticCurveTo(x - 20, base - 16, x - 10, base - 28);
+      ctx.lineTo(x + 10, base - 28);
+      ctx.quadraticCurveTo(x + 20, base - 16, x + 14, base);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 230, 160, 0.25)'; // lit flank
+      ctx.fillRect(x - 10, base - 26, 5, 24);
+      ctx.strokeStyle = '#3c2e14'; // bands
+      ctx.lineWidth = 2.5;
+      for (const by of [base - 8, base - 20]) {
+        ctx.beginPath();
+        ctx.moveTo(x - 16, by);
+        ctx.lineTo(x + 16, by);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#8a6a30'; // lid, ajar
+      ctx.save();
+      ctx.translate(x + 2, base - 30);
+      ctx.rotate(-0.18);
+      ctx.fillRect(-14, -4, 28, 6);
+      ctx.restore();
+      glowSpots.push({ x, y: base - 26, r: 30, color: '240, 205, 110', phase: 0.6 });
       break;
     }
     case 'ladder': {
