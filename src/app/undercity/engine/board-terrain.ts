@@ -13,6 +13,7 @@
  */
 import type { BoardMap, BoardNode } from './board-canvas';
 import { OVERWORLD, type LayerSpec } from './board-layers';
+import { DUNGEONS, dungeonBiome } from '../data/dungeons';
 
 /** The camera clamps to -200..world+200, so the terrain covers that margin. */
 export const TERRAIN_MARGIN = 200;
@@ -136,7 +137,7 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     tint: 'rgba(96, 138, 44, 0.18)',
     path: { rim: '#241d10', edge: '#8fbf50', fill: '#4c5a2e', stud: 'rgba(210, 232, 160, 0.6)' },
   },
-  // The Broodwarrens dungeon — near-black nest tunnels under everything.
+  // Generic depths fallback — near-black nest tunnels under everything.
   depths: {
     top: '#201824',
     cliff: '#0a070c',
@@ -145,7 +146,59 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     tint: 'rgba(70, 40, 96, 0.18)',
     path: { rim: '#120d14', edge: '#7a4a9a', fill: '#332638', stud: 'rgba(200, 160, 240, 0.45)' },
   },
+  // v6 unique dungeon themes, keyed 'dungeon:<biome>' via themeKeyFor().
+  'dungeon:city': {
+    // Broodwarrens — chitin browns, silk-pale paths.
+    top: '#2e2218',
+    cliff: '#120c08',
+    cliffH: 12,
+    mottle: 'rgba(216, 188, 150, 0.10)',
+    tint: 'rgba(140, 96, 50, 0.20)',
+    path: { rim: '#160f0a', edge: '#c9b696', fill: '#4a3826', stud: 'rgba(238, 226, 200, 0.55)' },
+  },
+  'dungeon:cavern': {
+    // Gloomroot Hollow — deep teal with hot bioluminescent edges.
+    top: '#123a38',
+    cliff: '#061716',
+    cliffH: 12,
+    mottle: 'rgba(110, 240, 210, 0.22)',
+    tint: 'rgba(40, 170, 150, 0.22)',
+    path: { rim: '#0c1f1d', edge: '#8ffce2', fill: '#33544c', stud: 'rgba(220, 255, 245, 0.6)' },
+  },
+  'dungeon:bog': {
+    // Drownedway — drowned slate blue-greens.
+    top: '#1c2e30',
+    cliff: '#0a1314',
+    cliffH: 8,
+    mottle: 'rgba(120, 180, 180, 0.12)',
+    tint: 'rgba(50, 110, 120, 0.22)',
+    path: { rim: '#0e1718', edge: '#6aa8a0', fill: '#2e4a4a', stud: 'rgba(180, 220, 215, 0.5)' },
+  },
+  'dungeon:bone': {
+    // Marrow Pits — ashen bone-greys.
+    top: '#3c3830',
+    cliff: '#161410',
+    cliffH: 14,
+    mottle: 'rgba(230, 222, 200, 0.12)',
+    tint: 'rgba(160, 150, 120, 0.16)',
+    path: { rim: '#1c1a14', edge: '#d6cbaa', fill: '#4e483a', stud: 'rgba(240, 233, 210, 0.55)' },
+  },
+  'dungeon:garden': {
+    // Rotcellar — hot compost browns-greens.
+    top: '#33301a',
+    cliff: '#14120a',
+    cliffH: 12,
+    mottle: 'rgba(190, 200, 90, 0.14)',
+    tint: 'rgba(120, 130, 40, 0.20)',
+    path: { rim: '#181608', edge: '#b9c25a', fill: '#4a4726', stud: 'rgba(230, 235, 170, 0.5)' },
+  },
 };
+
+/** Theme key for a node: dungeon pockets get their own theme per biome. */
+function themeKeyFor(n: BoardNode): string {
+  const biome = dungeonBiome(n.id, n.region);
+  return biome ? `dungeon:${biome}` : (n.region ?? 'cavern');
+}
 
 function theme(region: string | undefined): RegionTheme {
   return REGION_THEMES[region ?? 'cavern'] ?? REGION_THEMES['cavern'];
@@ -639,7 +692,7 @@ export function renderTerrain(
   // Region geometry, derived from node positions so terrain fits any layout.
   const regionPts = new Map<string, Pt[]>();
   for (const n of nodes) {
-    const r = n.region ?? 'city';
+    const r = themeKeyFor(n);
     (regionPts.get(r) ?? regionPts.set(r, []).get(r)!).push({ x: n.x, y: n.y });
   }
   const regionZone = (r: string): { cx: number; cy: number; rad: number } => {
@@ -669,7 +722,8 @@ export function renderTerrain(
   ctx.fillRect(bx - TERRAIN_MARGIN, by - TERRAIN_MARGIN, w, h);
   if (floors) {
     for (const z of FLOOR_ZONES) {
-      const img = floors[z.region];
+      // Dungeon zones ('dungeon:<biome>') reuse their parent biome's painting.
+      const img = floors[z.region] ?? floors[z.region.replace('dungeon:', '')];
       if (!img || !img.width) continue;
       const size = z.r * 2;
       const tmp = document.createElement('canvas');
@@ -753,7 +807,7 @@ export function renderTerrain(
   };
   for (const n of nodes) {
     // The island reads as one raised mass, so its nodes get chunkier plateaus.
-    addBlob(n.region, n.x, n.y, n.region === 'isle' ? 126 + rand() * 20 : 102 + rand() * 26);
+    addBlob(themeKeyFor(n), n.x, n.y, n.region === 'isle' ? 126 + rand() * 20 : 102 + rand() * 26);
   }
   if (isOverworld) {
     // Extra isle fill so warp/ossuary/boss sit on a single solid rock, not three.
@@ -767,7 +821,7 @@ export function renderTerrain(
     if (isLadderLink(c)) continue; // a climb, not ground — no land bridge
     const pts = sampleCurve(c, 55);
     pts.forEach((p, i) => {
-      const region = i < pts.length / 2 ? c.a.region : c.b.region;
+      const region = i < pts.length / 2 ? themeKeyFor(c.a) : themeKeyFor(c.b);
       addBlob(region, p.x, p.y, 64 + rand() * 18);
     });
   }
@@ -823,15 +877,16 @@ export function renderTerrain(
     }
     ctx.restore();
   } else {
-    // A dungeon layer gets its own label centered on its pocket.
+    // A dungeon layer gets its own name, centered on its pocket.
     const cx = nodes.reduce((s, n) => s + n.x, 0) / (nodes.length || 1);
     const cy = nodes.reduce((s, n) => s + n.y, 0) / (nodes.length || 1);
+    const biome = nodes.length ? dungeonBiome(nodes[0].id, nodes[0].region) : null;
     ctx.save();
     ctx.font = 'italic 600 40px Georgia, "Times New Roman", serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = 'rgba(210, 235, 220, 0.16)';
-    ctx.fillText(LABEL_NAMES['depths'] ?? 'The Deep', cx, cy);
+    ctx.fillText(biome ? DUNGEONS[biome].name : (LABEL_NAMES['depths'] ?? 'The Deep'), cx, cy);
     ctx.restore();
   }
 
@@ -863,23 +918,39 @@ export function renderTerrain(
       continue;
     }
     const roll = rand();
-    if (nearest.region === 'bone') {
+    const nearKey = themeKeyFor(nearest);
+    if (nearKey === 'bone') {
       if (roll < 0.55) drawSkullPile(ctx, x, y, rand);
       else if (roll < 0.8) drawBoneMound(ctx, x, y, rand);
       else drawPillar(ctx, x, y, rand);
-    } else if (nearest.region === 'garden') {
+    } else if (nearKey === 'garden') {
       if (roll < 0.55) drawMushrooms(ctx, x, y, rand, glowSpots);
       else if (roll < 0.8) drawGiantMushroom(ctx, x, y, rand, glowSpots);
       else drawReeds(ctx, x, y, rand);
-    } else if (nearest.region === 'city' || nearest.region === 'ruin') {
+    } else if (nearKey === 'city' || nearKey === 'ruin') {
       if (roll < 0.35) drawPillar(ctx, x, y, rand);
       else if (roll < 0.6) drawRuinBlock(ctx, x, y, rand, glowSpots);
       else if (roll < 0.8) drawArchRuin(ctx, x, y, rand, glowSpots);
       else drawSkullPile(ctx, x, y, rand);
-    } else if (nearest.region === 'depths') {
+    } else if (nearKey === 'dungeon:city') {
+      if (roll < 0.5) drawEggCluster(ctx, x, y, rand, glowSpots);
+      else drawWebStrand(ctx, x, y, rand);
+    } else if (nearKey === 'dungeon:cavern') {
+      if (roll < 0.5) drawGiantMushroom(ctx, x, y, rand, glowSpots);
+      else drawMushrooms(ctx, x, y, rand, glowSpots);
+    } else if (nearKey === 'dungeon:bog') {
+      if (roll < 0.6) drawPool(ctx, x, y, rand, glowSpots);
+      else drawReeds(ctx, x, y, rand);
+    } else if (nearKey === 'dungeon:bone') {
+      if (roll < 0.5) drawBoneMound(ctx, x, y, rand);
+      else drawSkullPile(ctx, x, y, rand);
+    } else if (nearKey === 'dungeon:garden') {
+      if (roll < 0.5) drawCompostHeap(ctx, x, y, rand, glowSpots);
+      else drawMushrooms(ctx, x, y, rand, glowSpots);
+    } else if (nearKey === 'depths') {
       if (roll < 0.5) drawMushrooms(ctx, x, y, rand, glowSpots);
       else drawSkullPile(ctx, x, y, rand);
-    } else if (nearest.region === 'bog') {
+    } else if (nearKey === 'bog') {
       if (roll < 0.45) drawPool(ctx, x, y, rand, glowSpots);
       else if (roll < 0.75) drawReeds(ctx, x, y, rand);
       else drawBogTree(ctx, x, y, rand, glowSpots);
@@ -899,9 +970,10 @@ export function renderTerrain(
       drawCrossing(ctx, c, glowSpots);
       continue;
     }
-    const style =
-      c.a.region === c.b.region ? theme(c.a.region).path : REGION_THEMES['cavern'].path;
-    const bog = c.a.region === 'bog' && c.b.region === 'bog';
+    const keyA = themeKeyFor(c.a);
+    const keyB = themeKeyFor(c.b);
+    const style = keyA === keyB ? theme(keyA).path : REGION_THEMES['cavern'].path;
+    const bog = keyA === 'bog' && keyB === 'bog';
     const ribbon = (width: number, color: string, dy = 0): void => {
       ctx.beginPath();
       ctx.moveTo(c.a.x, c.a.y + dy);
@@ -1039,7 +1111,7 @@ function fillRegionBlobs(
   for (const b of list) {
     const rnd = mulberry32(b.seed);
     const y = b.y + offsetY;
-    if (region === 'city' || region === 'ruin' || region === 'bone') {
+    if (region === 'city' || region === 'ruin' || region === 'bone' || region === 'dungeon:bone') {
       // Chamfered masonry slab, slightly rotated — sunken-plaza geometry.
       const rot = (rnd() - 0.5) * 0.3;
       const w = b.r * 2.05;
@@ -1492,6 +1564,87 @@ function drawStairwell(
   ctx.beginPath();
   ctx.arc(x, top + 12, w / 2, Math.PI, 0);
   ctx.stroke();
+}
+
+// ── v6 dungeon decorations ───────────────────────────────────────────────────
+
+/** Broodwarrens: a cluster of pulsing eggs half-buried in the floor. */
+function drawEggCluster(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+  glowSpots: GlowSpot[],
+): void {
+  groundShadow(ctx, x, y + 2, 20, 0.3);
+  const n = 3 + Math.floor(rand() * 3);
+  for (let i = 0; i < n; i++) {
+    const ex = x + (rand() - 0.5) * 30;
+    const ey = y - rand() * 10;
+    const r = 5 + rand() * 5;
+    ctx.beginPath();
+    ctx.ellipse(ex, ey, r * 0.8, r, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#d8c9a8';
+    ctx.fill();
+    ctx.beginPath(); // membrane highlight
+    ctx.ellipse(ex - r * 0.25, ey - r * 0.35, r * 0.3, r * 0.4, -0.3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 250, 230, 0.45)';
+    ctx.fill();
+    ctx.beginPath(); // dark embryo shadow
+    ctx.ellipse(ex + r * 0.1, ey + r * 0.15, r * 0.35, r * 0.45, 0.2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(90, 60, 40, 0.4)';
+    ctx.fill();
+  }
+  glowSpots.push({ x, y: y - 8, r: 30, color: '230, 200, 150', phase: rand() * 6.28 });
+}
+
+/** Broodwarrens: a taut silk strand with hanging droplets. */
+function drawWebStrand(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+): void {
+  const span = 30 + rand() * 26;
+  const sag = 8 + rand() * 8;
+  ctx.strokeStyle = 'rgba(230, 225, 210, 0.35)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x - span / 2, y - 26 - rand() * 14);
+  ctx.quadraticCurveTo(x, y - 26 + sag, x + span / 2, y - 30 - rand() * 10);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(240, 238, 228, 0.5)';
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(x - span / 2 + rand() * span, y - 24 + rand() * sag, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+/** Rotcellar: a steaming compost heap. */
+function drawCompostHeap(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+  glowSpots: GlowSpot[],
+): void {
+  groundShadow(ctx, x, y + 2, 26, 0.3);
+  ctx.beginPath();
+  ctx.ellipse(x, y, 26, 12, 0, Math.PI, 0);
+  ctx.fillStyle = '#3a3418';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x - 4, y - 4, 16, 8, 0, Math.PI, 0);
+  ctx.fillStyle = '#4c4620';
+  ctx.fill();
+  ctx.fillStyle = 'rgba(190, 200, 90, 0.5)'; // scattered peels/sprouts
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.arc(x + (rand() - 0.5) * 40, y - rand() * 12, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  glowSpots.push({ x, y: y - 14, r: 26, color: '180, 200, 90', phase: rand() * 6.28 });
 }
 
 // ── Landmarks ────────────────────────────────────────────────────────────────
