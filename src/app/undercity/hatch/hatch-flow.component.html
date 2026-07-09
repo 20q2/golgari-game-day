@@ -1,4 +1,7 @@
-<div class="hatch">
+<div
+  class="hatch"
+  style="background-image: linear-gradient(rgba(12, 12, 14, 0.72), rgba(12, 12, 14, 0.85)), url('undercity/gate_background.png')"
+>
   @if (!hatched()) {
     <h1>An egg waits in the mulch…</h1>
     @if (canPickShell()) {
@@ -16,7 +19,10 @@
       </div>
     }
     @if (sealBonus() > 0) {
-      <p class="seal-note">🏅 Veteran of {{ store.wardrobe()?.nights }} nights — +{{ sealBonus() }} starting rolls</p>
+      <p class="seal-note">
+        <mat-icon class="mi">military_tech</mat-icon>
+        Veteran of {{ store.wardrobe()?.nights }} nights — +{{ sealBonus() }} starting rolls
+      </p>
     }
     <button
       class="egg"
@@ -28,26 +34,51 @@
     >
       <span class="egg-shape"></span>
       @if (taps() > 0) {
-        <span class="egg-cracks">{{ taps() === 1 ? '⚡' : '⚡⚡' }}</span>
+        <span class="egg-cracks">
+          <mat-icon>bolt</mat-icon>
+          @if (taps() === 2) {
+            <mat-icon>bolt</mat-icon>
+          }
+        </span>
       }
     </button>
     <p class="tap-hint">Tap the egg… ({{ taps() }}/3)</p>
+  } @else if (chosenStarter()) {
+    @if (chosenStarter(); as chosen) {
+      <h1>Where does {{ chosen.name }} call home?</h1>
+      <p class="choose-hint">Your home biome grants a permanent perk — it's where you start and respawn.</p>
+      @if (error(); as err) {
+        <p class="error-text">{{ err }}</p>
+      }
+      <div class="biome-grid">
+        @for (biome of biomes; track biome.id) {
+          <button class="biome-card" (click)="chooseBiome(biome.id)" [disabled]="joining()">
+            <mat-icon class="biome-icon">{{ biome.icon }}</mat-icon>
+            <span class="biome-name">{{ biome.name }}</span>
+            <span class="biome-perk"><strong>{{ biome.perk }}:</strong> {{ biome.blurb }}</span>
+          </button>
+        }
+      </div>
+      <button class="biome-back" (click)="chosenStarter.set(null)" [disabled]="joining()">
+        ← pick a different creature
+      </button>
+    }
   } @else {
     <h1>It's hatching! Choose your creature</h1>
     <p class="choose-hint">This choice shapes your whole night — no takebacks.</p>
-    @if (error(); as err) {
-      <p class="error-text">{{ err }}</p>
-    }
     <div class="starter-grid">
       @for (starter of starters; track starter.id) {
-        <button class="starter-card" (click)="choose(starter)" [disabled]="joining()">
+        <button class="starter-card" (click)="chooseStarter(starter)" [disabled]="joining()">
           @if (spriteUrl(starter); as url) {
             <img class="starter-sprite" [src]="url" [alt]="starter.name" />
           }
           <span class="starter-name">{{ starter.name }}</span>
           <span class="starter-blurb">{{ starter.blurb }}</span>
           <span class="starter-stats">
-            ❤️{{ starter.stats?.hp }} ⚔️{{ starter.stats?.atk }} 🛡️{{ starter.stats?.def }} 💨{{ starter.stats?.spd }}
+            <mat-icon class="mi hp-mi">favorite</mat-icon>{{ starter.stats?.hp }}
+            <mat-icon class="mi">sports_mma</mat-icon>{{ starter.stats?.atk }}
+            <mat-icon class="mi">shield</mat-icon>{{ starter.stats?.def }}
+            <mat-icon class="mi">bolt</mat-icon>{{ starter.stats?.spd }}
           </span>
           <span class="starter-passive">
             <strong>{{ starter.passiveName }}:</strong> {{ passiveBlurbs[starter.passive] }}
