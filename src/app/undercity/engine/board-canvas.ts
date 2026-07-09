@@ -189,10 +189,47 @@ export class BoardCanvas {
   private activeLayerId: string = OVERWORLD;
   private explored = new Map<string, Set<string>>(); // layerId -> lit node ids
   private static readonly EXPLORED_KEY = 'undercity-explored-v1';
+  private floorTex: FloorTextures = {};
+  private landmarkTex: LandmarkTextures = {};
+  private clearedDungeons = new Set<string>(); // biome keys with your sigil
+  private onEnterDungeonCb: ((biome: string) => void) | null = null;
   private ambient: BoardAmbient;
 
   private get active(): Layer {
     return this.layers.get(this.activeLayerId) ?? this.layers.get(OVERWORLD)!;
+  }
+
+  /** Re-render every layer's terrain with the current art + cleared flags. */
+  private rebuildLayers(): void {
+    for (const spec of this.layerSpecs) {
+      const biome = spec.id.startsWith('pocket:')
+        ? (this.map.nodes.find((n) => spec.nodeIds.has(n.id))?.id.split('_')[0] ?? null)
+        : null;
+      this.layers.set(spec.id, {
+        spec,
+        terrain: renderTerrain(this.map, this.floorTex, this.landmarkTex, spec, {
+          cleared: !!biome && this.clearedDungeons.has(biome),
+        }),
+      });
+    }
+  }
+
+  /** Dungeons YOU hold the sigil for render as 'cleared' (banner, calm glow). */
+  setClearedDungeons(biomes: string[]): void {
+    const next = new Set(biomes);
+    if (
+      next.size === this.clearedDungeons.size &&
+      [...next].every((b) => this.clearedDungeons.has(b))
+    ) {
+      return; // no change — don't rebuild terrain
+    }
+    this.clearedDungeons = next;
+    this.rebuildLayers();
+  }
+
+  /** Fires once per layer-swap into a dungeon (component shows the rite card). */
+  setOnEnterDungeon(cb: (biome: string) => void): void {
+    this.onEnterDungeonCb = cb;
   }
 
   private camX = 0;
@@ -261,31 +298,21 @@ export class BoardCanvas {
       shop: 'undercity/icons/bazaar.png',
       warp: 'undercity/icons/teleport.png',
     };
-    const floors: FloorTextures = {};
-    const landmarks: LandmarkTextures = {};
     // Re-render with whatever art has arrived; draw() reads this.active.terrain
     // fresh each frame, so each successful load pops in seamlessly.
-    const rebuild = () => {
-      for (const spec of this.layerSpecs) {
-        this.layers.set(spec.id, {
-          spec,
-          terrain: renderTerrain(map, floors, landmarks, spec),
-        });
-      }
-    };
     for (const [region, src] of Object.entries(floorSrc)) {
       const img = new Image();
       img.onload = () => {
-        floors[region] = img;
-        rebuild();
+        this.floorTex[region] = img;
+        this.rebuildLayers();
       };
       img.src = src;
     }
     for (const [type, src] of Object.entries(landmarkSrc)) {
       const img = new Image();
       img.onload = () => {
-        landmarks[type] = img;
-        rebuild();
+        this.landmarkTex[type] = img;
+        this.rebuildLayers();
       };
       img.src = src;
     }
@@ -305,6 +332,9 @@ export class BoardCanvas {
       this.activeLayerId = target;
       this.clampCamera();
       if (this.ownPosition) this.centerOn(this.ownPosition, false);
+      if (target !== OVERWORLD && this.ownPosition) {
+        this.onEnterDungeonCb?.(this.ownPosition.split('_')[0]);
+      }
     }
     if (this.ownPosition && this.activeLayerId !== OVERWORLD) {
       this.markExplored(this.activeLayerId, this.ownPosition);

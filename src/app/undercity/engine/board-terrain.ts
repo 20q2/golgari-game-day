@@ -664,7 +664,9 @@ export function renderTerrain(
   floors?: FloorTextures,
   landmarkArt?: LandmarkTextures,
   layer?: LayerSpec,
+  opts?: { cleared?: boolean },
 ): TerrainArt {
+  const cleared = opts?.cleared ?? false;
   // A layer restricts what we draw to a node subset within a world-space
   // bounding box; default (no layer) draws the whole world (legacy behaviour).
   const bx = layer ? layer.bounds.x : 0;
@@ -934,7 +936,8 @@ export function renderTerrain(
       else drawSkullPile(ctx, x, y, rand);
     } else if (nearKey === 'dungeon:city') {
       if (roll < 0.5) drawEggCluster(ctx, x, y, rand, glowSpots);
-      else drawWebStrand(ctx, x, y, rand);
+      else if (!cleared) drawWebStrand(ctx, x, y, rand);
+      else drawMushrooms(ctx, x, y, rand, glowSpots); // webs burned away
     } else if (nearKey === 'dungeon:cavern') {
       if (roll < 0.5) drawGiantMushroom(ctx, x, y, rand, glowSpots);
       else drawMushrooms(ctx, x, y, rand, glowSpots);
@@ -1069,7 +1072,7 @@ export function renderTerrain(
   const landmarks = nodes
     .filter((n) => landmarkTypes.includes(n.type))
     .sort((a, b) => a.y - b.y);
-  for (const n of landmarks) drawLandmark(ctx, n, glowSpots, landmarkArt);
+  for (const n of landmarks) drawLandmark(ctx, n, glowSpots, landmarkArt, cleared);
 
   // Vignette last so it shades everything toward the cave edges
   const vg = ctx.createRadialGradient(
@@ -1654,7 +1657,11 @@ function drawLairSetPiece(
   base: number,
   biome: string,
   glowSpots: GlowSpot[],
+  cleared = false,
 ): void {
+  // Each branch stages its menacing boss glow; a cleared lair swaps it for a
+  // calm friendly one and plants a victory banner.
+  let menace: GlowSpot | null = null;
   ctx.save();
   if (biome === 'city') {
     // Broodmother's egg-throne: a heaped clutch around a towering queen egg.
@@ -1681,7 +1688,7 @@ function drawLairSetPiece(
       ctx.lineTo(x, base - 52);
       ctx.stroke();
     }
-    glowSpots.push({ x, y: base - 34, r: 60, color: '235, 190, 160', phase: 0.9 });
+    menace = { x, y: base - 34, r: 60, color: '235, 190, 160', phase: 0.9 };
   } else if (biome === 'cavern') {
     // Gloomglow Tyrant's crystal dais: a ring of shards around a hot core.
     groundShadow(ctx, x, base + 4, 60, 0.4);
@@ -1702,7 +1709,7 @@ function drawLairSetPiece(
     ctx.ellipse(x, base - 6, 22, 10, 0, 0, Math.PI * 2);
     ctx.fillStyle = '#0e2b27';
     ctx.fill();
-    glowSpots.push({ x, y: base - 22, r: 70, color: '120, 250, 220', phase: 1.7 });
+    menace = { x, y: base - 22, r: 70, color: '120, 250, 220', phase: 1.7 };
   } else if (biome === 'bog') {
     // Moor-Wyrm's whirlpool maw: concentric drowned rings with a black eye.
     groundShadow(ctx, x, base + 4, 62, 0.35);
@@ -1723,7 +1730,7 @@ function drawLairSetPiece(
       else ctx.lineTo(px, py);
     }
     ctx.stroke();
-    glowSpots.push({ x, y: base - 8, r: 64, color: '90, 190, 180', phase: 2.4 });
+    menace = { x, y: base - 8, r: 64, color: '90, 190, 180', phase: 2.4 };
   } else if (biome === 'bone') {
     // Marrow King's bone throne: stacked femurs, skull crest.
     groundShadow(ctx, x, base + 4, 56, 0.4);
@@ -1745,7 +1752,7 @@ function drawLairSetPiece(
     ctx.arc(x - 3.5, base - 65, 2.4, 0, Math.PI * 2);
     ctx.arc(x + 3.5, base - 65, 2.4, 0, Math.PI * 2);
     ctx.fill();
-    glowSpots.push({ x, y: base - 44, r: 56, color: '220, 235, 190', phase: 0.3 });
+    menace = { x, y: base - 44, r: 56, color: '220, 235, 190', phase: 0.3 };
   } else {
     // Rot-Shepherd's compost altar: tiered mound, sprouting crook.
     groundShadow(ctx, x, base + 4, 60, 0.4);
@@ -1773,7 +1780,22 @@ function drawLairSetPiece(
       ctx.arc(x + bx2, base + by2, 2.5, 0, Math.PI * 2);
       ctx.fill();
     }
-    glowSpots.push({ x, y: base - 30, r: 58, color: '180, 210, 90', phase: 1.1 });
+    menace = { x, y: base - 30, r: 58, color: '180, 210, 90', phase: 1.1 };
+  }
+  if (cleared && menace) {
+    // Victory banner planted at the conquered lair; calm glow replaces menace.
+    ctx.fillStyle = '#5a3a1c';
+    ctx.fillRect(x + 30, base - 70, 3, 66);
+    ctx.beginPath();
+    ctx.moveTo(x + 33, base - 68);
+    ctx.lineTo(x + 62, base - 60);
+    ctx.lineTo(x + 33, base - 50);
+    ctx.closePath();
+    ctx.fillStyle = '#4a7c59';
+    ctx.fill();
+    glowSpots.push({ ...menace, color: '150, 220, 150', r: 40 });
+  } else if (menace) {
+    glowSpots.push(menace);
   }
   ctx.restore();
 }
@@ -1816,6 +1838,7 @@ function drawLandmark(
   n: BoardNode,
   glowSpots: GlowSpot[],
   tex?: LandmarkTextures,
+  cleared = false,
 ): void {
   const x = n.x;
   const base = n.y - 24;
@@ -1994,7 +2017,7 @@ function drawLandmark(
       const biome = dungeonBiome(n.id, n.region);
       if (biome) {
         // v6: each dungeon's lair is a bespoke set-piece.
-        drawLairSetPiece(ctx, x, base, biome, glowSpots);
+        drawLairSetPiece(ctx, x, base, biome, glowSpots, cleared);
         break;
       }
       // A fanged cave-mouth den with embers glowing inside (non-dungeon lairs
