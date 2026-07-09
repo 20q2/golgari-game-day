@@ -727,9 +727,17 @@ def _resolve_space(table, sid, doc, node, prev):
     if ntype == 'vault':
         return _vault(table, sid, doc)
 
+    if ntype == 'cache':
+        return _cache(table, sid, doc, node)
+
     if ntype == 'ladder':
-        where = 'down into the Broodwarrens' if node == 'ladder_top' \
-            else 'back up to the Undercity'
+        biome = data.dungeon_biome(node)
+        if biome:
+            where = 'back up to the surface'
+        else:
+            b = node.split('_')[0]
+            dname = data.DUNGEONS.get(b, {}).get('name', 'the depths')
+            where = f'down into {dname}'
         return {'type': 'ladder',
                 'text': f'A rusted ladder bolted into the rock leads {where}. '
                         'Your next roll can carry you through.'}
@@ -1103,6 +1111,24 @@ def _vault(table, sid, doc):
            f"{doc['username']} plundered the Sunken Vault!", actor=doc['userId'])
     return {'type': 'vault', 'spores': r['spores'],
             'text': f"The hoard of the Erstwhile! +{r['spores']} Spores."}
+
+
+def _cache(table, sid, doc, node):
+    """One treasure per dungeon, first visit per player (mini-vault)."""
+    claims = doc.setdefault('poiClaims', [])
+    key = f'cache:{node}'
+    if key in claims:
+        return {'type': 'cache', 'text': 'The hollow stands empty — you plundered it already.'}
+    claims.append(key)
+    r = data.CACHE_REWARD
+    doc['spores'] = doc.get('spores', 0) + r['spores']
+    _grant_xp(table, sid, doc, r['xp'])
+    biome = data.dungeon_biome(node)
+    dname = data.DUNGEONS[biome]['name'] if biome else 'the depths'
+    _event(table, sid, 'cache',
+           f"{doc['username']} plundered the treasure of {dname}!", actor=doc['userId'])
+    return {'type': 'cache', 'spores': r['spores'],
+            'text': f"A hidden trove! +{r['spores']} Spores."}
 
 
 def _battle(table, sid, doc, payload):

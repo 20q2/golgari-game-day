@@ -542,3 +542,22 @@ def test_surface_hazard_unchanged(table):
     sid, doc = _player_at(table, 'city_r4')
     out = db._hazard(table, sid, doc, 'city_r4')
     assert out['type'] == 'hazard' and 'hazardId' not in out
+
+
+def test_cache_pays_once_per_player(table):
+    sid, doc = _player_at(table, 'city_cache', spores=0)
+    out = db._resolve_space(table, sid, doc, 'city_cache', 'city_lair')
+    assert out['type'] == 'cache'
+    assert doc['spores'] == data.CACHE_REWARD['spores']
+    assert 'cache:city_cache' in doc['poiClaims']
+
+    out2 = db._resolve_space(table, sid, doc, 'city_cache', 'city_lair')
+    assert out2['type'] == 'cache'
+    assert doc['spores'] == data.CACHE_REWARD['spores']  # unchanged
+
+
+def test_ladder_blurb_names_the_dungeon(table):
+    sid, doc = _player_at(table, 'city_lt')
+    out = db._resolve_space(table, sid, doc, 'city_lt', 'city_r5')
+    assert out['type'] == 'ladder'
+    assert 'Broodwarrens' in out['text']
