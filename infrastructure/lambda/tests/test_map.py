@@ -9,19 +9,53 @@ from undercity_data import MAP_NODES, GATE_NODE, BOSS_NODE, WARP_NODES
 
 
 def test_node_count():
-    # v4: five home-biome rings (10 spaces + 2 inner + a 7-node dungeon pocket
-    # each), pentagon tunnels, the island, and two barrier-gated side pockets.
-    assert len(MAP_NODES) == 121
+    # v6: five home-biome rings (10 spaces + 2 inner each), pentagon tunnels,
+    # the island, two barrier side pockets, and five UNIQUE dungeon pockets
+    # (city 7, cavern 6, bog 7, bone 6, garden 7 nodes incl. door).
+    assert len(MAP_NODES) == 124
 
 
 def test_space_type_distribution():
     counts = Counter(n['type'] for n in MAP_NODES.values())
     assert counts == {
-        'gate': 5, 'loot': 18, 'wild': 31, 'shop': 5, 'mystery': 12,
+        'gate': 5, 'loot': 18, 'wild': 29, 'shop': 5, 'mystery': 12,
         'hazard': 14, 'warp': 6, 'shrine': 4, 'ladder': 10, 'lair': 6,
         'ossuary': 2, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
-        'excavation': 3,
+        'excavation': 3, 'cache': 5,
     }
+
+
+def test_dungeon_pockets_shapes():
+    """Each pocket: door + lair + cache present, all degree >= 2, planar edges."""
+    from undercity_data import BIOMES
+    for b in BIOMES:
+        pocket = {nid: n for nid, n in MAP_NODES.items()
+                  if n.get('region') == 'depths' and nid.startswith(b + '_')}
+        assert b + '_lb' in pocket and b + '_lair' in pocket and b + '_cache' in pocket
+        for nid, n in pocket.items():
+            depths_deg = sum(1 for nb in n['neighbors']
+                             if MAP_NODES[nb].get('region') == 'depths')
+            assert depths_deg >= 2, f'{nid} strandable (degree {depths_deg} in pocket)'
+
+        # Planarity: no two pocket edges cross (segment intersection test).
+        edges = set()
+        for nid, n in pocket.items():
+            for nb in n['neighbors']:
+                if nb in pocket:
+                    edges.add(tuple(sorted((nid, nb))))
+        def cross(e1, e2):
+            if set(e1) & set(e2):
+                return False
+            (a, bb), (c, d) = e1, e2
+            p = [(MAP_NODES[x]['x'], MAP_NODES[x]['y']) for x in (a, bb, c, d)]
+            def cr(p1, p2, p3):
+                return (p2[0]-p1[0])*(p3[1]-p1[1]) - (p2[1]-p1[1])*(p3[0]-p1[0])
+            return (cr(p[0], p[1], p[2]) * cr(p[0], p[1], p[3]) < 0
+                    and cr(p[2], p[3], p[0]) * cr(p[2], p[3], p[1]) < 0)
+        edges = sorted(edges)
+        for i in range(len(edges)):
+            for j in range(i + 1, len(edges)):
+                assert not cross(edges[i], edges[j]), f'{b}: {edges[i]} x {edges[j]}'
 
 
 def test_five_home_gates():

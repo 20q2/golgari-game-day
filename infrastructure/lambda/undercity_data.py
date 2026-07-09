@@ -165,6 +165,24 @@ CONSUMABLES = {
 BAG_SIZE = 3
 GEAR_SELL_BACK = 0.5  # replacing gear auto-sells old piece for 50% of cost
 
+# Trading post: the central-island exchange opens each night holding these 3
+# house consumables (tagged "the Swarm"). Players swap one of their bag items
+# for one of these; whatever they leave becomes the next visitor's stock,
+# tagged with their name. Stock count stays fixed at 3 (swap in = swap out).
+TRADING_POST_SEED = ['healing_moss', 'smoke_spore', 'loaded_die']
+TRADING_POST_SIZE = len(TRADING_POST_SEED)
+
+# Excavation dig sites (Ossuary Fields focus). A shared 5x5 grid holds four
+# buried items sized by footprint; each landing grants 3 digs (reveal one cell
+# each), refilled per visit like the Ossuary. Revealing an item's last cell
+# collects it for whoever dug it; clearing the final item resets the grid and
+# pays the finder a Spore bonus. Loot scales with footprint (see _roll_dig_loot
+# in undercity_db). Partial reveals persist for the next player.
+EXCAVATION_DIGS_PER_VISIT = 3
+EXCAVATION_GRID = (5, 5)                     # (width, height)
+EXCAVATION_ITEMS = ['1x1', '1x1', '1x2', '2x2']  # shapes buried per site
+EXCAVATION_CLEAR_BONUS = 25                  # Spores for clearing the last item
+
 
 # ── Wild NPCs (stats scale off player level L) ───────────────────────────────
 
@@ -242,7 +260,112 @@ DEATHRITE_STEAL_MULT = 1.5
 SHRINE_BLESSING_COST = 15
 SHRINE_TITHE_HP_PCT = 0.25
 OSSUARY_MAX_BET = 20
+OSSUARY_ROLLS_PER_VISIT = 3  # gambles allowed per landing; refills when you land again
 SNARE_SPILL_PCT = 0.20
+
+
+# ── Barriers & points of interest (v3: goals on the map) ────────────────────
+
+# Fixed guardians blocking the gated routes. Unscaled: they're meant to be a
+# wall until the party grows into them. Beating one opens the barrier for the
+# WHOLE season (shared) and pays the winner alone.
+BARRIER_GUARDIANS = {
+    'bar_e': {'id': 'rubble_hulk', 'name': 'Rubble Hulk',
+              'hp': 46, 'atk': 9, 'def': 7, 'spd': 3, 'bounty': 30, 'xp': 25},
+    'bar_s': {'id': 'bone_warden', 'name': 'Bone Warden',
+              'hp': 52, 'atk': 10, 'def': 6, 'spd': 5, 'bounty': 35, 'xp': 25},
+}
+
+# Mini-bosses at the lairs. First kill per player pays `first`; repeats pay
+# `repeat`. Both are much stronger than any wild NPC. The five biome-dungeon
+# lairs grant Guild Sigils on first clear; lair_titan is side content.
+_LAIR_REWARD = {'first': {'spores': 60, 'xp': 35}, 'repeat': {'spores': 15, 'xp': 12}}
+LAIR_BOSSES = {
+    'lair_titan': {'id': 'gravebound_colossus', 'name': 'Gravebound Colossus',
+                   'hp': 70, 'atk': 12, 'def': 8, 'spd': 4, **_LAIR_REWARD},
+    'city_lair': {'id': 'broodmother', 'name': 'Broodmother of the Warrens',
+                  'hp': 60, 'atk': 13, 'def': 5, 'spd': 8, **_LAIR_REWARD},
+    'cavern_lair': {'id': 'gloomglow_tyrant', 'name': 'The Gloomglow Tyrant',
+                    'hp': 64, 'atk': 12, 'def': 6, 'spd': 7, **_LAIR_REWARD},
+    'bog_lair': {'id': 'moor_wyrm', 'name': 'The Moor-Wyrm',
+                 'hp': 72, 'atk': 11, 'def': 7, 'spd': 5, **_LAIR_REWARD},
+    'bone_lair': {'id': 'marrow_king', 'name': 'The Marrow King',
+                  'hp': 58, 'atk': 14, 'def': 6, 'spd': 6, **_LAIR_REWARD},
+    'garden_lair': {'id': 'rot_shepherd', 'name': 'The Rot-Shepherd',
+                    'hp': 68, 'atk': 12, 'def': 7, 'spd': 4, **_LAIR_REWARD},
+}
+
+# The treasure vault: first visit per player pays out, later visits are set
+# dressing.
+VAULT_REWARD = {'spores': 80, 'xp': 20}
+
+# ── Unique dungeons (v6) ─────────────────────────────────────────────────────
+# Each biome's ladder-down pocket is a distinct place: its own name, shape
+# (laid out in _build_map), signature hazard, themed wild, and one first-visit
+# treasure cache. The rite line is client flavor shown on first descent.
+
+DUNGEONS = {
+    'city':   {'name': 'The Broodwarrens', 'wild': 'broodling', 'hazard': 'webbing',
+               'rite': 'The Broodwarrens. The walls pulse.'},
+    'cavern': {'name': 'Gloomroot Hollow', 'wild': 'glowmite', 'hazard': 'spore_cloud',
+               'rite': 'Gloomroot Hollow. The light here is alive.'},
+    'bog':    {'name': 'The Drownedway', 'wild': 'mire_leech', 'hazard': 'sinkwater',
+               'rite': 'The Drownedway. Black water swallows your steps.'},
+    'bone':   {'name': 'The Marrow Pits', 'wild': 'gravewight', 'hazard': 'bone_chill',
+               'rite': 'The Marrow Pits. The dead are load-bearing.'},
+    'garden': {'name': 'The Rotcellar', 'wild': 'rot_grub', 'hazard': 'rot_bloom',
+               'rite': 'The Rotcellar. Sweet decay, thick as soup.'},
+}
+
+# One themed wild per dungeon — same (base, per-level) tuple shape as NPCS,
+# ~15% meaner than the surface wild of the same band, +25% bounty. All bands
+# span every level so the dungeon always spawns its own fauna.
+DUNGEON_NPCS = {
+    'city':   {'id': 'broodling',  'name': 'Broodling',   'min': 1, 'max': 12,
+               'hp': (24, 2.5), 'atk': (6, 1), 'def': (3, 0.5), 'spd': 6,
+               'bounty': 15, 'itemChance': 0.10},
+    'cavern': {'id': 'glowmite',   'name': 'Glowmite',    'min': 1, 'max': 12,
+               'hp': (20, 2.5), 'atk': (7, 1), 'def': (2, 0.5), 'spd': 8,
+               'bounty': 15, 'itemChance': 0.10},
+    'bog':    {'id': 'mire_leech', 'name': 'Mire Leech',  'min': 1, 'max': 12,
+               'hp': (28, 3), 'atk': (5, 1), 'def': (4, 0.5), 'spd': 4,
+               'bounty': 15, 'itemChance': 0.10},
+    'bone':   {'id': 'gravewight', 'name': 'Gravewight',  'min': 1, 'max': 12,
+               'hp': (26, 2.5), 'atk': (6, 1), 'def': (5, 0.5), 'spd': 3,
+               'bounty': 16, 'itemChance': 0.10},
+    'garden': {'id': 'rot_grub',   'name': 'Rot Grub',    'min': 1, 'max': 12,
+               'hp': (30, 3), 'atk': (5, 1), 'def': (3, 0.5), 'spd': 5,
+               'bounty': 15, 'itemChance': 0.15},
+}
+
+# Signature hazards — display copy here; behavior lives in undercity_db._hazard.
+DUNGEON_HAZARDS = {
+    'city':   {'id': 'webbing', 'name': 'Webbing',
+               'text': 'Sticky broodsilk wraps your legs — your next roll is halved.'},
+    'cavern': {'id': 'spore_cloud', 'name': 'Spore Cloud',
+               'text': 'A luminous cloud bursts! The hollow spins around you…'},
+    'bog':    {'id': 'sinkwater', 'name': 'Sinkwater',
+               'text': 'The floor is water. Your pouch is not waterproof.'},
+    'bone':   {'id': 'bone_chill', 'name': 'Bone Chill',
+               'text': 'Grave-cold seeps into your joints: -2 ATK in your next battle.'},
+    'garden': {'id': 'rot_bloom', 'name': 'Rot Bloom',
+               'text': 'Bursting rot-pods sting your hide — but the compost is rich.'},
+}
+
+# First visit per player pays out; tracked in poiClaims as 'cache:<nodeId>'
+# (~half a vault; renown flows automatically via per_poi).
+CACHE_REWARD = {'spores': 40, 'xp': 10}
+
+
+def dungeon_biome(node_id):
+    """Biome key for a depths node ('city_d0' -> 'city'), else None."""
+    node = MAP_NODES.get(node_id)
+    if not node or node.get('region') != 'depths':
+        return None
+    return node_id.split('_')[0]
+
+# Every entry in a player's poiClaims list ('bar_e', 'lair_titan', 'vault',
+# ...) feeds renown via compute_renown below.
 
 
 # ── Renown ───────────────────────────────────────────────────────────────────
@@ -251,6 +374,7 @@ RENOWN = {
     'per_level': 10,
     'per_pvp_win': 15,
     'per_wild_win': 3,
+    'per_poi': 25,  # each barrier broken / lair first-kill / vault find
     'spores_per_point': 5,
     'boss_damage_per_point': 10,
 }
@@ -260,99 +384,272 @@ def compute_renown(player: dict) -> int:
     return (RENOWN['per_level'] * player.get('level', 1)
             + RENOWN['per_pvp_win'] * player.get('pvpWins', 0)
             + RENOWN['per_wild_win'] * player.get('wildWins', 0)
+            + RENOWN['per_poi'] * len(player.get('poiClaims', []))
             + player.get('spores', 0) // RENOWN['spores_per_point']
             + player.get('bossDamage', 0) // RENOWN['boss_damage_per_point'])
 
 
-# ── The board map ────────────────────────────────────────────────────────────
+# ── The board map (v4: five home biomes around the island) ──────────────────
 #
-# Topology (GDD §6): outer loop of 26 nodes (n0..n25, n0 = Gate of the Swarm),
-# tunnel A of 6 nodes (a0..a5) joining n4↔n17, tunnel B of 5 nodes (b0..b4)
-# joining n11↔n24, and a central island: warp → ossuary → boss lair. The boss
-# lair is sealed until the boss phase (demo: always sealed; landing bounces).
+# Five biome rings sit in a pentagon around the floating boss island. Each
+# ring has 10 spaces (gate facing the island, shop, warp, shrine/ossuary,
+# loot/wild/mystery/hazard mix), an inner 2-space chord path across its
+# hollow, and a dungeon pocket hanging off its outward side reached only by a
+# ladder pair. First-clearing a dungeon's lair grants that biome's Guild
+# Sigil; hold SIGILS_REQUIRED and the island boss unseals for you. Two
+# barrier-gated side pockets (Titan's Rest, the Sunken Vaults) remain as
+# optional treasure routes.
 
-GATE_NODE = 'n0'
+# TODO: dev/testing switch — rolling never checks or spends banked rolls while
+# True. Flip back to False (and redeploy) before game night.
+UNLIMITED_ROLLS = True
+
+WORLD_W, WORLD_H = 3600, 2400
+ISLAND_XY = (1800, 1150)
 BOSS_NODE = 'boss'
 
-_LOOP_TYPES = {
-    'n0': 'gate',
-    'n1': 'mystery', 'n2': 'wild', 'n3': 'hazard', 'n4': 'loot',
-    'n5': 'shop', 'n6': 'wild', 'n7': 'warp', 'n8': 'mystery',
-    'n9': 'wild', 'n10': 'shrine', 'n11': 'loot', 'n12': 'hazard',
-    'n13': 'loot', 'n14': 'shop', 'n15': 'wild', 'n16': 'mystery',
-    'n17': 'loot', 'n18': 'hazard', 'n19': 'loot', 'n20': 'warp',
-    'n21': 'wild', 'n22': 'mystery', 'n23': 'shrine', 'n24': 'loot',
-    'n25': 'wild',
-    'a0': 'loot', 'a1': 'wild', 'a2': 'shop', 'a3': 'mystery',
-    'a4': 'hazard', 'a5': 'mystery',
-    'b0': 'hazard', 'b1': 'loot', 'b2': 'shrine', 'b3': 'wild', 'b4': 'mystery',
-    'isl_warp': 'warp', 'isl_ossuary': 'ossuary', 'boss': 'boss',
+# Home biomes: display name, ring geometry, and the hatch perk.
+BIOMES = {
+    'cavern': {'name': 'Mosslight Cavern', 'center': (900, 520),
+               'rx': 360, 'ry': 225, 'perk': 'glowblessed',
+               'perkName': 'Glowblessed', 'perkBlurb': '+10% flee chance.'},
+    'bog': {'name': 'The Sedgemoor', 'center': (2700, 520),
+            'rx': 370, 'ry': 215, 'perk': 'mirefoot',
+            'perkName': 'Mirefoot', 'perkBlurb': 'Hazards cost you half.'},
+    'garden': {'name': 'The Rot-Gardens', 'center': (3000, 1650),
+               'rx': 330, 'ry': 240, 'perk': 'composter',
+               'perkName': 'Composter', 'perkBlurb': '+2 Spores from every loot space.'},
+    'city': {'name': 'The Undercity', 'center': (1800, 2050),
+             'rx': 420, 'ry': 230, 'perk': 'city_rat',
+             'perkName': 'City Rat', 'perkBlurb': '+15 starting Spores.'},
+    'bone': {'name': 'Ossuary Fields', 'center': (600, 1650),
+             'rx': 340, 'ry': 235, 'perk': 'marrowborn',
+             'perkName': 'Marrowborn', 'perkBlurb': '+2 DEF against wild creatures.'},
+}
+DEFAULT_BIOME = 'city'
+
+# Ring slot types, index 0 = the space facing the island. Slot 3 is the shop,
+# slot 5 (outward side) anchors the ladder down to the biome's dungeon, slot
+# 9 is the shrine (the Ossuary Fields gamble den replaces theirs).
+_RING_TYPES = ['gate', 'loot', 'wild', 'shop', 'mystery',
+               'hazard', 'loot', 'warp', 'wild', 'shrine']
+_INNER_TYPES = ['mystery', 'wild']
+# v6 pocket layouts: {suffix: (type, dx, dy)} + explicit edge list. All planar.
+_POCKET_LAYOUTS = {
+    # The Broodwarrens — figure-8 warren, hazard at the waist.
+    'city': {
+        'nodes': {
+            '_lb':    ('ladder', 0, -160),
+            '_d0':    ('wild',   150, -60),
+            '_d1':    ('hazard', 0, 20),      # the waist, degree 4
+            '_d3':    ('wild',  -150, -60),
+            '_lair':  ('lair',   150, 130),
+            '_cache': ('cache',  0, 210),
+            '_d2':    ('loot',  -150, 130),
+        },
+        'edges': [('_lb', '_d0'), ('_d0', '_d1'), ('_d1', '_d3'), ('_d3', '_lb'),
+                  ('_d1', '_lair'), ('_lair', '_cache'), ('_cache', '_d2'),
+                  ('_d2', '_d1')],
+    },
+    # Gloomroot Hollow — a spiral that loops back on itself.
+    'cavern': {
+        'nodes': {
+            '_lb':    ('ladder', -200, -140),
+            '_d0':    ('wild',    120, -150),
+            '_d1':    ('hazard',  190, 60),
+            '_d2':    ('loot',    -40, 170),
+            '_lair':  ('lair',   -150, 40),
+            '_cache': ('cache',   -20, -40),   # innermost coil
+        },
+        'edges': [('_lb', '_d0'), ('_d0', '_d1'), ('_d1', '_d2'),
+                  ('_d2', '_lair'), ('_lair', '_cache'), ('_cache', '_lb')],
+    },
+    # The Drownedway — flooded ring with the lair on a center island chord.
+    'bog': {
+        'nodes': {
+            '_lb':    ('ladder',  0, -180),
+            '_d0':    ('wild',    180, -80),
+            '_d1':    ('hazard',  200, 100),
+            '_d2':    ('loot',    0, 190),
+            '_d3':    ('wild',   -200, 100),
+            '_cache': ('cache',  -180, -80),
+            '_lair':  ('lair',    0, 0),       # the island
+        },
+        'edges': [('_lb', '_d0'), ('_d0', '_d1'), ('_d1', '_d2'), ('_d2', '_d3'),
+                  ('_d3', '_cache'), ('_cache', '_lb'),
+                  ('_d0', '_lair'), ('_lair', '_d3')],
+    },
+    # The Marrow Pits — 2x3 crypt grid: outer ring plus one center rung.
+    'bone': {
+        'nodes': {
+            '_lb':    ('ladder', -170, -70),
+            '_d0':    ('wild',    0, -70),
+            '_d1':    ('hazard',  170, -70),
+            '_lair':  ('lair',    170, 110),
+            '_cache': ('cache',   0, 110),
+            '_d2':    ('loot',   -170, 110),
+        },
+        'edges': [('_lb', '_d0'), ('_d0', '_d1'), ('_d1', '_lair'),
+                  ('_lair', '_cache'), ('_cache', '_d2'), ('_d2', '_lb'),
+                  ('_d0', '_cache')],
+    },
+    # The Rotcellar — main root loop with a deeper side loop off the junction.
+    'garden': {
+        'nodes': {
+            '_lb':    ('ladder', 0, -170),
+            '_d0':    ('wild',   160, -70),
+            '_d2':    ('hazard', 0, 30),      # the junction, degree 4
+            '_d1':    ('loot',  -160, -70),
+            '_lair':  ('lair',   150, 140),
+            '_cache': ('cache',  0, 220),
+            '_d3':    ('wild',  -150, 140),
+        },
+        'edges': [('_lb', '_d0'), ('_d0', '_d2'), ('_d2', '_d1'), ('_d1', '_lb'),
+                  ('_d2', '_lair'), ('_lair', '_cache'), ('_cache', '_d3'),
+                  ('_d3', '_d2')],
+    },
 }
 
-# Shops stock gear tiers up to their depth.
-SHOP_TIERS = {'n5': 1, 'n14': 2, 'a2': 3}
+HOME_GATES = {b: b + '_r0' for b in BIOMES}
+GATE_NODE = HOME_GATES[DEFAULT_BIOME]  # legacy alias; respawns use homeBiome
 
 
 def _build_map():
-    """
-    Three linked caverns: The Undercity (large south loop, gate + tier-1
-    shop), Mosslight Cavern (northwest loop, tier-2 shop), and The Sedgemoor
-    bog (northeast loop, tier-3 shop), joined by two-node tunnels, with the
-    warp-only boss island floating in the central hollow. Every walkable node
-    stays on a cycle (degree >= 2) so exact-count movement can't strand; the
-    island keeps its original linear chain. Each node carries a `region` tag
-    (city | cavern | bog | isle) that the client terrain renderer themes by.
-    """
-    city_loop = ['n0', 'n1', 'n2', 'n3', 'n4', 'n5',
-                 'n6', 'n7', 'n8', 'n9', 'n24', 'n25']
-    cavern_loop = ['n10', 'n11', 'n12', 'n13', 'n14',
-                   'n15', 'n16', 'n17', 'a5', 'b4']
-    bog_loop = ['n23', 'a2', 'n22', 'n21', 'n20', 'n19', 'n18', 'b0', 'a1']
-
     nodes = {}
+    edges = []
 
-    def add(nid, x, y, region):
-        nodes[nid] = {'id': nid, 'type': _LOOP_TYPES[nid], 'x': round(x),
+    def add(nid, ntype, x, y, region):
+        nodes[nid] = {'id': nid, 'type': ntype, 'x': round(x),
                       'y': round(y), 'region': region, 'neighbors': []}
 
-    def ring(ids, cx, cy, rx, ry, region):
-        # First id sits at the bottom of the ellipse; successive ids walk the
-        # loop counterclockwise (east first in canvas coordinates).
-        step = 2 * math.pi / len(ids)
-        for i, nid in enumerate(ids):
-            ang = math.pi / 2 - i * step
-            add(nid, cx + rx * math.cos(ang), cy + ry * math.sin(ang), region)
+    def link(u, v):
+        edges.append((u, v))
 
-    ring(city_loop, 900, 880, 560, 190, 'city')
-    ring(cavern_loop, 420, 320, 300, 180, 'cavern')
-    ring(bog_loop, 1370, 310, 250, 175, 'bog')
+    def loop_link(ids):
+        for i in range(len(ids)):
+            link(ids[i], ids[(i + 1) % len(ids)])
 
-    # Tunnels — each node leans toward the chamber its end touches.
-    add('a0', 330, 700, 'city')     # Undercity n8 -> Mosslight n10
-    add('a4', 350, 595, 'cavern')
-    add('b1', 1455, 680, 'city')    # Undercity n4 -> Sedgemoor n23
-    add('b2', 1445, 575, 'bog')
-    add('b3', 670, 130, 'cavern')   # Mosslight n15 -> Sedgemoor n18, over the hollow
-    add('a3', 920, 125, 'bog')
+    def nearest_ring_node(biome, px, py):
+        best, bd = None, 1e18
+        for i in range(10):
+            n = nodes[biome + '_r' + str(i)]
+            d = (n['x'] - px) ** 2 + (n['y'] - py) ** 2
+            if d < bd:
+                best, bd = n['id'], d
+        return best
 
-    # Boss island in the dark hollow between the three chambers.
-    add('isl_warp', 830, 500, 'isle')
-    add('isl_ossuary', 905, 430, 'isle')
-    add('boss', 985, 480, 'isle')
+    ix, iy = ISLAND_XY
+    for b, spec in BIOMES.items():
+        cx, cy = spec['center']
+        # Slot 0 faces the island so every gate looks toward the finale.
+        base = math.atan2(iy - cy, ix - cx)
+        ring = [b + '_r' + str(i) for i in range(10)]
+        for i, nid in enumerate(ring):
+            ang = base + i * (2 * math.pi / 10)
+            ntype = _RING_TYPES[i]
+            if b == 'bone':
+                # Ossuary Fields is the dig-site biome: its two loot slots and
+                # one mystery slot become excavation sites; the shrine is still
+                # the gamble den.
+                if i in (1, 4, 6):
+                    ntype = 'excavation'
+                elif ntype == 'shrine':
+                    ntype = 'ossuary'
+            add(nid, ntype, cx + spec['rx'] * math.cos(ang),
+                cy + spec['ry'] * math.sin(ang), b)
+        loop_link(ring)
 
-    edges = []
-    for loop in (city_loop, cavern_loop, bog_loop):
-        edges.extend((loop[i], loop[(i + 1) % len(loop)]) for i in range(len(loop)))
-    edges += [
-        ('n8', 'a0'), ('a0', 'a4'), ('a4', 'n10'),
-        ('n4', 'b1'), ('b1', 'b2'), ('b2', 'n23'),
-        ('n15', 'b3'), ('b3', 'a3'), ('a3', 'n18'),
-        ('isl_warp', 'isl_ossuary'), ('isl_ossuary', 'boss'),
-    ]
+        # Inner chord: r2 -> i0 -> i1 -> r8, cutting across the hollow.
+        r2, r8 = nodes[b + '_r2'], nodes[b + '_r8']
+        for j in range(2):
+            t = (j + 1) / 3
+            add(b + '_i' + str(j), _INNER_TYPES[j],
+                r2['x'] + (r8['x'] - r2['x']) * t,
+                r2['y'] + (r8['y'] - r2['y']) * t, b)
+        link(b + '_r2', b + '_i0')
+        link(b + '_i0', b + '_i1')
+        link(b + '_i1', b + '_r8')
+
+        # Dungeon pocket outward from the island, past the ring's r5 slot.
+        ux, uy = cx - ix, cy - iy
+        ulen = math.hypot(ux, uy) or 1
+        ux, uy = ux / ulen, uy / ulen
+        dxc = max(340, min(WORLD_W - 340, cx + ux * (spec['rx'] + 330)))
+        dyc = max(300, min(WORLD_H - 300, cy + uy * (spec['ry'] + 300)))
+        r5 = nodes[b + '_r5']
+        lt, lb = b + '_lt', b + '_lb'
+        add(lt, 'ladder', r5['x'] + ux * 150,
+            max(160, min(WORLD_H - 160, r5['y'] + uy * 130)), b)
+        # v6: each biome's pocket is a hand-laid, planar, unique shape.
+        # Coordinates are local offsets from the pocket center (dxc, dyc);
+        # orientation doesn't matter — pockets render in their own sub-view.
+        # Contract: door = <b>_lb (only link to the surface), <b>_lair and
+        # <b>_cache exist, every node keeps in-pocket degree >= 2.
+        P = _POCKET_LAYOUTS[b]
+        for suffix, (ntype, ox, oy) in P['nodes'].items():
+            add(b + suffix, ntype, dxc + ox, dyc + oy, 'depths')
+        for s1, s2 in P['edges']:
+            link(b + s1, b + s2)
+        link(b + '_r5', lt)
+        link(lt, lb)
+
+    # Tunnels between neighboring rings around the pentagon.
+    ring_order = ['cavern', 'bog', 'garden', 'city', 'bone']
+    tunnel_types = ['loot', 'hazard', 'wild', 'mystery', 'loot',
+                    'wild', 'mystery', 'hazard', 'wild', 'loot']
+    for k in range(5):
+        a, c = ring_order[k], ring_order[(k + 1) % 5]
+        ax, ay = BIOMES[a]['center']
+        cx2, cy2 = BIOMES[c]['center']
+        ids = []
+        for j in range(2):
+            t = (j + 1) / 3
+            nid = 't_' + a + '_' + c + str(j)
+            add(nid, tunnel_types[k * 2 + j],
+                ax + (cx2 - ax) * t, ay + (cy2 - ay) * t,
+                a if j == 0 else c)
+            ids.append(nid)
+        link(nearest_ring_node(a, nodes[ids[0]]['x'], nodes[ids[0]]['y']), ids[0])
+        link(ids[0], ids[1])
+        link(ids[1], nearest_ring_node(c, nodes[ids[1]]['x'], nodes[ids[1]]['y']))
+
+    # The floating island: warp in, the trading post, ossuary, and the sealed
+    # boss lair. The trading post sits between the warp and ossuary so every
+    # player who warps to the isle passes the shared exchange.
+    add('isl_warp', 'warp', ix - 115, iy + 55, 'isle')
+    add('isl_trade', 'trading_post', ix - 55, iy + 8, 'isle')
+    add('isl_ossuary', 'ossuary', ix, iy - 45, 'isle')
+    add('boss', 'boss', ix + 120, iy + 30, 'isle')
+    link('isl_warp', 'isl_trade')
+    link('isl_trade', 'isl_ossuary')
+    link('isl_ossuary', 'boss')
+
+    # Titan's Rest — barrier-gated pocket east, between bog and garden.
+    add('e0', 'wild', 3060, 900, 'bog')
+    add('bar_e', 'barrier', 3180, 1020, 'ruin')
+    add('e1', 'hazard', 3330, 940, 'ruin')
+    add('e2', 'loot', 3420, 1100, 'ruin')
+    add('lair_titan', 'lair', 3310, 1230, 'ruin')
+    add('e3', 'wild', 3160, 1180, 'ruin')
+    loop_link(['bar_e', 'e1', 'e2', 'lair_titan', 'e3'])
+    link(nearest_ring_node('bog', 3060, 900), 'e0')
+    link('e0', 'bar_e')
+
+    # The Sunken Vaults — barrier-gated pocket in the city <-> bone gap.
+    add('s0', 'mystery', 1120, 2180, 'city')
+    add('bar_s', 'barrier', 950, 2260, 'ruin')
+    add('s1', 'wild', 760, 2200, 'ruin')
+    add('s2', 'hazard', 580, 2280, 'ruin')
+    add('vault', 'vault', 420, 2170, 'ruin')
+    add('s3', 'loot', 600, 2090, 'ruin')
+    loop_link(['bar_s', 's1', 's3', 'vault', 's2'])
+    link(nearest_ring_node('city', 1120, 2180), 's0')
+    link('s0', 'bar_s')
 
     for u, v in edges:
-        nodes[u]['neighbors'].append(v)
-        nodes[v]['neighbors'].append(u)
+        if v not in nodes[u]['neighbors']:
+            nodes[u]['neighbors'].append(v)
+            nodes[v]['neighbors'].append(u)
 
     return nodes
 
@@ -360,6 +657,16 @@ def _build_map():
 MAP_NODES = _build_map()
 WARP_NODES = [nid for nid, n in MAP_NODES.items() if n['type'] == 'warp']
 
-# The bridge that opens during the boss phase (deferred in demo, defined so the
-# data model doesn't change later).
-BOSS_BRIDGE = ('n13', 'boss')
+# Guild Sigils: first-clear of a biome dungeon's lair grants that sigil.
+SIGIL_LAIRS = {b + '_lair': b for b in BIOMES}
+SIGILS_REQUIRED = 3
+
+# The island boss: one persistent HP pool per season. Anyone with enough
+# sigils can chip at it; whoever lands the killing blow takes the kill, then
+# the Sovereign reforms at full strength for the next challenger.
+ROT_SOVEREIGN = {
+    'id': 'rot_sovereign', 'name': 'The Rot Sovereign',
+    'hp': 240, 'atk': 14, 'def': 9, 'spd': 6,
+    'first': {'spores': 120, 'xp': 60},
+    'repeat': {'spores': 40, 'xp': 20},
+}
