@@ -282,6 +282,49 @@ function strokePolyline(
 }
 
 /**
+ * A grand crossing between two regions: a wide raised deck with a stone kerb
+ * down each side and a lantern post near each end. Reads as a "highway between
+ * chambers" versus the narrow local paths inside a region. (Distinct from
+ * drawCauseway, which is the boss island's broken stepping-stone bridge.)
+ */
+function drawCrossing(
+  ctx: CanvasRenderingContext2D,
+  c: EdgeCurve,
+  glowSpots: GlowSpot[],
+): void {
+  const ribbon = (width: number, color: string, dy = 0): void => {
+    ctx.beginPath();
+    ctx.moveTo(c.a.x, c.a.y + dy);
+    ctx.quadraticCurveTo(c.cx, c.cy + dy, c.b.x, c.b.y + dy);
+    ctx.lineWidth = width;
+    ctx.strokeStyle = color;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  };
+  ribbon(52, 'rgba(0,0,0,0.4)', 8); // drop shadow
+  ribbon(48, '#20242c'); // kerb / rim
+  ribbon(40, '#6b6f66'); // pale flagstone deck
+  ribbon(34, '#4a4e48'); // worn center
+  ribbon(3, 'rgba(230, 214, 170, 0.5)', -14); // lit kerb highlight (north)
+  ribbon(3, 'rgba(0,0,0,0.35)', 15); // shaded kerb (south)
+  // Lantern posts a short way in from each end, plus animated glow spots.
+  const post = (t: number): void => {
+    const u = 1 - t;
+    const x = u * u * c.a.x + 2 * u * t * c.cx + t * t * c.b.x;
+    const y = u * u * c.a.y + 2 * u * t * c.cy + t * t * c.b.y;
+    ctx.fillStyle = '#2a2018';
+    ctx.fillRect(x - 3, y - 30, 6, 30); // post
+    ctx.fillStyle = '#ffd58a';
+    ctx.beginPath();
+    ctx.arc(x, y - 32, 5, 0, Math.PI * 2); // lantern head
+    ctx.fill();
+    glowSpots.push({ x, y: y - 32, r: 46, color: '255, 200, 130', phase: t * 6.28 });
+  };
+  post(0.16);
+  post(0.84);
+}
+
+/**
  * Still water read as a pool RECESSED into the cave floor: a dark body with a
  * faint teal depth, a dark inner rim for sunk-in shading, and one small
  * off-center reflection. Deliberately not a bright centered dome (that reads
@@ -860,6 +903,11 @@ export function renderTerrain(
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
+      continue;
+    }
+    // Region-to-region overworld edges are grand causeways, not local paths.
+    if (isOverworld && c.a.region !== c.b.region) {
+      drawCrossing(ctx, c, glowSpots);
       continue;
     }
     const style =
