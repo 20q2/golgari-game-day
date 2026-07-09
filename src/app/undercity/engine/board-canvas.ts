@@ -187,6 +187,8 @@ export class BoardCanvas {
   private layers = new Map<string, Layer>();
   private layerOf = new Map<string, string>();
   private activeLayerId: string = OVERWORLD;
+  private explored = new Map<string, Set<string>>(); // layerId -> lit node ids
+  private static readonly EXPLORED_KEY = 'undercity-explored-v1';
   private ambient: BoardAmbient;
 
   private get active(): Layer {
@@ -224,6 +226,15 @@ export class BoardCanvas {
     this.layerOf = layerIndex(this.layerSpecs);
     for (const spec of this.layerSpecs) {
       this.layers.set(spec.id, { spec, terrain: renderTerrain(map, undefined, undefined, spec) });
+    }
+    // Dungeon fog-of-war: nodes you've stood on stay lit across sessions.
+    try {
+      const raw = JSON.parse(localStorage.getItem(BoardCanvas.EXPLORED_KEY) ?? '{}');
+      for (const [layerId, ids] of Object.entries(raw)) {
+        this.explored.set(layerId, new Set(ids as string[]));
+      }
+    } catch {
+      /* corrupt state = start dark */
     }
     this.ambient = new BoardAmbient(map);
     // Rebuild every layer's terrain once the per-biome floor paintings arrive —
@@ -295,6 +306,33 @@ export class BoardCanvas {
       this.clampCamera();
       if (this.ownPosition) this.centerOn(this.ownPosition, false);
     }
+    if (this.ownPosition && this.activeLayerId !== OVERWORLD) {
+      this.markExplored(this.activeLayerId, this.ownPosition);
+    }
+  }
+
+  /** Record own presence on a dungeon node; persists across sessions. */
+  private markExplored(layerId: string, nodeId: string): void {
+    const set = this.explored.get(layerId) ?? new Set<string>();
+    if (set.has(nodeId)) return;
+    set.add(nodeId);
+    this.explored.set(layerId, set);
+    try {
+      const obj: Record<string, string[]> = {};
+      for (const [k, v] of this.explored) obj[k] = [...v];
+      localStorage.setItem(BoardCanvas.EXPLORED_KEY, JSON.stringify(obj));
+    } catch {
+      /* storage full/blocked — stay session-only */
+    }
+  }
+
+  /** A dungeon node is lit if explored or adjacent to your current position. */
+  private isLit(nodeId: string): boolean {
+    if (this.activeLayerId === OVERWORLD) return true;
+    if (this.explored.get(this.activeLayerId)?.has(nodeId)) return true;
+    if (!this.ownPosition) return false;
+    if (nodeId === this.ownPosition) return true;
+    return this.nodeMap.get(this.ownPosition)?.neighbors.includes(nodeId) ?? false;
   }
 
   setSnares(nodeIds: string[]): void {
@@ -581,8 +619,11 @@ export class BoardCanvas {
     );
     this.drawGlows(elapsed);
 
+    // Dungeon darkness: unexplored gloom with light holes at lit nodes.
+    if (this.activeLayerId !== OVERWORLD) this.drawGloomVeil();
+
     for (const n of this.map.nodes) {
-      if (!this.inActive(n.id)) continue;
+      if (!this.inActive(n.id) || !this.isLit(n.id)) continue;
       this.drawSpace(n, elapsed);
     }
 
@@ -599,6 +640,9 @@ export class BoardCanvas {
     for (const [nodeId, list] of byNode) {
       const n = this.nodeMap.get(nodeId);
       if (!n || !this.inActive(nodeId)) continue;
+      // In the dark, other players only appear inside your light.
+      const anyOwn = list.some((p) => p.userId === this.ownUserId);
+      if (!anyOwn && !this.isLit(nodeId)) continue;
       list.forEach((p, i) => {
         const angle = (i / Math.max(list.length, 1)) * Math.PI * 2 - Math.PI / 2;
         const off = list.length > 1 ? NODE_R * 0.9 : 0;
@@ -662,6 +706,48 @@ export class BoardCanvas {
   /** True when a node belongs to the layer currently on screen. */
   private inActive(nodeId: string): boolean {
     return (this.layerOf.get(nodeId) ?? OVERWORLD) === this.activeLayerId;
+  }
+
+  private veil: HTMLCanvasElement | null = null;
+
+  /**
+   * Unexplored gloom over a dungeon: a dark wash with soft light holes at lit
+   * nodes. Composited on a scratch canvas (in screen space) so cutting the
+   * holes erases only the veil — never the terrain underneath — then blitted
+   * over the frame at identity transform.
+   */
+  private drawGloomVeil(): void {
+    if (!this.veil) this.veil = document.createElement('canvas');
+    const v = this.veil;
+    if (v.width !== this.canvas.width || v.height !== this.canvas.height) {
+      v.width = this.canvas.width;
+      v.height = this.canvas.height;
+    }
+    const vc = v.getContext('2d')!;
+    vc.clearRect(0, 0, v.width, v.height);
+    vc.fillStyle = 'rgba(4, 3, 6, 0.82)';
+    vc.fillRect(0, 0, v.width, v.height);
+    vc.globalCompositeOperation = 'destination-out';
+    for (const n of this.map.nodes) {
+      if (!this.inActive(n.id) || !this.isLit(n.id)) continue;
+      const own = n.id === this.ownPosition;
+      const r = (own ? 230 : 150) * this.zoom;
+      const sx = (n.x - this.camX) * this.zoom;
+      const sy = (n.y - this.camY) * this.zoom;
+      if (sx < -r || sx > v.width + r || sy < -r || sy > v.height + r) continue;
+      const g = vc.createRadialGradient(sx, sy, 0, sx, sy, r);
+      g.addColorStop(0, 'rgba(0,0,0,1)');
+      g.addColorStop(0.6, 'rgba(0,0,0,0.85)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      vc.fillStyle = g;
+      vc.fillRect(sx - r, sy - r, r * 2, r * 2);
+    }
+    vc.globalCompositeOperation = 'source-over';
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(v, 0, 0);
+    ctx.restore();
   }
 
   /** Pulsing radial glows over the terrain's registered spots (river, flora, portals). */
