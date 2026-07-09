@@ -12,7 +12,15 @@
 import { getRecolored } from './sprite-engine';
 import { formSprite } from '../data/species';
 import { SPACE_ICONS } from '../data/items';
-import { renderTerrain, FloorTextures, TerrainArt, TERRAIN_MARGIN } from './board-terrain';
+import { BoardAmbient } from './board-ambient';
+import {
+  renderTerrain,
+  FloorTextures,
+  LandmarkTextures,
+  TerrainArt,
+  TERRAIN_MARGIN,
+} from './board-terrain';
+import { computeLayers, layerIndex, OVERWORLD, LayerSpec } from './board-layers';
 
 export interface BoardNode {
   id: string;
@@ -52,9 +60,9 @@ export interface NodeInfo {
 const MIN_ZOOM = 0.15; // floor for tiny screens; larger screens stop at whole-map fit
 const MAX_ZOOM = 2.5;
 const DRAG_THRESHOLD = 6;
-const NODE_R = 26; // disc rx, also the tap radius
-const DISC_RY = 19; // squashed ellipse top face for the 2.5D read
-const DISC_THICK = 7; // coin side wall visible below the top face
+const NODE_R = 36; // disc rx, also the tap radius — chunky Dokapon-style coins
+const DISC_RY = 26; // squashed ellipse top face for the 2.5D read
+const DISC_THICK = 9; // coin side wall visible below the top face
 const MOVE_MS = 320; // token slide + camera glide duration per step
 
 function easeInOut(t: number): number {
@@ -71,17 +79,30 @@ interface TokenAnim {
   start: number;
 }
 
+/** One render/view layer: its node subset + world bounds, and its terrain. */
+interface Layer {
+  spec: LayerSpec;
+  terrain: TerrainArt;
+}
+
+// Brighter than the terrain mid-tones on purpose: the board should pop off
+// the scenery like Dokapon spaces glowing against grass.
 const TYPE_COLORS: Record<string, string> = {
-  loot: '#3f6f3f',
-  wild: '#7a3030',
-  mystery: '#5b4a8a',
-  shop: '#8a6a2f',
-  shrine: '#9a7a3a',
-  hazard: '#4a5568',
-  warp: '#2f7a7a',
-  gate: '#4a7c59',
-  boss: '#2a1a30',
-  ossuary: '#6b5b4a',
+  loot: '#529257',
+  wild: '#a83c3c',
+  mystery: '#7a5cc2',
+  shop: '#bd8c3e',
+  trading_post: '#5a9a6a',
+  shrine: '#caa04a',
+  hazard: '#647694',
+  warp: '#3aa8a4',
+  gate: '#5ba672',
+  boss: '#45285c',
+  ossuary: '#93795c',
+  barrier: '#8a5040',
+  lair: '#96304e',
+  vault: '#c8a53e',
+  ladder: '#527a8a',
 };
 
 function scaleHex(hex: string, f: number): string {
@@ -99,6 +120,7 @@ export class BoardCanvas {
   private nodeMap = new Map<string, BoardNode>();
   private players: BoardPlayer[] = [];
   private snares = new Set<string>();
+  private barriersOpen = new Set<string>();
   private choices = new Set<string>();
   private backChoice: string | null = null;
   private info: NodeInfo | null = null;
@@ -108,7 +130,15 @@ export class BoardCanvas {
   private camGlide: TokenAnim | null = null;
   private rafId: number | null = null;
   private startTime = performance.now();
-  private terrain: TerrainArt;
+  private layerSpecs: LayerSpec[];
+  private layers = new Map<string, Layer>();
+  private layerOf = new Map<string, string>();
+  private activeLayerId: string = OVERWORLD;
+  private ambient: BoardAmbient;
+
+  private get active(): Layer {
+    return this.layers.get(this.activeLayerId) ?? this.layers.get(OVERWORLD)!;
+  }
 
   private camX = 0;
   private camY = 0;
@@ -130,29 +160,62 @@ export class BoardCanvas {
   ) {
     this.ctx = canvas.getContext('2d')!;
     for (const n of map.nodes) this.nodeMap.set(n.id, n);
-    this.terrain = renderTerrain(map);
+    this.layerSpecs = computeLayers(map);
+    this.layerOf = layerIndex(this.layerSpecs);
+    for (const spec of this.layerSpecs) {
+      this.layers.set(spec.id, { spec, terrain: renderTerrain(map, undefined, undefined, spec) });
+    }
+    this.ambient = new BoardAmbient(map);
     // Rebuild the terrain once the per-biome floor paintings arrive — they
     // replace the flat black with ghosted scenery that cross-fades between
     // chambers. draw() reads this.terrain fresh each frame, so the swap is
     // seamless; a failed load just leaves that biome's floor dark.
     const floorSrc: Record<string, string> = {
       city: 'undercity/undercity_background.png',
-      cavern: 'undercity/plaza_background.png',
+      cavern: 'undercity/cavern_background.png',
       bog: 'undercity/swamp_background.png',
       isle: 'undercity/palace_background.png',
+      // v3/v4 areas.
+      ruin: 'undercity/palace_background.png',
+      bone: 'undercity/palace_background.png',
+      garden: 'undercity/swamp_background.png',
+      depths: 'undercity/cavern_background.png',
+    };
+    // Landmark buildings: the shrine and boss lair are pixel-art sprites
+    // (the temple art stands in as the ominous boss lair); every other
+    // landmark stays procedural. Keyed by node type.
+    const landmarkSrc: Record<string, string> = {
+      shrine: 'undercity/icons/shrine.png',
+      boss: 'undercity/icons/temple.png',
+      shop: 'undercity/icons/bazaar.png',
+      warp: 'undercity/icons/teleport.png',
     };
     const floors: FloorTextures = {};
-    let pending = Object.keys(floorSrc).length;
-    const done = () => {
-      if (--pending === 0) this.terrain = renderTerrain(map, floors);
+    const landmarks: LandmarkTextures = {};
+    // Re-render with whatever art has arrived; draw() reads this.terrain fresh
+    // each frame, so each successful load pops in seamlessly.
+    const rebuild = () => {
+      for (const spec of this.layerSpecs) {
+        this.layers.set(spec.id, {
+          spec,
+          terrain: renderTerrain(map, floors, landmarks, spec),
+        });
+      }
     };
     for (const [region, src] of Object.entries(floorSrc)) {
       const img = new Image();
       img.onload = () => {
         floors[region] = img;
-        done();
+        rebuild();
       };
-      img.onerror = done;
+      img.src = src;
+    }
+    for (const [type, src] of Object.entries(landmarkSrc)) {
+      const img = new Image();
+      img.onload = () => {
+        landmarks[type] = img;
+        rebuild();
+      };
       img.src = src;
     }
     this.resize();
@@ -164,10 +227,23 @@ export class BoardCanvas {
     this.players = players;
     const own = players.find((p) => p.userId === this.ownUserId);
     this.ownPosition = own?.position ?? null;
+    // The visible layer follows your own token: descend a ladder and the view
+    // swaps to that dungeon pocket; climb out and it returns to the overworld.
+    const target = this.ownPosition ? this.layerOf.get(this.ownPosition) ?? OVERWORLD : OVERWORLD;
+    if (target !== this.activeLayerId) {
+      this.activeLayerId = target;
+      this.clampCamera();
+      if (this.ownPosition) this.centerOn(this.ownPosition, false);
+    }
   }
 
   setSnares(nodeIds: string[]): void {
     this.snares = new Set(nodeIds);
+  }
+
+  /** Barrier nodes broken open this season — sealed ones wear rubble. */
+  setBarriersOpen(nodeIds: string[]): void {
+    this.barriersOpen = new Set(nodeIds);
   }
 
   setChoices(nodeIds: string[] | null): void {
@@ -218,26 +294,28 @@ export class BoardCanvas {
   }
 
   private clampCamera(): void {
-    // Min zoom = the whole world (terrain margin included) fits on screen;
-    // the letterboxed void matches the wall color so it reads as more cave.
+    // Min zoom fits the active layer's world-space bounds (whole overworld, or
+    // just the current dungeon pocket); the letterboxed void matches the wall
+    // color so it reads as more cave.
     const M = TERRAIN_MARGIN;
+    const b = this.active.spec.bounds;
     const fit = Math.min(
-      this.canvas.width / (this.map.worldW + 2 * M),
-      this.canvas.height / (this.map.worldH + 2 * M),
+      this.canvas.width / (b.w + 2 * M),
+      this.canvas.height / (b.h + 2 * M),
     );
     const minZoom = Math.max(Math.min(fit, 1), MIN_ZOOM);
     this.zoom = Math.min(MAX_ZOOM, Math.max(minZoom, this.zoom));
     const vw = this.canvas.width / this.zoom;
     const vh = this.canvas.height / this.zoom;
-    // Center any axis whose view is wider than the world; clamp the rest.
+    // Center any axis whose view is wider than the layer; clamp the rest.
     this.camX =
-      vw >= this.map.worldW + 2 * M
-        ? (this.map.worldW - vw) / 2
-        : Math.max(-M, Math.min(this.map.worldW + M - vw, this.camX));
+      vw >= b.w + 2 * M
+        ? b.x + (b.w - vw) / 2
+        : Math.max(b.x - M, Math.min(b.x + b.w + M - vw, this.camX));
     this.camY =
-      vh >= this.map.worldH + 2 * M
-        ? (this.map.worldH - vh) / 2
-        : Math.max(-M, Math.min(this.map.worldH + M - vh, this.camY));
+      vh >= b.h + 2 * M
+        ? b.y + (b.h - vh) / 2
+        : Math.max(b.y - M, Math.min(b.y + b.h + M - vh, this.camY));
   }
 
   private initInput(): void {
@@ -405,10 +483,19 @@ export class BoardCanvas {
     ctx.translate(-this.camX, -this.camY);
 
     // Static world (terrain, paths, landmarks) + its animated glow accents.
-    ctx.drawImage(this.terrain.canvas, -TERRAIN_MARGIN, -TERRAIN_MARGIN);
+    // Blit the active layer's terrain at its world origin.
+    const L = this.active;
+    ctx.drawImage(
+      L.terrain.canvas,
+      L.spec.bounds.x - TERRAIN_MARGIN,
+      L.spec.bounds.y - TERRAIN_MARGIN,
+    );
     this.drawGlows(elapsed);
 
-    for (const n of this.map.nodes) this.drawSpace(n, elapsed);
+    for (const n of this.map.nodes) {
+      if (!this.inActive(n.id)) continue;
+      this.drawSpace(n, elapsed);
+    }
 
     // Player tokens — grouped by logical node, drawn at eased positions so a
     // position change slides the token along instead of teleporting it.
@@ -422,7 +509,7 @@ export class BoardCanvas {
     const placed: { p: BoardPlayer; x: number; y: number }[] = [];
     for (const [nodeId, list] of byNode) {
       const n = this.nodeMap.get(nodeId);
-      if (!n) continue;
+      if (!n || !this.inActive(nodeId)) continue;
       list.forEach((p, i) => {
         const angle = (i / Math.max(list.length, 1)) * Math.PI * 2 - Math.PI / 2;
         const off = list.length > 1 ? NODE_R * 0.9 : 0;
@@ -442,9 +529,22 @@ export class BoardCanvas {
       if (!present.has(id)) this.tokenAnims.delete(id);
     }
 
+    // Drifting spores + bat flights over everything but the info popover.
+    this.ambient.drawAtmosphere(ctx, ts, {
+      x0: this.camX,
+      y0: this.camY,
+      x1: this.camX + this.canvas.width / this.zoom,
+      y1: this.camY + this.canvas.height / this.zoom,
+    });
+
     this.drawInfo();
 
     ctx.restore();
+  }
+
+  /** True when a node belongs to the layer currently on screen. */
+  private inActive(nodeId: string): boolean {
+    return (this.layerOf.get(nodeId) ?? OVERWORLD) === this.activeLayerId;
   }
 
   /** Pulsing radial glows over the terrain's registered spots (river, flora, portals). */
@@ -454,7 +554,7 @@ export class BoardCanvas {
     const vy0 = this.camY - 60;
     const vx1 = this.camX + this.canvas.width / this.zoom + 60;
     const vy1 = this.camY + this.canvas.height / this.zoom + 60;
-    for (const s of this.terrain.glowSpots) {
+    for (const s of this.active.terrain.glowSpots) {
       if (s.x < vx0 || s.x > vx1 || s.y < vy0 || s.y > vy1) continue;
       const a = 0.05 + 0.05 * (1 + Math.sin(elapsed * 1.6 + s.phase)) * 0.5;
       const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
@@ -484,9 +584,15 @@ export class BoardCanvas {
       ctx.stroke();
     }
 
-    // Ground shadow, then the coin: side wall peeking below the top face.
+    // Soft halo lifts the space off the terrain, then ground shadow, then the
+    // coin: side wall peeking below the top face.
+    const halo = ctx.createRadialGradient(n.x, n.y + 3, NODE_R * 0.6, n.x, n.y + 3, NODE_R * 2);
+    halo.addColorStop(0, 'rgba(235, 255, 240, 0.13)');
+    halo.addColorStop(1, 'rgba(235, 255, 240, 0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(n.x - NODE_R * 2, n.y - NODE_R * 1.6, NODE_R * 4, NODE_R * 3.2);
     ctx.beginPath();
-    ctx.ellipse(n.x, n.y + 9, NODE_R + 4, DISC_RY + 2, 0, 0, Math.PI * 2);
+    ctx.ellipse(n.x, n.y + 11, NODE_R + 5, DISC_RY + 3, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.fill();
     ctx.beginPath();
@@ -497,7 +603,7 @@ export class BoardCanvas {
     ctx.ellipse(n.x, n.y, NODE_R, DISC_RY, 0, 0, Math.PI * 2);
     ctx.fillStyle = TYPE_COLORS[n.type] ?? '#444';
     ctx.fill();
-    const hl = ctx.createRadialGradient(n.x - 7, n.y - 6, 0, n.x, n.y, NODE_R);
+    const hl = ctx.createRadialGradient(n.x - 10, n.y - 8, 0, n.x, n.y, NODE_R);
     hl.addColorStop(0, 'rgba(255,255,255,0.28)');
     hl.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = hl;
@@ -512,11 +618,18 @@ export class BoardCanvas {
 
     // Material Icons renders its ligature names in canvas once the font is
     // loaded (sprite-engine preloads it).
-    ctx.font = "22px 'Material Icons'";
+    const sealed = n.type === 'barrier' && !this.barriersOpen.has(n.id);
+    const glyph =
+      n.type === 'barrier' ? (sealed ? 'lock' : 'lock_open') : (SPACE_ICONS[n.type] ?? 'circle');
+    ctx.font = "30px 'Material Icons'";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(240, 253, 244, 0.92)';
-    ctx.fillText(SPACE_ICONS[n.type] ?? 'circle', n.x, n.y);
+    ctx.fillStyle = 'rgba(250, 255, 250, 1)';
+    ctx.fillText(glyph, n.x, n.y);
+
+    // A sealed barrier wears a rubble wall across the route; it crumbles away
+    // (drawn no more) the moment someone breaks it.
+    if (sealed) this.drawRubble(n, elapsed);
 
     // Disturbed ground — the only tell that a snare lurks here.
     if (this.snares.has(n.id)) {
@@ -528,6 +641,51 @@ export class BoardCanvas {
       ctx.stroke();
       ctx.setLineDash([]);
     }
+    ctx.restore();
+  }
+
+  /** Boulders + a faint menacing pulse over a sealed barrier space. */
+  private drawRubble(n: BoardNode, elapsed: number): void {
+    const ctx = this.ctx;
+    ctx.save();
+    const rocks = [
+      { dx: -24, dy: -34, r: 15 },
+      { dx: 2, dy: -46, r: 19 },
+      { dx: 26, dy: -32, r: 13 },
+      { dx: -6, dy: -28, r: 11 },
+      { dx: 14, dy: -24, r: 9 },
+    ];
+    for (const rk of rocks) {
+      const x = n.x + rk.dx;
+      const y = n.y + rk.dy;
+      ctx.beginPath();
+      ctx.moveTo(x - rk.r, y + rk.r * 0.5);
+      ctx.lineTo(x - rk.r * 0.7, y - rk.r * 0.7);
+      ctx.lineTo(x + rk.r * 0.2, y - rk.r);
+      ctx.lineTo(x + rk.r, y - rk.r * 0.2);
+      ctx.lineTo(x + rk.r * 0.8, y + rk.r * 0.5);
+      ctx.closePath();
+      ctx.fillStyle = '#3c322c';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.beginPath(); // moonlit top facet
+      ctx.moveTo(x - rk.r * 0.7, y - rk.r * 0.7);
+      ctx.lineTo(x + rk.r * 0.2, y - rk.r);
+      ctx.lineTo(x + rk.r * 0.5, y - rk.r * 0.4);
+      ctx.lineTo(x - rk.r * 0.3, y - rk.r * 0.25);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(200, 170, 150, 0.16)';
+      ctx.fill();
+    }
+    // slow warning pulse so the seal reads as "deal with me"
+    const pulse = 0.25 + 0.15 * Math.sin(elapsed * 2.2);
+    ctx.beginPath();
+    ctx.ellipse(n.x, n.y - 32, 46, 26, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(230, 120, 80, ${pulse})`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -644,7 +802,7 @@ export class BoardCanvas {
     const spr = formSprite(p.form);
     const sprite = getRecolored(spr.sprite, p.paint || {}, spr.regions);
     const isOwn = p.userId === this.ownUserId;
-    const targetH = (isOwn ? 52 : 40) * spr.scale;
+    const targetH = (isOwn ? 72 : 56) * spr.scale;
     const bob = Math.sin(elapsed * 2 + x * 0.01) * 2;
 
     // Elliptical ground shadow at the sprite's feet (unaffected by bob so the
@@ -701,20 +859,25 @@ export class BoardCanvas {
     const ctx = this.ctx;
     const spr = formSprite(p.form);
     const isOwn = p.userId === this.ownUserId;
-    const targetH = (isOwn ? 52 : 40) * spr.scale;
+    const targetH = (isOwn ? 72 : 56) * spr.scale;
     const bob = Math.sin(elapsed * 2 + x * 0.01) * 2;
     ctx.save();
-    ctx.font = 'bold 9px sans-serif';
+    // Dokapon-style name banner: bigger type, bordered plate.
+    ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
     const label = p.username;
-    const w = ctx.measureText(label).width + 6;
+    const w = ctx.measureText(label).width + 12;
+    const by = y + targetH * 0.55 + bob;
     ctx.beginPath();
-    ctx.roundRect(x - w / 2, y + targetH * 0.55 + bob, w, 12, 3);
+    ctx.roundRect(x - w / 2, by, w, 17, 5);
+    ctx.fillStyle = 'rgba(12, 10, 8, 0.78)';
     ctx.fill();
+    ctx.strokeStyle = isOwn ? 'rgba(251, 191, 36, 0.85)' : 'rgba(190, 210, 190, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
     ctx.fillStyle = isOwn ? '#fbbf24' : '#e5f0e5';
-    ctx.fillText(label, x, y + targetH * 0.55 + 2 + bob);
+    ctx.fillText(label, x, by + 3);
     ctx.restore();
   }
 }
