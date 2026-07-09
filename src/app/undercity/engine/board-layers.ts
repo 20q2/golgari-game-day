@@ -28,7 +28,6 @@ export interface LayerSpec {
 const POCKET_PAD = 260;
 
 function boundsOf(map: BoardMap, ids: Set<string>, full: boolean): LayerBounds {
-  if (full) return { x: 0, y: 0, w: map.worldW, h: map.worldH };
   let minX = Infinity,
     minY = Infinity,
     maxX = -Infinity,
@@ -39,6 +38,20 @@ function boundsOf(map: BoardMap, ids: Set<string>, full: boolean): LayerBounds {
     minY = Math.min(minY, n.y);
     maxX = Math.max(maxX, n.x);
     maxY = Math.max(maxY, n.y);
+  }
+  if (full) {
+    // The declared world size can lag behind the actual node layout (rings
+    // have grown past worldW/H), so take the union of both plus breathing
+    // room for discs + landmarks hanging off the outermost nodes.
+    const pad = 120;
+    const x = Math.min(0, minX - pad);
+    const y = Math.min(0, minY - pad);
+    return {
+      x,
+      y,
+      w: Math.max(map.worldW, maxX + pad) - x,
+      h: Math.max(map.worldH, maxY + pad) - y,
+    };
   }
   return {
     x: minX - POCKET_PAD,

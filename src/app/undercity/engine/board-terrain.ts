@@ -721,8 +721,9 @@ export function renderTerrain(
 
   // 2. Stalagmite wall ring + central water are whole-world overworld scenery.
   if (isOverworld) {
-    // Stalagmite wall ring hugging the world border.
-    drawWalls(ctx, map, rand);
+    // Stalagmite wall ring hugging the layer border (the declared world size
+    // can lag behind the real node layout, so trust the layer bounds).
+    drawWalls(ctx, bx, by, bw, bh, rand);
 
     // 2b. Central water — the boss-island moat opening south into a still lake
     //     that the river feeds. Laid down BEFORE the plateaus and set pieces so
@@ -840,8 +841,8 @@ export function renderTerrain(
 
   for (let i = 0; i < 140; i++) {
     // Keep clear of the stalagmite wall band on every side.
-    const x = 90 + rand() * (map.worldW - 180);
-    const y = 90 + rand() * (map.worldH - 180);
+    const x = bx + 90 + rand() * (bw - 180);
+    const y = by + 90 + rand() * (bh - 180);
     let nearest: BoardNode | null = null;
     let nd = Infinity;
     for (const n of nodes) {
@@ -1108,16 +1109,19 @@ function fillRegionBlobs(
 
 function drawWalls(
   ctx: CanvasRenderingContext2D,
-  map: BoardMap,
+  bx: number,
+  by: number,
+  bw: number,
+  bh: number,
   rand: () => number,
 ): void {
   const M = TERRAIN_MARGIN;
   ctx.fillStyle = '#0a0908';
   // Solid margin bands first, then a jagged stalagmite edge biting inward.
-  ctx.fillRect(-M, -M, map.worldW + 2 * M, M);
-  ctx.fillRect(-M, map.worldH, map.worldW + 2 * M, M);
-  ctx.fillRect(-M, -M, M, map.worldH + 2 * M);
-  ctx.fillRect(map.worldW, -M, M, map.worldH + 2 * M);
+  ctx.fillRect(bx - M, by - M, bw + 2 * M, M);
+  ctx.fillRect(bx - M, by + bh, bw + 2 * M, M);
+  ctx.fillRect(bx - M, by - M, M, bh + 2 * M);
+  ctx.fillRect(bx + bw, by - M, M, bh + 2 * M);
   const spikes = (x0: number, y0: number, x1: number, y1: number, inX: number, inY: number): void => {
     const len = Math.hypot(x1 - x0, y1 - y0);
     const n = Math.round(len / 55);
@@ -1132,10 +1136,10 @@ function drawWalls(
     ctx.closePath();
     ctx.fill();
   };
-  spikes(0, 0, map.worldW, 0, 0, 1);
-  spikes(0, map.worldH, map.worldW, map.worldH, 0, -1);
-  spikes(0, 0, 0, map.worldH, 1, 0);
-  spikes(map.worldW, 0, map.worldW, map.worldH, -1, 0);
+  spikes(bx, by, bx + bw, by, 0, 1);
+  spikes(bx, by + bh, bx + bw, by + bh, 0, -1);
+  spikes(bx, by, bx, by + bh, 1, 0);
+  spikes(bx + bw, by, bx + bw, by + bh, -1, 0);
 }
 
 // ── Decorations (all 2.5D: lit faces, top/side planes, grounded by shadow) ───
