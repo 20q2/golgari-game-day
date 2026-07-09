@@ -891,20 +891,8 @@ export function renderTerrain(
   // 7. Path ribbons — each edge styled by its chamber (tunnels between two
   //    regions fall back to raw cavern stone).
   for (const c of curves) {
-    if (isLadderLink(c)) {
-      // The descent: a faint dotted plumb-line hint instead of a road.
-      ctx.save();
-      ctx.setLineDash([4, 14]);
-      ctx.strokeStyle = 'rgba(140, 170, 190, 0.25)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(c.a.x, c.a.y);
-      ctx.lineTo(c.b.x, c.b.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-      continue;
-    }
+    // A climb, not a road — the stairwell landmark signals the link instead.
+    if (isLadderLink(c)) continue;
     // Region-to-region overworld edges are grand causeways, not local paths.
     if (isOverworld && c.a.region !== c.b.region) {
       drawCrossing(ctx, c, glowSpots);
@@ -1461,6 +1449,47 @@ function drawBogTree(
   }
 }
 
+/**
+ * A stone stairwell at a ladder space: an arched opening in the ground with
+ * receding steps. `down` shades the opening dark (a descent into the hidden
+ * dungeon); otherwise it's lit as an ascent back to the surface.
+ */
+function drawStairwell(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  down: boolean,
+): void {
+  groundShadow(ctx, x, y + 6, 40, 0.4);
+  const w = 46;
+  const top = y - 40;
+  // Arched stone frame.
+  ctx.fillStyle = '#2b2622';
+  ctx.beginPath();
+  ctx.moveTo(x - w / 2, y + 8);
+  ctx.lineTo(x - w / 2, top + 12);
+  ctx.arc(x, top + 12, w / 2, Math.PI, 0);
+  ctx.lineTo(x + w / 2, y + 8);
+  ctx.closePath();
+  ctx.fill();
+  // Receding steps: lighter (ascending) or darkening into black (descending).
+  const steps = 5;
+  for (let i = 0; i < steps; i++) {
+    const t = i / steps;
+    const sw = (w - 12) * (1 - t * 0.5);
+    const sy = y - 2 - i * 6;
+    const shade = down ? Math.round(70 - t * 60) : Math.round(90 + t * 60);
+    ctx.fillStyle = `rgb(${shade}, ${shade - 6}, ${shade - 14})`;
+    ctx.fillRect(x - sw / 2, sy, sw, 5);
+  }
+  // Lit stone rim on the arch.
+  ctx.strokeStyle = 'rgba(220, 200, 160, 0.28)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(x, top + 12, w / 2, Math.PI, 0);
+  ctx.stroke();
+}
+
 // ── Landmarks ────────────────────────────────────────────────────────────────
 
 /**
@@ -1738,31 +1767,9 @@ function drawLandmark(
       break;
     }
     case 'ladder': {
-      // An open hatch with ladder rails dropping into the dark.
-      ctx.fillStyle = 'rgba(0,0,0,0.45)';
-      ctx.beginPath();
-      ctx.ellipse(x, base - 6, 26, 12, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#6a5a3a'; // hatch rim
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.ellipse(x, base - 6, 26, 12, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.strokeStyle = '#8a7a52'; // rails + rungs
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(x - 8, base - 12);
-      ctx.lineTo(x - 8, base + 10);
-      ctx.moveTo(x + 8, base - 12);
-      ctx.lineTo(x + 8, base + 10);
-      ctx.stroke();
-      ctx.lineWidth = 2;
-      for (let ry = -6; ry <= 8; ry += 7) {
-        ctx.beginPath();
-        ctx.moveTo(x - 8, base + ry);
-        ctx.lineTo(x + 8, base + ry);
-        ctx.stroke();
-      }
+      // `_lb` sits in the depths pocket → an ascent; `_lt` on the surface →
+      // a descent into the hidden dungeon layer.
+      drawStairwell(ctx, n.x, n.y - 6, n.region !== 'depths');
       break;
     }
   }
