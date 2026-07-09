@@ -69,6 +69,31 @@ function easeInOut(t: number): number {
   return t < 0.5 ? 2 * t * t : 1 - (2 - 2 * t) ** 2 / 2;
 }
 
+/**
+ * Popover entrance: given the popover's age in seconds, returns [alpha, scale].
+ * Scale springs from 0 up through a slight overshoot to 1 (easeOutBack) while
+ * alpha fades in quickly, so tooltips pop into place instead of blinking on.
+ */
+function popIn(age: number): [number, number] {
+  const dur = 0.26;
+  const t = Math.min(1, Math.max(0, age / dur));
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  const scale = 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2; // easeOutBack, 0→1 w/ overshoot
+  const alpha = Math.min(1, age / 0.12);
+  return [alpha, scale];
+}
+
+/** FNV-1a — used only to give each token a stable breathing phase offset. */
+function hashStr(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
 interface TokenAnim {
   x: number;
   y: number;
@@ -77,7 +102,26 @@ interface TokenAnim {
   toX: number;
   toY: number;
   start: number;
+  hopIndex: number; // last footfall already dusted this move
+  phase: number; // per-token breathing desync
 }
+
+/** Kicked-up dust mote (world space), ported from the plaza's poof system. */
+interface DustMote {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+}
+
+// Movement/idle animation of the creature tokens.
+const HOP_COUNT = 2; // footfalls per node-to-node move
+const HOP_HEIGHT = 10; // px the sprite lifts at the peak of a hop
+const BREATH_SPEED = 2.2; // idle breathing rate
+const BREATH_AMT = 0.04; // idle vertical scale wobble (±4%)
 
 /** One render/view layer: its node subset + world bounds, and its terrain. */
 interface Layer {
@@ -93,6 +137,7 @@ const TYPE_COLORS: Record<string, string> = {
   mystery: '#7a5cc2',
   shop: '#bd8c3e',
   trading_post: '#5a9a6a',
+  excavation: '#b8934e',
   shrine: '#caa04a',
   hazard: '#647694',
   warp: '#3aa8a4',
@@ -102,6 +147,7 @@ const TYPE_COLORS: Record<string, string> = {
   barrier: '#8a5040',
   lair: '#96304e',
   vault: '#c8a53e',
+  cache: '#b08a2e',
   ladder: '#527a8a',
 };
 
@@ -126,9 +172,15 @@ export class BoardCanvas {
   private backChoice: string | null = null;
   private info: NodeInfo | null = null;
   private infoShownAt = 0;
+  // Popovers shown on every legal destination while a move is in progress.
+  private choiceInfos: NodeInfo[] = [];
+  // Per-destination appear timestamp so each popover pops in when it arrives.
+  private choiceShownAt = new Map<string, number>();
   private ownPosition: string | null = null;
   private tokenAnims = new Map<string, TokenAnim>();
   private camGlide: TokenAnim | null = null;
+  private dust: DustMote[] = [];
+  private lastTs = performance.now();
   private rafId: number | null = null;
   private startTime = performance.now();
   private layerSpecs: LayerSpec[];
@@ -268,6 +320,20 @@ export class BoardCanvas {
     this.infoShownAt = performance.now();
   }
 
+  /** Popovers to keep pinned on the legal destinations during a move. */
+  setChoiceInfos(infos: NodeInfo[]): void {
+    const now = performance.now();
+    const next = new Set(infos.map((i) => i.nodeId));
+    // Stamp each newly-appeared popover so it pops in; forget ones that left.
+    for (const i of infos) {
+      if (!this.choiceShownAt.has(i.nodeId)) this.choiceShownAt.set(i.nodeId, now);
+    }
+    for (const id of [...this.choiceShownAt.keys()]) {
+      if (!next.has(id)) this.choiceShownAt.delete(id);
+    }
+    this.choiceInfos = infos;
+  }
+
   centerOn(nodeId: string, animate = true): void {
     const n = this.nodeMap.get(nodeId);
     if (!n) return;
@@ -288,6 +354,8 @@ export class BoardCanvas {
       toX,
       toY,
       start: performance.now(),
+      hopIndex: 0,
+      phase: 0,
     };
   }
 
@@ -482,6 +550,9 @@ export class BoardCanvas {
   private draw(ts: number): void {
     const ctx = this.ctx;
     const elapsed = (ts - this.startTime) / 1000;
+    const dt = Math.min(0.05, (ts - this.lastTs) / 1000);
+    this.lastTs = ts;
+    this.updateDust(dt);
 
     if (this.camGlide) {
       const g = this.camGlide;
@@ -524,7 +595,7 @@ export class BoardCanvas {
       byNode.set(p.position, list);
     }
     const present = new Set<string>();
-    const placed: { p: BoardPlayer; x: number; y: number }[] = [];
+    const placed: { p: BoardPlayer; x: number; y: number; hopY: number; breath: number }[] = [];
     for (const [nodeId, list] of byNode) {
       const n = this.nodeMap.get(nodeId);
       if (!n || !this.inActive(nodeId)) continue;
@@ -534,15 +605,43 @@ export class BoardCanvas {
         const px = n.x + Math.cos(angle) * off;
         const py = n.y - DISC_RY - 6 + Math.sin(angle) * off * 0.5;
         present.add(p.userId);
-        const pos = this.tokenPos(p.userId, px, py, ts);
-        placed.push({ p, x: pos.x, y: pos.y });
+        const a = this.tokenPos(p.userId, px, py, ts);
+
+        const t = Math.min(1, (ts - a.start) / MOVE_MS);
+        const moving = t < 1;
+        const spr = formSprite(p.form);
+        const targetH = (p.userId === this.ownUserId ? 72 : 56) * spr.scale;
+        const footY = a.y + targetH * 0.48;
+
+        let hopY = 0;
+        let breath = 1;
+        if (moving) {
+          // Dino-style hop: full |sin| arcs, one per footfall across the move.
+          hopY = -Math.abs(Math.sin(t * Math.PI * HOP_COUNT)) * HOP_HEIGHT;
+          // Kick up dust as each mid-move foot lands.
+          const idx = Math.floor(t * HOP_COUNT + 1e-6);
+          if (idx > a.hopIndex && idx < HOP_COUNT) {
+            this.spawnDust(a.x, footY);
+            a.hopIndex = idx;
+          }
+        } else {
+          // Just arrived → one last landing puff, then settle into breathing.
+          if (a.hopIndex !== 0) {
+            this.spawnDust(a.x, footY);
+            a.hopIndex = 0;
+          }
+          breath = 1 + Math.sin(elapsed * BREATH_SPEED + a.phase) * BREATH_AMT;
+        }
+        placed.push({ p, x: a.x, y: a.y, hopY, breath });
       });
     }
+    // Dust settles under the tokens.
+    this.drawDust();
     // Painter's algorithm: lower tokens draw over higher ones; labels last so
     // no sprite occludes a name.
     placed.sort((a, b) => a.y - b.y);
-    for (const t of placed) this.drawToken(t.p, t.x, t.y, elapsed);
-    for (const t of placed) this.drawLabel(t.p, t.x, t.y, elapsed);
+    for (const t of placed) this.drawToken(t.p, t.x, t.y, t.hopY, t.breath);
+    for (const t of placed) this.drawLabel(t.p, t.x, t.y);
     for (const id of [...this.tokenAnims.keys()]) {
       if (!present.has(id)) this.tokenAnims.delete(id);
     }
@@ -714,13 +813,24 @@ export class BoardCanvas {
 
   /** Space-info popover, drawn in world space so it pans/zooms with the board. */
   private drawInfo(): void {
-    if (!this.info) return;
-    const n = this.nodeMap.get(this.info.nodeId);
+    const now = performance.now();
+    // Destination popovers first (so a tapped popover sits on top of them).
+    for (const ci of this.choiceInfos) {
+      const born = this.choiceShownAt.get(ci.nodeId) ?? now;
+      const [alpha, scale] = popIn((now - born) / 1000);
+      this.drawPopover(ci, alpha, scale);
+    }
+    if (this.info) {
+      const [alpha, scale] = popIn((now - this.infoShownAt) / 1000);
+      this.drawPopover(this.info, alpha, scale);
+    }
+  }
+
+  /** One space-info popover anchored above its node. */
+  private drawPopover(info: NodeInfo, alpha: number, pop: number): void {
+    const n = this.nodeMap.get(info.nodeId);
     if (!n) return;
     const ctx = this.ctx;
-    const age = (performance.now() - this.infoShownAt) / 1000;
-    const alpha = Math.min(1, age / 0.15);
-    const pop = 0.92 + 0.08 * Math.min(1, age / 0.18);
 
     const pad = 10;
     const maxTextW = 195;
@@ -731,9 +841,9 @@ export class BoardCanvas {
     ctx.globalAlpha = alpha;
 
     ctx.font = 'bold 13px sans-serif';
-    const titleW = ctx.measureText(this.info.title).width;
+    const titleW = ctx.measureText(info.title).width;
     ctx.font = '11px sans-serif';
-    const lines = this.wrapText(this.info.body, maxTextW);
+    const lines = this.wrapText(info.body, maxTextW);
     let widest = titleW;
     for (const l of lines) widest = Math.max(widest, ctx.measureText(l).width);
 
@@ -774,7 +884,7 @@ export class BoardCanvas {
     ctx.textBaseline = 'top';
     ctx.fillStyle = '#b7e4c7';
     ctx.font = 'bold 13px sans-serif';
-    ctx.fillText(this.info.title, x + pad, y + pad);
+    ctx.fillText(info.title, x + pad, y + pad);
     ctx.fillStyle = '#b7c7b7';
     ctx.font = '11px sans-serif';
     lines.forEach((l, i) => ctx.fillText(l, x + pad, y + pad + titleH + i * lineH));
@@ -800,10 +910,21 @@ export class BoardCanvas {
   }
 
   /** Eased render position for a token whose target is (tx, ty). */
-  private tokenPos(userId: string, tx: number, ty: number, ts: number): { x: number; y: number } {
+  private tokenPos(userId: string, tx: number, ty: number, ts: number): TokenAnim {
     let a = this.tokenAnims.get(userId);
     if (!a) {
-      a = { x: tx, y: ty, fromX: tx, fromY: ty, toX: tx, toY: ty, start: ts - MOVE_MS };
+      a = {
+        x: tx,
+        y: ty,
+        fromX: tx,
+        fromY: ty,
+        toX: tx,
+        toY: ty,
+        start: ts - MOVE_MS,
+        hopIndex: 0,
+        // Seeded off the userId so creatures don't breathe in lockstep.
+        phase: (hashStr(userId) % 628) / 100,
+      };
       this.tokenAnims.set(userId, a);
     }
     if (a.toX !== tx || a.toY !== ty) {
@@ -812,6 +933,7 @@ export class BoardCanvas {
       a.toX = tx;
       a.toY = ty;
       a.start = ts;
+      a.hopIndex = 0;
     }
     const t = Math.min(1, (ts - a.start) / MOVE_MS);
     const e = easeInOut(t);
@@ -820,19 +942,90 @@ export class BoardCanvas {
     return a;
   }
 
-  private drawToken(p: BoardPlayer, x: number, y: number, elapsed: number): void {
+  private spawnDust(x: number, footY: number): void {
+    const count = 5 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < count; i++) {
+      const angle = Math.PI + (Math.random() - 0.5) * Math.PI * 0.9; // kick sideways/back
+      const speed = 20 + Math.random() * 26;
+      const ttl = 0.3 + Math.random() * 0.22;
+      this.dust.push({
+        x: x + (Math.random() - 0.5) * 10,
+        y: footY,
+        vx: Math.cos(angle) * speed * (Math.random() < 0.5 ? -1 : 1),
+        vy: -8 - Math.random() * 14,
+        life: ttl,
+        maxLife: ttl,
+        size: 2.5 + Math.random() * 3,
+      });
+    }
+  }
+
+  private updateDust(dt: number): void {
+    for (let i = this.dust.length - 1; i >= 0; i--) {
+      const d = this.dust[i];
+      d.life -= dt;
+      if (d.life <= 0) {
+        this.dust.splice(i, 1);
+        continue;
+      }
+      d.x += d.vx * dt;
+      d.y += d.vy * dt;
+      d.vx *= 0.9;
+      d.vy = d.vy * 0.9 + 12 * dt; // settle back down
+    }
+  }
+
+  private drawDust(): void {
+    const ctx = this.ctx;
+    for (const d of this.dust) {
+      ctx.save();
+      ctx.globalAlpha = (d.life / d.maxLife) * 0.55;
+      ctx.fillStyle = '#8f8a7e';
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  /**
+   * @param hopY   vertical lift while hopping between spaces (0 when idle)
+   * @param breath idle vertical-scale wobble (1 while hopping)
+   */
+  private drawToken(
+    p: BoardPlayer,
+    x: number,
+    y: number,
+    hopY: number,
+    breath: number,
+  ): void {
     const ctx = this.ctx;
     const spr = formSprite(p.form);
     const sprite = getRecolored(spr.sprite, p.paint || {}, spr.regions);
     const isOwn = p.userId === this.ownUserId;
     const targetH = (isOwn ? 72 : 56) * spr.scale;
-    const bob = Math.sin(elapsed * 2 + x * 0.01) * 2;
+    // Feet stay planted (breathing stretches upward from here); hopY lifts the
+    // whole body off the ground.
+    const footAnchor = y + targetH / 2;
+    const drawH = targetH * breath;
+    const spriteW = sprite ? sprite.width * (targetH / sprite.height) : 20;
+    const top = footAnchor - drawH + hopY;
+    const centerY = top + drawH / 2;
 
-    // Elliptical ground shadow at the sprite's feet (unaffected by bob so the
-    // token visibly hops above it).
+    // Elliptical ground shadow at the feet — planted, so the hop reads as air.
+    // It also shrinks a touch at the peak of a hop for a sense of height.
+    const shadowShrink = 1 - Math.min(0.35, -hopY / HOP_HEIGHT / 3);
     ctx.save();
     ctx.beginPath();
-    ctx.ellipse(x, y + targetH * 0.48, targetH * 0.42, targetH * 0.17, 0, 0, Math.PI * 2);
+    ctx.ellipse(
+      x,
+      footAnchor,
+      targetH * 0.42 * shadowShrink,
+      targetH * 0.17 * shadowShrink,
+      0,
+      0,
+      Math.PI * 2,
+    );
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fill();
     ctx.restore();
@@ -840,7 +1033,7 @@ export class BoardCanvas {
     if (isOwn) {
       ctx.save();
       ctx.beginPath();
-      ctx.arc(x, y + bob, targetH * 0.75, 0, Math.PI * 2);
+      ctx.arc(x, centerY, targetH * 0.75, 0, Math.PI * 2);
       ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
       ctx.lineWidth = 2.5;
       ctx.stroke();
@@ -848,17 +1041,15 @@ export class BoardCanvas {
     }
 
     if (sprite) {
-      const scale = targetH / sprite.height;
-      const w = sprite.width * scale;
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(sprite, x - w / 2, y - targetH / 2 + bob, w, targetH);
+      ctx.drawImage(sprite, x - spriteW / 2, top, spriteW, drawH);
       ctx.imageSmoothingEnabled = true;
       ctx.restore();
     } else {
       ctx.save();
       ctx.beginPath();
-      ctx.arc(x, y + bob, 10, 0, Math.PI * 2);
+      ctx.arc(x, centerY, 10, 0, Math.PI * 2);
       ctx.fillStyle = '#4ade80';
       ctx.fill();
       ctx.restore();
@@ -867,7 +1058,7 @@ export class BoardCanvas {
     if (p.shielded) {
       ctx.save();
       ctx.beginPath();
-      ctx.arc(x, y + bob, targetH * 0.8, 0, Math.PI * 2);
+      ctx.arc(x, centerY, targetH * 0.8, 0, Math.PI * 2);
       ctx.strokeStyle = 'rgba(140, 220, 170, 0.8)';
       ctx.fillStyle = 'rgba(140, 220, 170, 0.12)';
       ctx.lineWidth = 1.5;
@@ -878,20 +1069,20 @@ export class BoardCanvas {
   }
 
   /** Name pill, drawn in a separate pass so no sprite ever covers a label. */
-  private drawLabel(p: BoardPlayer, x: number, y: number, elapsed: number): void {
+  private drawLabel(p: BoardPlayer, x: number, y: number): void {
     const ctx = this.ctx;
     const spr = formSprite(p.form);
     const isOwn = p.userId === this.ownUserId;
     const targetH = (isOwn ? 72 : 56) * spr.scale;
-    const bob = Math.sin(elapsed * 2 + x * 0.01) * 2;
     ctx.save();
-    // Dokapon-style name banner: bigger type, bordered plate.
+    // Dokapon-style name banner: bigger type, bordered plate. Planted below the
+    // feet so it stays steady while the creature breathes and hops.
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     const label = p.username;
     const w = ctx.measureText(label).width + 12;
-    const by = y + targetH * 0.55 + bob;
+    const by = y + targetH * 0.55;
     ctx.beginPath();
     ctx.roundRect(x - w / 2, by, w, 17, 5);
     ctx.fillStyle = 'rgba(12, 10, 8, 0.78)';
