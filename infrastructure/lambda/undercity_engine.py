@@ -31,6 +31,7 @@ class Combatant:
     stance: str = 'fight'          # fight | defend | flee (flee only matters for defenders)
     level: int = 1
     has_smoke_spore: bool = False
+    flee_bonus: int = 0            # home-biome perk (Glowblessed: +10)
     # internal battle state
     struck_yet: bool = field(default=False, repr=False)
 
@@ -124,7 +125,7 @@ def resolve_battle(attacker: Combatant, defender: Combatant, rng) -> dict:
     flee_failed = False
 
     if defender.stance == 'flee':
-        chance = flee_chance(defender.spd, attacker.spd)
+        chance = min(95, flee_chance(defender.spd, attacker.spd) + defender.flee_bonus)
         if rng.random() * 100 < chance:
             return {'outcome': 'fled', 'strikes': [], 'attackerHp': attacker.hp,
                     'defenderHp': defender.hp, 'smokeSporeUsed': False,
@@ -178,11 +179,14 @@ def pvp_spore_steal(loser_spores: int, loser_stance: str, winner_passives: froze
 
 # ── Movement ─────────────────────────────────────────────────────────────────
 
-def legal_destinations(nodes: dict, start: str, steps: int) -> set:
+def legal_destinations(nodes: dict, start: str, steps: int,
+                       closed: frozenset = frozenset()) -> set:
     """
     Dokapon exact-count movement: every node reachable in exactly `steps`
     edges without immediately reversing the previous edge. Dead-end branches
-    shorter than the roll simply contribute nothing.
+    shorter than the roll simply contribute nothing. `closed` holds sealed
+    barrier nodes: a move may END on one (to challenge its guardian) but
+    never walks THROUGH it.
     """
     results = set()
     stack = [(start, None, steps)]
@@ -192,6 +196,8 @@ def legal_destinations(nodes: dict, start: str, steps: int) -> set:
         if remaining == 0:
             results.add(node)
             continue
+        if node in closed and node != start:
+            continue  # sealed: a wall mid-walk, only a valid final stop
         key = (node, prev, remaining)
         if key in seen:
             continue
@@ -252,6 +258,8 @@ def effective_stats(player: dict) -> dict:
             eff['atk'] += 3
         elif buff.get('kind') == 'cursed_idol':
             eff['atk'] = max(1, eff['atk'] - 1)
+        elif buff.get('kind') == 'bone_chill':
+            eff['atk'] = max(1, eff['atk'] - 2)
     return eff
 
 
@@ -328,9 +336,8 @@ def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool) -> dict:
 
 # ── Wild NPCs ────────────────────────────────────────────────────────────────
 
-def pick_npc(level: int, rng) -> dict:
-    pool = [n for n in data.NPCS if n['min'] <= level <= n['max']] or [data.NPCS[0]]
-    spec = rng.choice(pool)
+def npc_from_spec(spec: dict, level: int) -> dict:
+    """Instantiate an NPC dict from a (base, per-level) spec at `level`."""
     return {
         'id': spec['id'],
         'name': spec['name'],
@@ -341,3 +348,8 @@ def pick_npc(level: int, rng) -> dict:
         'bounty': spec['bounty'],
         'itemChance': spec['itemChance'],
     }
+
+
+def pick_npc(level: int, rng) -> dict:
+    pool = [n for n in data.NPCS if n['min'] <= level <= n['max']] or [data.NPCS[0]]
+    return npc_from_spec(rng.choice(pool), level)

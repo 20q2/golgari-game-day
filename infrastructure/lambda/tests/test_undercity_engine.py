@@ -78,21 +78,54 @@ def test_spend_stat_caps_one_per_stat_per_level():
 # ── Movement ─────────────────────────────────────────────────────────────────
 
 def test_exact_count_no_backtrack_on_loop():
-    dests = legal_destinations(data.MAP_NODES, 'n1', 2)
-    assert dests == {'n3', 'n25'}
+    # From city_r0, two steps forward each way round the ring.
+    dests = legal_destinations(data.MAP_NODES, 'city_r0', 2)
+    assert dests == {'city_r2', 'city_r8'}
 
 
 def test_fork_gives_multiple_choices():
-    # n4 is the Undercity-loop junction where the Sedgemoor tunnel (b1) leaves.
-    dests = legal_destinations(data.MAP_NODES, 'n4', 1)
-    assert dests == {'n3', 'n5', 'b1'}
+    # city_r5 is the outward junction where the dungeon ladder (city_lt) leaves.
+    dests = legal_destinations(data.MAP_NODES, 'city_r5', 1)
+    assert dests == {'city_r4', 'city_r6', 'city_lt'}
 
 
 def test_dead_end_paths_die_out():
-    # From the island warp, 3 steps hits a wall (warp→ossuary→boss, boss is a
-    # dead end with no backtracking) so only revisits via loops are possible.
-    dests = legal_destinations(data.MAP_NODES, 'isl_warp', 3)
-    assert dests == set()
+    # Island chain: warp -> trade -> ossuary -> boss. Three steps lands on the
+    # boss; a fourth dies out because boss is a dead end with no backtracking.
+    assert legal_destinations(data.MAP_NODES, 'isl_warp', 3) == {'boss'}
+    assert legal_destinations(data.MAP_NODES, 'isl_warp', 4) == set()
+
+
+# ── Barriers (v3) ────────────────────────────────────────────────────────────
+
+def test_closed_barrier_is_a_valid_final_stop():
+    # s0 -> bar_s in one step: you can land on the guardian to challenge it.
+    dests = legal_destinations(data.MAP_NODES, 's0', 1, closed=frozenset({'bar_s'}))
+    assert 'bar_s' in dests
+
+
+def test_closed_barrier_blocks_passage_through():
+    # Two steps from s0 would pass THROUGH bar_s into the vault loop — sealed.
+    dests = legal_destinations(data.MAP_NODES, 's0', 2, closed=frozenset({'bar_s'}))
+    assert dests & {'s1', 's2', 's3', 'vault'} == set()
+    # Once open, the same roll walks through.
+    dests_open = legal_destinations(data.MAP_NODES, 's0', 2)
+    assert 's1' in dests_open
+
+
+def test_ladder_pair_connects_dungeon():
+    # The ladder is a normal graph edge: ring side down into the dungeon pocket.
+    dests = legal_destinations(data.MAP_NODES, 'city_r5', 2)
+    assert 'city_lb' in dests
+
+
+# ── Guild Sigils & the island boss (v4) ──────────────────────────────────────
+
+def test_five_biome_dungeon_lairs_grant_sigils():
+    from undercity_data import SIGIL_LAIRS, BIOMES, SIGILS_REQUIRED
+    assert set(SIGIL_LAIRS.values()) == set(BIOMES)
+    assert len(SIGIL_LAIRS) == 5
+    assert SIGILS_REQUIRED == 3
 
 
 # ── Battle ───────────────────────────────────────────────────────────────────
@@ -322,3 +355,27 @@ def test_cursed_idol_debuff():
 def test_renown_table():
     p = {'level': 8, 'pvpWins': 3, 'wildWins': 7, 'spores': 52, 'bossDamage': 45}
     assert data.compute_renown(p) == 80 + 45 + 21 + 10 + 4
+
+
+# ── Unique dungeons (v6) ─────────────────────────────────────────────────────
+
+def test_npc_from_spec_scales_with_level():
+    from undercity_engine import npc_from_spec
+    spec = data.DUNGEON_NPCS['city']
+    npc = npc_from_spec(spec, 4)
+    assert npc['id'] == 'broodling'
+    assert npc['hp'] == spec['hp'][0] + int(spec['hp'][1] * 4)
+    assert npc['atk'] == spec['atk'][0] + int(spec['atk'][1] * 4)
+    assert npc['bounty'] == spec['bounty']
+
+
+def test_bone_chill_debuff_lowers_atk():
+    player = {'atk': 6, 'def': 4, 'spd': 5, 'maxHp': 30,
+              'buffs': [{'kind': 'bone_chill'}]}
+    assert effective_stats(player)['atk'] == 4
+
+
+def test_bone_chill_never_below_one():
+    player = {'atk': 2, 'def': 4, 'spd': 5, 'maxHp': 30,
+              'buffs': [{'kind': 'bone_chill'}]}
+    assert effective_stats(player)['atk'] == 1
