@@ -5,19 +5,30 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from undercity_data import MAP_NODES, GATE_NODE, BOSS_NODE, WARP_NODES, SHOP_TIERS
+from undercity_data import MAP_NODES, GATE_NODE, BOSS_NODE, WARP_NODES
 
 
-def test_forty_nodes():
-    assert len(MAP_NODES) == 40
+def test_node_count():
+    # v4: five home-biome rings (10 spaces + 2 inner + a 7-node dungeon pocket
+    # each), pentagon tunnels, the island, and two barrier-gated side pockets.
+    assert len(MAP_NODES) == 121
 
 
 def test_space_type_distribution():
     counts = Counter(n['type'] for n in MAP_NODES.values())
     assert counts == {
-        'loot': 8, 'wild': 8, 'mystery': 7, 'shop': 3, 'shrine': 3,
-        'hazard': 5, 'warp': 3, 'gate': 1, 'boss': 1, 'ossuary': 1,
+        'gate': 5, 'loot': 18, 'wild': 31, 'shop': 5, 'mystery': 12,
+        'hazard': 14, 'warp': 6, 'shrine': 4, 'ladder': 10, 'lair': 6,
+        'ossuary': 2, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
+        'excavation': 3,
     }
+
+
+def test_five_home_gates():
+    from undercity_data import HOME_GATES, BIOMES
+    assert set(HOME_GATES) == set(BIOMES)
+    for gate in HOME_GATES.values():
+        assert MAP_NODES[gate]['type'] == 'gate'
 
 
 def test_gate_and_boss():
@@ -49,13 +60,27 @@ def test_everything_reachable_from_gate():
     assert seen == set(MAP_NODES)
 
 
-def test_shop_tiers_cover_all_shops():
-    shops = {nid for nid, n in MAP_NODES.items() if n['type'] == 'shop'}
-    assert set(SHOP_TIERS) == shops
-    assert sorted(SHOP_TIERS.values()) == [1, 2, 3]
-
-
 def test_every_tier2_form_offers_exactly_two_apexes():
     from undercity_data import TIER2, apex_options
     for fid in TIER2:
         assert len(apex_options(fid)) == 2, fid
+
+
+def test_dungeon_tables_cover_all_biomes():
+    from undercity_data import DUNGEONS, DUNGEON_NPCS, DUNGEON_HAZARDS, BIOMES, CACHE_REWARD
+    assert set(DUNGEONS) == set(BIOMES)
+    assert set(DUNGEON_NPCS) == set(BIOMES)
+    assert set(DUNGEON_HAZARDS) == set(BIOMES)
+    for b, d in DUNGEONS.items():
+        assert d['name'] and d['rite']
+        assert DUNGEON_NPCS[b]['id'] == d['wild']
+        assert DUNGEON_HAZARDS[b]['id'] == d['hazard']
+    assert CACHE_REWARD['spores'] > 0 and CACHE_REWARD['xp'] > 0
+
+
+def test_dungeon_biome_helper():
+    from undercity_data import dungeon_biome
+    assert dungeon_biome('city_d0') == 'city'
+    assert dungeon_biome('bog_lair') == 'bog'
+    assert dungeon_biome('cavern_r3') is None      # not a depths node
+    assert dungeon_biome('boss') is None
