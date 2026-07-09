@@ -5,17 +5,29 @@ import {
   OnDestroy,
   OnInit,
   Output,
+  computed,
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { BattleResult, BattleStrike } from '../services/undercity-models';
 
 export interface BattleSide {
   name: string;
   spriteUrl?: string | null;
-  emoji?: string;
+  /** Material Icons ligature shown when there is no sprite (wild NPCs). */
+  icon?: string;
   startHp: number;
   maxHp: number;
+}
+
+/** Spoils shown in the victory popup after a won battle. */
+export interface BattleRewards {
+  spores?: number;
+  xp?: number;
+  levels?: number;
+  itemName?: string;
+  itemIcon?: string;
 }
 
 /**
@@ -25,7 +37,7 @@ export interface BattleSide {
 @Component({
   selector: 'app-undercity-battle-playback',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './battle-playback.component.html',
   styleUrls: ['./battle-playback.component.scss'],
 })
@@ -34,15 +46,46 @@ export class BattlePlaybackComponent implements OnInit, OnDestroy {
   @Input({ required: true }) attacker!: BattleSide;
   @Input({ required: true }) defender!: BattleSide;
   @Input() resultText = '';
+  @Input() rewards: BattleRewards | null = null;
   @Output() closed = new EventEmitter<void>();
+
+  /** True once the fight has resolved in the player's favour with spoils to show. */
+  protected hasRewards(): boolean {
+    const r = this.rewards;
+    return (
+      this.battle.outcome === 'attacker' &&
+      !!r &&
+      (!!r.spores || !!r.xp || !!r.levels || !!r.itemName)
+    );
+  }
 
   protected readonly attackerHp = signal(0);
   protected readonly defenderHp = signal(0);
+  // Missing sprite PNGs (e.g. dungeon wilds awaiting art) fall back to icons.
+  // The component is recreated per battle, so no reset is needed.
+  protected readonly attackerSpriteFailed = signal(false);
+  protected readonly defenderSpriteFailed = signal(false);
   protected readonly lines = signal<string[]>([]);
   protected readonly lunge = signal<'attacker' | 'defender' | null>(null);
   protected readonly hit = signal<'attacker' | 'defender' | null>(null);
   protected readonly popup = signal<{ side: 'attacker' | 'defender'; text: string } | null>(null);
   protected readonly done = signal(false);
+
+  /** Log rendered newest-first so the latest strike is always visible. */
+  protected readonly linesNewestFirst = computed(() => [...this.lines()].reverse());
+
+  protected outcomeLabel(): string {
+    switch (this.battle.outcome) {
+      case 'attacker':
+        return 'VICTORY';
+      case 'defender':
+        return 'DEFEAT';
+      case 'fled':
+        return 'ESCAPED';
+      default:
+        return 'STALEMATE';
+    }
+  }
 
   private timer: ReturnType<typeof setInterval> | null = null;
   private idx = 0;

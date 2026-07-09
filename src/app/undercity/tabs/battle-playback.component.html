@@ -1,61 +1,140 @@
 <div class="battle-overlay">
   <div class="battle-card">
-    <div class="arena">
+    <!-- Arena stage: fighters face off over the coliseum art -->
+    <div
+      class="stage"
+      style="background-image: linear-gradient(rgba(10, 12, 10, 0.3), rgba(10, 12, 10, 0.55)), url('undercity/arena_background.png')"
+    >
       <div
         class="side"
         [class.lunge-right]="lunge() === 'attacker'"
         [class.hit]="hit() === 'attacker'"
+        [class.ko]="done() && battle.outcome === 'defender'"
       >
-        @if (attacker.spriteUrl) {
-          <img class="sprite" [src]="attacker.spriteUrl" [alt]="attacker.name" />
+        <span class="platform"></span>
+        @if (attacker.spriteUrl && !attackerSpriteFailed()) {
+          <img
+            class="sprite"
+            [src]="attacker.spriteUrl"
+            [alt]="attacker.name"
+            (error)="attackerSpriteFailed.set(true)"
+          />
         } @else {
-          <span class="sprite-emoji">{{ attacker.emoji ?? '🐌' }}</span>
+          <mat-icon class="sprite-icon">{{ attacker.icon ?? 'pets' }}</mat-icon>
         }
         @if (popup()?.side === 'attacker') {
           <span class="dmg-pop">{{ popup()?.text }}</span>
         }
-        <span class="side-name">{{ attacker.name }}</span>
-        <div class="hp-track">
-          <div class="hp-fill" [style.width.%]="hpPct('attacker')"></div>
-        </div>
-        <span class="hp-num">{{ attackerHp() }}/{{ attacker.maxHp }}</span>
       </div>
 
-      <span class="vs">⚔️</span>
+      <div class="vs-badge">VS</div>
 
       <div
         class="side flipped"
         [class.lunge-left]="lunge() === 'defender'"
         [class.hit]="hit() === 'defender'"
+        [class.ko]="done() && battle.outcome === 'attacker'"
       >
-        @if (defender.spriteUrl) {
-          <img class="sprite" [src]="defender.spriteUrl" [alt]="defender.name" />
+        <span class="platform"></span>
+        @if (defender.spriteUrl && !defenderSpriteFailed()) {
+          <img
+            class="sprite"
+            [src]="defender.spriteUrl"
+            [alt]="defender.name"
+            (error)="defenderSpriteFailed.set(true)"
+          />
         } @else {
-          <span class="sprite-emoji">{{ defender.emoji ?? '👿' }}</span>
+          <mat-icon class="sprite-icon">{{ defender.icon ?? 'bug_report' }}</mat-icon>
         }
         @if (popup()?.side === 'defender') {
           <span class="dmg-pop">{{ popup()?.text }}</span>
         }
+      </div>
+
+      @if (done()) {
+        <div
+          class="outcome-banner"
+          [class.win]="battle.outcome === 'attacker'"
+          [class.lose]="battle.outcome === 'defender'"
+        >
+          {{ outcomeLabel() }}
+        </div>
+      }
+    </div>
+
+    <!-- Name / HP plates -->
+    <div class="plates">
+      <div class="plate">
+        <span class="side-name">{{ attacker.name }}</span>
+        <div class="hp-track">
+          <div
+            class="hp-fill"
+            [class.low]="hpPct('attacker') <= 50"
+            [class.crit]="hpPct('attacker') <= 25"
+            [style.width.%]="hpPct('attacker')"
+          ></div>
+        </div>
+        <span class="hp-num">{{ attackerHp() }}/{{ attacker.maxHp }} HP</span>
+      </div>
+      <div class="plate right">
         <span class="side-name">{{ defender.name }}</span>
         <div class="hp-track">
-          <div class="hp-fill" [style.width.%]="hpPct('defender')"></div>
+          <div
+            class="hp-fill"
+            [class.low]="hpPct('defender') <= 50"
+            [class.crit]="hpPct('defender') <= 25"
+            [style.width.%]="hpPct('defender')"
+          ></div>
         </div>
-        <span class="hp-num">{{ defenderHp() }}/{{ defender.maxHp }}</span>
+        <span class="hp-num">{{ defenderHp() }}/{{ defender.maxHp }} HP</span>
       </div>
     </div>
 
+    <!-- Victory spoils -->
+    @if (done() && hasRewards() && rewards; as r) {
+      <div class="rewards">
+        <span class="rewards-title">Spoils</span>
+        <div class="reward-chips">
+          @if (r.spores) {
+            <span class="reward-chip spores">
+              <mat-icon class="mi">grain</mat-icon> +{{ r.spores }} Spores
+            </span>
+          }
+          @if (r.xp) {
+            <span class="reward-chip xp">
+              <mat-icon class="mi">auto_awesome</mat-icon> +{{ r.xp }} XP
+            </span>
+          }
+          @if (r.itemName) {
+            <span class="reward-chip item">
+              <mat-icon class="mi">{{ r.itemIcon ?? 'inventory_2' }}</mat-icon> {{ r.itemName }}
+            </span>
+          }
+          @if (r.levels) {
+            <span class="reward-chip levelup">
+              <mat-icon class="mi">arrow_upward</mat-icon>
+              Level up{{ r.levels > 1 ? ' ×' + r.levels : '' }}!
+            </span>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Strike log, newest first -->
     <div class="battle-log">
-      @for (line of lines(); track $index) {
-        <div class="log-line">{{ line }}</div>
-      }
       @if (done()) {
         <div class="log-line result">{{ resultText }}</div>
+      }
+      @for (line of linesNewestFirst(); track $index) {
+        <div class="log-line">{{ line }}</div>
       }
     </div>
 
     <div class="battle-actions">
       @if (!done()) {
-        <button class="uc-btn" (click)="skip()">Skip ⏩</button>
+        <button class="uc-btn" (click)="skip()">
+          Skip <mat-icon class="mi">fast_forward</mat-icon>
+        </button>
       } @else {
         <button class="uc-btn uc-btn-primary" (click)="close()">Continue</button>
       }
