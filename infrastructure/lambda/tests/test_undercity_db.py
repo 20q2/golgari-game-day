@@ -484,3 +484,61 @@ def test_bone_chill_consumed_by_next_battle(table, monkeypatch):
     })
     db._wild_battle(table, sid, doc)
     assert not any(b.get('kind') == 'bone_chill' for b in doc.get('buffs', []))
+
+
+def test_webbing_halves_next_roll(table):
+    sid, doc = _player_at(table, 'city_d1')
+    out = db._hazard(table, sid, doc, 'city_d1')
+    assert out['hazardId'] == 'webbing'
+    assert any(b.get('kind') == 'vines' for b in doc['buffs'])
+
+
+def test_spore_cloud_teleports_within_pocket(table):
+    sid, doc = _player_at(table, 'cavern_d1')
+    out = db._hazard(table, sid, doc, 'cavern_d1')
+    assert out['hazardId'] == 'spore_cloud'
+    assert doc['position'] != 'cavern_d1'
+    assert data.MAP_NODES[doc['position']].get('region') == 'depths'
+    assert doc['position'].startswith('cavern_')
+
+
+def test_sinkwater_takes_15_pct_spores(table):
+    sid, doc = _player_at(table, 'bog_d1', spores=100)
+    out = db._hazard(table, sid, doc, 'bog_d1')
+    assert out['hazardId'] == 'sinkwater'
+    assert doc['spores'] == 85
+
+
+def test_sinkwater_mirefoot_halved(table):
+    sid, doc = _player_at(table, 'bog_d1', spores=100, homeBiome='bog')
+    db._hazard(table, sid, doc, 'bog_d1')
+    assert doc['spores'] == 93   # ceil(100*0.15)=15, Mirefoot halves -> 7 lost
+
+
+def test_bone_chill_applies_debuff(table):
+    sid, doc = _player_at(table, 'bone_d1')
+    out = db._hazard(table, sid, doc, 'bone_d1')
+    assert out['hazardId'] == 'bone_chill'
+    assert any(b.get('kind') == 'bone_chill' for b in doc['buffs'])
+
+
+def test_rot_bloom_trades_hp_for_spores(table):
+    sid, doc = _player_at(table, 'garden_d2', spores=10)
+    hp_before = doc['hp']
+    out = db._hazard(table, sid, doc, 'garden_d2')
+    assert out['hazardId'] == 'rot_bloom'
+    assert doc['hp'] == hp_before - 3
+    assert doc['spores'] == 14
+
+
+def test_rot_bloom_never_kills(table):
+    sid, doc = _player_at(table, 'garden_d2', hp=2)
+    db._hazard(table, sid, doc, 'garden_d2')
+    assert doc['hp'] == 1
+
+
+def test_surface_hazard_unchanged(table):
+    # A ring hazard still rolls the generic table (no hazardId key).
+    sid, doc = _player_at(table, 'city_r4')
+    out = db._hazard(table, sid, doc, 'city_r4')
+    assert out['type'] == 'hazard' and 'hazardId' not in out

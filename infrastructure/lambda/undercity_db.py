@@ -669,7 +669,7 @@ def _resolve_space(table, sid, doc, node, prev):
         return _mystery(table, sid, doc)
 
     if ntype == 'hazard':
-        return _hazard(table, sid, doc)
+        return _hazard(table, sid, doc, node)
 
     if ntype == 'warp':
         if _rng.random() < 0.20:
@@ -811,9 +811,12 @@ def _mystery(table, sid, doc):
     return out
 
 
-def _hazard(table, sid, doc):
+def _hazard(table, sid, doc, node):
     # Mirefoot hatch perk: bog natives shrug off half of any hazard's cost.
     mire = doc.get('homeBiome') == 'bog'
+    biome = data.dungeon_biome(node)
+    if biome:
+        return _dungeon_hazard(table, sid, doc, node, biome, mire)
     kind = _rng.choice(['swamp_gas', 'vines', 'spore_cloud'])
     if kind == 'swamp_gas':
         lost = min(doc.get('spores', 0), _rng.randint(1, 10))
@@ -831,6 +834,39 @@ def _hazard(table, sid, doc):
     dmg = round(doc['hp'] * (0.075 if mire else 0.15))
     doc['hp'] = max(1, doc['hp'] - dmg)
     return {'type': 'hazard', 'text': f'A choking spore cloud! You lose {dmg} HP.', 'hp': -dmg}
+
+
+def _dungeon_hazard(table, sid, doc, node, biome, mire):
+    """v6 signature hazards — one per dungeon, themed to its pocket."""
+    h = data.DUNGEON_HAZARDS[biome]
+    out = {'type': 'hazard', 'hazardId': h['id'], 'text': h['text']}
+    if h['id'] == 'webbing':
+        # Reuses the vines mechanic: _roll halves and consumes it.
+        doc.setdefault('buffs', []).append({'kind': 'vines'})
+    elif h['id'] == 'spore_cloud':
+        pocket = [nid for nid, n in data.MAP_NODES.items()
+                  if n.get('region') == 'depths' and nid.startswith(biome + '_')
+                  and nid != node and n['type'] not in ('lair',)]
+        dest = _rng.choice(pocket)
+        doc['position'] = dest
+        out['to'] = dest
+    elif h['id'] == 'sinkwater':
+        lost = -(-doc.get('spores', 0) * 15 // 100)   # ceil(spores * 0.15)
+        if mire:
+            lost //= 2
+        lost = min(doc.get('spores', 0), lost)
+        doc['spores'] = doc.get('spores', 0) - lost
+        out['spores'] = -lost
+        out['text'] = f"{h['text']} You lose {lost} Spores to the murk."
+    elif h['id'] == 'bone_chill':
+        doc.setdefault('buffs', []).append({'kind': 'bone_chill'})
+    elif h['id'] == 'rot_bloom':
+        dmg = 1 if mire else 3
+        doc['hp'] = max(1, doc['hp'] - dmg)
+        doc['spores'] = doc.get('spores', 0) + 4
+        out['hp'] = -dmg
+        out['spores'] = 4
+    return out
 
 
 # ── Battles ──────────────────────────────────────────────────────────────────
