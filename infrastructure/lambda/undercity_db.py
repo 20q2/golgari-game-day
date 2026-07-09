@@ -95,6 +95,23 @@ def _get_player(table, sid, user_id):
     return _get(table, _season_pk(sid), f'PLAYER#{user_id}')
 
 
+def _open_barriers(table, sid):
+    """Barrier ids broken open this season — shared by every player."""
+    item = _get(table, _season_pk(sid), 'BARRIERS')
+    return set((item or {}).get('open') or [])
+
+
+def _closed_barriers(table, sid):
+    return frozenset(set(data.BARRIER_GUARDIANS) - _open_barriers(table, sid))
+
+
+def _open_barrier(table, sid, barrier_id):
+    opened = _open_barriers(table, sid)
+    opened.add(barrier_id)
+    table.put_item(Item={'pk': _season_pk(sid), 'sk': 'BARRIERS',
+                         'open': sorted(opened)})
+
+
 def _put_player(table, doc):
     """Optimistic write: bumps ver, fails (409) if someone wrote in between."""
     expected = doc.get('ver', 0)
@@ -142,7 +159,8 @@ def _combatant(doc):
         atk=eff['atk'], dfn=eff['def'], spd=eff['spd'],
         passives=_passives(doc), stance=doc.get('stance', 'fight'),
         level=doc.get('level', 1),
-        has_smoke_spore='smoke_spore' in (doc.get('bag') or []))
+        has_smoke_spore='smoke_spore' in (doc.get('bag') or []),
+        flee_bonus=10 if doc.get('homeBiome') == 'cavern' else 0)
 
 
 def _form_name(doc):
@@ -150,7 +168,8 @@ def _form_name(doc):
 
 
 def _consume_one_battle_buffs(doc):
-    doc['buffs'] = [b for b in (doc.get('buffs') or []) if b.get('kind') != 'rot_surge']
+    doc['buffs'] = [b for b in (doc.get('buffs') or [])
+                    if b.get('kind') not in ('rot_surge', 'bone_chill')]
 
 
 def _expire_buffs(doc):
@@ -215,7 +234,7 @@ def _compost(table, sid, doc, cause_text):
                    f"{doc['username']}'s {_form_name(doc)} refuses to die! (Undying)",
                    actor=doc['userId'])
             return False
-    doc['position'] = data.GATE_NODE
+    doc['position'] = data.HOME_GATES.get(doc.get('homeBiome'), data.GATE_NODE)
     doc['hp'] = max(1, round(engine.effective_stats(doc)['maxHp'] * data.COMPOST_RESPAWN_PCT))
     doc['shieldUntil'] = (now + timedelta(minutes=data.COMPOST_SHIELD_MIN)).isoformat(timespec='seconds')
     doc['composts'] = doc.get('composts', 0) + 1
@@ -246,7 +265,7 @@ def handle_state(table, query_params):
         ScanIndexForward=False, Limit=150)
     events = [_clean(i) for i in ev['Items']]
 
-    players, you, snares, result = [], None, [], None
+    players, you, snares, result, posts, sites = [], None, [], None, {}, {}
     now = _now()
     for item in items:
         if item['sk'].startswith('PLAYER#'):
@@ -257,8 +276,22 @@ def handle_state(table, query_params):
                 you = {k: v for k, v in item.items() if k not in ('pk', 'sk')}
         elif item['sk'].startswith('SPACE#'):
             snares.append(item['sk'].replace('SPACE#', ''))
+        elif item['sk'].startswith('POST#'):
+            posts[item['sk'].replace('POST#', '')] = item.get('stock') or []
+        elif item['sk'].startswith('SITE#'):
+            sites[item['sk'].replace('SITE#', '')] = item
         elif item['sk'] == 'RESULT':
             result = {k: v for k, v in item.items() if k not in ('pk', 'sk')}
+
+    # Show a display-seeded stock for any post nobody has traded at yet, so the
+    # exchange renders from turn one without a write on read.
+    for nid, n in data.MAP_NODES.items():
+        if n['type'] == 'trading_post' and nid not in posts:
+            posts[nid] = _seed_stock()
+
+    # Masked dig-site views for every excavation node (empty/covered until dug).
+    excavations = {nid: _dig_view(sites.get(nid))
+                   for nid, n in data.MAP_NODES.items() if n['type'] == 'excavation'}
 
     out = {
         'season': {'seasonId': sid, 'status': config.get('status'),
@@ -267,6 +300,10 @@ def handle_state(table, query_params):
         'you': you,
         'players': players,
         'snares': snares,
+        'tradingPosts': posts,
+        'excavations': excavations,
+        'barriersOpen': sorted(_open_barriers(table, sid)),
+        'boss': {'hp': _boss_hp(table, sid), 'maxHp': data.ROT_SOVEREIGN['hp']},
         'events': [{k: v for k, v in e.items() if k not in ('pk', 'sk')} for e in events],
         'result': result if config.get('status') == 'ended' else None,
     }
@@ -345,7 +382,7 @@ def handle_action(table, body):
         'set-stance': _set_stance, 'spend-stat': _spend_stat, 'evolve': _evolve,
         'buy': _buy, 'use-item': _use_item, 'shrine': _shrine, 'warp': _warp,
         'gamble': _gamble, 'poke': _poke, 'customize': _customize,
-        'attack-boss': _attack_boss,
+        'attack-boss': _attack_boss, 'trade': _trade, 'dig': _dig,
     }
     handler = handlers.get(atype)
     if not handler:
@@ -445,6 +482,9 @@ def _join(table, sid, user_id, username, payload):
     starter = payload.get('starter')
     if starter not in data.STARTERS:
         return _err('Pick a starter: pest, kraul, saproling, or spore.')
+    home = payload.get('home', data.DEFAULT_BIOME)
+    if home not in data.BIOMES:
+        return _err('Pick a home biome: ' + ', '.join(data.BIOMES) + '.')
 
     perm = _get_perm(table, user_id)
     seals_before = perm.get('seals', 0)
@@ -467,9 +507,11 @@ def _join(table, sid, user_id, username, payload):
         'hp': s['hp'], 'maxHp': s['hp'],
         'atk': s['atk'], 'def': s['def'], 'spd': s['spd'],
         'hpUpdatedAt': _now(),
-        'position': data.GATE_NODE,
+        'position': data.HOME_GATES[home],
+        'homeBiome': home,
         'rolls': data.JOIN_ROLLS + min(seals_before, data.SEAL_BONUS_CAP),
-        'spores': 0, 'bag': [], 'gear': {}, 'stance': 'fight',
+        'spores': 15 if home == 'city' else 0,  # City Rat hatch perk
+        'bag': [], 'gear': {}, 'stance': 'fight',
         'pendingMove': None, 'buffs': [],
         'lastFinishedClaim': None, 'taughtClaims': 0, 'pokesReceived': 0,
         'pvpWins': 0, 'wildWins': 0, 'composts': 0, 'bossDamage': 0,
@@ -479,8 +521,10 @@ def _join(table, sid, user_id, username, payload):
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
+    biome = data.BIOMES[home]
     _event(table, sid, 'hatch',
-           f"{doc['username']}'s egg cracks open — a {s['name']} skitters out!",
+           f"{doc['username']}'s egg cracks open in {biome['name']} — "
+           f"a {s['name']} skitters out! ({biome['perkName']}: {biome['perkBlurb']})",
            actor=user_id)
     return _ok(doc)
 
@@ -523,7 +567,7 @@ def _claim(table, sid, doc, payload):
 # ── Roll & move ──────────────────────────────────────────────────────────────
 
 def _roll(table, sid, doc, payload):
-    if doc.get('rolls', 0) < 1:
+    if not data.UNLIMITED_ROLLS and doc.get('rolls', 0) < 1:
         return _err('No rolls banked. Finish a board game to earn more!', 409)
     if doc.get('pendingMove'):
         return _err('You already rolled — pick a destination.', 409)
@@ -539,11 +583,13 @@ def _roll(table, sid, doc, payload):
         value = (value + 1) // 2
         doc['buffs'] = [b for b in doc['buffs'] if b.get('kind') != 'vines']
 
-    dests = engine.legal_destinations(data.MAP_NODES, doc['position'], value)
+    dests = engine.legal_destinations(data.MAP_NODES, doc['position'], value,
+                                      _closed_barriers(table, sid))
     if not dests:
         # Dead-end corner case: refund the roll, let them try again.
         return _err('The tunnels shift — no path fits that roll. Try again.', 409)
-    doc['rolls'] -= 1
+    if not data.UNLIMITED_ROLLS:
+        doc['rolls'] -= 1
     doc['pendingMove'] = {'value': value, 'dests': sorted(dests)}
     conflict = _save_or_conflict(table, doc)
     if conflict:
@@ -611,6 +657,8 @@ def _resolve_space(table, sid, doc, node, prev):
         amount = _rng.choice([8, 8, 9, 9, 10, 10, 11, 12, 13, 15])
         if 'scrounger' in _passives(doc):
             amount += 2
+        if doc.get('homeBiome') == 'garden':
+            amount += 2  # Composter hatch perk
         doc['spores'] = doc.get('spores', 0) + amount
         return {'type': 'loot', 'text': f'You forage {amount} Spores from the rot.', 'spores': amount}
 
@@ -625,7 +673,12 @@ def _resolve_space(table, sid, doc, node, prev):
 
     if ntype == 'warp':
         if _rng.random() < 0.20:
-            dest = _rng.choice([n for n in data.MAP_NODES if n not in (node, data.BOSS_NODE)])
+            # Never wild-warp someone past a sealed barrier or into a POI.
+            no_go = {'boss', 'barrier', 'lair', 'vault'}
+            options = [n for n, nd in data.MAP_NODES.items()
+                       if n != node and nd['type'] not in no_go
+                       and nd.get('region') != 'ruin']
+            dest = _rng.choice(options)
             doc['position'] = dest
             return {'type': 'wild_warp', 'text': 'The mushroom convulses — a WILD warp!',
                     'to': dest}
@@ -639,19 +692,47 @@ def _resolve_space(table, sid, doc, node, prev):
         return {'type': 'gate', 'text': 'The Gate of the Swarm mends you fully.'}
 
     if ntype == 'boss':
-        doc['position'] = prev if prev in data.MAP_NODES[node]['neighbors'] else 'isl_ossuary'
-        return {'type': 'boss_sealed',
-                'text': 'The lair is sealed by ancient rot-wards. Something vast breathes beyond… (bounced back)'}
+        return _boss(table, sid, doc, node, prev)
 
     if ntype == 'shop':
-        return {'type': 'shop', 'text': 'The Rot-Farm Bazaar creaks open.',
-                'shopTier': data.SHOP_TIERS.get(node, 1)}
+        return {'type': 'shop', 'text': 'The Rot-Farm Bazaar creaks open.'}
+
+    if ntype == 'trading_post':
+        return {'type': 'trading_post', 'node': node,
+                'text': 'A crooked stall of swapped oddments. Leave one, take one.',
+                'stock': _trading_post_stock(table, sid, node)}
+
+    if ntype == 'excavation':
+        doc['excavationDigsLeft'] = data.EXCAVATION_DIGS_PER_VISIT
+        rec = _get(table, _season_pk(sid), f'SITE#{node}')
+        return {'type': 'excavation', 'node': node,
+                'text': 'A patch of disturbed earth, thick with buried finds. Start digging.',
+                'grid': _dig_view(rec), 'digsLeft': data.EXCAVATION_DIGS_PER_VISIT}
 
     if ntype == 'shrine':
         return {'type': 'shrine', 'text': 'A shrine of candles and bone. The swarm listens.'}
 
     if ntype == 'ossuary':
+        # Fresh landing refills the visit's dice — three rolls, then the
+        # bouncer waves you off until you land here again.
+        doc['ossuaryRollsLeft'] = data.OSSUARY_ROLLS_PER_VISIT
         return {'type': 'ossuary', 'text': 'The Ossuary. Dice clatter in the dark.'}
+
+    if ntype == 'barrier':
+        return _barrier(table, sid, doc, node)
+
+    if ntype == 'lair':
+        return _lair(table, sid, doc, node)
+
+    if ntype == 'vault':
+        return _vault(table, sid, doc)
+
+    if ntype == 'ladder':
+        where = 'down into the Broodwarrens' if node == 'ladder_top' \
+            else 'back up to the Undercity'
+        return {'type': 'ladder',
+                'text': f'A rusted ladder bolted into the rock leads {where}. '
+                        'Your next roll can carry you through.'}
 
     return {'type': ntype, 'text': '…'}
 
@@ -731,16 +812,23 @@ def _mystery(table, sid, doc):
 
 
 def _hazard(table, sid, doc):
+    # Mirefoot hatch perk: bog natives shrug off half of any hazard's cost.
+    mire = doc.get('homeBiome') == 'bog'
     kind = _rng.choice(['swamp_gas', 'vines', 'spore_cloud'])
     if kind == 'swamp_gas':
         lost = min(doc.get('spores', 0), _rng.randint(1, 10))
+        if mire:
+            lost //= 2
         doc['spores'] = doc.get('spores', 0) - lost
         return {'type': 'hazard', 'text': f'Swamp gas! You drop {lost} Spores in the scramble.',
                 'spores': -lost}
     if kind == 'vines':
+        if mire:
+            return {'type': 'hazard',
+                    'text': 'Grasping vines slide off your mire-slick hide. (Mirefoot)'}
         doc.setdefault('buffs', []).append({'kind': 'vines'})
         return {'type': 'hazard', 'text': 'Grasping vines coil around you — your next roll is halved.'}
-    dmg = round(doc['hp'] * 0.15)
+    dmg = round(doc['hp'] * (0.075 if mire else 0.15))
     doc['hp'] = max(1, doc['hp'] - dmg)
     return {'type': 'hazard', 'text': f'A choking spore cloud! You lose {dmg} HP.', 'hp': -dmg}
 
@@ -748,9 +836,16 @@ def _hazard(table, sid, doc):
 # ── Battles ──────────────────────────────────────────────────────────────────
 
 def _wild_battle(table, sid, doc):
-    npc = engine.pick_npc(doc.get('level', 1), _rng)
+    biome = data.dungeon_biome(doc.get('position', ''))
+    if biome:
+        # Dungeon fauna: each pocket spawns its own themed wild.
+        npc = engine.npc_from_spec(data.DUNGEON_NPCS[biome], doc.get('level', 1))
+    else:
+        npc = engine.pick_npc(doc.get('level', 1), _rng)
     player_c = _combatant(doc)
     player_c.stance = 'fight'  # attacker's stance never applies to their own attack
+    if doc.get('homeBiome') == 'bone':
+        player_c.dfn += 2  # Marrowborn hatch perk: bone plates vs wilds
     npc_c = engine.Combatant(name=npc['name'], hp=npc['hp'], max_hp=npc['hp'],
                              atk=npc['atk'], dfn=npc['def'], spd=npc['spd'])
     result = engine.resolve_battle(player_c, npc_c, _rng)
@@ -763,8 +858,11 @@ def _wild_battle(table, sid, doc):
         bounty = npc['bounty'] + (2 if 'scrounger' in _passives(doc) else 0)
         doc['spores'] = doc.get('spores', 0) + bounty
         doc['wildWins'] = doc.get('wildWins', 0) + 1
-        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_win'])
+        levels = _grant_xp(table, sid, doc, data.XP_REWARDS['wild_win'])
         out['spores'] = bounty
+        out['xp'] = data.XP_REWARDS['wild_win']
+        if levels:
+            out['levels'] = levels
         if npc['itemChance'] and _rng.random() < npc['itemChance']:
             item = _give_consumable(doc)
             if item:
@@ -780,6 +878,195 @@ def _wild_battle(table, sid, doc):
         _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
         out['text'] = f"You and the {npc['name']} circle each other and part ways."
     return out
+
+
+def _fixed_battle(table, sid, doc, foe):
+    """Battle a fixed-stat foe (guardian/mini-boss). Returns (result, npc)."""
+    player_c = _combatant(doc)
+    player_c.stance = 'fight'  # attacker's stance never applies to their own attack
+    npc_c = engine.Combatant(name=foe['name'], hp=foe['hp'], max_hp=foe['hp'],
+                             atk=foe['atk'], dfn=foe['def'], spd=foe['spd'])
+    result = engine.resolve_battle(player_c, npc_c, _rng)
+    doc['hp'] = result['attackerHp']
+    doc['hpUpdatedAt'] = _now()
+    _consume_one_battle_buffs(doc)
+    npc = {'id': foe['id'], 'name': foe['name'], 'hp': foe['hp'],
+           'atk': foe['atk'], 'def': foe['def'], 'spd': foe['spd'],
+           'bounty': foe.get('bounty', 0)}
+    return result, npc
+
+
+def _barrier(table, sid, doc, node):
+    if node in _open_barriers(table, sid):
+        return {'type': 'barrier_open',
+                'text': 'The shattered barricade lies in rubble. The way stands open.'}
+    g = data.BARRIER_GUARDIANS[node]
+    result, npc = _fixed_battle(table, sid, doc, g)
+    out = {'type': 'barrier', 'npc': npc, 'battle': result}
+    if result['outcome'] == 'attacker':
+        _open_barrier(table, sid, node)
+        doc['spores'] = doc.get('spores', 0) + g['bounty']
+        claims = doc.setdefault('poiClaims', [])
+        if node not in claims:
+            claims.append(node)
+        levels = _grant_xp(table, sid, doc, g['xp'])
+        out['spores'] = g['bounty']
+        out['xp'] = g['xp']
+        if levels:
+            out['levels'] = levels
+        out['barrierOpened'] = node
+        out['text'] = (f"The {g['name']} crumbles! +{g['bounty']} Spores — "
+                       'the way beyond is open for everyone.')
+        _event(table, sid, 'barrier',
+               f"{doc['username']} shattered the {g['name']} — a new route is open to all!",
+               actor=doc['userId'])
+    elif result['outcome'] == 'defender':
+        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
+        _compost(table, sid, doc,
+                 f"{doc['username']} was crushed by the {g['name']}. The barrier holds.")
+        out['text'] = f"The {g['name']} hurls you back. The barrier holds…"
+    else:
+        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
+        out['text'] = f"You trade blows with the {g['name']}, but the barrier holds."
+    return out
+
+
+def _lair(table, sid, doc, node):
+    b = data.LAIR_BOSSES[node]
+    result, npc = _fixed_battle(table, sid, doc, b)
+    out = {'type': 'lair', 'npc': npc, 'battle': result}
+    if result['outcome'] == 'attacker':
+        claims = doc.setdefault('poiClaims', [])
+        first = node not in claims
+        reward = b['first'] if first else b['repeat']
+        if first:
+            claims.append(node)
+        doc['spores'] = doc.get('spores', 0) + reward['spores']
+        doc['wildWins'] = doc.get('wildWins', 0) + 1
+        levels = _grant_xp(table, sid, doc, reward['xp'])
+        out['spores'] = reward['spores']
+        out['xp'] = reward['xp']
+        if levels:
+            out['levels'] = levels
+        sigil_biome = data.SIGIL_LAIRS.get(node)
+        if first and sigil_biome:
+            have = len([c for c in claims if c in data.SIGIL_LAIRS])
+            biome_name = data.BIOMES[sigil_biome]['name']
+            out['sigil'] = sigil_biome
+            out['text'] = (f"The {b['name']} falls! +{reward['spores']} Spores — "
+                           f"you claim the {biome_name} Guild Sigil! "
+                           f"({have}/{data.SIGILS_REQUIRED} unlocks the island)")
+            _event(table, sid, 'sigil',
+                   f"{doc['username']} cleared the {biome_name} dungeon and claimed "
+                   f"its Guild Sigil ({have}/{data.SIGILS_REQUIRED})!",
+                   actor=doc['userId'])
+        else:
+            out['text'] = (f"The {b['name']} falls! +{reward['spores']} Spores."
+                           + (' A legendary first kill!' if first else ''))
+            if first:
+                _event(table, sid, 'lair',
+                       f"{doc['username']} slew the {b['name']}!", actor=doc['userId'])
+    elif result['outcome'] == 'defender':
+        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
+        _compost(table, sid, doc,
+                 f"{doc['username']} was devoured by the {b['name']}.")
+        out['text'] = f"The {b['name']} is too much. Back to the Gate…"
+    else:
+        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
+        out['text'] = f"The {b['name']} withdraws into the dark. It will be waiting."
+    return out
+
+
+def _sigil_count(doc):
+    return len([c for c in (doc.get('poiClaims') or []) if c in data.SIGIL_LAIRS])
+
+
+def _boss_hp(table, sid):
+    item = _get(table, _season_pk(sid), 'BOSS')
+    return int((item or {}).get('hp', data.ROT_SOVEREIGN['hp']))
+
+
+def _set_boss_hp(table, sid, hp):
+    table.put_item(Item={'pk': _season_pk(sid), 'sk': 'BOSS', 'hp': hp})
+
+
+def _boss(table, sid, doc, node, prev):
+    """
+    The Rot Sovereign: unsealed per-player at SIGILS_REQUIRED Guild Sigils,
+    with one persistent HP pool for the season. Anyone qualified can chip at
+    it across fights; whoever lands the killing blow takes the kill, then the
+    Sovereign reforms at full strength.
+    """
+    sigils = _sigil_count(doc)
+    if sigils < data.SIGILS_REQUIRED:
+        doc['position'] = prev if prev in data.MAP_NODES[node]['neighbors'] else 'isl_ossuary'
+        missing = data.SIGILS_REQUIRED - sigils
+        return {'type': 'boss_sealed',
+                'text': f'The rot-wards hurl you back. The Sovereign demands tribute: '
+                        f'{missing} more Guild Sigil{"s" if missing != 1 else ""}. '
+                        f'({sigils}/{data.SIGILS_REQUIRED})'}
+
+    boss = data.ROT_SOVEREIGN
+    hp_before = _boss_hp(table, sid)
+    foe = dict(boss, hp=hp_before)
+    result, npc = _fixed_battle(table, sid, doc, foe)
+    npc['maxHp'] = boss['hp']
+    out = {'type': 'boss', 'npc': npc, 'battle': result}
+
+    dealt = max(0, hp_before - result['defenderHp'])
+    doc['bossDamage'] = doc.get('bossDamage', 0) + dealt
+
+    if result['outcome'] == 'attacker':
+        _set_boss_hp(table, sid, boss['hp'])  # it reforms for the next challenger
+        claims = doc.setdefault('poiClaims', [])
+        first = 'boss' not in claims
+        reward = boss['first'] if first else boss['repeat']
+        if first:
+            claims.append('boss')
+        doc['spores'] = doc.get('spores', 0) + reward['spores']
+        levels = _grant_xp(table, sid, doc, reward['xp'])
+        out['spores'] = reward['spores']
+        out['xp'] = reward['xp']
+        if levels:
+            out['levels'] = levels
+        out['text'] = (f'THE ROT SOVEREIGN FALLS! +{reward["spores"]} Spores. '
+                       'Its husk collapses — and already the rot begins to knit anew…')
+        _event(table, sid, 'boss',
+               f"{doc['username']} struck down THE ROT SOVEREIGN! "
+               'The island trembles as it reforms.', actor=doc['userId'])
+    elif result['outcome'] == 'defender':
+        _set_boss_hp(table, sid, result['defenderHp'])
+        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
+        _compost(table, sid, doc,
+                 f"{doc['username']} fell to the Rot Sovereign "
+                 f'(it lingers at {result["defenderHp"]} HP — finish it!)')
+        out['text'] = (f'The Sovereign grinds you into the mulch — but your blows told: '
+                       f'it lingers at {result["defenderHp"]}/{boss["hp"]} HP.')
+    else:
+        _set_boss_hp(table, sid, result['defenderHp'])
+        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
+        out['text'] = (f'You withdraw, bleeding. The Sovereign seethes at '
+                       f'{result["defenderHp"]}/{boss["hp"]} HP.')
+        if dealt > 0:
+            _event(table, sid, 'boss',
+                   f"{doc['username']} wounded the Rot Sovereign — "
+                   f'{result["defenderHp"]}/{boss["hp"]} HP remains!', actor=doc['userId'])
+    return out
+
+
+def _vault(table, sid, doc):
+    claims = doc.setdefault('poiClaims', [])
+    if 'vault' in claims:
+        return {'type': 'vault',
+                'text': 'The vault stands looted bare — by you, last time.'}
+    claims.append('vault')
+    r = data.VAULT_REWARD
+    doc['spores'] = doc.get('spores', 0) + r['spores']
+    _grant_xp(table, sid, doc, r['xp'])
+    _event(table, sid, 'vault',
+           f"{doc['username']} plundered the Sunken Vault!", actor=doc['userId'])
+    return {'type': 'vault', 'spores': r['spores'],
+            'text': f"The hoard of the Erstwhile! +{r['spores']} Spores."}
 
 
 def _battle(table, sid, doc, payload):
@@ -835,13 +1122,20 @@ def _battle(table, sid, doc, payload):
         loser['spores'] = max(0, loser.get('spores', 0) - stolen)
         winner['spores'] = winner.get('spores', 0) + stolen
         winner['pvpWins'] = winner.get('pvpWins', 0) + 1
-        _grant_xp(table, sid, winner, data.XP_REWARDS['pvp_win'])
-        _grant_xp(table, sid, loser, data.XP_REWARDS['pvp_loss'])
+        win_levels = _grant_xp(table, sid, winner, data.XP_REWARDS['pvp_win'])
+        lose_levels = _grant_xp(table, sid, loser, data.XP_REWARDS['pvp_loss'])
         _compost(table, sid, loser,
                  f"{loser['username']}'s {_form_name(loser)} was composted by "
                  f"{winner['username']}'s {_form_name(winner)}. The swarm remembers.")
         out['stolen'] = stolen
         out['winner'] = winner['userId']
+        # Reward deltas for the acting player's victory popup.
+        out['xp'] = data.XP_REWARDS['pvp_win'] if winner is doc else data.XP_REWARDS['pvp_loss']
+        doc_levels = win_levels if winner is doc else lose_levels
+        if doc_levels:
+            out['levels'] = doc_levels
+        if winner is doc:
+            out['spores'] = stolen
         out['text'] = (f"You compost {target['username']} and loot {stolen} Spores!"
                        if winner is doc else
                        f"{target['username']} composts you and shakes {stolen} Spores loose…")
@@ -925,12 +1219,9 @@ def _buy(table, sid, doc, payload):
     if data.MAP_NODES.get(node, {}).get('type') != 'shop':
         return _err('You are not at a shop.', 409)
     item_id = payload.get('itemId')
-    shop_tier = data.SHOP_TIERS.get(node, 1)
 
     if item_id in data.GEAR:
         g = data.GEAR[item_id]
-        if g['tier'] > shop_tier:
-            return _err('This bazaar does not stock that tier.', 409)
         cost = g['cost']
         old_id = (doc.get('gear') or {}).get(g['slot'])
         refund = int(data.GEAR[old_id]['cost'] * data.GEAR_SELL_BACK) if old_id else 0
@@ -955,6 +1246,235 @@ def _buy(table, sid, doc, payload):
     if conflict:
         return conflict
     return _ok(doc, text=text)
+
+
+# ── Trading post ─────────────────────────────────────────────────────────────
+
+def _seed_stock():
+    """House stock a post opens with, tagged so it reads as the game's own."""
+    return [{'item': i, 'foundBy': 'the Swarm'} for i in data.TRADING_POST_SEED]
+
+
+def _trading_post_stock(table, sid, node):
+    rec = _get(table, _season_pk(sid), f'POST#{node}')
+    if rec and rec.get('stock'):
+        return rec['stock']
+    return _seed_stock()
+
+
+def _save_trading_post(table, sid, node, stock):
+    table.put_item(Item={'pk': _season_pk(sid), 'sk': f'POST#{node}', 'stock': stock})
+
+
+def _trade(table, sid, doc, payload):
+    """Swap one bag consumable for one of the post's 3 stock items. The item
+    you leave becomes the next visitor's stock, tagged with your name."""
+    node = doc.get('position')
+    if data.MAP_NODES.get(node, {}).get('type') != 'trading_post':
+        return _err('You are not at a trading post.', 409)
+    give = payload.get('give')
+    take_index = payload.get('takeIndex')
+    bag = doc.get('bag') or []
+    if give not in data.CONSUMABLES:
+        return _err('Unknown item.')
+    if give not in bag:
+        return _err("You don't have that item to trade.", 409)
+    stock = _trading_post_stock(table, sid, node)
+    if not isinstance(take_index, int) or not (0 <= take_index < len(stock)):
+        return _err('Pick something to take.', 409)
+
+    taken = stock[take_index]
+    bag = list(bag)
+    bag.remove(give)               # give one…
+    bag.append(taken['item'])      # …take one (net bag size unchanged)
+    doc['bag'] = bag
+    stock = list(stock)
+    stock[take_index] = {'item': give, 'foundBy': doc.get('username', 'someone')}
+
+    conflict = _save_or_conflict(table, doc)  # guard the player write first
+    if conflict:
+        return conflict
+    _save_trading_post(table, sid, node, stock)  # then the shared stock
+
+    give_name = data.CONSUMABLES[give]['name']
+    take_name = data.CONSUMABLES[taken['item']]['name']
+    _event(table, sid, 'trade',
+           f"{doc['username']} traded a {give_name} for {take_name} "
+           f"(left by {taken['foundBy']}) at the trading post.", actor=doc['userId'])
+    return _ok(doc, text=f"You leave your {give_name} and take {take_name} "
+               f"(found by {taken['foundBy']}).", node=node, stock=stock)
+
+
+# ── Excavation dig sites ──────────────────────────────────────────────────────
+
+# Masked client cell codes; revealed item cells report their item index (>= 0).
+_DIG_COVERED = -2
+_DIG_EMPTY = -1
+
+
+def _shape_cells(shape, w, h):
+    """Random in-bounds footprint for a shape, as a list of (r, c)."""
+    if shape == '2x2':
+        r, c = _rng.randint(0, h - 2), _rng.randint(0, w - 2)
+        return [(r, c), (r, c + 1), (r + 1, c), (r + 1, c + 1)]
+    if shape == '1x2':
+        if _rng.random() < 0.5:  # horizontal
+            r, c = _rng.randint(0, h - 1), _rng.randint(0, w - 2)
+            return [(r, c), (r, c + 1)]
+        r, c = _rng.randint(0, h - 2), _rng.randint(0, w - 1)  # vertical
+        return [(r, c), (r + 1, c)]
+    return [(_rng.randint(0, h - 1), _rng.randint(0, w - 1))]  # 1x1
+
+
+def _roll_dig_loot(shape):
+    """Loot scales with footprint — bigger digs are worth more."""
+    if shape == '1x1':
+        if _rng.random() < 0.7:
+            return {'kind': 'spores', 'spores': _rng.randint(8, 15)}
+        return {'kind': 'item', 'item': _rng.choice(['healing_moss', 'snare'])}
+    if shape == '1x2':
+        return {'kind': 'item', 'item': _rng.choice(list(data.CONSUMABLES))}
+    if _rng.random() < 0.5:  # 2x2
+        return {'kind': 'item', 'item': _rng.choice(['loaded_die', 'smoke_spore'])}
+    return {'kind': 'spores', 'spores': _rng.randint(30, 50)}
+
+
+def _gen_dig_grid():
+    """Fresh site: the configured items placed non-overlapping on the grid."""
+    w, h = data.EXCAVATION_GRID
+    occupied, items = set(), []
+    for shape in data.EXCAVATION_ITEMS:
+        cells = None
+        for _ in range(200):
+            cand = _shape_cells(shape, w, h)
+            if not any(cc in occupied for cc in cand):
+                cells = cand
+                break
+        if cells is None:
+            continue  # pathologically unlucky; site just gets fewer items
+        occupied.update(cells)
+        items.append({'shape': shape, 'cells': [[r, c] for r, c in cells],
+                      'loot': _roll_dig_loot(shape), 'collected': False, 'by': None})
+    return {'w': w, 'h': h, 'items': items, 'revealed': []}
+
+
+def _dig_site(table, sid, node):
+    """Shared site record, lazily generated + persisted on the first ever dig."""
+    rec = _get(table, _season_pk(sid), f'SITE#{node}')
+    if rec and rec.get('items'):
+        return rec
+    site = _gen_dig_grid()
+    _save_dig_site(table, sid, node, site)
+    return site
+
+
+def _save_dig_site(table, sid, node, site):
+    table.put_item(Item={'pk': _season_pk(sid), 'sk': f'SITE#{node}', **site})
+
+
+def _dig_view(rec):
+    """Masked view for the client: covered cells never leak item positions."""
+    w, h = data.EXCAVATION_GRID
+    if not rec or not rec.get('items'):
+        return {'w': w, 'h': h, 'cells': [[_DIG_COVERED] * w for _ in range(h)],
+                'items': [], 'remaining': len(data.EXCAVATION_ITEMS)}
+    w, h = rec['w'], rec['h']
+    revealed = set(rec.get('revealed') or [])
+    cell_item = {}
+    for idx, it in enumerate(rec['items']):
+        for r, c in it['cells']:
+            cell_item[(r, c)] = idx
+    cells = []
+    for r in range(h):
+        row = []
+        for c in range(w):
+            row.append(cell_item.get((r, c), _DIG_EMPTY) if f'{r},{c}' in revealed
+                       else _DIG_COVERED)
+        cells.append(row)
+    items = [{'idx': idx, 'shape': it['shape'], 'collected': it['collected'], 'by': it['by']}
+             for idx, it in enumerate(rec['items'])]
+    return {'w': w, 'h': h, 'cells': cells, 'items': items,
+            'remaining': sum(1 for it in rec['items'] if not it['collected'])}
+
+
+def _award_dig_loot(doc, loot):
+    if loot['kind'] == 'spores':
+        doc['spores'] = doc.get('spores', 0) + loot['spores']
+        return {'kind': 'spores', 'spores': loot['spores']}
+    item_id = loot['item']
+    if len(doc.get('bag') or []) >= data.BAG_SIZE:
+        doc['spores'] = doc.get('spores', 0) + 5  # bag full → salvage for Spores
+        return {'kind': 'spores', 'spores': 5, 'bagFull': True, 'item': item_id}
+    doc.setdefault('bag', []).append(item_id)
+    return {'kind': 'item', 'item': item_id}
+
+
+def _dig_text(found, cleared, bonus):
+    if not found:
+        parts = ['Rubble and grit — nothing buried here.']
+    elif found['kind'] == 'spores' and found.get('bagFull'):
+        parts = [f"You unearth a {data.CONSUMABLES[found['item']]['name']}, but your bag is full — "
+                 f"you salvage it for {found['spores']} Spores."]
+    elif found['kind'] == 'spores':
+        parts = [f"You dig up a cache of {found['spores']} Spores!"]
+    else:
+        parts = [f"You unearth a {data.CONSUMABLES[found['item']]['name']}!"]
+    if cleared:
+        parts.append(f'The site is picked clean — +{bonus} Spore bonus, and the rubble resettles.')
+    return ' '.join(parts)
+
+
+def _dig(table, sid, doc, payload):
+    """Reveal one cell of the shared dig site; collect any item it completes."""
+    node = doc.get('position')
+    if data.MAP_NODES.get(node, {}).get('type') != 'excavation':
+        return _err('You are not at a dig site.', 409)
+    if doc.get('excavationDigsLeft', 0) < 1:
+        return _err('Out of digs — come back next time you land here.', 409)
+    site = _dig_site(table, sid, node)
+    w, h = site['w'], site['h']
+    r, c = payload.get('r'), payload.get('c')
+    if not (isinstance(r, int) and isinstance(c, int) and 0 <= r < h and 0 <= c < w):
+        return _err('Dig where?', 409)
+    key = f'{r},{c}'
+    revealed = set(site.get('revealed') or [])
+    if key in revealed:
+        return _err('You have already cleared that spot.', 409)
+    revealed.add(key)
+    site['revealed'] = sorted(revealed)
+    doc['excavationDigsLeft'] = doc.get('excavationDigsLeft', 0) - 1
+
+    found = None
+    for it in site['items']:
+        if it['collected']:
+            continue
+        cellset = {f'{cr},{cc}' for cr, cc in it['cells']}
+        if key in cellset and cellset <= revealed:
+            it['collected'] = True
+            it['by'] = doc.get('username', 'someone')
+            found = _award_dig_loot(doc, it['loot'])
+            break
+
+    cleared = all(it['collected'] for it in site['items'])
+    bonus = 0
+    if cleared:
+        bonus = data.EXCAVATION_CLEAR_BONUS
+        doc['spores'] = doc.get('spores', 0) + bonus
+        site = _gen_dig_grid()  # reset for the next digger
+
+    conflict = _save_or_conflict(table, doc)  # guard the player write first
+    if conflict:
+        return conflict
+    _save_dig_site(table, sid, node, site)
+
+    if cleared:
+        _event(table, sid, 'excavation',
+               f"{doc['username']} unearthed the last relic at a dig site (+{bonus} Spores)! "
+               'Fresh finds lie buried anew.', actor=doc['userId'])
+
+    return _ok(doc, node=node, grid=_dig_view(site), digsLeft=doc['excavationDigsLeft'],
+               found=found, cleared=cleared, bonus=(bonus if cleared else None),
+               text=_dig_text(found, cleared, bonus))
 
 
 def _use_item(table, sid, doc, payload):
@@ -1054,15 +1574,27 @@ def _gamble(table, sid, doc, payload):
         return _err('Not enough Spores.', 409)
     if call not in ('high', 'low'):
         return _err('Call high (4–6) or low (1–3).')
+    # Three rolls per visit. Missing key = a player already parked here before
+    # this rule existed — grandfather them a fresh set.
+    left = doc.get('ossuaryRollsLeft')
+    if left is None:
+        left = data.OSSUARY_ROLLS_PER_VISIT
+    if left <= 0:
+        return _err("You've had your three rolls. The bouncer won't seat you "
+                    'again until you land at the Ossuary anew.', 409)
     die = _rng.randint(1, 6)
     won = (die >= 4) == (call == 'high')
     doc['spores'] += bet if won else -bet
+    left -= 1
+    doc['ossuaryRollsLeft'] = left
+    tail = (f' {left} roll{"s" if left != 1 else ""} left.' if left > 0
+            else ' That was your last roll — the table is closed.')
     text = (f'The die shows {die} — you win {bet} Spores!' if won
-            else f'The die shows {die} — the Ossuary keeps your {bet} Spores.')
+            else f'The die shows {die} — the Ossuary keeps your {bet} Spores.') + tail
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
-    return _ok(doc, gamble={'die': die, 'won': won}, text=text)
+    return _ok(doc, gamble={'die': die, 'won': won, 'rollsLeft': left}, text=text)
 
 
 # ── Social ───────────────────────────────────────────────────────────────────

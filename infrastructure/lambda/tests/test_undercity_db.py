@@ -73,11 +73,13 @@ def table():
     return t
 
 
-def test_full_join_roll_move_flow(table):
-    status, resp = act(table, 'join', starter='saproling')
+def test_full_join_roll_move_flow(table, monkeypatch):
+    monkeypatch.setattr(data, 'UNLIMITED_ROLLS', False)  # assert the real roll economy
+    status, resp = act(table, 'join', starter='saproling', home='cavern')
     assert status == 200
     you = resp['you']
-    assert you['hp'] == 38 and you['position'] == 'n0' and you['rolls'] == 3
+    assert you['hp'] == 38 and you['position'] == 'cavern_r0' and you['rolls'] == 3
+    assert you['homeBiome'] == 'cavern'
     assert you['passives'] == ['regrowth']
 
     status, resp = act(table, 'roll')
@@ -99,6 +101,22 @@ def test_full_join_roll_move_flow(table):
     assert state['you']['userId'] == 'user-alex'
     assert any(e['type'] == 'hatch' for e in state['events'])
     assert state['wardrobe']['seals'] == 1
+
+
+def test_wild_win_surfaces_rewards(table, monkeypatch):
+    # The victory popup depends on the win event carrying spores + xp (+ levels).
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
+        'outcome': 'attacker', 'strikes': [], 'attackerHp': doc['hp'],
+        'defenderHp': 0, 'smokeSporeUsed': False,
+    })
+    out = db._wild_battle(table, sid, doc)
+    assert out['type'] == 'wild'
+    assert out['spores'] >= 1                       # bounty
+    assert out['xp'] == data.XP_REWARDS['wild_win']  # surfaced for the popup
+    assert 'levels' not in out                       # 15 xp < first level-up cost
 
 
 def test_join_is_idempotent_and_seal_rolls(table):
@@ -125,7 +143,7 @@ def test_move_requires_matching_pending(table):
 
 
 def test_claims_and_cooldowns(table):
-    act(table, 'join', starter='pest')
+    act(table, 'join', starter='pest', home='cavern')
     status, resp = act(table, 'claim', kind='finished_won')
     assert status == 200
     assert resp['you']['rolls'] == 6 and resp['you']['spores'] == 10
@@ -140,19 +158,19 @@ def test_claims_and_cooldowns(table):
 
 
 def test_roll_cap_reports_lost(table):
-    act(table, 'join', starter='pest')
+    act(table, 'join', starter='pest', home='cavern')
     status, resp = act(table, 'claim', kind='finished_won')  # 3 + 3 = 6 (cap)
     assert resp['you']['rolls'] == 6
     assert resp['granted'] == 3 and resp['lostToCap'] == 0
 
 
 def test_pvp_battle_and_compost(table):
-    act(table, 'join', starter='kraul')
-    act(table, 'join', user='user-sam', name='Sam', starter='saproling')
+    act(table, 'join', starter='kraul', home='cavern')
+    act(table, 'join', user='user-sam', name='Sam', starter='saproling', home='cavern')
     # Put both on the same node and make Sam nearly dead.
     alex = db._get_player(table, _sid(table), 'user-alex')
     sam = db._get_player(table, _sid(table), 'user-sam')
-    alex['position'] = sam['position'] = 'n5'
+    alex['position'] = sam['position'] = 'city_r2'
     alex['atk'] = 50
     sam['hp'] = 5
     sam['spores'] = 100
@@ -167,13 +185,13 @@ def test_pvp_battle_and_compost(table):
     assert resp['you']['pvpWins'] == 1
 
     sam = db._get_player(table, _sid(table), 'user-sam')
-    assert sam['position'] == 'n0'           # composted → gate
+    assert sam['position'] == 'cavern_r0'    # composted → home gate
     assert sam['shieldUntil'] > db._now()    # compost shield
     assert sam['spores'] == 75
 
     # Shielded player can't be attacked again.
     alex = db._get_player(table, _sid(table), 'user-alex')
-    alex['position'] = 'n0'
+    alex['position'] = 'city_r2'
     db._put_player(table, alex)
     status, resp = act(table, 'battle', targetUserId='user-sam')
     assert status == 409
@@ -189,11 +207,37 @@ def test_shop_shrine_gamble_guards(table):
     assert status == 409
 
 
+def test_ossuary_three_rolls_then_locked(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    oss = next(n for n, v in data.MAP_NODES.items() if v['type'] == 'ossuary')
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = oss
+    doc['spores'] = 500
+    doc['ossuaryRollsLeft'] = data.OSSUARY_ROLLS_PER_VISIT
+    db._put_player(table, doc)
+
+    for expect_left in (2, 1, 0):
+        status, resp = act(table, 'gamble', bet=5, call='high')
+        assert status == 200
+        assert resp['gamble']['rollsLeft'] == expect_left
+
+    # Fourth attempt is refused until you land here again.
+    status, resp = act(table, 'gamble', bet=5, call='high')
+    assert status == 409
+
+    # Landing on the Ossuary refills the visit.
+    doc = db._get_player(table, sid, 'user-alex')
+    ev = db._resolve_space(table, sid, doc, oss, oss)
+    assert ev['type'] == 'ossuary'
+    assert doc['ossuaryRollsLeft'] == data.OSSUARY_ROLLS_PER_VISIT
+
+
 def test_buy_gear_and_consumables(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'a2'  # tier-3 bazaar
+    doc['position'] = 'bog_r3'  # a Rot-Farm Bazaar (every shop stocks all tiers)
     doc['spores'] = 200
     db._put_player(table, doc)
 
@@ -255,7 +299,7 @@ def test_snare_plant_and_trigger(table):
     sid = _sid(table)
     alex = db._get_player(table, sid, 'user-alex')
     alex['bag'] = ['snare']
-    alex['position'] = 'n13'  # loot space
+    alex['position'] = 'city_r1'  # loot space
     db._put_player(table, alex)
     status, resp = act(table, 'use-item', item='snare')
     assert status == 200
@@ -263,11 +307,110 @@ def test_snare_plant_and_trigger(table):
     sam = db._get_player(table, sid, 'user-sam')
     sam['spores'] = 100
     db._put_player(table, sam)
-    event = db._resolve_space(table, sid, sam, 'n13', 'n12')
+    event = db._resolve_space(table, sid, sam, 'city_r1', 'city_r0')
     assert event['type'] == 'snare'
     assert sam['spores'] == 90  # spilled 20, grabbed 10 back
-    pile = db._get(table, db._season_pk(sid), 'SPACE#n13')
+    pile = db._get(table, db._season_pk(sid), 'SPACE#city_r1')
     assert pile['pile'] == 10 and not pile.get('ownerId')
+
+
+def test_trading_post_pre_seed_and_swap(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['bag'] = ['snare']
+    db._put_player(table, doc)
+
+    # Landing shows the 3 house items, all tagged "the Swarm".
+    ev = db._resolve_space(table, sid, doc, 'isl_trade', 'isl_warp')
+    assert ev['type'] == 'trading_post'
+    assert [s['item'] for s in ev['stock']] == data.TRADING_POST_SEED
+    assert all(s['foundBy'] == 'the Swarm' for s in ev['stock'])
+
+    # Swap our Snare for stock slot 0 (healing_moss).
+    status, resp = act(table, 'trade', give='snare', takeIndex=0)
+    assert status == 200
+    you = resp['you']
+    assert 'snare' not in you['bag'] and 'healing_moss' in you['bag']
+    assert len(you['bag']) == 1                              # net bag size unchanged
+    stock = resp['stock']
+    assert len(stock) == data.TRADING_POST_SIZE              # stock stays at 3
+    assert stock[0] == {'item': 'snare', 'foundBy': 'Alex'}  # tagged with our name
+
+    # A later visitor sees what we left behind.
+    ev2 = db._resolve_space(table, sid, doc, 'isl_trade', 'isl_warp')
+    assert ev2['stock'][0] == {'item': 'snare', 'foundBy': 'Alex'}
+
+
+def test_trading_post_guards(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    status, _ = act(table, 'trade', give='snare', takeIndex=0)
+    assert status == 409  # not standing at a trading post
+
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['bag'] = ['snare']
+    db._put_player(table, doc)
+    status, _ = act(table, 'trade', give='loaded_die', takeIndex=0)
+    assert status == 409  # you don't own that item
+    status, _ = act(table, 'trade', give='snare', takeIndex=9)
+    assert status == 409  # take index out of range
+
+
+def test_dig_grid_generation():
+    grid = db._gen_dig_grid()
+    assert [it['shape'] for it in grid['items']] == data.EXCAVATION_ITEMS
+    w, h = grid['w'], grid['h']
+    seen = set()
+    for it in grid['items']:
+        for r, c in it['cells']:
+            assert 0 <= r < h and 0 <= c < w          # in bounds
+            assert (r, c) not in seen                 # non-overlapping
+            seen.add((r, c))
+    assert data.MAP_NODES['bone_r1']['type'] == 'excavation'  # Ossuary Fields digs
+
+
+def test_excavation_dig_reveals_and_collects(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    # A single 1x2 relic so clearing it also exercises the reset + bonus.
+    site = {'w': 5, 'h': 5, 'revealed': [],
+            'items': [{'shape': '1x2', 'cells': [[0, 0], [0, 1]],
+                       'loot': {'kind': 'item', 'item': 'healing_moss'},
+                       'collected': False, 'by': None}]}
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'bone_r1'
+    doc['excavationDigsLeft'] = data.EXCAVATION_DIGS_PER_VISIT
+    doc['bag'] = []
+    db._put_player(table, doc)
+    db._save_dig_site(table, sid, 'bone_r1', site)
+
+    status, resp = act(table, 'dig', r=0, c=0)       # first cell — partial
+    assert status == 200 and resp['found'] is None
+    assert resp['digsLeft'] == data.EXCAVATION_DIGS_PER_VISIT - 1
+
+    status, resp = act(table, 'dig', r=0, c=1)       # completes the relic
+    assert status == 200
+    assert resp['found'] == {'kind': 'item', 'item': 'healing_moss'}
+    assert 'healing_moss' in resp['you']['bag']
+    assert resp['cleared'] is True                    # last item → reset + bonus
+    assert resp['you']['spores'] >= data.EXCAVATION_CLEAR_BONUS
+
+
+def test_excavation_guards(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    status, _ = act(table, 'dig', r=0, c=0)
+    assert status == 409  # not at a dig site
+
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'bone_r1'
+    doc['excavationDigsLeft'] = 0
+    db._put_player(table, doc)
+    status, _ = act(table, 'dig', r=0, c=0)
+    assert status == 409  # out of digs this visit
 
 
 def test_season_end_produces_standings(table):
@@ -309,3 +452,35 @@ def test_customize_validates_wardrobe(table):
 
 def _sid(table):
     return db._get(table, db.META_PK, 'CURRENT')['seasonId']
+
+
+# ── Unique dungeons (v6) ─────────────────────────────────────────────────────
+
+def _player_at(table, node, **fields):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = node
+    doc.update(fields)
+    return sid, doc
+
+
+def test_dungeon_wild_is_the_biome_fauna(table, monkeypatch):
+    sid, doc = _player_at(table, 'city_d0')  # a Broodwarrens wild space
+    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
+        'outcome': 'attacker', 'strikes': [], 'attackerHp': doc['hp'],
+        'defenderHp': 0, 'smokeSporeUsed': False,
+    })
+    out = db._wild_battle(table, sid, doc)
+    assert out['npc']['id'] == 'broodling'
+    assert out['spores'] >= data.DUNGEON_NPCS['city']['bounty']
+
+
+def test_bone_chill_consumed_by_next_battle(table, monkeypatch):
+    sid, doc = _player_at(table, 'city_r1', buffs=[{'kind': 'bone_chill'}])
+    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
+        'outcome': 'attacker', 'strikes': [], 'attackerHp': doc['hp'],
+        'defenderHp': 0, 'smokeSporeUsed': False,
+    })
+    db._wild_battle(table, sid, doc)
+    assert not any(b.get('kind') == 'bone_chill' for b in doc.get('buffs', []))
