@@ -174,10 +174,10 @@ export class BoardCanvas {
       this.layers.set(spec.id, { spec, terrain: renderTerrain(map, undefined, undefined, spec) });
     }
     this.ambient = new BoardAmbient(map);
-    // Rebuild the terrain once the per-biome floor paintings arrive — they
-    // replace the flat black with ghosted scenery that cross-fades between
-    // chambers. draw() reads this.terrain fresh each frame, so the swap is
-    // seamless; a failed load just leaves that biome's floor dark.
+    // Rebuild every layer's terrain once the per-biome floor paintings arrive —
+    // they replace the flat black with ghosted scenery that cross-fades between
+    // chambers. draw() reads this.active.terrain fresh each frame, so the swap
+    // is seamless; a failed load just leaves that biome's floor dark.
     const floorSrc: Record<string, string> = {
       city: 'undercity/undercity_background.png',
       cavern: 'undercity/cavern_background.png',
@@ -200,8 +200,8 @@ export class BoardCanvas {
     };
     const floors: FloorTextures = {};
     const landmarks: LandmarkTextures = {};
-    // Re-render with whatever art has arrived; draw() reads this.terrain fresh
-    // each frame, so each successful load pops in seamlessly.
+    // Re-render with whatever art has arrived; draw() reads this.active.terrain
+    // fresh each frame, so each successful load pops in seamlessly.
     const rebuild = () => {
       for (const spec of this.layerSpecs) {
         this.layers.set(spec.id, {
