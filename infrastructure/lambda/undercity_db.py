@@ -1509,7 +1509,26 @@ def _cast_at_player(table, sid, doc, spell_id, spell, target_id):
 
 
 def _cast_teleport(table, sid, doc, spell, to):
-    return _err('Teleport lands in a later task.', 409)
+    """Blink to a nearby node and resolve it like a normal landing. Returns
+    (cast-result, extra-response-fields) or an error tuple."""
+    if to not in data.MAP_NODES or to == doc['position']:
+        return _spell_err('No such tunnel to blink to.', 'invalid_target', 400)
+    dist = engine.board_distance(data.MAP_NODES, doc['position'], to,
+                                 spell['range'], _closed_barriers(table, sid))
+    if dist is None:
+        return _spell_err(f'Too far — {spell["name"]} reaches '
+                          f'{spell["range"]} spaces.', 'out_of_range')
+    prev = doc['position']
+    doc['pendingMove'] = None
+    doc['position'] = to
+    space_event = _resolve_space(table, sid, doc, to, prev)
+    # _resolve_space may relocate again (wild warp, spore cloud) — report where
+    # the dust actually settled.
+    occupants = _occupants(table, sid, doc['position'], doc['userId'])
+    result = {'to': doc['position'],
+              'text': f'Space folds — you re-form {dist} space'
+                      f'{"s" if dist != 1 else ""} away.'}
+    return result, {'spaceEvent': space_event, 'occupants': occupants}
 
 
 def _cast_boss_strike(table, sid, doc, spell, target):

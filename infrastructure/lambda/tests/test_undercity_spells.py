@@ -333,3 +333,62 @@ def test_victim_write_conflict_retries_once(table, monkeypatch):
     assert status == 200
     sam = db._get_player(table, _sid(table), 'user-sam')
     assert sam['hp'] == 38 - 8                                 # saproling took the bolt
+
+
+# ── cast: traversal spells ───────────────────────────────────────────────────
+
+def test_teleport_moves_and_resolves_space(table):
+    act(table, 'join', starter='pest', home='city')
+    give_book(table, 'user-alex', 'vagrants_chapbook')          # skitter_step, range 3
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    start = doc['position']
+    # Any real node exactly 1 step away.
+    dest = data.MAP_NODES[start]['neighbors'][0]
+    status, resp = act(table, 'cast', spellId='skitter_step', source='grimoire',
+                       target=dest)
+    assert status == 200
+    assert resp['spaceEvent']['type']                            # space resolved
+    assert 'occupants' in resp
+    assert resp['you']['pendingMove'] is None
+
+
+def test_teleport_range_and_bogus_node(table):
+    act(table, 'join', starter='pest', home='city')
+    give_book(table, 'user-alex', 'vagrants_chapbook')
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    status, resp = act(table, 'cast', spellId='skitter_step', source='grimoire',
+                       target=far_node(doc['position'], 3))
+    assert status == 409 and resp['code'] == 'out_of_range'
+    status, resp = act(table, 'cast', spellId='skitter_step', source='grimoire',
+                       target='no-such-node')
+    assert status == 400 and resp['code'] == 'invalid_target'
+    status, resp = act(table, 'cast', spellId='skitter_step', source='grimoire',
+                       target=doc['position'])
+    assert status == 400 and resp['code'] == 'invalid_target'
+
+
+def test_recall_returns_home(table):
+    act(table, 'join', starter='pest', home='bog')
+    give_book(table, 'user-alex', 'tome_of_deep_roads')
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    doc['position'] = 'city_r2'
+    db._put_player(table, doc)
+    status, resp = act(table, 'cast', spellId='mycelial_recall', source='grimoire')
+    assert status == 200
+    assert resp['you']['position'] == data.HOME_GATES['bog']
+
+
+def test_fate_die_sets_pending_loaded_die(table):
+    act(table, 'join', starter='pest', home='city')
+    give_book(table, 'user-alex', 'wayfarers_atlas')
+    status, resp = act(table, 'cast', spellId='fate_die', source='grimoire', value=6)
+    assert status == 200
+    assert resp['you']['pendingLoadedDie'] == 6
+    status, resp = act(table, 'cast', spellId='fate_die', source='grimoire', value=9)
+    assert status == 429                                        # on cooldown first…
+
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    doc['spellCooldowns'] = {}
+    db._put_player(table, doc)
+    status, resp = act(table, 'cast', spellId='fate_die', source='grimoire', value=9)
+    assert status == 400                                        # …then bad value
