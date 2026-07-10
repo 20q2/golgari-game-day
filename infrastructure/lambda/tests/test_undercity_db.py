@@ -476,6 +476,9 @@ def test_customize_validates_wardrobe(table):
     assert status == 409  # not owned
     status, resp = act(table, 'customize',
                        paint={'body': 130, 'belly': 50, 'stripes': 50})
+    assert status == 200  # default paints: forest(130) + gold(50)
+    status, resp = act(table, 'customize', paint={'body': 270})
+    assert status == 409  # violet not owned
 
 
 def test_join_stores_creature_name(table):
@@ -501,9 +504,20 @@ def test_join_without_name_falls_back_to_form_name(table):
     _, state = db.handle_state(table, {'userId': 'user-alex'})
     hatch = next(e for e in state['events'] if e['type'] == 'hatch')
     assert 'named' not in hatch['text']  # no silly "a Pest named Pest"
-    assert status == 200  # default paints: forest(130) + gold(50)
-    status, resp = act(table, 'customize', paint={'body': 270})
-    assert status == 409  # violet not owned
+
+
+def test_creature_label_prefers_custom_name():
+    assert db._creature_label({'creatureName': 'Mulch', 'form': 'pest'}) == 'Mulch'
+    assert db._creature_label({'form': 'pest'}) == 'Pest'  # old docs fall back
+
+
+def test_state_payloads_carry_creature_name(table):
+    act(table, 'join', starter='pest', creatureName='Mulch')
+    act(table, 'join', user='user-sam', name='Sam', starter='spore', creatureName='Puffcap')
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    by_id = {p['userId']: p for p in state['players']}
+    assert by_id['user-alex']['creatureName'] == 'Mulch'
+    assert by_id['user-sam']['creatureName'] == 'Puffcap'
 
 
 def _sid(table):

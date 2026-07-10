@@ -167,6 +167,11 @@ def _form_name(doc):
     return data.ALL_FORMS.get(doc.get('form', ''), {}).get('name', 'creature')
 
 
+def _creature_label(doc):
+    """Player-facing creature name: the hatch-chosen name, else the form name."""
+    return doc.get('creatureName') or _form_name(doc)
+
+
 def _consume_one_battle_buffs(doc):
     doc['buffs'] = [b for b in (doc.get('buffs') or [])
                     if b.get('kind') not in ('rot_surge', 'bone_chill')]
@@ -190,7 +195,7 @@ def _grant_xp(table, sid, doc, amount):
     doc['xp'] = doc.get('xp', 0) + amount
     gained = engine.apply_level_ups(doc)
     if gained:
-        _event(table, sid, 'level', f"{doc['username']}'s {_form_name(doc)} reached level {doc['level']}!",
+        _event(table, sid, 'level', f"{doc['username']}'s {_creature_label(doc)} reached level {doc['level']}!",
                actor=doc['userId'])
     return gained
 
@@ -231,7 +236,7 @@ def _compost(table, sid, doc, cause_text):
             doc['lastUndying'] = _now()
             doc['hp'] = max(1, round(engine.effective_stats(doc)['maxHp'] * 0.5))
             _event(table, sid, 'undying',
-                   f"{doc['username']}'s {_form_name(doc)} refuses to die! (Undying)",
+                   f"{doc['username']}'s {_creature_label(doc)} refuses to die! (Undying)",
                    actor=doc['userId'])
             return False
     home_biome = doc.get('homeBiome')
@@ -335,6 +340,7 @@ def _public_player(p):
         'userId': p['userId'], 'username': p.get('username', '?'),
         'species': p.get('species'), 'form': p.get('form'), 'tier': p.get('tier', 1),
         'formName': _form_name(p),
+        'creatureName': p.get('creatureName') or _form_name(p),
         'level': p.get('level', 1), 'hp': p.get('hp', 0),
         'maxHp': engine.effective_stats(p)['maxHp'],
         'position': p.get('position'), 'stance': p.get('stance', 'fight'),
@@ -458,6 +464,7 @@ def _archive_season(table, sid, config):
             'userId': p['userId'], 'username': p.get('username', '?'),
             'renown': data.compute_renown(p), 'level': p.get('level', 1),
             'form': p.get('form'), 'formName': _form_name(p),
+            'creatureName': p.get('creatureName') or _form_name(p),
             'species': p.get('species'),
             'pvpWins': p.get('pvpWins', 0), 'wildWins': p.get('wildWins', 0),
             'spores': p.get('spores', 0), 'paint': p.get('paint'),
@@ -664,7 +671,9 @@ def _occupants(table, sid, node, except_user):
         if p['userId'] == except_user or p.get('position') != node:
             continue
         out.append({'userId': p['userId'], 'username': p.get('username'),
-                    'formName': _form_name(p), 'level': p.get('level', 1),
+                    'formName': _form_name(p),
+                    'creatureName': p.get('creatureName') or _form_name(p),
+                    'level': p.get('level', 1),
                     'shielded': _shielded(p), 'stance': p.get('stance', 'fight')})
     return out
 
@@ -958,7 +967,7 @@ def _wild_battle(table, sid, doc):
     elif result['outcome'] == 'defender':
         _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
         _compost(table, sid, doc,
-                 f"{doc['username']}'s {_form_name(doc)} was composted by a {npc['name']}. "
+                 f"{doc['username']}'s {_creature_label(doc)} was composted by a {npc['name']}. "
                  'The swarm remembers.')
         out['text'] = f"The {npc['name']} grinds you into the mulch. Back to the Gate…"
     else:
@@ -1205,11 +1214,12 @@ def _battle(table, sid, doc, payload):
 
     out = {'ok': True, 'battle': result,
            'target': {'userId': target_id, 'username': target.get('username'),
-                      'formName': _form_name(target)}}
+                      'formName': _form_name(target),
+                      'creatureName': target.get('creatureName') or _form_name(target)}}
 
     if result['outcome'] == 'fled':
         _event(table, sid, 'pvp',
-               f"{target['username']}'s {_form_name(target)} slipped away from "
+               f"{target['username']}'s {_creature_label(target)} slipped away from "
                f"{doc['username']} in the dark.", actor=doc['userId'])
         out['text'] = 'They vanish into the fungus before you can strike.'
     elif result['outcome'] == 'timeout':
@@ -1230,8 +1240,8 @@ def _battle(table, sid, doc, payload):
         win_levels = _grant_xp(table, sid, winner, data.XP_REWARDS['pvp_win'])
         lose_levels = _grant_xp(table, sid, loser, data.XP_REWARDS['pvp_loss'])
         _compost(table, sid, loser,
-                 f"{loser['username']}'s {_form_name(loser)} was composted by "
-                 f"{winner['username']}'s {_form_name(winner)}. The swarm remembers.")
+                 f"{loser['username']}'s {_creature_label(loser)} was composted by "
+                 f"{winner['username']}'s {_creature_label(winner)}. The swarm remembers.")
         out['stolen'] = stolen
         out['winner'] = winner['userId']
         # Reward deltas for the acting player's victory popup.
@@ -1718,7 +1728,7 @@ def _poke(table, sid, doc, payload):
     if not _put_player(table, target):
         return _err('The plaza is crowded — try again.', 409)
     _event(table, sid, 'poke',
-           f"{doc['username']} poked {target['username']}'s {_form_name(target)}"
+           f"{doc['username']} poked {target['username']}'s {_creature_label(target)}"
            + (f' (+{granted} roll!)' if granted else ''),
            actor=doc['userId'])
     return _ok(doc, granted=granted)
