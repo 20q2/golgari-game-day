@@ -438,3 +438,29 @@ def test_boss_strike_bad_target(table):
     status, resp = act(table, 'cast', spellId='queens_bane', source='grimoire',
                        target='city_r2')
     assert status == 400 and resp['code'] == 'invalid_target'
+
+
+# ── equip-grimoire / ack-events ──────────────────────────────────────────────
+
+def test_equip_grimoire_owned_only(table):
+    act(table, 'join', starter='pest', home='city')
+    give_book(table, 'user-alex', 'moldering_folio', equip=False)
+    status, resp = act(table, 'equip-grimoire', grimoireId='kraul_warcodex')
+    assert status == 409
+    status, resp = act(table, 'equip-grimoire', grimoireId='moldering_folio')
+    assert status == 200 and resp['you']['equippedGrimoire'] == 'moldering_folio'
+    status, resp = act(table, 'equip-grimoire', grimoireId=None)
+    assert status == 200 and resp['you']['equippedGrimoire'] is None
+
+
+def test_ack_events_clears_inbox_and_cap(table):
+    act(table, 'join', starter='pest', home='city')
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    for i in range(25):
+        db._push_away_event(doc, {'kind': 'spell_hit', 'from': 'Sam',
+                                  'spell': 'spore_bolt', 'dmg': i, 'at': db._now()})
+    assert len(doc['awayEvents']) == data.AWAY_EVENTS_CAP
+    assert doc['awayEvents'][-1]['dmg'] == 24                   # keeps the newest
+    db._put_player(table, doc)
+    status, resp = act(table, 'ack-events')
+    assert status == 200 and resp['you']['awayEvents'] == []

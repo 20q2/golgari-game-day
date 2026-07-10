@@ -417,6 +417,7 @@ def handle_action(table, body):
         'gamble': _gamble, 'poke': _poke, 'customize': _customize,
         'attack-boss': _attack_boss, 'trade': _trade, 'dig': _dig, 'respawn': _respawn,
         'cast': _cast,
+        'equip-grimoire': _equip_grimoire, 'ack-events': _ack_events,
     }
     handler = handlers.get(atype)
     if not handler:
@@ -1565,6 +1566,27 @@ def _cast_boss_strike(table, sid, doc, spell, target):
             text = f'The {display} is already at the brink — finish it in person.'
         return {'dmg': dealt, 'targetName': display, 'text': text}
     return _spell_err('Aim at the Queen (boss) or a lair.', 'invalid_target', 400)
+
+
+def _equip_grimoire(table, sid, doc, payload):
+    gid = payload.get('grimoireId') or None
+    if gid and gid not in (doc.get('grimoires') or []):
+        return _err('You do not own that grimoire.', 409)
+    doc['equippedGrimoire'] = gid
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    if gid:
+        return _ok(doc, text=f"You crack open the {data.GRIMOIRES[gid]['name']}.")
+    return _ok(doc, text='You stow your grimoire.')
+
+
+def _ack_events(table, sid, doc, payload):
+    doc['awayEvents'] = []
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc)
 
 
 # ── Creature management ──────────────────────────────────────────────────────
