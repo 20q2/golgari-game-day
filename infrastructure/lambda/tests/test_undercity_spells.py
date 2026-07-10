@@ -85,3 +85,32 @@ def test_spell_fields_match_effect_kind():
             assert sp.get('power', 0) > 0, sid_
         if sp['effect'] in ('self_buff', 'field_curse'):
             assert sp.get('buffKind'), sid_
+
+
+# ── Engine helpers ───────────────────────────────────────────────────────────
+
+_LINE_NODES = {
+    'a': {'neighbors': ['b']},
+    'b': {'neighbors': ['a', 'c']},
+    'c': {'neighbors': ['b', 'd']},
+    'd': {'neighbors': ['c']},
+}
+
+
+def test_board_distance_bfs():
+    assert engine.board_distance(_LINE_NODES, 'a', 'a', 3) == 0
+    assert engine.board_distance(_LINE_NODES, 'a', 'c', 3) == 2
+    assert engine.board_distance(_LINE_NODES, 'a', 'd', 2) is None  # beyond max
+
+
+def test_board_distance_closed_blocks_passage_but_allows_goal():
+    closed = frozenset({'c'})
+    assert engine.board_distance(_LINE_NODES, 'a', 'd', 5, closed) is None
+    assert engine.board_distance(_LINE_NODES, 'a', 'c', 5, closed) == 2
+
+
+def test_spell_dodge_chance_clamps():
+    assert engine.spell_dodge_chance(5, 5) == 10          # base
+    assert engine.spell_dodge_chance(5, 7) == 16          # +3 per SPD point
+    assert engine.spell_dodge_chance(20, 1) == 5          # floor
+    assert engine.spell_dodge_chance(1, 20) == 40         # ceiling

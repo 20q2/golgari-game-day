@@ -210,6 +210,41 @@ def legal_destinations(nodes: dict, start: str, steps: int,
     return results
 
 
+def board_distance(nodes: dict, start: str, goal: str, max_steps: int,
+                   closed: frozenset = frozenset()) -> int | None:
+    """
+    Shortest hop count from start to goal, or None past max_steps. Plain BFS —
+    unlike movement there is no exact-count or no-backtrack rule. `closed`
+    (sealed barriers) blocks passage but may be the goal itself.
+    """
+    if start == goal:
+        return 0
+    frontier = {start}
+    seen = {start}
+    for dist in range(1, max_steps + 1):
+        nxt = set()
+        for node in frontier:
+            if node != start and node in closed:
+                continue  # sealed: never a corridor
+            for nb in nodes[node]['neighbors']:
+                if nb in seen:
+                    continue
+                if nb == goal:
+                    return dist
+                seen.add(nb)
+                nxt.add(nb)
+        frontier = nxt
+        if not frontier:
+            break
+    return None
+
+
+def spell_dodge_chance(caster_spd: int, target_spd: int) -> int:
+    """Field-spell dodge %, clamped (spec §2.4)."""
+    raw = data.SPELL_DODGE_BASE + data.SPELL_DODGE_PER_SPD * (target_spd - caster_spd)
+    return max(data.SPELL_DODGE_MIN, min(data.SPELL_DODGE_MAX, raw))
+
+
 # ── Leveling ─────────────────────────────────────────────────────────────────
 
 def apply_level_ups(player: dict) -> int:
