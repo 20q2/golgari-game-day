@@ -1441,7 +1441,71 @@ def _cast(table, sid, doc, payload):
 
 
 def _cast_at_player(table, sid, doc, spell_id, spell, target_id):
-    return _err('Targeted spells land in the next task.', 409)
+    """Field damage/curse at a rival. Returns a cast-result dict, or an error
+    tuple (in which case the caster's cooldown never starts)."""
+    if not target_id or target_id == doc['userId']:
+        return _spell_err('Pick a target.', 'invalid_target', 400)
+    target = _get_player(table, sid, target_id)
+    if not target:
+        return _spell_err('Target not found.', 'invalid_target', 404)
+    if _shielded(target):
+        return _spell_err('They are protected by a Compost Shield.', 'target_shielded')
+    dist = engine.board_distance(data.MAP_NODES, doc['position'],
+                                 target['position'], spell['range'],
+                                 _closed_barriers(table, sid))
+    if dist is None:
+        return _spell_err(f"They are beyond the spell's reach "
+                          f"({spell['range']} spaces).", 'out_of_range')
+
+    caster_spd = engine.effective_stats(doc)['spd']
+
+    def apply(t):
+        engine.regen_hp(t, _now())
+        _expire_buffs(t)
+        chance = engine.spell_dodge_chance(caster_spd, engine.effective_stats(t)['spd'])
+        dodged = _rng.random() * 100 < chance
+        dmg = 0
+        if not dodged:
+            if spell['effect'] == 'field_damage':
+                dmg = spell['power']
+                t['hp'] = max(1, t['hp'] - dmg)   # never composts (spec §2.2)
+                t['hpUpdatedAt'] = _now()
+            else:
+                _apply_buff(t, spell['buffKind'])
+        entry = {'kind': 'spell_dodged' if dodged else 'spell_hit',
+                 'from': doc.get('username', '?'), 'spell': spell_id, 'at': _now()}
+        if dmg:
+            entry['dmg'] = dmg
+        _push_away_event(t, entry)
+        return dodged, dmg
+
+    dodged, dmg = apply(target)
+    if not _put_player(table, target):
+        # Someone wrote the victim doc mid-cast — retry once on a fresh read.
+        target = _get_player(table, sid, target_id)
+        if not target or _shielded(target):
+            return _err('They slipped from your grasp — try again.', 409)
+        dodged, dmg = apply(target)
+        if not _put_player(table, target):
+            return _err('They slipped from your grasp — try again.', 409)
+
+    tname = target.get('username', '?')
+    if dodged:
+        text = f'{tname} slips aside — {spell["name"]} fizzles!'
+        _event(table, sid, 'spell',
+               f"{doc['username']}'s {spell['name']} fizzled against {tname}.",
+               actor=doc['userId'])
+    elif spell['effect'] == 'field_damage':
+        text = f'{spell["name"]} strikes {tname} for {dmg}!'
+        _event(table, sid, 'spell',
+               f"{doc['username']} blasted {tname} with {spell['name']} ({dmg} damage)!",
+               actor=doc['userId'])
+    else:
+        text = f'{spell["name"]} takes hold of {tname}.'
+        _event(table, sid, 'spell',
+               f"{doc['username']} cursed {tname} with {spell['name']}!",
+               actor=doc['userId'])
+    return {'dodged': dodged, 'dmg': dmg, 'targetName': tname, 'text': text}
 
 
 def _cast_teleport(table, sid, doc, spell, to):

@@ -207,3 +207,129 @@ def test_cast_grimoire_self_heal(table):
     assert status == 200
     assert resp['you']['hp'] == 22                              # +12, capped at max
     assert resp['cast']['hp'] == 12
+
+
+# ── cast: field spells ───────────────────────────────────────────────────────
+
+def _two_players_same_node(table):
+    act(table, 'join', starter='kraul', home='city')          # city -> scrap_toss
+    act(table, 'join', user='user-sam', name='Sam', starter='saproling', home='bog')
+    alex = db._get_player(table, _sid(table), 'user-alex')
+    sam = db._get_player(table, _sid(table), 'user-sam')
+    alex['position'] = sam['position'] = 'city_r2'
+    db._put_player(table, alex)
+    db._put_player(table, sam)
+
+
+def far_node(start, max_steps):
+    for nid in data.MAP_NODES:
+        if nid != start and engine.board_distance(
+                data.MAP_NODES, start, nid, max_steps) is None:
+            return nid
+    pytest.skip('map too small for an out-of-range node')
+
+
+def test_field_damage_hits_and_floors_at_1hp(table, monkeypatch):
+    _two_players_same_node(table)
+    monkeypatch.setattr(db, '_rng', FixedRng(random_values=[0.99, 0.99]))  # never dodge
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate',
+                       target='user-sam')
+    assert status == 200
+    assert resp['cast']['dodged'] is False and resp['cast']['dmg'] == 8
+    sam = db._get_player(table, _sid(table), 'user-sam')
+    assert sam['hp'] == 38 - 8
+    assert sam['awayEvents'][-1]['kind'] == 'spell_hit'
+    assert sam['awayEvents'][-1]['dmg'] == 8
+
+    # Floor: drop Sam to 5 HP; an 8-damage bolt leaves exactly 1, never composts.
+    sam['hp'] = 5
+    db._put_player(table, sam)
+    alex = db._get_player(table, _sid(table), 'user-alex')
+    alex['spellCooldowns'] = {}
+    db._put_player(table, alex)
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate',
+                       target='user-sam')
+    assert status == 200
+    sam = db._get_player(table, _sid(table), 'user-sam')
+    assert sam['hp'] == 1
+    assert sam['position'] == 'city_r2'     # NOT composted home
+
+
+def test_field_spell_dodge_still_notifies_and_cools(table, monkeypatch):
+    _two_players_same_node(table)
+    monkeypatch.setattr(db, '_rng', FixedRng(random_values=[0.0]))  # always dodge
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate',
+                       target='user-sam')
+    assert status == 200
+    assert resp['cast']['dodged'] is True
+    assert resp['you']['spellCooldowns']['scrap_toss'] > db._now()  # dodge still cools
+    sam = db._get_player(table, _sid(table), 'user-sam')
+    assert sam['hp'] == 38
+    assert sam['awayEvents'][-1]['kind'] == 'spell_dodged'
+
+
+def test_field_curse_writes_target_buff(table, monkeypatch):
+    act(table, 'join', starter='pest', home='bone')            # bone -> bone_chill
+    act(table, 'join', user='user-sam', name='Sam', starter='pest', home='bog')
+    alex = db._get_player(table, _sid(table), 'user-alex')
+    sam = db._get_player(table, _sid(table), 'user-sam')
+    alex['position'] = sam['position'] = 'city_r2'
+    db._put_player(table, alex)
+    db._put_player(table, sam)
+    monkeypatch.setattr(db, '_rng', FixedRng(random_values=[0.99]))
+    status, resp = act(table, 'cast', spellId='bone_chill', source='innate',
+                       target='user-sam')
+    assert status == 200
+    sam = db._get_player(table, _sid(table), 'user-sam')
+    assert {'kind': 'bone_chill'} in sam['buffs']
+
+
+def test_field_spell_range_and_shield_guards(table, monkeypatch):
+    _two_players_same_node(table)
+    sid = _sid(table)
+    # Shielded target: rejected, cooldown NOT started.
+    sam = db._get_player(table, sid, 'user-sam')
+    sam['shieldUntil'] = '2099-01-01T00:00:00'
+    db._put_player(table, sam)
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate',
+                       target='user-sam')
+    assert status == 409 and resp['code'] == 'target_shielded'
+    alex = db._get_player(table, sid, 'user-alex')
+    assert 'scrap_toss' not in (alex.get('spellCooldowns') or {})
+
+    # Out of range.
+    sam = db._get_player(table, sid, 'user-sam')
+    sam['shieldUntil'] = None
+    sam['position'] = far_node('city_r2', data.SPELLS['scrap_toss']['range'])
+    db._put_player(table, sam)
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate',
+                       target='user-sam')
+    assert status == 409 and resp['code'] == 'out_of_range'
+
+    # Bogus targets.
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate',
+                       target='user-alex')
+    assert status == 400 and resp['code'] == 'invalid_target'
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate',
+                       target='user-nobody')
+    assert status == 404 and resp['code'] == 'invalid_target'
+
+
+def test_victim_write_conflict_retries_once(table, monkeypatch):
+    _two_players_same_node(table)
+    monkeypatch.setattr(db, '_rng', FixedRng(random_values=[0.99, 0.99]))
+    calls = {'n': 0}
+    orig = db._put_player
+
+    def flaky(t, d):
+        if d['userId'] == 'user-sam' and calls['n'] == 0:
+            calls['n'] += 1
+            return False
+        return orig(t, d)
+
+    monkeypatch.setattr(db, '_put_player', flaky)
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate',
+                       target='user-sam')
+    assert status == 200
+    sam = db._get_player(table, _sid(table), 'user-sam')
+    assert sam['hp'] == 38 - 8                                 # saproling took the bolt
