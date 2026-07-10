@@ -392,3 +392,49 @@ def test_fate_die_sets_pending_loaded_die(table):
     db._put_player(table, doc)
     status, resp = act(table, 'cast', spellId='fate_die', source='grimoire', value=9)
     assert status == 400                                        # …then bad value
+
+
+# ── cast: boss strike ────────────────────────────────────────────────────────
+
+def test_boss_strike_chips_savra_and_floors(table):
+    act(table, 'join', starter='pest', home='city')
+    give_book(table, 'user-alex', 'queensbane_grimoire')
+    status, resp = act(table, 'cast', spellId='queens_bane', source='grimoire',
+                       target='boss')
+    assert status == 200
+    assert resp['cast']['dmg'] == 15
+    assert db._boss_hp(table, _sid(table)) == data.ROT_SOVEREIGN['hp'] - 15
+    assert resp['you']['bossDamage'] == 15
+
+    # Floor at 1: pool can never be spell-killed.
+    db._set_boss_hp(table, _sid(table), 5)
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    doc['spellCooldowns'] = {}
+    db._put_player(table, doc)
+    status, resp = act(table, 'cast', spellId='queens_bane', source='grimoire',
+                       target='boss')
+    assert status == 200
+    assert db._boss_hp(table, _sid(table)) == 1
+    assert resp['cast']['dmg'] == 4
+
+
+def test_boss_strike_chips_lair_pool(table):
+    act(table, 'join', starter='pest', home='city')
+    give_book(table, 'user-alex', 'queensbane_grimoire')
+    lair = next(iter(data.LAIR_BOSSES))
+    full = data.LAIR_BOSSES[lair]['hp']
+    status, resp = act(table, 'cast', spellId='queens_bane', source='grimoire',
+                       target=lair)
+    assert status == 200
+    hp, slain = db._lair_state(table, _sid(table), lair)
+    assert hp == full - 15 and slain is False
+    you = resp['you']
+    assert you.get('bossDamage', 0) == 0        # renown pool is Savra-only
+
+
+def test_boss_strike_bad_target(table):
+    act(table, 'join', starter='pest', home='city')
+    give_book(table, 'user-alex', 'queensbane_grimoire')
+    status, resp = act(table, 'cast', spellId='queens_bane', source='grimoire',
+                       target='city_r2')
+    assert status == 400 and resp['code'] == 'invalid_target'

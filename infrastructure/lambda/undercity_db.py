@@ -1532,7 +1532,39 @@ def _cast_teleport(table, sid, doc, spell, to):
 
 
 def _cast_boss_strike(table, sid, doc, spell, target):
-    return _err('Boss strikes land in a later task.', 409)
+    """Chip a persistent HP pool (Savra or a lair) from anywhere. Pools floor
+    at 1 — the killing blow must be landed in person."""
+    if target == 'boss':
+        hp = _boss_hp(table, sid)
+        new_hp = max(1, hp - spell['power'])
+        dealt = hp - new_hp
+        _set_boss_hp(table, sid, new_hp)
+        doc['bossDamage'] = doc.get('bossDamage', 0) + dealt
+        name = data.ROT_SOVEREIGN['name']
+        if dealt:
+            _event(table, sid, 'spell',
+                   f"{doc['username']}'s {spell['name']} sears {name} from afar "
+                   f'({new_hp}/{data.ROT_SOVEREIGN["hp"]} HP)!', actor=doc['userId'])
+            text = f'{spell["name"]} sears the Queen for {dealt}! ({new_hp} HP remains)'
+        else:
+            text = 'The Queen is already at the brink — finish her in person.'
+        return {'dmg': dealt, 'targetName': name, 'text': text}
+    if target in data.LAIR_BOSSES:
+        hp, slain = _lair_state(table, sid, target)
+        new_hp = max(1, hp - spell['power'])
+        dealt = hp - new_hp
+        _set_lair_state(table, sid, target, new_hp, slain)
+        name = data.LAIR_BOSSES[target]['name']
+        display = f'Vestige of {name}' if slain else name
+        if dealt:
+            _event(table, sid, 'spell',
+                   f"{doc['username']}'s {spell['name']} wounds the {display} from afar!",
+                   actor=doc['userId'])
+            text = f'{spell["name"]} wounds the {display} for {dealt}!'
+        else:
+            text = f'The {display} is already at the brink — finish it in person.'
+        return {'dmg': dealt, 'targetName': display, 'text': text}
+    return _spell_err('Aim at the Queen (boss) or a lair.', 'invalid_target', 400)
 
 
 # ── Creature management ──────────────────────────────────────────────────────
