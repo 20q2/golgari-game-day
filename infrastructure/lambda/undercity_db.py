@@ -734,6 +734,9 @@ def _resolve_space(table, sid, doc, node, prev):
     if ntype == 'wild':
         return _wild_battle(table, sid, doc)
 
+    if ntype == 'elite':
+        return _wild_battle(table, sid, doc, elite=True)
+
     if ntype == 'mystery':
         return _mystery(table, sid, doc)
 

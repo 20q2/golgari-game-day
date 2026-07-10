@@ -133,6 +133,20 @@ def test_elite_battle_pulls_from_elite_pool(table, monkeypatch):
     assert out['xp'] == 25
 
 
+def test_elite_space_resolves_to_elite_battle(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
+        'outcome': 'attacker', 'strikes': [], 'attackerHp': doc['hp'],
+        'defenderHp': 0, 'smokeSporeUsed': False,
+    })
+    assert data.MAP_NODES['city_i1']['type'] == 'elite'
+    ev = db._resolve_space(table, sid, doc, 'city_i1', None)
+    assert ev['type'] == 'elite'
+    assert ev['npc']['id'] in {'fetid_imp', 'rot_shambler'}
+
+
 def test_join_is_idempotent_and_seal_rolls(table):
     act(table, 'join', starter='pest')
     status, resp = act(table, 'join', starter='kraul')

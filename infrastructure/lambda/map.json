@@ -132,7 +132,7 @@
   },
   {
    "id": "cavern_i1",
-   "type": "wild",
+   "type": "elite",
    "x": 1085,
    "y": 546,
    "region": "cavern",
@@ -348,7 +348,7 @@
   },
   {
    "id": "bog_i1",
-   "type": "wild",
+   "type": "elite",
    "x": 2623,
    "y": 647,
    "region": "bog",
@@ -576,7 +576,7 @@
   },
   {
    "id": "garden_i1",
-   "type": "wild",
+   "type": "elite",
    "x": 2911,
    "y": 1709,
    "region": "garden",
@@ -805,7 +805,7 @@
   },
   {
    "id": "city_i1",
-   "type": "wild",
+   "type": "elite",
    "x": 1723,
    "y": 1810,
    "region": "city",
@@ -1033,7 +1033,7 @@
   },
   {
    "id": "bone_i1",
-   "type": "wild",
+   "type": "elite",
    "x": 648,
    "y": 1480,
    "region": "bone",
@@ -1146,7 +1146,7 @@
   },
   {
    "id": "t_bog_garden0",
-   "type": "wild",
+   "type": "elite",
    "x": 2800,
    "y": 897,
    "region": "bog",
@@ -1212,7 +1212,7 @@
   },
   {
    "id": "t_bone_cavern0",
-   "type": "wild",
+   "type": "elite",
    "x": 700,
    "y": 1240,
    "region": "bone",
