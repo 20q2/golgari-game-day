@@ -13,6 +13,7 @@ export interface PublicPlayer {
   species: string;
   form: string;
   formName: string;
+  creatureName?: string;
   tier: number;
   level: number;
   hp: number;
@@ -38,6 +39,7 @@ export interface PendingMove {
 export interface YouDoc {
   userId: string;
   username: string;
+  creatureName?: string;
   species: string;
   form: string;
   tier: number;
@@ -96,6 +98,7 @@ export interface Standing {
   level: number;
   form: string;
   formName: string;
+  creatureName?: string;
   species: string;
   pvpWins: number;
   wildWins: number;
@@ -226,6 +229,7 @@ export interface Occupant {
   userId: string;
   username: string;
   formName: string;
+  creatureName?: string;
   level: number;
   shielded: boolean;
   stance: string;
@@ -239,7 +243,7 @@ export interface ActionResponse {
   spaceEvent?: SpaceEvent;
   occupants?: Occupant[];
   battle?: BattleResult;
-  target?: { userId: string; username: string; formName: string };
+  target?: { userId: string; username: string; formName: string; creatureName?: string };
   winner?: string;
   stolen?: number;
   xp?: number;
