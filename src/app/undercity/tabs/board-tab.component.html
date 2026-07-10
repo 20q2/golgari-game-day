@@ -14,6 +14,12 @@
       </button>
     }
 
+    @if (!rolling() && !store.you()?.pendingMove && castableSpells().length) {
+      <button class="uc-btn cast-btn" [disabled]="busy()" (click)="showSpells.set(true)">
+        <mat-icon class="mi">auto_fix_high</mat-icon> Cast
+      </button>
+    }
+
     <!-- Contextual facility buttons while parked on a special node -->
     @if (!rolling() && !store.you()?.pendingMove) {
       @switch (nodeType()) {
@@ -190,6 +196,25 @@
             </span>
             <button class="uc-btn shop-buy" [disabled]="busy()" (click)="buy(c)">
               {{ c.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+            </button>
+          </div>
+        }
+        <div class="shop-section">Grimoires (yours forever; open one from the Creature tab)</div>
+        @for (g of shopGrimoires; track g.id) {
+          <div class="shop-row">
+            <span class="shop-name">
+              <mat-icon class="mi">menu_book</mat-icon> {{ g.name }} <em>{{ grimoireSpellList(g) }}</em>
+            </span>
+            <button
+              class="uc-btn shop-buy"
+              [disabled]="busy() || ownsGrimoire(g.id)"
+              (click)="buy(g)"
+            >
+              @if (ownsGrimoire(g.id)) {
+                Owned
+              } @else {
+                {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+              }
             </button>
           </div>
         }
@@ -378,5 +403,96 @@
       [rewards]="bv.rewards"
       (closed)="closeBattle()"
     />
+  }
+
+  <!-- Spell picker -->
+  @if (showSpells()) {
+    <div class="uc-modal-backdrop" (click)="closeSpellPickers()">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">auto_fix_high</mat-icon> Cast a Spell</h3>
+        @for (sp of castableSpells(); track sp.id) {
+          <div class="shop-row">
+            <span class="shop-name">
+              <mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }} <em>{{ sp.desc }}</em>
+            </span>
+            <button
+              class="uc-btn shop-buy"
+              [disabled]="busy() || !spellReady(sp.id)"
+              (click)="pickSpell(sp)"
+            >
+              {{ spellReady(sp.id) ? 'Cast' : cooldownLabel(sp.id) }}
+            </button>
+          </div>
+        }
+        <button class="uc-btn close-btn" (click)="closeSpellPickers()">Never mind</button>
+      </div>
+    </div>
+  }
+
+  <!-- Field-spell target picker -->
+  @if (spellTargetPick(); as sp) {
+    <div class="uc-modal-backdrop" (click)="closeSpellPickers()">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}</h3>
+        <p class="modal-sub">Pick a rival within {{ sp.range }} spaces.</p>
+        @if (!spellTargets(sp).length) {
+          <p class="modal-sub">No one is in range. Stalk closer.</p>
+        }
+        @for (t of spellTargets(sp); track t.p.userId) {
+          <div class="shop-row">
+            <span class="shop-name">
+              {{ t.p.username }}'s {{ t.p.creatureName || t.p.formName }}
+              <em>{{ t.dist }} space{{ t.dist === 1 ? '' : 's' }} away · {{ t.p.hp }} HP</em>
+            </span>
+            <button class="uc-btn shop-buy" [disabled]="busy()" (click)="castSpell(sp, { target: t.p.userId })">
+              Cast
+            </button>
+          </div>
+        }
+        <button class="uc-btn close-btn" (click)="closeSpellPickers()">Never mind</button>
+      </div>
+    </div>
+  }
+
+  <!-- Fate-die value picker -->
+  @if (spellValuePick(); as sp) {
+    <div class="uc-modal-backdrop" (click)="closeSpellPickers()">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">casino</mat-icon> {{ sp.name }}</h3>
+        <p class="modal-sub">Choose the value of your next roll.</p>
+        <div class="choice-grid">
+          @for (v of [1, 2, 3, 4, 5, 6]; track v) {
+            <button class="uc-btn" [disabled]="busy()" (click)="castSpell(sp, { value: v })">
+              {{ v }}
+            </button>
+          }
+        </div>
+        <button class="uc-btn close-btn" (click)="closeSpellPickers()">Never mind</button>
+      </div>
+    </div>
+  }
+
+  <!-- Boss-strike pool picker -->
+  @if (spellBossPick(); as sp) {
+    <div class="uc-modal-backdrop" (click)="closeSpellPickers()">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}</h3>
+        <p class="modal-sub">Whose hide do you sear from afar?</p>
+        <div class="choice-grid">
+          <button class="uc-btn" [disabled]="busy()" (click)="castSpell(sp, { target: 'boss' })">
+            <mat-icon class="mi">visibility</mat-icon> Savra, the Queen
+          </button>
+        </div>
+        <button class="uc-btn close-btn" (click)="closeSpellPickers()">Never mind</button>
+      </div>
+    </div>
+  }
+
+  <!-- Teleport cancel strip -->
+  @if (castTeleport(); as tele) {
+    <div class="teleport-strip">
+      <span>{{ tele.spell.name }}: tap a highlighted space</span>
+      <button class="uc-btn" (click)="closeSpellPickers()">Cancel</button>
+    </div>
   }
 </div>

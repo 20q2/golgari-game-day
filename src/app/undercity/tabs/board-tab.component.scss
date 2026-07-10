@@ -558,3 +558,23 @@
     --dice-size: 56px;
   }
 }
+
+.cast-btn .mi {
+  margin-right: 0.2rem;
+}
+
+.teleport-strip {
+  position: absolute;
+  bottom: 4.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(16, 20, 14, 0.92);
+  border: 1px solid rgba(154, 194, 110, 0.4);
+  border-radius: 999px;
+  padding: 0.35rem 0.5rem 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  z-index: 5;
+}

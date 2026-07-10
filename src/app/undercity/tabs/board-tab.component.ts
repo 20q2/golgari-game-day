@@ -14,15 +14,25 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { BoardCanvas, BoardMap, NodeInfo } from '../engine/board-canvas';
-import { legalSteps } from '../engine/board-movement';
+import { legalSteps, boardDistance, nodesWithin } from '../engine/board-movement';
 import {
   BattleResult,
   DigGrid,
   Occupant,
+  PublicPlayer,
   SpaceEvent,
   TradeStockItem,
   isShielded,
 } from '../services/undercity-models';
+import {
+  BIOME_SPELLS,
+  GRIMOIRE_MAP,
+  GRIMOIRES,
+  GrimoireInfo,
+  SPELL_MAP,
+  SpellInfo,
+  cooldownLeftMin,
+} from '../data/spells';
 import {
   GEAR,
   CONSUMABLES,
@@ -115,6 +125,16 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   private readonly stepping = signal<StepState | null>(null);
   private readonly ritesShown = new Set<string>();
 
+  protected readonly showSpells = signal(false);
+  /** Field spell awaiting a player target. */
+  protected readonly spellTargetPick = signal<SpellInfo | null>(null);
+  /** Fate-die spell awaiting a value. */
+  protected readonly spellValuePick = signal<SpellInfo | null>(null);
+  /** Boss-strike spell awaiting a pool choice. */
+  protected readonly spellBossPick = signal<SpellInfo | null>(null);
+  /** Teleport in progress: reachable nodes are highlighted on the canvas. */
+  protected readonly castTeleport = signal<{ spell: SpellInfo; nodes: string[] } | null>(null);
+
   protected readonly stepsLeft = computed(
     () => this.stepping()?.left ?? this.store.you()?.pendingMove?.value ?? 0,
   );
@@ -124,6 +144,110 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly gear = GEAR;
   protected readonly consumables = CONSUMABLES;
   protected readonly isShielded = isShielded;
+  protected readonly shopGrimoires = GRIMOIRES.filter((g) => g.tier === 1);
+
+  protected readonly castableSpells = computed<SpellInfo[]>(() => {
+    const you = this.store.you();
+    if (!you) return [];
+    const ids: string[] = [];
+    const innate = BIOME_SPELLS[you.homeBiome ?? ''];
+    if (innate) ids.push(innate);
+    const book = you.equippedGrimoire ? GRIMOIRE_MAP[you.equippedGrimoire] : null;
+    if (book) for (const s of book.spells) if (!ids.includes(s)) ids.push(s);
+    return ids.map((id) => SPELL_MAP[id]).filter(Boolean);
+  });
+
+  protected cooldownLabel(spellId: string): string {
+    const left = cooldownLeftMin(this.store.you()?.spellCooldowns, spellId);
+    return left > 0 ? `${left} min` : 'Ready';
+  }
+
+  protected spellReady(spellId: string): boolean {
+    return cooldownLeftMin(this.store.you()?.spellCooldowns, spellId) === 0;
+  }
+
+  private closedBarrierIds(): string[] {
+    return this.map.nodes
+      .filter((n) => n.type === 'barrier' && !this.store.barriersOpen().includes(n.id))
+      .map((n) => n.id);
+  }
+
+  /** Unshielded rivals within a field spell's reach, with board distance. */
+  protected spellTargets(spell: SpellInfo): { p: PublicPlayer; dist: number }[] {
+    const you = this.store.you();
+    if (!you || !spell.range) return [];
+    const closed = this.closedBarrierIds();
+    return this.store
+      .players()
+      .filter((p) => p.userId !== you.userId && !isShielded(p))
+      .map((p) => ({
+        p,
+        dist: boardDistance(this.map, you.position, p.position, spell.range!, closed),
+      }))
+      .filter((t): t is { p: PublicPlayer; dist: number } => t.dist !== null);
+  }
+
+  /** Route a spell-picker tap to the right follow-up (target/value/node/cast). */
+  pickSpell(spell: SpellInfo): void {
+    if (!this.spellReady(spell.id)) return;
+    switch (spell.effect) {
+      case 'field_damage':
+      case 'field_curse':
+        this.spellTargetPick.set(spell);
+        break;
+      case 'fate_die':
+        this.spellValuePick.set(spell);
+        break;
+      case 'boss_strike':
+        this.spellBossPick.set(spell);
+        break;
+      case 'teleport': {
+        const you = this.store.you();
+        if (!you) return;
+        const nodes = nodesWithin(this.map, you.position, spell.range ?? 0, this.closedBarrierIds());
+        this.showSpells.set(false);
+        this.castTeleport.set({ spell, nodes });
+        this.showToast('Tap a highlighted space to blink there.');
+        this.syncBoard();
+        break;
+      }
+      default:
+        void this.castSpell(spell); // self_buff / self_heal / recall
+    }
+  }
+
+  async castSpell(spell: SpellInfo, extra: Record<string, unknown> = {}): Promise<void> {
+    const you = this.store.you();
+    const source = BIOME_SPELLS[you?.homeBiome ?? ''] === spell.id ? 'innate' : 'grimoire';
+    const preHp = you?.hp ?? 0;
+    await this.run(async () => {
+      const resp = await this.store.action('cast', { spellId: spell.id, source, ...extra });
+      this.closeSpellPickers();
+      if (resp.cast?.text) this.showToast(resp.cast.text);
+      if (resp.spaceEvent) {
+        if (resp.you) this.board?.centerOn(resp.you.position);
+        this.occupants.set(resp.occupants ?? []);
+        this.routeSpaceEvent(resp.spaceEvent, preHp);
+      }
+    });
+  }
+
+  protected closeSpellPickers(): void {
+    this.showSpells.set(false);
+    this.spellTargetPick.set(null);
+    this.spellValuePick.set(null);
+    this.spellBossPick.set(null);
+    this.castTeleport.set(null);
+    this.syncBoard();
+  }
+
+  protected ownsGrimoire(id: string): boolean {
+    return (this.store.you()?.grimoires ?? []).includes(id);
+  }
+
+  protected grimoireSpellList(g: GrimoireInfo): string {
+    return g.spells.map((s) => SPELL_MAP[s]?.name ?? s).join(', ');
+  }
 
   protected spaceIcon(type: string): string {
     return SPACE_ICONS[type] ?? 'radio_button_unchecked';
@@ -278,6 +402,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   private onTapNode(nodeId: string | null): void {
+    const tele = this.castTeleport();
+    if (tele && nodeId && tele.nodes.includes(nodeId) && !this.busy()) {
+      void this.castSpell(tele.spell, { target: nodeId });
+      return;
+    }
     if (!nodeId) {
       // Tapped empty tunnel — dismiss the space popover.
       this.hideInfo();
@@ -388,7 +517,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.board.setBarriersOpen(this.store.barriersOpen());
     const here = step ? stepPos(step) : null;
     const choices = step ? this.stepChoices(step) : [];
-    this.board.setChoices(step ? choices : null);
+    const tele = this.castTeleport();
+    this.board.setChoices(step ? choices : (tele?.nodes ?? null));
     this.board.setBackChoice(step ? stepPrev(step) : null);
     // Steps-left die over your head while a move is pending (Mario Party style).
     this.board.setStepDie(step && step.left > 0 ? step.left : null);
@@ -418,53 +548,58 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       const ev = resp.spaceEvent;
       this.occupants.set(resp.occupants ?? []);
       if (!ev) return;
-      const fightTypes = ['wild', 'elite', 'barrier', 'lair', 'boss'];
-      if (fightTypes.includes(ev.type) && ev.battle && ev.npc) {
-        this.battleView.set({
-          battle: ev.battle,
-          attacker: {
-            name: this.youBattleName(),
-            spriteUrl: this.youSpriteUrl(),
-            startHp: preHp,
-            maxHp: this.store.you()?.maxHp ?? preHp,
-          },
-          defender: {
-            name: ev.npc.name,
-            // Art folder per foe class; a missing file falls back to the icon
-            // via the battle card's onerror handling.
-            spriteUrl: this.npcSpriteUrl(ev.type, ev.npc.id),
-            icon: NPC_ICONS[ev.npc.id] ?? 'bug_report',
-            startHp: ev.npc.hp,
-            // The island boss carries a persistent HP pool: current hp can be
-            // well below its true max.
-            maxHp: ev.npc.maxHp ?? ev.npc.hp,
-          },
-          resultText: ev.text,
-          rewards: this.buildRewards(ev),
-        });
-      } else if (ev.type === 'warp' && ev.options) {
-        this.showWarp.set(ev.options);
-      } else if (ev.type === 'shop') {
-        this.showShop.set(true);
-      } else if (ev.type === 'shrine') {
-        this.showShrine.set(true);
-      } else if (ev.type === 'ossuary') {
-        this.showOssuary.set(true);
-      } else if (ev.type === 'trading_post') {
-        this.openTradingPost(ev.stock);
-      } else if (ev.type === 'excavation') {
-        this.openExcavation(ev.grid);
-      } else if (ev.type === 'mystery') {
-        // Spin the reveal reel first; the event card opens once it lands.
-        this.pendingMysteryEv = ev;
-        this.reelSymbol.set(this.mysterySymbol(ev));
-      } else {
-        this.spaceModal.set(ev);
-      }
+      this.routeSpaceEvent(ev, preHp);
     });
     // A failed move leaves pendingMove intact server-side — reset the local
     // walk so the effect restarts it from the real position with a full count.
     if (this.store.you()?.pendingMove) this.stepping.set(null);
+  }
+
+  /** Open the right modal/animation for a landing event (move or teleport). */
+  private routeSpaceEvent(ev: SpaceEvent, preHp: number): void {
+    const fightTypes = ['wild', 'elite', 'barrier', 'lair', 'boss'];
+    if (fightTypes.includes(ev.type) && ev.battle && ev.npc) {
+      this.battleView.set({
+        battle: ev.battle,
+        attacker: {
+          name: this.youBattleName(),
+          spriteUrl: this.youSpriteUrl(),
+          startHp: preHp,
+          maxHp: this.store.you()?.maxHp ?? preHp,
+        },
+        defender: {
+          name: ev.npc.name,
+          // Art folder per foe class; a missing file falls back to the icon
+          // via the battle card's onerror handling.
+          spriteUrl: this.npcSpriteUrl(ev.type, ev.npc.id),
+          icon: NPC_ICONS[ev.npc.id] ?? 'bug_report',
+          startHp: ev.npc.hp,
+          // The island boss carries a persistent HP pool: current hp can be
+          // well below its true max.
+          maxHp: ev.npc.maxHp ?? ev.npc.hp,
+        },
+        resultText: ev.text,
+        rewards: this.buildRewards(ev),
+      });
+    } else if (ev.type === 'warp' && ev.options) {
+      this.showWarp.set(ev.options);
+    } else if (ev.type === 'shop') {
+      this.showShop.set(true);
+    } else if (ev.type === 'shrine') {
+      this.showShrine.set(true);
+    } else if (ev.type === 'ossuary') {
+      this.showOssuary.set(true);
+    } else if (ev.type === 'trading_post') {
+      this.openTradingPost(ev.stock);
+    } else if (ev.type === 'excavation') {
+      this.openExcavation(ev.grid);
+    } else if (ev.type === 'mystery') {
+      // Spin the reveal reel first; the event card opens once it lands.
+      this.pendingMysteryEv = ev;
+      this.reelSymbol.set(this.mysterySymbol(ev));
+    } else {
+      this.spaceModal.set(ev);
+    }
   }
 
   // ── PvP ────────────────────────────────────────────────────────────────────
@@ -501,7 +636,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   // ── Node facilities ────────────────────────────────────────────────────────
 
-  async buy(item: GearInfo | ConsumableInfo): Promise<void> {
+  async buy(item: { id: string }): Promise<void> {
     await this.run(async () => {
       const resp = await this.store.action('buy', { itemId: item.id });
       this.showToast(resp.text ?? 'Purchased.');
