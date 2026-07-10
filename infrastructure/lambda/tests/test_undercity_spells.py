@@ -114,3 +114,30 @@ def test_spell_dodge_chance_clamps():
     assert engine.spell_dodge_chance(5, 7) == 16          # +3 per SPD point
     assert engine.spell_dodge_chance(20, 1) == 5          # floor
     assert engine.spell_dodge_chance(1, 20) == 40         # ceiling
+
+
+# ── New buff kinds ───────────────────────────────────────────────────────────
+
+def test_new_buff_kinds_in_effective_stats():
+    base = {'atk': 6, 'def': 5, 'spd': 5, 'maxHp': 30}
+    assert engine.effective_stats({**base, 'buffs': [{'kind': 'glowveil'}]})['spd'] == 7
+    assert engine.effective_stats({**base, 'buffs': [{'kind': 'harden_shell'}]})['def'] == 7
+    assert engine.effective_stats({**base, 'buffs': [{'kind': 'weaken_hex'}]})['atk'] == 3
+    # weaken_hex never drops ATK below 1
+    assert engine.effective_stats({**base, 'atk': 2, 'buffs': [{'kind': 'weaken_hex'}]})['atk'] == 1
+
+
+def test_one_battle_buffs_consumed():
+    doc = {'buffs': [{'kind': 'glowveil'}, {'kind': 'harden_shell'},
+                     {'kind': 'weaken_hex'}, {'kind': 'rot_surge'},
+                     {'kind': 'vines'}]}
+    db._consume_one_battle_buffs(doc)
+    assert [b['kind'] for b in doc['buffs']] == ['vines']  # vines is roll-consumed
+
+
+def test_glowveil_grants_flee_bonus():
+    doc = {'username': 'x', 'hp': 10, 'maxHp': 10, 'atk': 5, 'def': 5, 'spd': 5,
+           'buffs': [{'kind': 'glowveil'}], 'homeBiome': 'bog'}
+    assert db._combatant(doc).flee_bonus == 15
+    doc['homeBiome'] = 'cavern'   # stacks with the Glowblessed hatch perk
+    assert db._combatant(doc).flee_bonus == 25

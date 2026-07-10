@@ -295,6 +295,12 @@ def effective_stats(player: dict) -> dict:
             eff['atk'] = max(1, eff['atk'] - 1)
         elif buff.get('kind') == 'bone_chill':
             eff['atk'] = max(1, eff['atk'] - 2)
+        elif buff.get('kind') == 'glowveil':
+            eff['spd'] += 2
+        elif buff.get('kind') == 'harden_shell':
+            eff['def'] += 2
+        elif buff.get('kind') == 'weaken_hex':
+            eff['atk'] = max(1, eff['atk'] - 3)
     return eff
 
 

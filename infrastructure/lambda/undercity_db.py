@@ -160,7 +160,9 @@ def _combatant(doc):
         passives=_passives(doc), stance=doc.get('stance', 'fight'),
         level=doc.get('level', 1),
         has_smoke_spore='smoke_spore' in (doc.get('bag') or []),
-        flee_bonus=10 if doc.get('homeBiome') == 'cavern' else 0)
+        flee_bonus=(10 if doc.get('homeBiome') == 'cavern' else 0)
+                   + (15 if any(b.get('kind') == 'glowveil'
+                                for b in (doc.get('buffs') or [])) else 0))
 
 
 def _form_name(doc):
@@ -172,9 +174,12 @@ def _creature_label(doc):
     return doc.get('creatureName') or _form_name(doc)
 
 
+ONE_BATTLE_BUFFS = ('rot_surge', 'bone_chill', 'glowveil', 'harden_shell', 'weaken_hex')
+
+
 def _consume_one_battle_buffs(doc):
     doc['buffs'] = [b for b in (doc.get('buffs') or [])
-                    if b.get('kind') not in ('rot_surge', 'bone_chill')]
+                    if b.get('kind') not in ONE_BATTLE_BUFFS]
 
 
 def _expire_buffs(doc):
