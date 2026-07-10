@@ -336,20 +336,13 @@ def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool) -> dict:
 
 # ── Wild NPCs ────────────────────────────────────────────────────────────────
 
-def npc_from_spec(spec: dict, level: int) -> dict:
-    """Instantiate an NPC dict from a (base, per-level) spec at `level`."""
-    return {
-        'id': spec['id'],
-        'name': spec['name'],
-        'hp': spec['hp'][0] + int(spec['hp'][1] * level),
-        'atk': spec['atk'][0] + int(spec['atk'][1] * level),
-        'def': spec['def'][0] + int(spec['def'][1] * level),
-        'spd': spec['spd'],
-        'bounty': spec['bounty'],
-        'itemChance': spec['itemChance'],
-    }
+def npc_from_spec(spec: dict) -> dict:
+    """Instantiate a battle NPC dict from a fixed-stat spec."""
+    return {k: spec[k] for k in
+            ('id', 'name', 'hp', 'atk', 'def', 'spd', 'bounty', 'xp',
+             'itemChance')}
 
 
-def pick_npc(level: int, rng) -> dict:
-    pool = [n for n in data.NPCS if n['min'] <= level <= n['max']] or [data.NPCS[0]]
-    return npc_from_spec(rng.choice(pool), level)
+def pick_npc(rng, pool=None) -> dict:
+    """Random NPC from a tier pool (defaults to the overworld normal pool)."""
+    return npc_from_spec(rng.choice(pool if pool is not None else data.NPCS))

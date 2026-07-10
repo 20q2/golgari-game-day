@@ -115,8 +115,22 @@ def test_wild_win_surfaces_rewards(table, monkeypatch):
     out = db._wild_battle(table, sid, doc)
     assert out['type'] == 'wild'
     assert out['spores'] >= 1                       # bounty
-    assert out['xp'] == data.XP_REWARDS['wild_win']  # surfaced for the popup
-    assert 'levels' not in out                       # 15 xp < first level-up cost
+    assert out['xp'] == 10                          # per-NPC xp (normal tier)
+    assert 'levels' not in out                      # 10 xp < first level-up cost
+
+
+def test_elite_battle_pulls_from_elite_pool(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
+        'outcome': 'attacker', 'strikes': [], 'attackerHp': doc['hp'],
+        'defenderHp': 0, 'smokeSporeUsed': False,
+    })
+    out = db._wild_battle(table, sid, doc, elite=True)
+    assert out['type'] == 'elite'
+    assert out['npc']['id'] in {'fetid_imp', 'rot_shambler'}
+    assert out['xp'] == 25
 
 
 def test_join_is_idempotent_and_seal_rolls(table):

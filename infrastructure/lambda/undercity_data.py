@@ -18,7 +18,6 @@ HP_PER_LEVEL = 3
 STAT_POINTS_PER_LEVEL = 2
 
 XP_REWARDS = {
-    'wild_win': 15,
     'wild_loss': 5,
     'pvp_win': 20,
     'pvp_loss': 8,
@@ -187,17 +186,31 @@ EXCAVATION_ITEMS = ['1x1', '1x1', '1x2', '2x2']  # shapes buried per site
 EXCAVATION_CLEAR_BONUS = 25                  # Spores for clearing the last item
 
 
-# ── Wild NPCs (stats scale off player level L) ───────────────────────────────
+# ── Wild NPCs (fixed stats — the species IS the difficulty tier) ─────────────
+# No level scaling anywhere: when you see a beetle you know exactly what a
+# beetle is. Tier feel (verified by the balance tests in
+# tests/test_undercity_engine.py against reference statlines):
+#   normal — a fresh level-1 starter wins in 4-5 rounds with chip damage
+#   elite  — easy meat at level 4-5, lethal to a level 1-2 (flee!)
+# XP rides on each spec (per-tier rewards); wild_loss/timeout stay flat.
 
 NPCS = [
-    {'id': 'drudge_beetle', 'name': 'Drudge Beetle', 'min': 1, 'max': 4,
-     'hp': (18, 2), 'atk': (4, 1), 'def': (2, 0.5), 'spd': 4, 'bounty': 6, 'itemChance': 0.0},
-    {'id': 'sewer_shambler', 'name': 'Sewer Shambler', 'min': 2, 'max': 6,
-     'hp': (24, 3), 'atk': (5, 1), 'def': (3, 0.5), 'spd': 3, 'bounty': 10, 'itemChance': 0.0},
-    {'id': 'fetid_imp', 'name': 'Fetid Imp', 'min': 4, 'max': 9,
-     'hp': (20, 2), 'atk': (6, 1), 'def': (3, 0.5), 'spd': 7, 'bounty': 14, 'itemChance': 0.15},
-    {'id': 'rot_shambler', 'name': 'Rot Shambler', 'min': 7, 'max': 12,
-     'hp': (30, 3), 'atk': (7, 1), 'def': (5, 0.5), 'spd': 4, 'bounty': 20, 'itemChance': 0.25},
+    {'id': 'drudge_beetle', 'name': 'Drudge Beetle',
+     'hp': 16, 'atk': 4, 'def': 1, 'spd': 4, 'bounty': 6, 'xp': 10,
+     'itemChance': 0.0},
+    {'id': 'sewer_shambler', 'name': 'Sewer Shambler',
+     'hp': 20, 'atk': 5, 'def': 2, 'spd': 3, 'bounty': 9, 'xp': 10,
+     'itemChance': 0.0},
+]
+
+# Elites live only at 'elite' board spaces — never a surprise on a wild space.
+ELITE_NPCS = [
+    {'id': 'fetid_imp', 'name': 'Fetid Imp',
+     'hp': 30, 'atk': 10, 'def': 5, 'spd': 8, 'bounty': 20, 'xp': 25,
+     'itemChance': 0.25},
+    {'id': 'rot_shambler', 'name': 'Rot Shambler',
+     'hp': 32, 'atk': 11, 'def': 5, 'spd': 4, 'bounty': 25, 'xp': 25,
+     'itemChance': 0.30},
 ]
 
 
@@ -322,25 +335,24 @@ DUNGEONS = {
                'rite': 'The Rotcellar. Sweet decay, thick as soup.'},
 }
 
-# One themed wild per dungeon — same (base, per-level) tuple shape as NPCS,
-# ~15% meaner than the surface wild of the same band, +25% bounty. All bands
-# span every level so the dungeon always spawns its own fauna.
+# One themed wild per dungeon — fixed stats in the level-2-3 band (comfortable
+# at L2-3, survivable-but-scary at L1), ~+50% bounty over surface wilds.
 DUNGEON_NPCS = {
-    'city':   {'id': 'broodling',  'name': 'Hatchery Spider',   'min': 1, 'max': 12,
-               'hp': (24, 2.5), 'atk': (6, 1), 'def': (3, 0.5), 'spd': 6,
-               'bounty': 15, 'itemChance': 0.10},
-    'cavern': {'id': 'glowmite',   'name': 'Vigorspore Wurm',    'min': 1, 'max': 12,
-               'hp': (20, 2.5), 'atk': (7, 1), 'def': (2, 0.5), 'spd': 8,
-               'bounty': 15, 'itemChance': 0.10},
-    'bog':    {'id': 'mire_leech', 'name': 'Festering Newt',  'min': 1, 'max': 12,
-               'hp': (28, 3), 'atk': (5, 1), 'def': (4, 0.5), 'spd': 4,
-               'bounty': 15, 'itemChance': 0.10},
-    'bone':   {'id': 'gravewight', 'name': 'Wight of Precinct Six',  'min': 1, 'max': 12,
-               'hp': (26, 2.5), 'atk': (6, 1), 'def': (5, 0.5), 'spd': 3,
-               'bounty': 16, 'itemChance': 0.10},
-    'garden': {'id': 'rot_grub',   'name': 'Thallid',    'min': 1, 'max': 12,
-               'hp': (30, 3), 'atk': (5, 1), 'def': (3, 0.5), 'spd': 5,
-               'bounty': 15, 'itemChance': 0.15},
+    'city':   {'id': 'broodling',  'name': 'Hatchery Spider',
+               'hp': 26, 'atk': 8, 'def': 3, 'spd': 6, 'bounty': 14, 'xp': 15,
+               'itemChance': 0.10},
+    'cavern': {'id': 'glowmite',   'name': 'Vigorspore Wurm',
+               'hp': 22, 'atk': 9, 'def': 2, 'spd': 8, 'bounty': 14, 'xp': 15,
+               'itemChance': 0.10},
+    'bog':    {'id': 'mire_leech', 'name': 'Festering Newt',
+               'hp': 28, 'atk': 7, 'def': 3, 'spd': 4, 'bounty': 14, 'xp': 15,
+               'itemChance': 0.10},
+    'bone':   {'id': 'gravewight', 'name': 'Wight of Precinct Six',
+               'hp': 24, 'atk': 8, 'def': 4, 'spd': 3, 'bounty': 15, 'xp': 15,
+               'itemChance': 0.10},
+    'garden': {'id': 'rot_grub',   'name': 'Thallid',
+               'hp': 28, 'atk': 7, 'def': 3, 'spd': 5, 'bounty': 14, 'xp': 15,
+               'itemChance': 0.15},
 }
 
 # Signature hazards — display copy here; behavior lives in undercity_db._hazard.

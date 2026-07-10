@@ -948,13 +948,13 @@ def _dungeon_hazard(table, sid, doc, node, biome, mire):
 
 # ── Battles ──────────────────────────────────────────────────────────────────
 
-def _wild_battle(table, sid, doc):
+def _wild_battle(table, sid, doc, elite=False):
     biome = data.dungeon_biome(doc.get('position', ''))
     if biome:
         # Dungeon fauna: each pocket spawns its own themed wild.
-        npc = engine.npc_from_spec(data.DUNGEON_NPCS[biome], doc.get('level', 1))
+        npc = engine.npc_from_spec(data.DUNGEON_NPCS[biome])
     else:
-        npc = engine.pick_npc(doc.get('level', 1), _rng)
+        npc = engine.pick_npc(_rng, data.ELITE_NPCS if elite else data.NPCS)
     player_c = _combatant(doc)
     player_c.stance = 'fight'  # attacker's stance never applies to their own attack
     if doc.get('homeBiome') == 'bone':
@@ -966,14 +966,14 @@ def _wild_battle(table, sid, doc):
     doc['hpUpdatedAt'] = _now()
     _consume_one_battle_buffs(doc)
 
-    out = {'type': 'wild', 'npc': npc, 'battle': result}
+    out = {'type': 'elite' if elite else 'wild', 'npc': npc, 'battle': result}
     if result['outcome'] == 'attacker':
         bounty = npc['bounty'] + (2 if 'scrounger' in _passives(doc) else 0)
         doc['spores'] = doc.get('spores', 0) + bounty
         doc['wildWins'] = doc.get('wildWins', 0) + 1
-        levels = _grant_xp(table, sid, doc, data.XP_REWARDS['wild_win'])
+        levels = _grant_xp(table, sid, doc, npc['xp'])
         out['spores'] = bounty
-        out['xp'] = data.XP_REWARDS['wild_win']
+        out['xp'] = npc['xp']
         if levels:
             out['levels'] = levels
         if npc['itemChance'] and _rng.random() < npc['itemChance']:

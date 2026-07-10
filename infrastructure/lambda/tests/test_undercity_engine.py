@@ -317,18 +317,16 @@ def test_mystery_doubling_rot_doubles_spore_gains():
 
 # ── NPCs ─────────────────────────────────────────────────────────────────────
 
-def test_npc_scaling():
-    npc = pick_npc(4, FakeRng())
-    assert npc['id'] == 'drudge_beetle'
-    assert npc['hp'] == 18 + 8 and npc['atk'] == 8 and npc['def'] == 4
+def test_npc_fixed_stats():
+    npc = pick_npc(FakeRng())              # FakeRng.choice -> first pool entry
+    assert npc == {'id': 'drudge_beetle', 'name': 'Drudge Beetle',
+                   'hp': 16, 'atk': 4, 'def': 1, 'spd': 4,
+                   'bounty': 6, 'xp': 10, 'itemChance': 0.0}
 
 
-def test_npc_pool_respects_level():
-    import random
-    for lvl in (1, 6, 12):
-        npc = pick_npc(lvl, random.Random(7))
-        spec = next(n for n in data.NPCS if n['id'] == npc['id'])
-        assert spec['min'] <= lvl <= spec['max']
+def test_pick_npc_uses_given_pool():
+    npc = pick_npc(FakeRng(), data.ELITE_NPCS)
+    assert npc['id'] == 'fetid_imp' and npc['xp'] == 25
 
 
 # ── Effective stats ──────────────────────────────────────────────────────────
@@ -358,16 +356,6 @@ def test_renown_table():
 
 
 # ── Unique dungeons (v6) ─────────────────────────────────────────────────────
-
-def test_npc_from_spec_scales_with_level():
-    from undercity_engine import npc_from_spec
-    spec = data.DUNGEON_NPCS['city']
-    npc = npc_from_spec(spec, 4)
-    assert npc['id'] == 'broodling'
-    assert npc['hp'] == spec['hp'][0] + int(spec['hp'][1] * 4)
-    assert npc['atk'] == spec['atk'][0] + int(spec['atk'][1] * 4)
-    assert npc['bounty'] == spec['bounty']
-
 
 def test_bone_chill_debuff_lowers_atk():
     player = {'atk': 6, 'def': 4, 'spd': 5, 'maxHp': 30,
@@ -410,3 +398,29 @@ def test_guardians_fall_at_their_target_levels():
     south = resolve_battle(_ref(6), _foe(data.BARRIER_GUARDIANS['bar_s']), FakeRng())
     assert east['outcome'] == 'attacker'
     assert south['outcome'] == 'attacker'
+
+
+def test_level1_beats_every_normal_wild():
+    for spec in data.NPCS:
+        out = resolve_battle(_ref(1), _foe(spec), FakeRng())
+        assert out['outcome'] == 'attacker', spec['id']
+
+
+def test_level1_loses_to_elites():
+    for spec in data.ELITE_NPCS:
+        out = resolve_battle(_ref(1), _foe(spec), FakeRng())
+        assert out['outcome'] == 'defender', spec['id']
+
+
+def test_level5_beats_every_elite_taking_chip_damage():
+    for spec in data.ELITE_NPCS:
+        me = _ref(5)
+        out = resolve_battle(me, _foe(spec), FakeRng())
+        assert out['outcome'] == 'attacker', spec['id']
+        assert out['attackerHp'] >= me.max_hp - 8, spec['id']
+
+
+def test_level3_beats_every_dungeon_wild():
+    for biome, spec in data.DUNGEON_NPCS.items():
+        out = resolve_battle(_ref(3), _foe(spec), FakeRng())
+        assert out['outcome'] == 'attacker', biome
