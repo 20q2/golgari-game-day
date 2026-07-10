@@ -21,6 +21,8 @@ pnpm-debug.log*
 
 # Compiled output
 *.tsbuildinfo
+__pycache__/
+*.pyc
 
 # Environment files
 .env
