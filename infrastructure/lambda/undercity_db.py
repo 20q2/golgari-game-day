@@ -499,6 +499,7 @@ def _join(table, sid, user_id, username, payload):
     home = payload.get('home', data.DEFAULT_BIOME)
     if home not in data.BIOMES:
         return _err('Pick a home biome: ' + ', '.join(data.BIOMES) + '.')
+    creature_name = str(payload.get('creatureName') or '').strip()[:16]
 
     perm = _get_perm(table, user_id)
     seals_before = perm.get('seals', 0)
@@ -515,6 +516,7 @@ def _join(table, sid, user_id, username, payload):
         'pk': _season_pk(sid), 'sk': f'PLAYER#{user_id}',
         'userId': user_id, 'username': username or user_id,
         'species': starter, 'form': starter, 'tier': 1,
+        'creatureName': creature_name or s['name'],
         'passives': [s['passive']],
         'level': 1, 'xp': 0, 'statPoints': 0,
         'spentThisLevel': {'atk': 0, 'def': 0, 'spd': 0},
@@ -536,9 +538,10 @@ def _join(table, sid, user_id, username, payload):
     if conflict:
         return conflict
     biome = data.BIOMES[home]
+    named = f" named {doc['creatureName']}" if doc['creatureName'] != s['name'] else ''
     _event(table, sid, 'hatch',
            f"{doc['username']}'s egg cracks open in {biome['name']} — "
-           f"a {s['name']} skitters out! ({biome['perkName']}: {biome['perkBlurb']})",
+           f"a {s['name']}{named} skitters out! ({biome['perkName']}: {biome['perkBlurb']})",
            actor=user_id)
     return _ok(doc)
 

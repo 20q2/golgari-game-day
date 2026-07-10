@@ -413,6 +413,37 @@ def test_excavation_guards(table):
     assert status == 409  # out of digs this visit
 
 
+def test_death_offers_respawn_choice_and_respawn(table):
+    act(table, 'join', starter='pest', home='cavern')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['lastBiome'] = 'bog'  # last home biome you stood in before dying
+    db._compost(table, sid, doc, 'test death')
+    # Provisional wake at home; a choice is offered between home + last biome.
+    assert doc['position'] == 'cavern_r0'
+    gates = {o['gate'] for o in doc['pendingRespawn']['options']}
+    assert gates == {'cavern_r0', 'bog_r0'}
+    db._put_player(table, doc)
+
+    status, resp = act(table, 'respawn', gate='bog_r0')
+    assert status == 200
+    assert resp['you']['position'] == 'bog_r0'
+    assert 'pendingRespawn' not in resp['you']
+
+    status, _ = act(table, 'respawn', gate='bog_r0')
+    assert status == 409  # nothing pending anymore
+
+
+def test_death_in_home_biome_skips_choice(table):
+    act(table, 'join', starter='pest', home='cavern')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['lastBiome'] = 'cavern'  # died in your own biome — both gates identical
+    db._compost(table, sid, doc, 'test death')
+    assert doc['position'] == 'cavern_r0'
+    assert 'pendingRespawn' not in doc
+
+
 def test_season_end_produces_standings(table):
     act(table, 'join', starter='pest')
     act(table, 'join', user='user-sam', name='Sam', starter='kraul')
@@ -445,6 +476,31 @@ def test_customize_validates_wardrobe(table):
     assert status == 409  # not owned
     status, resp = act(table, 'customize',
                        paint={'body': 130, 'belly': 50, 'stripes': 50})
+
+
+def test_join_stores_creature_name(table):
+    status, resp = act(table, 'join', starter='pest', creatureName='  Mulch  ')
+    assert status == 200
+    assert resp['you']['creatureName'] == 'Mulch'  # trimmed
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    hatch = next(e for e in state['events'] if e['type'] == 'hatch')
+    assert 'named Mulch' in hatch['text']
+
+
+def test_join_clamps_long_creature_name(table):
+    status, resp = act(table, 'join', starter='pest',
+                       creatureName='Grubblesworth von Sporington III')
+    assert status == 200
+    assert len(resp['you']['creatureName']) == 16
+
+
+def test_join_without_name_falls_back_to_form_name(table):
+    status, resp = act(table, 'join', starter='pest')
+    assert status == 200
+    assert resp['you']['creatureName'] == 'Pest'
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    hatch = next(e for e in state['events'] if e['type'] == 'hatch')
+    assert 'named' not in hatch['text']  # no silly "a Pest named Pest"
     assert status == 200  # default paints: forest(130) + gold(50)
     status, resp = act(table, 'customize', paint={'body': 270})
     assert status == 409  # violet not owned
