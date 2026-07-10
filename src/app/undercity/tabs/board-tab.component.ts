@@ -35,13 +35,14 @@ import {
   GearInfo,
   ConsumableInfo,
 } from '../data/items';
-import { DUNGEONS } from '../data/dungeons';
+import { DUNGEONS, dungeonBiome } from '../data/dungeons';
 import { formName } from '../data/forms';
 import { formSprite } from '../data/species';
 import { getRecoloredDataUrl } from '../engine/sprite-engine';
 import { BattlePlaybackComponent, BattleSide, BattleRewards } from './battle-playback.component';
 import { DiceRollComponent } from './dice-roll.component';
 import { ExcavationModalComponent } from './excavation.component';
+import { MysteryReelComponent } from './mystery-reel.component';
 
 interface BattleView {
   battle: BattleResult;
@@ -74,6 +75,7 @@ function stepPrev(step: StepState): string | null {
     BattlePlaybackComponent,
     DiceRollComponent,
     ExcavationModalComponent,
+    MysteryReelComponent,
   ],
   templateUrl: './board-tab.component.html',
   styleUrls: ['./board-tab.component.scss'],
@@ -99,6 +101,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly giveItem = signal<string | null>(null);
   protected readonly showExcavation = signal(false);
   protected readonly excavationGrid = signal<DigGrid | null>(null);
+  protected readonly reelSymbol = signal<string | null>(null);
+  private pendingMysteryEv: SpaceEvent | null = null;
   protected readonly bet = signal(5);
   protected readonly gambleResult = signal<string | null>(null);
   protected readonly rolling = signal(false);
@@ -250,6 +254,28 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.rolling.set(false);
   }
 
+  /** Map a mystery outcome to a reel face so it lands on something meaningful. */
+  private mysterySymbol(ev: SpaceEvent): string {
+    if (ev.item) return 'item';
+    if (ev.hat) return 'hat';
+    if (ev.paint) return 'paint';
+    if (ev.to) return 'warp';
+    if ((ev.hp ?? 0) > 0) return 'heal';
+    if ((ev.hp ?? 0) < 0 || ev.sporesLost) return 'hurt';
+    if (ev.spores) return 'spores';
+    return 'mystery';
+  }
+
+  /** Reel is fading out — open the event card underneath now (cross-fade),
+   *  then unmount the reel once its fade completes. */
+  onReelSettled(): void {
+    if (this.pendingMysteryEv) {
+      this.spaceModal.set(this.pendingMysteryEv);
+      this.pendingMysteryEv = null;
+    }
+    setTimeout(() => this.reelSymbol.set(null), 340);
+  }
+
   private onTapNode(nodeId: string | null): void {
     if (!nodeId) {
       // Tapped empty tunnel — dismiss the space popover.
@@ -285,11 +311,25 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   private buildNodeInfo(nodeId: string): NodeInfo | null {
     const node = this.map?.nodes.find((n) => n.id === nodeId);
     if (!node) return null;
+    let title = this.spaceName(node.type);
     let body = SPACE_BLURBS[node.type] ?? 'Unmapped tunnels.';
+    // Inside a dungeon, the signature spaces introduce themselves.
+    const dungeon = dungeonBiome(nodeId, node.region);
+    if (dungeon) {
+      const d = DUNGEONS[dungeon];
+      if (node.type === 'hazard') {
+        title = d.hazardName;
+        body = d.hazardBlurb;
+      } else if (node.type === 'wild') {
+        body = `A ${d.wildName} hunts these tunnels. Beat it for XP and a fat bounty.`;
+      } else if (node.type === 'lair') {
+        body = `The den of ${d.lairName}. First kill claims the ${d.name} Guild Sigil.`;
+      }
+    }
     if (this.store.snares().includes(nodeId)) {
       body += ' The ground here looks disturbed…';
     }
-    return { nodeId, title: this.spaceName(node.type), body };
+    return { nodeId, title, body };
   }
 
   private toggleInfo(nodeId: string): void {
@@ -321,16 +361,27 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     if (!this.board) return;
     const step = this.stepping();
     const ownId = this.store.ownUserId;
+    const you = this.store.you();
     this.board.setPlayers(
-      this.store.players().map((p) => ({
-        userId: p.userId,
-        username: p.username,
-        form: p.form,
-        level: p.level,
-        paint: p.paint ?? {},
-        position: step && p.userId === ownId ? stepPos(step) : p.position,
-        shielded: isShielded(p),
-      })),
+      this.store.players().map((p) => {
+        // Own token: while walking, use the local step position; otherwise trust
+        // the optimistically-patched `you` doc — the public players array lags a
+        // poll behind, which would otherwise snap us back to the old space and
+        // then zip to the new one the moment a move resolves.
+        let position = p.position;
+        if (p.userId === ownId) {
+          position = step ? stepPos(step) : (you?.position ?? p.position);
+        }
+        return {
+          userId: p.userId,
+          username: p.username,
+          form: p.form,
+          level: p.level,
+          paint: p.paint ?? {},
+          position,
+          shielded: isShielded(p),
+        };
+      }),
     );
     this.board.setSnares(this.store.snares());
     this.board.setBarriersOpen(this.store.barriersOpen());
@@ -338,6 +389,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const choices = step ? this.stepChoices(step) : [];
     this.board.setChoices(step ? choices : null);
     this.board.setBackChoice(step ? stepPrev(step) : null);
+    // Steps-left die over your head while a move is pending (Mario Party style).
+    this.board.setStepDie(step && step.left > 0 ? step.left : null);
     // Don't leave a tapped popover pinned on the space you're standing on while
     // you're walking — the destination popovers should be the only ones up.
     if (here && this.infoNodeId === here) this.hideInfo();
@@ -397,6 +450,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         this.openTradingPost(ev.stock);
       } else if (ev.type === 'excavation') {
         this.openExcavation(ev.grid);
+      } else if (ev.type === 'mystery') {
+        // Spin the reveal reel first; the event card opens once it lands.
+        this.pendingMysteryEv = ev;
+        this.reelSymbol.set(this.mysterySymbol(ev));
       } else {
         this.spaceModal.set(ev);
       }
@@ -502,6 +559,16 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       const resp = await this.store.action('dig', { r: cell.r, c: cell.c });
       if (resp.grid) this.excavationGrid.set(resp.grid);
       if (resp.found || resp.cleared) this.showToast(resp.text ?? 'You dig…');
+    });
+  }
+
+  // ── Respawn choice ───────────────────────────────────────────────────────────
+
+  /** Choose which gate to wake at after a compost. */
+  async respawn(gate: string): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('respawn', { gate });
+      if (resp.you) this.board?.centerOn(resp.you.position);
     });
   }
 

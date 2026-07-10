@@ -7,6 +7,8 @@ export interface DungeonInfo {
   name: string;
   rite: string; // one-line flavor card shown on first descent per session
   wild: string; // NPC id — battle art at undercity/enemies/<id>.png
+  wildName: string;
+  lairName: string; // mirrors LAIR_BOSSES in undercity_data.py
   hazardName: string;
   hazardBlurb: string;
 }
@@ -16,6 +18,8 @@ export const DUNGEONS: Record<string, DungeonInfo> = {
     name: 'The Broodwarrens',
     rite: 'The Broodwarrens. The walls pulse.',
     wild: 'broodling',
+    wildName: 'Broodling',
+    lairName: 'the Broodmother of the Warrens',
     hazardName: 'Webbing',
     hazardBlurb: 'Sticky broodsilk halves your next roll.',
   },
@@ -23,6 +27,8 @@ export const DUNGEONS: Record<string, DungeonInfo> = {
     name: 'Gloomroot Hollow',
     rite: 'Gloomroot Hollow. The light here is alive.',
     wild: 'glowmite',
+    wildName: 'Glowmite',
+    lairName: 'the Gloomglow Tyrant',
     hazardName: 'Spore Cloud',
     hazardBlurb: 'A bursting cloud flings you elsewhere in the hollow.',
   },
@@ -30,6 +36,8 @@ export const DUNGEONS: Record<string, DungeonInfo> = {
     name: 'The Drownedway',
     rite: 'The Drownedway. Black water swallows your steps.',
     wild: 'mire_leech',
+    wildName: 'Mire Leech',
+    lairName: 'the Moor-Wyrm',
     hazardName: 'Sinkwater',
     hazardBlurb: 'The murk claims 15% of your carried Spores.',
   },
@@ -37,6 +45,8 @@ export const DUNGEONS: Record<string, DungeonInfo> = {
     name: 'The Marrow Pits',
     rite: 'The Marrow Pits. The dead are load-bearing.',
     wild: 'gravewight',
+    wildName: 'Gravewight',
+    lairName: 'the Marrow King',
     hazardName: 'Bone Chill',
     hazardBlurb: 'Grave-cold: -2 ATK in your next battle.',
   },
@@ -44,6 +54,8 @@ export const DUNGEONS: Record<string, DungeonInfo> = {
     name: 'The Rotcellar',
     rite: 'The Rotcellar. Sweet decay, thick as soup.',
     wild: 'rot_grub',
+    wildName: 'Rot Grub',
+    lairName: 'the Rot-Shepherd',
     hazardName: 'Rot Bloom',
     hazardBlurb: 'Stinging pods: lose 3 HP, gain 4 Spores.',
   },
