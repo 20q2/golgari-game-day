@@ -43,6 +43,7 @@ export const CONSUMABLE_MAP: Record<string, ConsumableInfo> = Object.fromEntries
 export const SPACE_ICONS: Record<string, string> = {
   loot: 'grass',
   wild: 'bug_report',
+  elite: 'dangerous',
   mystery: 'help',
   shop: 'storefront',
   trading_post: 'swap_horiz',
@@ -70,6 +71,7 @@ export const SPACE_ICONS: Record<string, string> = {
 export const SPACE_TINTS: Record<string, string> = {
   loot: '#3f6f3f',
   wild: '#7a3030',
+  elite: '#5c1f2e',
   mystery: '#5b4a8a',
   shop: '#8a6a2f',
   trading_post: '#5a7a5a',
@@ -115,6 +117,7 @@ export const NPC_ICONS: Record<string, string> = {
 export const SPACE_BLURBS: Record<string, string> = {
   loot: 'Forage the rot for Spores — sometimes a buried consumable.',
   wild: 'A wild creature lurks here. Beat it for XP and a Spore bounty.',
+  elite: 'An elite predator claims this ground. Rich XP and Spores — but a death sentence for fresh hatchlings.',
   mystery: 'Roll the d12 mystery table — fortune, junk, or misfortune.',
   shop: 'Buy gear and consumables for Spores.',
   trading_post: 'Swap one of your consumables for one left here by another player.',
@@ -135,6 +138,7 @@ export const SPACE_BLURBS: Record<string, string> = {
 export const SPACE_NAMES: Record<string, string> = {
   loot: 'Loot Cache',
   wild: 'Wild Encounter',
+  elite: 'Elite Encounter',
   mystery: 'Mystery',
   shop: 'Rot-Farm Bazaar',
   trading_post: 'Trading Post',

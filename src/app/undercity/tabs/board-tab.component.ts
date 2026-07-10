@@ -418,7 +418,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       const ev = resp.spaceEvent;
       this.occupants.set(resp.occupants ?? []);
       if (!ev) return;
-      const fightTypes = ['wild', 'barrier', 'lair', 'boss'];
+      const fightTypes = ['wild', 'elite', 'barrier', 'lair', 'boss'];
       if (fightTypes.includes(ev.type) && ev.battle && ev.npc) {
         this.battleView.set({
           battle: ev.battle,
@@ -611,7 +611,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Battle-card art path per foe class (missing files fall back to icons). */
   private npcSpriteUrl(evType: string, npcId: string): string {
-    if (evType === 'wild') return `undercity/enemies/${npcId}.png`;
+    if (evType === 'wild' || evType === 'elite') return `undercity/enemies/${npcId}.png`;
     if (evType === 'barrier') return `undercity/guardians/${npcId}.jfif`;
     // Lair mini-bosses and the island boss share the sigil_boss folder.
     return `undercity/sigil_boss/${npcId}.jfif`;
