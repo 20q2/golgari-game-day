@@ -417,7 +417,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       const ev = resp.spaceEvent;
       this.occupants.set(resp.occupants ?? []);
       if (!ev) return;
-      if ((ev.type === 'wild' || ev.type === 'barrier' || ev.type === 'lair') && ev.battle && ev.npc) {
+      const fightTypes = ['wild', 'barrier', 'lair', 'boss'];
+      if (fightTypes.includes(ev.type) && ev.battle && ev.npc) {
         this.battleView.set({
           battle: ev.battle,
           attacker: {
@@ -428,12 +429,14 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           },
           defender: {
             name: ev.npc.name,
-            // Only the wild NPCs have sprite art; guardians/mini-bosses fall
-            // back to their icon until they get sprites of their own.
-            spriteUrl: ev.type === 'wild' ? `undercity/enemies/${ev.npc.id}.png` : null,
+            // Art folder per foe class; a missing file falls back to the icon
+            // via the battle card's onerror handling.
+            spriteUrl: this.npcSpriteUrl(ev.type, ev.npc.id),
             icon: NPC_ICONS[ev.npc.id] ?? 'bug_report',
             startHp: ev.npc.hp,
-            maxHp: ev.npc.hp,
+            // The island boss carries a persistent HP pool: current hp can be
+            // well below its true max.
+            maxHp: ev.npc.maxHp ?? ev.npc.hp,
           },
           resultText: ev.text,
           rewards: this.buildRewards(ev),
@@ -604,6 +607,14 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+
+  /** Battle-card art path per foe class (missing files fall back to icons). */
+  private npcSpriteUrl(evType: string, npcId: string): string {
+    if (evType === 'wild') return `undercity/enemies/${npcId}.png`;
+    if (evType === 'barrier') return `undercity/guardians/${npcId}.jfif`;
+    // Lair mini-bosses and the island boss share the sigil_boss folder.
+    return `undercity/sigil_boss/${npcId}.jfif`;
+  }
 
   protected youSpriteUrl(): string | null {
     const you = this.store.you();
