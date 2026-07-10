@@ -192,6 +192,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         userId: p.userId,
         username: p.username,
         formName: p.formName,
+        creatureName: p.creatureName,
         level: p.level,
         shielded: isShielded(p),
         stance: p.stance,
@@ -483,7 +484,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           maxHp: this.store.you()?.maxHp ?? preHp,
         },
         defender: {
-          name: `${target.username}'s ${target.formName}`,
+          name: `${target.username}'s ${target.creatureName || target.formName}`,
           spriteUrl: targetPublic
             ? this.spriteUrl(targetPublic.form, targetPublic.paint)
             : null,
@@ -628,7 +629,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   private youBattleName(): string {
     const you = this.store.you();
-    return you ? `Your ${formName(you.form)}` : 'You';
+    return you ? `Your ${you.creatureName || formName(you.form)}` : 'You';
   }
 
   /** Assemble the victory-popup spoils from a battle response/event. */

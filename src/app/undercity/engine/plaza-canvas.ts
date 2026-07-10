@@ -16,6 +16,7 @@ export interface PlazaCreature {
   username: string;
   form: string;
   formName: string;
+  creatureName?: string;
   level: number;
   paint: Record<string, number>;
   hat: string | null;
@@ -840,20 +841,22 @@ export class PlazaCanvas {
       const floatY = Math.sin(elapsed * 4 + d.hopPhase) * 2;
       ctx.save();
       ctx.globalAlpha = Math.min(1, d.startleTimer / (STARTLE_DURATION * 0.5));
-      ctx.font = `${Math.round(11 * d.scale)}px serif`;
+      ctx.font = `${Math.round(11 * d.scale)}px 'Material Icons'`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('❗', x, emojiY + floatY);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText('priority_high', x, emojiY + floatY);
       ctx.restore();
     } else if (d.sniffTimer > 0) {
       const emojiY = y - halfH + hopY - (d.partner.hat ? 14 : 6);
       const floatY = Math.sin(elapsed * 2.5 + d.hopPhase) * 3;
       ctx.save();
       ctx.globalAlpha = 0.7 + 0.3 * Math.sin(elapsed * 3 + d.hopPhase);
-      ctx.font = `${Math.round(10 * d.scale)}px serif`;
+      ctx.font = `${Math.round(10 * d.scale)}px 'Material Icons'`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('\u{1F4AD}', x, emojiY + floatY);
+      ctx.fillStyle = '#e5f0e5';
+      ctx.fillText('chat_bubble', x, emojiY + floatY);
       ctx.restore();
     }
 
@@ -870,7 +873,7 @@ export class PlazaCanvas {
     const p = d.partner;
 
     const padH = 5 * scale;
-    const line1 = `${p.formName} · L${p.level}`;
+    const line1 = `${p.creatureName || p.formName} · L${p.level}`;
     const line2 = p.username;
 
     const fontSize1 = Math.round(6 * scale);

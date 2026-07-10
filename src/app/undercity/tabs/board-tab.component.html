@@ -3,31 +3,44 @@
 
   <!-- Roll / pending banner -->
   <div class="roll-strip">
-    @if (store.you()?.pendingMove; as pm) {
-      <div class="pending-banner">
-        🎲 You rolled a <strong>{{ pm.value }}</strong> — tap a glowing space
-      </div>
-    } @else {
-      <button
-        class="uc-btn uc-btn-primary roll-btn"
-        [disabled]="busy() || (store.you()?.rolls ?? 0) < 1"
-        (click)="roll()"
-      >
-        🎲 Roll ({{ store.you()?.rolls ?? 0 }})
+    <!-- While the overlay die is mid-tumble, keep the strip clear so the value
+         isn't spoiled. Once rolled, the steps-left die floats above the token
+         (Mario Party style) instead of a banner up here. -->
+    @if (!rolling() && !store.you()?.pendingMove) {
+      <!-- TODO: unlimited-rolls dev mode (UNLIMITED_ROLLS in undercity_data.py) —
+           restore the roll-count gate and label before game night. -->
+      <button class="uc-btn uc-btn-primary roll-btn" [disabled]="busy()" (click)="roll()">
+        <img class="die-icon" src="undercity/icons/die.png" alt="" /> Roll (∞)
       </button>
     }
 
     <!-- Contextual facility buttons while parked on a special node -->
-    @if (!store.you()?.pendingMove) {
+    @if (!rolling() && !store.you()?.pendingMove) {
       @switch (nodeType()) {
         @case ('shop') {
-          <button class="uc-btn" (click)="showShop.set(true)">🏪 Bazaar</button>
+          <button class="uc-btn" (click)="showShop.set(true)">
+            <mat-icon class="mi">storefront</mat-icon> Bazaar
+          </button>
         }
         @case ('shrine') {
-          <button class="uc-btn" (click)="showShrine.set(true)">🕯️ Shrine</button>
+          <button class="uc-btn" (click)="showShrine.set(true)">
+            <mat-icon class="mi">local_fire_department</mat-icon> Shrine
+          </button>
         }
         @case ('ossuary') {
-          <button class="uc-btn" (click)="showOssuary.set(true)">🎲 Ossuary</button>
+          <button class="uc-btn" (click)="showOssuary.set(true)">
+            <mat-icon class="mi">casino</mat-icon> Ossuary
+          </button>
+        }
+        @case ('trading_post') {
+          <button class="uc-btn" (click)="openTradingPost()">
+            <mat-icon class="mi">swap_horiz</mat-icon> Trading Post
+          </button>
+        }
+        @case ('excavation') {
+          <button class="uc-btn" (click)="openExcavation()">
+            <mat-icon class="mi">grid_view</mat-icon> Dig Site
+          </button>
         }
       }
     }
@@ -39,9 +52,9 @@
       @for (o of occupantsHere(); track o.userId) {
         <div class="pvp-row">
           <span class="pvp-name">
-            {{ o.username }}'s {{ o.formName }} (L{{ o.level }})
+            {{ o.username }}'s {{ o.creatureName || o.formName }} (L{{ o.level }})
             @if (o.shielded) {
-              <span title="Compost Shield">🫧</span>
+              <mat-icon class="mi shield-mi" title="Compost Shield">shield</mat-icon>
             }
           </span>
           <button
@@ -49,7 +62,7 @@
             [disabled]="busy() || o.shielded"
             (click)="attack(o)"
           >
-            ⚔️ Battle
+            <mat-icon class="mi">sports_kabaddi</mat-icon> Battle
           </button>
         </div>
       }
@@ -60,15 +73,84 @@
     <div class="board-toast">{{ t }}</div>
   }
 
+  <!-- Respawn gate choice (after a compost) -->
+  @if (store.you()?.pendingRespawn; as pr) {
+    <div class="uc-modal-backdrop">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">skull</mat-icon> Composted</h3>
+        <p class="modal-sub">The swarm reclaims you. Where do you crawl back up?</p>
+        <div class="choice-grid">
+          @for (o of pr.options; track o.gate) {
+            <button class="uc-btn" [disabled]="busy()" (click)="respawn(o.gate)">
+              <mat-icon class="mi">home</mat-icon> {{ o.label }}
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Rolling die overlay -->
+  @if (rolling()) {
+    <div class="dice-overlay">
+      <app-undercity-dice-roll [value]="rolledValue()" (settled)="onDiceSettled()" />
+    </div>
+  }
+
+  <!-- Mystery slot-reel reveal -->
+  @if (reelSymbol(); as sym) {
+    <app-undercity-mystery-reel [target]="sym" (settled)="onReelSettled()" />
+  }
+
   <!-- Space event result modal -->
   @if (spaceModal(); as ev) {
     <div class="uc-modal-backdrop" (click)="closeSpaceModal()">
-      <div class="uc-modal" (click)="$event.stopPropagation()">
+      <div
+        class="uc-modal event-modal"
+        (click)="$event.stopPropagation()"
+        [style.background-image]="eventCardBg()"
+      >
+        <div class="event-banner">
+          @if (ev.type === 'gate') {
+            <img class="event-art" src="undercity/icons/temple.png" alt="" />
+          } @else if (ev.type === 'boss_sealed') {
+            <img class="event-art" src="undercity/icons/boss.png" alt="" />
+          } @else {
+            <span class="event-disc" [style.background]="eventTint(ev.type)">
+              <mat-icon>{{ spaceIcon(ev.type) }}</mat-icon>
+            </span>
+          }
+        </div>
         <h3>{{ spaceName(ev.type) }}</h3>
-        @if (ev.roll) {
-          <p class="mystery-roll">d12 → {{ ev.roll }}</p>
+        <p class="event-text">{{ ev.text }}</p>
+        @if (eventHasChips(ev)) {
+          <div class="event-chips">
+            @if (ev.spores) {
+              <span class="chip gain"><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> +{{ ev.spores }}</span>
+            }
+            @if (ev.sporesLost) {
+              <span class="chip loss"><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> −{{ ev.sporesLost }}</span>
+            }
+            @if (ev.hp) {
+              <span class="chip" [class.gain]="ev.hp > 0" [class.loss]="ev.hp < 0">
+                <mat-icon class="mi">favorite</mat-icon> {{ ev.hp > 0 ? '+' + ev.hp : ev.hp }} HP
+              </span>
+            }
+            @if (ev.item && itemInfo(ev.item); as info) {
+              <span class="chip item"><mat-icon class="mi">{{ info.icon }}</mat-icon> {{ info.name }}</span>
+            }
+            @if (ev.paint) {
+              <span class="chip item">
+                <mat-icon class="mi">palette</mat-icon> {{ ev.duplicate ? 'Duplicate paint' : 'New paint!' }}
+              </span>
+            }
+            @if (ev.hat) {
+              <span class="chip item">
+                <mat-icon class="mi">checkroom</mat-icon> {{ ev.duplicate ? 'Duplicate hat' : 'New hat!' }}
+              </span>
+            }
+          </div>
         }
-        <p>{{ ev.text }}</p>
         <button class="uc-btn uc-btn-primary" (click)="closeSpaceModal()">OK</button>
       </div>
     </div>
@@ -78,31 +160,36 @@
   @if (showShop()) {
     <div class="uc-modal-backdrop" (click)="closeFacilities()">
       <div class="uc-modal shop-modal" (click)="$event.stopPropagation()">
-        <h3>🏪 Rot-Farm Bazaar (tier {{ shopTier() }})</h3>
-        <p class="modal-sub">You carry 🟢 {{ store.you()?.spores }}</p>
+        <img class="modal-art" src="undercity/icons/bazaar.png" alt="" />
+        <h3><mat-icon class="mi">storefront</mat-icon> Rot-Farm Bazaar</h3>
+        <p class="modal-sub">
+          You carry <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ store.you()?.spores }}
+        </p>
         <div class="shop-section">Gear (auto-equips; old piece trades in at 50%)</div>
         @for (g of gear; track g.id) {
-          <div class="shop-row" [class.locked]="g.tier > shopTier()">
+          <div class="shop-row">
             <span class="shop-name">{{ g.name }} <em>{{ g.desc }}</em></span>
-            @if (g.tier > shopTier()) {
-              <span class="shop-lock">deeper zones only</span>
-            } @else {
-              <button
-                class="uc-btn shop-buy"
-                [disabled]="busy() || store.you()?.gear?.[g.slot] === g.id"
-                (click)="buy(g)"
-              >
-                {{ store.you()?.gear?.[g.slot] === g.id ? 'Equipped' : g.cost + ' 🟢' }}
-              </button>
-            }
+            <button
+              class="uc-btn shop-buy"
+              [disabled]="busy() || store.you()?.gear?.[g.slot] === g.id"
+              (click)="buy(g)"
+            >
+              @if (store.you()?.gear?.[g.slot] === g.id) {
+                Equipped
+              } @else {
+                {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+              }
+            </button>
           </div>
         }
         <div class="shop-section">Consumables (bag {{ store.you()?.bag?.length ?? 0 }}/3)</div>
         @for (c of consumables; track c.id) {
           <div class="shop-row">
-            <span class="shop-name">{{ c.emoji }} {{ c.name }} <em>{{ c.desc }}</em></span>
+            <span class="shop-name">
+              <mat-icon class="mi">{{ c.icon }}</mat-icon> {{ c.name }} <em>{{ c.desc }}</em>
+            </span>
             <button class="uc-btn shop-buy" [disabled]="busy()" (click)="buy(c)">
-              {{ c.cost }} 🟢
+              {{ c.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
             </button>
           </div>
         }
@@ -115,15 +202,18 @@
   @if (showShrine()) {
     <div class="uc-modal-backdrop" (click)="closeFacilities()">
       <div class="uc-modal" (click)="$event.stopPropagation()">
-        <h3>🕯️ Shrine of the Swarm</h3>
-        <p class="modal-sub">A blessing costs 15 🟢 — or tithe your own blood.</p>
+        <img class="modal-art" src="undercity/icons/shrine.png" alt="" />
+        <h3><mat-icon class="mi">local_fire_department</mat-icon> Shrine of the Swarm</h3>
+        <p class="modal-sub">
+          A blessing costs 15 <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> — or tithe your own blood.
+        </p>
         <div class="choice-grid">
           <button class="uc-btn" [disabled]="busy()" (click)="shrine('atk')">+1 ATK</button>
           <button class="uc-btn" [disabled]="busy()" (click)="shrine('def')">+1 DEF</button>
           <button class="uc-btn" [disabled]="busy()" (click)="shrine('spd')">+1 SPD</button>
           <button class="uc-btn" [disabled]="busy()" (click)="shrine('heal')">Full heal</button>
           <button class="uc-btn uc-btn-danger tithe-btn" [disabled]="busy()" (click)="shrine('tithe')">
-            🩸 Tithe blood: −25% HP → +8 XP
+            <mat-icon class="mi">water_drop</mat-icon> Tithe blood: −25% HP → +8 XP
           </button>
         </div>
         <button class="uc-btn close-btn" (click)="closeFacilities()">Leave</button>
@@ -134,13 +224,21 @@
   <!-- Warp choice -->
   @if (showWarp(); as options) {
     <div class="uc-modal-backdrop">
-      <div class="uc-modal" (click)="$event.stopPropagation()">
-        <h3>🌀 Warp Mushroom</h3>
+      <div
+        class="uc-modal event-modal"
+        (click)="$event.stopPropagation()"
+        [style.background-image]="eventCardBg()"
+      >
+        <div class="event-banner">
+          <img class="event-art" src="undercity/icons/teleport.png" alt="" />
+        </div>
+        <h3>Warp Mushroom</h3>
         <p class="modal-sub">Step through the spore-veil to…</p>
         <div class="choice-grid">
           @for (w of options; track w) {
             <button class="uc-btn" [disabled]="busy()" (click)="warpTo(w)">
-              {{ w === 'isl_warp' ? '🏝️ The central island' : '🌀 ' + w }}
+              <mat-icon class="mi">{{ w === 'isl_warp' ? 'flag' : 'cyclone' }}</mat-icon>
+              {{ w === 'isl_warp' ? 'The central island' : w }}
             </button>
           }
         </div>
@@ -152,24 +250,122 @@
   <!-- Ossuary -->
   @if (showOssuary()) {
     <div class="uc-modal-backdrop" (click)="closeFacilities()">
-      <div class="uc-modal" (click)="$event.stopPropagation()">
-        <h3>🎲 The Ossuary</h3>
+      <div
+        class="uc-modal ossuary-modal"
+        (click)="$event.stopPropagation()"
+        style="background-image: linear-gradient(rgba(16, 14, 11, 0.82), rgba(16, 14, 11, 0.9)), url('undercity/pub_background.png')"
+      >
+        <h3><img class="die-icon" src="undercity/icons/die.png" alt="" /> The Ossuary</h3>
+        <p class="ossuary-tag">Serious Fun.™</p>
         <p class="modal-sub">Call the bone die. Win = double your bet.</p>
-        <div class="bet-row">
-          <button class="uc-btn" (click)="adjustBet(-5)">−5</button>
-          <span class="bet-amount">{{ bet() }} 🟢</span>
-          <button class="uc-btn" (click)="adjustBet(5)">+5</button>
+        <div class="ossuary-tokens" title="Rolls left this visit">
+          @for (i of [1, 2, 3]; track i) {
+            <img
+              class="die-token"
+              [class.spent]="ossuaryRollsLeft() < i"
+              src="undercity/icons/die.png"
+              alt=""
+            />
+          }
         </div>
-        <div class="choice-grid">
-          <button class="uc-btn" [disabled]="busy()" (click)="gamble('low')">Low (1–3)</button>
-          <button class="uc-btn" [disabled]="busy()" (click)="gamble('high')">High (4–6)</button>
-        </div>
+        @if (ossuaryRollsLeft() > 0) {
+          <div class="bet-row">
+            <button class="uc-btn" (click)="adjustBet(-5)">−5</button>
+            <span class="bet-amount">{{ bet() }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /></span>
+            <button class="uc-btn" (click)="adjustBet(5)">+5</button>
+          </div>
+          <div class="choice-grid">
+            <button
+              class="uc-btn"
+              [disabled]="busy() || gambleRolling()"
+              (click)="gamble('low')"
+            >
+              Low (1–3)
+            </button>
+            <button
+              class="uc-btn"
+              [disabled]="busy() || gambleRolling()"
+              (click)="gamble('high')"
+            >
+              High (4–6)
+            </button>
+          </div>
+        } @else {
+          <p class="ossuary-closed">
+            The bouncer waves you off — that's your three rolls. Come back next time you
+            land here.
+          </p>
+        }
+        @if (gambleRolling() || gambleDie() !== null) {
+          <div class="gamble-die">
+            <app-undercity-dice-roll [value]="gambleDie()" (settled)="onGambleSettled()" />
+          </div>
+        }
         @if (gambleResult(); as gr) {
-          <p class="gamble-result">{{ gr }}</p>
+          <p
+            class="gamble-result"
+            [class.won]="gambleWon() === true"
+            [class.lost]="gambleWon() === false"
+          >
+            {{ gr }}
+          </p>
         }
         <button class="uc-btn close-btn" (click)="closeFacilities()">Walk away</button>
       </div>
     </div>
+  }
+
+  <!-- Trading Post -->
+  @if (showTradingPost()) {
+    <div class="uc-modal-backdrop" (click)="closeFacilities()">
+      <div class="uc-modal trading-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">swap_horiz</mat-icon> Trading Post</h3>
+        <p class="modal-sub">Leave one of your items, take one another player left behind.</p>
+
+        <div class="shop-section">Your items — tap one to offer</div>
+        @if ((store.you()?.bag?.length ?? 0) === 0) {
+          <p class="trade-empty">Your bag is empty — nothing to trade yet.</p>
+        } @else {
+          <div class="trade-bag">
+            @for (b of store.you()?.bag ?? []; track $index) {
+              <button
+                class="trade-chip"
+                [class.selected]="giveItem() === b"
+                (click)="giveItem.set(b)"
+              >
+                <mat-icon class="mi">{{ consumableMap[b].icon }}</mat-icon>
+                {{ consumableMap[b].name }}
+              </button>
+            }
+          </div>
+        }
+
+        <div class="shop-section">Offered — take one (leaves your selected item here)</div>
+        @for (s of tradingStock(); track $index) {
+          <div class="shop-row">
+            <span class="shop-name">
+              <mat-icon class="mi">{{ consumableMap[s.item].icon }}</mat-icon>
+              {{ consumableMap[s.item].name }} <em>found by {{ s.foundBy }}</em>
+            </span>
+            <button class="uc-btn shop-buy" [disabled]="busy() || !giveItem()" (click)="trade($index)">
+              Take
+            </button>
+          </div>
+        }
+        <button class="uc-btn close-btn" (click)="closeFacilities()">Leave</button>
+      </div>
+    </div>
+  }
+
+  <!-- Excavation dig site -->
+  @if (showExcavation() && excavationGrid(); as grid) {
+    <app-undercity-excavation
+      [grid]="grid"
+      [digsLeft]="excavationDigsLeft()"
+      [busy]="busy()"
+      (dig)="dig($event)"
+      (closed)="closeFacilities()"
+    />
   }
 
   <!-- Battle playback -->
@@ -179,6 +375,7 @@
       [attacker]="bv.attacker"
       [defender]="bv.defender"
       [resultText]="bv.resultText"
+      [rewards]="bv.rewards"
       (closed)="closeBattle()"
     />
   }

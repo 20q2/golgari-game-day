@@ -1,176 +1,243 @@
 <div class="creature-tab">
   @if (store.you(); as you) {
-    <!-- Portrait -->
-    <section class="portrait-card">
-      @if (spriteUrl(); as url) {
-        <img class="portrait" [src]="url" [alt]="formName(you.form)" />
-      }
-      <div class="portrait-meta">
-        <h2>{{ formName(you.form) }}</h2>
-        <span class="tier-chip">Tier {{ you.tier }} · Level {{ you.level }}</span>
-        <span class="xp-line">XP {{ you.xp }}/{{ xpNext() }}</span>
-        @if (isShielded(you)) {
-          <span class="shield-chip">🫧 Compost Shield active</span>
-        }
-        <button class="uc-btn wardrobe-btn" (click)="showWardrobe.set(!showWardrobe())">
-          🎨 Wardrobe
-        </button>
-      </div>
-    </section>
-
-    @if (evolveReady()) {
-      <button class="uc-btn uc-btn-primary evolve-cta" (click)="showEvolve.set(true)">
-        ✨ EVOLUTION AWAITS — choose your form
-      </button>
-    }
-
-    <!-- Wardrobe -->
-    @if (showWardrobe()) {
-      <section class="card">
-        <h3>Wardrobe <span class="muted">(yours forever, every night)</span></h3>
-        <div class="wardrobe-group">
-          <span class="wardrobe-label">Hat</span>
-          <div class="swatch-row">
-            <button
-              class="hat-chip"
-              [class.selected]="!you.hat"
-              [disabled]="busy()"
-              (click)="setHat(null)"
-            >
-              none
-            </button>
-            @for (h of ownedHats(); track h.id) {
-              <button
-                class="hat-chip"
-                [class.selected]="you.hat === h.id"
-                [disabled]="busy()"
-                (click)="setHat(h.id)"
-              >
-                <img [src]="'undercity/hats/' + h.file" [alt]="h.name" [title]="h.name" />
-              </button>
+    <div class="creature-inner">
+      <!-- Hero: portrait + identity + HP/XP bars over the biome den -->
+      <section
+        class="hero"
+        style="background-image: linear-gradient(rgba(12, 16, 12, 0.5), rgba(12, 16, 12, 0.82)), url('undercity/swamp_background.png')"
+      >
+        <div class="hero-portrait">
+          @if (spriteUrl(); as url) {
+            <img [src]="url" [alt]="formName(you.form)" />
+          }
+        </div>
+        <div class="hero-info">
+          <div class="hero-titlerow">
+            <h2>{{ you.creatureName || formName(you.form) }}</h2>
+            <span class="hero-form">the {{ formName(you.form) }}</span>
+            <span class="tier-chip">Tier {{ you.tier }} · Lv {{ you.level }}</span>
+            @if (isShielded(you)) {
+              <span class="shield-chip"><mat-icon class="mi">shield</mat-icon> Shielded</span>
             }
           </div>
+
+          <div class="hero-bar">
+            <span class="hero-bar-label"><mat-icon class="mi hp-mi">favorite</mat-icon> HP</span>
+            <div class="bar">
+              <div class="bar-fill hp" [style.width.%]="hpPct()"></div>
+              <span class="bar-num">{{ you.hp }} / {{ effectiveMaxHp() }}</span>
+            </div>
+          </div>
+          <div class="hero-bar">
+            <span class="hero-bar-label"><mat-icon class="mi xp-mi">auto_awesome</mat-icon> XP</span>
+            <div class="bar">
+              <div class="bar-fill xp" [style.width.%]="xpPct()"></div>
+              <span class="bar-num">{{ you.xp }} / {{ xpNext() }}</span>
+            </div>
+          </div>
+
+          <button class="uc-btn wardrobe-btn" (click)="showWardrobe.set(!showWardrobe())">
+            <mat-icon class="mi">checkroom</mat-icon> Wardrobe
+          </button>
         </div>
-        @for (region of ['body', 'belly', 'stripes']; track region) {
+      </section>
+
+      @if (evolveReady()) {
+        <button class="uc-btn uc-btn-primary evolve-cta" (click)="showEvolve.set(true)">
+          <mat-icon class="mi">auto_awesome</mat-icon> EVOLUTION AWAITS — choose your form
+        </button>
+      }
+
+      <!-- Wardrobe (toggled from the hero) -->
+      @if (showWardrobe()) {
+        <section class="card">
+          <h3>Wardrobe <span class="muted">(yours forever, every night)</span></h3>
           <div class="wardrobe-group">
-            <span class="wardrobe-label">{{ region }}</span>
+            <span class="wardrobe-label">Hat</span>
             <div class="swatch-row">
-              @for (p of ownedPaints(); track p.id) {
+              <button
+                class="hat-chip"
+                [class.selected]="!you.hat"
+                [disabled]="busy()"
+                (click)="setHat(null)"
+              >
+                none
+              </button>
+              @for (h of ownedHats(); track h.id) {
                 <button
-                  class="paint-swatch"
-                  [class.selected]="you.paint[region] === p.hue"
-                  [style.background]="'hsl(' + p.hue + ', 60%, 45%)'"
-                  [title]="p.name"
+                  class="hat-chip"
+                  [class.selected]="you.hat === h.id"
                   [disabled]="busy()"
-                  (click)="setPaint($any(region), p)"
-                ></button>
+                  (click)="setHat(h.id)"
+                >
+                  <img [src]="'undercity/hats/' + h.file" [alt]="h.name" [title]="h.name" />
+                </button>
               }
             </div>
           </div>
-        }
-      </section>
-    }
+          @for (region of ['body', 'belly', 'stripes']; track region) {
+            <div class="wardrobe-group">
+              <span class="wardrobe-label">{{ region }}</span>
+              <div class="swatch-row">
+                @for (p of ownedPaints(); track p.id) {
+                  <button
+                    class="paint-swatch"
+                    [class.selected]="you.paint[region] === p.hue"
+                    [style.background]="'hsl(' + p.hue + ', 60%, 45%)'"
+                    [title]="p.name"
+                    [disabled]="busy()"
+                    (click)="setPaint($any(region), p)"
+                  ></button>
+                }
+              </div>
+            </div>
+          }
+        </section>
+      }
 
-    <!-- Stats -->
-    <section class="card">
-      <h3>
-        Stats
-        @if (you.statPoints > 0) {
-          <span class="points-chip">{{ you.statPoints }} points to spend</span>
-        }
-      </h3>
-      <div class="stat-rows">
-        <div class="stat-row">
-          <span class="stat-name">❤️ HP</span>
-          <span class="stat-val">{{ you.hp }}/{{ you.maxHp }}</span>
-        </div>
-        @for (stat of ['atk', 'def', 'spd']; track stat) {
-          <div class="stat-row">
-            <span class="stat-name">
-              {{ stat === 'atk' ? '⚔️ ATK' : stat === 'def' ? '🛡️ DEF' : '💨 SPD' }}
-            </span>
-            <span class="stat-val">{{ $any(you)[stat] }}</span>
-            @if (you.statPoints > 0 && you.spentThisLevel[stat] < 1) {
-              <button class="uc-btn plus-btn" [disabled]="busy()" (click)="spendStat(stat)">+1</button>
+      <div class="card-grid">
+        <!-- Stats -->
+        <section class="card stats-card">
+          <h3>
+            Stats
+            <span class="stats-hint muted">tap a stat</span>
+            @if (you.statPoints > 0) {
+              <span class="points-chip">{{ you.statPoints }} to spend</span>
+            }
+          </h3>
+          <div class="stats-body">
+            <div class="stat-tiles">
+              @for (stat of ['atk', 'def', 'spd']; track stat) {
+                <button
+                  type="button"
+                  class="stat-tile"
+                  [class.active]="openStat() === stat"
+                  (click)="selectStat(stat)"
+                >
+                  <mat-icon class="mi">{{ statInfo[stat].icon }}</mat-icon>
+                  <span class="stat-tile-val">{{ $any(you)[stat] }}</span>
+                  <span class="stat-tile-name">{{ stat.toUpperCase() }}</span>
+                  @if (you.statPoints > 0 && you.spentThisLevel[stat] < 1) {
+                    <span
+                      class="uc-btn plus-btn"
+                      role="button"
+                      [class.disabled]="busy()"
+                      (click)="spendStat(stat); $event.stopPropagation()"
+                    >
+                      +1
+                    </span>
+                  }
+                </button>
+              }
+            </div>
+            @if (openStat(); as s) {
+              <aside class="stat-desc">
+                <div class="stat-desc-head">
+                  <mat-icon class="mi">{{ statInfo[s].icon }}</mat-icon> {{ statInfo[s].label }}
+                </div>
+                <p>{{ statInfo[s].desc }}</p>
+              </aside>
             }
           </div>
-        }
-      </div>
-      <div class="passives">
-        @for (p of you.passives; track p) {
-          <div class="passive-row">
-            <strong>{{ passiveName(p) }}:</strong> {{ passiveBlurbs[p] }}
+          <div class="passives">
+            @for (p of you.passives; track p) {
+              <div class="passive-pill">
+                <strong>{{ passiveName(p) }}</strong> {{ passiveBlurbs[p] }}
+              </div>
+            }
           </div>
-        }
-      </div>
-    </section>
+        </section>
 
-    <!-- Stance -->
-    <section class="card">
-      <h3>Stance <span class="muted">(how you defend while your phone is down)</span></h3>
-      <div class="stance-row">
-        <button
-          class="stance-btn"
-          [class.selected]="you.stance === 'fight'"
-          [disabled]="busy()"
-          (click)="setStance('fight')"
-        >
-          ⚔️ Fight<small>battle as normal</small>
-        </button>
-        <button
-          class="stance-btn"
-          [class.selected]="you.stance === 'defend'"
-          [disabled]="busy()"
-          (click)="setStance('defend')"
-        >
-          🛡️ Defend<small>+40% DEF, −25% dmg, lose less when composted</small>
-        </button>
-        <button
-          class="stance-btn"
-          [class.selected]="you.stance === 'flee'"
-          [disabled]="busy()"
-          (click)="setStance('flee')"
-        >
-          💨 Flee<small>try to escape before round 1</small>
-        </button>
-      </div>
-    </section>
-
-    <!-- Gear & bag -->
-    <section class="card">
-      <h3>Equipment</h3>
-      <div class="gear-rows">
-        <div class="gear-row">
-          <span class="gear-slot">🗡️ Fang</span>
-          <span class="gear-name">
-            {{ you.gear['fang'] ? gearMap[you.gear['fang']].name + ' (' + gearMap[you.gear['fang']].desc + ')' : '— empty —' }}
-          </span>
-        </div>
-        <div class="gear-row">
-          <span class="gear-slot">🛡️ Carapace</span>
-          <span class="gear-name">
-            {{ you.gear['carapace'] ? gearMap[you.gear['carapace']].name + ' (' + gearMap[you.gear['carapace']].desc + ')' : '— empty —' }}
-          </span>
-        </div>
-      </div>
-      <h3>Bag <span class="muted">({{ you.bag.length }}/3)</span></h3>
-      @if (!you.bag.length) {
-        <p class="muted">Empty. The bazaars stock helpful rot.</p>
-      }
-      <div class="bag-rows">
-        @for (item of you.bag; track $index) {
-          <div class="bag-row">
-            <span>{{ consumableMap[item].emoji }} {{ consumableMap[item].name }}</span>
-            <button class="uc-btn use-btn" [disabled]="busy()" (click)="useItem(item)">
-              {{ item === 'snare' ? 'Plant here' : item === 'smoke_spore' ? 'Passive' : 'Use' }}
+        <!-- Stance (full width) -->
+        <section class="card stance-card">
+          <h3>Stance <span class="muted">(how you defend while your phone is down)</span></h3>
+          <div class="stance-row">
+            <button
+              class="stance-btn"
+              [class.selected]="you.stance === 'fight'"
+              [disabled]="busy()"
+              (click)="setStance('fight')"
+            >
+              <mat-icon>sports_mma</mat-icon> Fight<small>battle as normal</small>
+            </button>
+            <button
+              class="stance-btn"
+              [class.selected]="you.stance === 'defend'"
+              [disabled]="busy()"
+              (click)="setStance('defend')"
+            >
+              <mat-icon>shield</mat-icon> Defend<small>+40% DEF, −25% dmg, lose less when composted</small>
+            </button>
+            <button
+              class="stance-btn"
+              [class.selected]="you.stance === 'flee'"
+              [disabled]="busy()"
+              (click)="setStance('flee')"
+            >
+              <mat-icon>directions_run</mat-icon> Flee<small>try to escape before round 1</small>
             </button>
           </div>
-        }
+        </section>
+
+        <!-- Equipment -->
+        <section class="card">
+          <h3>Equipment</h3>
+          <div class="gear-tiles">
+            <div class="gear-tile" [class.empty]="!you.gear['fang']">
+              <mat-icon class="mi slot-mi">hardware</mat-icon>
+              <div class="gear-tile-body">
+                <span class="gear-tile-slot">Fang</span>
+                @if (you.gear['fang']; as g) {
+                  <span class="gear-tile-name">{{ gearMap[g].name }}</span>
+                  <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
+                } @else {
+                  <span class="gear-tile-empty">empty</span>
+                }
+              </div>
+            </div>
+            <div class="gear-tile" [class.empty]="!you.gear['carapace']">
+              <mat-icon class="mi slot-mi">shield</mat-icon>
+              <div class="gear-tile-body">
+                <span class="gear-tile-slot">Carapace</span>
+                @if (you.gear['carapace']; as g) {
+                  <span class="gear-tile-name">{{ gearMap[g].name }}</span>
+                  <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
+                } @else {
+                  <span class="gear-tile-empty">empty</span>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Bag -->
+        <section class="card">
+          <h3>Bag <span class="muted">({{ you.bag.length }}/3)</span></h3>
+          @if (!you.bag.length) {
+            <p class="muted bag-empty">Empty. The bazaars stock helpful rot.</p>
+          }
+          <div class="bag-rows">
+            @for (item of you.bag; track $index) {
+              <div class="bag-row">
+                <span class="bag-item">
+                  <mat-icon class="mi">{{ consumableMap[item].icon }}</mat-icon>
+                  {{ consumableMap[item].name }}
+                </span>
+                <button class="uc-btn use-btn" [disabled]="busy()" (click)="useItem(item)">
+                  {{ item === 'snare' ? 'Plant here' : item === 'smoke_spore' ? 'Passive' : 'Use' }}
+                </button>
+              </div>
+            }
+          </div>
+          @if (you.pendingLoadedDie) {
+            <p class="loaded-note">
+              <mat-icon class="mi">casino</mat-icon> Loaded die primed — next roll will be a
+              {{ you.pendingLoadedDie }}
+            </p>
+          }
+        </section>
       </div>
-      @if (you.pendingLoadedDie) {
-        <p class="loaded-note">🎲 Loaded die primed: your next roll will be a {{ you.pendingLoadedDie }}</p>
-      }
-    </section>
+    </div>
 
     @if (toast(); as t) {
       <div class="tab-toast">{{ t }}</div>
@@ -179,7 +246,7 @@
     <!-- Evolution choice — full-screen moment, no takebacks -->
     @if (showEvolve()) {
       <div class="evolve-overlay">
-        <h2>✨ Evolution</h2>
+        <h2><mat-icon class="mi">auto_awesome</mat-icon> Evolution</h2>
         <p class="muted">Choose carefully — there is no going back.</p>
         <div class="evolve-grid">
           @for (opt of evolveChoices(); track opt.id) {
@@ -203,7 +270,7 @@
     <!-- Loaded die value picker -->
     @if (loadedDiePick()) {
       <div class="evolve-overlay">
-        <h2>🎲 Loaded Die</h2>
+        <h2><mat-icon class="mi">casino</mat-icon> Loaded Die</h2>
         <p class="muted">Choose the value of your next roll.</p>
         <div class="die-grid">
           @for (v of dieValues; track v) {

@@ -1,7 +1,10 @@
 <div class="ceremony">
   @if (champion(); as champ) {
-    <div class="champ-stage">
-      <div class="champ-crown">👑</div>
+    <div
+      class="champ-stage"
+      style="background-image: linear-gradient(rgba(10, 8, 8, 0.55), rgba(10, 8, 8, 0.75)), url('undercity/palace_background.png')"
+    >
+      <mat-icon class="champ-crown">emoji_events</mat-icon>
       @if (spriteUrl(champ); as url) {
         <div class="champ-sprite-wrap">
           <img class="champ-sprite" [src]="url" [alt]="champ.formName" />
@@ -12,14 +15,16 @@
       }
       <h1>{{ champ.username }}</h1>
       <p class="champ-sub">
-        Champion of the Undercity — {{ champ.formName }}, {{ champ.renown }} Renown
+        Champion of the Undercity — {{ creatureTitle(champ) }}, {{ champ.renown }} Renown
       </p>
     </div>
 
     <div class="podium">
       @for (s of podium(); track s.userId; let i = $index) {
         <div class="podium-slot" [class.first]="i === 0">
-          <span class="podium-medal">{{ i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉' }}</span>
+          <mat-icon class="podium-medal" [class.gold]="i === 0" [class.silver]="i === 1" [class.bronze]="i === 2">
+            emoji_events
+          </mat-icon>
           @if (spriteUrl(s); as url) {
             <img [src]="url" [alt]="s.formName" />
           }
@@ -36,9 +41,9 @@
           <th>Player</th>
           <th>Creature</th>
           <th>L</th>
-          <th>⚔️</th>
-          <th>🐛</th>
-          <th>🟢</th>
+          <th><mat-icon class="mi" title="PvP wins">sports_kabaddi</mat-icon></th>
+          <th><mat-icon class="mi" title="Wild wins">bug_report</mat-icon></th>
+          <th><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" title="Spores" /></th>
           <th>Renown</th>
         </tr>
       </thead>
@@ -47,7 +52,7 @@
           <tr>
             <td>{{ i + 1 }}</td>
             <td>{{ s.username }}</td>
-            <td>{{ s.formName }}</td>
+            <td>{{ creatureTitle(s) }}</td>
             <td>{{ s.level }}</td>
             <td>{{ s.pvpWins }}</td>
             <td>{{ s.wildWins }}</td>

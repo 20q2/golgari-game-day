@@ -4,14 +4,14 @@
   @if (selected(); as sel) {
     <div class="poke-card">
       <span class="poke-name">
-        {{ sel.username }}'s {{ sel.formName }} (L{{ sel.level }})
+        {{ sel.username }}'s {{ sel.creatureName || sel.formName }} (L{{ sel.level }})
         @if (sel.shielded) {
-          🫧
+          <mat-icon class="mi shield-mi" title="Compost Shield">shield</mat-icon>
         }
       </span>
       @if (sel.userId !== store.ownUserId) {
         <button class="uc-btn uc-btn-primary" [disabled]="busy()" (click)="poke()">
-          👉 Poke (gift a roll)
+          <mat-icon class="mi">touch_app</mat-icon> Poke (gift a roll)
         </button>
       } @else {
         <span class="own-note">That's you! Looking sharp.</span>

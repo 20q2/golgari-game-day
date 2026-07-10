@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { PlazaCanvas, PlazaCreature } from '../engine/plaza-canvas';
 import { PublicPlayer, evolveGlowActive, isShielded } from '../services/undercity-models';
@@ -16,7 +17,7 @@ import { PublicPlayer, evolveGlowActive, isShielded } from '../services/undercit
 @Component({
   selector: 'app-undercity-plaza-tab',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './plaza-tab.component.html',
   styleUrls: ['./plaza-tab.component.scss'],
 })
@@ -51,6 +52,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       username: p.username,
       form: p.form,
       formName: p.formName,
+      creatureName: p.creatureName,
       level: p.level,
       paint: p.paint ?? {},
       hat: p.hat,
@@ -83,7 +85,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       this.plaza?.boingDino(target.userId);
       this.showToast(
         resp.granted
-          ? `You poked ${target.username} — they gained a roll! 🎲`
+          ? `You poked ${target.username} — they gained a roll!`
           : `You poked ${target.username}.`,
       );
       this.selected.set(null);

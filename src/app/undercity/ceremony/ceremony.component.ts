@@ -1,5 +1,6 @@
 import { Component, Input, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { HallOfFameNight, SeasonResult, Standing } from '../services/undercity-models';
 import { formSprite } from '../data/species';
 import { getRecoloredDataUrl } from '../engine/sprite-engine';
@@ -9,7 +10,7 @@ import { HAT_MAP } from '../data/cosmetics';
 @Component({
   selector: 'app-undercity-ceremony',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './ceremony.component.html',
   styleUrls: ['./ceremony.component.scss'],
 })
@@ -33,5 +34,11 @@ export class CeremonyComponent {
   hatUrl(s: Standing): string | null {
     if (!s.hat || !HAT_MAP[s.hat]) return null;
     return `undercity/hats/${HAT_MAP[s.hat].file}`;
+  }
+
+  protected creatureTitle(s: Standing): string {
+    return s.creatureName && s.creatureName !== s.formName
+      ? `${s.creatureName} the ${s.formName}`
+      : s.formName;
   }
 }

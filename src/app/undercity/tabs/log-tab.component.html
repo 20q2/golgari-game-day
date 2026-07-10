@@ -5,14 +5,14 @@
     <div class="claim-row">
       <label class="won-toggle">
         <input type="checkbox" [checked]="wonToggle()" (change)="wonToggle.set(!wonToggle())" />
-        …and I won! <span class="muted">(+1 roll, +10 🟢)</span>
+        …and I won! <span class="muted">(+1 roll, +10 Spores)</span>
       </label>
       <button
         class="uc-btn uc-btn-primary claim-btn"
         [disabled]="busy() || finishedCooldownLeft() > 0"
         (click)="claimFinished()"
       >
-        🏁 We finished a game (+2 rolls)
+        <span class="claim-line"><mat-icon class="mi">sports_score</mat-icon> We finished a game (+2 rolls)</span>
         @if (finishedCooldownLeft() > 0) {
           <small>{{ finishedCooldownLeft() }}m cooldown</small>
         }
@@ -22,10 +22,13 @@
         [disabled]="busy() || taughtLeft() < 1"
         (click)="claimTaught()"
       >
-        🎓 I taught someone a new game (+1 roll, +5 XP)
+        <span class="claim-line"><mat-icon class="mi">school</mat-icon> I taught someone a new game (+1 roll, +5 XP)</span>
         <small>{{ taughtLeft() }} left tonight</small>
       </button>
-      <p class="honor-note">Claims are public in the Grapevine — the table is watching. 👀</p>
+      <p class="honor-note">
+        Claims are public in the Grapevine — the table is watching.
+        <mat-icon class="mi">visibility</mat-icon>
+      </p>
     </div>
   </section>
 
@@ -38,10 +41,12 @@
           <span class="lb-rank">{{ i + 1 }}</span>
           <span class="lb-name">
             {{ p.username }}
-            <small>{{ p.formName }} · L{{ p.level }}</small>
+            <small>{{ p.creatureName || p.formName }} · L{{ p.level }}</small>
           </span>
           <span class="lb-stats" title="PvP wins / wild wins / composts">
-            ⚔️{{ p.pvpWins }} 🐛{{ p.wildWins }} 💀{{ p.composts }}
+            <mat-icon class="mi">sports_kabaddi</mat-icon>{{ p.pvpWins }}
+            <mat-icon class="mi">bug_report</mat-icon>{{ p.wildWins }}
+            <mat-icon class="mi">compost</mat-icon>{{ p.composts }}
           </span>
           <span class="lb-renown">{{ p.renown }}</span>
         </div>
@@ -51,11 +56,11 @@
 
   <!-- The Grapevine -->
   <section class="card">
-    <h3>The Grapevine 🍇</h3>
+    <h3><mat-icon class="mi">forum</mat-icon> The Grapevine</h3>
     <div class="feed">
       @for (e of store.events(); track e.ts) {
         <div class="feed-row">
-          <span class="feed-icon">{{ eventIcon(e.type) }}</span>
+          <mat-icon class="mi feed-icon">{{ eventIcon(e.type) }}</mat-icon>
           <span class="feed-text">{{ e.text }}</span>
           <span class="feed-time">{{ timeAgo(e.ts) }}</span>
         </div>
