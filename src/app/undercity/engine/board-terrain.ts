@@ -920,6 +920,7 @@ export function renderTerrain(
       nd > 260 ||
       !nearest ||
       nearest.region === 'isle' ||
+      map.regions?.[nearest.region ?? '']?.scatter === false ||
       !pathPts.every((p) => Math.hypot(p.x - x, p.y - y) > 55) ||
       !river.every((p) => Math.hypot(p.x - x, p.y - y) > 60)
     ) {
@@ -2127,5 +2128,64 @@ function drawLandmark(
       break;
     }
   }
+  ctx.restore();
+}
+
+// ── Stamp registry ───────────────────────────────────────────────────────────
+// Hand-placeable set-pieces for map.json decals and the map editor's palette.
+// Uniform call shape; 4-arg draw functions simply ignore the glow sink.
+
+export type StampFn = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+  glowSpots: GlowSpot[],
+) => void;
+
+export const STAMPS: Record<string, StampFn> = {
+  mushrooms: drawMushrooms,
+  giant_mushroom: drawGiantMushroom,
+  crystal: drawCrystal,
+  pillar: drawPillar,
+  ruin_block: drawRuinBlock,
+  arch_ruin: drawArchRuin,
+  skull_pile: drawSkullPile,
+  bone_mound: drawBoneMound,
+  pool: drawPool,
+  reeds: drawReeds,
+  bog_tree: drawBogTree,
+  egg_cluster: drawEggCluster,
+  web_strand: drawWebStrand,
+  compost_heap: drawCompostHeap,
+};
+
+export function stampRand(seed: number | undefined): () => number {
+  return mulberry32(seed ?? 1);
+}
+
+/**
+ * Draw one registry stamp with decal transforms. The rotate/scale pivot wraps
+ * around (x, y) while the stamp still receives world coordinates, so any glow
+ * spots it registers land at (approximately) the right world position.
+ */
+export function drawStamp(
+  ctx: CanvasRenderingContext2D,
+  name: string,
+  x: number,
+  y: number,
+  scale: number,
+  rot: number,
+  seed: number | undefined,
+  glowSpots: GlowSpot[] = [],
+): void {
+  const fn = STAMPS[name];
+  if (!fn) return;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.scale(scale, scale);
+  ctx.translate(-x, -y);
+  fn(ctx, x, y, stampRand(seed), glowSpots);
   ctx.restore();
 }
