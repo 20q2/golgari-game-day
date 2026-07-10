@@ -167,6 +167,115 @@ CONSUMABLES = {
 BAG_SIZE = 3
 GEAR_SELL_BACK = 0.5  # replacing gear auto-sells old piece for 50% of cost
 
+# ── Spells & grimoires ───────────────────────────────────────────────────────
+# The spell system (specs/2026-07-10-undercity-spells-design.md). Innate biome
+# spells are always castable; grimoire spells require the book equipped — you
+# own every book you ever find (permanent collection), but only one is open at
+# a time. Cooldowns are real-time minutes; `range` is BFS board distance.
+# No spell can ever kill: player HP and boss pools floor at 1.
+
+SPELL_DODGE_BASE = 10        # %
+SPELL_DODGE_PER_SPD = 3      # % per point of (target SPD − caster SPD)
+SPELL_DODGE_MIN = 5
+SPELL_DODGE_MAX = 40
+AWAY_EVENTS_CAP = 20
+GRIMOIRE_DUPLICATE_SPORES = 15
+MYSTERY_GRIMOIRE_CHANCE = 0.25  # mystery "free item" upgrades to an unowned book
+
+SPELLS = {
+    # Innate biome spells (one per home biome, always castable)
+    'rot_surge':   {'name': 'Rot Surge', 'category': 'buff', 'tier': 1, 'cooldownMin': 30,
+                    'effect': 'self_buff', 'buffKind': 'rot_surge',
+                    'blurb': '+3 ATK in your next battle.'},
+    'bone_chill':  {'name': 'Bone Chill', 'category': 'field', 'tier': 1, 'cooldownMin': 30,
+                    'effect': 'field_curse', 'buffKind': 'bone_chill', 'range': 5,
+                    'blurb': 'Curse a rival: −2 ATK in their next battle.'},
+    'bog_snare':   {'name': 'Bog Snare', 'category': 'field', 'tier': 1, 'cooldownMin': 30,
+                    'effect': 'field_curse', 'buffKind': 'vines', 'range': 5,
+                    'blurb': 'Curse a rival: their next roll is halved.'},
+    'glowveil':    {'name': 'Glowveil', 'category': 'buff', 'tier': 1, 'cooldownMin': 30,
+                    'effect': 'self_buff', 'buffKind': 'glowveil',
+                    'blurb': '+2 SPD and +15% flee chance in your next battle.'},
+    'scrap_toss':  {'name': 'Scrap Toss', 'category': 'field', 'tier': 1, 'cooldownMin': 30,
+                    'effect': 'field_damage', 'power': 8, 'range': 5,
+                    'blurb': 'Hurl city scrap at a rival for 8 damage.'},
+    # Tier I (shop grimoires)
+    'spore_bolt':  {'name': 'Spore Bolt', 'category': 'field', 'tier': 1, 'cooldownMin': 20,
+                    'effect': 'field_damage', 'power': 12, 'range': 6,
+                    'blurb': 'A puff of caustic spores: 12 damage at range.'},
+    'mend_flesh':  {'name': 'Mend Flesh', 'category': 'buff', 'tier': 1, 'cooldownMin': 15,
+                    'effect': 'self_heal', 'power': 12,
+                    'blurb': 'Knit your wounds: restore 12 HP.'},
+    'harden_shell': {'name': 'Harden Shell', 'category': 'buff', 'tier': 1, 'cooldownMin': 20,
+                     'effect': 'self_buff', 'buffKind': 'harden_shell',
+                     'blurb': '+2 DEF in your next battle.'},
+    'skitter_step': {'name': 'Skitter Step', 'category': 'traversal', 'tier': 1,
+                     'cooldownMin': 25, 'effect': 'teleport', 'range': 3,
+                     'blurb': 'Blink to any space within 3 steps.'},
+    # Tier II (rare books — acquisition lands in phase 3)
+    'rot_bolt':    {'name': 'Rot Bolt', 'category': 'field', 'tier': 2, 'cooldownMin': 25,
+                    'effect': 'field_damage', 'power': 20, 'range': 7,
+                    'blurb': 'A lance of concentrated rot: 20 damage at range.'},
+    'weaken_hex':  {'name': 'Weaken Hex', 'category': 'field', 'tier': 2, 'cooldownMin': 25,
+                    'effect': 'field_curse', 'buffKind': 'weaken_hex', 'range': 6,
+                    'blurb': 'Curse a rival: −3 ATK in their next battle.'},
+    'mycelial_recall': {'name': 'Mycelial Recall', 'category': 'traversal', 'tier': 2,
+                        'cooldownMin': 45, 'effect': 'recall',
+                        'blurb': 'The threads drag you home to your biome gate.'},
+    'fate_die':    {'name': 'Fate Die', 'category': 'traversal', 'tier': 2,
+                    'cooldownMin': 40, 'effect': 'fate_die',
+                    'blurb': 'Choose the value of your next roll (1–6).'},
+    # Tier III (legendary books — acquisition lands in phase 3)
+    'spore_burst': {'name': 'Spore Burst', 'category': 'field', 'tier': 3, 'cooldownMin': 30,
+                    'effect': 'field_damage', 'power': 30, 'range': 8,
+                    'blurb': 'A detonation of spores: 30 damage at range.'},
+    'deep_step':   {'name': 'Deep Step', 'category': 'traversal', 'tier': 3,
+                    'cooldownMin': 30, 'effect': 'teleport', 'range': 6,
+                    'blurb': 'Blink to any space within 6 steps.'},
+    'queens_bane': {'name': "Queen's Bane", 'category': 'boss', 'tier': 3,
+                    'cooldownMin': 60, 'effect': 'boss_strike', 'power': 15,
+                    'blurb': 'Sear the Queen or a lair boss for 15, from anywhere.'},
+}
+
+# Home biome -> innate spell (always castable, no grimoire needed).
+BIOME_SPELLS = {
+    'garden': 'rot_surge',    # The Rot-Gardens (Composter)
+    'bone':   'bone_chill',   # Ossuary Fields (Marrowborn)
+    'bog':    'bog_snare',    # The Sedgemoor (Mirefoot)
+    'cavern': 'glowveil',     # Mosslight Cavern (Glowblessed)
+    'city':   'scrap_toss',   # The Undercity (City Rat)
+}
+
+# Found books come pre-loaded with a FIXED 1–3 spell bundle — the book IS the
+# loadout; players never learn loose spells. Higher tiers carry stronger
+# spells: that is the whole upgrade system.
+GRIMOIRES = {
+    # Tier I — stocked at every Rot-Farm Bazaar
+    'moldering_folio':   {'name': 'Moldering Folio', 'tier': 1, 'cost': 25,
+                          'spells': ['spore_bolt'],
+                          'blurb': 'A waterlogged primer of offensive sporecraft.'},
+    'gardeners_primer':  {'name': "Gardener's Primer", 'tier': 1, 'cost': 30,
+                          'spells': ['mend_flesh', 'harden_shell'],
+                          'blurb': 'Homestead magic: mend flesh, harden shell.'},
+    'vagrants_chapbook': {'name': "Vagrant's Chapbook", 'tier': 1, 'cost': 30,
+                          'spells': ['skitter_step'],
+                          'blurb': 'Scrawled shortcuts through the tunnels.'},
+    # Tier II — rare finds (phase 3 acquisition; defined now for the data model)
+    'kraul_warcodex':    {'name': 'Kraul Warcodex', 'tier': 2, 'cost': 70,
+                          'spells': ['rot_bolt', 'weaken_hex'],
+                          'blurb': 'Battle-liturgy of the kraul warhosts.'},
+    'wayfarers_atlas':   {'name': "Wayfarer's Atlas", 'tier': 2, 'cost': 70,
+                          'spells': ['mycelial_recall', 'fate_die', 'skitter_step'],
+                          'blurb': 'Every tunnel, and several that should not exist.'},
+    # Tier III — legendary (phase 3 acquisition)
+    'queensbane_grimoire': {'name': 'Queensbane Grimoire', 'tier': 3, 'cost': 150,
+                            'spells': ['queens_bane', 'spore_burst'],
+                            'blurb': 'Heretical rites that wound what cannot be reached.'},
+    'tome_of_deep_roads':  {'name': 'Tome of the Deep Roads', 'tier': 3, 'cost': 150,
+                            'spells': ['deep_step', 'fate_die', 'mycelial_recall'],
+                            'blurb': 'The mycelium remembers every road.'},
+}
+
 # Trading post: the central-island exchange opens each night holding these 3
 # house consumables (tagged "the Swarm"). Players swap one of their bag items
 # for one of these; whatever they leave becomes the next visitor's stock,
