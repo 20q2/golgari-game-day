@@ -36,6 +36,9 @@ export class UndercityStateService {
   readonly players = computed(() => this._state()?.players ?? []);
   readonly events = computed(() => this._state()?.events ?? []);
   readonly snares = computed(() => this._state()?.snares ?? []);
+  readonly tradingPosts = computed(() => this._state()?.tradingPosts ?? {});
+  readonly excavations = computed(() => this._state()?.excavations ?? {});
+  readonly barriersOpen = computed(() => this._state()?.barriersOpen ?? []);
   readonly wardrobe = computed(() => this._state()?.wardrobe ?? null);
   readonly result = computed(() => this._state()?.result ?? null);
   readonly hallOfFame = computed(() => this._state()?.hallOfFame ?? []);
@@ -67,6 +70,20 @@ export class UndercityStateService {
     this._loading.set(true);
     try {
       const next = await this.api.getState();
+      const cur = this._state();
+      // A poll that started before a just-applied action can land late with a
+      // stale `you` (old position, pendingMove still set) and yank the token
+      // back. `ver` increments on every server write, so keep our newer
+      // optimistic doc whenever the snapshot is older.
+      if (
+        cur?.you &&
+        next.you &&
+        typeof cur.you.ver === 'number' &&
+        typeof next.you.ver === 'number' &&
+        next.you.ver < cur.you.ver
+      ) {
+        next.you = cur.you;
+      }
       this.computeDiff(this._state()?.players ?? [], next.players ?? []);
       this._state.set(next);
       this._error.set(null);

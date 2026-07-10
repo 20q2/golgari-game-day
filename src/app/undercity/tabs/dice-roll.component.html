@@ -1,0 +1,11 @@
+<div
+  class="die"
+  [class.tumbling]="state() === 'tumbling'"
+  [class.settled]="state() === 'settled'"
+  role="img"
+  [attr.aria-label]="state() === 'settled' ? 'Die shows ' + face() : 'Die rolling'"
+>
+  @for (on of pips(); track $index) {
+    <span class="pip" [class.on]="on"></span>
+  }
+</div>

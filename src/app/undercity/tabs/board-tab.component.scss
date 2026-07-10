@@ -28,7 +28,14 @@
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
 }
 
+.shield-mi {
+  color: #8cdcaa;
+}
+
 .pending-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   background: rgba(30, 26, 18, 0.92);
   border: 1px solid rgba(250, 220, 90, 0.5);
   color: #fde68a;
@@ -106,11 +113,45 @@
   position: fixed;
   inset: 0;
   z-index: 1100;
-  background: rgba(8, 6, 4, 0.75);
+  background: rgba(8, 6, 4, 0.72);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  animation: uc-fade-in 0.18s ease;
+}
+
+@keyframes uc-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes uc-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes uc-event-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .uc-modal {
@@ -119,12 +160,16 @@
   overflow-y: auto;
   background: #1a1815;
   border: 1px solid rgba(74, 124, 89, 0.45);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   text-align: center;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(183, 228, 199, 0.08);
+  animation: uc-modal-in 0.28s cubic-bezier(0.2, 1.4, 0.4, 1);
 
   h3 {
     margin: 0;
@@ -141,14 +186,216 @@
     color: #9aa79a;
   }
 
-  .mystery-roll {
-    font-weight: 800;
-    color: #a78bfa;
-  }
-
   .close-btn {
     margin-top: 4px;
   }
+
+  // Pixel-art landmark emblem above a modal title (shrine, bazaar, gate…).
+  .modal-art {
+    height: 84px;
+    align-self: center;
+    object-fit: contain;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+  }
+}
+
+// The Ossuary is a smoky gambling den — pub art via inline style.
+.ossuary-modal {
+  background-size: cover;
+  background-position: center;
+
+  // House motto — a little garish, like a casino sign should be.
+  .ossuary-tag {
+    margin: -4px 0 2px;
+    font-weight: 800;
+    font-style: italic;
+    letter-spacing: 0.04em;
+    color: #fbbf24;
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.55);
+  }
+
+  // Three dice tokens: filled = rolls left this visit, dim = spent.
+  .ossuary-tokens {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+
+    .die-token {
+      height: 26px;
+      width: 26px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      transition: opacity 0.25s ease, filter 0.25s ease;
+
+      &.spent {
+        opacity: 0.28;
+        filter: grayscale(1);
+      }
+    }
+  }
+
+  .ossuary-closed {
+    color: #d8a0a0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+}
+
+// ── Space-event card ─────────────────────────────────────────────────────────
+
+.event-modal {
+  // Biome scenery (bound inline) fills the whole card; the gradient in that
+  // binding keeps it clear up top and dark enough for text lower down.
+  overflow: hidden;
+  background-size: cover;
+  background-position: center top;
+  // Materialize in place (fade + gentle grow) rather than the default pop-up,
+  // so it reads as the fading mystery reel resolving into this card.
+  animation: uc-event-in 0.4s ease both;
+
+  h3 {
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+  }
+
+  .event-text,
+  .modal-sub {
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  }
+
+  .event-banner {
+    margin: -18px -18px 2px;
+    padding: 26px 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .event-disc {
+    position: relative;
+    overflow: hidden;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid rgba(0, 0, 0, 0.55);
+    box-shadow:
+      0 8px 18px rgba(0, 0, 0, 0.55),
+      inset 0 2px 4px rgba(255, 255, 255, 0.18);
+    animation: uc-chip-pop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1);
+
+    // Glossy top-left highlight so the disc reads as a polished token.
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle at 34% 26%, rgba(255, 255, 255, 0.4), transparent 55%);
+      pointer-events: none;
+    }
+
+    mat-icon {
+      position: relative;
+      font-size: 34px;
+      width: 34px;
+      height: 34px;
+      color: rgba(240, 253, 244, 0.95);
+    }
+
+    &.spin mat-icon {
+      animation: uc-slow-spin 6s linear infinite;
+    }
+  }
+
+  .event-art {
+    height: 96px;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
+    animation: uc-chip-pop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1);
+  }
+
+  .event-text {
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+}
+
+@keyframes uc-slow-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes uc-chip-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.event-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 13px;
+    border-radius: 999px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #d8f3dc;
+    animation: uc-chip-pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1) backwards;
+
+    &:nth-child(2) {
+      animation-delay: 0.08s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 0.16s;
+    }
+
+    // Gains and found items are the payoff — give them a lit gradient + glow.
+    &.gain {
+      background: linear-gradient(180deg, rgba(110, 180, 130, 0.4), rgba(74, 124, 89, 0.22));
+      border-color: rgba(134, 239, 172, 0.55);
+      color: #ccffdc;
+      box-shadow: 0 0 14px rgba(110, 200, 140, 0.25);
+    }
+
+    &.loss {
+      background: rgba(150, 50, 50, 0.28);
+      border-color: rgba(248, 113, 113, 0.4);
+      color: #fca5a5;
+    }
+
+    &.item {
+      background: linear-gradient(180deg, rgba(190, 165, 255, 0.34), rgba(124, 92, 200, 0.18));
+      border-color: rgba(196, 181, 253, 0.6);
+      color: #efeaff;
+      box-shadow: 0 0 14px rgba(167, 139, 250, 0.28);
+    }
+  }
+}
+
+// Pixel die used in the roll button and Ossuary title.
+.die-icon {
+  height: 1.3em;
+  width: 1.3em;
+  object-fit: contain;
+  image-rendering: pixelated;
+  vertical-align: -0.25em;
 }
 
 .choice-grid {
@@ -214,6 +461,49 @@
   }
 }
 
+// Trading post: selectable chips for the bag item you'll offer.
+.trade-bag {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 2px;
+}
+
+.trade-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  color: #d8f3dc;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+
+  .mi {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &:hover {
+    border-color: rgba(120, 200, 140, 0.6);
+  }
+  &.selected {
+    background: rgba(74, 124, 89, 0.4);
+    border-color: #7cb069;
+    color: #fff;
+  }
+}
+
+.trade-empty {
+  font-size: 0.82rem;
+  color: #9aa79a;
+  font-style: italic;
+  margin: 4px 0;
+}
+
 .bet-row {
   display: flex;
   align-items: center;
@@ -231,4 +521,40 @@
 .gamble-result {
   font-weight: 700;
   color: #fbbf24;
+  animation: uc-chip-pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1);
+
+  &.won {
+    color: #86efac;
+  }
+
+  &.lost {
+    color: #f87171;
+  }
+}
+
+// ── Dice ─────────────────────────────────────────────────────────────────────
+
+.dice-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 6, 4, 0.45);
+  animation: uc-banner-in 0.2s ease;
+
+  app-undercity-dice-roll {
+    --dice-size: 76px;
+  }
+}
+
+.gamble-die {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0;
+
+  app-undercity-dice-roll {
+    --dice-size: 56px;
+  }
 }

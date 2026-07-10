@@ -176,6 +176,8 @@ export class BoardCanvas {
   private choiceInfos: NodeInfo[] = [];
   // Per-destination appear timestamp so each popover pops in when it arrives.
   private choiceShownAt = new Map<string, number>();
+  // Steps left in the current turn, shown as a die over your own token.
+  private stepDie: number | null = null;
   private ownPosition: string | null = null;
   private tokenAnims = new Map<string, TokenAnim>();
   private camGlide: TokenAnim | null = null;
@@ -405,6 +407,11 @@ export class BoardCanvas {
       if (!next.has(id)) this.choiceShownAt.delete(id);
     }
     this.choiceInfos = infos;
+  }
+
+  /** Steps left this turn, floated as a die over your token (null = hidden). */
+  setStepDie(n: number | null): void {
+    this.stepDie = n;
   }
 
   centerOn(nodeId: string, animate = true): void {
@@ -721,6 +728,12 @@ export class BoardCanvas {
     placed.sort((a, b) => a.y - b.y);
     for (const t of placed) this.drawToken(t.p, t.x, t.y, t.hopY, t.breath);
     for (const t of placed) this.drawLabel(t.p, t.x, t.y);
+    // Steps-left die floats above your head (Mario Party style), above tokens.
+    const ownT = placed.find((t) => t.p.userId === this.ownUserId);
+    if (this.stepDie !== null && ownT) {
+      const targetH = 72 * formSprite(ownT.p.form).scale;
+      this.drawStepDie(ownT.x, ownT.y - targetH / 2 + ownT.hopY, this.stepDie, ts);
+    }
     for (const id of [...this.tokenAnims.keys()]) {
       if (!present.has(id)) this.tokenAnims.delete(id);
     }
@@ -1213,6 +1226,54 @@ export class BoardCanvas {
     ctx.stroke();
     ctx.fillStyle = isOwn ? '#fbbf24' : '#e5f0e5';
     ctx.fillText(label, x, by + 3);
+    ctx.restore();
+  }
+
+  /**
+   * Mario-Party-style steps-left die, floating and bobbing above your head with
+   * the remaining count on its face.
+   */
+  private drawStepDie(cx: number, headTop: number, value: number, ts: number): void {
+    const ctx = this.ctx;
+    const bob = Math.sin(ts * 0.004) * 3;
+    const tilt = Math.sin(ts * 0.0022) * 0.1;
+    const size = 30;
+    const r = size / 2;
+    const cy = headTop - 24 + bob; // hover a little above the head
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(tilt);
+
+    // Die body with a soft drop shadow so it floats off the board.
+    ctx.beginPath();
+    ctx.roundRect(-r, -r, size, size, 7);
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 3;
+    ctx.fillStyle = '#f2eee2';
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Top sheen + bevel border.
+    ctx.beginPath();
+    ctx.roundRect(-r + 3, -r + 3, size - 6, (size - 6) * 0.42, 4);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(-r, -r, size, size, 7);
+    ctx.strokeStyle = 'rgba(30, 26, 18, 0.7)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // The remaining-step count.
+    ctx.fillStyle = '#241f18';
+    ctx.font = 'bold 19px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(value), 0, 1);
     ctx.restore();
   }
 }
