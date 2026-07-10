@@ -236,6 +236,53 @@
             </p>
           }
         </section>
+
+        <!-- Grimoire -->
+        <section class="card">
+          <h3>Grimoire <span class="muted">({{ (you.grimoires ?? []).length }} collected)</span></h3>
+          <div class="spell-rows">
+            @if (innateSpell(); as sp) {
+              <div class="spell-row innate">
+                <span class="spell-name">
+                  <mat-icon class="mi">{{ sp.icon }}</mat-icon>
+                  {{ sp.name }} <em>{{ sp.desc }}</em>
+                </span>
+                <span class="spell-cd" [class.ready]="cooldownLabel(sp.id) === 'Ready'">
+                  {{ cooldownLabel(sp.id) }}
+                </span>
+              </div>
+            }
+            @if (equippedBook(); as book) {
+              @for (sp of bookSpells(book); track sp.id) {
+                <div class="spell-row">
+                  <span class="spell-name">
+                    <mat-icon class="mi">{{ sp.icon }}</mat-icon>
+                    {{ sp.name }} <em>{{ sp.desc }}</em>
+                  </span>
+                  <span class="spell-cd" [class.ready]="cooldownLabel(sp.id) === 'Ready'">
+                    {{ cooldownLabel(sp.id) }}
+                  </span>
+                </div>
+              }
+            } @else {
+              <p class="muted bag-empty">No grimoire open. Books wait in the bazaars.</p>
+            }
+          </div>
+          @if ((you.grimoires ?? []).length) {
+            <div class="book-list">
+              @for (g of ownedBooks(); track g.id) {
+                <button
+                  class="uc-btn book-chip"
+                  [class.selected]="you.equippedGrimoire === g.id"
+                  [disabled]="busy()"
+                  (click)="equipBook(g.id)"
+                >
+                  <mat-icon class="mi">menu_book</mat-icon> {{ g.name }}
+                </button>
+              }
+            </div>
+          }
+        </section>
       </div>
     </div>
 

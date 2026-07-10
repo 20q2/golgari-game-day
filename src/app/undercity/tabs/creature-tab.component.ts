@@ -11,6 +11,15 @@ import {
   xpToNext,
 } from '../data/forms';
 import { GEAR_MAP, CONSUMABLE_MAP } from '../data/items';
+import {
+  BIOME_SPELLS,
+  GRIMOIRE_MAP,
+  GRIMOIRES,
+  GrimoireInfo,
+  SPELL_MAP,
+  SpellInfo,
+  cooldownLeftMin,
+} from '../data/spells';
 import { HATS, PAINTS, HatInfo, PaintInfo } from '../data/cosmetics';
 import { formSprite } from '../data/species';
 import { getRecoloredDataUrl } from '../engine/sprite-engine';
@@ -107,6 +116,40 @@ export class CreatureTabComponent {
     if (!you) return false;
     return (you.tier === 1 && you.level >= 5) || (you.tier === 2 && you.level >= 10);
   });
+
+  protected readonly innateSpell = computed<SpellInfo | null>(() => {
+    const biome = this.store.you()?.homeBiome;
+    return biome ? (SPELL_MAP[BIOME_SPELLS[biome]] ?? null) : null;
+  });
+
+  protected readonly equippedBook = computed<GrimoireInfo | null>(() => {
+    const id = this.store.you()?.equippedGrimoire;
+    return id ? (GRIMOIRE_MAP[id] ?? null) : null;
+  });
+
+  protected readonly ownedBooks = computed<GrimoireInfo[]>(() => {
+    const owned = new Set(this.store.you()?.grimoires ?? []);
+    return GRIMOIRES.filter((g) => owned.has(g.id));
+  });
+
+  bookSpells(book: GrimoireInfo): SpellInfo[] {
+    return book.spells.map((id) => SPELL_MAP[id]).filter(Boolean);
+  }
+
+  cooldownLabel(spellId: string): string {
+    const left = cooldownLeftMin(this.store.you()?.spellCooldowns, spellId);
+    return left > 0 ? `${left} min` : 'Ready';
+  }
+
+  async equipBook(id: string): Promise<void> {
+    const already = this.store.you()?.equippedGrimoire === id;
+    await this.run(async () => {
+      const resp = await this.store.action('equip-grimoire', {
+        grimoireId: already ? null : id,
+      });
+      this.showToast(resp.text ?? 'Done.');
+    });
+  }
 
   protected readonly evolveChoices = computed<FormInfo[]>(() => {
     const you = this.store.you();
