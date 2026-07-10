@@ -11,6 +11,15 @@
   overflow: hidden;
 }
 
+// Full-bleed backdrop art behind the entry/idle screens. The image (plus its
+// readability veil) comes from an inline style in the template — the webpack
+// builder can't resolve runtime asset paths inside component SCSS url().
+.bg-vista {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 .gate-screen,
 .idle-screen {
   flex: 1;
@@ -47,8 +56,11 @@
   padding-top: 12vh;
 }
 
-.gate-emoji {
+.gate-icon {
   font-size: 4rem;
+  width: 4rem;
+  height: 4rem;
+  color: #6cae75;
 
   &.pulse {
     animation: uc-pulse 1.6s ease-in-out infinite;
@@ -114,6 +126,18 @@
   background: #1a1815;
   border-bottom: 1px solid rgba(74, 124, 89, 0.35);
   flex-shrink: 0;
+}
+
+.hud-avatar {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  object-fit: contain;
+  image-rendering: pixelated;
+  border-radius: 10px;
+  background: rgba(74, 124, 89, 0.14);
+  border: 1px solid rgba(74, 124, 89, 0.4);
+  padding: 2px;
 }
 
 .hud-creature {
@@ -188,6 +212,9 @@
 }
 
 .hud-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: rgba(74, 124, 89, 0.18);
   border: 1px solid rgba(74, 124, 89, 0.4);
   border-radius: 16px;
@@ -233,7 +260,9 @@
     }
 
     .tab-icon {
-      font-size: 1.3rem;
+      font-size: 1.4rem;
+      width: 1.4rem;
+      height: 1.4rem;
     }
 
     .tab-label {
@@ -247,6 +276,47 @@
 // ── Shared control styles (used by child tabs via :host-context) ────────────
 
 :host ::ng-deep {
+  // Spore-currency coin (rot sticker art), sized to flow with text anywhere.
+  .rot-coin {
+    height: 1.15em;
+    width: 1.15em;
+    object-fit: contain;
+    image-rendering: pixelated;
+    vertical-align: -0.22em;
+  }
+
+  // Inline icon utility: sizes a mat-icon to flow with surrounding text.
+  .mi {
+    font-size: 1.15em;
+    width: 1.15em;
+    height: 1.15em;
+    line-height: 1;
+    vertical-align: -0.22em;
+
+    &.spore {
+      color: #86efac;
+    }
+
+    &.gold {
+      color: #fbbf24;
+    }
+
+    &.silver {
+      color: #cbd5e1;
+    }
+
+    &.bronze {
+      color: #d97706;
+    }
+  }
+
+  .uc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
   .uc-btn {
     font-family: inherit;
     border: 1px solid rgba(74, 124, 89, 0.5);

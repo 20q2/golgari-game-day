@@ -54,6 +54,12 @@
   gap: 2px;
   align-items: center;
 
+  .claim-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
   small {
     font-weight: 400;
     font-size: 0.7rem;
@@ -113,9 +119,16 @@
   }
 
   .lb-stats {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
     font-size: 0.78rem;
     color: #9aa79a;
     flex-shrink: 0;
+
+    .mi {
+      margin-left: 5px;
+    }
   }
 
   .lb-renown {
@@ -138,11 +151,13 @@
 .feed-row {
   display: flex;
   gap: 8px;
-  align-items: baseline;
+  align-items: flex-start;
   font-size: 0.84rem;
 
   .feed-icon {
     flex-shrink: 0;
+    color: #6cae75;
+    margin-top: 1px;
   }
 
   .feed-text {

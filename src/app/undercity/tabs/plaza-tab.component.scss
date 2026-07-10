@@ -27,9 +27,16 @@
   animation: uc-rise 0.2s ease;
 
   .poke-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     font-size: 0.9rem;
     font-weight: 600;
     color: #d8f3dc;
+
+    .shield-mi {
+      color: #8cdcaa;
+    }
   }
 
   .own-note {

@@ -1,11 +1,13 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { MatIconModule } from '@angular/material/icon';
 import { firstValueFrom } from 'rxjs';
 import { UserService } from '../services/user.service';
 import { UndercityStateService } from './services/undercity-state.service';
-import { preloadAll } from './engine/sprite-engine';
+import { preloadAll, getRecoloredDataUrl } from './engine/sprite-engine';
 import { BoardMap } from './engine/board-canvas';
+import { formSprite } from './data/species';
 import { xpToNext, formName } from './data/forms';
 import { HatchFlowComponent } from './hatch/hatch-flow.component';
 import { BoardTabComponent } from './tabs/board-tab.component';
@@ -22,6 +24,7 @@ type Tab = 'board' | 'creature' | 'plaza' | 'log';
   standalone: true,
   imports: [
     CommonModule,
+    MatIconModule,
     HatchFlowComponent,
     BoardTabComponent,
     CreatureTabComponent,
@@ -78,6 +81,14 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   protected readonly xpNext = computed(() => {
     const you = this.store.you();
     return you ? xpToNext(you.level) : 0;
+  });
+
+  /** Recolored portrait of the player's creature for the HUD avatar. */
+  protected readonly youSpriteUrl = computed(() => {
+    const you = this.store.you();
+    if (!you) return null;
+    const spr = formSprite(you.form);
+    return getRecoloredDataUrl(spr.sprite, you.paint ?? {}, spr.regions);
   });
 
   async ngOnInit(): Promise<void> {

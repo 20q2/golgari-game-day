@@ -1,6 +1,7 @@
 <div class="host-panel">
   <button class="host-toggle" (click)="open.set(!open())">
-    🗝️ Host controls {{ open() ? '▾' : '▸' }}
+    <mat-icon class="mi">vpn_key</mat-icon> Host controls
+    <mat-icon class="mi">{{ open() ? 'expand_more' : 'chevron_right' }}</mat-icon>
   </button>
   @if (open()) {
     <div class="host-body">
@@ -18,7 +19,7 @@
             [disabled]="busy() || !hostKey.trim()"
             (click)="startNight()"
           >
-            🌙 New Night
+            <mat-icon class="mi">dark_mode</mat-icon> New Night
           </button>
         } @else {
           <button
@@ -26,14 +27,15 @@
             [disabled]="busy() || !hostKey.trim()"
             (click)="endNight()"
           >
-            {{ confirmEnd() ? '⚠️ Really end the night?' : '🏁 End Night' }}
+            <mat-icon class="mi">{{ confirmEnd() ? 'warning' : 'sports_score' }}</mat-icon>
+            {{ confirmEnd() ? 'Really end the night?' : 'End Night' }}
           </button>
           <button
             class="uc-btn uc-btn-primary"
             [disabled]="busy() || !hostKey.trim()"
             (click)="startNight()"
           >
-            🌙 New Night (archives current)
+            <mat-icon class="mi">dark_mode</mat-icon> New Night (archives current)
           </button>
         }
       </div>

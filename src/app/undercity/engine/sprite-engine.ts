@@ -117,6 +117,9 @@ export function preloadAll(): Promise<void> {
   const bg = loadImage('undercity/plaza_background.png').then((img) => {
     plazaBgImage = img;
   });
+  // Canvases draw Material Icons ligatures (board glyphs, plaza emotes) —
+  // make sure the font is resident before the first frame.
+  const iconFont = document.fonts.load("26px 'Material Icons'").then(() => undefined);
   for (const hat of HATS) {
     const img = new Image();
     const entry: HatImage = { img, offsetY: hat.offsetY, loaded: false };
@@ -124,7 +127,7 @@ export function preloadAll(): Promise<void> {
     img.src = `undercity/hats/${hat.file}`;
     hatCache[hat.id] = entry;
   }
-  loadPromise = Promise.all([...sprites, bg]).then(() => undefined);
+  loadPromise = Promise.all([...sprites, bg, iconFont]).then(() => undefined);
   return loadPromise;
 }
 

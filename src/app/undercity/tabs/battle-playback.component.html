@@ -122,11 +122,49 @@
 
     <!-- Strike log, newest first -->
     <div class="battle-log">
-      @if (done()) {
-        <div class="log-line result">{{ resultText }}</div>
+      @if (done() && resultText) {
+        <div class="log-result">
+          <mat-icon class="mi">flag</mat-icon>
+          <span>{{ resultText }}</span>
+        </div>
       }
-      @for (line of linesNewestFirst(); track $index) {
-        <div class="log-line">{{ line }}</div>
+      @for (e of entriesNewestFirst(); track $index) {
+        <div
+          class="log-row"
+          [class.you]="e.by === 'attacker'"
+          [class.foe]="e.by === 'defender'"
+          [class.miss]="e.miss"
+        >
+          <span class="log-round">R{{ e.round }}</span>
+          <span class="log-avatar">
+            @if (actorSprite(e); as url) {
+              <img [src]="url" [alt]="actorName(e)" />
+            } @else {
+              <mat-icon>{{ actorIcon(e) }}</mat-icon>
+            }
+          </span>
+          <span class="log-text">
+            <strong class="log-actor">{{ actorName(e) }}</strong>
+            @if (e.miss) {
+              <span class="log-verb">whiffs — {{ targetName(e) }} slips aside</span>
+            } @else if (e.retaliation) {
+              <span class="log-verb">counters {{ targetName(e) }}</span>
+            } @else {
+              <span class="log-verb">hits {{ targetName(e) }}</span>
+            }
+          </span>
+          @if (e.miss) {
+            <span class="log-badge miss-badge"><mat-icon class="mi">air</mat-icon> miss</span>
+          } @else {
+            <span class="log-badge dmg-badge">
+              <mat-icon class="mi">{{ e.retaliation ? 'bolt' : 'sports_mma' }}</mat-icon>
+              −{{ e.dmg }}
+            </span>
+          }
+          @if (e.heal) {
+            <span class="log-badge heal-badge"><mat-icon class="mi">favorite</mat-icon> +{{ e.heal }}</span>
+          }
+        </div>
       }
     </div>
 

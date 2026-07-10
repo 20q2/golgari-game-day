@@ -4,6 +4,10 @@
 }
 
 .host-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   width: 100%;
   background: none;
   border: 1px dashed rgba(122, 135, 122, 0.4);

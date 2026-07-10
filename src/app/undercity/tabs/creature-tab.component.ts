@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import {
   FormInfo,
@@ -18,7 +19,7 @@ import { isShielded } from '../services/undercity-models';
 @Component({
   selector: 'app-undercity-creature-tab',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './creature-tab.component.html',
   styleUrls: ['./creature-tab.component.scss'],
 })
@@ -30,6 +31,32 @@ export class CreatureTabComponent {
   protected readonly showEvolve = signal(false);
   protected readonly showWardrobe = signal(false);
   protected readonly loadedDiePick = signal(false);
+
+  /** Which stat's description panel is open ('atk' | 'def' | 'spd' | null). */
+  protected readonly openStat = signal<string | null>(null);
+
+  /** Plain-language stat descriptions, matching the battle engine's math. */
+  protected readonly statInfo: Record<string, { label: string; icon: string; desc: string }> = {
+    atk: {
+      label: 'Attack',
+      icon: 'sports_mma',
+      desc: "The muscle behind each strike. Higher ATK means more damage per hit — minus whatever the enemy's DEF soaks up.",
+    },
+    def: {
+      label: 'Defense',
+      icon: 'shield',
+      desc: 'Armor against blows. Every point of DEF shaves damage off each hit you take. The Defend stance boosts it further.',
+    },
+    spd: {
+      label: 'Speed',
+      icon: 'bolt',
+      desc: "Strike first when it beats your foe's Speed, and slip away more often when your stance is set to Flee.",
+    },
+  };
+
+  selectStat(stat: string): void {
+    this.openStat.update((cur) => (cur === stat ? null : stat));
+  }
 
   protected readonly passiveBlurbs = PASSIVE_BLURBS;
 
@@ -54,6 +81,25 @@ export class CreatureTabComponent {
   protected readonly xpNext = computed(() => {
     const you = this.store.you();
     return you ? xpToNext(you.level) : 0;
+  });
+
+  /** Troll Hide is the only gear that raises max HP (mirrors the HUD header). */
+  protected readonly effectiveMaxHp = computed(() => {
+    const you = this.store.you();
+    if (!you) return 1;
+    return you.maxHp + (you.gear?.['carapace'] === 'troll_hide' ? 6 : 0);
+  });
+
+  protected readonly hpPct = computed(() => {
+    const you = this.store.you();
+    if (!you) return 0;
+    return Math.round((you.hp / Math.max(1, this.effectiveMaxHp())) * 100);
+  });
+
+  protected readonly xpPct = computed(() => {
+    const you = this.store.you();
+    if (!you) return 0;
+    return Math.min(100, Math.round((you.xp / Math.max(1, this.xpNext())) * 100));
   });
 
   protected readonly evolveReady = computed(() => {

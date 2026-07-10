@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 
 const HOST_KEY_STORAGE = 'undercity-host-key';
@@ -13,7 +14,7 @@ const HOST_KEY_STORAGE = 'undercity-host-key';
 @Component({
   selector: 'app-undercity-host-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MatIconModule],
   templateUrl: './host-panel.component.html',
   styleUrls: ['./host-panel.component.scss'],
 })

@@ -30,6 +30,16 @@ export interface BattleRewards {
   itemIcon?: string;
 }
 
+/** One rendered strike in the battle log. */
+interface LogEntry {
+  round: number;
+  by: 'attacker' | 'defender';
+  miss: boolean;
+  retaliation: boolean;
+  dmg: number;
+  heal: number;
+}
+
 /**
  * Plays back a server-resolved battle log as a short animated sequence —
  * sprites lunge, damage numbers pop, HP bars drain. Pure presentation.
@@ -65,14 +75,33 @@ export class BattlePlaybackComponent implements OnInit, OnDestroy {
   // The component is recreated per battle, so no reset is needed.
   protected readonly attackerSpriteFailed = signal(false);
   protected readonly defenderSpriteFailed = signal(false);
-  protected readonly lines = signal<string[]>([]);
+  protected readonly entries = signal<LogEntry[]>([]);
   protected readonly lunge = signal<'attacker' | 'defender' | null>(null);
   protected readonly hit = signal<'attacker' | 'defender' | null>(null);
   protected readonly popup = signal<{ side: 'attacker' | 'defender'; text: string } | null>(null);
   protected readonly done = signal(false);
 
   /** Log rendered newest-first so the latest strike is always visible. */
-  protected readonly linesNewestFirst = computed(() => [...this.lines()].reverse());
+  protected readonly entriesNewestFirst = computed(() => [...this.entries()].reverse());
+
+  protected actorName(e: LogEntry): string {
+    return e.by === 'attacker' ? this.attacker.name : this.defender.name;
+  }
+
+  protected targetName(e: LogEntry): string {
+    return e.by === 'attacker' ? this.defender.name : this.attacker.name;
+  }
+
+  protected actorSprite(e: LogEntry): string | null {
+    const side = e.by === 'attacker' ? this.attacker : this.defender;
+    const failed = e.by === 'attacker' ? this.attackerSpriteFailed() : this.defenderSpriteFailed();
+    return side.spriteUrl && !failed ? side.spriteUrl : null;
+  }
+
+  protected actorIcon(e: LogEntry): string {
+    const side = e.by === 'attacker' ? this.attacker : this.defender;
+    return side.icon ?? (e.by === 'attacker' ? 'pets' : 'bug_report');
+  }
 
   protected outcomeLabel(): string {
     switch (this.battle.outcome) {
@@ -127,24 +156,17 @@ export class BattlePlaybackComponent implements OnInit, OnDestroy {
 
   private applyStrike(s: BattleStrike, animate: boolean): void {
     const target = s.by === 'attacker' ? 'defender' : 'attacker';
-    const byName = s.by === 'attacker' ? this.attacker.name : this.defender.name;
-    const targetName = s.by === 'attacker' ? this.defender.name : this.attacker.name;
 
     if (animate) {
       this.lunge.set(s.by);
       setTimeout(() => this.lunge.set(null), 300);
     }
 
-    let line: string;
     if (s.miss) {
-      line = `${byName} strikes — ${targetName} slips aside!`;
       if (animate) this.popup.set({ side: target, text: 'miss' });
     } else {
       if (target === 'defender') this.defenderHp.set(Math.max(0, this.defenderHp() - s.dmg));
       else this.attackerHp.set(Math.max(0, this.attackerHp() - s.dmg));
-      line = s.retaliation
-        ? `${byName} retaliates for ${s.dmg}! (Scavenge)`
-        : `${byName} hits ${targetName} for ${s.dmg}` + (s.heal ? ` and drains ${s.heal} HP` : '');
       if (s.heal) {
         if (s.by === 'attacker')
           this.attackerHp.set(Math.min(this.attacker.maxHp, this.attackerHp() + s.heal));
@@ -156,7 +178,17 @@ export class BattlePlaybackComponent implements OnInit, OnDestroy {
         setTimeout(() => this.hit.set(null), 300);
       }
     }
-    this.lines.set([...this.lines(), line]);
+    this.entries.set([
+      ...this.entries(),
+      {
+        round: s.round,
+        by: s.by,
+        miss: !!s.miss,
+        retaliation: !!s.retaliation,
+        dmg: s.dmg ?? 0,
+        heal: s.heal ?? 0,
+      },
+    ]);
     if (animate) setTimeout(() => this.popup.set(null), 550);
   }
 

@@ -2,113 +2,212 @@
   position: fixed;
   inset: 0;
   z-index: 1200;
-  background: rgba(8, 6, 4, 0.85);
+  background: rgba(8, 6, 4, 0.82);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  animation: uc-fade-in 0.18s ease;
+}
+
+@keyframes uc-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .battle-card {
-  width: min(440px, 100%);
+  width: min(460px, 100%);
+  // Fixed height so the card opens at full size instead of growing as the
+  // log fills in and rewards appear — the log flexes into the spare space.
+  height: min(620px, 90vh);
+  overflow-y: auto;
   background: #1a1815;
   border: 1px solid rgba(74, 124, 89, 0.45);
-  border-radius: 14px;
-  padding: 18px;
+  border-radius: 16px;
+  padding-bottom: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(183, 228, 199, 0.08);
+  animation: uc-battle-in 0.28s cubic-bezier(0.2, 1.4, 0.4, 1);
 }
 
-.arena {
+@keyframes uc-battle-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+// ── Stage ────────────────────────────────────────────────────────────────────
+
+.stage {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 36px 14px 28px;
+  background-size: cover;
+  background-position: center;
+  border-bottom: 2px solid rgba(74, 124, 89, 0.5);
+}
+
+.vs-badge {
+  align-self: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.vs {
-  font-size: 1.4rem;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: #fde68a;
+  background: radial-gradient(circle at 35% 30%, #4a3535, #241414 75%);
+  border: 2px solid rgba(250, 220, 90, 0.45);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 2px #000;
 }
 
 .side {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
   flex: 1;
-  transition: transform 0.25s ease;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: transform 0.25s ease, filter 0.4s ease, opacity 0.4s ease;
 
   &.lunge-right {
-    transform: translateX(18px);
+    transform: translateX(20px);
   }
 
   &.lunge-left {
-    transform: translateX(-18px);
+    transform: translateX(-20px);
   }
 
   &.hit {
     animation: uc-shake 0.3s ease;
   }
 
+  // The loser slumps: grayscale + tilt once the banner drops.
+  &.ko {
+    filter: grayscale(0.9) brightness(0.7);
+    opacity: 0.75;
+
+    .sprite,
+    .sprite-icon {
+      transform: rotate(12deg) translateY(6px);
+    }
+
+    &.flipped .sprite {
+      transform: scaleX(-1) rotate(12deg) translateY(6px);
+    }
+  }
+
+  .platform {
+    position: absolute;
+    bottom: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 104px;
+    height: 30px;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55) 0%, transparent 68%);
+    pointer-events: none;
+  }
+
   .sprite {
-    width: 84px;
-    height: 84px;
+    width: 96px;
+    height: 96px;
     object-fit: contain;
     image-rendering: pixelated;
+    filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55));
+    transition: transform 0.4s ease;
   }
 
   &.flipped .sprite {
     transform: scaleX(-1);
   }
 
-  .sprite-emoji {
-    font-size: 60px;
-    line-height: 84px;
-  }
-
-  .side-name {
-    font-weight: 700;
-    font-size: 0.85rem;
-    color: #d8f3dc;
-    max-width: 130px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .hp-track {
-    width: 100%;
-    max-width: 130px;
-    height: 10px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 5px;
-    overflow: hidden;
-
-    .hp-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #6cae75, #99d98c);
-      transition: width 0.35s ease;
-    }
-  }
-
-  .hp-num {
-    font-size: 0.75rem;
-    color: #9aa79a;
+  .sprite-icon {
+    font-size: 68px;
+    width: 96px;
+    height: 96px;
+    line-height: 96px;
+    color: #d8b5b5;
+    filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55));
+    transition: transform 0.4s ease;
   }
 
   .dmg-pop {
     position: absolute;
-    top: 0;
+    top: -8px;
     left: 50%;
     transform: translateX(-50%);
     font-weight: 800;
-    font-size: 1.3rem;
+    font-size: 1.35rem;
     color: #f87171;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.85);
     animation: uc-pop 0.55s ease forwards;
     pointer-events: none;
+    z-index: 2;
+  }
+}
+
+.outcome-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 8px 0;
+  text-align: center;
+  font-size: 1.9rem;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  color: #e5f0e5;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(8, 6, 4, 0.78) 18%,
+    rgba(8, 6, 4, 0.78) 82%,
+    transparent
+  );
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+  animation: uc-banner-slam 0.45s cubic-bezier(0.2, 1.5, 0.4, 1);
+
+  &.win {
+    color: #fbbf24;
+  }
+
+  &.lose {
+    color: #f87171;
+  }
+}
+
+@keyframes uc-banner-slam {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(1.6);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
   }
 }
 
@@ -140,23 +239,311 @@
   }
 }
 
+// ── Plates / log / actions ───────────────────────────────────────────────────
+
+.plates {
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+  padding: 0 14px;
+}
+
+.plate {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(74, 124, 89, 0.1);
+  border: 1px solid rgba(74, 124, 89, 0.3);
+  border-radius: 10px;
+  padding: 8px 10px;
+
+  &.right {
+    text-align: right;
+
+    // Mirror the HP drain so both bars empty toward the center.
+    .hp-track {
+      direction: rtl;
+    }
+  }
+
+  .side-name {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #d8f3dc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hp-track {
+    height: 10px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 5px;
+    overflow: hidden;
+
+    .hp-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #6cae75, #99d98c);
+      transition: width 0.35s ease;
+
+      &.low {
+        background: linear-gradient(90deg, #b9903a, #e0b34e);
+      }
+
+      &.crit {
+        background: linear-gradient(90deg, #a34040, #d86060);
+      }
+    }
+  }
+
+  .hp-num {
+    font-size: 0.72rem;
+    color: #9aa79a;
+  }
+}
+
+.rewards {
+  flex-shrink: 0;
+  margin: 4px 16px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(74, 124, 89, 0.22), rgba(74, 124, 89, 0.08));
+  border: 1px solid rgba(120, 200, 140, 0.35);
+  animation: uc-reward-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+
+  .rewards-title {
+    display: block;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #8fcea5;
+    margin-bottom: 6px;
+  }
+
+  .reward-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .reward-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e5f0e5;
+
+    .mi {
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
+    }
+
+    &.spores {
+      color: #e8cd a0;
+      color: #e8cda0;
+    }
+    &.xp {
+      color: #9ad0ff;
+    }
+    &.item {
+      color: #c9a2ff;
+    }
+    &.levelup {
+      color: #12100e;
+      background: linear-gradient(180deg, #ffe08a, #fbbf24);
+      border-color: rgba(251, 191, 36, 0.8);
+    }
+  }
+}
+
+@keyframes uc-reward-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .battle-log {
-  max-height: 150px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+  padding: 0 16px;
   font-size: 0.82rem;
   color: #b7c7b7;
+}
 
-  .log-line.result {
+// Result headline — pinned at the top of the (newest-first) log.
+.log-result {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-weight: 800;
+  color: #fde68a;
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.05));
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+
+  .mi {
     color: #fbbf24;
-    font-weight: 700;
-    margin-top: 4px;
+    flex-shrink: 0;
+  }
+}
+
+// One strike row: round tag · actor avatar · text · outcome badge(s).
+.log-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid transparent;
+  animation: uc-logrow-in 0.22s ease both;
+
+  // Colour by who's on the receiving end: your hits read triumphant (green),
+  // the foe's hits read threatening (red), whiffs stay muted.
+  &.you {
+    border-left-color: #6cae75;
+    background: rgba(74, 124, 89, 0.12);
+  }
+  &.foe {
+    border-left-color: #c05353;
+    background: rgba(150, 60, 60, 0.12);
+  }
+  &.miss {
+    border-left-color: rgba(160, 170, 160, 0.5);
+    background: rgba(255, 255, 255, 0.03);
+    opacity: 0.8;
+  }
+
+  .log-round {
+    flex-shrink: 0;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #8a978a;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 6px;
+    padding: 2px 5px;
+    min-width: 24px;
+    text-align: center;
+  }
+
+  .log-avatar {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: #cdd8cd;
+    }
+  }
+
+  .log-text {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.25;
+  }
+
+  .log-actor {
+    color: #eafff0;
+  }
+  &.foe .log-actor {
+    color: #f3c9c9;
+  }
+
+  .log-verb {
+    color: #9aa79a;
+  }
+
+  .log-badge {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-weight: 800;
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+
+    .mi {
+      font-size: 0.95rem;
+      width: 0.95rem;
+      height: 0.95rem;
+    }
+  }
+
+  .dmg-badge {
+    background: rgba(0, 0, 0, 0.3);
+  }
+  &.you .dmg-badge {
+    color: #b7f0c7;
+  }
+  &.foe .dmg-badge {
+    color: #ffb4b4;
+  }
+
+  .miss-badge {
+    color: #b8c2b8;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .heal-badge {
+    color: #86efac;
+    background: rgba(74, 124, 89, 0.2);
+  }
+}
+
+@keyframes uc-logrow-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
 .battle-actions {
   display: flex;
+  flex-shrink: 0;
   justify-content: center;
+  padding: 0 16px;
 }

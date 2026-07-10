@@ -11,9 +11,19 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  // Palace throne-hall art (inline style in the template) as the crowning stage.
+  align-self: stretch;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 14px;
+  padding: 22px 16px;
 
   .champ-crown {
-    font-size: 2.2rem;
+    font-size: 2.4rem;
+    width: 2.4rem;
+    height: 2.4rem;
+    color: #fbbf24;
     animation: uc-bob 2s ease-in-out infinite;
   }
 
@@ -71,6 +81,20 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
+
+  .podium-medal {
+    &.gold {
+      color: #fbbf24;
+    }
+
+    &.silver {
+      color: #cbd5e1;
+    }
+
+    &.bronze {
+      color: #d97706;
+    }
+  }
   background: rgba(74, 124, 89, 0.1);
   border: 1px solid rgba(74, 124, 89, 0.35);
   border-radius: 10px;

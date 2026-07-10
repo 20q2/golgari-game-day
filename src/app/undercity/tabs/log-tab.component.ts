@@ -1,26 +1,27 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { HostPanelComponent } from '../host/host-panel.component';
 
 const EVENT_ICONS: Record<string, string> = {
-  hatch: '🥚',
-  claim: '🎲',
-  level: '⬆️',
-  evolve: '✨',
-  compost: '💀',
-  undying: '🧟',
-  pvp: '⚔️',
-  poke: '👉',
-  snare: '🪤',
-  jackpot: '💰',
-  season: '🌙',
+  hatch: 'egg',
+  claim: 'casino',
+  level: 'trending_up',
+  evolve: 'auto_awesome',
+  compost: 'compost',
+  undying: 'autorenew',
+  pvp: 'sports_kabaddi',
+  poke: 'touch_app',
+  snare: 'gps_fixed',
+  jackpot: 'paid',
+  season: 'nightlight',
 };
 
 @Component({
   selector: 'app-undercity-log-tab',
   standalone: true,
-  imports: [CommonModule, HostPanelComponent],
+  imports: [CommonModule, MatIconModule, HostPanelComponent],
   templateUrl: './log-tab.component.html',
   styleUrls: ['./log-tab.component.scss'],
 })
@@ -32,7 +33,7 @@ export class LogTabComponent {
   protected readonly wonToggle = signal(false);
 
   eventIcon(type: string): string {
-    return EVENT_ICONS[type] ?? '🍄';
+    return EVENT_ICONS[type] ?? 'spa';
   }
 
   protected readonly leaderboard = computed(() =>
