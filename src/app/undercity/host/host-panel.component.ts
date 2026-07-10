@@ -7,9 +7,9 @@ import { UndercityStateService } from '../services/undercity-state.service';
 const HOST_KEY_STORAGE = 'undercity-host-key';
 
 /**
- * Host controls: New Night / End Night, gated by a passphrase remembered in
- * localStorage (same trust level as the rest of the site — no real auth).
- * Awaken-the-Behemoth is deferred and intentionally absent (GDD §14).
+ * Host controls: New Night / End Night / Awaken the Queen, gated by a
+ * passphrase remembered in localStorage (same trust level as the rest of the
+ * site — no real auth).
  */
 @Component({
   selector: 'app-undercity-host-panel',
@@ -25,9 +25,11 @@ export class HostPanelComponent {
   protected readonly busy = signal(false);
   protected readonly message = signal<string | null>(null);
   protected readonly confirmEnd = signal(false);
+  protected readonly confirmAwaken = signal(false);
   protected hostKey = localStorage.getItem(HOST_KEY_STORAGE) ?? '';
 
   protected readonly seasonActive = computed(() => this.store.season()?.status === 'active');
+  protected readonly bossAwake = computed(() => this.store.season()?.bossPhase === true);
 
   async startNight(): Promise<void> {
     await this.run(async () => {
@@ -47,6 +49,20 @@ export class HostPanelComponent {
       await this.store.action('season-end', { hostKey: this.hostKey });
       this.message.set('The night has ended. Ceremony time.');
       this.confirmEnd.set(false);
+    });
+  }
+
+  /** One-way finale: drop the sigil wards so everyone can storm the Queen. */
+  async awaken(): Promise<void> {
+    if (!this.confirmAwaken()) {
+      this.confirmAwaken.set(true);
+      return;
+    }
+    await this.run(async () => {
+      localStorage.setItem(HOST_KEY_STORAGE, this.hostKey);
+      await this.store.action('boss-awaken', { hostKey: this.hostKey });
+      this.message.set('The rot-wards fall. The Queen is awake!');
+      this.confirmAwaken.set(false);
     });
   }
 

@@ -22,6 +22,16 @@
             <mat-icon class="mi">dark_mode</mat-icon> New Night
           </button>
         } @else {
+          @if (!bossAwake()) {
+            <button
+              class="uc-btn uc-btn-danger"
+              [disabled]="busy() || !hostKey.trim()"
+              (click)="awaken()"
+            >
+              <mat-icon class="mi">{{ confirmAwaken() ? 'warning' : 'whatshot' }}</mat-icon>
+              {{ confirmAwaken() ? 'Unseal her for everyone?' : 'Awaken the Queen' }}
+            </button>
+          }
           <button
             class="uc-btn uc-btn-danger"
             [disabled]="busy() || !hostKey.trim()"
@@ -43,7 +53,8 @@
         <p class="host-msg">{{ msg }}</p>
       }
       <p class="host-note">
-        First "New Night" ever sets the passphrase. The Behemoth slumbers in this build.
+        First "New Night" ever sets the passphrase. Awakening the Queen drops the
+        sigil wards for everyone — save it for the finale; it can't be undone.
       </p>
     </div>
   }

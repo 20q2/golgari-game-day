@@ -700,3 +700,50 @@ def test_vestige_hp_also_lingers(table, monkeypatch):
     assert out['npc']['name'] == f"Vestige of {b['name']}"
     _, out2 = _lair_fight(table, sid, 'user-alex', 'timeout', 5, monkeypatch)
     assert out2['npc']['hp'] == 9
+
+
+# ── Awaken the Queen (host boss-phase trigger) ───────────────────────────────
+
+def test_boss_awaken_requires_the_host_key(table):
+    status, _ = act(table, 'boss-awaken', hostKey='wrong')
+    assert status == 403
+    _, state = db.handle_state(table, {})
+    assert state['season']['bossPhase'] is False
+
+
+def test_boss_awaken_flips_boss_phase_once(table):
+    status, _ = act(table, 'boss-awaken', hostKey='swampking')
+    assert status == 200
+    _, state = db.handle_state(table, {})
+    assert state['season']['bossPhase'] is True
+    assert any(e['type'] == 'boss' for e in state['events'])  # feed announces it
+    # A second awaken is refused — she's already up.
+    status, _ = act(table, 'boss-awaken', hostKey='swampking')
+    assert status == 409
+
+
+def test_boss_awaken_needs_an_active_season(table):
+    act(table, 'season-end', hostKey='swampking')
+    status, _ = act(table, 'boss-awaken', hostKey='swampking')
+    assert status == 409
+
+
+def test_boss_phase_drops_the_sigil_gate(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'boss'
+
+    # The rot-wards hold while the player has no sigils.
+    out = db._boss(table, sid, doc, 'boss', 'isl_ossuary')
+    assert out['type'] == 'boss_sealed'
+
+    # The host awakens her: the same sigil-less player now gets the fight.
+    act(table, 'boss-awaken', hostKey='swampking')
+    doc['position'] = 'boss'
+    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
+        'outcome': 'timeout', 'strikes': [], 'attackerHp': doc['hp'],
+        'defenderHp': 100, 'smokeSporeUsed': False,
+    })
+    out = db._boss(table, sid, doc, 'boss', 'isl_ossuary')
+    assert out['type'] == 'boss'

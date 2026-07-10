@@ -16,6 +16,7 @@ const EVENT_ICONS: Record<string, string> = {
   snare: 'gps_fixed',
   jackpot: 'paid',
   season: 'nightlight',
+  boss: 'whatshot',
 };
 
 @Component({

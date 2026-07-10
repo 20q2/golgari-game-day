@@ -378,8 +378,6 @@ def handle_action(table, body):
 
     if atype == 'season-start':
         return _season_start(table, payload)
-    if atype == 'boss-awaken':
-        return _err('The Behemoth still slumbers. (Deferred in this build.)')
 
     sid, config = _active_season(table)
     if not sid or not config or config.get('status') != 'active':
@@ -387,6 +385,8 @@ def handle_action(table, body):
 
     if atype == 'season-end':
         return _season_end(table, sid, config, payload)
+    if atype == 'boss-awaken':
+        return _boss_awaken(table, sid, config, payload)
 
     if atype == 'join':
         return _join(table, sid, user_id, username, payload)
@@ -450,6 +450,23 @@ def _season_end(table, sid, config, payload):
         return _err('Wrong host passphrase.', 403)
     result = _archive_season(table, sid, config)
     return 200, {'ok': True, 'result': result}
+
+
+def _boss_awaken(table, sid, config, payload):
+    """
+    Host finale trigger (GDD "Awaken the Behemoth"): the rot-wards fall and
+    Savra unseals for every creature, sigils or not. One-way for the night.
+    """
+    host_key = (payload.get('hostKey') or '').strip()
+    if config.get('hostKey') != host_key:
+        return _err('Wrong host passphrase.', 403)
+    if config.get('bossPhase'):
+        return _err('The Queen is already awake.', 409)
+    table.put_item(Item=dict(config, bossPhase=True))
+    _event(table, sid, 'boss',
+           'THE ROT-WARDS FALL! Savra, Queen of the Golgari, stirs atop the '
+           'floating island — every creature may now storm her lair.')
+    return 200, {'ok': True}
 
 
 def _archive_season(table, sid, config):
@@ -1120,12 +1137,14 @@ def _set_boss_hp(table, sid, hp):
 def _boss(table, sid, doc, node, prev):
     """
     Savra, Queen of the Golgari: unsealed per-player at SIGILS_REQUIRED Guild
-    Sigils, with one persistent HP pool for the season. Anyone qualified can
-    chip at it across fights; whoever lands the killing blow takes the kill,
-    then the Queen reforms at full strength.
+    Sigils — or for everyone once the host awakens her (bossPhase) — with one
+    persistent HP pool for the season. Anyone qualified can chip at it across
+    fights; whoever lands the killing blow takes the kill, then the Queen
+    reforms at full strength.
     """
     sigils = _sigil_count(doc)
-    if sigils < data.SIGILS_REQUIRED:
+    config = _get(table, _season_pk(sid), 'CONFIG') or {}
+    if sigils < data.SIGILS_REQUIRED and not config.get('bossPhase'):
         doc['position'] = prev if prev in data.MAP_NODES[node]['neighbors'] else 'isl_ossuary'
         missing = data.SIGILS_REQUIRED - sigils
         return {'type': 'boss_sealed',
