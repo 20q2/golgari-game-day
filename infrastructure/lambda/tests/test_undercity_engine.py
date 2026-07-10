@@ -379,3 +379,34 @@ def test_bone_chill_never_below_one():
     player = {'atk': 2, 'def': 4, 'spd': 5, 'maxHp': 30,
               'buffs': [{'kind': 'bone_chill'}]}
     assert effective_stats(player)['atk'] == 1
+
+
+# ── Tier balance (mean rolls: uniform()=1.0, no passives) ───────────────────
+
+def _ref(level):
+    """Reference statline: median starter, even stat spend, tier gear."""
+    return {
+        1: fighter(hp=30, max_hp=30, atk=6, dfn=5, spd=5),
+        3: fighter(hp=36, max_hp=36, atk=8, dfn=7, spd=5),
+        5: fighter(hp=48, max_hp=48, atk=12, dfn=10, spd=5),
+        6: fighter(hp=51, max_hp=51, atk=14, dfn=11, spd=5),
+        7: fighter(hp=54, max_hp=54, atk=15, dfn=12, spd=6),
+    }[level]
+
+
+def _foe(spec):
+    return Combatant(name=spec['name'], hp=spec['hp'], max_hp=spec['hp'],
+                     atk=spec['atk'], dfn=spec['def'], spd=spec['spd'])
+
+
+def test_level7_kills_every_lair_boss_within_the_cap():
+    for lair, spec in data.LAIR_BOSSES.items():
+        out = resolve_battle(_ref(7), _foe(spec), FakeRng())
+        assert out['outcome'] == 'attacker', lair
+
+
+def test_guardians_fall_at_their_target_levels():
+    east = resolve_battle(_ref(5), _foe(data.BARRIER_GUARDIANS['bar_e']), FakeRng())
+    south = resolve_battle(_ref(6), _foe(data.BARRIER_GUARDIANS['bar_s']), FakeRng())
+    assert east['outcome'] == 'attacker'
+    assert south['outcome'] == 'attacker'

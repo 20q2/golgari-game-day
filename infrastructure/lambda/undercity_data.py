@@ -269,33 +269,35 @@ SNARE_SPILL_PCT = 0.20
 
 # ── Barriers & points of interest (v3: goals on the map) ────────────────────
 
-# Fixed guardians blocking the gated routes. Unscaled: they're meant to be a
-# wall until the party grows into them. Beating one opens the barrier for the
-# WHOLE season (shared) and pays the winner alone.
+# Fixed guardians blocking the gated routes. Staggered milestones: the
+# Grave-Troll falls to a ~level-5 creature, Josu Vess to ~level 6, so the
+# east route opens first. Beating one opens the barrier for the WHOLE season
+# (shared) and pays the winner alone.
 BARRIER_GUARDIANS = {
     'bar_e': {'id': 'rubble_hulk', 'name': 'Golgari Grave-Troll',
-              'hp': 46, 'atk': 9, 'def': 7, 'spd': 3, 'bounty': 30, 'xp': 25},
+              'hp': 36, 'atk': 11, 'def': 6, 'spd': 3, 'bounty': 30, 'xp': 25},
     'bar_s': {'id': 'bone_warden', 'name': 'Josu Vess, Lich Knight',
-              'hp': 52, 'atk': 10, 'def': 6, 'spd': 5, 'bounty': 35, 'xp': 25},
+              'hp': 42, 'atk': 12, 'def': 6, 'spd': 5, 'bounty': 35, 'xp': 25},
 }
 
 # Mini-bosses at the lairs. First kill per player pays `first`; repeats pay
-# `repeat`. Both are much stronger than any wild NPC. The five biome-dungeon
-# lairs grant Guild Sigils on first clear; lair_titan is side content.
+# `repeat`. Tuned so a level-6-7 creature kills them inside the 6-round cap
+# (see the tier-balance tests). The five biome-dungeon lairs grant Guild
+# Sigils on first clear; lair_titan is side content.
 _LAIR_REWARD = {'first': {'spores': 60, 'xp': 35}, 'repeat': {'spores': 15, 'xp': 12}}
 LAIR_BOSSES = {
     'lair_titan': {'id': 'gravebound_colossus', 'name': 'Lord of Extinction',
-                   'hp': 70, 'atk': 12, 'def': 8, 'spd': 4, **_LAIR_REWARD},
+                   'hp': 46, 'atk': 14, 'def': 7, 'spd': 4, **_LAIR_REWARD},
     'city_lair': {'id': 'broodmother', 'name': 'Ishkanah, Grafwidow',
-                  'hp': 60, 'atk': 13, 'def': 5, 'spd': 8, **_LAIR_REWARD},
+                  'hp': 42, 'atk': 14, 'def': 5, 'spd': 8, **_LAIR_REWARD},
     'cavern_lair': {'id': 'gloomglow_tyrant', 'name': 'Ghave, Guru of Spores',
-                    'hp': 64, 'atk': 12, 'def': 6, 'spd': 7, **_LAIR_REWARD},
+                    'hp': 44, 'atk': 13, 'def': 6, 'spd': 7, **_LAIR_REWARD},
     'bog_lair': {'id': 'moor_wyrm', 'name': 'The Gitrog Monster',
-                 'hp': 72, 'atk': 11, 'def': 7, 'spd': 5, **_LAIR_REWARD},
+                 'hp': 48, 'atk': 12, 'def': 7, 'spd': 5, **_LAIR_REWARD},
     'bone_lair': {'id': 'marrow_king', 'name': 'Death Baron',
-                  'hp': 58, 'atk': 14, 'def': 6, 'spd': 6, **_LAIR_REWARD},
+                  'hp': 40, 'atk': 15, 'def': 6, 'spd': 6, **_LAIR_REWARD},
     'garden_lair': {'id': 'rot_shepherd', 'name': 'Slimefoot, the Stowaway',
-                    'hp': 68, 'atk': 12, 'def': 7, 'spd': 4, **_LAIR_REWARD},
+                    'hp': 46, 'atk': 13, 'def': 7, 'spd': 4, **_LAIR_REWARD},
 }
 
 # The treasure vault: first visit per player pays out, later visits are set
