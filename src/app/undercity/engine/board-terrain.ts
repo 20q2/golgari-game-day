@@ -11,7 +11,7 @@
  * never changes between loads. Pure: no DOM lookups, no I/O beyond
  * createElement('canvas').
  */
-import type { BoardMap, BoardNode } from './board-canvas';
+import type { BoardMap, BoardNode, MapDecal } from './board-canvas';
 import { OVERWORLD, type LayerSpec } from './board-layers';
 import { DUNGEONS, dungeonBiome } from '../data/dungeons';
 
@@ -1094,6 +1094,10 @@ export function renderTerrain(
   vg.addColorStop(1, 'rgba(0,0,0,0.55)');
   ctx.fillStyle = vg;
   ctx.fillRect(bx - TERRAIN_MARGIN, by - TERRAIN_MARGIN, w, h);
+
+  // Hand-placed under-layer decals sit on the finished terrain, below the
+  // dynamic layer (tokens, discs, highlights).
+  drawDecals(ctx, map, 'under', layer, glowSpots);
 
   return { canvas, glowSpots };
 }
@@ -2188,4 +2192,76 @@ export function drawStamp(
   ctx.translate(-x, -y);
   fn(ctx, x, y, stampRand(seed), glowSpots);
   ctx.restore();
+}
+
+// ── Decals ───────────────────────────────────────────────────────────────────
+// Hand-placed decoration from map.json. A decal belongs to the render layer
+// of its nearest node, so pocket dressing stays inside the pocket view and
+// everything else shows on the overworld.
+
+const decalImages = new Map<string, HTMLImageElement>();
+
+/** Kick off loads for every image decal; `onLoad` fires per arrival. */
+export function preloadDecalImages(map: BoardMap, onLoad: () => void): void {
+  for (const d of map.decals ?? []) {
+    if (d.kind !== 'image' || !d.src || decalImages.has(d.src)) continue;
+    const img = new Image();
+    img.onload = onLoad;
+    img.src = d.src;
+    decalImages.set(d.src, img);
+  }
+}
+
+/** Natural size of a loaded image decal (world px at scale 1), else null. */
+export function decalImageSize(src: string | undefined): { w: number; h: number } | null {
+  const img = src ? decalImages.get(src) : undefined;
+  if (!img || !img.complete || !img.naturalWidth) return null;
+  return { w: img.naturalWidth, h: img.naturalHeight };
+}
+
+function nearestNode(map: BoardMap, x: number, y: number): BoardNode | null {
+  let best: BoardNode | null = null;
+  let bd = Infinity;
+  for (const n of map.nodes) {
+    const d = (n.x - x) ** 2 + (n.y - y) ** 2;
+    if (d < bd) {
+      bd = d;
+      best = n;
+    }
+  }
+  return best;
+}
+
+function drawImageDecal(ctx: CanvasRenderingContext2D, d: MapDecal): void {
+  const size = decalImageSize(d.src);
+  if (!size) return; // not arrived yet; the load callback re-renders
+  const img = decalImages.get(d.src!)!;
+  const w = size.w * d.scale;
+  const h = size.h * d.scale;
+  ctx.save();
+  ctx.translate(d.x, d.y);
+  ctx.rotate(d.rot);
+  ctx.drawImage(img, -w / 2, -h, w, h); // feet at the anchor, like sprites
+  ctx.restore();
+}
+
+export function drawDecals(
+  ctx: CanvasRenderingContext2D,
+  map: BoardMap,
+  which: 'under' | 'over',
+  layer?: LayerSpec,
+  glowSpots: GlowSpot[] = [],
+): void {
+  for (const d of map.decals ?? []) {
+    if (d.layer !== which) continue;
+    if (layer) {
+      const n = nearestNode(map, d.x, d.y);
+      if (!n || !layer.nodeIds.has(n.id)) continue;
+    }
+    if (d.kind === 'stamp' && d.stamp) {
+      drawStamp(ctx, d.stamp, d.x, d.y, d.scale, d.rot, d.seed, glowSpots);
+    } else if (d.kind === 'image') {
+      drawImageDecal(ctx, d);
+    }
+  }
 }

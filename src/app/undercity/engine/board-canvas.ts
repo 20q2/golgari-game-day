@@ -15,6 +15,8 @@ import { SPACE_ICONS } from '../data/items';
 import { BoardAmbient } from './board-ambient';
 import {
   renderTerrain,
+  drawDecals,
+  preloadDecalImages,
   FloorTextures,
   LandmarkTextures,
   TerrainArt,
@@ -357,6 +359,8 @@ export class BoardCanvas {
       };
       img.src = src;
     }
+    // Image decals paint into the prerendered terrain; re-render as each lands.
+    preloadDecalImages(map, () => this.rebuildLayers());
     this.resize();
     this.initInput();
     window.addEventListener('resize', this.boundResize);
@@ -767,6 +771,8 @@ export class BoardCanvas {
     placed.sort((a, b) => a.y - b.y);
     for (const t of placed) this.drawToken(t.p, t.x, t.y, t.hopY, t.breath);
     for (const t of placed) this.drawLabel(t.p, t.x, t.y);
+    // Hand-placed over-layer decals cover tokens (foreground dressing).
+    drawDecals(ctx, this.map, 'over', this.active.spec);
     // Steps-left die floats above your head (Mario Party style), above tokens.
     const ownT = placed.find((t) => t.p.userId === this.ownUserId);
     if (this.stepDie !== null && ownT) {
