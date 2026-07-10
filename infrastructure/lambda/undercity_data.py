@@ -270,9 +270,9 @@ SNARE_SPILL_PCT = 0.20
 # wall until the party grows into them. Beating one opens the barrier for the
 # WHOLE season (shared) and pays the winner alone.
 BARRIER_GUARDIANS = {
-    'bar_e': {'id': 'rubble_hulk', 'name': 'Rubble Hulk',
+    'bar_e': {'id': 'rubble_hulk', 'name': 'Golgari Grave-Troll',
               'hp': 46, 'atk': 9, 'def': 7, 'spd': 3, 'bounty': 30, 'xp': 25},
-    'bar_s': {'id': 'bone_warden', 'name': 'Bone Warden',
+    'bar_s': {'id': 'bone_warden', 'name': 'Josu Vess, Lich Knight',
               'hp': 52, 'atk': 10, 'def': 6, 'spd': 5, 'bounty': 35, 'xp': 25},
 }
 
@@ -281,17 +281,17 @@ BARRIER_GUARDIANS = {
 # lairs grant Guild Sigils on first clear; lair_titan is side content.
 _LAIR_REWARD = {'first': {'spores': 60, 'xp': 35}, 'repeat': {'spores': 15, 'xp': 12}}
 LAIR_BOSSES = {
-    'lair_titan': {'id': 'gravebound_colossus', 'name': 'Gravebound Colossus',
+    'lair_titan': {'id': 'gravebound_colossus', 'name': 'Lord of Extinction',
                    'hp': 70, 'atk': 12, 'def': 8, 'spd': 4, **_LAIR_REWARD},
-    'city_lair': {'id': 'broodmother', 'name': 'Broodmother of the Warrens',
+    'city_lair': {'id': 'broodmother', 'name': 'Ishkanah, Grafwidow',
                   'hp': 60, 'atk': 13, 'def': 5, 'spd': 8, **_LAIR_REWARD},
-    'cavern_lair': {'id': 'gloomglow_tyrant', 'name': 'The Gloomglow Tyrant',
+    'cavern_lair': {'id': 'gloomglow_tyrant', 'name': 'Ghave, Guru of Spores',
                     'hp': 64, 'atk': 12, 'def': 6, 'spd': 7, **_LAIR_REWARD},
-    'bog_lair': {'id': 'moor_wyrm', 'name': 'The Moor-Wyrm',
+    'bog_lair': {'id': 'moor_wyrm', 'name': 'The Gitrog Monster',
                  'hp': 72, 'atk': 11, 'def': 7, 'spd': 5, **_LAIR_REWARD},
-    'bone_lair': {'id': 'marrow_king', 'name': 'The Marrow King',
+    'bone_lair': {'id': 'marrow_king', 'name': 'Death Baron',
                   'hp': 58, 'atk': 14, 'def': 6, 'spd': 6, **_LAIR_REWARD},
-    'garden_lair': {'id': 'rot_shepherd', 'name': 'The Rot-Shepherd',
+    'garden_lair': {'id': 'rot_shepherd', 'name': 'Slimefoot, the Stowaway',
                     'hp': 68, 'atk': 12, 'def': 7, 'spd': 4, **_LAIR_REWARD},
 }
 
@@ -321,19 +321,19 @@ DUNGEONS = {
 # ~15% meaner than the surface wild of the same band, +25% bounty. All bands
 # span every level so the dungeon always spawns its own fauna.
 DUNGEON_NPCS = {
-    'city':   {'id': 'broodling',  'name': 'Broodling',   'min': 1, 'max': 12,
+    'city':   {'id': 'broodling',  'name': 'Hatchery Spider',   'min': 1, 'max': 12,
                'hp': (24, 2.5), 'atk': (6, 1), 'def': (3, 0.5), 'spd': 6,
                'bounty': 15, 'itemChance': 0.10},
-    'cavern': {'id': 'glowmite',   'name': 'Glowmite',    'min': 1, 'max': 12,
+    'cavern': {'id': 'glowmite',   'name': 'Vigorspore Wurm',    'min': 1, 'max': 12,
                'hp': (20, 2.5), 'atk': (7, 1), 'def': (2, 0.5), 'spd': 8,
                'bounty': 15, 'itemChance': 0.10},
-    'bog':    {'id': 'mire_leech', 'name': 'Mire Leech',  'min': 1, 'max': 12,
+    'bog':    {'id': 'mire_leech', 'name': 'Festering Newt',  'min': 1, 'max': 12,
                'hp': (28, 3), 'atk': (5, 1), 'def': (4, 0.5), 'spd': 4,
                'bounty': 15, 'itemChance': 0.10},
-    'bone':   {'id': 'gravewight', 'name': 'Gravewight',  'min': 1, 'max': 12,
+    'bone':   {'id': 'gravewight', 'name': 'Wight of Precinct Six',  'min': 1, 'max': 12,
                'hp': (26, 2.5), 'atk': (6, 1), 'def': (5, 0.5), 'spd': 3,
                'bounty': 16, 'itemChance': 0.10},
-    'garden': {'id': 'rot_grub',   'name': 'Rot Grub',    'min': 1, 'max': 12,
+    'garden': {'id': 'rot_grub',   'name': 'Thallid',    'min': 1, 'max': 12,
                'hp': (30, 3), 'atk': (5, 1), 'def': (3, 0.5), 'spd': 5,
                'bounty': 15, 'itemChance': 0.15},
 }
@@ -665,7 +665,7 @@ SIGILS_REQUIRED = 3
 # sigils can chip at it; whoever lands the killing blow takes the kill, then
 # the Sovereign reforms at full strength for the next challenger.
 ROT_SOVEREIGN = {
-    'id': 'rot_sovereign', 'name': 'The Rot Sovereign',
+    'id': 'rot_sovereign', 'name': 'Savra, Queen of the Golgari',
     'hp': 240, 'atk': 14, 'def': 9, 'spd': 6,
     'first': {'spores': 120, 'xp': 60},
     'repeat': {'spores': 40, 'xp': 20},

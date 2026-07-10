@@ -234,11 +234,25 @@ def _compost(table, sid, doc, cause_text):
                    f"{doc['username']}'s {_form_name(doc)} refuses to die! (Undying)",
                    actor=doc['userId'])
             return False
-    doc['position'] = data.HOME_GATES.get(doc.get('homeBiome'), data.GATE_NODE)
+    home_biome = doc.get('homeBiome')
+    home_gate = data.HOME_GATES.get(home_biome, data.GATE_NODE)
+    doc['position'] = home_gate  # provisional; a respawn choice may relocate
     doc['hp'] = max(1, round(engine.effective_stats(doc)['maxHp'] * data.COMPOST_RESPAWN_PCT))
     doc['shieldUntil'] = (now + timedelta(minutes=data.COMPOST_SHIELD_MIN)).isoformat(timespec='seconds')
     doc['composts'] = doc.get('composts', 0) + 1
     doc['pendingMove'] = None
+
+    # Offer a respawn choice when the last biome you stood in differs from home,
+    # else just wake at the home gate. Options carry friendly labels for the UI.
+    last_biome = doc.get('lastBiome')
+    if last_biome and last_biome != home_biome and last_biome in data.HOME_GATES:
+        doc['pendingRespawn'] = {'options': [
+            {'gate': home_gate, 'label': f"{data.BIOMES[home_biome]['name']} (home)"},
+            {'gate': data.HOME_GATES[last_biome], 'label': data.BIOMES[last_biome]['name']},
+        ]}
+    else:
+        doc.pop('pendingRespawn', None)
+
     _event(table, sid, 'compost', cause_text, actor=doc['userId'])
     return True
 
@@ -382,7 +396,7 @@ def handle_action(table, body):
         'set-stance': _set_stance, 'spend-stat': _spend_stat, 'evolve': _evolve,
         'buy': _buy, 'use-item': _use_item, 'shrine': _shrine, 'warp': _warp,
         'gamble': _gamble, 'poke': _poke, 'customize': _customize,
-        'attack-boss': _attack_boss, 'trade': _trade, 'dig': _dig,
+        'attack-boss': _attack_boss, 'trade': _trade, 'dig': _dig, 'respawn': _respawn,
     }
     handler = handlers.get(atype)
     if not handler:
@@ -571,6 +585,8 @@ def _roll(table, sid, doc, payload):
         return _err('No rolls banked. Finish a board game to earn more!', 409)
     if doc.get('pendingMove'):
         return _err('You already rolled — pick a destination.', 409)
+    # Rolling without choosing a respawn gate accepts the provisional home gate.
+    doc.pop('pendingRespawn', None)
 
     value = None
     if doc.get('pendingLoadedDie'):
@@ -618,6 +634,23 @@ def _move(table, sid, doc, payload):
     return _ok(doc, spaceEvent=space_event, occupants=occupants)
 
 
+def _respawn(table, sid, doc, payload):
+    """Wake at a chosen gate after a compost (home gate or last-biome gate)."""
+    pr = doc.get('pendingRespawn')
+    if not pr:
+        return _err('You have no respawn to choose.', 409)
+    gate = payload.get('gate')
+    valid = {o['gate'] for o in pr.get('options', [])}
+    if gate not in valid:
+        return _err('That gate is not on offer.', 409)
+    doc['position'] = gate
+    doc.pop('pendingRespawn', None)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text='You crawl up from the compost, whole again.')
+
+
 def _occupants(table, sid, node, except_user):
     resp = table.query(
         KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
@@ -636,6 +669,13 @@ def _occupants(table, sid, node, except_user):
 def _resolve_space(table, sid, doc, node, prev):
     """Apply the landing event for `node`, mutating doc. Returns event dict."""
     ntype = data.MAP_NODES[node]['type']
+
+    # Remember the last home-biome you stood in — a death here (or later, on the
+    # isle/in the depths) offers this biome's gate as a respawn option. Set
+    # before any battle/compost resolves so it reflects where you actually died.
+    region = data.MAP_NODES[node].get('region')
+    if region in data.BIOMES:
+        doc['lastBiome'] = region
 
     # Snare check first — a triggered snare skips the space event.
     space = _get(table, _season_pk(sid), f'SPACE#{node}')
@@ -1036,17 +1076,17 @@ def _set_boss_hp(table, sid, hp):
 
 def _boss(table, sid, doc, node, prev):
     """
-    The Rot Sovereign: unsealed per-player at SIGILS_REQUIRED Guild Sigils,
-    with one persistent HP pool for the season. Anyone qualified can chip at
-    it across fights; whoever lands the killing blow takes the kill, then the
-    Sovereign reforms at full strength.
+    Savra, Queen of the Golgari: unsealed per-player at SIGILS_REQUIRED Guild
+    Sigils, with one persistent HP pool for the season. Anyone qualified can
+    chip at it across fights; whoever lands the killing blow takes the kill,
+    then the Queen reforms at full strength.
     """
     sigils = _sigil_count(doc)
     if sigils < data.SIGILS_REQUIRED:
         doc['position'] = prev if prev in data.MAP_NODES[node]['neighbors'] else 'isl_ossuary'
         missing = data.SIGILS_REQUIRED - sigils
         return {'type': 'boss_sealed',
-                'text': f'The rot-wards hurl you back. The Sovereign demands tribute: '
+                'text': f'The rot-wards hurl you back. The Queen demands tribute: '
                         f'{missing} more Guild Sigil{"s" if missing != 1 else ""}. '
                         f'({sigils}/{data.SIGILS_REQUIRED})'}
 
@@ -1073,27 +1113,27 @@ def _boss(table, sid, doc, node, prev):
         out['xp'] = reward['xp']
         if levels:
             out['levels'] = levels
-        out['text'] = (f'THE ROT SOVEREIGN FALLS! +{reward["spores"]} Spores. '
-                       'Its husk collapses — and already the rot begins to knit anew…')
+        out['text'] = (f'SAVRA, QUEEN OF THE GOLGARI FALLS! +{reward["spores"]} Spores. '
+                       'Her husk collapses — and already the rot begins to knit anew…')
         _event(table, sid, 'boss',
-               f"{doc['username']} struck down THE ROT SOVEREIGN! "
-               'The island trembles as it reforms.', actor=doc['userId'])
+               f"{doc['username']} struck down SAVRA, QUEEN OF THE GOLGARI! "
+               'The island trembles as she reforms.', actor=doc['userId'])
     elif result['outcome'] == 'defender':
         _set_boss_hp(table, sid, result['defenderHp'])
         _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
         _compost(table, sid, doc,
-                 f"{doc['username']} fell to the Rot Sovereign "
-                 f'(it lingers at {result["defenderHp"]} HP — finish it!)')
-        out['text'] = (f'The Sovereign grinds you into the mulch — but your blows told: '
-                       f'it lingers at {result["defenderHp"]}/{boss["hp"]} HP.')
+                 f"{doc['username']} fell to Savra "
+                 f'(she lingers at {result["defenderHp"]} HP — finish her!)')
+        out['text'] = (f'The Queen grinds you into the mulch — but your blows told: '
+                       f'she lingers at {result["defenderHp"]}/{boss["hp"]} HP.')
     else:
         _set_boss_hp(table, sid, result['defenderHp'])
         _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
-        out['text'] = (f'You withdraw, bleeding. The Sovereign seethes at '
+        out['text'] = (f'You withdraw, bleeding. The Queen seethes at '
                        f'{result["defenderHp"]}/{boss["hp"]} HP.')
         if dealt > 0:
             _event(table, sid, 'boss',
-                   f"{doc['username']} wounded the Rot Sovereign — "
+                   f"{doc['username']} wounded Savra, Queen of the Golgari — "
                    f'{result["defenderHp"]}/{boss["hp"]} HP remains!', actor=doc['userId'])
     return out
 

@@ -1664,7 +1664,7 @@ function drawLairSetPiece(
   let menace: GlowSpot | null = null;
   ctx.save();
   if (biome === 'city') {
-    // Broodmother's egg-throne: a heaped clutch around a towering queen egg.
+    // Ishkanah, Grafwidow's egg-throne: a heaped clutch around a towering queen egg.
     groundShadow(ctx, x, base + 4, 64, 0.4);
     for (const [ox, s] of [[-38, 0.5], [34, 0.55], [-14, 0.7], [16, 0.65]] as [number, number][]) {
       ctx.beginPath();
@@ -1690,7 +1690,7 @@ function drawLairSetPiece(
     }
     menace = { x, y: base - 34, r: 60, color: '235, 190, 160', phase: 0.9 };
   } else if (biome === 'cavern') {
-    // Gloomglow Tyrant's crystal dais: a ring of shards around a hot core.
+    // Ghave, Guru of Spores' crystal dais: a ring of shards around a hot core.
     groundShadow(ctx, x, base + 4, 60, 0.4);
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
@@ -1711,7 +1711,7 @@ function drawLairSetPiece(
     ctx.fill();
     menace = { x, y: base - 22, r: 70, color: '120, 250, 220', phase: 1.7 };
   } else if (biome === 'bog') {
-    // Moor-Wyrm's whirlpool maw: concentric drowned rings with a black eye.
+    // The Gitrog Monster's whirlpool maw: concentric drowned rings with a black eye.
     groundShadow(ctx, x, base + 4, 62, 0.35);
     for (const [r, col] of [[52, '#12282a'], [38, '#183a3c'], [24, '#0c1c1e'], [12, '#030808']] as [number, string][]) {
       ctx.beginPath();
@@ -1732,7 +1732,7 @@ function drawLairSetPiece(
     ctx.stroke();
     menace = { x, y: base - 8, r: 64, color: '90, 190, 180', phase: 2.4 };
   } else if (biome === 'bone') {
-    // Marrow King's bone throne: stacked femurs, skull crest.
+    // Death Baron's bone throne: stacked femurs, skull crest.
     groundShadow(ctx, x, base + 4, 56, 0.4);
     ctx.fillStyle = '#cfc4a8';
     ctx.fillRect(x - 34, base - 16, 68, 16); // dais of packed bone
@@ -1754,7 +1754,7 @@ function drawLairSetPiece(
     ctx.fill();
     menace = { x, y: base - 44, r: 56, color: '220, 235, 190', phase: 0.3 };
   } else {
-    // Rot-Shepherd's compost altar: tiered mound, sprouting crook.
+    // Slimefoot's compost altar: tiered mound, sprouting crook.
     groundShadow(ctx, x, base + 4, 60, 0.4);
     for (const [w, y0, h, col] of [
       [62, 0, 16, '#2e2a12'],
