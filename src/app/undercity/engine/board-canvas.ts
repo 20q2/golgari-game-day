@@ -32,12 +32,41 @@ export interface BoardNode {
   neighbors: string[];
 }
 
+/** Editable chamber metadata from map.json (regions{} section). */
+export interface RegionSpec {
+  label: string;
+  /** Floor painting path under the app base; '' = flat dark floor. */
+  background: string;
+  /** Procedural ambient decoration on/off for this chamber. */
+  scatter: boolean;
+  /** Fog-of-war dungeon pocket rendered as its own layer. */
+  dark: boolean;
+}
+
+/** Hand-placed decoration from map.json (decals[] section). */
+export interface MapDecal {
+  kind: 'stamp' | 'image';
+  /** Stamp-registry key when kind === 'stamp'. */
+  stamp?: string;
+  /** Image path under the app base when kind === 'image'. */
+  src?: string;
+  x: number;
+  y: number;
+  scale: number;
+  /** Radians. */
+  rot: number;
+  layer: 'under' | 'over';
+  seed?: number;
+}
+
 export interface BoardMap {
   worldW: number;
   worldH: number;
   gate: string;
   boss: string;
   nodes: BoardNode[];
+  regions?: Record<string, RegionSpec>;
+  decals?: MapDecal[];
 }
 
 export interface BoardPlayer {
@@ -56,6 +85,18 @@ export interface NodeInfo {
   title: string;
   body: string;
 }
+
+/** Floor paintings for map files that predate the editable regions{} section. */
+const LEGACY_FLOOR_SRC: Record<string, string> = {
+  city: 'undercity/undercity_background.png',
+  cavern: 'undercity/cavern_background.png',
+  bog: 'undercity/swamp_background.png',
+  isle: 'undercity/palace_background.png',
+  ruin: 'undercity/palace_background.png',
+  bone: 'undercity/palace_background.png',
+  garden: 'undercity/swamp_background.png',
+  depths: 'undercity/cavern_background.png',
+};
 
 const MIN_ZOOM = 0.15; // floor for tiny screens; larger screens stop at whole-map fit
 const MAX_ZOOM = 2.5;
@@ -280,17 +321,15 @@ export class BoardCanvas {
     // they replace the flat black with ghosted scenery that cross-fades between
     // chambers. draw() reads this.active.terrain fresh each frame, so the swap
     // is seamless; a failed load just leaves that biome's floor dark.
-    const floorSrc: Record<string, string> = {
-      city: 'undercity/undercity_background.png',
-      cavern: 'undercity/cavern_background.png',
-      bog: 'undercity/swamp_background.png',
-      isle: 'undercity/palace_background.png',
-      // v3/v4 areas.
-      ruin: 'undercity/palace_background.png',
-      bone: 'undercity/palace_background.png',
-      garden: 'undercity/swamp_background.png',
-      depths: 'undercity/cavern_background.png',
-    };
+    const floorSrc: Record<string, string> = {};
+    if (map.regions) {
+      for (const [rid, spec] of Object.entries(map.regions)) {
+        if (spec.background) floorSrc[rid] = spec.background;
+      }
+    } else {
+      // Pre-v2 map file without regions{} — the old hardcoded assignments.
+      Object.assign(floorSrc, LEGACY_FLOOR_SRC);
+    }
     // Landmark buildings: the shrine and boss lair are pixel-art sprites
     // (the temple art stands in as the ominous boss lair); every other
     // landmark stays procedural. Keyed by node type.

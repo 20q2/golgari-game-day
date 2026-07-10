@@ -63,7 +63,11 @@ function boundsOf(map: BoardMap, ids: Set<string>, full: boolean): LayerBounds {
 
 /** All layers, `overworld` first. */
 export function computeLayers(map: BoardMap): LayerSpec[] {
-  const isDepths = new Map(map.nodes.map((n) => [n.id, n.region === 'depths']));
+  // A chamber is a fog-of-war pocket when its region is flagged dark in
+  // map.json; the literal 'depths' region is the pre-regions{} fallback.
+  const isDark = (r: string | undefined): boolean =>
+    r ? (map.regions?.[r]?.dark ?? r === 'depths') : false;
+  const isDepths = new Map(map.nodes.map((n) => [n.id, isDark(n.region)]));
   const overworld = new Set(map.nodes.filter((n) => !isDepths.get(n.id)).map((n) => n.id));
 
   // Union-find over depths-only edges → one component per pocket.
