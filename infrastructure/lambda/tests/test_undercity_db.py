@@ -631,3 +631,70 @@ def test_ladder_blurb_names_the_dungeon(table):
     out = db._resolve_space(table, sid, doc, 'city_lt', 'city_r5')
     assert out['type'] == 'ladder'
     assert 'Broodwarrens' in out['text']
+
+
+# ── Persistent lair pools + Vestiges ────────────────────────────────────────
+
+def _lair_fight(table, sid, user, outcome, defender_hp, monkeypatch):
+    """Run one lair fight for `user` with a scripted battle result."""
+    doc = db._get_player(table, sid, user)
+    doc['position'] = 'city_lair'
+    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
+        'outcome': outcome, 'strikes': [], 'attackerHp': doc['hp'],
+        'defenderHp': defender_hp, 'smokeSporeUsed': False,
+    })
+    out = db._lair(table, sid, doc, 'city_lair')
+    assert db._save_or_conflict(table, doc) is None  # persist like _move does
+    return doc, out
+
+
+def test_lair_hp_lingers_between_challengers(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    boss_hp = data.LAIR_BOSSES['city_lair']['hp']
+    # First challenger wounds her to 20 and times out.
+    _, out = _lair_fight(table, sid, 'user-alex', 'timeout', 20, monkeypatch)
+    assert out['npc']['hp'] == boss_hp        # entered at full
+    assert out['npc']['maxHp'] == boss_hp
+    # Next challenger meets her at 20 HP.
+    act(table, 'join', user='user-bea', name='Bea', starter='kraul')
+    _, out2 = _lair_fight(table, sid, 'user-bea', 'timeout', 12, monkeypatch)
+    assert out2['npc']['hp'] == 20
+    assert out2['npc']['maxHp'] == boss_hp
+
+
+def test_global_first_kill_pays_major_then_vestige_pays_minor_with_sigil(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    act(table, 'join', user='user-bea', name='Bea', starter='kraul')
+    sid, _ = db._active_season(table)
+    b = data.LAIR_BOSSES['city_lair']
+
+    # Alex lands the global first kill: major reward + sigil.
+    alex, out = _lair_fight(table, sid, 'user-alex', 'attacker', 0, monkeypatch)
+    assert out['spores'] == b['first']['spores']
+    assert out['sigil'] == 'city'
+    assert 'city_lair' in alex['poiClaims']
+
+    # Bea now faces the Vestige at full HP; her kill pays minor but still sigils.
+    bea, out2 = _lair_fight(table, sid, 'user-bea', 'attacker', 0, monkeypatch)
+    assert out2['npc']['name'].startswith('Vestige of ')
+    assert out2['npc']['hp'] == b['hp']       # reformed at full
+    assert out2['spores'] == b['repeat']['spores']
+    assert out2['sigil'] == 'city'
+    assert 'city_lair' in bea['poiClaims']
+
+    # Alex again: vestige, minor reward, no second sigil.
+    _, out3 = _lair_fight(table, sid, 'user-alex', 'attacker', 0, monkeypatch)
+    assert out3['spores'] == b['repeat']['spores']
+    assert 'sigil' not in out3
+
+
+def test_vestige_hp_also_lingers(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    b = data.LAIR_BOSSES['city_lair']
+    _lair_fight(table, sid, 'user-alex', 'attacker', 0, monkeypatch)   # slain -> Vestige
+    _, out = _lair_fight(table, sid, 'user-alex', 'timeout', 9, monkeypatch)
+    assert out['npc']['name'] == f"Vestige of {b['name']}"
+    _, out2 = _lair_fight(table, sid, 'user-alex', 'timeout', 5, monkeypatch)
+    assert out2['npc']['hp'] == 9

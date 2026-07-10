@@ -1027,16 +1027,41 @@ def _barrier(table, sid, doc, node):
     return out
 
 
+def _lair_state(table, sid, node):
+    """Season-shared lair pool: current HP + whether the true boss has fallen."""
+    rec = _get(table, _season_pk(sid), f'LAIR#{node}') or {}
+    full = data.LAIR_BOSSES[node]['hp']
+    return int(rec.get('hp', full)), bool(rec.get('slain', False))
+
+
+def _set_lair_state(table, sid, node, hp, slain):
+    table.put_item(Item={'pk': _season_pk(sid), 'sk': f'LAIR#{node}',
+                         'hp': hp, 'slain': slain})
+
+
 def _lair(table, sid, doc, node):
+    """
+    Lair bosses share one persistent HP pool per season (like Savra): wounds
+    linger between challengers. The global first kill slays the TRUE boss and
+    pays the major reward; it then reforms at full strength as the "Vestige
+    of <boss>", whose kills pay the minor reward. Guild Sigils stay
+    per-player — a Vestige kill still claims yours.
+    """
     b = data.LAIR_BOSSES[node]
-    result, npc = _fixed_battle(table, sid, doc, b)
+    hp_pool, slain = _lair_state(table, sid, node)
+    display = f"Vestige of {b['name']}" if slain else b['name']
+    result, npc = _fixed_battle(table, sid, doc, dict(b, hp=hp_pool, name=display))
+    npc['maxHp'] = b['hp']
     out = {'type': 'lair', 'npc': npc, 'battle': result}
     if result['outcome'] == 'attacker':
+        # It reforms at full strength — as the Vestige from now on.
+        _set_lair_state(table, sid, node, b['hp'], True)
         claims = doc.setdefault('poiClaims', [])
-        first = node not in claims
-        reward = b['first'] if first else b['repeat']
-        if first:
+        personal_first = node not in claims
+        if personal_first:
             claims.append(node)
+        # Major reward for the TRUE boss's slayer; Vestige kills pay minor.
+        reward = b['repeat'] if slain else b['first']
         doc['spores'] = doc.get('spores', 0) + reward['spores']
         doc['wildWins'] = doc.get('wildWins', 0) + 1
         levels = _grant_xp(table, sid, doc, reward['xp'])
@@ -1045,11 +1070,11 @@ def _lair(table, sid, doc, node):
         if levels:
             out['levels'] = levels
         sigil_biome = data.SIGIL_LAIRS.get(node)
-        if first and sigil_biome:
+        if personal_first and sigil_biome:
             have = len([c for c in claims if c in data.SIGIL_LAIRS])
             biome_name = data.BIOMES[sigil_biome]['name']
             out['sigil'] = sigil_biome
-            out['text'] = (f"The {b['name']} falls! +{reward['spores']} Spores — "
+            out['text'] = (f"The {display} falls! +{reward['spores']} Spores — "
                            f"you claim the {biome_name} Guild Sigil! "
                            f"({have}/{data.SIGILS_REQUIRED} unlocks the island)")
             _event(table, sid, 'sigil',
@@ -1057,19 +1082,24 @@ def _lair(table, sid, doc, node):
                    f"its Guild Sigil ({have}/{data.SIGILS_REQUIRED})!",
                    actor=doc['userId'])
         else:
-            out['text'] = (f"The {b['name']} falls! +{reward['spores']} Spores."
-                           + (' A legendary first kill!' if first else ''))
-            if first:
+            out['text'] = (f"The {display} falls! +{reward['spores']} Spores."
+                           + ('' if slain else ' A legendary first kill!'))
+            if not slain:
                 _event(table, sid, 'lair',
-                       f"{doc['username']} slew the {b['name']}!", actor=doc['userId'])
+                       f"{doc['username']} slew the {b['name']} — "
+                       'its Vestige stirs in the lair!', actor=doc['userId'])
     elif result['outcome'] == 'defender':
+        _set_lair_state(table, sid, node, max(1, result['defenderHp']), slain)
         _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
         _compost(table, sid, doc,
-                 f"{doc['username']} was devoured by the {b['name']}.")
-        out['text'] = f"The {b['name']} is too much. Back to the Gate…"
+                 f"{doc['username']} was devoured by the {display} "
+                 f'(it lingers at {max(1, result["defenderHp"])} HP).')
+        out['text'] = f"The {display} is too much. Back to the Gate…"
     else:
+        _set_lair_state(table, sid, node, max(1, result['defenderHp']), slain)
         _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
-        out['text'] = f"The {b['name']} withdraws into the dark. It will be waiting."
+        out['text'] = (f"The {display} withdraws, wounded — "
+                       f'{max(1, result["defenderHp"])}/{b["hp"]} HP. It will be waiting.')
     return out
 
 
