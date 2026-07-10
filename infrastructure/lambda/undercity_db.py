@@ -1043,19 +1043,20 @@ def _lair(table, sid, doc, node):
     """
     Lair bosses share one persistent HP pool per season (like Savra): wounds
     linger between challengers. The global first kill slays the TRUE boss and
-    pays the major reward; it then reforms at full strength as the "Vestige
+    pays the major reward; it then reforms at HALF strength as the "Vestige
     of <boss>", whose kills pay the minor reward. Guild Sigils stay
     per-player — a Vestige kill still claims yours.
     """
     b = data.LAIR_BOSSES[node]
     hp_pool, slain = _lair_state(table, sid, node)
+    vest_max = b['hp'] // 2
     display = f"Vestige of {b['name']}" if slain else b['name']
     result, npc = _fixed_battle(table, sid, doc, dict(b, hp=hp_pool, name=display))
-    npc['maxHp'] = b['hp']
+    npc['maxHp'] = vest_max if slain else b['hp']
     out = {'type': 'lair', 'npc': npc, 'battle': result}
     if result['outcome'] == 'attacker':
-        # It reforms at full strength — as the Vestige from now on.
-        _set_lair_state(table, sid, node, b['hp'], True)
+        # From now on the Vestige haunts the lair, at half the true strength.
+        _set_lair_state(table, sid, node, vest_max, True)
         claims = doc.setdefault('poiClaims', [])
         personal_first = node not in claims
         if personal_first:
@@ -1099,7 +1100,7 @@ def _lair(table, sid, doc, node):
         _set_lair_state(table, sid, node, max(1, result['defenderHp']), slain)
         _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
         out['text'] = (f"The {display} withdraws, wounded — "
-                       f'{max(1, result["defenderHp"])}/{b["hp"]} HP. It will be waiting.')
+                       f'{max(1, result["defenderHp"])}/{npc["maxHp"]} HP. It will be waiting.')
     return out
 
 

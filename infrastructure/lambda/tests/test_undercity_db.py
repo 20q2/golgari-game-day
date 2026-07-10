@@ -675,10 +675,12 @@ def test_global_first_kill_pays_major_then_vestige_pays_minor_with_sigil(table, 
     assert out['sigil'] == 'city'
     assert 'city_lair' in alex['poiClaims']
 
-    # Bea now faces the Vestige at full HP; her kill pays minor but still sigils.
+    # Bea now faces the Vestige — reformed at HALF strength; her kill pays
+    # minor but still sigils.
     bea, out2 = _lair_fight(table, sid, 'user-bea', 'attacker', 0, monkeypatch)
     assert out2['npc']['name'].startswith('Vestige of ')
-    assert out2['npc']['hp'] == b['hp']       # reformed at full
+    assert out2['npc']['hp'] == b['hp'] // 2
+    assert out2['npc']['maxHp'] == b['hp'] // 2
     assert out2['spores'] == b['repeat']['spores']
     assert out2['sigil'] == 'city'
     assert 'city_lair' in bea['poiClaims']
