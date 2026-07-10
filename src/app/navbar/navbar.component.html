@@ -15,6 +15,18 @@
       <mat-icon>qr_code_2</mat-icon>
       <span class="nav-text">TV</span>
     </a>
+    @if (isDev) {
+      <a
+        mat-button
+        routerLink="/undercity/color-test"
+        routerLinkActive="active"
+        class="nav-link"
+        title="Undercity sprite recolor sandbox (dev only)"
+      >
+        <mat-icon>palette</mat-icon>
+        <span class="nav-text">Color Test</span>
+      </a>
+    }
 
     @if (userService.isSignedIn()) {
       @if (isDev) {

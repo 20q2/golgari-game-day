@@ -1,0 +1,95 @@
+<div class="color-test">
+  <header>
+    <h1>Undercity — Sprite Color Test</h1>
+    <p class="sub">Dev sandbox: dial each region's hue and confirm a sprite recolors cleanly.</p>
+  </header>
+
+  <div class="layout">
+    <!-- Preview -->
+    <section class="preview-pane">
+      <div class="canvas-wrap" [class.light]="lightBg()">
+        <canvas #preview></canvas>
+      </div>
+      @if (loadError(); as err) {
+        <p class="error">{{ err }}</p>
+      }
+      @if (dims(); as d) {
+        <p class="dims">{{ d.w }}×{{ d.h }} px · zoom {{ scale() }}×</p>
+      }
+      <div class="pixel-counts">
+        <span class="chip body">body {{ counts().body }}</span>
+        <span class="chip belly">belly {{ counts().belly }}</span>
+        <span class="chip stripes">stripes {{ counts().stripes }}</span>
+        <span class="chip outline">outline/bg {{ counts().outline }}</span>
+      </div>
+    </section>
+
+    <!-- Controls -->
+    <section class="controls">
+      <label class="field">
+        <span>Sprite</span>
+        <select (change)="selectSprite($event)">
+          @for (s of sprites; track s.url) {
+            <option [value]="s.url" [selected]="s.url === spriteUrl()">{{ s.label }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Or upload an image</span>
+        <input type="file" accept="image/*" (change)="onFile($event)" />
+      </label>
+
+      <div class="toggles">
+        <button class="btn" [class.active]="showRegions()" (click)="toggleRegions()">
+          {{ showRegions() ? 'Showing regions' : 'Show region mask' }}
+        </button>
+        <button class="btn" [class.active]="lightBg()" (click)="toggleBg()">
+          {{ lightBg() ? 'Light bg' : 'Dark bg' }}
+        </button>
+        <button class="btn" (click)="reset()">Reset hues</button>
+      </div>
+
+      <label class="field">
+        <span>Zoom ({{ scale() }}×)</span>
+        <input type="range" min="1" max="10" step="1" [value]="scale()" (input)="setScale($event)" />
+      </label>
+
+      @for (region of regionList; track region.key) {
+        <div class="region">
+          <div class="region-head">
+            <span class="dot" [style.background]="swatch()[region.key]"></span>
+            <span class="region-name">{{ region.name }}</span>
+            <span class="hue-val">{{ hue()[region.key] }}°</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="359"
+            step="1"
+            [value]="hue()[region.key]"
+            (input)="setHue(region.key, $event)"
+          />
+          <div class="paint-swatches">
+            @for (p of paints; track p.id) {
+              <button
+                class="paint"
+                [style.background]="'hsl(' + p.hue + ', 65%, 50%)'"
+                [class.active]="hue()[region.key] === p.hue"
+                [title]="p.name + ' (' + p.hue + '°)'"
+                (click)="applyPaint(region.key, p.hue)"
+              ></button>
+            }
+          </div>
+        </div>
+      }
+
+      <p class="hint">
+        The mask view paints <strong style="color: #ef4444">body</strong>,
+        <strong style="color: #a3e635">belly</strong>, and
+        <strong style="color: #3b82f6">stripes</strong> as flat colors so you can see how every
+        pixel was classified. Anything left as original art is outline or background (untinted).
+      </p>
+    </section>
+  </div>
+</div>

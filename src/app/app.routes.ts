@@ -11,5 +11,10 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./undercity/undercity-page.component').then((m) => m.UndercityPageComponent),
   },
+  {
+    path: 'undercity/color-test',
+    loadComponent: () =>
+      import('./undercity/color-test/color-test.component').then((m) => m.ColorTestComponent),
+  },
   { path: '**', redirectTo: '/home' }
 ];
