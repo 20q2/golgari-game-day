@@ -26,6 +26,16 @@
         <mat-icon>palette</mat-icon>
         <span class="nav-text">Color Test</span>
       </a>
+      <a
+        mat-button
+        routerLink="/undercity/map-editor"
+        routerLinkActive="active"
+        class="nav-link"
+        title="Undercity board map editor (dev only)"
+      >
+        <mat-icon>map</mat-icon>
+        <span class="nav-text">Map Editor</span>
+      </a>
     }
 
     @if (userService.isSignedIn()) {

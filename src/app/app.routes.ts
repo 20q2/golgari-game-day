@@ -16,5 +16,10 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./undercity/color-test/color-test.component').then((m) => m.ColorTestComponent),
   },
+  {
+    path: 'undercity/map-editor',
+    loadComponent: () =>
+      import('./undercity/map-editor/map-editor.component').then((m) => m.MapEditorComponent),
+  },
   { path: '**', redirectTo: '/home' }
 ];

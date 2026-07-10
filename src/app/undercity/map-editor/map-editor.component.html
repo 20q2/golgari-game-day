@@ -1,0 +1,238 @@
+<div class="editor">
+  <div class="toolbar">
+    <span class="brand"><mat-icon class="mi">map</mat-icon> Map Editor</span>
+
+    <div class="modes">
+      <button [class.on]="mode() === 'select'" (click)="setMode('select')" title="Select / move (drag nodes and decals)">
+        <mat-icon>near_me</mat-icon><span>Select</span>
+      </button>
+      <button [class.on]="mode() === 'add'" (click)="setMode('add')" title="Click empty ground to add a space">
+        <mat-icon>add_circle</mat-icon><span>Add</span>
+      </button>
+      <button [class.on]="mode() === 'connect'" (click)="setMode('connect')" title="Click two spaces to toggle the path between them">
+        <mat-icon>timeline</mat-icon><span>Connect</span>
+      </button>
+      <button [class.on]="mode() === 'decal'" (click)="setMode('decal')" title="Place set-piece stamps and image decals">
+        <mat-icon>forest</mat-icon><span>Decals</span>
+      </button>
+      <button [class.on]="mode() === 'region'" (click)="setMode('region')" title="Group spaces into regions / dungeon pockets">
+        <mat-icon>category</mat-icon><span>Regions</span>
+      </button>
+    </div>
+
+    <select class="layer-pick" [ngModel]="layerId()" (ngModelChange)="setLayer($event)" title="View layer">
+      @for (id of layerIds(); track id) {
+        <option [value]="id">{{ id }}</option>
+      }
+    </select>
+
+    <button [class.on]="showIds()" (click)="toggleIds()" title="Show node ids"><mat-icon>badge</mat-icon></button>
+    <button (click)="undo()" title="Undo (Ctrl+Z)"><mat-icon>undo</mat-icon></button>
+    <button (click)="redo()" title="Redo (Ctrl+Shift+Z)"><mat-icon>redo</mat-icon></button>
+
+    <span class="spacer"></span>
+
+    @if (canWriteInPlace && !rootPicked()) {
+      <button class="save" (click)="grantRepo()" title="Pick the repo folder so Save writes files in place">
+        <mat-icon>folder_open</mat-icon><span>Grant repo folder</span>
+      </button>
+    }
+    <button
+      class="save"
+      [class.dirty]="dirtySinceSave()"
+      [disabled]="errorCount() > 0"
+      (click)="save()"
+      title="Save (Ctrl+S)"
+    >
+      <mat-icon>save</mat-icon>
+      <span>{{ rootPicked() ? 'Save' : 'Download' }}</span>
+      @if (errorCount() > 0) {
+        <span class="err-chip">{{ errorCount() }}</span>
+      }
+    </button>
+  </div>
+
+  <div class="body">
+    <canvas
+      #board
+      class="board"
+      [class.crosshair]="mode() === 'add' || (mode() === 'decal' && (placingStamp() || placingImage()))"
+      (pointerdown)="onPointerDown($event)"
+      (pointermove)="onPointerMove($event)"
+      (pointerup)="onPointerUp()"
+      (pointercancel)="onPointerUp()"
+      (wheel)="onWheel($event)"
+    ></canvas>
+
+    <aside class="panel">
+      @if (message(); as msg) {
+        <p class="msg">{{ msg }}</p>
+      }
+
+      <!-- ── Selection properties ── -->
+      @if (selectedNode(); as n) {
+        <section>
+          <h3><mat-icon class="mi">adjust</mat-icon> Space</h3>
+          <label>
+            id
+            <input #idBox [value]="n.id" (change)="renameNode(n, idBox.value)" />
+          </label>
+          <label>
+            type
+            <select [ngModel]="n.type" (ngModelChange)="setNodeType(n, $event)">
+              @for (t of nodeTypes; track t) {
+                <option [value]="t">{{ typeNames[t] ?? t }} ({{ t }})</option>
+              }
+            </select>
+          </label>
+          <label>
+            region
+            <select [ngModel]="n.region" (ngModelChange)="setNodeRegion(n, $event)">
+              @for (r of regionIds(); track r) {
+                <option [value]="r">{{ r }}</option>
+              }
+            </select>
+          </label>
+          <p class="hint">{{ n.x }}, {{ n.y }} · {{ n.neighbors.length }} links</p>
+          <button class="danger" (click)="deleteSelection()"><mat-icon class="mi">delete</mat-icon> Delete space</button>
+        </section>
+      }
+
+      @if (selectedDecal(); as d) {
+        <section>
+          <h3><mat-icon class="mi">forest</mat-icon> Decal — {{ d.kind === 'stamp' ? d.stamp : d.src }}</h3>
+          <label>
+            scale
+            <input
+              type="range"
+              min="0.2"
+              max="4"
+              step="0.05"
+              [ngModel]="d.scale"
+              (ngModelChange)="updateDecal(d, { scale: +$event })"
+            />
+            <span class="num">{{ d.scale }}</span>
+          </label>
+          <label>
+            rotate°
+            <input
+              type="range"
+              min="-180"
+              max="180"
+              step="5"
+              [ngModel]="decalRotDeg(d)"
+              (ngModelChange)="updateDecal(d, { rot: (+$event * 3.14159265) / 180 })"
+            />
+            <span class="num">{{ decalRotDeg(d) }}°</span>
+          </label>
+          <label>
+            layer
+            <select [ngModel]="d.layer" (ngModelChange)="updateDecal(d, { layer: $event })">
+              <option value="under">under tokens</option>
+              <option value="over">over tokens</option>
+            </select>
+          </label>
+          @if (d.kind === 'stamp') {
+            <button (click)="updateDecal(d, { seed: (d.seed ?? 0) + 1 })">
+              <mat-icon class="mi">casino</mat-icon> Reroll details
+            </button>
+          }
+          <button class="danger" (click)="deleteSelection()"><mat-icon class="mi">delete</mat-icon> Delete decal</button>
+        </section>
+      }
+
+      <!-- ── Decal palettes ── -->
+      @if (mode() === 'decal') {
+        <section>
+          <h3><mat-icon class="mi">park</mat-icon> Stamps</h3>
+          <p class="hint">Pick one, then click the board to place. Esc cancels.</p>
+          <div class="palette">
+            @for (s of stampNames; track s) {
+              <button class="swatch" [class.on]="placingStamp() === s" (click)="pickStamp(s)" [title]="s">
+                <img [src]="stampThumbs[s]" [alt]="s" />
+              </button>
+            }
+          </div>
+        </section>
+        <section>
+          <h3><mat-icon class="mi">image</mat-icon> Images</h3>
+          @if (!rootPicked()) {
+            <p class="hint">Grant the repo folder to list everything under public/undercity/.</p>
+          }
+          <div class="palette">
+            @for (src of images(); track src) {
+              <button class="swatch" [class.on]="placingImage() === src" (click)="pickImage(src)" [title]="src">
+                <img [src]="src" [alt]="src" loading="lazy" />
+              </button>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- ── Region tool ── -->
+      @if (mode() === 'region') {
+        <section>
+          <h3><mat-icon class="mi">category</mat-icon> Regions</h3>
+          <p class="hint">Click spaces to build a selection ({{ selNodes().size }} picked), then assign.</p>
+          <div class="row">
+            @for (r of regionIds(); track r) {
+              <button (click)="assignRegion(r)">{{ r }}</button>
+            }
+            <button class="accent" (click)="newRegion()"><mat-icon class="mi">add</mat-icon> new region</button>
+          </div>
+          @for (r of regionIds(); track r) {
+            <details class="region-card">
+              <summary>{{ r }} — {{ region(r).label }}</summary>
+              <label>
+                label
+                <input #lbl [value]="region(r).label" (change)="updateRegion(r, { label: lbl.value })" />
+              </label>
+              <label>
+                background
+                <select [ngModel]="region(r).background" (ngModelChange)="updateRegion(r, { background: $event })">
+                  <option value="">— flat dark floor —</option>
+                  @for (bg of backgroundOptions(); track bg) {
+                    <option [value]="bg">{{ bg }}</option>
+                  }
+                </select>
+              </label>
+              <label class="check">
+                <input
+                  type="checkbox"
+                  [ngModel]="region(r).dark"
+                  (ngModelChange)="updateRegion(r, { dark: $event })"
+                />
+                dark (fog-of-war dungeon pocket)
+              </label>
+              <label class="check">
+                <input
+                  type="checkbox"
+                  [ngModel]="region(r).scatter"
+                  (ngModelChange)="updateRegion(r, { scatter: $event })"
+                />
+                procedural scatter decoration
+              </label>
+            </details>
+          }
+        </section>
+      }
+
+      <!-- ── Lint ── -->
+      <section>
+        <h3>
+          <mat-icon class="mi">{{ lint().length ? 'report' : 'verified' }}</mat-icon>
+          Checks
+          @if (!lint().length) {
+            <span class="ok">all clear</span>
+          }
+        </h3>
+        @for (issue of lint(); track $index) {
+          <button class="issue" [class.error]="issue.level === 'error'" (click)="focusIssue(issue)">
+            <mat-icon class="mi">{{ issue.level === 'error' ? 'error' : 'warning' }}</mat-icon>
+            {{ issue.text }}
+          </button>
+        }
+      </section>
+    </aside>
+  </div>
+</div>

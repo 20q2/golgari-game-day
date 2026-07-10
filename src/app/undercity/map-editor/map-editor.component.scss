@@ -1,0 +1,283 @@
+// Dev tool, but it wears the Undercity's palette so long editing sessions
+// feel like the game they're dressing.
+.editor {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #12100d;
+  color: #d8f3dc;
+  z-index: 20;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #1a1815;
+  border-bottom: 1px solid rgba(74, 124, 89, 0.35);
+  flex-wrap: wrap;
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: #b7e4c7;
+    margin-right: 8px;
+  }
+
+  .modes {
+    display: flex;
+    gap: 4px;
+  }
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(74, 124, 89, 0.18);
+    border: 1px solid rgba(74, 124, 89, 0.4);
+    border-radius: 6px;
+    color: #d8f3dc;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+
+    &.on {
+      background: rgba(74, 124, 89, 0.5);
+      border-color: #6cae75;
+    }
+
+    &.save {
+      border-color: rgba(251, 191, 36, 0.5);
+
+      &.dirty {
+        background: rgba(251, 191, 36, 0.16);
+      }
+
+      &:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .err-chip {
+    background: #f87171;
+    color: #1a1815;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 1px 6px;
+  }
+
+  .layer-pick {
+    background: #12100d;
+    color: #d8f3dc;
+    border: 1px solid rgba(74, 124, 89, 0.4);
+    border-radius: 6px;
+    padding: 6px;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.board {
+  flex: 1;
+  min-width: 0;
+  touch-action: none;
+  cursor: grab;
+
+  &.crosshair {
+    cursor: crosshair;
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.panel {
+  width: 320px;
+  overflow-y: auto;
+  background: #1a1815;
+  border-left: 1px solid rgba(74, 124, 89, 0.35);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  .msg {
+    background: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+    margin: 0;
+  }
+
+  section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    h3 {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0;
+      font-size: 0.95rem;
+      color: #b7e4c7;
+      border-bottom: 1px solid rgba(74, 124, 89, 0.3);
+      padding-bottom: 5px;
+
+      .ok {
+        margin-left: auto;
+        font-size: 0.7rem;
+        color: #86efac;
+        font-weight: 400;
+      }
+    }
+  }
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #9aa79a;
+
+    input:not([type='checkbox']),
+    select {
+      flex: 1;
+      min-width: 0;
+      background: #12100d;
+      color: #d8f3dc;
+      border: 1px solid rgba(74, 124, 89, 0.4);
+      border-radius: 5px;
+      padding: 5px 7px;
+      font-size: 0.8rem;
+    }
+
+    .num {
+      min-width: 42px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    &.check {
+      cursor: pointer;
+    }
+  }
+
+  .hint {
+    font-size: 0.72rem;
+    color: #8a978a;
+    margin: 0;
+  }
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    background: rgba(74, 124, 89, 0.18);
+    border: 1px solid rgba(74, 124, 89, 0.4);
+    border-radius: 6px;
+    color: #d8f3dc;
+    padding: 6px 9px;
+    cursor: pointer;
+    font-size: 0.78rem;
+
+    &.danger {
+      border-color: rgba(248, 113, 113, 0.5);
+      color: #f8b4b4;
+    }
+
+    &.accent {
+      border-color: rgba(251, 191, 36, 0.5);
+    }
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .palette {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+
+    .swatch {
+      padding: 3px;
+      aspect-ratio: 1;
+      overflow: hidden;
+
+      img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        image-rendering: pixelated;
+      }
+
+      &.on {
+        border-color: #fbbf24;
+        background: rgba(251, 191, 36, 0.14);
+      }
+    }
+  }
+
+  .region-card {
+    background: rgba(74, 124, 89, 0.08);
+    border: 1px solid rgba(74, 124, 89, 0.25);
+    border-radius: 6px;
+    padding: 6px 9px;
+
+    summary {
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: #b7e4c7;
+    }
+
+    label {
+      margin-top: 7px;
+    }
+  }
+
+  .issue {
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 0.72rem;
+    color: #d9c79a;
+    border-color: rgba(251, 191, 36, 0.3);
+
+    &.error {
+      color: #f8b4b4;
+      border-color: rgba(248, 113, 113, 0.45);
+    }
+
+    .mi {
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+    }
+  }
+}
+
+.mi {
+  font-size: 17px;
+  width: 17px;
+  height: 17px;
+}
