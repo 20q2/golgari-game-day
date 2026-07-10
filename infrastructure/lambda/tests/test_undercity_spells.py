@@ -158,3 +158,52 @@ def test_prune_cooldowns_drops_expired():
                               'spore_bolt': '2099-01-01T00:00:00'}}
     db._prune_cooldowns(doc)
     assert doc['spellCooldowns'] == {'spore_bolt': '2099-01-01T00:00:00'}
+
+
+# ── cast: validation + self spells ───────────────────────────────────────────
+
+def test_cast_innate_self_buff_and_cooldown(table):
+    act(table, 'join', starter='pest', home='garden')  # garden -> rot_surge
+    status, resp = act(table, 'cast', spellId='rot_surge', source='innate')
+    assert status == 200
+    assert {'kind': 'rot_surge'} in resp['you']['buffs']
+    assert resp['you']['spellCooldowns']['rot_surge'] > db._now()
+    assert resp['cast']['spellId'] == 'rot_surge'
+
+    status, resp = act(table, 'cast', spellId='rot_surge', source='innate')
+    assert status == 429
+    assert resp['code'] == 'spell_on_cooldown'
+
+
+def test_cast_buff_refreshes_not_stacks(table):
+    act(table, 'join', starter='pest', home='garden')
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    doc['buffs'] = [{'kind': 'rot_surge'}]     # e.g. from a mystery event
+    db._put_player(table, doc)
+    status, resp = act(table, 'cast', spellId='rot_surge', source='innate')
+    assert status == 200
+    assert [b['kind'] for b in resp['you']['buffs']].count('rot_surge') == 1
+
+
+def test_cast_source_validation(table):
+    act(table, 'join', starter='pest', home='garden')
+    status, resp = act(table, 'cast', spellId='glowveil', source='innate')
+    assert status == 409 and resp['code'] == 'not_castable'   # not your biome
+    status, resp = act(table, 'cast', spellId='spore_bolt', source='grimoire')
+    assert status == 409 and resp['code'] == 'not_castable'   # no book equipped
+    status, resp = act(table, 'cast', spellId='nonsense', source='innate')
+    assert status == 400 and resp['code'] == 'unknown_spell'
+    status, resp = act(table, 'cast', spellId='spore_bolt', source='scroll')
+    assert status == 400                                       # phase 2
+
+
+def test_cast_grimoire_self_heal(table):
+    act(table, 'join', starter='saproling', home='garden')     # 38 max HP
+    give_book(table, 'user-alex', 'gardeners_primer')
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    doc['hp'] = 10
+    db._put_player(table, doc)
+    status, resp = act(table, 'cast', spellId='mend_flesh', source='grimoire')
+    assert status == 200
+    assert resp['you']['hp'] == 22                              # +12, capped at max
+    assert resp['cast']['hp'] == 12

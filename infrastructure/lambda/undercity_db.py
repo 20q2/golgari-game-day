@@ -416,6 +416,7 @@ def handle_action(table, body):
         'buy': _buy, 'use-item': _use_item, 'shrine': _shrine, 'warp': _warp,
         'gamble': _gamble, 'poke': _poke, 'customize': _customize,
         'attack-boss': _attack_boss, 'trade': _trade, 'dig': _dig, 'respawn': _respawn,
+        'cast': _cast,
     }
     handler = handlers.get(atype)
     if not handler:
@@ -1334,6 +1335,121 @@ def _battle(table, sid, doc, payload):
 
 def _attack_boss(table, sid, doc, payload):
     return _err('The Behemoth still slumbers. (Boss finale is deferred.)')
+
+
+# ── Spells ───────────────────────────────────────────────────────────────────
+
+def _spell_err(msg, code, status=409):
+    """Cast failures carry a machine-readable `code` beside the toast text."""
+    return status, {'error': msg, 'code': code}
+
+
+def _spell_cd_ready(doc, spell_id):
+    ready_at = (doc.get('spellCooldowns') or {}).get(spell_id)
+    return not ready_at or ready_at <= _now()
+
+
+def _start_spell_cooldown(doc, spell_id):
+    until = (datetime.utcnow()
+             + timedelta(minutes=data.SPELLS[spell_id]['cooldownMin']))
+    doc.setdefault('spellCooldowns', {})[spell_id] = until.isoformat(timespec='seconds')
+
+
+def _apply_buff(doc, kind, until=None):
+    """Refresh-don't-stack: strip any same-kind buff, then append."""
+    doc['buffs'] = [b for b in (doc.get('buffs') or []) if b.get('kind') != kind]
+    entry = {'kind': kind}
+    if until:
+        entry['until'] = until
+    doc['buffs'].append(entry)
+
+
+def _push_away_event(target, entry):
+    events = target.setdefault('awayEvents', [])
+    events.append(entry)
+    if len(events) > data.AWAY_EVENTS_CAP:
+        del events[:len(events) - data.AWAY_EVENTS_CAP]
+
+
+def _cast(table, sid, doc, payload):
+    spell_id = payload.get('spellId')
+    source = payload.get('source', 'grimoire')
+    spell = data.SPELLS.get(spell_id)
+    if not spell:
+        return _spell_err('Unknown spell.', 'unknown_spell', 400)
+    if source == 'innate':
+        if data.BIOME_SPELLS.get(doc.get('homeBiome')) != spell_id:
+            return _spell_err("That is not your biome's gift.", 'not_castable')
+    elif source == 'grimoire':
+        book = data.GRIMOIRES.get(doc.get('equippedGrimoire') or '')
+        if not book or spell_id not in book['spells']:
+            return _spell_err('That spell is not in your open grimoire.', 'not_castable')
+    else:
+        return _spell_err('Scrolls come later — cast from your grimoire.',
+                          'not_castable', 400)
+    if not _spell_cd_ready(doc, spell_id):
+        return _spell_err(f"{spell['name']} is still recharging.",
+                          'spell_on_cooldown', 429)
+
+    effect = spell['effect']
+    extra = {}
+    if effect == 'self_buff':
+        _apply_buff(doc, spell['buffKind'])
+        result = {'text': f"{spell['name']} takes hold. {spell['blurb']}"}
+    elif effect == 'self_heal':
+        eff = engine.effective_stats(doc)
+        heal = max(0, min(spell['power'], eff['maxHp'] - doc['hp']))
+        doc['hp'] += heal
+        result = {'text': f'Torn flesh knits closed (+{heal} HP).', 'hp': heal}
+    elif effect in ('field_damage', 'field_curse'):
+        out = _cast_at_player(table, sid, doc, spell_id, spell, payload.get('target'))
+        if isinstance(out, tuple):
+            return out
+        result = out
+    elif effect == 'teleport':
+        out = _cast_teleport(table, sid, doc, spell, payload.get('target'))
+        if isinstance(out, tuple):
+            return out
+        result, extra = out
+    elif effect == 'recall':
+        gate = data.HOME_GATES.get(doc.get('homeBiome'), data.GATE_NODE)
+        doc['position'] = gate
+        doc['pendingMove'] = None
+        doc.pop('pendingRespawn', None)
+        result = {'text': 'Mycelial threads drag you home through the dark.', 'to': gate}
+    elif effect == 'fate_die':
+        value = payload.get('value')
+        if not isinstance(value, int) or not 1 <= value <= 6:
+            return _err('Pick a value 1–6.')
+        if doc.get('pendingMove'):
+            return _err('Resolve your current move first.', 409)
+        doc['pendingLoadedDie'] = value
+        result = {'text': f'Fate bends. Your next roll will be a {value}.'}
+    elif effect == 'boss_strike':
+        out = _cast_boss_strike(table, sid, doc, spell, payload.get('target'))
+        if isinstance(out, tuple):
+            return out
+        result = out
+    else:
+        return _err('Unknown spell effect.')
+
+    _start_spell_cooldown(doc, spell_id)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, cast={'spellId': spell_id, 'effect': effect, **result}, **extra)
+
+
+def _cast_at_player(table, sid, doc, spell_id, spell, target_id):
+    return _err('Targeted spells land in the next task.', 409)
+
+
+def _cast_teleport(table, sid, doc, spell, to):
+    return _err('Teleport lands in a later task.', 409)
+
+
+def _cast_boss_strike(table, sid, doc, spell, target):
+    return _err('Boss strikes land in a later task.', 409)
 
 
 # ── Creature management ──────────────────────────────────────────────────────
