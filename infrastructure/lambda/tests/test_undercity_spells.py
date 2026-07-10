@@ -464,3 +464,52 @@ def test_ack_events_clears_inbox_and_cap(table):
     db._put_player(table, doc)
     status, resp = act(table, 'ack-events')
     assert status == 200 and resp['you']['awayEvents'] == []
+
+
+# ── Acquisition ──────────────────────────────────────────────────────────────
+
+def _shop_node():
+    return next(nid for nid, n in data.MAP_NODES.items() if n['type'] == 'shop')
+
+
+def test_buy_tier1_grimoire_auto_equips(table):
+    act(table, 'join', starter='pest', home='city')
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    doc['position'] = _shop_node()
+    doc['spores'] = 100
+    db._put_player(table, doc)
+
+    status, resp = act(table, 'buy', itemId='gardeners_primer')
+    assert status == 200
+    you = resp['you']
+    assert 'gardeners_primer' in you['grimoires']
+    assert you['equippedGrimoire'] == 'gardeners_primer'        # first book auto-opens
+    assert you['spores'] == 100 - data.GRIMOIRES['gardeners_primer']['cost']
+
+    status, resp = act(table, 'buy', itemId='gardeners_primer')
+    assert status == 409                                        # already owned
+    status, resp = act(table, 'buy', itemId='kraul_warcodex')
+    assert status == 409                                        # tier II not stocked
+
+
+def test_mystery_item_can_upgrade_to_grimoire(table, monkeypatch):
+    act(table, 'join', starter='pest', home='city')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    monkeypatch.setattr(db.engine, 'roll_mystery', lambda *a, **k: {
+        'roll': 6, 'spores': 0, 'xp': 0, 'hpPct': 0, 'item': 'random',
+        'paint': False, 'hat': False, 'heal': False, 'buff': None,
+        'teleport': False, 'curse': False,
+        'text': 'A free consumable lies discarded.'})
+    monkeypatch.setattr(db, '_rng', FixedRng(random_values=[0.0]))  # force upgrade
+    out = db._mystery(table, sid, doc)
+    assert out['grimoire'] in data.GRIMOIRES
+    assert data.GRIMOIRES[out['grimoire']]['tier'] == 1
+    assert out['grimoire'] in doc['grimoires']
+    assert 'item' not in out                                     # book replaced the item
+
+    # Once every tier-1 book is owned, the same roll falls back to an item.
+    doc['grimoires'] = [g for g, spec in data.GRIMOIRES.items() if spec['tier'] == 1]
+    monkeypatch.setattr(db, '_rng', FixedRng(random_values=[0.0]))
+    out = db._mystery(table, sid, doc)
+    assert 'grimoire' not in out and out.get('item')

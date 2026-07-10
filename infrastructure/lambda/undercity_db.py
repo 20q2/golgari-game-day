@@ -238,6 +238,19 @@ def _give_consumable(doc):
     return item
 
 
+def _grant_grimoire(doc, gid):
+    """Add a book to the permanent collection; the first one auto-opens.
+    Duplicates convert to Spores. Returns True when the book was new."""
+    owned = doc.setdefault('grimoires', [])
+    if gid in owned:
+        doc['spores'] = doc.get('spores', 0) + data.GRIMOIRE_DUPLICATE_SPORES
+        return False
+    owned.append(gid)
+    if not doc.get('equippedGrimoire'):
+        doc['equippedGrimoire'] = gid
+    return True
+
+
 def _compost(table, sid, doc, cause_text):
     """Handle death: Undying check, else respawn at the gate with a shield."""
     now = datetime.utcnow()
@@ -886,9 +899,17 @@ def _mystery(table, sid, doc):
         res['to'] = dest
     out = {'type': 'mystery', 'roll': res['roll'], 'text': res['text']}
     if res['item']:
-        item = _give_consumable(doc)
-        if item:
-            out['item'] = item
+        unowned = [g for g, spec in data.GRIMOIRES.items()
+                   if spec['tier'] == 1 and g not in (doc.get('grimoires') or [])]
+        if unowned and _rng.random() < data.MYSTERY_GRIMOIRE_CHANCE:
+            gid = _rng.choice(unowned)
+            _grant_grimoire(doc, gid)
+            out['grimoire'] = gid
+            out['text'] += f" It's a grimoire — the {data.GRIMOIRES[gid]['name']}!"
+        else:
+            item = _give_consumable(doc)
+            if item:
+                out['item'] = item
     perm = None
     if res['paint']:
         perm = _get_perm(table, doc['userId'])
@@ -1676,6 +1697,17 @@ def _buy(table, sid, doc, payload):
         doc['spores'] -= c['cost']
         doc.setdefault('bag', []).append(item_id)
         text = f"Bought {c['name']}"
+    elif item_id in data.GRIMOIRES:
+        g = data.GRIMOIRES[item_id]
+        if g['tier'] != 1:
+            return _err('The bazaar does not stock that tome.', 409)
+        if item_id in (doc.get('grimoires') or []):
+            return _err('You already own that grimoire.', 409)
+        if doc.get('spores', 0) < g['cost']:
+            return _err('Not enough Spores.', 409)
+        doc['spores'] -= g['cost']
+        _grant_grimoire(doc, item_id)
+        text = f"Bought {g['name']}"
     else:
         return _err('Unknown item.')
     conflict = _save_or_conflict(table, doc)
