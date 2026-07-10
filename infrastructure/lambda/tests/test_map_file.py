@@ -22,6 +22,14 @@ def test_map_file_exists_with_v2_sections():
         assert n['region'] in doc['regions'], n['id']
 
 
+def test_data_module_loads_from_map_json():
+    import undercity_data as data
+    doc = _load(LAMBDA_DIR / 'map.json')
+    assert set(data.MAP_NODES) == {n['id'] for n in doc['nodes']}
+    assert (data.WORLD_W, data.WORLD_H) == (doc['worldW'], doc['worldH'])
+    assert not hasattr(data, '_build_map')  # procedural build fully retired
+
+
 def test_client_copy_matches_source():
     src = (LAMBDA_DIR / 'map.json').read_text(encoding='utf-8')
     pub = (REPO_ROOT / 'public' / 'data' / 'undercity-map.json').read_text(encoding='utf-8')
