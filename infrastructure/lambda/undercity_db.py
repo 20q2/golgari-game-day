@@ -1408,9 +1408,9 @@ def _cast(table, sid, doc, payload):
         result = out
     elif effect == 'teleport':
         out = _cast_teleport(table, sid, doc, spell, payload.get('target'))
-        if isinstance(out, tuple):
+        if isinstance(out[0], int):   # error tuple is (status, payload)
             return out
-        result, extra = out
+        result, extra = out           # success is (cast-result, extra-fields)
     elif effect == 'recall':
         gate = data.HOME_GATES.get(doc.get('homeBiome'), data.GATE_NODE)
         doc['position'] = gate
