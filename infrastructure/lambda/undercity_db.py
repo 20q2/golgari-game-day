@@ -188,6 +188,12 @@ def _expire_buffs(doc):
                     if not (b.get('until') and b['until'] < now)]
 
 
+def _prune_cooldowns(doc):
+    now = _now()
+    cds = doc.get('spellCooldowns') or {}
+    doc['spellCooldowns'] = {k: v for k, v in cds.items() if v > now}
+
+
 def _add_rolls(doc, n):
     """Add rolls up to the cap; returns (granted, lost)."""
     before = doc.get('rolls', 0)
@@ -295,6 +301,7 @@ def handle_state(table, query_params):
         if item['sk'].startswith('PLAYER#'):
             engine.regen_hp(item, now)  # display-only; persisted on next action
             _expire_buffs(item)
+            _prune_cooldowns(item)
             players.append(_public_player(item))
             if item['userId'] == user_id:
                 you = {k: v for k, v in item.items() if k not in ('pk', 'sk')}
@@ -401,6 +408,7 @@ def handle_action(table, body):
         return _err('Join the season first.', 409)
     engine.regen_hp(doc, _now())
     _expire_buffs(doc)
+    _prune_cooldowns(doc)
 
     handlers = {
         'claim': _claim, 'roll': _roll, 'move': _move, 'battle': _battle,
@@ -558,6 +566,8 @@ def _join(table, sid, user_id, username, payload):
         'spores': 15 if home == 'city' else 0,  # City Rat hatch perk
         'bag': [], 'gear': {}, 'stance': 'fight',
         'pendingMove': None, 'buffs': [],
+        'grimoires': [], 'equippedGrimoire': None,
+        'spellCooldowns': {}, 'awayEvents': [],
         'lastFinishedClaim': None, 'taughtClaims': 0, 'pokesReceived': 0,
         'pvpWins': 0, 'wildWins': 0, 'composts': 0, 'bossDamage': 0,
         'paint': {'body': body_hue, 'belly': 50, 'stripes': body_hue},

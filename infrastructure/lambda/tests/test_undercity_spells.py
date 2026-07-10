@@ -141,3 +141,20 @@ def test_glowveil_grants_flee_bonus():
     assert db._combatant(doc).flee_bonus == 15
     doc['homeBiome'] = 'cavern'   # stacks with the Glowblessed hatch perk
     assert db._combatant(doc).flee_bonus == 25
+
+
+# ── Player doc fields & cooldowns ────────────────────────────────────────────
+
+def test_join_seeds_spell_fields(table):
+    status, resp = act(table, 'join', starter='pest', home='garden')
+    assert status == 200
+    you = resp['you']
+    assert you['grimoires'] == [] and you['equippedGrimoire'] is None
+    assert you['spellCooldowns'] == {} and you['awayEvents'] == []
+
+
+def test_prune_cooldowns_drops_expired():
+    doc = {'spellCooldowns': {'rot_surge': '2000-01-01T00:00:00',
+                              'spore_bolt': '2099-01-01T00:00:00'}}
+    db._prune_cooldowns(doc)
+    assert doc['spellCooldowns'] == {'spore_bolt': '2099-01-01T00:00:00'}
