@@ -12,11 +12,10 @@ import undercity_data as data
 
 out_path = Path(__file__).resolve().parents[2] / 'public' / 'data' / 'undercity-map.json'
 payload = {
-    'worldW': 1800,
-    'worldH': 1200,
+    'worldW': data.WORLD_W,
+    'worldH': data.WORLD_H,
     'gate': data.GATE_NODE,
     'boss': data.BOSS_NODE,
-    'shopTiers': data.SHOP_TIERS,
     'nodes': list(data.MAP_NODES.values()),
 }
 out_path.write_text(json.dumps(payload, indent=1))

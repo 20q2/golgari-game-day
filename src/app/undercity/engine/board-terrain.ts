@@ -875,7 +875,13 @@ export function renderTerrain(
     for (const [region, name] of Object.entries(LABEL_NAMES)) {
       if (!regionPts.has(region)) continue;
       const z = regionZone(region);
-      ctx.fillText(name, z.cx, z.cy);
+      // Push the title outward from the island into the clear half of the
+      // hollow — the inner-chord shortcut sits on the island-facing side, so
+      // centering the label would let that path run through the text.
+      const ox = z.cx - ISLAND.cx;
+      const oy = z.cy - ISLAND.cy;
+      const L = Math.hypot(ox, oy) || 1;
+      ctx.fillText(name, z.cx + (ox / L) * 125, z.cy + (oy / L) * 125);
     }
     ctx.restore();
   } else {

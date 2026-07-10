@@ -409,23 +409,43 @@ ISLAND_XY = (1800, 1150)
 BOSS_NODE = 'boss'
 
 # Home biomes: display name, ring geometry, and the hatch perk.
+# Ring silhouette is a superellipse: `sq` is the squareness exponent (2 = plain
+# ellipse, >2 boxy/rounded-rectangle, <2 pinched/diamond); rx/ry set the size
+# and oblongness. Each biome gets its own shape so no two chambers look alike.
 BIOMES = {
+    # Rounded-square cavern mouth.
     'cavern': {'name': 'Mosslight Cavern', 'center': (900, 520),
-               'rx': 360, 'ry': 225, 'perk': 'glowblessed',
+               'rx': 320, 'ry': 260, 'sq': 3.6, 'perk': 'glowblessed',
                'perkName': 'Glowblessed', 'perkBlurb': '+10% flee chance.'},
+    # Wide, low oblong — a sprawling moor.
     'bog': {'name': 'The Sedgemoor', 'center': (2700, 520),
-            'rx': 370, 'ry': 215, 'perk': 'mirefoot',
+            'rx': 440, 'ry': 190, 'sq': 2.0, 'perk': 'mirefoot',
             'perkName': 'Mirefoot', 'perkBlurb': 'Hazards cost you half.'},
+    # Angular diamond of overgrowth.
     'garden': {'name': 'The Rot-Gardens', 'center': (3000, 1650),
-               'rx': 330, 'ry': 240, 'perk': 'composter',
+               'rx': 300, 'ry': 285, 'sq': 1.45, 'perk': 'composter',
                'perkName': 'Composter', 'perkBlurb': '+2 Spores from every loot space.'},
+    # Sprawling rounded rectangle — a city block.
     'city': {'name': 'The Undercity', 'center': (1800, 2050),
-             'rx': 420, 'ry': 230, 'perk': 'city_rat',
+             'rx': 410, 'ry': 235, 'sq': 4.4, 'perk': 'city_rat',
              'perkName': 'City Rat', 'perkBlurb': '+15 starting Spores.'},
-    'bone': {'name': 'Ossuary Fields', 'center': (600, 1650),
-             'rx': 340, 'ry': 235, 'perk': 'marrowborn',
+    # Tall, narrow pit.
+    'bone': {'name': 'Ossuary Fields', 'center': (600, 1600),
+             'rx': 255, 'ry': 300, 'sq': 2.2, 'perk': 'marrowborn',
              'perkName': 'Marrowborn', 'perkBlurb': '+2 DEF against wild creatures.'},
 }
+
+
+def _ring_point(spec, i, base):
+    """Superellipse perimeter point for ring slot `i` (of 10), local frame
+    rotated by `base` so slot 0 faces the island."""
+    t = i * (2 * math.pi / 10)
+    ct, st = math.cos(t), math.sin(t)
+    ex = 2.0 / spec.get('sq', 2.0)
+    lx = spec['rx'] * math.copysign(abs(ct) ** ex, ct)
+    ly = spec['ry'] * math.copysign(abs(st) ** ex, st)
+    cb, sb = math.cos(base), math.sin(base)
+    return lx * cb - ly * sb, lx * sb + ly * cb
 DEFAULT_BIOME = 'city'
 
 # Ring slot types, index 0 = the space facing the island. Slot 3 is the shop,
@@ -545,7 +565,6 @@ def _build_map():
         base = math.atan2(iy - cy, ix - cx)
         ring = [b + '_r' + str(i) for i in range(10)]
         for i, nid in enumerate(ring):
-            ang = base + i * (2 * math.pi / 10)
             ntype = _RING_TYPES[i]
             if b == 'bone':
                 # Ossuary Fields is the dig-site biome: its two loot slots and
@@ -555,8 +574,8 @@ def _build_map():
                     ntype = 'excavation'
                 elif ntype == 'shrine':
                     ntype = 'ossuary'
-            add(nid, ntype, cx + spec['rx'] * math.cos(ang),
-                cy + spec['ry'] * math.sin(ang), b)
+            ox, oy = _ring_point(spec, i, base)
+            add(nid, ntype, cx + ox, cy + oy, b)
         loop_link(ring)
 
         # Inner chord: r2 -> i0 -> i1 -> r8, cutting across the hollow.
@@ -578,8 +597,10 @@ def _build_map():
         dyc = max(300, min(WORLD_H - 300, cy + uy * (spec['ry'] + 300)))
         r5 = nodes[b + '_r5']
         lt, lb = b + '_lt', b + '_lb'
-        add(lt, 'ladder', r5['x'] + ux * 150,
-            max(160, min(WORLD_H - 160, r5['y'] + uy * 130)), b)
+        # Sit the ladder stub well past r5 along the outward normal so its ribbon
+        # doesn't clip the r4-r5-r6 ring curve.
+        add(lt, 'ladder', r5['x'] + ux * 210,
+            max(160, min(WORLD_H - 160, r5['y'] + uy * 200)), b)
         # v6: each biome's pocket is a hand-laid, planar, unique shape.
         # Coordinates are local offsets from the pocket center (dxc, dyc);
         # orientation doesn't matter — pockets render in their own sub-view.
