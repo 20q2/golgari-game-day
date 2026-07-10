@@ -16,6 +16,7 @@ import { UndercityStateService } from '../services/undercity-state.service';
 import { BoardCanvas, BoardMap, NodeInfo } from '../engine/board-canvas';
 import { legalSteps, boardDistance, nodesWithin } from '../engine/board-movement';
 import {
+  AwayEvent,
   BattleResult,
   DigGrid,
   Occupant,
@@ -134,6 +135,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly spellBossPick = signal<SpellInfo | null>(null);
   /** Teleport in progress: reachable nodes are highlighted on the canvas. */
   protected readonly castTeleport = signal<{ spell: SpellInfo; nodes: string[] } | null>(null);
+  /** "While you were away" — populated once, from the first you-doc snapshot. */
+  protected readonly awayModal = signal<AwayEvent[] | null>(null);
+  private awayInitDone = false;
+  private awaySeenCount = 0;
 
   protected readonly stepsLeft = computed(
     () => this.stepping()?.left ?? this.store.you()?.pendingMove?.value ?? 0,
@@ -336,6 +341,39 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       }
       this.syncBoard();
     });
+    // Away-events: a returning player gets the full modal; an active player
+    // gets a toast per new hit (auto-acknowledged so it never re-shows).
+    effect(() => {
+      const events = this.store.you()?.awayEvents ?? [];
+      if (!this.awayInitDone) {
+        if (!this.store.you()) return; // wait for the first real snapshot
+        this.awayInitDone = true;
+        this.awaySeenCount = events.length;
+        if (events.length) this.awayModal.set(events);
+        return;
+      }
+      if (events.length > this.awaySeenCount && !this.awayModal()) {
+        this.showToast(this.awayText(events[events.length - 1]));
+        void this.store.action('ack-events');
+      }
+      this.awaySeenCount = events.length;
+    });
+  }
+
+  protected awayText(e: AwayEvent): string {
+    const spell = SPELL_MAP[e.spell]?.name ?? e.spell;
+    return e.kind === 'spell_hit'
+      ? `${e.from}'s ${spell} hit you for ${e.dmg ?? 0}!`
+      : `You dodged ${e.from}'s ${spell}!`;
+  }
+
+  async dismissAway(): Promise<void> {
+    this.awayModal.set(null);
+    try {
+      await this.store.action('ack-events');
+    } catch {
+      // Non-fatal: the inbox re-shows next visit if the ack failed.
+    }
   }
 
   ngAfterViewInit(): void {

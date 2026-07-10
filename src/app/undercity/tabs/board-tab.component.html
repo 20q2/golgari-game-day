@@ -405,6 +405,24 @@
     />
   }
 
+  <!-- While you were away -->
+  @if (awayModal(); as events) {
+    <div class="uc-modal-backdrop">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">notifications</mat-icon> While you were away…</h3>
+        <div class="away-rows">
+          @for (e of events; track $index) {
+            <div class="away-row" [class.hit]="e.kind === 'spell_hit'">
+              <mat-icon class="mi">{{ e.kind === 'spell_hit' ? 'flash_on' : 'shield' }}</mat-icon>
+              <span>{{ awayText(e) }}</span>
+            </div>
+          }
+        </div>
+        <button class="uc-btn uc-btn-primary" (click)="dismissAway()">Noted</button>
+      </div>
+    </div>
+  }
+
   <!-- Spell picker -->
   @if (showSpells()) {
     <div class="uc-modal-backdrop" (click)="closeSpellPickers()">

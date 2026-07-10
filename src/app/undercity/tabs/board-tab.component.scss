@@ -578,3 +578,23 @@
   font-size: 0.85rem;
   z-index: 5;
 }
+
+.away-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 40vh;
+  overflow-y: auto;
+  margin: 0.5rem 0 1rem;
+}
+
+.away-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+
+  &.hit .mi {
+    color: #d66;
+  }
+}
