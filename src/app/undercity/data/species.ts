@@ -15,22 +15,25 @@ export interface SpeciesSprite {
 
 const DINO_REGIONS = ['body', 'belly', 'stripes'];
 
+// Finished Golgari art has no recolor markers — regions: [] disables the
+// hue-shift (wardrobe paints won't tint these forms) and hats fall back to
+// the default anchor.
 export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   // Tier 1 starters
-  pest: { sprite: 'rex', regions: DINO_REGIONS, scale: 0.7 },
-  kraul: { sprite: 'spino', regions: DINO_REGIONS, scale: 0.7 },
-  saproling: { sprite: 'trike', regions: DINO_REGIONS, scale: 0.7 },
-  spore: { sprite: 'anky', regions: DINO_REGIONS, scale: 0.7 },
+  pest: { sprite: 'pest', regions: [], scale: 0.7 },
+  kraul: { sprite: 'kraul', regions: [], scale: 0.7 },
+  saproling: { sprite: 'saproling', regions: [], scale: 0.7 },
+  spore: { sprite: 'spore', regions: [], scale: 0.7 },
   // Tier 2 — same line sprite, grown up
-  brackish_trudge: { sprite: 'rex', regions: DINO_REGIONS, scale: 1.0 },
-  stinkweed_imp: { sprite: 'rex', regions: DINO_REGIONS, scale: 0.9 },
+  brackish_trudge: { sprite: 'brackish_trudge', regions: [], scale: 1.0 },
+  stinkweed_imp: { sprite: 'stinkweed_imp', regions: [], scale: 0.9 },
   kraul_warrior: { sprite: 'spino', regions: DINO_REGIONS, scale: 1.0 },
   kraul_forager: { sprite: 'spino', regions: DINO_REGIONS, scale: 0.95 },
-  slitherhead: { sprite: 'trike', regions: DINO_REGIONS, scale: 1.0 },
-  woodwraith_strangler: { sprite: 'trike', regions: DINO_REGIONS, scale: 1.05 },
-  shambling_shell: { sprite: 'anky', regions: DINO_REGIONS, scale: 1.0 },
-  corpsejack_menace: { sprite: 'anky', regions: DINO_REGIONS, scale: 0.95 },
-  // Apexes
+  slitherhead: { sprite: 'slitherhead', regions: [], scale: 1.0 },
+  woodwraith_strangler: { sprite: 'woodwraith_strangler', regions: [], scale: 1.05 },
+  shambling_shell: { sprite: 'shambling_shell', regions: [], scale: 1.0 },
+  corpsejack_menace: { sprite: 'corpsejack_menace', regions: [], scale: 0.95 },
+  // Apexes (still Dino Party placeholders)
   grave_titan: { sprite: 'godzilla', regions: ['body', 'spines', 'spines_dark'], scale: 1.25 },
   golgari_lich_lord: { sprite: 'pachy', regions: DINO_REGIONS, scale: 1.3 },
   swamp_dragon: { sprite: 'parasaur', regions: DINO_REGIONS, scale: 1.3 },
