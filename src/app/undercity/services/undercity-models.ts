@@ -36,6 +36,27 @@ export interface PendingMove {
   dests: string[];
 }
 
+/** Something that hit you (or missed) while your phone was down. */
+export interface AwayEvent {
+  kind: 'spell_hit' | 'spell_dodged';
+  from: string;
+  spell: string;
+  dmg?: number;
+  at: string;
+}
+
+/** Result payload of a `cast` action (mirrors undercity_db._cast). */
+export interface CastResult {
+  spellId: string;
+  effect: string;
+  text: string;
+  dodged?: boolean;
+  dmg?: number;
+  hp?: number;
+  targetName?: string;
+  to?: string;
+}
+
 export interface YouDoc {
   userId: string;
   username: string;
@@ -69,6 +90,13 @@ export interface YouDoc {
   /** After a compost, the gate options to respawn at (home + last biome). */
   pendingRespawn?: { options: { gate: string; label: string }[] } | null;
   buffs: { kind: string; until?: string }[];
+  homeBiome?: string;
+  /** Grimoires ever found — a permanent collection; one may be open at a time. */
+  grimoires?: string[];
+  equippedGrimoire?: string | null;
+  /** spellId -> ISO time it comes off cooldown (server clock, no trailing Z). */
+  spellCooldowns?: Record<string, string>;
+  awayEvents?: AwayEvent[];
   taughtClaims: number;
   lastFinishedClaim?: string | null;
   pokesReceived: number;
@@ -243,6 +271,7 @@ export interface ActionResponse {
   spaceEvent?: SpaceEvent;
   occupants?: Occupant[];
   battle?: BattleResult;
+  cast?: CastResult;
   target?: { userId: string; username: string; formName: string; creatureName?: string };
   winner?: string;
   stolen?: number;

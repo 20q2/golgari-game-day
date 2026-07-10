@@ -39,3 +39,66 @@ export function legalSteps(
 
   return (neighbors.get(pos) ?? []).filter((nb) => nb !== prev && canFinish(nb, pos, left - 1));
 }
+
+/**
+ * Shortest hop count start→goal (plain BFS — no exact-count or no-backtrack
+ * rule), or null past maxSteps. Mirrors undercity_engine.board_distance:
+ * sealed barriers block passage but may be the goal itself.
+ */
+export function boardDistance(
+  map: BoardMap,
+  start: string,
+  goal: string,
+  maxSteps: number,
+  closedBarriers: readonly string[] = [],
+): number | null {
+  if (start === goal) return 0;
+  const neighbors = new Map(map.nodes.map((n) => [n.id, n.neighbors]));
+  const closed = new Set(closedBarriers);
+  let frontier = new Set([start]);
+  const seen = new Set([start]);
+  for (let dist = 1; dist <= maxSteps; dist++) {
+    const next = new Set<string>();
+    for (const node of frontier) {
+      if (node !== start && closed.has(node)) continue;
+      for (const nb of neighbors.get(node) ?? []) {
+        if (seen.has(nb)) continue;
+        if (nb === goal) return dist;
+        seen.add(nb);
+        next.add(nb);
+      }
+    }
+    frontier = next;
+    if (!frontier.size) break;
+  }
+  return null;
+}
+
+/** Every node within maxSteps of start (start excluded) — teleport targets. */
+export function nodesWithin(
+  map: BoardMap,
+  start: string,
+  maxSteps: number,
+  closedBarriers: readonly string[] = [],
+): string[] {
+  const neighbors = new Map(map.nodes.map((n) => [n.id, n.neighbors]));
+  const closed = new Set(closedBarriers);
+  let frontier = new Set([start]);
+  const seen = new Set([start]);
+  const out: string[] = [];
+  for (let dist = 1; dist <= maxSteps; dist++) {
+    const next = new Set<string>();
+    for (const node of frontier) {
+      if (node !== start && closed.has(node)) continue;
+      for (const nb of neighbors.get(node) ?? []) {
+        if (seen.has(nb)) continue;
+        seen.add(nb);
+        next.add(nb);
+        out.push(nb);
+      }
+    }
+    frontier = next;
+    if (!frontier.size) break;
+  }
+  return out;
+}
