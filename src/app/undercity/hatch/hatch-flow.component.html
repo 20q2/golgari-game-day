@@ -43,6 +43,36 @@
       }
     </button>
     <p class="tap-hint">Tap the egg… ({{ taps() }}/3)</p>
+  } @else if (chosenStarter() && chosenBiome()) {
+    @if (chosenStarter(); as chosen) {
+      <h1>Name your {{ chosen.name }}</h1>
+      <p class="choose-hint">The name sticks through every evolution tonight.</p>
+      @if (error(); as err) {
+        <p class="error-text">{{ err }}</p>
+      }
+      @if (spriteUrl(chosen); as url) {
+        <img class="name-sprite" [src]="url" [alt]="chosen.name" />
+      }
+      <div class="name-row">
+        <input
+          class="name-input"
+          type="text"
+          maxlength="16"
+          [value]="creatureName()"
+          (input)="creatureName.set($any($event.target).value)"
+          aria-label="Creature name"
+        />
+        <button class="name-reroll" (click)="rerollName()" aria-label="Suggest another name">
+          <mat-icon>casino</mat-icon>
+        </button>
+      </div>
+      <button class="hatch-btn" (click)="hatch()" [disabled]="joining() || !nameValid()">
+        Hatch!
+      </button>
+      <button class="biome-back" (click)="chosenBiome.set(null)" [disabled]="joining()">
+        ← pick a different biome
+      </button>
+    }
   } @else if (chosenStarter()) {
     @if (chosenStarter(); as chosen) {
       <h1>Where does {{ chosen.name }} call home?</h1>
