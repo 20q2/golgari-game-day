@@ -7,7 +7,8 @@
   flex-direction: column;
   background: #12100d;
   color: #d8f3dc;
-  z-index: 20;
+  // Above the site navbar (z-index 1000) — the editor is a full-screen tool.
+  z-index: 1001;
 }
 
 .toolbar {

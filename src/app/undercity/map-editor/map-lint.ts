@@ -46,13 +46,17 @@ export function lintMap(doc: BoardMap): LintIssue[] {
   if (!boss) err(`Boss node "${doc.boss}" does not exist`);
   else if (boss.type !== 'boss') err(`Boss node "${doc.boss}" has type "${boss.type}"`, boss.id);
 
-  // Everything reachable from the gate (players must be able to walk there).
+  // Everything reachable from the gate — walking edges plus warp teleports
+  // (the floating island's only route in), mirroring the server's test.
   if (gate) {
+    const warps = doc.nodes.filter((n) => n.type === 'warp').map((n) => n.id);
     const seen = new Set([gate.id]);
     const queue = [gate.id];
     while (queue.length) {
       const cur = byId.get(queue.pop()!)!;
-      for (const nb of cur.neighbors) {
+      const nbs = [...cur.neighbors];
+      if (cur.type === 'warp') nbs.push(...warps.filter((w) => w !== cur.id));
+      for (const nb of nbs) {
         if (byId.has(nb) && !seen.has(nb)) {
           seen.add(nb);
           queue.push(nb);
@@ -60,7 +64,7 @@ export function lintMap(doc: BoardMap): LintIssue[] {
       }
     }
     for (const n of doc.nodes) {
-      if (!seen.has(n.id)) err(`"${n.id}" is unreachable from the gate`, n.id);
+      if (!seen.has(n.id)) err(`"${n.id}" is unreachable from the gate (walk + warps)`, n.id);
     }
   }
 
@@ -80,11 +84,13 @@ export function lintMap(doc: BoardMap): LintIssue[] {
     else if (!regions[n.region]) err(`"${n.id}" uses undefined region "${n.region}"`, n.id);
   }
 
-  // Bounds are advisory — the terrain pads generously, but far-flung nodes
-  // are usually accidents.
+  // Bounds are advisory with the terrain's own 200px margin of grace — the
+  // renderer pads for rings that outgrew the declared world; only flag nodes
+  // clearly adrift.
+  const PAD = 200;
   for (const n of doc.nodes) {
-    if (n.x < 0 || n.x > doc.worldW || n.y < 0 || n.y > doc.worldH) {
-      warn(`"${n.id}" sits outside the ${doc.worldW}×${doc.worldH} world`, n.id);
+    if (n.x < -PAD || n.x > doc.worldW + PAD || n.y < -PAD || n.y > doc.worldH + PAD) {
+      warn(`"${n.id}" sits far outside the ${doc.worldW}×${doc.worldH} world`, n.id);
     }
   }
 
