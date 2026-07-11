@@ -284,7 +284,8 @@ def seed(out_path):
         }
     doc = {'worldW': WORLD_W, 'worldH': WORLD_H,
            'gate': GATE_NODE, 'boss': BOSS_NODE,
-           'nodes': list(nodes.values()), 'regions': regions, 'decals': []}
+           'nodes': list(nodes.values()), 'regions': regions,
+           'decals': [], 'labels': []}
     Path(out_path).write_text(json.dumps(doc, indent=1), encoding='utf-8')
     print(f'Seeded {len(nodes)} nodes to {out_path}')
 

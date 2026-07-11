@@ -664,7 +664,7 @@ export function renderTerrain(
   floors?: FloorTextures,
   landmarkArt?: LandmarkTextures,
   layer?: LayerSpec,
-  opts?: { cleared?: boolean; omitEdgesOf?: string },
+  opts?: { cleared?: boolean; omitEdgesOf?: string; omitLabels?: boolean },
 ): TerrainArt {
   const cleared = opts?.cleared ?? false;
   // A layer restricts what we draw to a node subset within a world-space
@@ -902,6 +902,10 @@ export function renderTerrain(
     ctx.fillText(biome ? DUNGEONS[biome].name : (LABEL_NAMES['depths'] ?? 'The Deep'), cx, cy);
     ctx.restore();
   }
+
+  // 5b. Hand-placed labels from map.json — same ghosted ink as the region
+  // titles. The editor skips baking these and draws them live instead.
+  if (!opts?.omitLabels) drawMapLabels(ctx, map, layer);
 
   // 6. Decorations: a thinner scatter of small props (kept off
   //    nodes/paths/river).
@@ -2248,6 +2252,32 @@ function drawImageDecal(ctx: CanvasRenderingContext2D, d: MapDecal): void {
   ctx.rotate(d.rot);
   ctx.drawImage(img, -w / 2, -h, w, h); // feet at the anchor, like sprites
   ctx.restore();
+}
+
+/**
+ * Hand-placed ghost titles from map.json (labels[]), in the region-label
+ * style. Like decals, a label belongs to its nearest node's render layer.
+ */
+export function drawMapLabels(
+  ctx: CanvasRenderingContext2D,
+  map: BoardMap,
+  layer?: LayerSpec,
+): void {
+  for (const l of map.labels ?? []) {
+    if (layer) {
+      const n = nearestNode(map, l.x, l.y);
+      if (!n || !layer.nodeIds.has(n.id)) continue;
+    }
+    ctx.save();
+    ctx.translate(l.x, l.y);
+    ctx.rotate(l.rot);
+    ctx.font = `italic 600 ${l.size}px Georgia, "Times New Roman", serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = `rgba(210, 235, 220, ${l.alpha})`;
+    ctx.fillText(l.text, 0, 0);
+    ctx.restore();
+  }
 }
 
 export function drawDecals(

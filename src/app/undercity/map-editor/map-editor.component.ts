@@ -13,7 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { firstValueFrom } from 'rxjs';
-import { BoardMap, BoardNode, MapDecal, RegionSpec } from '../engine/board-canvas';
+import { BoardMap, BoardNode, MapDecal, MapLabel, RegionSpec } from '../engine/board-canvas';
 import { STAMPS, drawStamp } from '../engine/board-terrain';
 import { preloadAll } from '../engine/sprite-engine';
 import { SPACE_ICONS, SPACE_NAMES } from '../data/items';
@@ -27,7 +27,7 @@ import {
   saveMap,
 } from './file-io';
 
-type Mode = 'select' | 'add' | 'connect' | 'decal' | 'region';
+type Mode = 'select' | 'add' | 'connect' | 'decal' | 'label' | 'region';
 
 /** Images offered before the repo folder is granted (can't list dirs via HTTP). */
 const SEED_IMAGES = [
@@ -68,6 +68,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   // Selection: one node, one decal, or (region mode) a set of nodes.
   protected readonly selNode = signal<string | null>(null);
   protected readonly selDecal = signal<number | null>(null);
+  protected readonly selLabel = signal<number | null>(null);
   protected readonly selNodes = signal<Set<string>>(new Set());
   protected readonly connectFrom = signal<string | null>(null);
 
@@ -96,7 +97,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
 
   private canvas!: EditorCanvas;
   private drag: {
-    kind: 'node' | 'decal' | 'pan';
+    kind: 'node' | 'decal' | 'label' | 'pan';
     id?: string;
     index?: number;
     lastX: number;
@@ -114,6 +115,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     const doc = await firstValueFrom(this.http.get<BoardMap>('data/undercity-map.json'));
     doc.regions ??= {};
     doc.decals ??= [];
+    doc.labels ??= [];
     this.doc.set(doc);
     this.canvas.setDoc(doc);
     this.canvas.setLayer('overworld');
@@ -187,11 +189,21 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       this.drag = {
         kind: pick.kind,
         id: pick.kind === 'node' ? pick.id : undefined,
-        index: pick.kind === 'decal' ? pick.index : undefined,
+        index: pick.kind === 'decal' || pick.kind === 'label' ? pick.index : undefined,
         lastX: e.clientX,
         lastY: e.clientY,
         moved: false,
       };
+      return;
+    }
+    if (mode === 'label') {
+      if (pick?.kind === 'label') {
+        this.applyPick(pick);
+        this.snapshot();
+        this.drag = { kind: 'label', index: pick.index, lastX: e.clientX, lastY: e.clientY, moved: false };
+      } else if (!pick) {
+        this.placeLabelAt(w.x, w.y);
+      }
       return;
     }
     if (mode === 'add' && !pick) {
@@ -258,6 +270,13 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
         d.y = Math.round(w.y);
         this.canvas.redraw();
       }
+    } else if (this.drag.kind === 'label' && this.drag.index !== undefined) {
+      const l = this.d().labels?.[this.drag.index];
+      if (l) {
+        l.x = Math.round(w.x);
+        l.y = Math.round(w.y);
+        this.canvas.redraw();
+      }
     }
   }
 
@@ -284,9 +303,15 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     if (pick?.kind === 'node') {
       this.selNode.set(pick.id);
       this.selDecal.set(null);
+      this.selLabel.set(null);
     } else if (pick?.kind === 'decal') {
       this.selDecal.set(pick.index);
       this.selNode.set(null);
+      this.selLabel.set(null);
+    } else if (pick?.kind === 'label') {
+      this.selLabel.set(pick.index);
+      this.selNode.set(null);
+      this.selDecal.set(null);
     }
     this.syncOverlay();
   }
@@ -294,6 +319,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   protected clearSelection(): void {
     this.selNode.set(null);
     this.selDecal.set(null);
+    this.selLabel.set(null);
     this.selNodes.set(new Set());
     this.connectFrom.set(null);
     this.syncOverlay();
@@ -305,6 +331,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       selectedNode: this.selNode(),
       selectedNodes: this.selNodes(),
       selectedDecal: this.selDecal(),
+      selectedLabel: this.selLabel(),
       connectFrom: this.connectFrom(),
       cursor: this.canvas.overlay.cursor,
       showIds: this.showIds(),
@@ -363,6 +390,36 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   protected selectedDecal(): MapDecal | null {
     const i = this.selDecal();
     return i === null ? null : (this.d().decals?.[i] ?? null);
+  }
+
+  protected selectedLabel(): MapLabel | null {
+    const i = this.selLabel();
+    return i === null ? null : (this.d().labels?.[i] ?? null);
+  }
+
+  private placeLabelAt(x: number, y: number): void {
+    this.snapshot();
+    const label: MapLabel = {
+      text: 'New Label',
+      x: Math.round(x),
+      y: Math.round(y),
+      size: 46,
+      rot: 0,
+      alpha: 0.16,
+    };
+    this.d().labels!.push(label);
+    this.selLabel.set(this.d().labels!.length - 1);
+    this.afterDocChange();
+  }
+
+  protected updateLabel(l: MapLabel, patch: Partial<MapLabel>): void {
+    this.snapshot();
+    Object.assign(l, patch);
+    this.afterDocChange();
+  }
+
+  protected labelRotDeg(l: MapLabel): number {
+    return Math.round((l.rot * 180) / Math.PI);
   }
 
   protected focusIssue(issue: LintIssue): void {
@@ -442,6 +499,11 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       this.snapshot();
       this.d().decals!.splice(decalIdx, 1);
       this.selDecal.set(null);
+      this.afterDocChange();
+    } else if (this.selLabel() !== null) {
+      this.snapshot();
+      this.d().labels!.splice(this.selLabel()!, 1);
+      this.selLabel.set(null);
       this.afterDocChange();
     }
   }

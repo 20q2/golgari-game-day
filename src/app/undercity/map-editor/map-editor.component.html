@@ -15,6 +15,9 @@
       <button [class.on]="mode() === 'decal'" (click)="setMode('decal')" title="Place set-piece stamps and image decals">
         <mat-icon>forest</mat-icon><span>Decals</span>
       </button>
+      <button [class.on]="mode() === 'label'" (click)="setMode('label')" title="Ghost titles in the region-label style — click empty ground to place">
+        <mat-icon>title</mat-icon><span>Labels</span>
+      </button>
       <button [class.on]="mode() === 'region'" (click)="setMode('region')" title="Group spaces into regions / dungeon pockets">
         <mat-icon>category</mat-icon><span>Regions</span>
       </button>
@@ -143,6 +146,60 @@
             </button>
           }
           <button class="danger" (click)="deleteSelection()"><mat-icon class="mi">delete</mat-icon> Delete decal</button>
+        </section>
+      }
+
+      @if (selectedLabel(); as l) {
+        <section>
+          <h3><mat-icon class="mi">title</mat-icon> Label</h3>
+          <label>
+            text
+            <input #ltext [value]="l.text" (change)="updateLabel(l, { text: ltext.value })" />
+          </label>
+          <label>
+            size
+            <input
+              type="range"
+              min="20"
+              max="140"
+              step="2"
+              [ngModel]="l.size"
+              (ngModelChange)="updateLabel(l, { size: +$event })"
+            />
+            <span class="num">{{ l.size }}</span>
+          </label>
+          <label>
+            rotate°
+            <input
+              type="range"
+              min="-90"
+              max="90"
+              step="5"
+              [ngModel]="labelRotDeg(l)"
+              (ngModelChange)="updateLabel(l, { rot: (+$event * 3.14159265) / 180 })"
+            />
+            <span class="num">{{ labelRotDeg(l) }}°</span>
+          </label>
+          <label>
+            ink
+            <input
+              type="range"
+              min="0.05"
+              max="0.7"
+              step="0.01"
+              [ngModel]="l.alpha"
+              (ngModelChange)="updateLabel(l, { alpha: +$event })"
+            />
+            <span class="num">{{ l.alpha }}</span>
+          </label>
+          <button class="danger" (click)="deleteSelection()"><mat-icon class="mi">delete</mat-icon> Delete label</button>
+        </section>
+      }
+
+      @if (mode() === 'label' && selLabel() === null) {
+        <section>
+          <h3><mat-icon class="mi">title</mat-icon> Labels</h3>
+          <p class="hint">Click empty ground to place a ghost title. Click one to edit or drag it; labels ride the same layer as their nearest space.</p>
         </section>
       }
 

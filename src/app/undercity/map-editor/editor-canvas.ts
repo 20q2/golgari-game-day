@@ -8,10 +8,11 @@
  * given. Call invalidate() after any doc mutation: terrain re-renders and the
  * layer partition recomputes (region edits can create or dissolve pockets).
  */
-import { BoardMap, BoardNode, MapDecal, RegionSpec } from '../engine/board-canvas';
+import { BoardMap, BoardNode, MapDecal, MapLabel, RegionSpec } from '../engine/board-canvas';
 import {
   renderTerrain,
   drawDecals,
+  drawMapLabels,
   preloadDecalImages,
   decalImageSize,
   TerrainArt,
@@ -24,6 +25,7 @@ import { computeLayers, LayerSpec, OVERWORLD } from '../engine/board-layers';
 export type EditorPick =
   | { kind: 'node'; id: string }
   | { kind: 'decal'; index: number }
+  | { kind: 'label'; index: number }
   | null;
 
 /** Extra state the component wants drawn this frame. */
@@ -31,6 +33,7 @@ export interface EditorOverlay {
   selectedNode?: string | null;
   selectedNodes?: ReadonlySet<string>;
   selectedDecal?: number | null;
+  selectedLabel?: number | null;
   /** Connect mode: first endpoint already chosen. */
   connectFrom?: string | null;
   /** World-space cursor for the connect rubber band / add-node crosshair. */
@@ -113,7 +116,12 @@ export class EditorCanvas {
     if (!this.layers.some((l) => l.id === this.layerId)) this.layerId = OVERWORLD;
     this.terrain.clear();
     for (const spec of this.layers) {
-      this.terrain.set(spec.id, renderTerrain(this.doc, this.floorTex, this.landmarkTex, spec));
+      // Labels stay out of the baked art here — the editor draws them live
+      // every frame so dragging one never leaves a stale ghost behind.
+      this.terrain.set(
+        spec.id,
+        renderTerrain(this.doc, this.floorTex, this.landmarkTex, spec, { omitLabels: true }),
+      );
     }
     this.dirty = true;
   }
@@ -131,7 +139,10 @@ export class EditorCanvas {
     const layer = this.activeLayer();
     this.terrain.set(
       layer.id,
-      renderTerrain(this.doc, this.floorTex, this.landmarkTex, layer, { omitEdgesOf: id }),
+      renderTerrain(this.doc, this.floorTex, this.landmarkTex, layer, {
+        omitEdgesOf: id,
+        omitLabels: true,
+      }),
     );
     this.dirty = true;
   }
@@ -209,7 +220,17 @@ export class EditorCanvas {
     return { x: d.x - r, y: d.y - r * 1.4, w: r * 2, h: r * 1.8 };
   }
 
-  /** Nearest node disc first (they're the primary subject), then topmost decal. */
+  /** World-space box of a label, measured with its real font. */
+  labelBounds(l: MapLabel): { x: number; y: number; w: number; h: number } {
+    this.ctx.save();
+    this.ctx.font = `italic 600 ${l.size}px Georgia, "Times New Roman", serif`;
+    const w = Math.max(this.ctx.measureText(l.text).width, l.size);
+    this.ctx.restore();
+    const h = l.size * 1.2;
+    return { x: l.x - w / 2, y: l.y - h / 2, w, h };
+  }
+
+  /** Nearest node disc first, then topmost label, then topmost decal. */
   pick(worldX: number, worldY: number): EditorPick {
     const layer = this.activeLayer();
     let best: BoardNode | null = null;
@@ -223,6 +244,13 @@ export class EditorCanvas {
       }
     }
     if (best && bd <= NODE_R + 8) return { kind: 'node', id: best.id };
+    const labels = this.doc.labels ?? [];
+    for (let i = labels.length - 1; i >= 0; i--) {
+      const b = this.labelBounds(labels[i]);
+      if (worldX >= b.x && worldX <= b.x + b.w && worldY >= b.y && worldY <= b.y + b.h) {
+        return { kind: 'label', index: i };
+      }
+    }
     const decals = this.doc.decals ?? [];
     for (let i = decals.length - 1; i >= 0; i--) {
       const b = this.decalBounds(decals[i]);
@@ -254,6 +282,21 @@ export class EditorCanvas {
     if (art) {
       // renderTerrain pads by its margin and is cropped to the layer bounds.
       ctx.drawImage(art.canvas, layer.bounds.x - 200, layer.bounds.y - 200);
+    }
+
+    // Labels live on their own pass (omitted from the baked terrain) so
+    // moving one updates instantly without a terrain rebake.
+    drawMapLabels(ctx, this.doc, layer);
+    const li = this.overlay.selectedLabel;
+    if (li !== null && li !== undefined && this.doc.labels?.[li]) {
+      const b = this.labelBounds(this.doc.labels[li]);
+      ctx.save();
+      ctx.setLineDash([8 / this.zoom, 6 / this.zoom]);
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2 / this.zoom;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      ctx.setLineDash([]);
+      ctx.restore();
     }
 
     // Live path lines for a mid-drag node (its baked ribbons are omitted).

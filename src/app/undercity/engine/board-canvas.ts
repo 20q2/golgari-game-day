@@ -61,6 +61,19 @@ export interface MapDecal {
   seed?: number;
 }
 
+/** Free-floating ghosted title text, styled like the region labels. */
+export interface MapLabel {
+  text: string;
+  x: number;
+  y: number;
+  /** Font size in world px (region labels are 46). */
+  size: number;
+  /** Radians. */
+  rot: number;
+  /** Ink opacity — region labels use 0.16. */
+  alpha: number;
+}
+
 export interface BoardMap {
   worldW: number;
   worldH: number;
@@ -69,6 +82,7 @@ export interface BoardMap {
   nodes: BoardNode[];
   regions?: Record<string, RegionSpec>;
   decals?: MapDecal[];
+  labels?: MapLabel[];
 }
 
 export interface BoardPlayer {
