@@ -7,6 +7,8 @@
  * class only offers camera math, picking, and a render loop over the doc it's
  * given. Call invalidate() after any doc mutation: terrain re-renders and the
  * layer partition recomputes (region edits can create or dissolve pockets).
+ * Labels and the hover/selection dressing draw live every frame, so they
+ * animate and track drags without terrain rebakes.
  */
 import { BoardMap, BoardNode, MapDecal, MapLabel, RegionSpec } from '../engine/board-canvas';
 import {
@@ -34,11 +36,21 @@ export interface EditorOverlay {
   selectedNodes?: ReadonlySet<string>;
   selectedDecal?: number | null;
   selectedLabel?: number | null;
+  /** Pointer-hover pick, for the "this is clickable" ring/outline. */
+  hover?: EditorPick;
   /** Connect mode: first endpoint already chosen. */
   connectFrom?: string | null;
+  /** Connect mode: node under the cursor (band snaps + colors to it). */
+  connectTarget?: string | null;
+  /** True when the pending connect click would REMOVE an existing edge. */
+  connectRemoves?: boolean;
   /** World-space cursor for the connect rubber band / add-node crosshair. */
   cursor?: { x: number; y: number } | null;
   showIds?: boolean;
+  /** Draw a snap grid of this spacing (0/undefined = off). */
+  grid?: number;
+  /** Small cursor-anchored info chip. */
+  tooltip?: { x: number; y: number; lines: string[] } | null;
 }
 
 const LANDMARK_SRC: Record<string, string> = {
@@ -57,7 +69,7 @@ export class EditorCanvas {
   private landmarkTex: LandmarkTextures = {};
   private layerId = OVERWORLD;
   private raf = 0;
-  private dirty = true;
+  private dragNode: string | null = null;
 
   camX = 0;
   camY = 0;
@@ -87,7 +99,7 @@ export class EditorCanvas {
     }
     preloadDecalImages(doc, () => this.invalidate());
     this.invalidate();
-    if (!this.raf) this.loop();
+    if (!this.raf) this.loop(0);
   }
 
   /** Fetch a region's floor art if we don't have it yet (new/edited regions). */
@@ -116,17 +128,13 @@ export class EditorCanvas {
     if (!this.layers.some((l) => l.id === this.layerId)) this.layerId = OVERWORLD;
     this.terrain.clear();
     for (const spec of this.layers) {
-      // Labels stay out of the baked art here — the editor draws them live
-      // every frame so dragging one never leaves a stale ghost behind.
+      // Labels stay out of the baked art — drawn live every frame instead.
       this.terrain.set(
         spec.id,
         renderTerrain(this.doc, this.floorTex, this.landmarkTex, spec, { omitLabels: true }),
       );
     }
-    this.dirty = true;
   }
-
-  private dragNode: string | null = null;
 
   /**
    * A node drag is starting: bake the active layer's terrain once WITHOUT
@@ -144,7 +152,6 @@ export class EditorCanvas {
         omitLabels: true,
       }),
     );
-    this.dirty = true;
   }
 
   layerIds(): string[] {
@@ -157,28 +164,31 @@ export class EditorCanvas {
 
   setLayer(id: string): void {
     this.layerId = id;
+    this.fitView();
+  }
+
+  /** Fit + center the whole active layer in the viewport. */
+  fitView(): void {
     const b = this.activeLayer().bounds;
     this.camX = b.x + b.w / 2;
     this.camY = b.y + b.h / 2;
-    this.zoom = Math.min(this.canvas.width / b.w, this.canvas.height / b.h) * 0.9;
-    this.dirty = true;
+    this.zoom = Math.min(this.canvas.width / b.w, this.canvas.height / b.h) * 0.92;
   }
 
   centerOn(x: number, y: number): void {
     this.camX = x;
     this.camY = y;
-    this.dirty = true;
   }
 
   resize(): void {
     const r = this.canvas.getBoundingClientRect();
     this.canvas.width = r.width * devicePixelRatio;
     this.canvas.height = r.height * devicePixelRatio;
-    this.dirty = true;
   }
 
+  /** Kept for API compatibility — the loop renders every frame now. */
   redraw(): void {
-    this.dirty = true;
+    /* animated loop, nothing to mark */
   }
 
   toWorld(clientX: number, clientY: number): { x: number; y: number } {
@@ -194,7 +204,6 @@ export class EditorCanvas {
   panByScreen(dx: number, dy: number): void {
     this.camX -= (dx * devicePixelRatio) / this.zoom;
     this.camY -= (dy * devicePixelRatio) / this.zoom;
-    this.dirty = true;
   }
 
   zoomAt(clientX: number, clientY: number, factor: number): void {
@@ -203,7 +212,16 @@ export class EditorCanvas {
     const after = this.toWorld(clientX, clientY);
     this.camX += before.x - after.x;
     this.camY += before.y - after.y;
-    this.dirty = true;
+  }
+
+  /** Zoom around the viewport center (toolbar +/− buttons, keyboard). */
+  zoomBy(factor: number): void {
+    const r = this.canvas.getBoundingClientRect();
+    this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, factor);
+  }
+
+  zoomPct(): number {
+    return Math.round(this.zoom * 100);
   }
 
   /** Approximate world-space bounds of a decal, for picking + gizmos. */
@@ -230,6 +248,21 @@ export class EditorCanvas {
     return { x: l.x - w / 2, y: l.y - h / 2, w, h };
   }
 
+  /** Does this decal/label belong to the active layer (nearest-node rule)? */
+  private inActiveLayer(x: number, y: number): boolean {
+    const layer = this.activeLayer();
+    let best: BoardNode | null = null;
+    let bd = Infinity;
+    for (const n of this.doc.nodes) {
+      const d = (n.x - x) ** 2 + (n.y - y) ** 2;
+      if (d < bd) {
+        bd = d;
+        best = n;
+      }
+    }
+    return !!best && layer.nodeIds.has(best.id);
+  }
+
   /** Nearest node disc first, then topmost label, then topmost decal. */
   pick(worldX: number, worldY: number): EditorPick {
     const layer = this.activeLayer();
@@ -247,31 +280,43 @@ export class EditorCanvas {
     const labels = this.doc.labels ?? [];
     for (let i = labels.length - 1; i >= 0; i--) {
       const b = this.labelBounds(labels[i]);
-      if (worldX >= b.x && worldX <= b.x + b.w && worldY >= b.y && worldY <= b.y + b.h) {
+      if (
+        worldX >= b.x &&
+        worldX <= b.x + b.w &&
+        worldY >= b.y &&
+        worldY <= b.y + b.h &&
+        this.inActiveLayer(labels[i].x, labels[i].y)
+      ) {
         return { kind: 'label', index: i };
       }
     }
     const decals = this.doc.decals ?? [];
     for (let i = decals.length - 1; i >= 0; i--) {
       const b = this.decalBounds(decals[i]);
-      if (worldX >= b.x && worldX <= b.x + b.w && worldY >= b.y && worldY <= b.y + b.h) {
+      if (
+        worldX >= b.x &&
+        worldX <= b.x + b.w &&
+        worldY >= b.y &&
+        worldY <= b.y + b.h &&
+        this.inActiveLayer(decals[i].x, decals[i].y)
+      ) {
         return { kind: 'decal', index: i };
       }
     }
     return null;
   }
 
-  private loop = (): void => {
+  private loop = (ts: number): void => {
     this.raf = requestAnimationFrame(this.loop);
-    if (!this.dirty || !this.doc || !this.layers.length) return;
-    this.dirty = false;
-    this.frame();
+    if (!this.doc || !this.layers.length) return;
+    this.frame(ts);
   };
 
-  private frame(): void {
+  private frame(ts: number): void {
     const { ctx, canvas } = this;
     const layer = this.activeLayer();
     const art = this.terrain.get(layer.id);
+    const o = this.overlay;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#0b0d0a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -284,20 +329,33 @@ export class EditorCanvas {
       ctx.drawImage(art.canvas, layer.bounds.x - 200, layer.bounds.y - 200);
     }
 
-    // Labels live on their own pass (omitted from the baked terrain) so
-    // moving one updates instantly without a terrain rebake.
-    drawMapLabels(ctx, this.doc, layer);
-    const li = this.overlay.selectedLabel;
-    if (li !== null && li !== undefined && this.doc.labels?.[li]) {
-      const b = this.labelBounds(this.doc.labels[li]);
+    // Snap grid, faint and dotted, clipped to the layer's neighborhood.
+    if (o.grid) {
+      const g = o.grid;
+      const b = layer.bounds;
       ctx.save();
-      ctx.setLineDash([8 / this.zoom, 6 / this.zoom]);
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2 / this.zoom;
-      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = 'rgba(183, 228, 199, 0.07)';
+      ctx.lineWidth = 1 / this.zoom;
+      ctx.setLineDash([2 / this.zoom, 6 / this.zoom]);
+      for (let x = Math.floor(b.x / g) * g; x <= b.x + b.w; x += g) {
+        ctx.beginPath();
+        ctx.moveTo(x, b.y);
+        ctx.lineTo(x, b.y + b.h);
+        ctx.stroke();
+      }
+      for (let y = Math.floor(b.y / g) * g; y <= b.y + b.h; y += g) {
+        ctx.beginPath();
+        ctx.moveTo(b.x, y);
+        ctx.lineTo(b.x + b.w, y);
+        ctx.stroke();
+      }
       ctx.setLineDash([]);
       ctx.restore();
     }
+
+    // Labels live on their own pass (omitted from the baked terrain) so
+    // moving one updates instantly without a terrain rebake.
+    drawMapLabels(ctx, this.doc, layer);
 
     // Live path lines for a mid-drag node (its baked ribbons are omitted).
     if (this.dragNode) {
@@ -306,17 +364,17 @@ export class EditorCanvas {
         ctx.save();
         ctx.lineCap = 'round';
         for (const nb of n.neighbors) {
-          const o = this.doc.nodes.find((x) => x.id === nb);
-          if (!o) continue;
+          const other = this.doc.nodes.find((x) => x.id === nb);
+          if (!other) continue;
           ctx.beginPath();
           ctx.moveTo(n.x, n.y);
-          ctx.lineTo(o.x, o.y);
+          ctx.lineTo(other.x, other.y);
           ctx.strokeStyle = 'rgba(88, 96, 82, 0.85)';
           ctx.lineWidth = 24;
           ctx.stroke();
           ctx.beginPath();
           ctx.moveTo(n.x, n.y);
-          ctx.lineTo(o.x, o.y);
+          ctx.lineTo(other.x, other.y);
           ctx.setLineDash([3, 30]);
           ctx.strokeStyle = 'rgba(222, 230, 210, 0.7)';
           ctx.lineWidth = 5;
@@ -327,16 +385,40 @@ export class EditorCanvas {
       }
     }
 
+    // Hover ring first (under the discs' own selection ring).
+    if (o.hover?.kind === 'node' && o.hover.id !== o.selectedNode) {
+      const n = this.doc.nodes.find((x) => x.id === (o.hover as { id: string }).id);
+      if (n) {
+        ctx.beginPath();
+        ctx.ellipse(n.x, n.y, NODE_R + 7, DISC_RY + 5, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(235, 255, 240, 0.5)';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      }
+    }
+
     // Discs + optional id labels, y-sorted like the game.
     const nodes = this.doc.nodes
       .filter((n) => layer.nodeIds.has(n.id))
       .sort((a, b) => a.y - b.y);
     for (const n of nodes) {
       drawSpaceDisc(ctx, n, {
-        selected: n.id === this.overlay.selectedNode || !!this.overlay.selectedNodes?.has(n.id),
+        selected: n.id === o.selectedNode || !!o.selectedNodes?.has(n.id),
       });
     }
-    if (this.overlay.showIds) {
+    // Pulse on the primary selection: a soft gold breath over the ring.
+    if (o.selectedNode) {
+      const n = this.doc.nodes.find((x) => x.id === o.selectedNode);
+      if (n) {
+        const pulse = 0.35 + 0.3 * Math.sin(ts * 0.005);
+        ctx.beginPath();
+        ctx.ellipse(n.x, n.y, NODE_R + 13, DISC_RY + 10, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(251, 191, 36, ${pulse})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+    if (o.showIds) {
       ctx.font = '13px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
@@ -352,35 +434,86 @@ export class EditorCanvas {
 
     drawDecals(ctx, this.doc, 'over', layer);
 
-    // Selected decal gizmo: dashed box, always on top so 'under' decals baked
-    // into the terrain stay selectable.
-    const di = this.overlay.selectedDecal;
-    if (di !== null && di !== undefined && this.doc.decals?.[di]) {
-      const b = this.decalBounds(this.doc.decals[di]);
+    // Gizmos: marching-ants boxes on the selected (and hovered) decal/label.
+    const ants = (b: { x: number; y: number; w: number; h: number }, strong: boolean) => {
       ctx.save();
       ctx.setLineDash([8 / this.zoom, 6 / this.zoom]);
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2 / this.zoom;
+      ctx.lineDashOffset = -ts / 40 / this.zoom;
+      ctx.strokeStyle = strong ? '#fbbf24' : 'rgba(235, 255, 240, 0.45)';
+      ctx.lineWidth = (strong ? 2 : 1.5) / this.zoom;
       ctx.strokeRect(b.x, b.y, b.w, b.h);
       ctx.setLineDash([]);
       ctx.restore();
+    };
+    const di = o.selectedDecal;
+    if (di !== null && di !== undefined && this.doc.decals?.[di]) {
+      ants(this.decalBounds(this.doc.decals[di]), true);
+    }
+    const li = o.selectedLabel;
+    if (li !== null && li !== undefined && this.doc.labels?.[li]) {
+      ants(this.labelBounds(this.doc.labels[li]), true);
+    }
+    if (o.hover?.kind === 'decal' && o.hover.index !== di && this.doc.decals?.[o.hover.index]) {
+      ants(this.decalBounds(this.doc.decals[o.hover.index]), false);
+    }
+    if (o.hover?.kind === 'label' && o.hover.index !== li && this.doc.labels?.[o.hover.index]) {
+      ants(this.labelBounds(this.doc.labels[o.hover.index]), false);
     }
 
-    // Connect-mode rubber band from the chosen endpoint to the cursor.
-    if (this.overlay.connectFrom && this.overlay.cursor) {
-      const from = this.doc.nodes.find((n) => n.id === this.overlay.connectFrom);
-      if (from) {
+    // Connect-mode rubber band: snaps to the hovered node and shows whether
+    // the click would add (green) or remove (red) the edge.
+    if (o.connectFrom && (o.cursor || o.connectTarget)) {
+      const from = this.doc.nodes.find((n) => n.id === o.connectFrom);
+      const target = o.connectTarget
+        ? this.doc.nodes.find((n) => n.id === o.connectTarget)
+        : null;
+      const end = target ?? o.cursor;
+      if (from && end) {
+        const color = target ? (o.connectRemoves ? '#f87171' : '#6ee7a0') : '#fbbf24';
         ctx.save();
         ctx.setLineDash([10 / this.zoom, 8 / this.zoom]);
-        ctx.strokeStyle = '#fbbf24';
+        ctx.lineDashOffset = -ts / 30 / this.zoom;
+        ctx.strokeStyle = color;
         ctx.lineWidth = 3 / this.zoom;
         ctx.beginPath();
         ctx.moveTo(from.x, from.y);
-        ctx.lineTo(this.overlay.cursor.x, this.overlay.cursor.y);
+        ctx.lineTo(end.x, end.y);
         ctx.stroke();
         ctx.setLineDash([]);
+        // Anchor ring on the from-node so chains read clearly.
+        ctx.beginPath();
+        ctx.ellipse(from.x, from.y, NODE_R + 10, DISC_RY + 8, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.5 / this.zoom;
+        ctx.stroke();
         ctx.restore();
       }
+    }
+
+    // Cursor tooltip chip — constant screen size, so scale by 1/zoom.
+    if (o.tooltip) {
+      const t = o.tooltip;
+      ctx.save();
+      ctx.translate(t.x, t.y);
+      ctx.scale(1 / this.zoom, 1 / this.zoom);
+      ctx.font = '600 13px monospace';
+      const w = Math.max(...t.lines.map((l) => ctx.measureText(l).width)) + 16;
+      const h = t.lines.length * 17 + 10;
+      ctx.translate(16, 16);
+      ctx.fillStyle = 'rgba(10, 12, 9, 0.88)';
+      ctx.strokeStyle = 'rgba(74, 124, 89, 0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(0, 0, w, h, 5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      t.lines.forEach((line, i) => {
+        ctx.fillStyle = i === 0 ? '#d8f3dc' : '#8a978a';
+        ctx.fillText(line, 8, 6 + i * 17);
+      });
+      ctx.restore();
     }
   }
 }

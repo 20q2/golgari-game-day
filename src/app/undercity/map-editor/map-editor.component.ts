@@ -25,9 +25,31 @@ import {
   listUndercityImages,
   pickRepoRoot,
   saveMap,
+  serializeMap,
 } from './file-io';
 
 type Mode = 'select' | 'add' | 'connect' | 'decal' | 'label' | 'region';
+
+const MODE_KEYS: Record<string, Mode> = {
+  v: 'select',
+  a: 'add',
+  c: 'connect',
+  d: 'decal',
+  l: 'label',
+  r: 'region',
+};
+
+const MODE_HINTS: Record<Mode, string> = {
+  select: 'drag spaces, decals and labels · click to inspect',
+  add: 'click empty ground to add a space — auto-links to the selected one',
+  connect: 'click two spaces to toggle their path · keeps chaining · Esc ends',
+  decal: 'pick from the palette, then click to place · click a decal to edit',
+  label: 'click empty ground to place a ghost title · drag to move',
+  region: 'click spaces to gather them, then assign a region',
+};
+
+const SNAP = 25;
+const DRAFT_KEY = 'undercity-map-editor-draft';
 
 /** Images offered before the repo folder is granted (can't list dirs via HTTP). */
 const SEED_IMAGES = [
@@ -60,12 +82,30 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
 
   protected doc = signal<BoardMap | null>(null);
   protected readonly mode = signal<Mode>('select');
+  protected readonly modeHints = MODE_HINTS;
   protected readonly layerId = signal('overworld');
   protected readonly layerIds = signal<string[]>(['overworld']);
   protected readonly showIds = signal(false);
+  protected readonly snap = signal(false);
+  protected readonly autoLink = signal(true);
   protected readonly message = signal<string | null>(null);
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Selection: one node, one decal, or (region mode) a set of nodes.
+  // Status bar readouts.
+  protected readonly cursor = signal<{ x: number; y: number } | null>(null);
+  protected readonly zoomPct = signal(100);
+  protected readonly counts = computed(() => {
+    const d = this.doc();
+    if (!d) return null;
+    return {
+      nodes: d.nodes.length,
+      decals: d.decals?.length ?? 0,
+      labels: d.labels?.length ?? 0,
+      regions: Object.keys(d.regions ?? {}).length,
+    };
+  });
+
+  // Selection: one node, one decal, one label, or (region mode) a node set.
   protected readonly selNode = signal<string | null>(null);
   protected readonly selDecal = signal<number | null>(null);
   protected readonly selLabel = signal<number | null>(null);
@@ -80,6 +120,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   protected readonly placingImage = signal<string | null>(null);
 
   protected readonly typeNames = SPACE_NAMES;
+  protected readonly typeIcons = SPACE_ICONS;
   protected readonly nodeTypes = Object.keys(SPACE_ICONS).filter((t) => t !== 'boss_sealed');
 
   protected readonly lint = signal<LintIssue[]>([]);
@@ -91,9 +132,11 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   private repoRoot: Awaited<ReturnType<typeof pickRepoRoot>> = null;
   protected readonly rootPicked = signal(false);
   protected readonly dirtySinceSave = signal(false);
+  protected readonly draftAvailable = signal(false);
 
   private undoStack: string[] = [];
   private redoStack: string[] = [];
+  private lastNudgeAt = 0;
 
   private canvas!: EditorCanvas;
   private drag: {
@@ -105,8 +148,13 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     moved: boolean;
   } | null = null;
 
+  protected readonly cursorStyle = signal('grab');
+
   private readonly keyHandler = (e: KeyboardEvent) => this.onKey(e);
   private readonly resizeHandler = () => this.canvas?.resize();
+  private readonly unloadHandler = (e: BeforeUnloadEvent) => {
+    if (this.dirtySinceSave()) e.preventDefault();
+  };
 
   async ngAfterViewInit(): Promise<void> {
     await preloadAll(); // Material Icons font + sprites for glyph drawing
@@ -119,19 +167,25 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     this.doc.set(doc);
     this.canvas.setDoc(doc);
     this.canvas.setLayer('overworld');
+    this.zoomPct.set(this.canvas.zoomPct());
     this.afterDocChange(false);
     this.renderStampThumbs();
+    // A draft newer than the file survives reloads — offer it back.
+    const draft = localStorage.getItem(DRAFT_KEY);
+    this.draftAvailable.set(!!draft && draft !== serializeMap(doc));
     window.addEventListener('keydown', this.keyHandler);
     window.addEventListener('resize', this.resizeHandler);
+    window.addEventListener('beforeunload', this.unloadHandler);
   }
 
   ngOnDestroy(): void {
     this.canvas?.destroy();
     window.removeEventListener('keydown', this.keyHandler);
     window.removeEventListener('resize', this.resizeHandler);
+    window.removeEventListener('beforeunload', this.unloadHandler);
   }
 
-  // ── Doc access + undo ────────────────────────────────────────────────────
+  // ── Doc access + undo + drafts ───────────────────────────────────────────
 
   private d(): BoardMap {
     return this.doc()!;
@@ -149,8 +203,26 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     this.canvas.invalidate();
     this.layerIds.set(this.canvas.layerIds());
     this.lint.set(lintMap(this.d()));
-    if (markDirty) this.dirtySinceSave.set(true);
+    if (markDirty) {
+      this.dirtySinceSave.set(true);
+      localStorage.setItem(DRAFT_KEY, serializeMap(this.d()));
+    }
     this.syncOverlay();
+  }
+
+  protected restoreDraft(): void {
+    const draft = localStorage.getItem(DRAFT_KEY);
+    if (!draft) return;
+    this.snapshot();
+    this.restore(draft);
+    this.dirtySinceSave.set(true);
+    this.draftAvailable.set(false);
+    this.toast('Draft restored — unsaved edits from your last session are back.');
+  }
+
+  protected discardDraft(): void {
+    localStorage.removeItem(DRAFT_KEY);
+    this.draftAvailable.set(false);
   }
 
   protected undo(): void {
@@ -175,7 +247,17 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     this.afterDocChange();
   }
 
+  private toast(text: string): void {
+    this.message.set(text);
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => this.message.set(null), 4500);
+  }
+
   // ── Pointer handling ─────────────────────────────────────────────────────
+
+  private applySnap(v: number): number {
+    return this.snap() ? Math.round(v / SNAP) * SNAP : Math.round(v);
+  }
 
   onPointerDown(e: PointerEvent): void {
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -200,7 +282,13 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       if (pick?.kind === 'label') {
         this.applyPick(pick);
         this.snapshot();
-        this.drag = { kind: 'label', index: pick.index, lastX: e.clientX, lastY: e.clientY, moved: false };
+        this.drag = {
+          kind: 'label',
+          index: pick.index,
+          lastX: e.clientX,
+          lastY: e.clientY,
+          moved: false,
+        };
       } else if (!pick) {
         this.placeLabelAt(w.x, w.y);
       }
@@ -221,7 +309,13 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     if (mode === 'decal' && pick?.kind === 'decal') {
       this.selDecal.set(pick.index);
       this.snapshot();
-      this.drag = { kind: 'decal', index: pick.index, lastX: e.clientX, lastY: e.clientY, moved: false };
+      this.drag = {
+        kind: 'decal',
+        index: pick.index,
+        lastX: e.clientX,
+        lastY: e.clientY,
+        moved: false,
+      };
       this.syncOverlay();
       return;
     }
@@ -239,11 +333,27 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
 
   onPointerMove(e: PointerEvent): void {
     const w = this.canvas.toWorld(e.clientX, e.clientY);
-    if (this.mode() === 'connect' || this.mode() === 'add') {
+    this.cursor.set({ x: Math.round(w.x), y: Math.round(w.y) });
+
+    if (!this.drag) {
+      // Hover feedback: ring/outline + tooltip + cursor affordance.
+      const pick = this.canvas.pick(w.x, w.y);
+      this.canvas.overlay.hover = pick;
       this.canvas.overlay.cursor = w;
-      this.canvas.redraw();
+      this.canvas.overlay.tooltip = this.tooltipFor(pick);
+      if (this.mode() === 'connect') {
+        const from = this.connectFrom();
+        this.canvas.overlay.connectTarget =
+          pick?.kind === 'node' && pick.id !== from ? pick.id : null;
+        if (from && pick?.kind === 'node') {
+          const a = this.d().nodes.find((n) => n.id === from);
+          this.canvas.overlay.connectRemoves = !!a?.neighbors.includes(pick.id);
+        }
+      }
+      this.cursorStyle.set(this.cursorFor(pick));
+      return;
     }
-    if (!this.drag) return;
+
     const dx = e.clientX - this.drag.lastX;
     const dy = e.clientY - this.drag.lastY;
     this.drag.lastX = e.clientX;
@@ -259,23 +369,20 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       if (firstMove) this.canvas.beginNodeDrag(this.drag.id);
       const n = this.d().nodes.find((x) => x.id === this.drag!.id);
       if (n) {
-        n.x = Math.round(w.x);
-        n.y = Math.round(w.y);
-        this.canvas.redraw();
+        n.x = this.applySnap(w.x);
+        n.y = this.applySnap(w.y);
       }
     } else if (this.drag.kind === 'decal' && this.drag.index !== undefined) {
       const d = this.d().decals?.[this.drag.index];
       if (d) {
-        d.x = Math.round(w.x);
-        d.y = Math.round(w.y);
-        this.canvas.redraw();
+        d.x = this.applySnap(w.x);
+        d.y = this.applySnap(w.y);
       }
     } else if (this.drag.kind === 'label' && this.drag.index !== undefined) {
       const l = this.d().labels?.[this.drag.index];
       if (l) {
-        l.x = Math.round(w.x);
-        l.y = Math.round(w.y);
-        this.canvas.redraw();
+        l.x = this.applySnap(w.x);
+        l.y = this.applySnap(w.y);
       }
     }
   }
@@ -294,9 +401,52 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  onPointerLeave(): void {
+    this.cursor.set(null);
+    this.canvas.overlay.hover = null;
+    this.canvas.overlay.tooltip = null;
+  }
+
   onWheel(e: WheelEvent): void {
     e.preventDefault();
     this.canvas.zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.15 : 1 / 1.15);
+    this.zoomPct.set(this.canvas.zoomPct());
+  }
+
+  private tooltipFor(pick: EditorPick): { x: number; y: number; lines: string[] } | null {
+    if (!pick) return null;
+    const w = this.cursor();
+    if (!w) return null;
+    if (pick.kind === 'node') {
+      const n = this.d().nodes.find((x) => x.id === pick.id);
+      if (!n) return null;
+      return {
+        x: w.x,
+        y: w.y,
+        lines: [n.id, `${this.typeNames[n.type] || n.type} · ${n.region ?? '—'}`],
+      };
+    }
+    if (pick.kind === 'label') {
+      const l = this.d().labels?.[pick.index];
+      return l ? { x: w.x, y: w.y, lines: [`“${l.text}”`, 'label'] } : null;
+    }
+    const d = this.d().decals?.[pick.index];
+    if (!d) return null;
+    return {
+      x: w.x,
+      y: w.y,
+      lines: [d.kind === 'stamp' ? (d.stamp ?? 'stamp') : (d.src ?? 'image'), `decal · ${d.layer}`],
+    };
+  }
+
+  private cursorFor(pick: EditorPick): string {
+    const mode = this.mode();
+    if (mode === 'add' || (mode === 'decal' && (this.placingStamp() || this.placingImage()))) {
+      return 'crosshair';
+    }
+    if (mode === 'label' && !pick) return 'crosshair';
+    if (pick) return mode === 'connect' && pick.kind !== 'node' ? 'grab' : 'pointer';
+    return 'grab';
   }
 
   private applyPick(pick: EditorPick): void {
@@ -327,20 +477,26 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
 
   private syncOverlay(): void {
     if (!this.canvas) return;
+    const prev = this.canvas.overlay;
     this.canvas.overlay = {
+      ...prev,
       selectedNode: this.selNode(),
       selectedNodes: this.selNodes(),
       selectedDecal: this.selDecal(),
       selectedLabel: this.selLabel(),
       connectFrom: this.connectFrom(),
-      cursor: this.canvas.overlay.cursor,
       showIds: this.showIds(),
+      grid: this.snap() ? 100 : 0,
     };
-    this.canvas.redraw();
   }
 
   private onKey(e: KeyboardEvent): void {
-    if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'SELECT') {
+    const tag = (e.target as HTMLElement).tagName;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
+    const key = e.key.toLowerCase();
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && MODE_KEYS[key]) {
+      this.setMode(MODE_KEYS[key]);
       return;
     }
     if (e.key === 'Escape') {
@@ -349,19 +505,76 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       this.clearSelection();
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       this.deleteSelection();
-    } else if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'z') {
+    } else if (e.key.startsWith('Arrow')) {
+      this.nudge(e);
+    } else if (!e.ctrlKey && (e.key === '+' || e.key === '=')) {
+      this.zoomIn();
+    } else if (!e.ctrlKey && e.key === '-') {
+      this.zoomOut();
+    } else if (key === 'f' || e.key === '0') {
+      this.fitView();
+    } else if (key === 'g') {
+      this.toggleSnap();
+    } else if (key === 'i') {
+      this.toggleIds();
+    } else if (e.ctrlKey && !e.shiftKey && key === 'z') {
       e.preventDefault();
       this.undo();
-    } else if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z') || (e.ctrlKey && e.key.toLowerCase() === 'y')) {
+    } else if ((e.ctrlKey && e.shiftKey && key === 'z') || (e.ctrlKey && key === 'y')) {
       e.preventDefault();
       this.redo();
-    } else if (e.ctrlKey && e.key.toLowerCase() === 's') {
+    } else if (e.ctrlKey && key === 's') {
       e.preventDefault();
       void this.save();
+    } else if (e.ctrlKey && key === 'd') {
+      e.preventDefault();
+      this.duplicateSelection();
     }
   }
 
-  // ── Modes + selection helpers ────────────────────────────────────────────
+  /** Arrow keys move the selection; Shift = coarse. Bursts share one undo. */
+  private nudge(e: KeyboardEvent): void {
+    const step = e.shiftKey ? 20 : 2;
+    const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+    const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+    const target: { x: number; y: number } | undefined | null = this.selNode()
+      ? this.d().nodes.find((n) => n.id === this.selNode())
+      : this.selDecal() !== null
+        ? this.d().decals?.[this.selDecal()!]
+        : this.selLabel() !== null
+          ? this.d().labels?.[this.selLabel()!]
+          : null;
+    if (!target || (!dx && !dy)) return;
+    e.preventDefault();
+    const now = Date.now();
+    if (now - this.lastNudgeAt > 800) this.snapshot();
+    this.lastNudgeAt = now;
+    target.x += dx;
+    target.y += dy;
+    this.afterDocChange();
+  }
+
+  private duplicateSelection(): void {
+    if (this.selDecal() !== null) {
+      const src = this.d().decals?.[this.selDecal()!];
+      if (!src) return;
+      this.snapshot();
+      const copy: MapDecal = { ...src, x: src.x + 40, y: src.y + 30 };
+      if (copy.kind === 'stamp') copy.seed = Math.floor(Math.random() * 1e6);
+      this.d().decals!.push(copy);
+      this.selDecal.set(this.d().decals!.length - 1);
+      this.afterDocChange();
+    } else if (this.selLabel() !== null) {
+      const src = this.d().labels?.[this.selLabel()!];
+      if (!src) return;
+      this.snapshot();
+      this.d().labels!.push({ ...src, x: src.x + 40, y: src.y + 30 });
+      this.selLabel.set(this.d().labels!.length - 1);
+      this.afterDocChange();
+    }
+  }
+
+  // ── Modes + view helpers ─────────────────────────────────────────────────
 
   protected setMode(m: Mode): void {
     this.mode.set(m);
@@ -369,17 +582,43 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     this.placingImage.set(null);
     this.connectFrom.set(null);
     this.canvas.overlay.cursor = null;
+    this.canvas.overlay.connectTarget = null;
     this.syncOverlay();
   }
 
   protected setLayer(id: string): void {
     this.layerId.set(id);
     this.canvas.setLayer(id);
+    this.zoomPct.set(this.canvas.zoomPct());
   }
 
   protected toggleIds(): void {
     this.showIds.update((v) => !v);
     this.syncOverlay();
+  }
+
+  protected toggleSnap(): void {
+    this.snap.update((v) => !v);
+    this.syncOverlay();
+  }
+
+  protected toggleAutoLink(): void {
+    this.autoLink.update((v) => !v);
+  }
+
+  protected zoomIn(): void {
+    this.canvas.zoomBy(1.25);
+    this.zoomPct.set(this.canvas.zoomPct());
+  }
+
+  protected zoomOut(): void {
+    this.canvas.zoomBy(1 / 1.25);
+    this.zoomPct.set(this.canvas.zoomPct());
+  }
+
+  protected fitView(): void {
+    this.canvas.fitView();
+    this.zoomPct.set(this.canvas.zoomPct());
   }
 
   protected selectedNode(): BoardNode | null {
@@ -397,36 +636,18 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     return i === null ? null : (this.d().labels?.[i] ?? null);
   }
 
-  private placeLabelAt(x: number, y: number): void {
-    this.snapshot();
-    const label: MapLabel = {
-      text: 'New Label',
-      x: Math.round(x),
-      y: Math.round(y),
-      size: 46,
-      rot: 0,
-      alpha: 0.16,
-    };
-    this.d().labels!.push(label);
-    this.selLabel.set(this.d().labels!.length - 1);
-    this.afterDocChange();
-  }
-
-  protected updateLabel(l: MapLabel, patch: Partial<MapLabel>): void {
-    this.snapshot();
-    Object.assign(l, patch);
-    this.afterDocChange();
-  }
-
-  protected labelRotDeg(l: MapLabel): number {
-    return Math.round((l.rot * 180) / Math.PI);
-  }
-
   protected focusIssue(issue: LintIssue): void {
     if (!issue.nodeId) return;
-    const n = this.d().nodes.find((x) => x.id === issue.nodeId);
+    this.jumpToNode(issue.nodeId);
+  }
+
+  /** Select a node and glide the camera to it (also used by neighbor chips). */
+  protected jumpToNode(id: string): void {
+    const n = this.d().nodes.find((x) => x.id === id);
     if (!n) return;
     this.selNode.set(n.id);
+    this.selDecal.set(null);
+    this.selLabel.set(null);
     this.canvas.centerOn(n.x, n.y);
     this.syncOverlay();
   }
@@ -450,11 +671,18 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     const node: BoardNode = {
       id: `n${i}`,
       type: 'loot',
-      x: Math.round(x),
-      y: Math.round(y),
+      x: this.applySnap(x),
+      y: this.applySnap(y),
       region,
       neighbors: [],
     };
+    // Chain building: link the fresh space to the current selection so
+    // clicking along a route lays a connected path in one pass.
+    const prev = this.autoLink() ? this.selectedNode() : null;
+    if (prev && layer.nodeIds.has(prev.id)) {
+      node.neighbors.push(prev.id);
+      prev.neighbors.push(node.id);
+    }
     doc.nodes.push(node);
     this.selNode.set(node.id);
     this.afterDocChange();
@@ -480,8 +708,11 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
         b.neighbors.push(a.id);
       }
       this.afterDocChange();
+      // Chain: the node just clicked becomes the next path's start.
+      this.connectFrom.set(id);
+    } else {
+      this.connectFrom.set(null);
     }
-    this.connectFrom.set(null);
     this.syncOverlay();
   }
 
@@ -513,7 +744,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     if (!id || id === n.id) return;
     const doc = this.d();
     if (doc.nodes.some((x) => x.id === id)) {
-      this.message.set(`A node called "${id}" already exists.`);
+      this.toast(`A node called "${id}" already exists.`);
       return;
     }
     this.snapshot();
@@ -540,6 +771,14 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     this.afterDocChange();
   }
 
+  protected unlink(n: BoardNode, nb: string): void {
+    this.snapshot();
+    n.neighbors = n.neighbors.filter((x) => x !== nb);
+    const other = this.d().nodes.find((x) => x.id === nb);
+    if (other) other.neighbors = other.neighbors.filter((x) => x !== n.id);
+    this.afterDocChange();
+  }
+
   // ── Decals ───────────────────────────────────────────────────────────────
 
   private renderStampThumbs(): void {
@@ -549,7 +788,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       const ctx = c.getContext('2d')!;
       ctx.fillStyle = '#181c16';
       ctx.fillRect(0, 0, 72, 72);
-      drawStamp(ctx, name, 36, 54, 0.55, 0, 7);
+      drawStamp(ctx, name, 36, 58, 0.6, 0, 7);
       this.stampThumbs[name] = c.toDataURL();
     }
   }
@@ -571,8 +810,8 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       ? {
           kind: 'stamp',
           stamp: this.placingStamp()!,
-          x: Math.round(x),
-          y: Math.round(y),
+          x: this.applySnap(x),
+          y: this.applySnap(y),
           scale: 1,
           rot: 0,
           layer: 'under',
@@ -581,8 +820,8 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       : {
           kind: 'image',
           src: this.placingImage()!,
-          x: Math.round(x),
-          y: Math.round(y),
+          x: this.applySnap(x),
+          y: this.applySnap(y),
           scale: 1,
           rot: 0,
           layer: 'under',
@@ -601,6 +840,33 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   /** Degrees in the panel, radians in the file. */
   protected decalRotDeg(d: MapDecal): number {
     return Math.round((d.rot * 180) / Math.PI);
+  }
+
+  // ── Labels ───────────────────────────────────────────────────────────────
+
+  private placeLabelAt(x: number, y: number): void {
+    this.snapshot();
+    const label: MapLabel = {
+      text: 'New Label',
+      x: this.applySnap(x),
+      y: this.applySnap(y),
+      size: 46,
+      rot: 0,
+      alpha: 0.16,
+    };
+    this.d().labels!.push(label);
+    this.selLabel.set(this.d().labels!.length - 1);
+    this.afterDocChange();
+  }
+
+  protected updateLabel(l: MapLabel, patch: Partial<MapLabel>): void {
+    this.snapshot();
+    Object.assign(l, patch);
+    this.afterDocChange();
+  }
+
+  protected labelRotDeg(l: MapLabel): number {
+    return Math.round((l.rot * 180) / Math.PI);
   }
 
   // ── Regions ──────────────────────────────────────────────────────────────
@@ -626,12 +892,12 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     const id = prompt('New region id (letters/underscores, e.g. gloom_crypt):')?.trim();
     if (!id) return;
     if (!/^[a-z][a-z0-9_]*$/.test(id)) {
-      this.message.set('Region ids are lowercase letters, digits, underscores.');
+      this.toast('Region ids are lowercase letters, digits, underscores.');
       return;
     }
     const doc = this.d();
     if (doc.regions![id]) {
-      this.message.set(`Region "${id}" already exists.`);
+      this.toast(`Region "${id}" already exists.`);
       return;
     }
     this.snapshot();
@@ -668,35 +934,34 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     this.repoRoot = await pickRepoRoot();
     this.rootPicked.set(!!this.repoRoot);
     if (this.repoRoot) {
-      this.message.set('Repo folder granted — Ctrl+S writes both map copies.');
+      this.toast('Repo folder granted — Ctrl+S writes both map copies.');
       try {
         this.images.set(await listUndercityImages(this.repoRoot));
       } catch {
         /* keep the seed list */
       }
     } else {
-      this.message.set("That folder isn't the repo root (map.json copies not found).");
+      this.toast("That folder isn't the repo root (map.json copies not found).");
     }
   }
 
   protected async save(): Promise<void> {
     if (this.errorCount() > 0) {
-      this.message.set(`Fix ${this.errorCount()} error(s) before saving.`);
+      this.toast(`Fix ${this.errorCount()} error(s) before saving.`);
       return;
     }
     if (this.repoRoot) {
       try {
         await saveMap(this.repoRoot, this.d());
         this.dirtySinceSave.set(false);
-        this.message.set('Saved both map.json copies. Reload the game tab to see it live.');
+        localStorage.removeItem(DRAFT_KEY);
+        this.toast('Saved both map.json copies. Reload the game tab to see it live.');
       } catch (e) {
-        this.message.set(e instanceof Error ? e.message : 'Save failed');
+        this.toast(e instanceof Error ? e.message : 'Save failed');
       }
     } else {
       downloadMap(this.d());
-      this.message.set(
-        'Downloaded map.json — place it in infrastructure/lambda/ and run sync_map.py.',
-      );
+      this.toast('Downloaded map.json — place it in infrastructure/lambda/ and run sync_map.py.');
     }
   }
 }
