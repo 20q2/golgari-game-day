@@ -237,11 +237,14 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     this.drag.lastX = e.clientX;
     this.drag.lastY = e.clientY;
     if (dx === 0 && dy === 0) return;
+    const firstMove = !this.drag.moved;
     this.drag.moved = true;
 
     if (this.drag.kind === 'pan') {
-      this.canvas.panByScreen(-dx, -dy);
+      // Grab-the-map: the world follows the cursor.
+      this.canvas.panByScreen(dx, dy);
     } else if (this.drag.kind === 'node' && this.drag.id) {
+      if (firstMove) this.canvas.beginNodeDrag(this.drag.id);
       const n = this.d().nodes.find((x) => x.id === this.drag!.id);
       if (n) {
         n.x = Math.round(w.x);

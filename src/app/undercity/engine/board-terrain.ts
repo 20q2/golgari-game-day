@@ -664,7 +664,7 @@ export function renderTerrain(
   floors?: FloorTextures,
   landmarkArt?: LandmarkTextures,
   layer?: LayerSpec,
-  opts?: { cleared?: boolean },
+  opts?: { cleared?: boolean; omitEdgesOf?: string },
 ): TerrainArt {
   const cleared = opts?.cleared ?? false;
   // A layer restricts what we draw to a node subset within a world-space
@@ -687,7 +687,12 @@ export function renderTerrain(
   ctx.translate(TERRAIN_MARGIN - bx, TERRAIN_MARGIN - by);
   const glowSpots: GlowSpot[] = [];
   const allCurves = edgeCurves(map);
-  const curves = allCurves.filter((c) => inLayer(c.a) && inLayer(c.b));
+  // omitEdgesOf: the map editor bakes terrain without a mid-drag node's
+  // ribbons and draws live lines instead, so paths never detach from discs.
+  const omit = opts?.omitEdgesOf;
+  const curves = allCurves.filter(
+    (c) => inLayer(c.a) && inLayer(c.b) && c.a.id !== omit && c.b.id !== omit,
+  );
   let river: Pt[] = [];
   const rand = mulberry32(hashStr('undercity-terrain'));
 

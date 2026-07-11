@@ -106,6 +106,7 @@ export class EditorCanvas {
   /** Doc changed: rebuild the layer partition + every layer's terrain. */
   invalidate(): void {
     if (!this.doc) return;
+    this.dragNode = null;
     // New image decals may have appeared since the last preload sweep.
     preloadDecalImages(this.doc, () => this.invalidate());
     this.layers = computeLayers(this.doc);
@@ -114,6 +115,24 @@ export class EditorCanvas {
     for (const spec of this.layers) {
       this.terrain.set(spec.id, renderTerrain(this.doc, this.floorTex, this.landmarkTex, spec));
     }
+    this.dirty = true;
+  }
+
+  private dragNode: string | null = null;
+
+  /**
+   * A node drag is starting: bake the active layer's terrain once WITHOUT
+   * that node's path ribbons, then track its edges as live lines each frame —
+   * paths stay attached to the disc instead of ghosting at the old spot.
+   * invalidate() (called on drop via the component) restores full ribbons.
+   */
+  beginNodeDrag(id: string): void {
+    this.dragNode = id;
+    const layer = this.activeLayer();
+    this.terrain.set(
+      layer.id,
+      renderTerrain(this.doc, this.floorTex, this.landmarkTex, layer, { omitEdgesOf: id }),
+    );
     this.dirty = true;
   }
 
@@ -235,6 +254,34 @@ export class EditorCanvas {
     if (art) {
       // renderTerrain pads by its margin and is cropped to the layer bounds.
       ctx.drawImage(art.canvas, layer.bounds.x - 200, layer.bounds.y - 200);
+    }
+
+    // Live path lines for a mid-drag node (its baked ribbons are omitted).
+    if (this.dragNode) {
+      const n = this.doc.nodes.find((x) => x.id === this.dragNode);
+      if (n) {
+        ctx.save();
+        ctx.lineCap = 'round';
+        for (const nb of n.neighbors) {
+          const o = this.doc.nodes.find((x) => x.id === nb);
+          if (!o) continue;
+          ctx.beginPath();
+          ctx.moveTo(n.x, n.y);
+          ctx.lineTo(o.x, o.y);
+          ctx.strokeStyle = 'rgba(88, 96, 82, 0.85)';
+          ctx.lineWidth = 24;
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(n.x, n.y);
+          ctx.lineTo(o.x, o.y);
+          ctx.setLineDash([3, 30]);
+          ctx.strokeStyle = 'rgba(222, 230, 210, 0.7)';
+          ctx.lineWidth = 5;
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        ctx.restore();
+      }
     }
 
     // Discs + optional id labels, y-sorted like the game.
