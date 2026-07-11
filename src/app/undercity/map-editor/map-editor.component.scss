@@ -4,21 +4,23 @@
   position: fixed;
   inset: 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   background: #12100d;
   color: #d8f3dc;
   // Above the site navbar (z-index 1000) — the editor is a full-screen tool.
   z-index: 1001;
 }
 
-.toolbar {
+.tools {
+  width: 168px;
+  flex-shrink: 0;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 10px;
   background: #1a1815;
-  border-bottom: 1px solid rgba(74, 124, 89, 0.35);
-  flex-wrap: wrap;
+  border-right: 1px solid rgba(74, 124, 89, 0.35);
+  overflow-y: auto;
 
   .brand {
     display: inline-flex;
@@ -26,23 +28,26 @@
     gap: 6px;
     font-weight: 600;
     color: #b7e4c7;
-    margin-right: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(74, 124, 89, 0.3);
   }
 
   .modes {
     display: flex;
+    flex-direction: column;
     gap: 4px;
   }
 
   button {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    justify-content: flex-start;
+    gap: 8px;
     background: rgba(74, 124, 89, 0.18);
     border: 1px solid rgba(74, 124, 89, 0.4);
     border-radius: 6px;
     color: #d8f3dc;
-    padding: 6px 10px;
+    padding: 7px 10px;
     cursor: pointer;
     font-size: 0.85rem;
 
@@ -53,6 +58,7 @@
 
     &.save {
       border-color: rgba(251, 191, 36, 0.5);
+      justify-content: center;
 
       &.dirty {
         background: rgba(251, 191, 36, 0.16);
@@ -65,6 +71,17 @@
     }
   }
 
+  .mini-row {
+    display: flex;
+    gap: 4px;
+
+    button {
+      flex: 1;
+      justify-content: center;
+      padding: 6px 0;
+    }
+  }
+
   .err-chip {
     background: #f87171;
     color: #1a1815;
@@ -74,12 +91,23 @@
     padding: 1px 6px;
   }
 
+  .layer-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #8a978a;
+  }
+
   .layer-pick {
     background: #12100d;
     color: #d8f3dc;
     border: 1px solid rgba(74, 124, 89, 0.4);
     border-radius: 6px;
     padding: 6px;
+    width: 100%;
   }
 
   .spacer {
@@ -91,6 +119,9 @@
   flex: 1;
   display: flex;
   min-height: 0;
+  // Without this the canvas's intrinsic bitmap width wins over flex and
+  // shoves the properties panel past the viewport.
+  min-width: 0;
 }
 
 .board {

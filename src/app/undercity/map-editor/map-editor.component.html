@@ -1,5 +1,5 @@
 <div class="editor">
-  <div class="toolbar">
+  <nav class="tools">
     <span class="brand"><mat-icon class="mi">map</mat-icon> Map Editor</span>
 
     <div class="modes">
@@ -20,21 +20,26 @@
       </button>
     </div>
 
-    <select class="layer-pick" [ngModel]="layerId()" (ngModelChange)="setLayer($event)" title="View layer">
-      @for (id of layerIds(); track id) {
-        <option [value]="id">{{ id }}</option>
-      }
-    </select>
+    <label class="layer-label">
+      view layer
+      <select class="layer-pick" [ngModel]="layerId()" (ngModelChange)="setLayer($event)">
+        @for (id of layerIds(); track id) {
+          <option [value]="id">{{ id }}</option>
+        }
+      </select>
+    </label>
 
-    <button [class.on]="showIds()" (click)="toggleIds()" title="Show node ids"><mat-icon>badge</mat-icon></button>
-    <button (click)="undo()" title="Undo (Ctrl+Z)"><mat-icon>undo</mat-icon></button>
-    <button (click)="redo()" title="Redo (Ctrl+Shift+Z)"><mat-icon>redo</mat-icon></button>
+    <div class="mini-row">
+      <button [class.on]="showIds()" (click)="toggleIds()" title="Show node ids"><mat-icon>badge</mat-icon></button>
+      <button (click)="undo()" title="Undo (Ctrl+Z)"><mat-icon>undo</mat-icon></button>
+      <button (click)="redo()" title="Redo (Ctrl+Shift+Z)"><mat-icon>redo</mat-icon></button>
+    </div>
 
     <span class="spacer"></span>
 
     @if (canWriteInPlace && !rootPicked()) {
       <button class="save" (click)="grantRepo()" title="Pick the repo folder so Save writes files in place">
-        <mat-icon>folder_open</mat-icon><span>Grant repo folder</span>
+        <mat-icon>folder_open</mat-icon><span>Grant repo</span>
       </button>
     }
     <button
@@ -50,7 +55,7 @@
         <span class="err-chip">{{ errorCount() }}</span>
       }
     </button>
-  </div>
+  </nav>
 
   <div class="body">
     <canvas
@@ -81,7 +86,7 @@
             type
             <select [ngModel]="n.type" (ngModelChange)="setNodeType(n, $event)">
               @for (t of nodeTypes; track t) {
-                <option [value]="t">{{ typeNames[t] ?? t }} ({{ t }})</option>
+                <option [value]="t">{{ typeNames[t] || t }} ({{ t }})</option>
               }
             </select>
           </label>
