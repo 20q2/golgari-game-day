@@ -24,6 +24,7 @@ import {
   fsAccessSupported,
   listUndercityImages,
   pickRepoRoot,
+  saveDecalImage,
   saveMap,
   serializeMap,
 } from './file-io';
@@ -801,6 +802,37 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   protected pickImage(src: string): void {
     this.placingImage.set(this.placingImage() === src ? null : src);
     this.placingStamp.set(null);
+  }
+
+  /**
+   * Upload art straight into the repo: each file is written to
+   * public/undercity/decals/ via the granted folder handle, joins the
+   * palette, and the first one is armed for placement.
+   */
+  protected async onUpload(input: HTMLInputElement): Promise<void> {
+    const files = [...(input.files ?? [])];
+    input.value = '';
+    if (!files.length) return;
+    if (!this.repoRoot) {
+      this.toast('Grant the repo folder first — uploads save into public/undercity/decals/.');
+      return;
+    }
+    const added: string[] = [];
+    for (const f of files) {
+      try {
+        added.push(await saveDecalImage(this.repoRoot, f));
+      } catch (e) {
+        this.toast(`Couldn't save ${f.name}: ${e instanceof Error ? e.message : 'write failed'}`);
+      }
+    }
+    if (added.length) {
+      this.images.update((list) => [...new Set([...list, ...added])].sort());
+      this.placingImage.set(added[0]);
+      this.placingStamp.set(null);
+      this.toast(
+        `Saved ${added.length === 1 ? added[0] : added.length + ' images'} — click the board to place.`,
+      );
+    }
   }
 
   private placeDecalAt(x: number, y: number): void {

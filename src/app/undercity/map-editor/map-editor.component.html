@@ -268,8 +268,28 @@
         </section>
         <section>
           <h3><mat-icon class="mi">image</mat-icon> Images</h3>
+          <button
+            class="accent"
+            [disabled]="!rootPicked()"
+            (click)="uploadInput.click()"
+            [title]="
+              rootPicked()
+                ? 'Save your own art into public/undercity/decals/ and place it'
+                : 'Grant the repo folder first (sidebar) so uploads can be saved'
+            "
+          >
+            <mat-icon class="mi">upload</mat-icon> Upload image…
+          </button>
+          <input
+            #uploadInput
+            type="file"
+            accept="image/png,image/webp,image/jpeg"
+            multiple
+            hidden
+            (change)="onUpload(uploadInput)"
+          />
           @if (!rootPicked()) {
-            <p class="hint">Grant the repo folder to list everything under public/undercity/.</p>
+            <p class="hint">Grant the repo folder to list everything under public/undercity/ and enable uploads.</p>
           }
           <div class="palette">
             @for (src of images(); track src) {

@@ -13,7 +13,10 @@ interface DirHandle {
   name: string;
 }
 interface FileHandle {
-  createWritable(): Promise<{ write(data: string): Promise<void>; close(): Promise<void> }>;
+  createWritable(): Promise<{
+    write(data: string | ArrayBuffer): Promise<void>;
+    close(): Promise<void>;
+  }>;
 }
 
 const MAP_PATHS = [
@@ -73,6 +76,23 @@ export function downloadMap(doc: BoardMap): void {
   a.download = 'map.json';
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+/**
+ * Copy an uploaded image into public/undercity/decals/ (created on first
+ * use) and return its app-relative path for the decal palette. Re-uploading
+ * the same filename overwrites — handy while iterating on art.
+ */
+export async function saveDecalImage(root: DirHandle, file: File): Promise<string> {
+  const name = file.name.toLowerCase().replace(/[^a-z0-9._-]+/g, '_');
+  const pub = await root.getDirectoryHandle('public');
+  const uc = await pub.getDirectoryHandle('undercity');
+  const decals = await uc.getDirectoryHandle('decals', { create: true });
+  const fh = await decals.getFileHandle(name, { create: true });
+  const w = await fh.createWritable();
+  await w.write(await file.arrayBuffer());
+  await w.close();
+  return `undercity/decals/${name}`;
 }
 
 /** Every image under public/undercity/, as app-relative paths for decals. */
