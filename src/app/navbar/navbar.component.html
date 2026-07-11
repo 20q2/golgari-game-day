@@ -15,13 +15,13 @@
       <mat-icon>qr_code_2</mat-icon>
       <span class="nav-text">TV</span>
     </a>
-    @if (isDev) {
+    @if (isLocalhost) {
       <a
         mat-button
         routerLink="/undercity/color-test"
         routerLinkActive="active"
         class="nav-link"
-        title="Undercity sprite recolor sandbox (dev only)"
+        title="Undercity sprite recolor sandbox (localhost only)"
       >
         <mat-icon>palette</mat-icon>
         <span class="nav-text">Color Test</span>
@@ -31,7 +31,7 @@
         routerLink="/undercity/map-editor"
         routerLinkActive="active"
         class="nav-link"
-        title="Undercity board map editor (dev only)"
+        title="Undercity board map editor (localhost only)"
       >
         <mat-icon>map</mat-icon>
         <span class="nav-text">Map Editor</span>

@@ -28,6 +28,10 @@ export class NavbarComponent {
   // the rename / sign-out menu so it never ships to the live site.
   protected readonly isDev = isDevMode();
 
+  // Serving-location gate for the dev tools (color test, map editor): shown
+  // only when the site is opened from the local machine, whatever the build.
+  protected readonly isLocalhost = ['localhost', '127.0.0.1'].includes(location.hostname);
+
   async openSignIn(): Promise<void> {
     await this.userService.requireSignIn();
   }
