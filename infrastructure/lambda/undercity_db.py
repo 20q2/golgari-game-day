@@ -811,6 +811,15 @@ def _resolve_space(table, sid, doc, node, prev):
                 'text': 'A patch of disturbed earth, thick with buried finds. Start digging.',
                 'grid': _dig_view(rec), 'digsLeft': data.EXCAVATION_DIGS_PER_VISIT}
 
+    if ntype == 'crystal_vein':
+        # The first swing is mandatory — you landed in a mine, you swing.
+        doc['veinStrikesLeft'] = data.VEIN_STRIKES_PER_VISIT
+        res = _vein_strike_once(table, sid, doc)
+        return {'type': 'crystal_vein', 'node': node,
+                'strikesLeft': doc['veinStrikesLeft'], **res,
+                'text': 'The crystal vein glitters — your pick is already '
+                        'swinging. ' + res['text']}
+
     if ntype == 'shrine':
         return {'type': 'shrine', 'text': 'A shrine of candles and bone. The swarm listens.'}
 
@@ -1943,6 +1952,85 @@ def _dig(table, sid, doc, payload):
     return _ok(doc, node=node, grid=_dig_view(site), digsLeft=doc['excavationDigsLeft'],
                found=found, cleared=cleared, bonus=(bonus if cleared else None),
                text=_dig_text(found, cleared, bonus))
+
+
+# ── Crystal Veins ─────────────────────────────────────────────────────────────
+
+def _vein_rec(table, sid, region):
+    rec = _get(table, _season_pk(sid), f'VEIN#{region}')
+    return rec if rec else {'depth': 0}
+
+
+def _save_vein(table, sid, region, depth):
+    table.put_item(Item={'pk': _season_pk(sid), 'sk': f'VEIN#{region}',
+                         'depth': depth})
+
+
+def _vein_item(level):
+    """Bonus item chance — consumables mid-vein, rarities in the deep band."""
+    if 5 <= level <= 8 and _rng.random() < 0.15:
+        return _rng.choice(list(data.CONSUMABLES))
+    if level >= 9 and _rng.random() < 0.20:
+        return _rng.choice(data.VEIN_RARE_ITEMS)
+    return None
+
+
+def _vein_found_text(found):
+    if not found:
+        return ''
+    name = data.CONSUMABLES[found['item']]['name']
+    if found.get('bagFull'):
+        return (f' A {name} glints in the tailings, but your bag is full — '
+                f'salvaged for {found["spores"]} Spores.')
+    return f' A {name} glints in the tailings!'
+
+
+def _vein_strike_once(table, sid, doc):
+    """One swing at the region's shared vein. Mutates doc; persists the shared
+    VEIN# record and any feed event (last-writer-wins, like POST# stock). The
+    caller persists the player doc."""
+    region = data.MAP_NODES[doc['position']]['region']
+    level = _vein_rec(table, sid, region)['depth'] + 1     # the level being entered
+    doc['veinStrikesLeft'] = doc.get('veinStrikesLeft', 0) - 1
+
+    if _rng.random() < level * data.VEIN_CAVE_IN_PCT_PER_LEVEL:
+        dmg = level * data.VEIN_CAVE_IN_DMG_PER_LEVEL
+        doc['hp'] = max(1, doc['hp'] - dmg)
+        doc['veinStrikesLeft'] = 0
+        _save_vein(table, sid, region, 0)
+        _event(table, sid, 'vein',
+               f"{doc['username']} triggered a cave-in at level {level} of the "
+               'crystal vein — the shaft collapses to the surface!',
+               actor=doc['userId'])
+        return {'collapsed': True, 'hp': -dmg, 'depth': 0,
+                'text': f'CAVE-IN at level {level}! You take {dmg} damage and '
+                        'the shaft slumps back to the surface.'}
+
+    spores = 1 + level
+    doc['spores'] = doc.get('spores', 0) + spores
+    found = None
+    item = _vein_item(level)
+    if item:
+        found = _award_dig_loot(doc, {'kind': 'item', 'item': item})
+
+    if level >= data.VEIN_MAX_DEPTH:
+        doc['spores'] += data.VEIN_HEARTSTONE_SPORES
+        heart = _award_dig_loot(doc, {'kind': 'item',
+                                      'item': _rng.choice(data.VEIN_RARE_ITEMS)})
+        _save_vein(table, sid, region, 0)
+        _event(table, sid, 'vein',
+               f"{doc['username']} pried the Heartstone from the crystal vein "
+               f'(+{data.VEIN_HEARTSTONE_SPORES} Spores)! The shaft refills.',
+               actor=doc['userId'])
+        return {'depth': 0, 'heartstone': True, 'spores': spores, 'found': heart,
+                'text': f'Level {level}: +{spores} Spores — and beneath it, THE '
+                        f'HEARTSTONE! +{data.VEIN_HEARTSTONE_SPORES} Spores and a '
+                        'prize. The shaft rumbles full again.'}
+
+    _save_vein(table, sid, region, level)
+    return {'depth': level, 'spores': spores, 'found': found,
+            'text': f'You cut into level {level}: +{spores} Spores.'
+                    + _vein_found_text(found)}
 
 
 def _use_item(table, sid, doc, payload):

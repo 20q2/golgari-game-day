@@ -775,3 +775,35 @@ def test_boss_phase_drops_the_sigil_gate(table, monkeypatch):
     })
     out = db._boss(table, sid, doc, 'boss', 'isl_ossuary')
     assert out['type'] == 'boss'
+
+
+def test_vein_landing_forces_first_strike(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'cavern_r1'
+    monkeypatch.setattr(db._rng, 'random', lambda: 1.0)   # never cave in, no bonus items
+    spores_before = doc.get('spores', 0)
+    ev = db._resolve_space(table, sid, doc, 'cavern_r1', 'cavern_r0')
+    assert ev['type'] == 'crystal_vein'
+    assert ev['depth'] == 1                                # surface -> level 1
+    assert ev['strikesLeft'] == data.VEIN_STRIKES_PER_VISIT - 1
+    assert doc['spores'] == spores_before + 2              # 1 + level
+    rec = db._get(table, db._season_pk(sid), 'VEIN#cavern')
+    assert rec['depth'] == 1                               # shared depth persisted
+
+
+def test_vein_cave_in_hurts_and_resets(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    db._save_vein(table, sid, 'cavern', 9)                 # deep, dangerous shaft
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'cavern_r1'
+    hp_before = doc['hp']
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)    # guaranteed cave-in
+    ev = db._resolve_space(table, sid, doc, 'cavern_r1', 'cavern_r0')
+    assert ev['collapsed'] is True
+    assert doc['hp'] == max(1, hp_before - 10 * data.VEIN_CAVE_IN_DMG_PER_LEVEL)
+    assert doc['veinStrikesLeft'] == 0                     # the visit ends under rubble
+    rec = db._get(table, db._season_pk(sid), 'VEIN#cavern')
+    assert rec['depth'] == 0                               # collapsed for everyone

@@ -294,6 +294,31 @@ EXCAVATION_GRID = (5, 5)                     # (width, height)
 EXCAVATION_ITEMS = ['1x1', '1x1', '1x2', '2x2']  # shapes buried per site
 EXCAVATION_CLEAR_BONUS = 25                  # Spores for clearing the last item
 
+# Crystal Veins (Mosslight Cavern focus). One shared vein per region: a depth
+# counter every player advances. Landing grants up to 3 strikes and the FIRST
+# is mandatory (resolved with the landing event). Each strike descends one
+# level; cave-in chance and loot both scale with the level entered. A cave-in
+# hurts the striker (HP floors at 1) and collapses the shared depth to 0 for
+# everyone. Surviving the strike into the bottom level takes the Heartstone.
+VEIN_STRIKES_PER_VISIT = 3
+VEIN_MAX_DEPTH = 12
+VEIN_CAVE_IN_PCT_PER_LEVEL = 0.04    # cave-in chance = level entered * this
+VEIN_CAVE_IN_DMG_PER_LEVEL = 2       # damage = level entered * this
+VEIN_HEARTSTONE_SPORES = 40
+VEIN_RARE_ITEMS = ['loaded_die', 'smoke_spore']
+
+# The Guildvault (Undercity focus). One shared Mastermind lock per region:
+# a hidden combination of 3 DISTINCT sigils from the 6 below. Landing grants
+# 3 pick attempts (no attempt is mandatory — reading the ledger is free).
+# Every failed guess is appended to a PUBLIC history (communal intel) and
+# jams tribute into the pot. Cracking it takes the pot + a rare item, then
+# the combination rerolls, the ledger wipes, and the pot reseeds.
+VAULT_SIGILS = ['spore', 'bone', 'web', 'moss', 'skull', 'beetle']
+VAULT_SLOTS = 3
+VAULT_PICKS_PER_VISIT = 3
+VAULT_POT_SEED = 30
+VAULT_POT_PER_FAIL = 2
+
 
 # ── Wild NPCs (fixed stats — the species IS the difficulty tier) ─────────────
 # No level scaling anywhere: when you see a beetle you know exactly what a
