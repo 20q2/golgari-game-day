@@ -429,7 +429,7 @@ def handle_action(table, body):
         'buy': _buy, 'use-item': _use_item, 'shrine': _shrine, 'warp': _warp,
         'gamble': _gamble, 'poke': _poke, 'customize': _customize,
         'attack-boss': _attack_boss, 'trade': _trade, 'dig': _dig, 'strike': _strike,
-        'respawn': _respawn,
+        'vault-guess': _vault_guess, 'respawn': _respawn,
         'cast': _cast,
         'equip-grimoire': _equip_grimoire, 'ack-events': _ack_events,
     }
@@ -2087,6 +2087,65 @@ def _strike(table, sid, doc, payload):
     if conflict:
         return conflict
     return _ok(doc, node=node, strikesLeft=doc.get('veinStrikesLeft', 0), **res)
+
+
+def _vault_guess(table, sid, doc, payload):
+    node = doc.get('position')
+    if data.MAP_NODES.get(node, {}).get('type') != 'vault_lock':
+        return _err('You are not at the Guildvault.', 409)
+    left = doc.get('vaultPicksLeft')
+    if left is None:
+        left = data.VAULT_PICKS_PER_VISIT
+    if left <= 0:
+        return _err('Your picks are blunted — come back next time you land '
+                    'here.', 409)
+    guess = payload.get('guess')
+    if (not isinstance(guess, list) or len(guess) != data.VAULT_SLOTS
+            or len(set(guess)) != data.VAULT_SLOTS
+            or any(s not in data.VAULT_SIGILS for s in guess)):
+        return _err(f'Pick {data.VAULT_SLOTS} different sigils.')
+
+    region = data.MAP_NODES[node]['region']
+    rec = _vault_lock_rec(table, sid, region)
+    combo = rec['combo']
+    exact = sum(1 for g, c in zip(guess, combo) if g == c)
+    near = len(set(guess) & set(combo)) - exact
+    doc['vaultPicksLeft'] = left - 1
+    cracked = exact == data.VAULT_SLOTS
+    found = None
+
+    if cracked:
+        pot = rec['pot']
+        doc['spores'] = doc.get('spores', 0) + pot
+        found = _award_dig_loot(doc, {'kind': 'item',
+                                      'item': _rng.choice(data.VEIN_RARE_ITEMS)})
+        rec = _fresh_vault()
+        text = (f'CLICK. CLICK. CLUNK — the Guildvault swings open! You haul '
+                f'out {pot} Spores. Fresh tumblers clatter into place behind '
+                'you.')
+    else:
+        rec['pot'] += data.VAULT_POT_PER_FAIL
+        rec.setdefault('history', []).append(
+            {'user': doc.get('username', '?'), 'guess': guess,
+             'exact': exact, 'near': near, 'at': _now()})
+        pot = rec['pot']
+        text = (f'The lock holds: {exact} placed, {near} misplaced. Your '
+                f'attempt is chalked on the wall; the pot swells to {pot} '
+                'Spores.')
+
+    conflict = _save_or_conflict(table, doc)   # guard the player write first
+    if conflict:
+        return conflict
+    _save_vault(table, sid, region, rec)
+    if cracked:
+        _event(table, sid, 'vault_lock',
+               f"{doc['username']} cracked the Guildvault and made off with "
+               f'{pot} Spores! Fresh tumblers, fresh pot.', actor=doc['userId'])
+    return _ok(doc, node=node, vault=_vault_view(rec),
+               picksLeft=doc['vaultPicksLeft'],
+               guess={'exact': exact, 'near': near, 'cracked': cracked,
+                      'pot': pot, 'found': found},
+               text=text)
 
 
 def _use_item(table, sid, doc, payload):

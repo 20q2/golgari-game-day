@@ -866,3 +866,64 @@ def test_vault_landing_refills_picks_and_hides_combo(table):
     assert doc['vaultPicksLeft'] == data.VAULT_PICKS_PER_VISIT
     assert ev['vault'] == {'pot': data.VAULT_POT_SEED, 'history': []}
     assert 'combo' not in ev['vault']                       # never leaks
+
+
+def _park_at_vault(table, picks=3):
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'city_r4'
+    doc['vaultPicksLeft'] = picks
+    doc['bag'] = []
+    db._put_player(table, doc)
+    db._save_vault(table, sid, 'city',
+                   {'combo': ['spore', 'bone', 'web'], 'pot': data.VAULT_POT_SEED,
+                    'history': []})
+    return sid
+
+
+def test_vault_guess_feedback_and_pot(table):
+    act(table, 'join', starter='pest')
+    sid = _park_at_vault(table)
+    # spore right slot; web right sigil wrong slot; moss a miss.
+    status, resp = act(table, 'vault-guess', guess=['spore', 'web', 'moss'])
+    assert status == 200
+    assert resp['guess'] == {'exact': 1, 'near': 1, 'cracked': False,
+                             'pot': data.VAULT_POT_SEED + data.VAULT_POT_PER_FAIL,
+                             'found': None}
+    assert resp['picksLeft'] == 2
+    assert len(resp['vault']['history']) == 1
+    assert resp['vault']['history'][0]['guess'] == ['spore', 'web', 'moss']
+    assert 'combo' not in resp['vault']
+
+
+def test_vault_guess_guards(table):
+    act(table, 'join', starter='pest')
+    status, _ = act(table, 'vault-guess', guess=['spore', 'bone', 'web'])
+    assert status == 409                                    # not at the vault
+    _park_at_vault(table, picks=0)
+    status, _ = act(table, 'vault-guess', guess=['spore', 'bone', 'web'])
+    assert status == 409                                    # out of picks
+    _park_at_vault(table, picks=3)
+    status, _ = act(table, 'vault-guess', guess=['spore', 'spore', 'web'])
+    assert status == 400                                    # repeats rejected
+    status, _ = act(table, 'vault-guess', guess=['spore', 'bone', 'dragon'])
+    assert status == 400                                    # unknown sigil
+
+
+def test_vault_crack_pays_and_resets(table):
+    act(table, 'join', starter='pest')
+    sid = _park_at_vault(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    spores_before = doc.get('spores', 0)
+    status, resp = act(table, 'vault-guess', guess=['spore', 'bone', 'web'])
+    assert status == 200
+    assert resp['guess']['cracked'] is True
+    assert resp['you']['spores'] == spores_before + data.VAULT_POT_SEED
+    assert resp['you']['bag'] and resp['you']['bag'][0] in data.VEIN_RARE_ITEMS
+    assert resp['vault'] == {'pot': data.VAULT_POT_SEED, 'history': []}
+    rec = db._get(table, db._season_pk(sid), 'VAULT#city')
+    # Fresh lock: wiped ledger, reseeded pot, a new 3-distinct-sigil combo
+    # (rerolling the same combo by chance is legal).
+    assert rec['history'] == [] and rec['pot'] == data.VAULT_POT_SEED
+    assert len(set(rec['combo'])) == data.VAULT_SLOTS
+    assert all(s in data.VAULT_SIGILS for s in rec['combo'])
