@@ -407,6 +407,14 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       } else {
         this.undoStack.pop(); // gesture was just a click — drop the snapshot
       }
+    } else if (!moved) {
+      // A plain click on empty ground (no pan) deselects; region mode keeps
+      // its gathered set so a stray click can't nuke a multi-pick.
+      this.selNode.set(null);
+      this.selDecal.set(null);
+      this.selLabel.set(null);
+      this.connectFrom.set(null);
+      this.syncOverlay();
     }
   }
 
