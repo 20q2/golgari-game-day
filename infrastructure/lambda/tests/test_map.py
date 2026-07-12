@@ -20,10 +20,10 @@ def test_node_count():
 def test_space_type_distribution():
     counts = Counter(n['type'] for n in MAP_NODES.values())
     assert counts == {
-        'gate': 5, 'loot': 23, 'wild': 24, 'elite': 7, 'shop': 5, 'mystery': 11,
+        'gate': 5, 'loot': 19, 'wild': 24, 'elite': 7, 'shop': 5, 'mystery': 9,
         'hazard': 12, 'warp': 6, 'shrine': 5, 'ladder': 10, 'lair': 6,
         'ossuary': 1, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
-        'excavation': 4, 'cache': 5,
+        'excavation': 4, 'cache': 5, 'crystal_vein': 3, 'vault_lock': 3,
     }
 
 

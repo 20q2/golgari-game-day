@@ -17,7 +17,7 @@
   },
   {
    "id": "cavern_r1",
-   "type": "loot",
+   "type": "crystal_vein",
    "x": 1069,
    "y": 926,
    "region": "cavern",
@@ -75,7 +75,7 @@
   },
   {
    "id": "cavern_r6",
-   "type": "loot",
+   "type": "crystal_vein",
    "x": 894,
    "y": 253,
    "region": "cavern",
@@ -702,7 +702,7 @@
   },
   {
    "id": "city_r4",
-   "type": "mystery",
+   "type": "vault_lock",
    "x": 1985,
    "y": 2422,
    "region": "city",
@@ -725,7 +725,7 @@
   },
   {
    "id": "city_r6",
-   "type": "loot",
+   "type": "vault_lock",
    "x": 1615,
    "y": 2422,
    "region": "city",
@@ -772,7 +772,7 @@
   },
   {
    "id": "city_i0",
-   "type": "mystery",
+   "type": "vault_lock",
    "x": 1877,
    "y": 1810,
    "region": "city",
@@ -1106,7 +1106,7 @@
   },
   {
    "id": "t_cavern_bog0",
-   "type": "loot",
+   "type": "crystal_vein",
    "x": 1500,
    "y": 520,
    "region": "cavern",
