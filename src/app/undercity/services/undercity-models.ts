@@ -81,6 +81,10 @@ export interface YouDoc {
   ossuaryRollsLeft?: number;
   /** Excavation digs left this visit; refills to 3 when you land on a dig site. */
   excavationDigsLeft?: number;
+  /** Crystal-vein strikes left this visit; the first is spent on landing. */
+  veinStrikesLeft?: number;
+  /** Guildvault pick attempts left this visit; refills to 3 on landing. */
+  vaultPicksLeft?: number;
   bag: string[];
   gear: Record<string, string>;
   stance: string;
@@ -164,6 +168,10 @@ export interface GameState {
   tradingPosts?: Record<string, TradeStockItem[]>;
   /** Excavation node id -> its masked dig-site grid. */
   excavations?: Record<string, DigGrid>;
+  /** Region -> shared crystal-vein depth. */
+  veins?: Record<string, VeinState>;
+  /** Region -> shared Guildvault pot + public guess ledger. */
+  vaults?: Record<string, VaultView>;
   /** Barrier node ids broken open this season (shared by all players). */
   barriersOpen?: string[];
   events: GameEvent[];
@@ -212,6 +220,26 @@ export interface DigGrid {
   remaining: number;
 }
 
+/** Shared crystal-vein state — one per region holding vein spaces. */
+export interface VeinState {
+  depth: number;
+}
+
+/** One public entry in the Guildvault's guess ledger. */
+export interface VaultGuessRecord {
+  user: string;
+  guess: string[];
+  exact: number;
+  near: number;
+  at?: string;
+}
+
+/** Public view of a region's shared Guildvault (the combo never leaves the server). */
+export interface VaultView {
+  pot: number;
+  history: VaultGuessRecord[];
+}
+
 /** What a dig turned up (mirrors the server's `_award_dig_loot`). */
 export interface DigFound {
   kind: 'spores' | 'item';
@@ -238,6 +266,12 @@ export interface SpaceEvent {
   stock?: TradeStockItem[];
   grid?: DigGrid;
   digsLeft?: number;
+  depth?: number;
+  collapsed?: boolean;
+  heartstone?: boolean;
+  strikesLeft?: number;
+  vault?: VaultView;
+  picksLeft?: number;
   /** maxHp only differs from hp for the island boss (persistent HP pool). */
   npc?: {
     id: string;
@@ -284,6 +318,13 @@ export interface ActionResponse {
   found?: DigFound | null;
   cleared?: boolean;
   bonus?: number | null;
+  depth?: number;
+  collapsed?: boolean;
+  heartstone?: boolean;
+  strikesLeft?: number;
+  vault?: VaultView;
+  picksLeft?: number;
+  guess?: { exact: number; near: number; cracked: boolean; pot: number; found?: DigFound | null };
   text?: string;
   granted?: number;
   lostToCap?: number;

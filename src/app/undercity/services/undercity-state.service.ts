@@ -38,6 +38,8 @@ export class UndercityStateService {
   readonly snares = computed(() => this._state()?.snares ?? []);
   readonly tradingPosts = computed(() => this._state()?.tradingPosts ?? {});
   readonly excavations = computed(() => this._state()?.excavations ?? {});
+  readonly veins = computed(() => this._state()?.veins ?? {});
+  readonly vaults = computed(() => this._state()?.vaults ?? {});
   readonly barriersOpen = computed(() => this._state()?.barriersOpen ?? []);
   readonly wardrobe = computed(() => this._state()?.wardrobe ?? null);
   readonly result = computed(() => this._state()?.result ?? null);
