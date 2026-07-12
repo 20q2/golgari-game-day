@@ -1,14 +1,14 @@
 {
  "worldW": 3600,
  "worldH": 2400,
- "gate": "city_r0",
+ "gate": "n128",
  "boss": "boss",
  "nodes": [
   {
    "id": "cavern_r0",
    "type": "gate",
-   "x": 1162,
-   "y": 704,
+   "x": 1255,
+   "y": 723,
    "region": "cavern",
    "neighbors": [
     "cavern_r1",
@@ -18,8 +18,8 @@
   {
    "id": "cavern_r1",
    "type": "loot",
-   "x": 1022,
-   "y": 842,
+   "x": 1069,
+   "y": 926,
    "region": "cavern",
    "neighbors": [
     "cavern_r0",
@@ -29,8 +29,8 @@
   {
    "id": "cavern_r2",
    "type": "wild",
-   "x": 892,
-   "y": 823,
+   "x": 728,
+   "y": 840,
    "region": "cavern",
    "neighbors": [
     "cavern_r1",
@@ -42,8 +42,8 @@
   {
    "id": "cavern_r3",
    "type": "shop",
-   "x": 618,
-   "y": 632,
+   "x": 644,
+   "y": 633,
    "region": "cavern",
    "neighbors": [
     "cavern_r2",
@@ -53,8 +53,8 @@
   {
    "id": "cavern_r4",
    "type": "mystery",
-   "x": 556,
-   "y": 515,
+   "x": 503,
+   "y": 468,
    "region": "cavern",
    "neighbors": [
     "cavern_r3",
@@ -64,8 +64,8 @@
   {
    "id": "cavern_r5",
    "type": "hazard",
-   "x": 638,
-   "y": 336,
+   "x": 671,
+   "y": 256,
    "region": "cavern",
    "neighbors": [
     "cavern_r4",
@@ -76,8 +76,8 @@
   {
    "id": "cavern_r6",
    "type": "loot",
-   "x": 778,
-   "y": 198,
+   "x": 894,
+   "y": 253,
    "region": "cavern",
    "neighbors": [
     "cavern_r5",
@@ -87,8 +87,8 @@
   {
    "id": "cavern_r7",
    "type": "warp",
-   "x": 908,
-   "y": 217,
+   "x": 1044,
+   "y": 303,
    "region": "cavern",
    "neighbors": [
     "cavern_r6",
@@ -122,8 +122,8 @@
   {
    "id": "cavern_i0",
    "type": "mystery",
-   "x": 989,
-   "y": 685,
+   "x": 949,
+   "y": 630,
    "region": "cavern",
    "neighbors": [
     "cavern_r2",
@@ -133,8 +133,8 @@
   {
    "id": "cavern_i1",
    "type": "elite",
-   "x": 1085,
-   "y": 546,
+   "x": 849,
+   "y": 473,
    "region": "cavern",
    "neighbors": [
     "cavern_i0",
@@ -222,24 +222,24 @@
   {
    "id": "bog_r0",
    "type": "gate",
-   "x": 2340,
-   "y": 772,
+   "x": 2825,
+   "y": 488,
    "region": "bog",
    "neighbors": [
-    "bog_r1",
-    "bog_r9"
+    "n124",
+    "bog_r3"
    ]
   },
   {
    "id": "bog_r1",
    "type": "loot",
-   "x": 2344,
-   "y": 633,
+   "x": 2337,
+   "y": 566,
    "region": "bog",
    "neighbors": [
-    "bog_r0",
     "bog_r2",
-    "t_cavern_bog1"
+    "t_cavern_bog1",
+    "bog_r6"
    ]
   },
   {
@@ -262,7 +262,8 @@
    "region": "bog",
    "neighbors": [
     "bog_r2",
-    "bog_r4"
+    "bog_r4",
+    "bog_r0"
    ]
   },
   {
@@ -279,43 +280,44 @@
   {
    "id": "bog_r5",
    "type": "hazard",
-   "x": 3060,
-   "y": 268,
+   "x": 3077,
+   "y": 278,
    "region": "bog",
    "neighbors": [
     "bog_r4",
-    "bog_r6",
-    "bog_lt"
+    "bog_lt",
+    "n125"
    ]
   },
   {
    "id": "bog_r6",
    "type": "loot",
-   "x": 3056,
-   "y": 407,
+   "x": 2375,
+   "y": 842,
    "region": "bog",
    "neighbors": [
-    "bog_r5",
-    "bog_r7"
+    "bog_r9",
+    "bog_r1"
    ]
   },
   {
    "id": "bog_r7",
    "type": "warp",
-   "x": 2915,
-   "y": 590,
+   "x": 3043,
+   "y": 723,
    "region": "bog",
    "neighbors": [
-    "bog_r6",
     "bog_r8",
-    "e0"
+    "e0",
+    "n124",
+    "n125"
    ]
   },
   {
    "id": "bog_r8",
    "type": "wild",
-   "x": 2692,
-   "y": 746,
+   "x": 2697,
+   "y": 786,
    "region": "bog",
    "neighbors": [
     "bog_r7",
@@ -327,12 +329,12 @@
   {
    "id": "bog_r9",
    "type": "shrine",
-   "x": 2472,
-   "y": 816,
+   "x": 2548,
+   "y": 886,
    "region": "bog",
    "neighbors": [
     "bog_r8",
-    "bog_r0"
+    "bog_r6"
    ]
   },
   {
@@ -349,8 +351,8 @@
   {
    "id": "bog_i1",
    "type": "elite",
-   "x": 2623,
-   "y": 647,
+   "x": 2653,
+   "y": 678,
    "region": "bog",
    "neighbors": [
     "bog_i0",
@@ -479,8 +481,7 @@
    "region": "garden",
    "neighbors": [
     "garden_r1",
-    "garden_r3",
-    "garden_i0"
+    "garden_r3"
    ]
   },
   {
@@ -547,8 +548,7 @@
    "region": "garden",
    "neighbors": [
     "garden_r7",
-    "garden_r9",
-    "garden_i1"
+    "garden_r9"
    ]
   },
   {
@@ -561,28 +561,6 @@
     "garden_r8",
     "garden_r0",
     "t_garden_city0"
-   ]
-  },
-  {
-   "id": "garden_i0",
-   "type": "mystery",
-   "x": 2979,
-   "y": 1546,
-   "region": "garden",
-   "neighbors": [
-    "garden_r2",
-    "garden_i1"
-   ]
-  },
-  {
-   "id": "garden_i1",
-   "type": "elite",
-   "x": 2911,
-   "y": 1709,
-   "region": "garden",
-   "neighbors": [
-    "garden_i0",
-    "garden_r8"
    ]
   },
   {
@@ -678,7 +656,7 @@
   },
   {
    "id": "city_r0",
-   "type": "gate",
+   "type": "shrine",
    "x": 1800,
    "y": 1640,
    "region": "city",
@@ -701,14 +679,14 @@
   {
    "id": "city_r2",
    "type": "wild",
-   "x": 2030,
-   "y": 1810,
+   "x": 2023,
+   "y": 1813,
    "region": "city",
    "neighbors": [
     "city_r1",
-    "city_r3",
     "city_i0",
-    "t_garden_city1"
+    "t_garden_city1",
+    "n129"
    ]
   },
   {
@@ -718,8 +696,8 @@
    "y": 2290,
    "region": "city",
    "neighbors": [
-    "city_r2",
-    "city_r4"
+    "city_r4",
+    "n129"
    ]
   },
   {
@@ -735,7 +713,7 @@
   },
   {
    "id": "city_r5",
-   "type": "hazard",
+   "type": "wild",
    "x": 1800,
    "y": 2460,
    "region": "city",
@@ -764,8 +742,8 @@
    "region": "city",
    "neighbors": [
     "city_r6",
-    "city_r8",
-    "s0"
+    "s0",
+    "n130"
    ]
   },
   {
@@ -775,15 +753,15 @@
    "y": 1810,
    "region": "city",
    "neighbors": [
-    "city_r7",
     "city_r9",
     "city_i1",
-    "t_city_bone0"
+    "t_city_bone0",
+    "n130"
    ]
   },
   {
    "id": "city_r9",
-   "type": "shrine",
+   "type": "loot",
    "x": 1615,
    "y": 1678,
    "region": "city",
@@ -918,7 +896,7 @@
   },
   {
    "id": "bone_r1",
-   "type": "excavation",
+   "type": "loot",
    "x": 862,
    "y": 1699,
    "region": "bone",
@@ -930,9 +908,9 @@
   },
   {
    "id": "bone_r2",
-   "type": "wild",
-   "x": 783,
-   "y": 1838,
+   "type": "shop",
+   "x": 793,
+   "y": 1839,
    "region": "bone",
    "neighbors": [
     "bone_r1",
@@ -942,18 +920,19 @@
   },
   {
    "id": "bone_r3",
-   "type": "shop",
-   "x": 619,
-   "y": 1899,
+   "type": "wild",
+   "x": 621,
+   "y": 1913,
    "region": "bone",
    "neighbors": [
     "bone_r2",
-    "bone_r4"
+    "bone_r4",
+    "n127"
    ]
   },
   {
    "id": "bone_r4",
-   "type": "excavation",
+   "type": "shrine",
    "x": 468,
    "y": 1847,
    "region": "bone",
@@ -976,7 +955,7 @@
   },
   {
    "id": "bone_r6",
-   "type": "excavation",
+   "type": "loot",
    "x": 338,
    "y": 1501,
    "region": "bone",
@@ -993,7 +972,8 @@
    "region": "bone",
    "neighbors": [
     "bone_r6",
-    "bone_r8"
+    "bone_r8",
+    "n126"
    ]
   },
   {
@@ -1010,7 +990,7 @@
   },
   {
    "id": "bone_r9",
-   "type": "ossuary",
+   "type": "mystery",
    "x": 732,
    "y": 1353,
    "region": "bone",
@@ -1022,24 +1002,26 @@
   },
   {
    "id": "bone_i0",
-   "type": "mystery",
+   "type": "excavation",
    "x": 716,
    "y": 1659,
    "region": "bone",
    "neighbors": [
     "bone_r2",
-    "bone_i1"
+    "bone_i1",
+    "n127"
    ]
   },
   {
    "id": "bone_i1",
-   "type": "elite",
-   "x": 648,
-   "y": 1480,
+   "type": "excavation",
+   "x": 649,
+   "y": 1483,
    "region": "bone",
    "neighbors": [
     "bone_i0",
-    "bone_r8"
+    "bone_r8",
+    "n126"
    ]
   },
   {
@@ -1147,8 +1129,8 @@
   {
    "id": "t_bog_garden0",
    "type": "elite",
-   "x": 2800,
-   "y": 897,
+   "x": 2853,
+   "y": 961,
    "region": "bog",
    "neighbors": [
     "bog_r8",
@@ -1191,8 +1173,8 @@
   {
    "id": "t_city_bone0",
    "type": "mystery",
-   "x": 1400,
-   "y": 1900,
+   "x": 1348,
+   "y": 1879,
    "region": "city",
    "neighbors": [
     "city_r8",
@@ -1213,8 +1195,8 @@
   {
    "id": "t_bone_cavern0",
    "type": "elite",
-   "x": 700,
-   "y": 1240,
+   "x": 715,
+   "y": 1207,
    "region": "bone",
    "neighbors": [
     "bone_r9",
@@ -1224,8 +1206,8 @@
   {
    "id": "t_bone_cavern1",
    "type": "loot",
-   "x": 800,
-   "y": 880,
+   "x": 745,
+   "y": 978,
    "region": "cavern",
    "neighbors": [
     "t_bone_cavern0",
@@ -1235,8 +1217,8 @@
   {
    "id": "isl_warp",
    "type": "warp",
-   "x": 1685,
-   "y": 1205,
+   "x": 1605,
+   "y": 1085,
    "region": "isle",
    "neighbors": [
     "isl_trade"
@@ -1245,8 +1227,8 @@
   {
    "id": "isl_trade",
    "type": "trading_post",
-   "x": 1745,
-   "y": 1158,
+   "x": 1683,
+   "y": 1211,
    "region": "isle",
    "neighbors": [
     "isl_warp",
@@ -1256,8 +1238,8 @@
   {
    "id": "isl_ossuary",
    "type": "ossuary",
-   "x": 1800,
-   "y": 1105,
+   "x": 1836,
+   "y": 1064,
    "region": "isle",
    "neighbors": [
     "isl_trade",
@@ -1267,8 +1249,8 @@
   {
    "id": "boss",
    "type": "boss",
-   "x": 1920,
-   "y": 1180,
+   "x": 1976,
+   "y": 1212,
    "region": "isle",
    "neighbors": [
     "isl_ossuary"
@@ -1310,7 +1292,7 @@
   },
   {
    "id": "e2",
-   "type": "loot",
+   "type": "elite",
    "x": 3420,
    "y": 1100,
    "region": "ruin",
@@ -1333,8 +1315,8 @@
   {
    "id": "e3",
    "type": "wild",
-   "x": 3160,
-   "y": 1180,
+   "x": 3177,
+   "y": 1179,
    "region": "ruin",
    "neighbors": [
     "lair_titan",
@@ -1355,8 +1337,8 @@
   {
    "id": "bar_s",
    "type": "barrier",
-   "x": 950,
-   "y": 2260,
+   "x": 1005,
+   "y": 2367,
    "region": "ruin",
    "neighbors": [
     "s1",
@@ -1367,8 +1349,8 @@
   {
    "id": "s1",
    "type": "wild",
-   "x": 760,
-   "y": 2200,
+   "x": 884,
+   "y": 2244,
    "region": "ruin",
    "neighbors": [
     "bar_s",
@@ -1377,9 +1359,9 @@
   },
   {
    "id": "s2",
-   "type": "hazard",
-   "x": 580,
-   "y": 2280,
+   "type": "wild",
+   "x": 685,
+   "y": 2396,
    "region": "ruin",
    "neighbors": [
     "vault",
@@ -1389,8 +1371,8 @@
   {
    "id": "vault",
    "type": "vault",
-   "x": 420,
-   "y": 2170,
+   "x": 485,
+   "y": 2273,
    "region": "ruin",
    "neighbors": [
     "s3",
@@ -1399,13 +1381,94 @@
   },
   {
    "id": "s3",
-   "type": "loot",
-   "x": 600,
-   "y": 2090,
+   "type": "elite",
+   "x": 676,
+   "y": 2160,
    "region": "ruin",
    "neighbors": [
     "s1",
     "vault"
+   ]
+  },
+  {
+   "id": "n124",
+   "type": "loot",
+   "x": 2934,
+   "y": 613,
+   "region": "bog",
+   "neighbors": [
+    "bog_r7",
+    "bog_r0"
+   ]
+  },
+  {
+   "id": "n125",
+   "type": "loot",
+   "x": 3251,
+   "y": 472,
+   "region": "bog",
+   "neighbors": [
+    "bog_r7",
+    "bog_r5"
+   ]
+  },
+  {
+   "id": "n126",
+   "type": "excavation",
+   "x": 495,
+   "y": 1545,
+   "region": "bone",
+   "neighbors": [
+    "bone_i1",
+    "n127",
+    "bone_r7"
+   ]
+  },
+  {
+   "id": "n127",
+   "type": "excavation",
+   "x": 547,
+   "y": 1707,
+   "region": "bone",
+   "neighbors": [
+    "n126",
+    "bone_r3",
+    "bone_i0"
+   ]
+  },
+  {
+   "id": "n128",
+   "type": "gate",
+   "x": 1803,
+   "y": 2025,
+   "region": "city",
+   "neighbors": [
+    "n129",
+    "n130"
+   ]
+  },
+  {
+   "id": "n129",
+   "type": "loot",
+   "x": 2036,
+   "y": 2032,
+   "region": "city",
+   "neighbors": [
+    "n128",
+    "city_r3",
+    "city_r2"
+   ]
+  },
+  {
+   "id": "n130",
+   "type": "loot",
+   "x": 1587,
+   "y": 2020,
+   "region": "city",
+   "neighbors": [
+    "n128",
+    "city_r8",
+    "city_r7"
    ]
   }
  ],

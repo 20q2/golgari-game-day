@@ -397,7 +397,7 @@ def test_dig_grid_generation():
             assert 0 <= r < h and 0 <= c < w          # in bounds
             assert (r, c) not in seen                 # non-overlapping
             seen.add((r, c))
-    assert data.MAP_NODES['bone_r1']['type'] == 'excavation'  # Ossuary Fields digs
+    assert data.MAP_NODES['bone_i0']['type'] == 'excavation'  # Ossuary Fields digs
 
 
 def test_excavation_dig_reveals_and_collects(table):
@@ -409,11 +409,11 @@ def test_excavation_dig_reveals_and_collects(table):
                        'loot': {'kind': 'item', 'item': 'healing_moss'},
                        'collected': False, 'by': None}]}
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'bone_r1'
+    doc['position'] = 'bone_i0'
     doc['excavationDigsLeft'] = data.EXCAVATION_DIGS_PER_VISIT
     doc['bag'] = []
     db._put_player(table, doc)
-    db._save_dig_site(table, sid, 'bone_r1', site)
+    db._save_dig_site(table, sid, 'bone_i0', site)
 
     status, resp = act(table, 'dig', r=0, c=0)       # first cell — partial
     assert status == 200 and resp['found'] is None
@@ -434,7 +434,7 @@ def test_excavation_guards(table):
     assert status == 409  # not at a dig site
 
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'bone_r1'
+    doc['position'] = 'bone_i0'
     doc['excavationDigsLeft'] = 0
     db._put_player(table, doc)
     status, _ = act(table, 'dig', r=0, c=0)
