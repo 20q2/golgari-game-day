@@ -456,6 +456,28 @@
     }
   }
 
+  .region-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    .group-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #8a978a;
+
+      .mi {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+    }
+  }
+
   .region-card {
     background: rgba(74, 124, 89, 0.08);
     border: 1px solid rgba(74, 124, 89, 0.25);

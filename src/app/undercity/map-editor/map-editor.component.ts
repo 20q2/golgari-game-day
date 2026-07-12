@@ -983,6 +983,15 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     return Object.keys(this.d().regions ?? {});
   }
 
+  /** Regions split into surface (overworld) and underground (dark pockets). */
+  protected surfaceRegions(): string[] {
+    return this.regionIds().filter((r) => !this.region(r).dark);
+  }
+
+  protected undergroundRegions(): string[] {
+    return this.regionIds().filter((r) => this.region(r).dark);
+  }
+
   protected region(id: string): RegionSpec {
     return this.d().regions![id];
   }

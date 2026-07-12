@@ -325,13 +325,40 @@
           <h3><mat-icon class="mi">category</mat-icon> Regions</h3>
           <p class="hint">Click spaces to build a selection ({{ selNodes().size }} picked), then assign.</p>
           <p class="hint">A <b>dark</b> region becomes its own layer (dungeon pocket): gather spaces, assign them to a new dark region, and the view follows. Bridge it with a pair of linked ladder spaces — start a Connect link on one, switch layers, click the other.</p>
-          <div class="row">
-            @for (r of regionIds(); track r) {
-              <button (click)="assignRegion(r)">{{ r }}</button>
+
+          <div class="region-group">
+            <span class="group-label"><mat-icon class="mi">wb_sunny</mat-icon> Surface</span>
+            <div class="row">
+              @for (r of surfaceRegions(); track r) {
+                <button (click)="assignRegion(r)">{{ r }}</button>
+              }
+              @if (!surfaceRegions().length) {
+                <span class="hint">none</span>
+              }
+            </div>
+            @for (r of surfaceRegions(); track r) {
+              <ng-container *ngTemplateOutlet="regionCard; context: { $implicit: r }"></ng-container>
             }
-            <button class="accent" (click)="newRegion()"><mat-icon class="mi">add</mat-icon> new region</button>
           </div>
-          @for (r of regionIds(); track r) {
+
+          <div class="region-group">
+            <span class="group-label"><mat-icon class="mi">dark_mode</mat-icon> Underground</span>
+            <div class="row">
+              @for (r of undergroundRegions(); track r) {
+                <button (click)="assignRegion(r)">{{ r }}</button>
+              }
+              @if (!undergroundRegions().length) {
+                <span class="hint">none</span>
+              }
+            </div>
+            @for (r of undergroundRegions(); track r) {
+              <ng-container *ngTemplateOutlet="regionCard; context: { $implicit: r }"></ng-container>
+            }
+          </div>
+
+          <button class="accent" (click)="newRegion()"><mat-icon class="mi">add</mat-icon> new region</button>
+
+          <ng-template #regionCard let-r>
             <details class="region-card">
               <summary>{{ r }} — {{ region(r).label }}</summary>
               <label>
@@ -364,7 +391,7 @@
                 procedural scatter decoration
               </label>
             </details>
-          }
+          </ng-template>
         </section>
       }
 
