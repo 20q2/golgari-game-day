@@ -60,9 +60,16 @@ def test_dungeon_pockets_shapes():
 
 def test_five_home_gates():
     from undercity_data import HOME_GATES, BIOMES
-    assert set(HOME_GATES) == set(BIOMES)
+    assert set(HOME_GATES) >= set(BIOMES)
     for gate in HOME_GATES.values():
         assert MAP_NODES[gate]['type'] == 'gate'
+    # HOME_GATES is found by node type, not naming convention: each home biome
+    # holds exactly one gate node, wherever the editor puts it.
+    for b in BIOMES:
+        gates = [n for n in MAP_NODES.values()
+                 if n['region'] == b and n['type'] == 'gate']
+        assert len(gates) == 1, f'{b} must hold exactly one gate'
+        assert HOME_GATES[b] == gates[0]['id']
 
 
 def test_gate_and_boss():

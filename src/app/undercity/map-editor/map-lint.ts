@@ -38,6 +38,21 @@ export function lintMap(doc: BoardMap): LintIssue[] {
     }
   }
 
+  // One gate per region — the server finds each home biome's gate by node
+  // type, so a second gate in the same region would shadow the first.
+  const gatesByRegion = new Map<string, string[]>();
+  for (const n of doc.nodes) {
+    if (n.type !== 'gate' || !n.region) continue;
+    const list = gatesByRegion.get(n.region) ?? [];
+    list.push(n.id);
+    gatesByRegion.set(n.region, list);
+  }
+  for (const [region, ids] of gatesByRegion) {
+    if (ids.length > 1) {
+      err(`Region "${region}" holds ${ids.length} gates (${ids.join(', ')}) — keep one`, ids[1]);
+    }
+  }
+
   // Entry points.
   const gate = byId.get(doc.gate);
   if (!gate) err(`Gate node "${doc.gate}" does not exist`);

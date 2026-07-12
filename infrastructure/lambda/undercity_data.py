@@ -566,7 +566,11 @@ BIOMES = {
 
 DEFAULT_BIOME = 'city'
 
-HOME_GATES = {b: b + '_r0' for b in BIOMES}
+# Each home biome's gate is found by node type, not naming convention — the
+# map editor can move a region's gate to any space and this follows it.
+# Contract (tested + editor-linted): exactly one gate node per region.
+HOME_GATES = {n['region']: n['id']
+              for n in _MAP_DOC['nodes'] if n['type'] == 'gate'}
 GATE_NODE = HOME_GATES[DEFAULT_BIOME]  # legacy alias; respawns use homeBiome
 
 
