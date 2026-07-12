@@ -23,8 +23,10 @@ import {
   PublicPlayer,
   SpaceEvent,
   TradeStockItem,
+  VaultView,
   isShielded,
 } from '../services/undercity-models';
+import { VAULT_POT_SEED } from '../data/vein-vault';
 import {
   BIOME_SPELLS,
   GRIMOIRE_MAP,
@@ -53,6 +55,8 @@ import { getRecoloredDataUrl } from '../engine/sprite-engine';
 import { BattlePlaybackComponent, BattleSide, BattleRewards } from './battle-playback.component';
 import { DiceRollComponent } from './dice-roll.component';
 import { ExcavationModalComponent } from './excavation.component';
+import { CrystalVeinModalComponent } from './crystal-vein.component';
+import { GuildvaultModalComponent } from './guildvault.component';
 import { MysteryReelComponent } from './mystery-reel.component';
 
 interface BattleView {
@@ -86,6 +90,8 @@ function stepPrev(step: StepState): string | null {
     BattlePlaybackComponent,
     DiceRollComponent,
     ExcavationModalComponent,
+    CrystalVeinModalComponent,
+    GuildvaultModalComponent,
     MysteryReelComponent,
   ],
   templateUrl: './board-tab.component.html',
@@ -112,6 +118,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly giveItem = signal<string | null>(null);
   protected readonly showExcavation = signal(false);
   protected readonly excavationGrid = signal<DigGrid | null>(null);
+  protected readonly showVein = signal(false);
+  protected readonly veinDepth = signal(0);
+  protected readonly veinLog = signal<string | null>(null);
+  protected readonly showVault = signal(false);
+  protected readonly vaultView = signal<VaultView | null>(null);
   protected readonly reelSymbol = signal<string | null>(null);
   private pendingMysteryEv: SpaceEvent | null = null;
   protected readonly bet = signal(5);
@@ -310,6 +321,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Excavation digs remaining this visit. */
   protected readonly excavationDigsLeft = computed(() => this.store.you()?.excavationDigsLeft ?? 0);
+
+  /** Crystal-vein strikes remaining this visit (the first is spent on landing). */
+  protected readonly veinStrikesLeft = computed(() => this.store.you()?.veinStrikesLeft ?? 0);
+
+  /** Guildvault picks remaining this visit. */
+  protected readonly vaultPicksLeft = computed(() => this.store.you()?.vaultPicksLeft ?? 0);
 
   protected readonly occupantsHere = computed<Occupant[]>(() => {
     const you = this.store.you();
@@ -631,6 +648,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       this.openTradingPost(ev.stock);
     } else if (ev.type === 'excavation') {
       this.openExcavation(ev.grid);
+    } else if (ev.type === 'crystal_vein') {
+      this.openVein(ev);
+    } else if (ev.type === 'vault_lock') {
+      this.openVault(ev);
     } else if (ev.type === 'mystery') {
       // Spin the reveal reel first; the event card opens once it lands.
       this.pendingMysteryEv = ev;
@@ -739,6 +760,48 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     });
   }
 
+  // ── Crystal Vein ───────────────────────────────────────────────────────────
+
+  /** Open the shaft, seeding depth from the landing event or polled state. */
+  openVein(ev?: SpaceEvent): void {
+    const pos = this.store.you()?.position ?? '';
+    const region = this.map?.nodes.find((n) => n.id === pos)?.region ?? '';
+    this.veinDepth.set(ev?.depth ?? this.store.veins()[region]?.depth ?? 0);
+    this.veinLog.set(ev?.text ?? null);
+    this.showVein.set(true);
+  }
+
+  /** One optional swing; the response carries the new shared depth. */
+  async strike(): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('strike');
+      if (resp.depth !== undefined) this.veinDepth.set(resp.depth);
+      this.veinLog.set(resp.text ?? null);
+      if (resp.collapsed || resp.heartstone) this.showToast(resp.text ?? '');
+    });
+  }
+
+  // ── Guildvault ─────────────────────────────────────────────────────────────
+
+  /** Open the vault, seeding pot + ledger from the landing event or polled state. */
+  openVault(ev?: SpaceEvent): void {
+    const pos = this.store.you()?.position ?? '';
+    const region = this.map?.nodes.find((n) => n.id === pos)?.region ?? '';
+    this.vaultView.set(
+      ev?.vault ?? this.store.vaults()[region] ?? { pot: VAULT_POT_SEED, history: [] },
+    );
+    this.showVault.set(true);
+  }
+
+  /** One pick attempt; the response carries the updated ledger and pot. */
+  async vaultGuess(guess: string[]): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('vault-guess', { guess });
+      if (resp.vault) this.vaultView.set(resp.vault);
+      if (resp.guess?.cracked) this.showToast(resp.text ?? 'CRACKED!');
+    });
+  }
+
   // ── Respawn choice ───────────────────────────────────────────────────────────
 
   /** Choose which gate to wake at after a compost. */
@@ -839,6 +902,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.giveItem.set(null);
     this.showExcavation.set(false);
     this.excavationGrid.set(null);
+    this.showVein.set(false);
+    this.veinLog.set(null);
+    this.showVault.set(false);
+    this.vaultView.set(null);
     this.gambleResult.set(null);
     this.gambleRolling.set(false);
     this.gambleDie.set(null);

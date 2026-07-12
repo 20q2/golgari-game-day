@@ -48,6 +48,16 @@
             <mat-icon class="mi">grid_view</mat-icon> Dig Site
           </button>
         }
+        @case ('crystal_vein') {
+          <button class="uc-btn" (click)="openVein()">
+            <mat-icon class="mi">diamond</mat-icon> Crystal Vein
+          </button>
+        }
+        @case ('vault_lock') {
+          <button class="uc-btn" (click)="openVault()">
+            <mat-icon class="mi">dialpad</mat-icon> Guildvault
+          </button>
+        }
       }
     }
   </div>
@@ -389,6 +399,29 @@
       [digsLeft]="excavationDigsLeft()"
       [busy]="busy()"
       (dig)="dig($event)"
+      (closed)="closeFacilities()"
+    />
+  }
+
+  <!-- Crystal vein -->
+  @if (showVein()) {
+    <app-undercity-crystal-vein
+      [depth]="veinDepth()"
+      [strikesLeft]="veinStrikesLeft()"
+      [busy]="busy()"
+      [log]="veinLog()"
+      (strike)="strike()"
+      (closed)="closeFacilities()"
+    />
+  }
+
+  <!-- Guildvault -->
+  @if (showVault() && vaultView(); as vault) {
+    <app-undercity-guildvault
+      [vault]="vault"
+      [picksLeft]="vaultPicksLeft()"
+      [busy]="busy()"
+      (guess)="vaultGuess($event)"
       (closed)="closeFacilities()"
     />
   }
