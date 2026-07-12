@@ -927,3 +927,22 @@ def test_vault_crack_pays_and_resets(table):
     assert rec['history'] == [] and rec['pot'] == data.VAULT_POT_SEED
     assert len(set(rec['combo'])) == data.VAULT_SLOTS
     assert all(s in data.VAULT_SIGILS for s in rec['combo'])
+
+
+def test_state_surfaces_veins_and_vaults(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert state['veins'] == {'cavern': {'depth': 0}}       # display-seeded default
+    assert state['vaults'] == {'city': {'pot': data.VAULT_POT_SEED, 'history': []}}
+
+    db._save_vein(table, sid, 'cavern', 7)
+    db._save_vault(table, sid, 'city',
+                   {'combo': ['spore', 'bone', 'web'], 'pot': 44,
+                    'history': [{'user': 'Alex', 'guess': ['moss', 'web', 'skull'],
+                                 'exact': 0, 'near': 1, 'at': 'x'}]})
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert state['veins']['cavern'] == {'depth': 7}
+    assert state['vaults']['city']['pot'] == 44
+    assert len(state['vaults']['city']['history']) == 1
+    assert 'combo' not in state['vaults']['city']           # never leaks

@@ -309,6 +309,7 @@ def handle_state(table, query_params):
     events = [_clean(i) for i in ev['Items']]
 
     players, you, snares, result, posts, sites = [], None, [], None, {}, {}
+    veins, vaults = {}, {}
     now = _now()
     for item in items:
         if item['sk'].startswith('PLAYER#'):
@@ -324,6 +325,10 @@ def handle_state(table, query_params):
             posts[item['sk'].replace('POST#', '')] = item.get('stock') or []
         elif item['sk'].startswith('SITE#'):
             sites[item['sk'].replace('SITE#', '')] = item
+        elif item['sk'].startswith('VEIN#'):
+            veins[item['sk'].replace('VEIN#', '')] = {'depth': item.get('depth', 0)}
+        elif item['sk'].startswith('VAULT#'):
+            vaults[item['sk'].replace('VAULT#', '')] = _vault_view(item)
         elif item['sk'] == 'RESULT':
             result = {k: v for k, v in item.items() if k not in ('pk', 'sk')}
 
@@ -337,6 +342,14 @@ def handle_state(table, query_params):
     excavations = {nid: _dig_view(sites.get(nid))
                    for nid, n in data.MAP_NODES.items() if n['type'] == 'excavation'}
 
+    # Display-seed untouched veins/vaults so the map renders their facilities
+    # from turn one without a write on read.
+    for n in data.MAP_NODES.values():
+        if n['type'] == 'crystal_vein':
+            veins.setdefault(n['region'], {'depth': 0})
+        elif n['type'] == 'vault_lock':
+            vaults.setdefault(n['region'], _vault_view(None))
+
     out = {
         'season': {'seasonId': sid, 'status': config.get('status'),
                    'startedAt': config.get('startedAt'),
@@ -346,6 +359,8 @@ def handle_state(table, query_params):
         'snares': snares,
         'tradingPosts': posts,
         'excavations': excavations,
+        'veins': veins,
+        'vaults': vaults,
         'barriersOpen': sorted(_open_barriers(table, sid)),
         'boss': {'hp': _boss_hp(table, sid), 'maxHp': data.ROT_SOVEREIGN['hp']},
         'events': [{k: v for k, v in e.items() if k not in ('pk', 'sk')} for e in events],
