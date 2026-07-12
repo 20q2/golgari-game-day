@@ -12,6 +12,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
+import { MAT_TOOLTIP_DEFAULT_OPTIONS, MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom } from 'rxjs';
 import { BoardMap, BoardNode, MapDecal, MapLabel, RegionSpec } from '../engine/board-canvas';
 import { STAMPS, drawStamp } from '../engine/board-terrain';
@@ -72,7 +73,14 @@ const SEED_IMAGES = [
 @Component({
   selector: 'app-undercity-map-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule],
+  providers: [
+    {
+      provide: MAT_TOOLTIP_DEFAULT_OPTIONS,
+      // Snappy: the native title delay is what we're escaping.
+      useValue: { showDelay: 80, hideDelay: 0, touchendHideDelay: 0, position: 'right' },
+    },
+  ],
   templateUrl: './map-editor.component.html',
   styleUrls: ['./map-editor.component.scss'],
 })
