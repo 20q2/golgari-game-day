@@ -2,12 +2,28 @@
  * Map validation — the client-side mirror of tests/test_map.py's invariants.
  * Errors block saving; warnings are advisory.
  */
-import { BoardMap } from '../engine/board-canvas';
+import { BoardMap, BoardNode } from '../engine/board-canvas';
 
 export interface LintIssue {
   level: 'error' | 'warn';
   text: string;
   nodeId?: string;
+}
+
+// Mirrors BIOMES / DEFAULT_BIOME in undercity_data.py: players hatch into
+// these regions, each of which must hold exactly one gate-typed node (the
+// server finds gates by type, so gates can live on any space).
+export const HOME_BIOMES = ['city', 'cavern', 'bog', 'bone', 'garden'];
+export const DEFAULT_BIOME = 'city';
+
+/** The gate the server spawns from by default: the city region's gate node. */
+export function defaultGate(doc: BoardMap): BoardNode | null {
+  return doc.nodes.find((n) => n.type === 'gate' && n.region === DEFAULT_BIOME) ?? null;
+}
+
+/** The (single) boss-typed node. */
+export function bossNode(doc: BoardMap): BoardNode | null {
+  return doc.nodes.find((n) => n.type === 'boss') ?? null;
 }
 
 export function lintMap(doc: BoardMap): LintIssue[] {
@@ -38,8 +54,8 @@ export function lintMap(doc: BoardMap): LintIssue[] {
     }
   }
 
-  // One gate per region — the server finds each home biome's gate by node
-  // type, so a second gate in the same region would shadow the first.
+  // Gates are found by node type, per region: every home biome needs exactly
+  // one (a second in the same region would shadow it server-side).
   const gatesByRegion = new Map<string, string[]>();
   for (const n of doc.nodes) {
     if (n.type !== 'gate' || !n.region) continue;
@@ -52,17 +68,22 @@ export function lintMap(doc: BoardMap): LintIssue[] {
       err(`Region "${region}" holds ${ids.length} gates (${ids.join(', ')}) — keep one`, ids[1]);
     }
   }
+  for (const biome of HOME_BIOMES) {
+    if (!gatesByRegion.has(biome)) {
+      err(`Home region "${biome}" has no gate — players hatch there`);
+    }
+  }
 
-  // Entry points.
-  const gate = byId.get(doc.gate);
-  if (!gate) err(`Gate node "${doc.gate}" does not exist`);
-  else if (gate.type !== 'gate') err(`Gate node "${doc.gate}" has type "${gate.type}"`, gate.id);
-  const boss = byId.get(doc.boss);
-  if (!boss) err(`Boss node "${doc.boss}" does not exist`);
-  else if (boss.type !== 'boss') err(`Boss node "${doc.boss}" has type "${boss.type}"`, boss.id);
+  // The boss lair: exactly one boss-typed node anywhere.
+  const bosses = doc.nodes.filter((n) => n.type === 'boss');
+  if (bosses.length !== 1) {
+    err(`The map needs exactly one boss space (found ${bosses.length})`, bosses[1]?.id);
+  }
 
-  // Everything reachable from the gate — walking edges plus warp teleports
-  // (the floating island's only route in), mirroring the server's test.
+  // Everything reachable from the default spawn gate — walking edges plus
+  // warp teleports (the floating island's only route in), mirroring the
+  // server's test. The gate is found by type, wherever it was moved to.
+  const gate = defaultGate(doc);
   if (gate) {
     const warps = doc.nodes.filter((n) => n.type === 'warp').map((n) => n.id);
     const seen = new Set([gate.id]);

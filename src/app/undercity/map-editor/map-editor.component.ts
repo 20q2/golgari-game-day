@@ -19,7 +19,7 @@ import { STAMPS, drawStamp } from '../engine/board-terrain';
 import { preloadAll } from '../engine/sprite-engine';
 import { SPACE_ICONS, SPACE_NAMES } from '../data/items';
 import { EditorCanvas, EditorPick } from './editor-canvas';
-import { lintMap, LintIssue } from './map-lint';
+import { bossNode, defaultGate, lintMap, LintIssue } from './map-lint';
 import {
   downloadMap,
   fsAccessSupported,
@@ -209,6 +209,13 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
 
   /** Re-render + re-lint after any doc mutation. */
   protected afterDocChange(markDirty = true): void {
+    // The top-level gate/boss fields follow the typed nodes (gates are found
+    // by type per region) — move or retype them freely and the file keeps up.
+    const d = this.d();
+    const gate = defaultGate(d);
+    if (gate) d.gate = gate.id;
+    const boss = bossNode(d);
+    if (boss) d.boss = boss.id;
     this.canvas.invalidate();
     this.layerIds.set(this.canvas.layerIds());
     this.lint.set(lintMap(this.d()));
