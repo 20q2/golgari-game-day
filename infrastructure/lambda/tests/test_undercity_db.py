@@ -807,3 +807,49 @@ def test_vein_cave_in_hurts_and_resets(table, monkeypatch):
     assert doc['veinStrikesLeft'] == 0                     # the visit ends under rubble
     rec = db._get(table, db._season_pk(sid), 'VEIN#cavern')
     assert rec['depth'] == 0                               # collapsed for everyone
+
+
+def test_vein_strike_action_and_guards(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    status, _ = act(table, 'strike')
+    assert status == 409                                    # not at a vein
+
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'cavern_r1'
+    doc['veinStrikesLeft'] = 2
+    db._put_player(table, doc)
+    db._save_vein(table, sid, 'cavern', 3)
+    monkeypatch.setattr(db._rng, 'random', lambda: 1.0)     # never cave in
+    status, resp = act(table, 'strike')
+    assert status == 200
+    assert resp['depth'] == 4 and resp['strikesLeft'] == 1
+    assert resp['you']['spores'] >= 5                       # 1 + level 4
+
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['veinStrikesLeft'] = 0
+    db._put_player(table, doc)
+    status, _ = act(table, 'strike')
+    assert status == 409                                    # out of strikes
+
+
+def test_vein_heartstone_pays_and_resets(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'cavern_r1'
+    doc['veinStrikesLeft'] = 1
+    doc['bag'] = []
+    db._put_player(table, doc)
+    db._save_vein(table, sid, 'cavern', data.VEIN_MAX_DEPTH - 1)
+    monkeypatch.setattr(db._rng, 'random', lambda: 1.0)     # survive the last strike
+    spores_before = doc.get('spores', 0)
+    status, resp = act(table, 'strike')
+    assert status == 200
+    assert resp['heartstone'] is True
+    assert resp['depth'] == 0                               # shaft refilled
+    # 1 + level 12, plus the Heartstone bonus; the rare item goes to the bag.
+    assert resp['you']['spores'] == spores_before + 13 + data.VEIN_HEARTSTONE_SPORES
+    assert resp['you']['bag'] and resp['you']['bag'][0] in data.VEIN_RARE_ITEMS
+    rec = db._get(table, db._season_pk(sid), 'VEIN#cavern')
+    assert rec['depth'] == 0

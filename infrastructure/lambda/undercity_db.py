@@ -428,7 +428,8 @@ def handle_action(table, body):
         'set-stance': _set_stance, 'spend-stat': _spend_stat, 'evolve': _evolve,
         'buy': _buy, 'use-item': _use_item, 'shrine': _shrine, 'warp': _warp,
         'gamble': _gamble, 'poke': _poke, 'customize': _customize,
-        'attack-boss': _attack_boss, 'trade': _trade, 'dig': _dig, 'respawn': _respawn,
+        'attack-boss': _attack_boss, 'trade': _trade, 'dig': _dig, 'strike': _strike,
+        'respawn': _respawn,
         'cast': _cast,
         'equip-grimoire': _equip_grimoire, 'ack-events': _ack_events,
     }
@@ -2031,6 +2032,20 @@ def _vein_strike_once(table, sid, doc):
     return {'depth': level, 'spores': spores, 'found': found,
             'text': f'You cut into level {level}: +{spores} Spores.'
                     + _vein_found_text(found)}
+
+
+def _strike(table, sid, doc, payload):
+    """Optional strikes 2-3 at the vein (the first happens on landing)."""
+    node = doc.get('position')
+    if data.MAP_NODES.get(node, {}).get('type') != 'crystal_vein':
+        return _err('You are not at a crystal vein.', 409)
+    if doc.get('veinStrikesLeft', 0) < 1:
+        return _err('Out of strikes — come back next time you land here.', 409)
+    res = _vein_strike_once(table, sid, doc)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, node=node, strikesLeft=doc.get('veinStrikesLeft', 0), **res)
 
 
 def _use_item(table, sid, doc, payload):
