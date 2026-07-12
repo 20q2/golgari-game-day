@@ -476,6 +476,37 @@
         height: 14px;
       }
     }
+
+    .group-sub {
+      font-size: 0.66rem;
+      color: #6f7a6f;
+      font-style: italic;
+    }
+
+    .pocket-row {
+      justify-content: flex-start;
+      gap: 7px;
+
+      .pocket-name {
+        flex: 1;
+        text-align: left;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .pocket-count {
+        font-family: monospace;
+        font-size: 0.66rem;
+        color: #8a978a;
+        font-variant-numeric: tabular-nums;
+      }
+
+      &.on {
+        background: rgba(251, 191, 36, 0.16);
+        border-color: #fbbf24;
+      }
+    }
   }
 
   .region-card {

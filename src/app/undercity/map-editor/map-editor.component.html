@@ -351,6 +351,19 @@
                 <span class="hint">none</span>
               }
             </div>
+
+            <span class="group-sub">Dungeon pockets — each is its own layer</span>
+            @for (p of pocketLayers(); track p.id) {
+              <button class="pocket-row" [class.on]="layerId() === p.id" (click)="showLayer(p.id)">
+                <mat-icon class="mi">stairs</mat-icon>
+                <span class="pocket-name">{{ p.name }}</span>
+                <span class="pocket-count">{{ p.count }}</span>
+              </button>
+            }
+            @if (!pocketLayers().length) {
+              <span class="hint">no pockets yet — mark a region dark to make one</span>
+            }
+
             @for (r of undergroundRegions(); track r) {
               <ng-container *ngTemplateOutlet="regionCard; context: { $implicit: r }"></ng-container>
             }

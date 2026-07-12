@@ -163,6 +163,13 @@ export class EditorCanvas {
     return this.layers.find((l) => l.nodeIds.has(nodeId))?.id ?? null;
   }
 
+  /** Underground pocket layers (everything but the overworld), id + members. */
+  pocketLayers(): { id: string; nodeIds: string[] }[] {
+    return this.layers
+      .filter((l) => l.id !== OVERWORLD)
+      .map((l) => ({ id: l.id, nodeIds: [...l.nodeIds] }));
+  }
+
   activeLayer(): LayerSpec {
     return this.layers.find((l) => l.id === this.layerId) ?? this.layers[0];
   }

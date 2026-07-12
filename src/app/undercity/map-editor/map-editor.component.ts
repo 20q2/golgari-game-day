@@ -18,6 +18,7 @@ import { BoardMap, BoardNode, MapDecal, MapLabel, RegionSpec } from '../engine/b
 import { STAMPS, drawStamp } from '../engine/board-terrain';
 import { preloadAll } from '../engine/sprite-engine';
 import { SPACE_ICONS, SPACE_NAMES } from '../data/items';
+import { DUNGEONS, dungeonBiome } from '../data/dungeons';
 import { EditorCanvas, EditorPick } from './editor-canvas';
 import { OVERWORLD } from '../engine/board-layers';
 import { bossNode, defaultGate, lintMap, LintIssue } from './map-lint';
@@ -990,6 +991,34 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
 
   protected undergroundRegions(): string[] {
     return this.regionIds().filter((r) => this.region(r).dark);
+  }
+
+  /**
+   * The dungeon pockets as layers, with a friendly name. All pockets share
+   * the "depths" region, so they're distinct only as connected layers — this
+   * is where the five dungeons actually live.
+   */
+  protected pocketLayers(): { id: string; name: string; count: number }[] {
+    const d = this.d();
+    return this.canvas.pocketLayers().map((p) => {
+      let name = p.id.replace(/^pocket:/, '');
+      for (const nid of p.nodeIds) {
+        const node = d.nodes.find((n) => n.id === nid);
+        const biome = node ? dungeonBiome(node.id, node.region) : null;
+        if (biome && DUNGEONS[biome]) {
+          name = DUNGEONS[biome].name;
+          break;
+        }
+      }
+      return { id: p.id, name, count: p.nodeIds.length };
+    });
+  }
+
+  /** Jump the view to a pocket layer and fit it. */
+  protected showLayer(id: string): void {
+    this.canvas.setLayer(id);
+    this.layerId.set(id);
+    this.zoomPct.set(this.canvas.zoomPct());
   }
 
   protected region(id: string): RegionSpec {
