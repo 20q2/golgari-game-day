@@ -821,6 +821,17 @@ def _resolve_space(table, sid, doc, node, prev):
                 'text': 'The crystal vein glitters — your pick is already '
                         'swinging. ' + res['text']}
 
+    if ntype == 'vault_lock':
+        doc['vaultPicksLeft'] = data.VAULT_PICKS_PER_VISIT
+        region = data.MAP_NODES[node]['region']
+        rec = _get(table, _season_pk(sid), f'VAULT#{region}')
+        return {'type': 'vault_lock', 'node': node,
+                'text': 'The Guildvault: six sigils, three tumblers, one fat '
+                        'pot. Every botched pick is chalked on the wall for '
+                        'all to read.',
+                'vault': _vault_view(rec),
+                'picksLeft': data.VAULT_PICKS_PER_VISIT}
+
     if ntype == 'shrine':
         return {'type': 'shrine', 'text': 'A shrine of candles and bone. The swarm listens.'}
 
@@ -2032,6 +2043,36 @@ def _vein_strike_once(table, sid, doc):
     return {'depth': level, 'spores': spores, 'found': found,
             'text': f'You cut into level {level}: +{spores} Spores.'
                     + _vein_found_text(found)}
+
+
+# ── The Guildvault ────────────────────────────────────────────────────────────
+
+def _fresh_vault():
+    return {'combo': _rng.sample(data.VAULT_SIGILS, data.VAULT_SLOTS),
+            'pot': data.VAULT_POT_SEED, 'history': []}
+
+
+def _vault_lock_rec(table, sid, region):
+    """Shared lock record, lazily rolled + persisted on first use."""
+    rec = _get(table, _season_pk(sid), f'VAULT#{region}')
+    if rec and rec.get('combo'):
+        return rec
+    rec = _fresh_vault()
+    _save_vault(table, sid, region, rec)
+    return rec
+
+
+def _save_vault(table, sid, region, rec):
+    table.put_item(Item={'pk': _season_pk(sid), 'sk': f'VAULT#{region}',
+                         'combo': rec['combo'], 'pot': rec['pot'],
+                         'history': rec['history']})
+
+
+def _vault_view(rec):
+    """Public view — the combination NEVER leaves the server."""
+    if not rec:
+        return {'pot': data.VAULT_POT_SEED, 'history': []}
+    return {'pot': rec['pot'], 'history': rec.get('history') or []}
 
 
 def _strike(table, sid, doc, payload):

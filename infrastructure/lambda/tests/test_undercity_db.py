@@ -853,3 +853,16 @@ def test_vein_heartstone_pays_and_resets(table, monkeypatch):
     assert resp['you']['bag'] and resp['you']['bag'][0] in data.VEIN_RARE_ITEMS
     rec = db._get(table, db._season_pk(sid), 'VEIN#cavern')
     assert rec['depth'] == 0
+
+
+def test_vault_landing_refills_picks_and_hides_combo(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'city_r4'
+    ev = db._resolve_space(table, sid, doc, 'city_r4', 'city_r3')
+    assert ev['type'] == 'vault_lock'
+    assert ev['picksLeft'] == data.VAULT_PICKS_PER_VISIT
+    assert doc['vaultPicksLeft'] == data.VAULT_PICKS_PER_VISIT
+    assert ev['vault'] == {'pot': data.VAULT_POT_SEED, 'history': []}
+    assert 'combo' not in ev['vault']                       # never leaks
