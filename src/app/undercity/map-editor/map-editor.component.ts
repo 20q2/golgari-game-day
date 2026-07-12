@@ -19,6 +19,7 @@ import { STAMPS, drawStamp } from '../engine/board-terrain';
 import { preloadAll } from '../engine/sprite-engine';
 import { SPACE_ICONS, SPACE_NAMES } from '../data/items';
 import { EditorCanvas, EditorPick } from './editor-canvas';
+import { OVERWORLD } from '../engine/board-layers';
 import { bossNode, defaultGate, lintMap, LintIssue } from './map-lint';
 import {
   downloadMap,
@@ -44,7 +45,7 @@ const MODE_KEYS: Record<string, Mode> = {
 const MODE_HINTS: Record<Mode, string> = {
   select: 'drag spaces, decals and labels · click to inspect',
   add: 'click empty ground to add a space — auto-links to the selected one',
-  connect: 'click two spaces to toggle their path · keeps chaining · Esc ends',
+  connect: 'click two spaces to toggle their path · switch layers mid-link to bridge ladders · Esc ends',
   decal: 'pick from the palette, then click to place · click a decal to edit',
   label: 'click empty ground to place a ghost title · drag to move',
   region: 'click spaces to gather them, then assign a region',
@@ -161,6 +162,15 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
 
   protected readonly cursorStyle = signal('grab');
 
+  /** Status-bar hint; while a link is pending it names the anchor space. */
+  protected readonly statusHint = computed(() => {
+    const from = this.connectFrom();
+    if (this.mode() === 'connect' && from) {
+      return `linking from "${from}" — click a space on any layer · Esc cancels`;
+    }
+    return MODE_HINTS[this.mode()];
+  });
+
   private readonly keyHandler = (e: KeyboardEvent) => this.onKey(e);
   private readonly resizeHandler = () => this.canvas?.resize();
   private readonly unloadHandler = (e: BeforeUnloadEvent) => {
@@ -219,6 +229,16 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     const boss = bossNode(d);
     if (boss) d.boss = boss.id;
     this.canvas.invalidate();
+    // Pocket layer ids shift with connectivity (they're named after a root
+    // node). Follow the selected node's layer so an edit that creates or
+    // renames a pocket never strands the view; otherwise stay put.
+    const sel = this.selNode();
+    const target = sel ? this.canvas.layerContaining(sel) : null;
+    if (target && target !== this.canvas.activeLayer().id) {
+      this.canvas.setLayer(target);
+      this.zoomPct.set(this.canvas.zoomPct());
+    }
+    this.layerId.set(this.canvas.activeLayer().id);
     this.layerIds.set(this.canvas.layerIds());
     this.lint.set(lintMap(this.d()));
     if (markDirty) {
@@ -678,6 +698,13 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   protected jumpToNode(id: string): void {
     const n = this.d().nodes.find((x) => x.id === id);
     if (!n) return;
+    // A ladder's partner (or a lint hit) may live on another layer — follow.
+    const layer = this.canvas.layerContaining(id);
+    if (layer && layer !== this.canvas.activeLayer().id) {
+      this.canvas.setLayer(layer);
+      this.layerId.set(layer);
+      this.zoomPct.set(this.canvas.zoomPct());
+    }
     this.selNode.set(n.id);
     this.selDecal.set(null);
     this.selLabel.set(null);
@@ -715,6 +742,23 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     if (prev && layer.nodeIds.has(prev.id)) {
       node.neighbors.push(prev.id);
       prev.neighbors.push(node.id);
+    } else if (layer.id !== OVERWORLD) {
+      // Pockets are defined by connectivity — an unlinked space would become
+      // its own invisible layer. Tether it to the nearest space here instead.
+      let best: BoardNode | null = null;
+      let bd = Infinity;
+      for (const n of doc.nodes) {
+        if (!layer.nodeIds.has(n.id)) continue;
+        const dist = (n.x - node.x) ** 2 + (n.y - node.y) ** 2;
+        if (dist < bd) {
+          bd = dist;
+          best = n;
+        }
+      }
+      if (best) {
+        node.neighbors.push(best.id);
+        best.neighbors.push(node.id);
+      }
     }
     doc.nodes.push(node);
     this.selNode.set(node.id);

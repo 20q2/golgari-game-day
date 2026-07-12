@@ -158,6 +158,11 @@ export class EditorCanvas {
     return this.layers.map((l) => l.id);
   }
 
+  /** Which layer holds this node? Pocket ids shift as connectivity changes. */
+  layerContaining(nodeId: string): string | null {
+    return this.layers.find((l) => l.nodeIds.has(nodeId))?.id ?? null;
+  }
+
   activeLayer(): LayerSpec {
     return this.layers.find((l) => l.id === this.layerId) ?? this.layers[0];
   }

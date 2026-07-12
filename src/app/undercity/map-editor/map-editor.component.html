@@ -108,7 +108,7 @@
       }
       <footer class="status">
         <span class="hint-line"
-          ><mat-icon class="mi">tips_and_updates</mat-icon> {{ modeHints[mode()] }}</span
+          ><mat-icon class="mi">tips_and_updates</mat-icon> {{ statusHint() }}</span
         >
         <span class="spacer"></span>
         @if (cursor(); as c) {
@@ -324,6 +324,7 @@
         <section>
           <h3><mat-icon class="mi">category</mat-icon> Regions</h3>
           <p class="hint">Click spaces to build a selection ({{ selNodes().size }} picked), then assign.</p>
+          <p class="hint">A <b>dark</b> region becomes its own layer (dungeon pocket): gather spaces, assign them to a new dark region, and the view follows. Bridge it with a pair of linked ladder spaces — start a Connect link on one, switch layers, click the other.</p>
           <div class="row">
             @for (r of regionIds(); track r) {
               <button (click)="assignRegion(r)">{{ r }}</button>
