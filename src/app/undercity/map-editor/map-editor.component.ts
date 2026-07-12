@@ -155,6 +155,8 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     lastX: number;
     lastY: number;
     moved: boolean;
+    /** Middle-mouse pan: exclusively camera — never deselects on release. */
+    camera?: boolean;
   } | null = null;
 
   protected readonly cursorStyle = signal('grab');
@@ -277,6 +279,12 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
 
   onPointerDown(e: PointerEvent): void {
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    // Middle mouse is always the camera — never grabs, places, or connects.
+    if (e.button === 1) {
+      e.preventDefault(); // no browser autoscroll
+      this.drag = { kind: 'pan', lastX: e.clientX, lastY: e.clientY, moved: false, camera: true };
+      return;
+    }
     const w = this.canvas.toWorld(e.clientX, e.clientY);
     const pick = this.canvas.pick(w.x, w.y);
     const mode = this.mode();
@@ -407,6 +415,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     if (!this.drag) return;
     const wasEdit = this.drag.kind !== 'pan';
     const moved = this.drag.moved;
+    const cameraOnly = this.drag.camera === true;
     this.drag = null;
     if (wasEdit) {
       if (moved) {
@@ -414,7 +423,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       } else {
         this.undoStack.pop(); // gesture was just a click — drop the snapshot
       }
-    } else if (!moved) {
+    } else if (!moved && !cameraOnly) {
       // A plain click on empty ground (no pan) deselects; region mode keeps
       // its gathered set so a stray click can't nuke a multi-pick.
       this.selNode.set(null);
