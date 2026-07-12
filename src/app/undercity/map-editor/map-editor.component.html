@@ -53,20 +53,38 @@
     <span class="spacer"></span>
 
     @if (canWriteInPlace && !rootPicked()) {
-      <button class="save" (click)="grantRepo()" matTooltip="Pick the repo folder so Save writes files in place">
+      <button class="save" (click)="grantRepo()" matTooltip="Pick the repo folder so Save can overwrite the board map in place">
         <mat-icon>folder_open</mat-icon><span>Grant repo</span>
+      </button>
+    }
+    @if (rootPicked()) {
+      <button
+        class="save"
+        [class.dirty]="dirtySinceSave()"
+        [disabled]="errorCount() > 0"
+        (click)="saveToRepo()"
+        matTooltip="Overwrite the board map in the repo — both map.json copies (Ctrl+S)"
+      >
+        <mat-icon>save</mat-icon>
+        <span>Save</span>
+        @if (errorCount() > 0) {
+          <span class="err-chip">{{ errorCount() }}</span>
+        }
       </button>
     }
     <button
       class="save"
-      [class.dirty]="dirtySinceSave()"
-      [disabled]="errorCount() > 0"
-      (click)="save()"
-      matTooltip="Save (Ctrl+S)"
+      [class.dirty]="!rootPicked() && dirtySinceSave()"
+      (click)="download()"
+      [matTooltip]="
+        rootPicked()
+          ? 'Export a map.json copy without touching the repo files'
+          : 'Download map.json, then place it in infrastructure/lambda/ and run sync_map.py'
+      "
     >
-      <mat-icon>save</mat-icon>
-      <span>{{ rootPicked() ? 'Save' : 'Download' }}</span>
-      @if (errorCount() > 0) {
+      <mat-icon>download</mat-icon>
+      <span>Download</span>
+      @if (!rootPicked() && errorCount() > 0) {
         <span class="err-chip">{{ errorCount() }}</span>
       }
     </button>

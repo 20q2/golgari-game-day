@@ -993,23 +993,36 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  /** Ctrl+S: overwrite the repo copies when granted, else fall back to download. */
   protected async save(): Promise<void> {
+    if (this.repoRoot) await this.saveToRepo();
+    else this.download();
+  }
+
+  /** Overwrite both checked-in map.json copies in place. Lint-gated. */
+  protected async saveToRepo(): Promise<void> {
     if (this.errorCount() > 0) {
       this.toast(`Fix ${this.errorCount()} error(s) before saving.`);
       return;
     }
-    if (this.repoRoot) {
-      try {
-        await saveMap(this.repoRoot, this.d());
-        this.dirtySinceSave.set(false);
-        localStorage.removeItem(DRAFT_KEY);
-        this.toast('Saved both map.json copies. Reload the game tab to see it live.');
-      } catch (e) {
-        this.toast(e instanceof Error ? e.message : 'Save failed');
-      }
-    } else {
-      downloadMap(this.d());
-      this.toast('Downloaded map.json — place it in infrastructure/lambda/ and run sync_map.py.');
+    if (!this.repoRoot) return;
+    try {
+      await saveMap(this.repoRoot, this.d());
+      this.dirtySinceSave.set(false);
+      localStorage.removeItem(DRAFT_KEY);
+      this.toast('Saved both map.json copies. Reload the game tab to see it live.');
+    } catch (e) {
+      this.toast(e instanceof Error ? e.message : 'Save failed');
     }
+  }
+
+  /** Export a map.json copy — always available, even mid-lint-errors. */
+  protected download(): void {
+    downloadMap(this.d());
+    this.toast(
+      this.rootPicked()
+        ? 'Downloaded a map.json copy (the repo files are untouched).'
+        : 'Downloaded map.json — place it in infrastructure/lambda/ and run sync_map.py.',
+    );
   }
 }
