@@ -140,9 +140,12 @@
         <div class="event-banner">
           @if (ev.type === 'loot') {
             <!-- Peek through the rustling grass for the goodies hidden inside. -->
-            <div class="grass-scene" aria-hidden="true">
-              <img class="spore-peek" src="undercity/icons/rot.png" alt="" />
-              <span class="blades">
+            <div class="grass-scene">
+              <img class="spore-peek" src="undercity/icons/rot.png" alt="Spores" />
+              @if (ev.spores) {
+                <span class="spore-gain">+{{ ev.spores }}</span>
+              }
+              <span class="blades" aria-hidden="true">
                 @for (b of grassBlades; track b) {
                   <i [style.--i]="b"></i>
                 }
@@ -162,7 +165,7 @@
         <p class="event-text">{{ ev.text }}</p>
         @if (eventHasChips(ev)) {
           <div class="event-chips">
-            @if (ev.spores) {
+            @if (ev.spores && ev.type !== 'loot') {
               <span class="chip gain"><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> +{{ ev.spores }}</span>
             }
             @if (ev.sporesLost) {
