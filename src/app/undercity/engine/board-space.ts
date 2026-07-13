@@ -155,6 +155,8 @@ export function drawSpaceDisc(
   ctx.lineWidth = 2.5;
   ctx.stroke();
 
+  // A locked space fades its icon too, so the whole coin reads as inactive.
+  if (opts.locked) ctx.globalAlpha = 0.4;
   if (n.type === 'boss' || n.type === 'lair') {
     drawSkull(ctx, n.x, n.y);
   } else {
@@ -171,6 +173,7 @@ export function drawSpaceDisc(
     ctx.fillStyle = isLightHex(topColor) ? 'rgba(24, 28, 22, 0.92)' : 'rgba(250, 255, 250, 1)';
     ctx.fillText(glyph, n.x, n.y);
   }
+  if (opts.locked) ctx.globalAlpha = 1;
 
   if (opts.selected) {
     ctx.beginPath();
