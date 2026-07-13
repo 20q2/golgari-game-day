@@ -335,6 +335,9 @@ NPCS = [
     {'id': 'sewer_shambler', 'name': 'Sewer Shambler',
      'hp': 20, 'atk': 5, 'def': 2, 'spd': 3, 'bounty': 9, 'xp': 10,
      'itemChance': 0.0},
+    {'id': 'myconid', 'name': 'Myconid',
+     'hp': 24, 'atk': 4, 'def': 2, 'spd': 2, 'bounty': 9, 'xp': 10,
+     'itemChance': 0.0},
 ]
 
 # Elites live only at 'elite' board spaces — never a surprise on a wild space.

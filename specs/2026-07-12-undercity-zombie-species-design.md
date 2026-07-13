@@ -110,3 +110,24 @@ These share the substring "spore" but are unrelated:
 - `npm run build` succeeds (lint is broken repo-wide; build is the type-check gate).
 - Map copy parity unaffected (no map.json change), but if any test asserts species
   ids, it must reflect `zombie`.
+
+## Addendum (2026-07-13): sprite swap + Myconid enemy
+
+Follow-up to the rename: the zombie starter should *look* like a zombie, and the
+freed fungus art gets a second life as an enemy.
+
+- **Zombie starter art:** repointed to the `sewer_shambler` enemy art (a green
+  humanoid rotting zombie), cropped from its 256×150 two-figure sheet down to a
+  single figure (108×145) and written to `public/undercity/sprites/zombie.png`.
+  No code change — `FORM_SPRITES.zombie` already resolves to `sprites/zombie.png`.
+- **New enemy — Myconid:** the original fungus art (the large red-capped mushroom
+  creature) is copied to `public/undercity/enemies/myconid.png` and registered as
+  a **surface wild** in `undercity_data.NPCS`:
+  `{'id': 'myconid', 'name': 'Myconid', 'hp': 24, 'atk': 4, 'def': 2, 'spd': 2, 'bounty': 9, 'xp': 10, 'itemChance': 0.0}`.
+  Appended after `sewer_shambler` so `test_npc_fixed_stats` (which checks index 0)
+  is unaffected. Statline verified against the engine: a fresh L1 reference wins
+  within the round cap, satisfying `test_level1_beats_every_normal_wild` (def 3
+  would time out — def 2 is the tanky-but-fair line).
+- **Frontend wiring:** `NPC_ICONS.myconid = 'grain'` (fallback icon; battle art is
+  the PNG) in `items.ts`, and `undercity/enemies/myconid.png` added to the
+  map-editor `SEED_IMAGES` palette.

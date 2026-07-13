@@ -65,6 +65,7 @@ const SEED_IMAGES = [
   'undercity/enemies/fetid_imp.png',
   'undercity/enemies/rot_shambler.png',
   'undercity/enemies/sewer_shambler.png',
+  'undercity/enemies/myconid.png',
 ];
 
 /**

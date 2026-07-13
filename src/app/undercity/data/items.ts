@@ -102,6 +102,7 @@ export const SPACE_TINTS: Record<string, string> = {
 export const NPC_ICONS: Record<string, string> = {
   drudge_beetle: 'bug_report',
   sewer_shambler: 'blur_on',
+  myconid: 'grain',
   fetid_imp: 'whatshot',
   rot_shambler: 'coronavirus',
   // v3 guardians & mini-bosses
