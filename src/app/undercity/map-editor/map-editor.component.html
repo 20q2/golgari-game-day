@@ -389,9 +389,10 @@
               </label>
               <label class="check">
                 <input
+                  #darkBox
                   type="checkbox"
-                  [ngModel]="region(r).dark"
-                  (ngModelChange)="updateRegion(r, { dark: $event })"
+                  [checked]="region(r).dark"
+                  (change)="setRegionDark(r, darkBox)"
                 />
                 dark (fog-of-war dungeon pocket)
               </label>

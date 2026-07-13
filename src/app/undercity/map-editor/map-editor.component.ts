@@ -1071,6 +1071,32 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     this.afterDocChange();
   }
 
+  /**
+   * `dark` restructures layers, so guard the destructive direction: turning
+   * it OFF on a region that already holds spaces collapses those pockets onto
+   * the overworld (they were positioned for isolated sub-views), which reads
+   * as "everything broke". Turning it ON is always safe.
+   */
+  protected setRegionDark(id: string, box: HTMLInputElement): void {
+    const value = box.checked;
+    if (!value) {
+      const held = this.d().nodes.filter((n) => n.region === id).length;
+      if (
+        held > 0 &&
+        !confirm(
+          `Reveal "${id}"?\n\nIts ${held} space(s) live in separate dungeon pockets, ` +
+            `positioned for their own layers. Revealing merges them all onto the ` +
+            `overworld (overlapping the surface) and un-pockets the dungeons — the ` +
+            `game reads dungeon spaces by this being dark.\n\nYou can Ctrl+Z to undo.`,
+        )
+      ) {
+        box.checked = true; // revert the DOM; the model never changed
+        return;
+      }
+    }
+    this.updateRegion(id, { dark: value });
+  }
+
   protected backgroundOptions(): string[] {
     return this.images().filter((i) => i.endsWith('_background.png'));
   }
