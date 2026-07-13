@@ -37,9 +37,9 @@ def test_game_endpoints_through_handler(monkeypatch):
 
     status, body = _call('POST', '/game/action',
                          body={'type': 'join', 'userId': 'user-alex',
-                               'username': 'Alex', 'payload': {'starter': 'spore'}})
+                               'username': 'Alex', 'payload': {'starter': 'zombie'}})
     assert status == 200
-    assert body['you']['species'] == 'spore'
+    assert body['you']['species'] == 'zombie'
 
     status, body = _call('GET', '/game/state', query={'userId': 'user-alex'})
     assert status == 200

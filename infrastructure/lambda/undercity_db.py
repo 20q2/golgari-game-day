@@ -92,7 +92,14 @@ def _active_season(table):
 
 
 def _get_player(table, sid, user_id):
-    return _get(table, _season_pk(sid), f'PLAYER#{user_id}')
+    doc = _get(table, _season_pk(sid), f'PLAYER#{user_id}')
+    if doc:
+        # Backward-compat: the fourth species was renamed spore -> zombie.
+        if doc.get('species') == 'spore':
+            doc['species'] = 'zombie'
+        if doc.get('form') == 'spore':
+            doc['form'] = 'zombie'
+    return doc
 
 
 def _open_barriers(table, sid):
@@ -563,7 +570,7 @@ def _join(table, sid, user_id, username, payload):
         return _ok(existing)
     starter = payload.get('starter')
     if starter not in data.STARTERS:
-        return _err('Pick a starter: pest, kraul, saproling, or spore.')
+        return _err('Pick a starter: pest, kraul, saproling, or zombie.')
     home = payload.get('home', data.DEFAULT_BIOME)
     if home not in data.BIOMES:
         return _err('Pick a home biome: ' + ', '.join(data.BIOMES) + '.')
@@ -661,14 +668,22 @@ def _roll(table, sid, doc, payload):
     # Rolling without choosing a respawn gate accepts the provisional home gate.
     doc.pop('pendingRespawn', None)
 
+    # Dev convenience (only while rolls are unlimited): the client may name the
+    # face it wants instead of rolling randomly. Skips loaded-die / vines so the
+    # picked number is exactly what moves you.
+    picked = payload.get('value') if payload else None
+    picked = int(picked) if isinstance(picked, (int, float)) and 1 <= picked <= 6 else None
+
     value = None
-    if doc.get('pendingLoadedDie'):
+    if data.UNLIMITED_ROLLS and picked is not None:
+        value = picked
+    elif doc.get('pendingLoadedDie'):
         value = int(doc.pop('pendingLoadedDie'))
     else:
         value = _rng.randint(1, 6)
 
     vines = [b for b in (doc.get('buffs') or []) if b.get('kind') == 'vines']
-    if vines:
+    if vines and picked is None:
         value = (value + 1) // 2
         doc['buffs'] = [b for b in doc['buffs'] if b.get('kind') != 'vines']
 

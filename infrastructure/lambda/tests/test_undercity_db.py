@@ -147,6 +147,24 @@ def test_elite_space_resolves_to_elite_battle(table, monkeypatch):
     assert ev['npc']['id'] in {'fetid_imp', 'rot_shambler'}
 
 
+def test_roll_picks_exact_face_when_unlimited(table, monkeypatch):
+    monkeypatch.setattr(data, 'UNLIMITED_ROLLS', True)
+    act(table, 'join', starter='saproling', home='cavern')
+    status, resp = act(table, 'roll', value=4)
+    assert status == 200
+    assert resp['roll']['value'] == 4
+
+
+def test_roll_pick_ignored_when_rolls_are_limited(table, monkeypatch):
+    monkeypatch.setattr(data, 'UNLIMITED_ROLLS', False)
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: 2)
+    act(table, 'join', starter='saproling', home='cavern')
+    # A picked value must not bypass the real random roll economy.
+    status, resp = act(table, 'roll', value=6)
+    assert status == 200
+    assert resp['roll']['value'] == 2
+
+
 def test_join_is_idempotent_and_seal_rolls(table):
     act(table, 'join', starter='pest')
     status, resp = act(table, 'join', starter='kraul')
@@ -157,7 +175,7 @@ def test_join_is_idempotent_and_seal_rolls(table):
     perm = db._get_perm(table, 'user-vet')
     perm['seals'] = 2
     table.put_item(Item=perm)
-    status, resp = act(table, 'join', user='user-vet', name='Vet', starter='spore')
+    status, resp = act(table, 'join', user='user-vet', name='Vet', starter='zombie')
     assert resp['you']['rolls'] == 5
 
 
@@ -308,7 +326,7 @@ def test_evolution_gates_and_bonuses(table):
 
 def test_poke_grants_rolls_capped(table):
     act(table, 'join', starter='pest')
-    act(table, 'join', user='user-sam', name='Sam', starter='spore')
+    act(table, 'join', user='user-sam', name='Sam', starter='zombie')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-sam')
     doc['rolls'] = 0
@@ -323,7 +341,7 @@ def test_poke_grants_rolls_capped(table):
 
 def test_snare_plant_and_trigger(table):
     act(table, 'join', starter='pest')
-    act(table, 'join', user='user-sam', name='Sam', starter='spore')
+    act(table, 'join', user='user-sam', name='Sam', starter='zombie')
     sid = _sid(table)
     alex = db._get_player(table, sid, 'user-alex')
     alex['bag'] = ['snare']
@@ -541,7 +559,7 @@ def test_creature_label_prefers_custom_name():
 
 def test_state_payloads_carry_creature_name(table):
     act(table, 'join', starter='pest', creatureName='Mulch')
-    act(table, 'join', user='user-sam', name='Sam', starter='spore', creatureName='Puffcap')
+    act(table, 'join', user='user-sam', name='Sam', starter='zombie', creatureName='Puffcap')
     _, state = db.handle_state(table, {'userId': 'user-alex'})
     by_id = {p['userId']: p for p in state['players']}
     assert by_id['user-alex']['creatureName'] == 'Mulch'
@@ -946,3 +964,15 @@ def test_state_surfaces_veins_and_vaults(table):
     assert state['vaults']['city']['pot'] == 44
     assert len(state['vaults']['city']['history']) == 1
     assert 'combo' not in state['vaults']['city']           # never leaks
+
+
+def test_legacy_spore_species_normalizes_to_zombie(table):
+    """Saves written before the spore->zombie rename must still load."""
+    act(table, 'join', starter='zombie')
+    sid, _ = db._active_season(table)
+    key = (db._season_pk(sid), 'PLAYER#user-alex')
+    table.items[key]['species'] = 'spore'
+    table.items[key]['form'] = 'spore'
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['species'] == 'zombie'
+    assert doc['form'] == 'zombie'

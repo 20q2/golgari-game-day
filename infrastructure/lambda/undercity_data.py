@@ -51,10 +51,10 @@ STARTERS = {
         'passive': 'regrowth',
         'blurb': 'Tanky plant token. Regrowth: heal 20% max HP after any battle.',
     },
-    'spore': {
-        'name': 'Spore', 'hp': 27, 'atk': 5, 'def': 5, 'spd': 6,
+    'zombie': {
+        'name': 'Zombie', 'hp': 27, 'atk': 5, 'def': 5, 'spd': 6,
         'passive': 'drift',
-        'blurb': 'Trickster fungus. Drift: +15% flee chance; bad mystery events reroll once.',
+        'blurb': 'Was somebody once. Now part of the swarm. Endless Ranks: +15% flee chance; bad mystery events reroll once.',
     },
 }
 
@@ -93,12 +93,12 @@ TIER2 = {
         'blurb': 'Fortress. Rootwall: Regrowth improves to 35%.',
     },
     'shambling_shell': {
-        'name': 'Shambling Shell', 'line': 'spore', 'bonus': {'maxHp': 6, 'def': 2},
+        'name': 'Shambling Shell', 'line': 'zombie', 'bonus': {'maxHp': 6, 'def': 2},
         'passive': 'dredge',
         'blurb': 'Durable trickster. Dredge: reclaim your snare after it triggers.',
     },
     'corpsejack_menace': {
-        'name': 'Corpsejack Menace', 'line': 'spore', 'bonus': {'atk': 4},
+        'name': 'Corpsejack Menace', 'line': 'zombie', 'bonus': {'atk': 4},
         'passive': 'doubling_rot',
         'blurb': 'Fungal tycoon. Doubling Rot: mystery-event Spore payouts doubled.',
     },
