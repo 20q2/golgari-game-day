@@ -32,6 +32,12 @@ export interface BoardNode {
   /** Chamber theme tag from the backend map: city | cavern | bog | isle. */
   region?: string;
   neighbors: string[];
+  /**
+   * Editor-only: suppress the auto landmark sprite (and its glow) this space's
+   * type would otherwise draw — e.g. hide a warp's portal art. Display-only;
+   * the backend ignores it. Absent/false = sprite shown.
+   */
+  hideSprite?: boolean;
 }
 
 /** Editable chamber metadata from map.json (regions{} section). */
@@ -902,31 +908,15 @@ export class BoardCanvas {
       ctx.stroke();
     }
 
-    // The coin itself is shared with the map editor (board-space.ts).
+    // The coin itself is shared with the map editor (board-space.ts). Spaces
+    // sealed behind an unbroken barrier render grey so it's clear they can't
+    // be visited yet — a colour change, not a dimming veil.
     const sealed = n.type === 'barrier' && !this.barriersOpen.has(n.id);
-    drawSpaceDisc(ctx, n, { sealed });
+    drawSpaceDisc(ctx, n, { sealed, locked: this.lockedIds.has(n.id) });
 
     // A sealed barrier wears a rubble wall across the route; it crumbles away
     // (drawn no more) the moment someone breaks it.
     if (sealed) this.drawRubble(n, elapsed);
-
-    // Nodes sealed behind an unbroken barrier read as "locked": a cool grey
-    // veil over the coin so it's clearly not visitable yet.
-    if (this.lockedIds.has(n.id)) {
-      ctx.beginPath();
-      ctx.ellipse(n.x, n.y, NODE_R + 1, DISC_RY + 1, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(30, 36, 38, 0.62)';
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(n.x, n.y - DISC_RY - 12, 9, 9, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(20, 24, 26, 0.8)';
-      ctx.fill();
-      ctx.font = "13px 'Material Icons'";
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'rgba(200, 210, 210, 0.85)';
-      ctx.fillText('lock', n.x, n.y - DISC_RY - 12);
-    }
 
     // Disturbed ground — the only tell that a snare lurks here.
     if (this.snares.has(n.id)) {
