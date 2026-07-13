@@ -24,9 +24,10 @@ export function legalSteps(
   const memo = new Map<string, boolean>();
 
   const canFinish = (node: string, from: string, remaining: number): boolean => {
+    // Sealed barriers mirror the server bonk rule: reaching one is always a
+    // valid stop (you march up and halt at the wall), and never a corridor.
+    if (closed.has(node)) return destSet.has(node);
     if (remaining === 0) return destSet.has(node);
-    // Sealed barriers mirror the server: a valid final stop, never a corridor.
-    if (closed.has(node)) return false;
     const key = `${node}|${from}|${remaining}`;
     const hit = memo.get(key);
     if (hit !== undefined) return hit;

@@ -113,6 +113,16 @@ def test_closed_barrier_blocks_passage_through():
     assert 's1' in dests_open
 
 
+def test_walk_toward_barrier_stops_at_the_wall():
+    # Bonk rule: an over-long roll toward a sealed barrier stops AT it instead
+    # of overshooting, so the barrier is reachable without an exact count.
+    for roll in (1, 2, 3, 4, 5, 6):
+        dests = legal_destinations(data.MAP_NODES, 's0', roll, closed=frozenset({'bar_s'}))
+        assert 'bar_s' in dests, f'roll {roll} should still reach the wall'
+        # never leaks into the sealed pocket
+        assert dests & {'s1', 's2', 's3', 'vault'} == set()
+
+
 def test_ladder_pair_connects_dungeon():
     # The ladder is a normal graph edge: ring side down into the dungeon pocket.
     dests = legal_destinations(data.MAP_NODES, 'city_r5', 2)

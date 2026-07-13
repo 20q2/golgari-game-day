@@ -190,6 +190,8 @@ export class BoardCanvas {
   private players: BoardPlayer[] = [];
   private snares = new Set<string>();
   private barriersOpen = new Set<string>();
+  /** Nodes sealed behind an unbroken barrier — rendered greyed. */
+  private lockedIds = new Set<string>();
   private choices = new Set<string>();
   private backChoice: string | null = null;
   private info: NodeInfo | null = null;
@@ -401,6 +403,42 @@ export class BoardCanvas {
   /** Barrier nodes broken open this season — sealed ones wear rubble. */
   setBarriersOpen(nodeIds: string[]): void {
     this.barriersOpen = new Set(nodeIds);
+    this.recomputeLocked();
+  }
+
+  /**
+   * Nodes sealed behind a still-closed barrier: reachable from the gate only
+   * by passing through a barrier that hasn't been broken yet. They render
+   * greyed so it's clear they can't be visited. The barrier space itself is
+   * NOT locked — you must be able to reach it to fight the guardian.
+   */
+  private recomputeLocked(): void {
+    const byId = new Map(this.map.nodes.map((n) => [n.id, n]));
+    const sealed = (id: string) =>
+      byId.get(id)?.type === 'barrier' && !this.barriersOpen.has(id);
+    // Warp mushrooms teleport between each other — mirror that here (as the
+    // game's reachability does) so the warp-in-only island isn't mislabelled
+    // locked. Only true behind-a-barrier pockets should grey out.
+    const warps = this.map.nodes.filter((n) => n.type === 'warp').map((n) => n.id);
+    const start = this.map.gate;
+    const reached = new Set<string>([start]);
+    const queue = [start];
+    while (queue.length) {
+      const cur = queue.shift()!;
+      // A sealed barrier is reachable, but you can't walk THROUGH it.
+      if (cur !== start && sealed(cur)) continue;
+      const nbs = [...(byId.get(cur)?.neighbors ?? [])];
+      if (byId.get(cur)?.type === 'warp') nbs.push(...warps.filter((w) => w !== cur));
+      for (const nb of nbs) {
+        if (!reached.has(nb)) {
+          reached.add(nb);
+          queue.push(nb);
+        }
+      }
+    }
+    this.lockedIds = new Set(
+      this.map.nodes.filter((n) => !reached.has(n.id)).map((n) => n.id),
+    );
   }
 
   setChoices(nodeIds: string[] | null): void {
@@ -871,6 +909,24 @@ export class BoardCanvas {
     // A sealed barrier wears a rubble wall across the route; it crumbles away
     // (drawn no more) the moment someone breaks it.
     if (sealed) this.drawRubble(n, elapsed);
+
+    // Nodes sealed behind an unbroken barrier read as "locked": a cool grey
+    // veil over the coin so it's clearly not visitable yet.
+    if (this.lockedIds.has(n.id)) {
+      ctx.beginPath();
+      ctx.ellipse(n.x, n.y, NODE_R + 1, DISC_RY + 1, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(30, 36, 38, 0.62)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(n.x, n.y - DISC_RY - 12, 9, 9, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(20, 24, 26, 0.8)';
+      ctx.fill();
+      ctx.font = "13px 'Material Icons'";
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(200, 210, 210, 0.85)';
+      ctx.fillText('lock', n.x, n.y - DISC_RY - 12);
+    }
 
     // Disturbed ground — the only tell that a snare lurks here.
     if (this.snares.has(n.id)) {

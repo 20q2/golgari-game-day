@@ -185,8 +185,9 @@ def legal_destinations(nodes: dict, start: str, steps: int,
     Dokapon exact-count movement: every node reachable in exactly `steps`
     edges without immediately reversing the previous edge. Dead-end branches
     shorter than the roll simply contribute nothing. `closed` holds sealed
-    barrier nodes: a move may END on one (to challenge its guardian) but
-    never walks THROUGH it.
+    barrier nodes: a walk that reaches one STOPS at it (spending the rest of
+    the roll) so you can always march up to a barrier to challenge its
+    guardian — but it never walks THROUGH it into the sealed area beyond.
     """
     results = set()
     stack = [(start, None, steps)]
@@ -197,7 +198,12 @@ def legal_destinations(nodes: dict, start: str, steps: int,
             results.add(node)
             continue
         if node in closed and node != start:
-            continue  # sealed: a wall mid-walk, only a valid final stop
+            # Bonk: you march up to the sealed wall and STOP there, spending
+            # the rest of the roll — so a barrier is always reachable when you
+            # walk toward it, not only on an exact-count landing. Never a
+            # corridor: we still don't expand through it.
+            results.add(node)
+            continue
         key = (node, prev, remaining)
         if key in seen:
             continue
