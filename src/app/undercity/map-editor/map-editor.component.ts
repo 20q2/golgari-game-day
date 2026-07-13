@@ -15,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MAT_TOOLTIP_DEFAULT_OPTIONS, MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom } from 'rxjs';
 import { BoardMap, BoardNode, MapDecal, MapLabel, RegionSpec } from '../engine/board-canvas';
-import { STAMPS, drawStamp } from '../engine/board-terrain';
+import { LANDMARK_TYPES, STAMPS, drawStamp } from '../engine/board-terrain';
 import { preloadAll } from '../engine/sprite-engine';
 import { SPACE_ICONS, SPACE_NAMES } from '../data/items';
 import { DUNGEONS, dungeonBiome } from '../data/dungeons';
@@ -719,19 +719,26 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   private addNodeAt(x: number, y: number): void {
     this.snapshot();
     const doc = this.d();
-    let i = doc.nodes.length;
-    while (doc.nodes.some((n) => n.id === `n${i}`)) i++;
     // New nodes join the active layer's dominant region so they theme right.
     const layer = this.canvas.activeLayer();
     const counts = new Map<string, number>();
+    let dungeon: string | null = null;
     for (const n of doc.nodes) {
-      if (layer.nodeIds.has(n.id) && n.region) {
-        counts.set(n.region, (counts.get(n.region) ?? 0) + 1);
-      }
+      if (!layer.nodeIds.has(n.id)) continue;
+      if (n.region) counts.set(n.region, (counts.get(n.region) ?? 0) + 1);
+      // Which dungeon does this pocket belong to? A dungeon node's biome — its
+      // themed look (purple/teal ribbons) AND its server rules (wild, hazard,
+      // lair rewards) — is read from its id prefix, e.g. "city_d0" -> city.
+      dungeon ??= dungeonBiome(n.id, n.region);
     }
     const region = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'city';
+    // A new space in a known dungeon pocket must carry that biome's prefix so
+    // it renders and behaves as part of the dungeon, not a stray depths node.
+    const prefix = dungeon ? `${dungeon}_x` : 'n';
+    let i = doc.nodes.length;
+    while (doc.nodes.some((n) => n.id === `${prefix}${i}`)) i++;
     const node: BoardNode = {
-      id: `n${i}`,
+      id: `${prefix}${i}`,
       type: 'loot',
       x: this.applySnap(x),
       y: this.applySnap(y),
@@ -847,6 +854,18 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   protected setNodeRegion(n: BoardNode, region: string): void {
     this.snapshot();
     n.region = region;
+    this.afterDocChange();
+  }
+
+  /** Does this space type draw an auto landmark sprite the toggle can hide? */
+  protected hasSprite(n: BoardNode): boolean {
+    return LANDMARK_TYPES.includes(n.type);
+  }
+
+  /** Show/hide the space's auto landmark sprite (and its glow). */
+  protected toggleNodeSprite(n: BoardNode, show: boolean): void {
+    this.snapshot();
+    n.hideSprite = !show;
     this.afterDocChange();
   }
 

@@ -15,6 +15,8 @@ export interface LintIssue {
 // server finds gates by type, so gates can live on any space).
 export const HOME_BIOMES = ['city', 'cavern', 'bog', 'bone', 'garden'];
 export const DEFAULT_BIOME = 'city';
+/** Biomes with a themed dungeon pocket (depths node id prefixes). */
+export const DUNGEON_BIOMES = ['city', 'cavern', 'bog', 'bone', 'garden'];
 
 /** The gate the server spawns from by default: the city region's gate node. */
 export function defaultGate(doc: BoardMap): BoardNode | null {
@@ -110,6 +112,18 @@ export function lintMap(doc: BoardMap): LintIssue[] {
     const partners = n.neighbors.filter((nb) => byId.get(nb)?.type === 'ladder');
     if (partners.length !== 1) {
       err(`Ladder "${n.id}" has ${partners.length} ladder partners (needs exactly 1)`, n.id);
+    }
+  }
+
+  // Depths (dungeon) spaces are matched to their dungeon by id prefix — that
+  // drives both the themed look and the server's wild/hazard/lair rules. A
+  // depths node whose prefix isn't a known dungeon biome renders as a generic
+  // dark space and won't behave as part of that dungeon.
+  for (const n of doc.nodes) {
+    if (n.region !== 'depths') continue;
+    const biome = n.id.split('_')[0];
+    if (!DUNGEON_BIOMES.includes(biome)) {
+      warn(`"${n.id}" is in a dungeon but not named <biome>_… — rename it (e.g. city_${n.id})`, n.id);
     }
   }
 
