@@ -157,6 +157,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   protected readonly canStepBack = computed(() => (this.stepping()?.path.length ?? 0) > 1);
 
+  /** Blade indices for the Spore Mound grass-rustle banner. */
+  protected readonly grassBlades = [0, 1, 2, 3, 4, 5, 6];
+
   protected readonly gear = GEAR;
   protected readonly consumables = CONSUMABLES;
   protected readonly isShielded = isShielded;
@@ -275,6 +278,14 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   protected eventTint(type: string): string {
     return SPACE_TINTS[type] ?? '#4a7c59';
+  }
+
+  /** Glyph ink that stays legible on the tint disc — dark on light tints (e.g. the white gate). */
+  protected eventInk(type: string): string {
+    const hex = this.eventTint(type);
+    const v = parseInt(hex.slice(1), 16);
+    const lum = 0.299 * ((v >> 16) & 255) + 0.587 * ((v >> 8) & 255) + 0.114 * (v & 255);
+    return lum > 176 ? 'rgba(24, 28, 22, 0.92)' : 'rgba(240, 253, 244, 0.95)';
   }
 
   /** Biome backdrop per node region — the scenery behind the event banner. */

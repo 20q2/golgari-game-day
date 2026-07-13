@@ -83,7 +83,7 @@ export const SPACE_TINTS: Record<string, string> = {
   shrine: '#9a7a3a',
   hazard: '#4a5568',
   warp: '#2f7a7a',
-  gate: '#4a7c59',
+  gate: '#ffffff',
   boss: '#2a1a30',
   ossuary: '#6b5b4a',
   wild_warp: '#7a3030',
@@ -118,9 +118,36 @@ export const NPC_ICONS: Record<string, string> = {
   rot_grub: 'compost',
 };
 
+/**
+ * Which guardian creature blocks each barrier space — mirrors the backend
+ * BARRIER_GUARDIANS ids (undercity_data.py). The board draws this creature
+ * standing on a still-sealed barrier (it vanishes once the route is broken).
+ * Real art lives at `undercity/guardians/<id>.png` (transparent); until that
+ * file exists a placeholder token sprite stands in (GUARDIAN_PLACEHOLDER_SPRITE).
+ */
+export const BARRIER_GUARDIANS: Record<string, string> = {
+  bar_e: 'rubble_hulk',
+  bar_s: 'bone_warden',
+};
+
+/** Guardian shown when a barrier node isn't in the map above. */
+export const DEFAULT_GUARDIAN = 'rubble_hulk';
+
+/**
+ * Placeholder token sprite per guardian (keys index FORM_SPRITES sprite assets,
+ * already preloaded) until real transparent guardian art is dropped in.
+ */
+export const GUARDIAN_PLACEHOLDER_SPRITE: Record<string, string> = {
+  rubble_hulk: 'godzilla',
+  bone_warden: 'pachy',
+};
+
+/** Fallback placeholder sprite for any guardian without a specific mapping. */
+export const DEFAULT_GUARDIAN_SPRITE = 'godzilla';
+
 /** One-line "what does this space do" blurbs for the board popover. */
 export const SPACE_BLURBS: Record<string, string> = {
-  loot: 'Forage the rot for Spores — sometimes a buried consumable.',
+  loot: 'Rustle through the tall grass for Spores — sometimes a buried consumable.',
   wild: 'A wild creature lurks here. Beat it for XP and a Spore bounty.',
   elite: 'An elite predator claims this ground. Rich XP and Spores — but a death sentence for fresh hatchlings.',
   mystery: 'Roll the d12 mystery table — fortune, junk, or misfortune.',
@@ -145,7 +172,7 @@ export const SPACE_BLURBS: Record<string, string> = {
 };
 
 export const SPACE_NAMES: Record<string, string> = {
-  loot: 'Loot Cache',
+  loot: 'Spore Mound',
   wild: 'Wild Encounter',
   elite: 'Elite Encounter',
   mystery: 'Mystery',

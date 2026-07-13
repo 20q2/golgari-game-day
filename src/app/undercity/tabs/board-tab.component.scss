@@ -17,9 +17,25 @@
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
   align-items: center;
   z-index: 5;
+}
+
+.roll-picker {
+  flex-basis: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pick-face {
+  min-width: 40px;
+  padding: 10px 0;
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 
 .roll-btn {
@@ -316,6 +332,60 @@
     animation: uc-chip-pop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1);
   }
 
+  // Spore Mound: a clump of grass that parts and rustles while the spore coin
+  // rises up from behind it, as if you're peeking through to grab the goodies.
+  .grass-scene {
+    position: relative;
+    width: 132px;
+    height: 78px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+
+    .spore-peek {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      width: 42px;
+      height: 42px;
+      margin-left: -21px;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 4px 7px rgba(0, 0, 0, 0.55));
+      z-index: 1;
+      animation: uc-spore-rise 0.55s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+    }
+
+    .blades {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+
+      i {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        // Fan the blades out from the centre; middle blades are tallest.
+        margin-left: calc((var(--i) - 3) * 16px - 6px);
+        width: 13px;
+        height: calc(46px - (var(--i) - 3) * (var(--i) - 3) * 3px);
+        background: linear-gradient(
+          to top,
+          #24512c,
+          hsl(calc(120 + var(--i) * 6), 42%, 42%)
+        );
+        clip-path: polygon(50% 0%, 82% 55%, 100% 100%, 0 100%, 18% 55%);
+        transform-origin: bottom center;
+        // Part on open, then settle into an endless staggered rustle.
+        animation:
+          uc-grass-part 0.5s ease-out both,
+          uc-grass-rustle 2.4s ease-in-out infinite;
+        animation-delay:
+          calc(var(--i) * 0.03s),
+          calc(var(--i) * -0.31s);
+      }
+    }
+  }
+
   .event-text {
     font-size: 0.95rem;
     line-height: 1.45;
@@ -336,6 +406,45 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+// Spore coin rises up from behind the grass.
+@keyframes uc-spore-rise {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+// Blades sweep aside as the card opens (the "peek through").
+@keyframes uc-grass-part {
+  from {
+    transform: scaleY(0.5) rotate(0deg);
+  }
+}
+
+// Endless gentle sway — the rustle.
+@keyframes uc-grass-rustle {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-modal .grass-scene .blades i {
+    animation: none;
+  }
+  .event-modal .grass-scene .spore-peek {
+    animation: none;
   }
 }
 

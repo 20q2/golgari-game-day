@@ -12,6 +12,17 @@
       <button class="uc-btn uc-btn-primary roll-btn" [disabled]="busy()" (click)="roll()">
         <img class="die-icon" src="undercity/icons/die.png" alt="" /> Roll (∞)
       </button>
+      <!-- Dev pick-a-face (unlimited-rolls mode) — remove with the ∞ gate before game night. -->
+      <button class="uc-btn pick-btn" [disabled]="busy()" (click)="showRollPicker.set(!showRollPicker())">
+        <mat-icon class="mi">casino</mat-icon> Pick
+      </button>
+      @if (showRollPicker()) {
+        <div class="roll-picker">
+          @for (n of [1, 2, 3, 4, 5, 6]; track n) {
+            <button class="uc-btn pick-face" [disabled]="busy()" (click)="roll(n)">{{ n }}</button>
+          }
+        </div>
+      }
     }
 
     @if (!rolling() && !store.you()?.pendingMove && castableSpells().length) {
@@ -127,13 +138,23 @@
         [style.background-image]="eventCardBg()"
       >
         <div class="event-banner">
-          @if (ev.type === 'gate') {
+          @if (ev.type === 'loot') {
+            <!-- Peek through the rustling grass for the goodies hidden inside. -->
+            <div class="grass-scene" aria-hidden="true">
+              <img class="spore-peek" src="undercity/icons/rot.png" alt="" />
+              <span class="blades">
+                @for (b of grassBlades; track b) {
+                  <i [style.--i]="b"></i>
+                }
+              </span>
+            </div>
+          } @else if (ev.type === 'gate') {
             <img class="event-art" src="undercity/icons/temple.png" alt="" />
           } @else if (ev.type === 'boss_sealed') {
             <img class="event-art" src="undercity/icons/boss.png" alt="" />
           } @else {
             <span class="event-disc" [style.background]="eventTint(ev.type)">
-              <mat-icon>{{ spaceIcon(ev.type) }}</mat-icon>
+              <mat-icon [style.color]="eventInk(ev.type)">{{ spaceIcon(ev.type) }}</mat-icon>
             </span>
           }
         </div>
