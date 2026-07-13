@@ -797,8 +797,14 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   async vaultGuess(guess: string[]): Promise<void> {
     await this.run(async () => {
       const resp = await this.store.action('vault-guess', { guess });
+      if (resp.guess?.cracked) {
+        // Cracked: the lock rerolled to a fresh empty vault and this was the
+        // last pick anyway — close the modal and let the win toast stand.
+        this.closeFacilities();
+        this.showToast(resp.text ?? 'CRACKED!');
+        return;
+      }
       if (resp.vault) this.vaultView.set(resp.vault);
-      if (resp.guess?.cracked) this.showToast(resp.text ?? 'CRACKED!');
     });
   }
 
