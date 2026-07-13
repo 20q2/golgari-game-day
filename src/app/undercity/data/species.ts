@@ -23,7 +23,7 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   pest: { sprite: 'pest', regions: [], scale: 0.7 },
   kraul: { sprite: 'kraul', regions: [], scale: 0.7 },
   saproling: { sprite: 'saproling', regions: [], scale: 0.7 },
-  spore: { sprite: 'spore', regions: [], scale: 0.7 },
+  zombie: { sprite: 'zombie', regions: [], scale: 0.7 },
   // Tier 2 — same line sprite, grown up
   brackish_trudge: { sprite: 'brackish_trudge', regions: [], scale: 1.0 },
   stinkweed_imp: { sprite: 'stinkweed_imp', regions: [], scale: 0.9 },

@@ -18,7 +18,7 @@ export const PASSIVE_NAMES: Record<string, string> = {
   scrounger: 'Scrounger',
   first_bite: 'First Bite',
   regrowth: 'Regrowth',
-  drift: 'Drift',
+  drift: 'Endless Ranks',
   undying: 'Undying',
   flyby: 'Flyby',
   venom_barb: 'Venom Barb',
@@ -69,8 +69,8 @@ export const STARTERS: FormInfo[] = [
     stats: { hp: 38, atk: 5, def: 7, spd: 3 },
   },
   {
-    id: 'spore', name: 'Spore', tier: 1, passive: 'drift', passiveName: 'Drift',
-    blurb: 'A trickster fungus. Hard to pin down, luckier than it looks.',
+    id: 'zombie', name: 'Zombie', tier: 1, passive: 'drift', passiveName: 'Endless Ranks',
+    blurb: 'Was somebody once — human, elf, dwarf, nobody asks anymore. Dead now, and part of the swarm. The horde looks after its own.',
     stats: { hp: 27, atk: 5, def: 5, spd: 6 },
   },
 ];
@@ -82,8 +82,8 @@ export const TIER2: FormInfo[] = [
   { id: 'kraul_forager', name: 'Kraul Forager', tier: 2, line: 'kraul', passive: 'deathrite', passiveName: 'Deathrite', bonus: { def: 4 }, blurb: 'Raider (+DEF).' },
   { id: 'slitherhead', name: 'Slitherhead', tier: 2, line: 'saproling', passive: 'scavenge', passiveName: 'Scavenge', bonus: { atk: 2, maxHp: 6 }, blurb: 'Counterpuncher (+ATK/+HP).' },
   { id: 'woodwraith_strangler', name: 'Woodwraith Strangler', tier: 2, line: 'saproling', passive: 'rootwall', passiveName: 'Rootwall', bonus: { def: 2, maxHp: 6 }, blurb: 'Fortress (+DEF/+HP).' },
-  { id: 'shambling_shell', name: 'Shambling Shell', tier: 2, line: 'spore', passive: 'dredge', passiveName: 'Dredge', bonus: { maxHp: 6, def: 2 }, blurb: 'Durable trickster (+HP/+DEF).' },
-  { id: 'corpsejack_menace', name: 'Corpsejack Menace', tier: 2, line: 'spore', passive: 'doubling_rot', passiveName: 'Doubling Rot', bonus: { atk: 4 }, blurb: 'Fungal tycoon (+ATK).' },
+  { id: 'shambling_shell', name: 'Shambling Shell', tier: 2, line: 'zombie', passive: 'dredge', passiveName: 'Dredge', bonus: { maxHp: 6, def: 2 }, blurb: 'Durable trickster (+HP/+DEF).' },
+  { id: 'corpsejack_menace', name: 'Corpsejack Menace', tier: 2, line: 'zombie', passive: 'doubling_rot', passiveName: 'Doubling Rot', bonus: { atk: 4 }, blurb: 'Fungal tycoon (+ATK).' },
 ];
 
 export const APEX: (FormInfo & { from: string[] })[] = [
