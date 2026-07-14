@@ -558,3 +558,48 @@ def test_first_bite_wins_clash_order():
     resolve_round(a, d, 'aggress', 'aggress', 1, FakeRng(uniform=1.0))
     # first_bite makes A strike first; A deals 10 -> d.hp 20; then d strikes back
     assert d.hp == 20
+
+
+def test_barbed_aggress_applies_rot_even_on_loss():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, riders=frozenset({'barbed'}))
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    resolve_round(a, d, 'aggress', 'guard', 1, FakeRng(uniform=1.0))  # a loses (G>A)
+    assert d.rot_stacks == 1   # rot applied despite losing the exchange
+
+
+def test_deep_biter_boosts_winning_hit():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, riders=frozenset({'deep_biter'}))
+    d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    # 6 * (1.5+0.5) = 12
+    assert d.hp == 60 - round(6 * (data.STANCE_WIN_MULT + 0.5))
+
+
+def test_spiked_boosts_guard_counter():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)                        # aggressor
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, riders=frozenset({'spiked'}))
+    resolve_round(a, d, 'aggress', 'guard', 1, FakeRng(uniform=1.0))
+    # counter 5*0.6=3, spiked *1.5 => round(4.5)=4
+    assert a.hp == 30 - round(5 * data.STANCE_GUARD_COUNTER * 1.5)
+
+
+def test_trickster_halves_lost_feint_punish():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)                        # aggressor wins
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, riders=frozenset({'trickster'}))
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    # normal punish 5*1.5=8 (round 7.5->8), halved => 4
+    assert d.hp == 30 - round(round(5 * data.STANCE_WIN_MULT) / 2)
+
+
+def test_serrated_penalizes_enemy_next_round():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, riders=frozenset({'serrated'}))
+    d = fighter(atk=10, dfn=5, hp=60, max_hp=60)
+    resolve_round(a, d, 'feint', 'guard', 1, FakeRng(uniform=1.0))  # a's feint wins
+    assert d.dmg_penalty == 2
+
+
+def test_glint_sets_reveal():
+    a = fighter(hp=30, max_hp=30, riders=frozenset({'glint'}))
+    d = fighter(hp=60, max_hp=60)
+    resolve_round(a, d, 'feint', 'guard', 1, FakeRng(uniform=1.0))
+    assert a.reveal_next is True

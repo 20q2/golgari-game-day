@@ -134,15 +134,18 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
             raw_agg = _base_hit(losr, winr, rng)
             _deal(losr, winr, lose_side, rnd, raw_agg,
                   data.STANCE_GUARD_MITIGATE, entries, tag='mitigated')
+            ctr_mult = data.STANCE_GUARD_COUNTER * (1.5 if winr.has_rider('spiked') else 1.0)
             raw_ctr = _base_hit(winr, losr, rng)
-            _deal(winr, losr, win_side, rnd, raw_ctr,
-                  data.STANCE_GUARD_COUNTER, entries, tag='counter')
+            _deal(winr, losr, win_side, rnd, raw_ctr, ctr_mult, entries, tag='counter')
             _scavenge(losr, winr, lose_side, rnd, entries)
         else:
+            lose_stance = d_stance if winner == 'attacker' else a_stance
             pierce = (data.DEATHTOUCH_PIERCE
                       if win_stance == 'aggress' and winr.has('deathtouch_stomp') else 0)
             raw = _base_hit(winr, losr, rng, pierce)
             mult = data.STANCE_WIN_MULT
+            if winr.has_rider('deep_biter'):
+                mult += 0.5
             bonus = 0
             if not winr.first_win_used:
                 if winr.has('rot_breath'):
@@ -151,6 +154,9 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
                     bonus += data.VENOM_BARB_BONUS
                 winr.first_win_used = True
             dmg = max(0, round(raw * mult) + bonus)
+            # trickster: a lost Feint is not fully punished.
+            if lose_stance == 'feint' and losr.has_rider('trickster'):
+                dmg = round(dmg / 2)
             if dmg > 0:
                 losr.hp -= dmg
                 entry = {'round': rnd, 'by': win_side, 'dmg': dmg, 'winner': win_side}
@@ -158,6 +164,12 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
                     heal = round(dmg * 0.5)
                     winr.hp = min(winr.max_hp, winr.hp + heal); entry['heal'] = heal
                 entries.append(entry)
+            # A winning Feint: serrated debuffs enemy next round; glint reveals.
+            if win_stance == 'feint':
+                if winr.has_rider('serrated'):
+                    losr.dmg_penalty += 2
+                if winr.has_rider('glint'):
+                    winr.reveal_next = True
             _scavenge(losr, winr, lose_side, rnd, entries)
     elif winner == 'clash':
         # A-vs-A: both strike full; SPD-first lands first (matters for a kill).
@@ -177,11 +189,12 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
             raw = _base_hit(s, t, rng)
             _deal(s, t, side, rnd, raw, data.STANCE_CLASH_MULT, entries)
     elif winner == 'stall':
-        # G-vs-G: chip only.
+        # G-vs-G: chip only. Thick doubles your stall chip.
         for side, (s, t) in (('attacker', (attacker, defender)),
                              ('defender', (defender, attacker))):
+            mult = data.STANCE_STALL_MULT * (2 if s.has_rider('thick') else 1)
             raw = _base_hit(s, t, rng)
-            _deal(s, t, side, rnd, raw, data.STANCE_STALL_MULT, entries)
+            _deal(s, t, side, rnd, raw, mult, entries)
     # whiff: nothing.
 
     # Swarm: one extra chip hit per round regardless of stance (min 1).
@@ -196,13 +209,20 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
                 s.hp = min(s.max_hp, s.hp + heal); entry['heal'] = heal
             entries.append(entry)
 
-    # Rot DoT ticks at end of round (stacks present at round start; freshly
-    # applied rot in later tasks is added AFTER this loop so it waits a round).
+    # Rot DoT ticks at end of round (stacks present at round start).
     for side, c in (('attacker', attacker), ('defender', defender)):
         if c.rot_stacks > 0 and c.hp > 0:
             tick = c.rot_stacks * data.ROT_PER_STACK
             c.hp -= tick
             entries.append({'round': rnd, 'by': side, 'dmg': tick, 'rot': True})
+
+    # Barbed: an Aggress applies +1 rot to the target regardless of win/loss.
+    # Applied AFTER the tick so a fresh stack first ticks next round.
+    for side, (s, t), st in (('attacker', (attacker, defender), a_stance),
+                             ('defender', (defender, attacker), d_stance)):
+        if st == 'aggress' and s.has_rider('barbed') and t.hp > 0:
+            t.rot_stacks += 1
+            entries.append({'round': rnd, 'by': side, 'rotApplied': 1})
 
     return entries
 
