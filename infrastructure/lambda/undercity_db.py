@@ -551,6 +551,8 @@ def handle_action(table, body):
 
     handlers = {
         'claim': _claim, 'roll': _roll, 'move': _move, 'battle': _battle,
+        'combat-round': _combat_round, 'combat-peek': _combat_peek,
+        'combat-flee': _combat_flee,
         'set-stance': _set_stance, 'spend-stat': _spend_stat, 'evolve': _evolve,
         'buy': _buy, 'use-item': _use_item, 'shrine': _shrine, 'warp': _warp,
         'gamble': _gamble, 'poke': _poke, 'customize': _customize,
@@ -1328,6 +1330,317 @@ def _boss_hp(table, sid):
 
 def _set_boss_hp(table, sid, hp):
     table.put_item(Item={'pk': _season_pk(sid), 'sk': 'BOSS', 'hp': hp})
+
+
+# ── Interactive combat state machine (Plan 2) ────────────────────────────────
+
+# combat consumable id -> engine round-modifier kind
+_COMBAT_ITEM = {
+    'ambush_musk': 'auto_win', 'rot_bomb': 'double_punish', 'chitin_ward': 'negate',
+}
+
+
+def _combat_peek(table, sid, doc, payload):
+    rec = doc.get('battle')
+    if not rec:
+        return _err('No battle in progress.', 409)
+    bag = doc.get('bag') or []
+    if 'scrying_spore' not in bag:
+        return _err('You have no Scrying Spore.', 409)
+    if rec.get('peeked'):
+        return _err('You already scried this round.', 409)
+    bag.remove('scrying_spore')
+    rec['peeked'] = True
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, peek={'trueIntent': rec['npcActual'], 'round': rec['round']})
+
+
+def _combat_round(table, sid, doc, payload):
+    rec = doc.get('battle')
+    if not rec:
+        return _err('No battle in progress.', 409)
+    stance = (payload or {}).get('stance')
+    if stance not in data.STANCES:
+        return _err('Pick a stance.', 400)
+
+    force_winner = double_win_for = negate_loss_for = None
+    item = (payload or {}).get('item')
+    if item:
+        effect = _COMBAT_ITEM.get(item)
+        if not effect or item not in (doc.get('bag') or []):
+            return _err('You cannot use that here.', 409)
+        doc['bag'].remove(item)
+        if effect == 'auto_win':
+            force_winner = 'attacker'
+        elif effect == 'double_punish':
+            double_win_for = 'attacker'
+        elif effect == 'negate':
+            negate_loss_for = 'attacker'
+
+    player_c = _bt_to_combatant(rec['player'])
+    npc_c = _bt_to_combatant(rec['npc'])
+    rnd = rec['round']
+    entries = engine.resolve_round(
+        player_c, npc_c, stance, rec['npcActual'], rnd, _rng,
+        force_winner=force_winner, double_win_for=double_win_for,
+        negate_loss_for=negate_loss_for)
+    rec['strikes'].extend(entries)
+    _bt_store(player_c, rec['player'])
+    _bt_store(npc_c, rec['npc'])
+
+    over = player_c.hp <= 0 or npc_c.hp <= 0 or rnd >= data.MAX_ROUNDS_COMBAT
+    if over:
+        if npc_c.hp <= 0 and player_c.hp <= 0:
+            outcome = 'attacker' if player_c.hp >= npc_c.hp else 'defender'
+        elif npc_c.hp <= 0:
+            outcome = 'attacker'
+        elif player_c.hp <= 0:
+            outcome = 'defender'
+        else:  # timeout -> higher HP%
+            a_pct = player_c.hp / max(1, player_c.max_hp)
+            d_pct = npc_c.hp / max(1, npc_c.max_hp)
+            outcome = ('attacker' if a_pct > d_pct
+                       else 'defender' if d_pct > a_pct else 'timeout')
+        for c in (player_c, npc_c):  # Regrowth on survivors
+            if c.hp > 0 and c.has('regrowth'):
+                pct = 0.35 if c.has('rootwall') else 0.20
+                c.hp = min(c.max_hp, c.hp + round(c.max_hp * pct))
+        result = {'outcome': outcome, 'strikes': rec['strikes'],
+                  'attackerHp': max(0, player_c.hp), 'defenderHp': max(0, npc_c.hp),
+                  'smokeSporeUsed': False, 'defenderFleeFailed': False}
+        return _finish_battle(table, sid, doc, rec, result)
+
+    rec['round'] = rnd + 1
+    shown = _telegraph_next(rec)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, combat={'round': rec['round'], 'entries': entries,
+                            'telegraph': shown,
+                            'playerHp': rec['player']['hp'],
+                            'npcHp': rec['npc']['hp'],
+                            'revealNext': rec['player']['reveal_next']})
+
+
+def _combat_flee(table, sid, doc, payload):
+    rec = doc.get('battle')
+    if not rec:
+        return _err('No battle in progress.', 409)
+    if rec['kind'] in ('barrier', 'boss'):
+        return _err('There is no fleeing this fight.', 409)
+    player_c = _bt_to_combatant(rec['player'])
+    npc_c = _bt_to_combatant(rec['npc'])
+    r = engine.flee_attempt(player_c, npc_c, _rng)
+    if r['escaped']:
+        if r['smokeSporeUsed'] and 'smoke_spore' in (doc.get('bag') or []):
+            doc['bag'].remove('smoke_spore')
+        doc['hp'] = player_c.hp
+        doc['hpUpdatedAt'] = _now()
+        doc.pop('battle', None)
+        _consume_one_battle_buffs(doc)
+        conflict = _save_or_conflict(table, doc)
+        if conflict:
+            return conflict
+        return _ok(doc, combat={'fled': True, 'smokeSporeUsed': r['smokeSporeUsed']})
+    # failed flee: caught off guard (-1 DEF), forfeit the round.
+    _bt_store(player_c, rec['player'])
+    rec['player']['dfn'] = player_c.dfn
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, combat={'fled': False, 'round': rec['round'],
+                            'telegraph': rec['npcShown']})
+
+
+def _finish_battle(table, sid, doc, rec, result):
+    """Apply final HP, consume buffs, dispatch to the per-kind reward finisher,
+    persist, and return the space-event response."""
+    doc['hp'] = result['attackerHp']
+    doc['hpUpdatedAt'] = _now()
+    _consume_one_battle_buffs(doc)
+    kind = rec['kind']
+    doc.pop('battle', None)
+    if kind in ('wild', 'elite'):
+        out = _finish_wild(table, sid, doc, rec, result)
+    elif kind == 'barrier':
+        out = _finish_barrier(table, sid, doc, rec, result)
+    elif kind == 'lair':
+        out = _finish_lair(table, sid, doc, rec, result)
+    else:
+        out = _finish_boss(table, sid, doc, rec, result)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, spaceEvent=out)
+
+
+def _finish_wild(table, sid, doc, rec, result):
+    npc = rec['npcMeta']
+    elite = rec['kind'] == 'elite'
+    out = {'type': 'elite' if elite else 'wild',
+           'npc': {'name': npc['name'], 'id': npc.get('id'), 'maxHp': npc['hp']},
+           'battle': result}
+    if result['outcome'] == 'attacker':
+        bounty = npc['bounty'] + (2 if 'scrounger' in _passives(doc) else 0)
+        doc['spores'] = doc.get('spores', 0) + bounty
+        doc['wildWins'] = doc.get('wildWins', 0) + 1
+        levels = _grant_xp(table, sid, doc, npc['xp'])
+        out['spores'] = bounty
+        out['xp'] = npc['xp']
+        if levels:
+            out['levels'] = levels
+        if npc['itemChance'] and _rng.random() < npc['itemChance']:
+            item = _give_consumable(doc)
+            if item:
+                out['item'] = item
+        out['text'] = f"You compost the {npc['name']}! +{bounty} Spores."
+    elif result['outcome'] == 'defender':
+        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
+        _compost(table, sid, doc,
+                 f"{doc['username']}'s {_creature_label(doc)} was composted by a "
+                 f"{npc['name']}. The swarm remembers.")
+        out['text'] = f"The {npc['name']} grinds you into the mulch. Back to the Gate…"
+    else:
+        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
+        out['text'] = f"You and the {npc['name']} circle each other and part ways."
+    return out
+
+
+def _finish_barrier(table, sid, doc, rec, result):
+    node = rec['node']
+    g = rec['npcMeta']
+    out = {'type': 'barrier', 'npc': {'name': g['name'], 'id': g.get('id')},
+           'battle': result}
+    if result['outcome'] == 'attacker':
+        _open_barrier(table, sid, node)
+        doc['spores'] = doc.get('spores', 0) + g['bounty']
+        claims = doc.setdefault('poiClaims', [])
+        if node not in claims:
+            claims.append(node)
+        levels = _grant_xp(table, sid, doc, g['xp'])
+        out['spores'] = g['bounty']
+        out['xp'] = g['xp']
+        if levels:
+            out['levels'] = levels
+        out['barrierOpened'] = node
+        out['text'] = (f"The {g['name']} crumbles! +{g['bounty']} Spores — "
+                       'the way beyond is open for everyone.')
+        _event(table, sid, 'barrier',
+               f"{doc['username']} shattered the {g['name']} — a new route is open to all!",
+               actor=doc['userId'])
+    elif result['outcome'] == 'defender':
+        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
+        _compost(table, sid, doc,
+                 f"{doc['username']} was crushed by the {g['name']}. The barrier holds.")
+        out['text'] = f"The {g['name']} hurls you back. The barrier holds…"
+    else:
+        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
+        out['text'] = f"You trade blows with the {g['name']}, but the barrier holds."
+    return out
+
+
+def _finish_lair(table, sid, doc, rec, result):
+    node = rec['node']
+    b = data.LAIR_BOSSES[node]
+    slain = rec['ctx'].get('slain', False)
+    vest_max = rec['ctx'].get('vestMax', b['hp'] // 2)
+    display = rec['npcMeta']['name']
+    npc_max = rec['npc']['maxHp']
+    out = {'type': 'lair', 'npc': {'name': display, 'maxHp': npc_max}, 'battle': result}
+    if result['outcome'] == 'attacker':
+        _set_lair_state(table, sid, node, vest_max, True)
+        claims = doc.setdefault('poiClaims', [])
+        personal_first = node not in claims
+        if personal_first:
+            claims.append(node)
+        reward = b['repeat'] if slain else b['first']
+        doc['spores'] = doc.get('spores', 0) + reward['spores']
+        doc['wildWins'] = doc.get('wildWins', 0) + 1
+        levels = _grant_xp(table, sid, doc, reward['xp'])
+        out['spores'] = reward['spores']
+        out['xp'] = reward['xp']
+        if levels:
+            out['levels'] = levels
+        sigil_biome = data.SIGIL_LAIRS.get(node)
+        if personal_first and sigil_biome:
+            have = len([c for c in claims if c in data.SIGIL_LAIRS])
+            biome_name = data.BIOMES[sigil_biome]['name']
+            out['sigil'] = sigil_biome
+            out['text'] = (f"The {display} falls! +{reward['spores']} Spores — "
+                           f"you claim the {biome_name} Guild Sigil! "
+                           f"({have}/{data.SIGILS_REQUIRED} unlocks the island)")
+            _event(table, sid, 'sigil',
+                   f"{doc['username']} cleared the {biome_name} dungeon and claimed "
+                   f"its Guild Sigil ({have}/{data.SIGILS_REQUIRED})!",
+                   actor=doc['userId'])
+        else:
+            out['text'] = (f"The {display} falls! +{reward['spores']} Spores."
+                           + ('' if slain else ' A legendary first kill!'))
+            if not slain:
+                _event(table, sid, 'lair',
+                       f"{doc['username']} slew the {b['name']} — "
+                       'its Vestige stirs in the lair!', actor=doc['userId'])
+    elif result['outcome'] == 'defender':
+        _set_lair_state(table, sid, node, max(1, result['defenderHp']), slain)
+        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
+        _compost(table, sid, doc,
+                 f"{doc['username']} was devoured by the {display} "
+                 f'(it lingers at {max(1, result["defenderHp"])} HP).')
+        out['text'] = f"The {display} is too much. Back to the Gate…"
+    else:
+        _set_lair_state(table, sid, node, max(1, result['defenderHp']), slain)
+        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
+        out['text'] = (f"The {display} withdraws, wounded — "
+                       f'{max(1, result["defenderHp"])}/{npc_max} HP. It will be waiting.')
+    return out
+
+
+def _finish_boss(table, sid, doc, rec, result):
+    node = rec['node']
+    boss = data.ROT_SOVEREIGN
+    hp_before = rec['ctx'].get('hpBefore', boss['hp'])
+    out = {'type': 'boss', 'npc': {'name': boss['name'], 'maxHp': boss['hp']},
+           'battle': result}
+    dealt = max(0, hp_before - result['defenderHp'])
+    doc['bossDamage'] = doc.get('bossDamage', 0) + dealt
+    if result['outcome'] == 'attacker':
+        _set_boss_hp(table, sid, boss['hp'])
+        claims = doc.setdefault('poiClaims', [])
+        first = 'boss' not in claims
+        reward = boss['first'] if first else boss['repeat']
+        if first:
+            claims.append('boss')
+        doc['spores'] = doc.get('spores', 0) + reward['spores']
+        levels = _grant_xp(table, sid, doc, reward['xp'])
+        out['spores'] = reward['spores']
+        out['xp'] = reward['xp']
+        if levels:
+            out['levels'] = levels
+        out['text'] = (f'SAVRA, QUEEN OF THE GOLGARI FALLS! +{reward["spores"]} Spores. '
+                       'Her husk collapses — and already the rot begins to knit anew…')
+        _event(table, sid, 'boss',
+               f"{doc['username']} struck down SAVRA, QUEEN OF THE GOLGARI! "
+               'The island trembles as she reforms.', actor=doc['userId'])
+    elif result['outcome'] == 'defender':
+        _set_boss_hp(table, sid, result['defenderHp'])
+        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
+        _compost(table, sid, doc,
+                 f"{doc['username']} fell to Savra "
+                 f'(she lingers at {result["defenderHp"]} HP — finish her!)')
+        out['text'] = (f'The Queen grinds you into the mulch — but your blows told: '
+                       f'she lingers at {result["defenderHp"]}/{boss["hp"]} HP.')
+    else:
+        _set_boss_hp(table, sid, result['defenderHp'])
+        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
+        out['text'] = (f'You withdraw, bleeding. The Queen seethes at '
+                       f'{result["defenderHp"]}/{boss["hp"]} HP.')
+        if dealt > 0:
+            _event(table, sid, 'boss',
+                   f"{doc['username']} wounded Savra, Queen of the Golgari — "
+                   f'{result["defenderHp"]}/{boss["hp"]} HP remains!', actor=doc['userId'])
+    return out
 
 
 def _boss(table, sid, doc, node, prev):
