@@ -126,7 +126,7 @@
 
   <!-- Mystery slot-reel reveal -->
   @if (reelSymbol(); as sym) {
-    <app-undercity-mystery-reel [target]="sym" (settled)="onReelSettled()" />
+    <app-undercity-mystery-reel [target]="sym" [washBg]="regionWashBg()" (settled)="onReelSettled()" />
   }
 
   <!-- Space event result modal -->
@@ -199,7 +199,11 @@
   <!-- Shop -->
   @if (showShop()) {
     <div class="uc-modal-backdrop" (click)="closeFacilities()">
-      <div class="uc-modal shop-modal" (click)="$event.stopPropagation()">
+      <div
+        class="uc-modal shop-modal"
+        (click)="$event.stopPropagation()"
+        [style.background-image]="regionWashBg()"
+      >
         <img class="modal-art" src="undercity/icons/bazaar.png" alt="" />
         <h3><mat-icon class="mi">storefront</mat-icon> Rot-Farm Bazaar</h3>
         <p class="modal-sub">
@@ -260,7 +264,11 @@
   <!-- Shrine -->
   @if (showShrine()) {
     <div class="uc-modal-backdrop" (click)="closeFacilities()">
-      <div class="uc-modal" (click)="$event.stopPropagation()">
+      <div
+        class="uc-modal"
+        (click)="$event.stopPropagation()"
+        [style.background-image]="regionWashBg()"
+      >
         <img class="modal-art" src="undercity/icons/shrine.png" alt="" />
         <h3><mat-icon class="mi">local_fire_department</mat-icon> Shrine of the Swarm</h3>
         <p class="modal-sub">
@@ -377,7 +385,11 @@
   <!-- Trading Post -->
   @if (showTradingPost()) {
     <div class="uc-modal-backdrop" (click)="closeFacilities()">
-      <div class="uc-modal trading-modal" (click)="$event.stopPropagation()">
+      <div
+        class="uc-modal trading-modal"
+        (click)="$event.stopPropagation()"
+        [style.background-image]="regionWashBg()"
+      >
         <h3><mat-icon class="mi">swap_horiz</mat-icon> Trading Post</h3>
         <p class="modal-sub">Leave one of your items, take one another player left behind.</p>
 
@@ -422,6 +434,7 @@
       [grid]="grid"
       [digsLeft]="excavationDigsLeft()"
       [busy]="busy()"
+      [washBg]="regionWashBg()"
       (dig)="dig($event)"
       (closed)="closeFacilities()"
     />
@@ -434,6 +447,7 @@
       [strikesLeft]="veinStrikesLeft()"
       [busy]="busy()"
       [log]="veinLog()"
+      [washBg]="regionWashBg()"
       (strike)="strike()"
       (closed)="closeFacilities()"
     />
@@ -445,6 +459,7 @@
       [vault]="vault"
       [picksLeft]="vaultPicksLeft()"
       [busy]="busy()"
+      [washBg]="regionWashBg()"
       (guess)="vaultGuess($event)"
       (closed)="closeFacilities()"
     />
