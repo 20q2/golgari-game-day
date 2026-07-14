@@ -1,30 +1,70 @@
 <div class="battle-overlay">
   <div class="battle-card">
-    <!-- Arena stage -->
+    <!-- Help toggle -->
+    <button class="help-btn" (click)="showHelp.set(!showHelp())" title="How to fight">
+      <mat-icon class="mi">{{ showHelp() ? 'close' : 'help_outline' }}</mat-icon>
+    </button>
+
+    <!-- Arena stage: [your stats] you  VS  foe [foe stats] -->
     <div
       class="stage"
       style="background-image: linear-gradient(rgba(10, 12, 10, 0.3), rgba(10, 12, 10, 0.55)), url('undercity/arena_background.png')"
     >
-      <div class="side" [class.hit]="hit() === 'attacker'" [class.ko]="done() && outcome() === 'defender'">
+      @if (attackerStats; as s) {
+        <div class="stat-col">
+          <span class="stat"><mat-icon class="mi">sports_mma</mat-icon>{{ s.atk }}</span>
+          <span class="stat"><mat-icon class="mi">shield</mat-icon>{{ s.def }}</span>
+          <span class="stat"><mat-icon class="mi">bolt</mat-icon>{{ s.spd }}</span>
+        </div>
+      }
+
+      <div class="side" [class.lunge-right]="lunge() === 'attacker'" [class.hit]="hit() === 'attacker'" [class.ko]="done() && outcome() === 'defender'">
         <span class="platform"></span>
-        @if (attacker.spriteUrl && !attackerSpriteFailed()) {
-          <img class="sprite" [src]="attacker.spriteUrl" [alt]="attacker.name" (error)="attackerSpriteFailed.set(true)" />
-        } @else {
-          <mat-icon class="sprite-icon">{{ attacker.icon ?? 'pets' }}</mat-icon>
+        <span class="body">
+          @if (attacker.spriteUrl && !attackerSpriteFailed()) {
+            <img class="sprite" [src]="attacker.spriteUrl" [alt]="attacker.name" (error)="attackerSpriteFailed.set(true)" />
+          } @else {
+            <mat-icon class="sprite-icon">{{ attacker.icon ?? 'pets' }}</mat-icon>
+          }
+        </span>
+        @if (pop()?.side === 'attacker') {
+          <span class="dmg-pop" [class.heal]="pop()?.kind === 'heal'" [class.miss]="pop()?.kind === 'miss'">{{ pop()?.text }}</span>
         }
       </div>
 
       <div class="vs-badge">VS</div>
 
-      <div class="side flipped" [class.hit]="hit() === 'defender'" [class.ko]="done() && outcome() === 'attacker'">
+      <div class="side flipped" [class.lunge-left]="lunge() === 'defender'" [class.hit]="hit() === 'defender'" [class.ko]="done() && outcome() === 'attacker'">
         <span class="platform"></span>
-        @if (defender.spriteUrl && !defenderSpriteFailed()) {
-          <img class="sprite" [src]="defender.spriteUrl" [alt]="defender.name" (error)="defenderSpriteFailed.set(true)" />
-        } @else {
-          <mat-icon class="sprite-icon">{{ defender.icon ?? 'bug_report' }}</mat-icon>
+        <!-- Slay-the-Spire intent: floats above the foe until the exchange plays -->
+        @if (!done() && !resolving()) {
+          <div class="intent-float" [class.scried]="revealed()" [title]="stanceMap[revealed() ?? telegraph].label">
+            <mat-icon class="mi">{{ stanceMap[revealed() ?? telegraph].icon }}</mat-icon>
+          </div>
+        }
+        <span class="body">
+          @if (defender.spriteUrl && !defenderSpriteFailed()) {
+            <img class="sprite" [src]="defender.spriteUrl" [alt]="defender.name" (error)="defenderSpriteFailed.set(true)" />
+          } @else {
+            <mat-icon class="sprite-icon">{{ defender.icon ?? 'bug_report' }}</mat-icon>
+          }
+        </span>
+        @if (pop()?.side === 'defender') {
+          <span class="dmg-pop" [class.heal]="pop()?.kind === 'heal'" [class.miss]="pop()?.kind === 'miss'">{{ pop()?.text }}</span>
         }
       </div>
 
+      @if (defenderStats; as s) {
+        <div class="stat-col">
+          <span class="stat"><mat-icon class="mi">sports_mma</mat-icon>{{ s.atk }}</span>
+          <span class="stat"><mat-icon class="mi">shield</mat-icon>{{ s.def }}</span>
+          <span class="stat"><mat-icon class="mi">bolt</mat-icon>{{ s.spd }}</span>
+        </div>
+      }
+
+      @if (clash(); as c) {
+        <div class="clash-banner">{{ c }}</div>
+      }
       @if (done()) {
         <div class="outcome-banner" [class.win]="outcome() === 'attacker'" [class.lose]="outcome() === 'defender'">
           {{ outcomeLabel() }}
@@ -50,22 +90,20 @@
       </div>
     </div>
 
-    <!-- Telegraph + controls (while fighting) -->
-    @if (!done()) {
-      <div class="tele">
-        <span class="tell">The {{ defender.name }} is {{ tellText() }}…</span>
+    <!-- Compact telegraph caption (the icon over the foe carries the intent) -->
+    @if (!done() && !resolving()) {
+      <div class="tele-caption">
+        <span class="tell">{{ defender.name }} is {{ tellText() }}</span>
         @if (revealed(); as r) {
-          <span class="intent scried">
-            <mat-icon class="mi">visibility</mat-icon>
-            It WILL {{ stanceMap[r].label }} — {{ stanceMap[r].blurb }}
-          </span>
+          <span class="intent scried"><mat-icon class="mi">visibility</mat-icon> will {{ stanceMap[r].label }}</span>
         } @else {
-          <span class="intent">
-            It {{ telegraphText() }} — looks like <strong>{{ stanceMap[telegraph].label }}</strong>.
-          </span>
+          <span class="intent">— {{ telegraphText() }} ({{ stanceMap[telegraph].label }}?)</span>
         }
       </div>
+    }
 
+    <!-- Controls -->
+    @if (!done()) {
       <div class="stance-row">
         @for (s of STANCES; track s.id) {
           <button class="stance-btn" [disabled]="busy()" (click)="play(s.id)" [title]="s.blurb">
@@ -74,7 +112,6 @@
           </button>
         }
       </div>
-
       <div class="util-row">
         @if (hasScry) {
           <button class="util-btn" [disabled]="busy() || !!revealed()" (click)="doPeek()">
@@ -87,13 +124,7 @@
           </button>
         }
         @for (it of items; track it.id) {
-          <button
-            class="util-btn item-btn"
-            [class.armed]="pendingItem() === it.id"
-            [disabled]="busy()"
-            (click)="toggleItem(it.id)"
-            [title]="it.name"
-          >
+          <button class="util-btn item-btn" [class.armed]="pendingItem() === it.id" [disabled]="busy()" (click)="toggleItem(it.id)" [title]="it.name">
             <mat-icon class="mi">{{ it.icon }}</mat-icon>
           </button>
         }
@@ -134,5 +165,23 @@
         <button class="uc-btn uc-btn-primary" (click)="close()">Continue</button>
       }
     </div>
+
+    <!-- How-to-fight panel -->
+    @if (showHelp()) {
+      <div class="help-panel" (click)="showHelp.set(false)">
+        <div class="help-body" (click)="$event.stopPropagation()">
+          <h3>How to fight</h3>
+          <p>Each round, read the foe’s telegraphed intent (the icon over its head) and pick the stance that beats it:</p>
+          <ul class="help-triangle">
+            <li><mat-icon class="mi">sports_mma</mat-icon> <strong>Aggress</strong> beats Feint</li>
+            <li><mat-icon class="mi">theater_comedy</mat-icon> <strong>Feint</strong> beats Guard</li>
+            <li><mat-icon class="mi">shield</mat-icon> <strong>Guard</strong> beats Aggress</li>
+          </ul>
+          <p>Win the read and you land the big hit; guess wrong and you eat one. Your <strong>ATK/DEF/SPD</strong> (beside each fighter) set how hard the blows land.</p>
+          <p><strong>Scry</strong> reveals the true intent (bosses bluff). <strong>Flee</strong> bails a losing fight. Combat items fire on your next stance.</p>
+          <button class="uc-btn uc-btn-primary" (click)="showHelp.set(false)">Got it</button>
+        </div>
+      </div>
+    }
   </div>
 </div>

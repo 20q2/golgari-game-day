@@ -487,6 +487,8 @@
       [canFlee]="lb.kind !== 'barrier' && lb.kind !== 'boss'"
       [items]="lb.items"
       [hasScry]="lb.hasScry"
+      [attackerStats]="lb.attackerStats"
+      [defenderStats]="lb.defenderStats"
       (submitStance)="onStance($event)"
       (peek)="onPeek()"
       (flee)="onFlee()"

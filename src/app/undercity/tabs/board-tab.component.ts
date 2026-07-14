@@ -56,7 +56,7 @@ import { formName } from '../data/forms';
 import { formSprite } from '../data/species';
 import { getRecoloredDataUrl } from '../engine/sprite-engine';
 import { BattlePlaybackComponent, BattleSide, BattleRewards } from './battle-playback.component';
-import { InteractiveBattleComponent, BattleItem } from './interactive-battle.component';
+import { InteractiveBattleComponent, BattleItem, CombatStats } from './interactive-battle.component';
 import { DiceRollComponent } from './dice-roll.component';
 import { ExcavationModalComponent } from './excavation.component';
 import { CrystalVeinModalComponent } from './crystal-vein.component';
@@ -79,6 +79,8 @@ interface LiveBattle {
   kind: string;
   items: BattleItem[];
   hasScry: boolean;
+  attackerStats: CombatStats | null;
+  defenderStats: CombatStats | null;
 }
 
 /** Local walk-in-progress: the spaces walked so far (start first) and steps left. */
@@ -989,6 +991,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       kind: ev.kind ?? 'wild',
       items,
       hasScry: bag.includes('scrying_spore'),
+      attackerStats: you ? { atk: you.atk, def: you.def, spd: you.spd } : null,
+      defenderStats:
+        ev.npc!.atk != null && ev.npc!.def != null && ev.npc!.spd != null
+          ? { atk: ev.npc!.atk, def: ev.npc!.def, spd: ev.npc!.spd }
+          : null,
     });
   }
 

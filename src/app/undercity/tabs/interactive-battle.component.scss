@@ -430,3 +430,219 @@
   justify-content: center;
   padding: 0 16px;
 }
+
+// ── Plan-3 polish: breathing, intent float, stats, clash, help ───────────────
+
+.help-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #cdd8cd;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  .mi { font-size: 1.1rem; width: 1.1rem; height: 1.1rem; }
+  &:hover { background: rgba(0, 0, 0, 0.6); color: #fff; }
+}
+
+// Sprites breathe (wrapper animates so the flip stays on the img).
+.side .body {
+  display: inline-block;
+  animation: uc-breathe 3.2s ease-in-out infinite;
+}
+.side.flipped .body { animation-delay: -1.6s; }
+.side.hit .body,
+.side.ko .body { animation: none; }
+
+@keyframes uc-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.03); }
+}
+
+// Sprite lunges toward center when it acts.
+.side.lunge-right { transform: translateX(22px); }
+.side.lunge-left { transform: translateX(-22px); }
+
+// Slay-the-Spire style intent icon floating over the foe.
+.intent-float {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #12100e;
+  background: radial-gradient(circle at 35% 30%, #ffe08a, #f0a830 78%);
+  border: 2px solid rgba(255, 235, 150, 0.85);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  animation: uc-intent-float 1.8s ease-in-out infinite;
+  .mi { font-size: 1.3rem; width: 1.3rem; height: 1.3rem; }
+
+  &.scried {
+    color: #06232f;
+    background: radial-gradient(circle at 35% 30%, #bfe8ff, #4aa3d6 78%);
+    border-color: rgba(180, 230, 255, 0.9);
+  }
+
+  // little pointer under the badge
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid rgba(255, 235, 150, 0.85);
+  }
+  &.scried::after { border-top-color: rgba(180, 230, 255, 0.9); }
+}
+
+@keyframes uc-intent-float {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-5px); }
+}
+
+// Stat columns flanking the fighters.
+.stat-col {
+  flex-shrink: 0;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 2;
+
+  .stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: #e5f0e5;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 7px;
+    padding: 2px 6px;
+    text-shadow: 0 1px 2px #000;
+    .mi { font-size: 0.9rem; width: 0.9rem; height: 0.9rem; color: #b7e4c7; }
+  }
+}
+
+// Damage / heal / miss pop over a fighter.
+.dmg-pop {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  font-weight: 800;
+  font-size: 1.35rem;
+  color: #f87171;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.85);
+  animation: uc-pop 0.55s ease forwards;
+  pointer-events: none;
+  &.heal { color: #86efac; }
+  &.miss { color: #cdd8cd; font-size: 1rem; }
+}
+
+@keyframes uc-pop {
+  0% { opacity: 0; transform: translate(-50%, 6px) scale(0.7); }
+  20% { opacity: 1; transform: translate(-50%, -4px) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -24px) scale(1); }
+}
+
+// "You Guard · Myconid Aggress" banner during the exchange.
+.clash-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fde68a;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  animation: uc-fade-in 0.2s ease;
+}
+
+// Slim one-line telegraph caption (icon over foe carries the real signal).
+.tele-caption {
+  flex-shrink: 0;
+  margin: 0 14px;
+  font-size: 0.8rem;
+  color: #b8a9d8;
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  align-items: baseline;
+
+  .tell { font-style: italic; }
+  .intent {
+    color: #e8e0f5;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    &.scried { color: #9ad0ff; }
+    .mi { font-size: 0.95rem; width: 0.95rem; height: 0.95rem; }
+  }
+}
+
+// How-to-fight overlay.
+.help-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgba(6, 6, 8, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  border-radius: 16px;
+  animation: uc-fade-in 0.15s ease;
+}
+
+.help-body {
+  background: #1e1c19;
+  border: 1px solid rgba(150, 130, 200, 0.4);
+  border-radius: 14px;
+  padding: 16px;
+  max-width: 340px;
+  color: #d8e5d8;
+  font-size: 0.86rem;
+  line-height: 1.4;
+
+  h3 { margin: 0 0 8px; color: #e8e0f5; }
+  p { margin: 8px 0; }
+
+  .help-triangle {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      strong { color: #fde68a; }
+      .mi { font-size: 1.1rem; width: 1.1rem; height: 1.1rem; color: #b7e4c7; }
+    }
+  }
+
+  .uc-btn { margin-top: 8px; }
+}
