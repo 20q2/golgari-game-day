@@ -58,6 +58,7 @@ A phone-first board sub-game at `/undercity` (lazy-loaded standalone feature in 
 - **Sprites:** Dino Party placeholder art in `public/undercity/`; the form→sprite mapping lives in `src/app/undercity/data/species.ts` (swap art there). The canvas engines (`engine/sprite-engine.ts`, `plaza-canvas.ts`, `board-canvas.ts`) are TS ports of `a:\Coding\AlexBirthdayDinos` frontend code.
 - **Balance numbers** (stats, XP, costs, evolution tables) are duplicated for display in `src/app/undercity/data/*.ts` — if you tune `undercity_data.py`, update those mirrors.
 - **Spells:** full reference (player rules, effect-kind vocabulary, action contracts, add-a-spell checklist, invariants) in [specs/undercity-spells.md](specs/undercity-spells.md).
+- **Combat:** interactive stance-triangle model + add-an-enemy / add-equipment / add-an-effect checklists in [specs/undercity-combat.md](specs/undercity-combat.md).
 - Revenge buffs, achievements, and seal-milestone hats are deliberately stubbed (GDD §14 deferred list). The boss finale is in: Savra's persistent HP pool plus the host-only "Awaken the Queen" trigger (`boss-awaken`) that drops the sigil gate for everyone.
 
 ## Adding a board game
