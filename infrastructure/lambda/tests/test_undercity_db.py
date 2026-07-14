@@ -1228,3 +1228,35 @@ def test_started_battle_persists_without_floats(table):
     assert not has_float(stored)
     # bluff survives the round-trip as a usable number for the telegraph.
     assert isinstance(stored['npc']['bluff'], Decimal)
+
+
+def test_state_exposes_sanitized_battle_resume(table):
+    """A refreshed player must be able to reopen a pending fight — and must NOT
+    receive npcActual (the hidden intent) in either `you` or the resume."""
+    act(table, 'join', starter='kraul')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    db._start_battle(table, sid, doc, 'wild', dict(_FODDER, bluff=0.0), node=doc.get('position'))
+    db._put_player(table, doc)
+
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200
+    assert 'battle' not in state['you']                     # raw record stripped
+    b = state['battle']
+    assert b and b['kind'] == 'wild' and b['telegraph'] in data.STANCES
+    assert b['npc']['name'] == _FODDER['name']
+    assert b['playerHp'] == state['you']['hp']
+    assert 'npcActual' not in b and b['revealed'] is None    # no leak, not scried
+
+
+def test_state_battle_resume_reveals_only_after_scry(table):
+    act(table, 'join', starter='kraul')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['bag'] = ['scrying_spore']
+    db._start_battle(table, sid, doc, 'wild', dict(_FODDER, bluff=0.5), node=doc.get('position'))
+    db._put_player(table, doc)
+    act(table, 'combat-peek')                                # scry this round
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    true_intent = db._get_player(table, sid, 'user-alex')['battle']['npcActual']
+    assert state['battle']['revealed'] == true_intent        # scried => shown

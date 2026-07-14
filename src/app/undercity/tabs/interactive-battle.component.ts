@@ -61,6 +61,9 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   @Input() hasScry = false;
   @Input() attackerStats: CombatStats | null = null;
   @Input() defenderStats: CombatStats | null = null;
+  /** Reopening a fight after a reload — skip the entrance, restore any scry. */
+  @Input() resume = false;
+  @Input() resumeRevealed: Stance | null = null;
 
   @Output() submitStance = new EventEmitter<{ stance: Stance; item?: string }>();
   @Output() peek = new EventEmitter<void>();
@@ -106,6 +109,15 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.attackerHp.set(this.attacker.startHp);
     this.defenderHp.set(this.defender.startHp);
+    if (this.resume) {
+      // Reopened after a reload: fighters are already in the ring.
+      this.enteredFighters.set(true);
+      this.enteredVs.set(true);
+      this.enteredStats.set(true);
+      this.introDone.set(true);
+      this.revealed.set(this.resumeRevealed);
+      return;
+    }
     this.timers.push(setTimeout(() => this.enteredFighters.set(true), 250));
     this.timers.push(setTimeout(() => this.enteredVs.set(true), 950));
     this.timers.push(setTimeout(() => this.enteredStats.set(true), 1300));

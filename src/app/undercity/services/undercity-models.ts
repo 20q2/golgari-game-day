@@ -18,6 +18,12 @@ export interface PublicPlayer {
   level: number;
   hp: number;
   maxHp: number;
+  /** Effective combat stats (base + gear + buffs); public for the TV broadcast. */
+  atk?: number;
+  def?: number;
+  spd?: number;
+  /** slot -> gear item id; public so the spectator hero card can show a build. */
+  gear?: Record<string, string>;
   position: string;
   stance: string;
   shieldUntil?: string | null;
@@ -178,6 +184,8 @@ export interface GameState {
   result: SeasonResult | null;
   wardrobe?: Wardrobe;
   hallOfFame?: HallOfFameNight[];
+  /** A pending interactive battle to resume after a reload (null if none). */
+  battle?: BattleResume | null;
 }
 
 export interface BattleStrike {
@@ -236,6 +244,25 @@ export interface CombatFlee {
 export interface CombatPeek {
   trueIntent: Stance;
   round: number;
+}
+
+/** Client-safe snapshot of a pending battle, so a refresh can reopen it. */
+export interface BattleResume {
+  kind: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss';
+  round: number;
+  telegraph: Stance;
+  playerHp: number;
+  revealed: Stance | null;
+  npc: {
+    id?: string;
+    name: string;
+    hp: number;
+    maxHp: number;
+    atk?: number;
+    def?: number;
+    spd?: number;
+    personality?: string;
+  };
 }
 
 /** One slot of a trading post's shared stock. */

@@ -18,6 +18,7 @@ import { legalSteps, boardDistance, nodesWithin } from '../engine/board-movement
 import {
   AwayEvent,
   BattleResult,
+  BattleResume,
   CombatFlee,
   CombatRound,
   DigGrid,
@@ -81,6 +82,8 @@ interface LiveBattle {
   hasScry: boolean;
   attackerStats: CombatStats | null;
   defenderStats: CombatStats | null;
+  resume: boolean;
+  resumeRevealed: Stance | null;
 }
 
 /** Local walk-in-progress: the spaces walked so far (start first) and steps left. */
@@ -429,6 +432,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         void this.store.action('ack-events');
       }
       this.awaySeenCount = events.length;
+    });
+    // Resume a server-side pending battle after a reload — otherwise the
+    // battle-guard blocks every action and the player is soft-locked.
+    effect(() => {
+      const pb = this.store.pendingBattle();
+      if (pb && !this.liveBattle()) this.resumeLiveBattle(pb);
     });
   }
 
@@ -996,6 +1005,46 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         ev.npc!.atk != null && ev.npc!.def != null && ev.npc!.spd != null
           ? { atk: ev.npc!.atk, def: ev.npc!.def, spd: ev.npc!.spd }
           : null,
+      resume: false,
+      resumeRevealed: null,
+    });
+  }
+
+  /** Reopen a pending battle after a reload (server-side battle-guard would
+   *  otherwise soft-lock the player). Fed by the pendingBattle effect. */
+  private resumeLiveBattle(pb: BattleResume): void {
+    const you = this.store.you();
+    const bag = you?.bag ?? [];
+    const items: BattleItem[] = bag
+      .map((id) => CONSUMABLE_MAP[id])
+      .filter((c): c is ConsumableInfo => !!c && !!c.inBattle)
+      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '' }));
+    this.liveBattle.set({
+      attacker: {
+        name: this.youBattleName(),
+        spriteUrl: this.youSpriteUrl(),
+        startHp: pb.playerHp,
+        maxHp: you?.maxHp ?? pb.playerHp,
+      },
+      defender: {
+        name: pb.npc.name,
+        spriteUrl: this.npcSpriteUrl(pb.kind, pb.npc.id ?? ''),
+        icon: NPC_ICONS[pb.npc.id ?? ''] ?? 'bug_report',
+        startHp: pb.npc.hp,
+        maxHp: pb.npc.maxHp,
+      },
+      personality: pb.npc.personality ?? 'balanced',
+      telegraph: pb.telegraph,
+      kind: pb.kind,
+      items,
+      hasScry: bag.includes('scrying_spore'),
+      attackerStats: you ? { atk: you.atk, def: you.def, spd: you.spd } : null,
+      defenderStats:
+        pb.npc.atk != null && pb.npc.def != null && pb.npc.spd != null
+          ? { atk: pb.npc.atk, def: pb.npc.def, spd: pb.npc.spd }
+          : null,
+      resume: true,
+      resumeRevealed: pb.revealed ?? null,
     });
   }
 

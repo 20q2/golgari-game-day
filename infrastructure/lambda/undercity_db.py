@@ -458,6 +458,15 @@ def handle_state(table, query_params):
         elif item['sk'] == 'RESULT':
             result = {k: v for k, v in item.items() if k not in ('pk', 'sk')}
 
+    # A pending interactive battle: hand the client a SANITIZED resume so a
+    # refresh can reopen the fight (otherwise the server's battle-guard soft-
+    # locks the player). Never expose the raw record — it holds npcActual, the
+    # hidden true intent — except the shown telegraph, or the true intent only
+    # if the player already scried it this round.
+    battle_resume = None
+    if you is not None and you.get('battle'):
+        battle_resume = _battle_resume(you.pop('battle'), you.get('hp', 0))
+
     # Show a display-seeded stock for any post nobody has traded at yet, so the
     # exchange renders from turn one without a write on read.
     for nid, n in data.MAP_NODES.items():
@@ -491,6 +500,7 @@ def handle_state(table, query_params):
         'boss': {'hp': _boss_hp(table, sid), 'maxHp': data.ROT_SOVEREIGN['hp']},
         'events': [{k: v for k, v in e.items() if k not in ('pk', 'sk')} for e in events],
         'result': result if config.get('status') == 'ended' else None,
+        'battle': battle_resume,
     }
     if user_id:
         perm = _get_perm(table, user_id)
@@ -1364,6 +1374,31 @@ def _combat_flee(table, sid, doc, payload):
         return conflict
     return _ok(doc, combat={'fled': False, 'round': rec['round'],
                             'telegraph': rec['npcShown']})
+
+
+def _battle_resume(rec, player_hp):
+    """A client-safe view of a pending battle so a refreshed player can reopen
+    it. Excludes npcActual (the hidden intent) — only the shown telegraph, plus
+    the true intent iff the player already scried this round."""
+    npc = rec.get('npc', {})
+    peeked = bool(rec.get('peeked'))
+    return {
+        'kind': rec.get('kind'),
+        'round': rec.get('round', 1),
+        'telegraph': rec.get('npcShown'),
+        'playerHp': player_hp,
+        'revealed': rec.get('npcActual') if peeked else None,
+        'npc': {
+            'id': (rec.get('npcMeta') or {}).get('id'),
+            'name': npc.get('name'),
+            'hp': npc.get('hp'),
+            'maxHp': npc.get('maxHp', npc.get('hp')),
+            'atk': npc.get('atk'),
+            'def': npc.get('dfn'),
+            'spd': npc.get('spd'),
+            'personality': npc.get('personality'),
+        },
+    }
 
 
 def _finish_battle(table, sid, doc, rec, result):
