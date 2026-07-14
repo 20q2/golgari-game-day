@@ -288,13 +288,23 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return lum > 176 ? 'rgba(24, 28, 22, 0.92)' : 'rgba(240, 253, 244, 0.95)';
   }
 
-  /** Biome backdrop per node region — the scenery behind the event banner. */
-  private readonly BIOME_BG: Record<string, string> = {
-    city: 'undercity_background.png',
-    cavern: 'cavern_background.png',
-    bog: 'swamp_background.png',
-    isle: 'palace_background.png',
-  };
+  /**
+   * Biome scenery image for the region the active player is standing in, read
+   * from the authoritative map.regions{} table so every chamber (bone, depths,
+   * garden, ruin included) resolves correctly. Falls back to the city chamber,
+   * then a literal path, if a region or its background is missing. The stored
+   * path already includes the `undercity/` prefix.
+   */
+  private regionBgUrl(): string {
+    const pos = this.store.you()?.position;
+    const region = this.map?.nodes.find((n) => n.id === pos)?.region ?? 'city';
+    const regions = this.map?.regions;
+    const bg =
+      regions?.[region]?.background ||
+      regions?.['city']?.background ||
+      'undercity/undercity_background.png';
+    return `url('${bg}')`;
+  }
 
   /**
    * Event-card backdrop: the biome scenery for the space you landed on, fills
@@ -302,15 +312,27 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
    * downward so the title, body, and chips stay legible in every chamber.
    */
   protected eventCardBg(): string {
-    const pos = this.store.you()?.position;
-    const region = this.map?.nodes.find((n) => n.id === pos)?.region ?? 'city';
-    const file = this.BIOME_BG[region] ?? this.BIOME_BG['city'];
     return (
       `linear-gradient(to bottom, ` +
       `rgba(20, 18, 14, 0.15) 0%, ` +
       `rgba(20, 18, 14, 0.55) 42%, ` +
       `rgba(20, 18, 14, 0.97) 100%), ` +
-      `url('undercity/${file}')`
+      `${this.regionBgUrl()}`
+    );
+  }
+
+  /**
+   * Dimmer "atmospheric wash" over the same biome scenery — used behind the
+   * interactive, content-heavy dialogs (shop, shrine, trading post, and the
+   * minigame cards) where legibility matters more than the view. Darker than
+   * the event card so buttons and grids stay readable.
+   */
+  protected regionWashBg(): string {
+    return (
+      `linear-gradient(to bottom, ` +
+      `rgba(16, 14, 11, 0.62) 0%, ` +
+      `rgba(16, 14, 11, 0.86) 100%), ` +
+      `${this.regionBgUrl()}`
     );
   }
 
