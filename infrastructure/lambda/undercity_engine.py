@@ -11,11 +11,6 @@ from datetime import datetime, timedelta
 
 import undercity_data as data
 
-MAX_ROUNDS = 6
-DEFEND_DEF_MULT = 1.4
-DEFEND_DMG_MULT = 0.75
-FLYBY_MISS = 0.25
-
 
 # ── Combatants ───────────────────────────────────────────────────────────────
 
