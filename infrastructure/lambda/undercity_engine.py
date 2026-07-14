@@ -28,15 +28,27 @@ class Combatant:
     dfn: int
     spd: int
     passives: frozenset = frozenset()
-    stance: str = 'fight'          # fight | defend | flee (flee only matters for defenders)
+    stance: str = 'fight'          # legacy pre-battle stance (back-compat only)
     level: int = 1
     has_smoke_spore: bool = False
     flee_bonus: int = 0            # home-biome perk (Glowblessed: +10)
-    # internal battle state
+    riders: frozenset = frozenset()   # gear rider tags (barbed, spiked, glint, ...)
+    buffs: frozenset = frozenset()    # active stance-modifier buff kinds
+    # internal battle state (mutated during a battle)
+    rot_stacks: int = field(default=0, repr=False)
+    first_win_used: bool = field(default=False, repr=False)
+    dmg_penalty: int = field(default=0, repr=False)   # -damage on NEXT round (serrated)
+    reveal_next: bool = field(default=False, repr=False)  # glint set a reveal
     struck_yet: bool = field(default=False, repr=False)
 
     def has(self, passive):
         return passive in self.passives
+
+    def has_rider(self, rider):
+        return rider in self.riders
+
+    def has_buff(self, kind):
+        return kind in self.buffs
 
 
 def flee_chance(flee_spd: int, enemy_spd: int) -> int:
