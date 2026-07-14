@@ -193,13 +193,16 @@
                 <input
                   type="range"
                   min="0"
-                  max="120"
+                  max="140"
                   step="2"
-                  [ngModel]="n.spriteDist ?? 0"
+                  [ngModel]="n.spriteDist ?? defaultSpriteDist"
                   (ngModelChange)="setSpriteDist(n, +$event)"
                 />
-                <span class="num">{{ n.spriteDist ?? 0 }}</span>
+                <span class="num">{{ n.spriteDist ?? defaultSpriteDist }}</span>
               </label>
+              <button (click)="resetSprite(n)" matTooltip="Back to straight up, default distance">
+                <mat-icon class="mi">restart_alt</mat-icon> Reset sprite position
+              </button>
             }
           }
           <div class="neighbors">

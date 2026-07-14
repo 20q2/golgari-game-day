@@ -45,10 +45,11 @@ export interface BoardNode {
    */
   hideSprite?: boolean;
   /**
-   * Editor-only: nudge the landmark sprite off the disc centre for a more
-   * natural look. `spriteAngle` is the offset direction in degrees (0 = up,
-   * clockwise); `spriteDist` is how far in px. Both default to 0 (the sprite's
-   * usual straight-up seat). Display-only; the backend ignores them.
+   * Editor-only: place the landmark sprite around the SPACE CENTRE for a more
+   * natural look. `spriteAngle` is the direction in degrees (0 = straight up,
+   * clockwise); `spriteDist` is the distance from the centre in px. Absent →
+   * angle 0 and the usual seat gap (SPRITE_SEAT), i.e. the default straight-up
+   * placement. Display-only; the backend ignores them.
    */
   spriteAngle?: number;
   spriteDist?: number;
@@ -858,7 +859,7 @@ export class BoardCanvas {
         const t = Math.min(1, (ts - a.start) / MOVE_MS);
         const moving = t < 1;
         const spr = formSprite(p.form);
-        const targetH = (p.userId === this.ownUserId ? 72 : 56) * spr.scale;
+        const targetH = this.tokenHeight(p.userId === this.ownUserId) * spr.scale;
         const footY = a.y + targetH * 0.48;
 
         let hopY = 0;
@@ -1294,6 +1295,16 @@ export class BoardCanvas {
    * @param hopY   vertical lift while hopping between spaces (0 when idle)
    * @param breath idle vertical-scale wobble (1 while hopping)
    */
+  /**
+   * Base draw height for a token. Your own token is largest; on the read-only
+   * spectator board (no own token) everyone is bumped up a little so creatures
+   * stay legible on a TV even when the camera is pulled back.
+   */
+  private tokenHeight(isOwn: boolean): number {
+    if (isOwn) return 72;
+    return this.interactive ? 56 : 68;
+  }
+
   private drawToken(
     p: BoardPlayer,
     x: number,
@@ -1305,7 +1316,7 @@ export class BoardCanvas {
     const spr = formSprite(p.form);
     const sprite = getRecolored(spr.sprite, p.paint || {}, spr.regions);
     const isOwn = p.userId === this.ownUserId;
-    const targetH = (isOwn ? 72 : 56) * spr.scale;
+    const targetH = this.tokenHeight(isOwn) * spr.scale;
     // Feet stay planted (breathing stretches upward from here); hopY lifts the
     // whole body off the ground.
     const footAnchor = y + targetH / 2;
@@ -1375,7 +1386,7 @@ export class BoardCanvas {
     const ctx = this.ctx;
     const spr = formSprite(p.form);
     const isOwn = p.userId === this.ownUserId;
-    const targetH = (isOwn ? 72 : 56) * spr.scale;
+    const targetH = this.tokenHeight(isOwn) * spr.scale;
     ctx.save();
     // Dokapon-style name banner: bigger type, bordered plate. Planted below the
     // feet so it stays steady while the creature breathes and hops.

@@ -1834,6 +1834,9 @@ function drawLairSetPiece(
  * centered on the node, with a soft contact shadow. Height-driven so wide and
  * tall art both read at a consistent scale.
  */
+/** Default gap from a space centre to its sprite seat (straight up). */
+const SPRITE_SEAT = 26;
+
 function drawLandmarkImage(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -1848,7 +1851,7 @@ function drawLandmarkImage(
   const scale = box / Math.max(iw, ih);
   const w = iw * scale;
   const h = ih * scale;
-  const bottom = nodeY - 26; // sit at the disc's top edge
+  const bottom = nodeY; // caller passes the exact seat point (see drawLandmark)
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(x, bottom, w * 0.34, w * 0.12, 0, 0, Math.PI * 2);
@@ -1867,14 +1870,15 @@ function drawLandmark(
   tex?: LandmarkTextures,
   cleared = false,
 ): void {
-  // Optional per-space offset: push the sprite off the disc centre along
-  // `spriteAngle` (0 = up, clockwise) by `spriteDist` px for a natural look.
+  // The sprite anchor sits at a distance from the SPACE CENTRE in the
+  // `spriteAngle` direction (0 = straight up, clockwise). `spriteDist`
+  // defaults to the usual seat gap, so an un-nudged sprite rests just above
+  // the disc exactly as before — and changing the angle now swings the whole
+  // sprite AROUND the space centre, not around its own resting spot.
+  const dist = n.spriteDist ?? SPRITE_SEAT;
   const ang = ((n.spriteAngle ?? 0) - 90) * (Math.PI / 180);
-  const ox = Math.cos(ang) * (n.spriteDist ?? 0);
-  const oy = Math.sin(ang) * (n.spriteDist ?? 0);
-  const x = n.x + ox;
-  const ny = n.y + oy;
-  const base = ny - 24;
+  const x = n.x + Math.cos(ang) * dist;
+  const base = n.y + Math.sin(ang) * dist;
 
   // Art landmarks: blit the sprite and keep the type's ambient glow so the
   // shrine flame / boss aura still pulse. Everything else stays procedural.
@@ -1884,19 +1888,19 @@ function drawLandmark(
     // side). Sized to clear the tightest neighbour spacing (~118px) and the
     // central-isle cluster (~137px) so nothing overlaps or leaves the platform.
     if (n.type === 'boss') {
-      drawLandmarkImage(ctx, x, ny, art, 82);
+      drawLandmarkImage(ctx, x, base, art, 82);
       glowSpots.push({ x, y: base - 40, r: 36, color: '184, 122, 255', phase: 1.3 });
     } else if (n.type === 'shrine') {
-      drawLandmarkImage(ctx, x, ny, art, 64);
+      drawLandmarkImage(ctx, x, base, art, 64);
       glowSpots.push({ x, y: base - 30, r: 20, color: '120, 230, 150', phase: 2.1 });
     } else if (n.type === 'warp') {
-      drawLandmarkImage(ctx, x, ny, art, 66);
+      drawLandmarkImage(ctx, x, base, art, 66);
       glowSpots.push({ x, y: base - 34, r: 24, color: '95, 208, 200', phase: 0.4 });
     } else if (n.type === 'shop') {
-      drawLandmarkImage(ctx, x, ny, art, 66);
+      drawLandmarkImage(ctx, x, base, art, 66);
       glowSpots.push({ x, y: base - 26, r: 20, color: '235, 190, 110', phase: 1.7 });
     } else {
-      drawLandmarkImage(ctx, x, ny, art, 62);
+      drawLandmarkImage(ctx, x, base, art, 62);
     }
     return;
   }

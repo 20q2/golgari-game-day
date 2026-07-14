@@ -869,7 +869,10 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     this.afterDocChange();
   }
 
-  /** Offset the sprite off the disc centre: angle (deg) and distance (px). */
+  /** Default seat distance (px) from the space centre — mirrors SPRITE_SEAT. */
+  protected readonly defaultSpriteDist = 26;
+
+  /** Offset the sprite around the space centre: angle (deg) and distance (px). */
   protected setSpriteAngle(n: BoardNode, deg: number): void {
     this.snapshot();
     n.spriteAngle = ((deg % 360) + 360) % 360 || undefined;
@@ -878,7 +881,16 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
 
   protected setSpriteDist(n: BoardNode, px: number): void {
     this.snapshot();
-    n.spriteDist = px || undefined;
+    // 0 is meaningful (sprite on the centre), so only the default is omitted.
+    n.spriteDist = px === this.defaultSpriteDist ? undefined : px;
+    this.afterDocChange();
+  }
+
+  /** Back to the usual straight-up seat (angle 0, default distance). */
+  protected resetSprite(n: BoardNode): void {
+    this.snapshot();
+    n.spriteAngle = undefined;
+    n.spriteDist = undefined;
     this.afterDocChange();
   }
 
