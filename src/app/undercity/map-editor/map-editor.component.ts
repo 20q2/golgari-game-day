@@ -869,6 +869,19 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     this.afterDocChange();
   }
 
+  /** Offset the sprite off the disc centre: angle (deg) and distance (px). */
+  protected setSpriteAngle(n: BoardNode, deg: number): void {
+    this.snapshot();
+    n.spriteAngle = ((deg % 360) + 360) % 360 || undefined;
+    this.afterDocChange();
+  }
+
+  protected setSpriteDist(n: BoardNode, px: number): void {
+    this.snapshot();
+    n.spriteDist = px || undefined;
+    this.afterDocChange();
+  }
+
   protected unlink(n: BoardNode, nb: string): void {
     this.snapshot();
     n.neighbors = n.neighbors.filter((x) => x !== nb);

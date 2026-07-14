@@ -18,6 +18,15 @@ import { DUNGEONS, dungeonBiome } from '../data/dungeons';
 /** The camera clamps to -200..world+200, so the terrain covers that margin. */
 export const TERRAIN_MARGIN = 200;
 
+/**
+ * Space types that draw an auto landmark sprite above their disc (building art
+ * or procedural set-piece, plus its ambient glow). A node's `hideSprite` flag
+ * suppresses it. Exported so the map editor can offer the toggle only where it
+ * does something.
+ */
+export const LANDMARK_TYPES = ['boss', 'gate', 'shop', 'shrine', 'warp',
+  'ossuary', 'lair', 'vault', 'cache', 'ladder'];
+
 export interface EdgeCurve {
   a: BoardNode;
   b: BoardNode;
@@ -1083,10 +1092,8 @@ export function renderTerrain(
   }
 
   // 8. Landmarks, y-sorted so lower buildings overlap higher ones correctly
-  const landmarkTypes = ['boss', 'gate', 'shop', 'shrine', 'warp', 'ossuary',
-    'lair', 'vault', 'cache', 'ladder'];
   const landmarks = nodes
-    .filter((n) => landmarkTypes.includes(n.type))
+    .filter((n) => LANDMARK_TYPES.includes(n.type) && !n.hideSprite)
     .sort((a, b) => a.y - b.y);
   for (const n of landmarks) drawLandmark(ctx, n, glowSpots, landmarkArt, cleared);
 
@@ -1860,8 +1867,14 @@ function drawLandmark(
   tex?: LandmarkTextures,
   cleared = false,
 ): void {
-  const x = n.x;
-  const base = n.y - 24;
+  // Optional per-space offset: push the sprite off the disc centre along
+  // `spriteAngle` (0 = up, clockwise) by `spriteDist` px for a natural look.
+  const ang = ((n.spriteAngle ?? 0) - 90) * (Math.PI / 180);
+  const ox = Math.cos(ang) * (n.spriteDist ?? 0);
+  const oy = Math.sin(ang) * (n.spriteDist ?? 0);
+  const x = n.x + ox;
+  const ny = n.y + oy;
+  const base = ny - 24;
 
   // Art landmarks: blit the sprite and keep the type's ambient glow so the
   // shrine flame / boss aura still pulse. Everything else stays procedural.
@@ -1871,19 +1884,19 @@ function drawLandmark(
     // side). Sized to clear the tightest neighbour spacing (~118px) and the
     // central-isle cluster (~137px) so nothing overlaps or leaves the platform.
     if (n.type === 'boss') {
-      drawLandmarkImage(ctx, x, n.y, art, 82);
+      drawLandmarkImage(ctx, x, ny, art, 82);
       glowSpots.push({ x, y: base - 40, r: 36, color: '184, 122, 255', phase: 1.3 });
     } else if (n.type === 'shrine') {
-      drawLandmarkImage(ctx, x, n.y, art, 64);
+      drawLandmarkImage(ctx, x, ny, art, 64);
       glowSpots.push({ x, y: base - 30, r: 20, color: '120, 230, 150', phase: 2.1 });
     } else if (n.type === 'warp') {
-      drawLandmarkImage(ctx, x, n.y, art, 66);
+      drawLandmarkImage(ctx, x, ny, art, 66);
       glowSpots.push({ x, y: base - 34, r: 24, color: '95, 208, 200', phase: 0.4 });
     } else if (n.type === 'shop') {
-      drawLandmarkImage(ctx, x, n.y, art, 66);
+      drawLandmarkImage(ctx, x, ny, art, 66);
       glowSpots.push({ x, y: base - 26, r: 20, color: '235, 190, 110', phase: 1.7 });
     } else {
-      drawLandmarkImage(ctx, x, n.y, art, 62);
+      drawLandmarkImage(ctx, x, ny, art, 62);
     }
     return;
   }

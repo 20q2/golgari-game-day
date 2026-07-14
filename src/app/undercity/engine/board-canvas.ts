@@ -9,8 +9,14 @@
  * "disturbed ground" tells, pulsing move-choice highlights, and y-sorted
  * player tokens (recolored mini sprites) with ground shadows.
  */
-import { getRecolored } from './sprite-engine';
+import { getRecolored, getRawImage } from './sprite-engine';
 import { formSprite } from '../data/species';
+import {
+  BARRIER_GUARDIANS,
+  DEFAULT_GUARDIAN,
+  GUARDIAN_PLACEHOLDER_SPRITE,
+  DEFAULT_GUARDIAN_SPRITE,
+} from '../data/items';
 import { drawSpaceDisc, NODE_R, DISC_RY } from './board-space';
 import { BoardAmbient } from './board-ambient';
 import {
@@ -38,6 +44,14 @@ export interface BoardNode {
    * the backend ignores it. Absent/false = sprite shown.
    */
   hideSprite?: boolean;
+  /**
+   * Editor-only: nudge the landmark sprite off the disc centre for a more
+   * natural look. `spriteAngle` is the offset direction in degrees (0 = up,
+   * clockwise); `spriteDist` is how far in px. Both default to 0 (the sprite's
+   * usual straight-up seat). Display-only; the backend ignores them.
+   */
+  spriteAngle?: number;
+  spriteDist?: number;
 }
 
 /** Editable chamber metadata from map.json (regions{} section). */
@@ -129,6 +143,13 @@ function easeInOut(t: number): number {
   return t < 0.5 ? 2 * t * t : 1 - (2 - 2 * t) ** 2 / 2;
 }
 
+// Smootherstep (Ken Perlin): zero velocity AND zero acceleration at both ends,
+// so the spectator camera eases in and out with no perceptible jerk. Used only
+// for the cinematic camera glide, not token hops.
+function easeCam(t: number): number {
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
 /**
  * Popover entrance: given the popover's age in seconds, returns [alpha, scale].
  * Scale springs from 0 up through a slight overshoot to 1 (easeOutBack) while
@@ -166,6 +187,25 @@ interface TokenAnim {
   phase: number; // per-token breathing desync
 }
 
+/** An in-flight camera pan (+ optional zoom) tween. */
+interface CamGlide {
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  fromZoom: number;
+  toZoom: number;
+  start: number;
+  durationMs: number;
+}
+
+/** Construction options. `interactive: false` builds a read-only board (the
+ *  spectator/TV broadcast) — no pointer/pinch/wheel input, and dungeon pockets
+ *  render fully revealed since there is no own token to light the way. */
+export interface BoardCanvasOpts {
+  interactive?: boolean;
+}
+
 /** Kicked-up dust mote (world space), ported from the plaza's poof system. */
 interface DustMote {
   x: number;
@@ -183,6 +223,13 @@ const HOP_HEIGHT = 10; // px the sprite lifts at the peak of a hop
 const BREATH_SPEED = 2.2; // idle breathing rate
 const BREATH_AMT = 0.04; // idle vertical scale wobble (±4%)
 
+// A barrier guardian stands its ground and hops "ever so slightly" to read as
+// actively blocking the way — a shallow, slow bob with a touch of side sway.
+const GUARDIAN_H = 64; // draw height, a shade bigger than a player token
+const GUARDIAN_HOP_SPEED = 3.0; // bob cadence
+const GUARDIAN_HOP_HEIGHT = 5; // px lift at the peak — deliberately small
+const GUARDIAN_SWAY = 3; // px side-to-side pacing
+
 /** One render/view layer: its node subset + world bounds, and its terrain. */
 interface Layer {
   spec: LayerSpec;
@@ -198,6 +245,11 @@ export class BoardCanvas {
   private barriersOpen = new Set<string>();
   /** Nodes sealed behind an unbroken barrier — rendered greyed. */
   private lockedIds = new Set<string>();
+  // Real transparent guardian art, lazily loaded from undercity/guardians/<id>.png.
+  // Missing files (the folder is a placeholder for now) fall back to a token sprite.
+  private guardianTex = new Map<string, HTMLImageElement>();
+  private guardianMiss = new Set<string>();
+  private guardianLoading = new Set<string>();
   private choices = new Set<string>();
   private backChoice: string | null = null;
   private info: NodeInfo | null = null;
@@ -210,7 +262,7 @@ export class BoardCanvas {
   private stepDie: number | null = null;
   private ownPosition: string | null = null;
   private tokenAnims = new Map<string, TokenAnim>();
-  private camGlide: TokenAnim | null = null;
+  private camGlide: CamGlide | null = null;
   private dust: DustMote[] = [];
   private lastTs = performance.now();
   private rafId: number | null = null;
@@ -267,6 +319,9 @@ export class BoardCanvas {
   private camX = 0;
   private camY = 0;
   private zoom = 0.8;
+  /** Read-only broadcast mode: no input wired, dungeons fully revealed. */
+  private interactive = true;
+  private revealAll = false;
 
   private boundResize = () => this.resize();
   private pointerHandlers: {
@@ -281,7 +336,10 @@ export class BoardCanvas {
     private map: BoardMap,
     private onTapNode: (nodeId: string | null) => void,
     private ownUserId: string | null,
+    opts: BoardCanvasOpts = {},
   ) {
+    this.interactive = opts.interactive !== false;
+    this.revealAll = !this.interactive;
     this.ctx = canvas.getContext('2d')!;
     for (const n of map.nodes) this.nodeMap.set(n.id, n);
     // A ladder node's partner is its neighbor that is also a ladder — its
@@ -349,7 +407,7 @@ export class BoardCanvas {
     // Image decals paint into the prerendered terrain; re-render as each lands.
     preloadDecalImages(map, () => this.rebuildLayers());
     this.resize();
-    this.initInput();
+    if (this.interactive) this.initInput();
     window.addEventListener('resize', this.boundResize);
   }
 
@@ -357,6 +415,9 @@ export class BoardCanvas {
     this.players = players;
     const own = players.find((p) => p.userId === this.ownUserId);
     this.ownPosition = own?.position ?? null;
+    // Spectator (no own token) drives layers itself via showLayerOf(); skip the
+    // auto-follow so a repeated poll can't yank the view back to the overworld.
+    if (!this.ownUserId) return;
     // The visible layer follows your own token: descend a ladder and the view
     // swaps to that dungeon pocket; climb out and it returns to the overworld.
     const target = this.ownPosition ? this.layerOf.get(this.ownPosition) ?? OVERWORLD : OVERWORLD;
@@ -396,6 +457,7 @@ export class BoardCanvas {
   /** A dungeon node is lit if explored or adjacent to your current position. */
   private isLit(nodeId: string): boolean {
     if (this.activeLayerId === OVERWORLD) return true;
+    if (this.revealAll) return true; // broadcast: no fog-of-war on the TV
     if (this.explored.get(this.activeLayerId)?.has(nodeId)) return true;
     if (!this.ownPosition) return false;
     if (nodeId === this.ownPosition) return true;
@@ -481,28 +543,61 @@ export class BoardCanvas {
   }
 
   centerOn(nodeId: string, animate = true): void {
+    this.focusOn(nodeId, undefined, animate);
+  }
+
+  /**
+   * Pan — and optionally zoom — the camera to center a node. The spectator
+   * broadcast drives this between scenes: a hero beat pushes in with a high
+   * `targetZoom`, a flyover pulls out with a low one. The camera destination
+   * is computed at the final zoom so the node lands centered, and `durationMs`
+   * lets a slow flyover glide take longer than a snappy scene cut.
+   */
+  focusOn(nodeId: string, targetZoom?: number, animate = true, durationMs = MOVE_MS): void {
     const n = this.nodeMap.get(nodeId);
     if (!n) return;
-    const toX = n.x - this.canvas.width / this.zoom / 2;
-    const toY = n.y - this.canvas.height / this.zoom / 2;
+    const toZoom =
+      targetZoom != null ? Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, targetZoom)) : this.zoom;
+    const toX = n.x - this.canvas.width / toZoom / 2;
+    const toY = n.y - this.canvas.height / toZoom / 2;
     if (!animate) {
       this.camGlide = null;
+      this.zoom = toZoom;
       this.camX = toX;
       this.camY = toY;
       this.clampCamera();
       return;
     }
     this.camGlide = {
-      x: this.camX,
-      y: this.camY,
       fromX: this.camX,
       fromY: this.camY,
       toX,
       toY,
+      fromZoom: this.zoom,
+      toZoom,
       start: performance.now(),
-      hopIndex: 0,
-      phase: 0,
+      durationMs,
     };
+  }
+
+  /**
+   * Switch the visible layer to whichever one holds `nodeId` (overworld or a
+   * dungeon pocket). The spectator calls this explicitly because, with no own
+   * token, setPlayers() keeps the view locked to the overworld — this lets a
+   * hero/hotspot beat dive into the pocket where the action is.
+   */
+  showLayerOf(nodeId: string): void {
+    const target = this.layerOf.get(nodeId) ?? OVERWORLD;
+    if (target === this.activeLayerId) return;
+    this.activeLayerId = target;
+    this.clampCamera();
+    const b = this.active.spec.bounds;
+    this.ambient.setContext(target === OVERWORLD ? 'overworld' : nodeId.split('_')[0], {
+      x: b.x,
+      y: b.y,
+      w: b.w,
+      h: b.h,
+    });
   }
 
   // ── Camera / input (same interaction model as the plaza) ───────────────────
@@ -702,8 +797,9 @@ export class BoardCanvas {
 
     if (this.camGlide) {
       const g = this.camGlide;
-      const t = Math.min(1, (ts - g.start) / MOVE_MS);
-      const e = easeInOut(t);
+      const t = Math.min(1, (ts - g.start) / g.durationMs);
+      const e = easeCam(t);
+      this.zoom = g.fromZoom + (g.toZoom - g.fromZoom) * e;
       this.camX = g.fromX + (g.toX - g.fromX) * e;
       this.camY = g.fromY + (g.toY - g.fromY) * e;
       this.clampCamera();
@@ -914,9 +1010,9 @@ export class BoardCanvas {
     const sealed = n.type === 'barrier' && !this.barriersOpen.has(n.id);
     drawSpaceDisc(ctx, n, { sealed, locked: this.lockedIds.has(n.id) });
 
-    // A sealed barrier wears a rubble wall across the route; it crumbles away
-    // (drawn no more) the moment someone breaks it.
-    if (sealed) this.drawRubble(n, elapsed);
+    // A sealed barrier is held by the area's guardian creature, standing across
+    // the route; it's drawn no more the moment someone breaks the barrier.
+    if (sealed) this.drawGuardian(n, elapsed);
 
     // Disturbed ground — the only tell that a snare lurks here.
     if (this.snares.has(n.id)) {
@@ -931,49 +1027,90 @@ export class BoardCanvas {
     ctx.restore();
   }
 
-  /** Boulders + a faint menacing pulse over a sealed barrier space. */
-  private drawRubble(n: BoardNode, elapsed: number): void {
+  /**
+   * The area's guardian creature planted on a sealed barrier, hopping "ever so
+   * slightly" in place so it reads as actively barring the route. Uses real
+   * transparent art (undercity/guardians/<id>.png) once present; a preloaded
+   * token sprite stands in until then. A faint menacing pulse rings its feet.
+   */
+  private drawGuardian(n: BoardNode, elapsed: number): void {
     const ctx = this.ctx;
+    const guardianId = BARRIER_GUARDIANS[n.id] ?? DEFAULT_GUARDIAN;
+    const art = this.guardianArt(guardianId);
+
+    // Desync each barrier so multiple guardians don't bob in lockstep.
+    const phase = ((hashStr(n.id) % 1000) / 1000) * Math.PI * 2;
+    const hop = Math.abs(Math.sin(elapsed * GUARDIAN_HOP_SPEED + phase));
+    const hopY = -hop * GUARDIAN_HOP_HEIGHT;
+    const breath = 1 + Math.sin(elapsed * BREATH_SPEED + phase) * BREATH_AMT;
+    const sway = Math.sin(elapsed * GUARDIAN_HOP_SPEED * 0.5 + phase) * GUARDIAN_SWAY;
+
+    const cx = n.x + sway;
+    const footAnchor = n.y + 8; // planted on the coin's near edge
+
     ctx.save();
-    const rocks = [
-      { dx: -24, dy: -34, r: 15 },
-      { dx: 2, dy: -46, r: 19 },
-      { dx: 26, dy: -32, r: 13 },
-      { dx: -6, dy: -28, r: 11 },
-      { dx: 14, dy: -24, r: 9 },
-    ];
-    for (const rk of rocks) {
-      const x = n.x + rk.dx;
-      const y = n.y + rk.dy;
-      ctx.beginPath();
-      ctx.moveTo(x - rk.r, y + rk.r * 0.5);
-      ctx.lineTo(x - rk.r * 0.7, y - rk.r * 0.7);
-      ctx.lineTo(x + rk.r * 0.2, y - rk.r);
-      ctx.lineTo(x + rk.r, y - rk.r * 0.2);
-      ctx.lineTo(x + rk.r * 0.8, y + rk.r * 0.5);
-      ctx.closePath();
-      ctx.fillStyle = '#3c322c';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.beginPath(); // moonlit top facet
-      ctx.moveTo(x - rk.r * 0.7, y - rk.r * 0.7);
-      ctx.lineTo(x + rk.r * 0.2, y - rk.r);
-      ctx.lineTo(x + rk.r * 0.5, y - rk.r * 0.4);
-      ctx.lineTo(x - rk.r * 0.3, y - rk.r * 0.25);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(200, 170, 150, 0.16)';
-      ctx.fill();
-    }
-    // slow warning pulse so the seal reads as "deal with me"
+
+    // Ground shadow at the planted feet, shrinking a touch at the hop's peak.
+    const shadowShrink = 1 - Math.min(0.3, hop / 3);
+    ctx.beginPath();
+    ctx.ellipse(cx, footAnchor, GUARDIAN_H * 0.4 * shadowShrink, GUARDIAN_H * 0.16 * shadowShrink, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fill();
+
+    // Slow warning pulse so the seal still reads as "deal with me".
     const pulse = 0.25 + 0.15 * Math.sin(elapsed * 2.2);
     ctx.beginPath();
-    ctx.ellipse(n.x, n.y - 32, 46, 26, 0, 0, Math.PI * 2);
+    ctx.ellipse(n.x, footAnchor, 44, 22, 0, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(230, 120, 80, ${pulse})`;
     ctx.lineWidth = 3;
     ctx.stroke();
+
+    if (art) {
+      const drawH = GUARDIAN_H * breath;
+      const w = art.img.width * (GUARDIAN_H / art.img.height);
+      const top = footAnchor - drawH + hopY;
+      ctx.imageSmoothingEnabled = !art.pixelArt;
+      ctx.drawImage(art.img, cx - w / 2, top, w, drawH);
+      ctx.imageSmoothingEnabled = true;
+    }
+
     ctx.restore();
+  }
+
+  /**
+   * Guardian art for the barrier: real transparent PNG if it has loaded, else
+   * a preloaded placeholder token sprite (pixel art). Kicks off the lazy load
+   * on first request. Returns null only until the placeholder sprite resolves.
+   */
+  private guardianArt(guardianId: string): { img: CanvasImageSource & { width: number; height: number }; pixelArt: boolean } | null {
+    const real = this.guardianTex.get(guardianId);
+    if (real) return { img: real, pixelArt: false };
+    this.loadGuardian(guardianId);
+    const key = GUARDIAN_PLACEHOLDER_SPRITE[guardianId] ?? DEFAULT_GUARDIAN_SPRITE;
+    const ph = getRawImage(key);
+    return ph ? { img: ph, pixelArt: true } : null;
+  }
+
+  /** Lazily fetch undercity/guardians/<id>.png; a 404 stays on the placeholder. */
+  private loadGuardian(guardianId: string): void {
+    if (
+      this.guardianTex.has(guardianId) ||
+      this.guardianMiss.has(guardianId) ||
+      this.guardianLoading.has(guardianId)
+    ) {
+      return;
+    }
+    this.guardianLoading.add(guardianId);
+    const img = new Image();
+    img.onload = () => {
+      this.guardianTex.set(guardianId, img);
+      this.guardianLoading.delete(guardianId);
+    };
+    img.onerror = () => {
+      this.guardianMiss.add(guardianId);
+      this.guardianLoading.delete(guardianId);
+    };
+    img.src = `undercity/guardians/${guardianId}.png`;
   }
 
   /** Space-info popover, drawn in world space so it pans/zooms with the board. */
