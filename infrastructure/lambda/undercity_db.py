@@ -1611,6 +1611,8 @@ def _battle(table, sid, doc, payload):
     atk_c = _combatant(doc)
     atk_c.stance = 'fight'
     def_c = _combatant(target)
+    # PvP stays one-shot (auto stances via the back-compat resolver) — the
+    # interactive round-by-round machine is PvE-only this iteration (spec §7).
     result = engine.resolve_battle(atk_c, def_c, _rng)
 
     doc['hp'] = result['attackerHp']
