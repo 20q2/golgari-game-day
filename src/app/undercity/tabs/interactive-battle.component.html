@@ -28,8 +28,8 @@
         <mat-icon class="mi">{{ showHelp() ? 'close' : 'help_outline' }}</mat-icon>
       </button>
 
-      @if (attackerStats; as s) {
-        <div class="stat-col">
+      @if (enteredStats() && attackerStats; as s) {
+        <div class="stat-col enter">
           <span class="stat"><mat-icon class="mi">sports_mma</mat-icon>{{ s.atk }}</span>
           <span class="stat"><mat-icon class="mi">shield</mat-icon>{{ s.def }}</span>
           <span class="stat"><mat-icon class="mi">bolt</mat-icon>{{ s.spd }}</span>
@@ -44,22 +44,24 @@
         [class.struck]="struck() === 'attacker'"
         [class.ko]="done() && outcome() === 'defender'"
       >
-        <span class="platform"></span>
         @if (actWord().attacker; as w) { <span class="act-word">{{ w }}</span> }
-        <span class="body">
-          @if (guard().attacker) { <span class="barrier"></span> }
-          @if (attacker.spriteUrl && !attackerSpriteFailed()) {
-            <img class="sprite" [src]="attacker.spriteUrl" [alt]="attacker.name" (error)="attackerSpriteFailed.set(true)" />
-          } @else {
-            <mat-icon class="sprite-icon">{{ attacker.icon ?? 'pets' }}</mat-icon>
-          }
-        </span>
+        @if (enteredFighters()) {
+          <span class="platform"></span>
+          <span class="body drop-in">
+            @if (guard().attacker) { <span class="barrier"></span> }
+            @if (attacker.spriteUrl && !attackerSpriteFailed()) {
+              <img class="sprite" [src]="attacker.spriteUrl" [alt]="attacker.name" (error)="attackerSpriteFailed.set(true)" />
+            } @else {
+              <mat-icon class="sprite-icon">{{ attacker.icon ?? 'pets' }}</mat-icon>
+            }
+          </span>
+        }
         @if (pop()?.side === 'attacker') {
           <span class="dmg-pop" [class.heal]="pop()?.kind === 'heal'" [class.miss]="pop()?.kind === 'miss'">{{ pop()?.text }}</span>
         }
       </div>
 
-      <div class="vs-badge">VS</div>
+      @if (enteredVs()) { <div class="vs-badge">VS</div> }
 
       <div
         class="side flipped"
@@ -69,29 +71,31 @@
         [class.struck]="struck() === 'defender'"
         [class.ko]="done() && outcome() === 'attacker'"
       >
-        <span class="platform"></span>
         @if (actWord().defender; as w) { <span class="act-word">{{ w }}</span> }
         <!-- Slay-the-Spire intent: floats above the foe until the exchange plays -->
-        @if (!done() && !resolving()) {
+        @if (!done() && !resolving() && introDone()) {
           <div class="intent-float" [class.scried]="revealed()" [title]="stanceMap[revealed() ?? telegraph].label">
             <mat-icon class="mi">{{ stanceMap[revealed() ?? telegraph].icon }}</mat-icon>
           </div>
         }
-        <span class="body">
-          @if (guard().defender) { <span class="barrier"></span> }
-          @if (defender.spriteUrl && !defenderSpriteFailed()) {
-            <img class="sprite" [src]="defender.spriteUrl" [alt]="defender.name" (error)="defenderSpriteFailed.set(true)" />
-          } @else {
-            <mat-icon class="sprite-icon">{{ defender.icon ?? 'bug_report' }}</mat-icon>
-          }
-        </span>
+        @if (enteredFighters()) {
+          <span class="platform"></span>
+          <span class="body drop-in">
+            @if (guard().defender) { <span class="barrier"></span> }
+            @if (defender.spriteUrl && !defenderSpriteFailed()) {
+              <img class="sprite" [src]="defender.spriteUrl" [alt]="defender.name" (error)="defenderSpriteFailed.set(true)" />
+            } @else {
+              <mat-icon class="sprite-icon">{{ defender.icon ?? 'bug_report' }}</mat-icon>
+            }
+          </span>
+        }
         @if (pop()?.side === 'defender') {
           <span class="dmg-pop" [class.heal]="pop()?.kind === 'heal'" [class.miss]="pop()?.kind === 'miss'">{{ pop()?.text }}</span>
         }
       </div>
 
-      @if (defenderStats; as s) {
-        <div class="stat-col">
+      @if (enteredStats() && defenderStats; as s) {
+        <div class="stat-col enter">
           <span class="stat"><mat-icon class="mi">sports_mma</mat-icon>{{ s.atk }}</span>
           <span class="stat"><mat-icon class="mi">shield</mat-icon>{{ s.def }}</span>
           <span class="stat"><mat-icon class="mi">bolt</mat-icon>{{ s.spd }}</span>
@@ -106,7 +110,7 @@
     </div>
 
     <!-- Compact telegraph caption (the icon over the foe carries the intent) -->
-    @if (!done() && !resolving()) {
+    @if (!done() && !resolving() && introDone()) {
       <div class="tele-caption">
         <span class="tell">{{ defender.name }} is {{ tellText() }}</span>
         @if (revealed(); as r) {
@@ -118,7 +122,7 @@
     }
 
     <!-- Controls -->
-    @if (!done()) {
+    @if (!done() && introDone()) {
       <div class="stance-row">
         @for (s of STANCES; track s.id) {
           <button class="stance-btn" [disabled]="busy()" (click)="play(s.id)" [title]="s.blurb">

@@ -95,11 +95,21 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   /** Hide the telegraph/controls while the exchange plays. */
   protected readonly resolving = signal(false);
 
+  // Opening sequence: blank arena → fighters drop in → VS → stats → controls.
+  protected readonly enteredFighters = signal(false);
+  protected readonly enteredVs = signal(false);
+  protected readonly enteredStats = signal(false);
+  protected readonly introDone = signal(false);
+
   private timers: ReturnType<typeof setTimeout>[] = [];
 
   ngOnInit(): void {
     this.attackerHp.set(this.attacker.startHp);
     this.defenderHp.set(this.defender.startHp);
+    this.timers.push(setTimeout(() => this.enteredFighters.set(true), 250));
+    this.timers.push(setTimeout(() => this.enteredVs.set(true), 950));
+    this.timers.push(setTimeout(() => this.enteredStats.set(true), 1300));
+    this.timers.push(setTimeout(() => this.introDone.set(true), 1650));
   }
 
   ngOnDestroy(): void {

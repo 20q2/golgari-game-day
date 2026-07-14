@@ -452,14 +452,23 @@
   &:hover { background: rgba(0, 0, 0, 0.6); color: #fff; }
 }
 
-// Sprites breathe (wrapper animates so the flip stays on the img).
+// Sprites drop in on entrance, then breathe (wrapper animates so the flip
+// stays on the img). The body is only rendered once the fighters enter, so the
+// one-shot drop-in plays exactly once.
 .side .body {
   display: inline-block;
-  animation: uc-breathe 3.2s ease-in-out infinite;
+  animation: uc-drop-in 0.6s cubic-bezier(0.2, 1.2, 0.4, 1) both,
+    uc-breathe 3.2s ease-in-out 0.7s infinite;
 }
-.side.flipped .body { animation-delay: -1.6s; }
 .side.hit .body,
 .side.ko .body { animation: none; }
+
+@keyframes uc-drop-in {
+  0% { opacity: 0; transform: translateY(-130px); }
+  62% { opacity: 1; transform: translateY(10px); }
+  80% { transform: translateY(-5px); }
+  100% { transform: translateY(0); }
+}
 
 @keyframes uc-breathe {
   0%, 100% { transform: translateY(0) scale(1); }
@@ -783,8 +792,8 @@
   50% { box-shadow: 0 0 22px rgba(130, 205, 255, 0.7), inset 0 0 22px rgba(130, 205, 255, 0.45); }
 }
 
-// STRUCK — the hit fighter flashes red and shakes; a damage number pops.
-.side.struck .body { animation: uc-shake 0.38s ease; }
+// STRUCK — the hit fighter flashes red (a damage number pops from the TS).
+// Flash lives on ::after so it never resets the body's drop-in/breathe anim.
 .side.struck .body::after {
   content: '';
   position: absolute;
@@ -814,4 +823,22 @@
   background: linear-gradient(90deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.05));
   border: 1px solid rgba(251, 191, 36, 0.4);
   .mi { color: #fbbf24; flex-shrink: 0; }
+}
+
+// ── Opening sequence entrances (fighters drop in → VS → stats) ───────────────
+.vs-badge {
+  animation: uc-vs-in 0.45s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+@keyframes uc-vs-in {
+  0% { opacity: 0; transform: scale(0.2) rotate(-25deg); }
+  70% { opacity: 1; transform: scale(1.15) rotate(6deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+.stat-col.enter {
+  animation: uc-stat-in 0.4s ease both;
+}
+@keyframes uc-stat-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
