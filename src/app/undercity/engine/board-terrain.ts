@@ -2153,8 +2153,13 @@ function drawLandmark(
     }
     case 'ladder': {
       // `_lb` sits in the depths pocket → an ascent; `_lt` on the surface →
-      // a descent into the hidden dungeon layer.
-      drawStairwell(ctx, n.x, n.y - 6, n.region !== 'depths');
+      // a descent into the hidden dungeon layer. The stairwell is a hole in the
+      // ground, so it seats lower than a building (6px vs SPRITE_SEAT); honour
+      // the same angle/distance offset, orbiting the space centre.
+      const seat = n.spriteDist ?? 6;
+      const lx = n.x + Math.cos(ang) * seat;
+      const ly = n.y + Math.sin(ang) * seat;
+      drawStairwell(ctx, lx, ly, n.region !== 'depths');
       break;
     }
   }
