@@ -564,7 +564,18 @@ def handle_action(table, body):
     handler = handlers.get(atype)
     if not handler:
         return _err(f'Unknown action: {atype}')
+    # A pending interactive battle blocks turn actions until it resolves; only
+    # the combat actions and read-only/meta actions are allowed mid-fight.
+    if doc.get('battle') and atype not in _BATTLE_ALLOWED_ACTIONS:
+        return _err('Finish your fight first.', 409)
     return handler(table, sid, doc, payload)
+
+
+# Actions permitted while a battle is in progress (combat + read-only/meta).
+_BATTLE_ALLOWED_ACTIONS = frozenset({
+    'combat-round', 'combat-peek', 'combat-flee',
+    'set-stance', 'spend-stat', 'customize', 'ack-events',
+})
 
 
 def _ok(doc, **extra):
@@ -1147,64 +1158,17 @@ def _dungeon_hazard(table, sid, doc, node, biome, mire):
 # ── Battles ──────────────────────────────────────────────────────────────────
 
 def _wild_battle(table, sid, doc, elite=False):
+    """Landing on a wild/elite space STARTS an interactive battle (Plan 2)."""
     biome = data.dungeon_biome(doc.get('position', ''))
     if biome:
-        # Dungeon fauna: each pocket spawns its own themed wild.
-        npc = engine.npc_from_spec(data.DUNGEON_NPCS[biome])
+        spec = data.DUNGEON_NPCS[biome]          # dungeon fauna, themed per pocket
     else:
-        npc = engine.pick_npc(_rng, data.ELITE_NPCS if elite else data.NPCS)
-    player_c = _combatant(doc)
-    player_c.stance = 'fight'  # attacker's stance never applies to their own attack
-    if doc.get('homeBiome') == 'bone':
-        player_c.dfn += 2  # Marrowborn hatch perk: bone plates vs wilds
-    npc_c = engine.Combatant(name=npc['name'], hp=npc['hp'], max_hp=npc['hp'],
-                             atk=npc['atk'], dfn=npc['def'], spd=npc['spd'])
-    result = engine.resolve_battle(player_c, npc_c, _rng)
-    doc['hp'] = result['attackerHp']
-    doc['hpUpdatedAt'] = _now()
-    _consume_one_battle_buffs(doc)
-
-    out = {'type': 'elite' if elite else 'wild', 'npc': npc, 'battle': result}
-    if result['outcome'] == 'attacker':
-        bounty = npc['bounty'] + (2 if 'scrounger' in _passives(doc) else 0)
-        doc['spores'] = doc.get('spores', 0) + bounty
-        doc['wildWins'] = doc.get('wildWins', 0) + 1
-        levels = _grant_xp(table, sid, doc, npc['xp'])
-        out['spores'] = bounty
-        out['xp'] = npc['xp']
-        if levels:
-            out['levels'] = levels
-        if npc['itemChance'] and _rng.random() < npc['itemChance']:
-            item = _give_consumable(doc)
-            if item:
-                out['item'] = item
-        out['text'] = f"You compost the {npc['name']}! +{bounty} Spores."
-    elif result['outcome'] == 'defender':
-        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
-        _compost(table, sid, doc,
-                 f"{doc['username']}'s {_creature_label(doc)} was composted by a {npc['name']}. "
-                 'The swarm remembers.')
-        out['text'] = f"The {npc['name']} grinds you into the mulch. Back to the Gate…"
-    else:
-        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
-        out['text'] = f"You and the {npc['name']} circle each other and part ways."
-    return out
-
-
-def _fixed_battle(table, sid, doc, foe):
-    """Battle a fixed-stat foe (guardian/mini-boss). Returns (result, npc)."""
-    player_c = _combatant(doc)
-    player_c.stance = 'fight'  # attacker's stance never applies to their own attack
-    npc_c = engine.Combatant(name=foe['name'], hp=foe['hp'], max_hp=foe['hp'],
-                             atk=foe['atk'], dfn=foe['def'], spd=foe['spd'])
-    result = engine.resolve_battle(player_c, npc_c, _rng)
-    doc['hp'] = result['attackerHp']
-    doc['hpUpdatedAt'] = _now()
-    _consume_one_battle_buffs(doc)
-    npc = {'id': foe['id'], 'name': foe['name'], 'hp': foe['hp'],
-           'atk': foe['atk'], 'def': foe['def'], 'spd': foe['spd'],
-           'bounty': foe.get('bounty', 0)}
-    return result, npc
+        spec = _rng.choice(data.ELITE_NPCS if elite else data.NPCS)
+    npc = engine.npc_from_spec(spec)
+    npc['personality'] = spec.get('personality', data.NPC_DEFAULT_PERSONALITY)
+    npc['bluff'] = spec.get('bluff', data.NPC_DEFAULT_BLUFF)
+    return _start_battle(table, sid, doc, 'elite' if elite else 'wild', npc,
+                         node=doc.get('position'))
 
 
 def _barrier(table, sid, doc, node):
@@ -1212,34 +1176,9 @@ def _barrier(table, sid, doc, node):
         return {'type': 'barrier_open',
                 'text': 'The shattered barricade lies in rubble. The way stands open.'}
     g = data.BARRIER_GUARDIANS[node]
-    result, npc = _fixed_battle(table, sid, doc, g)
-    out = {'type': 'barrier', 'npc': npc, 'battle': result}
-    if result['outcome'] == 'attacker':
-        _open_barrier(table, sid, node)
-        doc['spores'] = doc.get('spores', 0) + g['bounty']
-        claims = doc.setdefault('poiClaims', [])
-        if node not in claims:
-            claims.append(node)
-        levels = _grant_xp(table, sid, doc, g['xp'])
-        out['spores'] = g['bounty']
-        out['xp'] = g['xp']
-        if levels:
-            out['levels'] = levels
-        out['barrierOpened'] = node
-        out['text'] = (f"The {g['name']} crumbles! +{g['bounty']} Spores — "
-                       'the way beyond is open for everyone.')
-        _event(table, sid, 'barrier',
-               f"{doc['username']} shattered the {g['name']} — a new route is open to all!",
-               actor=doc['userId'])
-    elif result['outcome'] == 'defender':
-        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
-        _compost(table, sid, doc,
-                 f"{doc['username']} was crushed by the {g['name']}. The barrier holds.")
-        out['text'] = f"The {g['name']} hurls you back. The barrier holds…"
-    else:
-        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
-        out['text'] = f"You trade blows with the {g['name']}, but the barrier holds."
-    return out
+    npc = dict(g, personality=g.get('personality', 'turtle'),
+               bluff=g.get('bluff', 0.15))
+    return _start_battle(table, sid, doc, 'barrier', npc, node=node)
 
 
 def _lair_state(table, sid, node):
@@ -1266,57 +1205,10 @@ def _lair(table, sid, doc, node):
     hp_pool, slain = _lair_state(table, sid, node)
     vest_max = b['hp'] // 2
     display = f"Vestige of {b['name']}" if slain else b['name']
-    result, npc = _fixed_battle(table, sid, doc, dict(b, hp=hp_pool, name=display))
-    npc['maxHp'] = vest_max if slain else b['hp']
-    out = {'type': 'lair', 'npc': npc, 'battle': result}
-    if result['outcome'] == 'attacker':
-        # From now on the Vestige haunts the lair, at half the true strength.
-        _set_lair_state(table, sid, node, vest_max, True)
-        claims = doc.setdefault('poiClaims', [])
-        personal_first = node not in claims
-        if personal_first:
-            claims.append(node)
-        # Major reward for the TRUE boss's slayer; Vestige kills pay minor.
-        reward = b['repeat'] if slain else b['first']
-        doc['spores'] = doc.get('spores', 0) + reward['spores']
-        doc['wildWins'] = doc.get('wildWins', 0) + 1
-        levels = _grant_xp(table, sid, doc, reward['xp'])
-        out['spores'] = reward['spores']
-        out['xp'] = reward['xp']
-        if levels:
-            out['levels'] = levels
-        sigil_biome = data.SIGIL_LAIRS.get(node)
-        if personal_first and sigil_biome:
-            have = len([c for c in claims if c in data.SIGIL_LAIRS])
-            biome_name = data.BIOMES[sigil_biome]['name']
-            out['sigil'] = sigil_biome
-            out['text'] = (f"The {display} falls! +{reward['spores']} Spores — "
-                           f"you claim the {biome_name} Guild Sigil! "
-                           f"({have}/{data.SIGILS_REQUIRED} unlocks the island)")
-            _event(table, sid, 'sigil',
-                   f"{doc['username']} cleared the {biome_name} dungeon and claimed "
-                   f"its Guild Sigil ({have}/{data.SIGILS_REQUIRED})!",
-                   actor=doc['userId'])
-        else:
-            out['text'] = (f"The {display} falls! +{reward['spores']} Spores."
-                           + ('' if slain else ' A legendary first kill!'))
-            if not slain:
-                _event(table, sid, 'lair',
-                       f"{doc['username']} slew the {b['name']} — "
-                       'its Vestige stirs in the lair!', actor=doc['userId'])
-    elif result['outcome'] == 'defender':
-        _set_lair_state(table, sid, node, max(1, result['defenderHp']), slain)
-        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
-        _compost(table, sid, doc,
-                 f"{doc['username']} was devoured by the {display} "
-                 f'(it lingers at {max(1, result["defenderHp"])} HP).')
-        out['text'] = f"The {display} is too much. Back to the Gate…"
-    else:
-        _set_lair_state(table, sid, node, max(1, result['defenderHp']), slain)
-        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
-        out['text'] = (f"The {display} withdraws, wounded — "
-                       f'{max(1, result["defenderHp"])}/{npc["maxHp"]} HP. It will be waiting.')
-    return out
+    npc = dict(b, hp=hp_pool, name=display, maxHp=(vest_max if slain else b['hp']),
+               personality=b.get('personality', 'balanced'), bluff=b.get('bluff', 0.20))
+    return _start_battle(table, sid, doc, 'lair', npc, node=node,
+                         ctx={'slain': slain, 'vestMax': vest_max})
 
 
 def _sigil_count(doc):
@@ -1663,50 +1555,10 @@ def _boss(table, sid, doc, node, prev):
 
     boss = data.ROT_SOVEREIGN
     hp_before = _boss_hp(table, sid)
-    foe = dict(boss, hp=hp_before)
-    result, npc = _fixed_battle(table, sid, doc, foe)
-    npc['maxHp'] = boss['hp']
-    out = {'type': 'boss', 'npc': npc, 'battle': result}
-
-    dealt = max(0, hp_before - result['defenderHp'])
-    doc['bossDamage'] = doc.get('bossDamage', 0) + dealt
-
-    if result['outcome'] == 'attacker':
-        _set_boss_hp(table, sid, boss['hp'])  # it reforms for the next challenger
-        claims = doc.setdefault('poiClaims', [])
-        first = 'boss' not in claims
-        reward = boss['first'] if first else boss['repeat']
-        if first:
-            claims.append('boss')
-        doc['spores'] = doc.get('spores', 0) + reward['spores']
-        levels = _grant_xp(table, sid, doc, reward['xp'])
-        out['spores'] = reward['spores']
-        out['xp'] = reward['xp']
-        if levels:
-            out['levels'] = levels
-        out['text'] = (f'SAVRA, QUEEN OF THE GOLGARI FALLS! +{reward["spores"]} Spores. '
-                       'Her husk collapses — and already the rot begins to knit anew…')
-        _event(table, sid, 'boss',
-               f"{doc['username']} struck down SAVRA, QUEEN OF THE GOLGARI! "
-               'The island trembles as she reforms.', actor=doc['userId'])
-    elif result['outcome'] == 'defender':
-        _set_boss_hp(table, sid, result['defenderHp'])
-        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
-        _compost(table, sid, doc,
-                 f"{doc['username']} fell to Savra "
-                 f'(she lingers at {result["defenderHp"]} HP — finish her!)')
-        out['text'] = (f'The Queen grinds you into the mulch — but your blows told: '
-                       f'she lingers at {result["defenderHp"]}/{boss["hp"]} HP.')
-    else:
-        _set_boss_hp(table, sid, result['defenderHp'])
-        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
-        out['text'] = (f'You withdraw, bleeding. The Queen seethes at '
-                       f'{result["defenderHp"]}/{boss["hp"]} HP.')
-        if dealt > 0:
-            _event(table, sid, 'boss',
-                   f"{doc['username']} wounded Savra, Queen of the Golgari — "
-                   f'{result["defenderHp"]}/{boss["hp"]} HP remains!', actor=doc['userId'])
-    return out
+    npc = dict(boss, hp=hp_before, maxHp=boss['hp'],
+               personality='trickster', bluff=0.30)
+    return _start_battle(table, sid, doc, 'boss', npc, node=node,
+                         ctx={'hpBefore': hp_before})
 
 
 def _vault(table, sid, doc):
