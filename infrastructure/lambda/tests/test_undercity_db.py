@@ -1002,3 +1002,15 @@ def test_buy_charm_equips_into_charm_slot(table):
     assert status == 200, resp
     doc = db._get_player(table, sid, 'user-alex')
     assert doc['gear'].get('charm') == 'quartz_charm'
+
+
+def test_battle_combatant_roundtrips_through_dict(table):
+    c = db.engine.Combatant(name='X', hp=25, max_hp=40, atk=8, dfn=5, spd=6,
+                            passives=frozenset({'swarm'}), riders=frozenset({'barbed'}),
+                            buffs=frozenset({'rot_surge'}))
+    c.rot_stacks = 2; c.first_win_used = True; c.dmg_penalty = 1
+    snap = db._bt_snapshot(c)
+    assert isinstance(snap['passives'], list) and snap['hp'] == 25
+    c2 = db._bt_to_combatant(snap)
+    assert c2.hp == 25 and c2.rot_stacks == 2 and c2.first_win_used
+    assert 'barbed' in c2.riders and 'rot_surge' in c2.buffs and 'swarm' in c2.passives

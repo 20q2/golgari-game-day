@@ -187,6 +187,46 @@ def _combatant(doc):
                                 for b in (doc.get('buffs') or [])) else 0))
 
 
+# ── Battle-record serde (Plan 2 interactive combat) ──────────────────────────
+
+def _bt_snapshot(c):
+    """Serialize a Combatant to a DynamoDB-safe dict (sets -> sorted lists)."""
+    return {
+        'name': c.name, 'hp': int(c.hp), 'maxHp': int(c.max_hp),
+        'atk': int(c.atk), 'dfn': int(c.dfn), 'spd': int(c.spd),
+        'passives': sorted(c.passives), 'riders': sorted(c.riders),
+        'buffs': sorted(c.buffs), 'flee_bonus': int(c.flee_bonus),
+        'has_smoke_spore': bool(c.has_smoke_spore),
+        'rot_stacks': int(c.rot_stacks), 'first_win_used': bool(c.first_win_used),
+        'dmg_penalty': int(c.dmg_penalty), 'reveal_next': bool(c.reveal_next),
+    }
+
+
+def _bt_to_combatant(s):
+    c = engine.Combatant(
+        name=s['name'], hp=int(s['hp']), max_hp=int(s['maxHp']),
+        atk=int(s['atk']), dfn=int(s['dfn']), spd=int(s['spd']),
+        passives=frozenset(s.get('passives') or []),
+        riders=frozenset(s.get('riders') or []),
+        buffs=frozenset(s.get('buffs') or []),
+        flee_bonus=int(s.get('flee_bonus', 0)),
+        has_smoke_spore=bool(s.get('has_smoke_spore', False)))
+    c.rot_stacks = int(s.get('rot_stacks', 0))
+    c.first_win_used = bool(s.get('first_win_used', False))
+    c.dmg_penalty = int(s.get('dmg_penalty', 0))
+    c.reveal_next = bool(s.get('reveal_next', False))
+    return c
+
+
+def _bt_store(c, rec_side):
+    """Write a resolved Combatant's mutable state back into a snapshot dict."""
+    rec_side['hp'] = int(max(0, c.hp))
+    rec_side['rot_stacks'] = int(c.rot_stacks)
+    rec_side['dmg_penalty'] = int(c.dmg_penalty)
+    rec_side['first_win_used'] = bool(c.first_win_used)
+    rec_side['reveal_next'] = bool(c.reveal_next)
+
+
 def _form_name(doc):
     return data.ALL_FORMS.get(doc.get('form', ''), {}).get('name', 'creature')
 
