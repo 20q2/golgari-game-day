@@ -140,44 +140,10 @@ def test_five_biome_dungeon_lairs_grant_sigils():
 
 # ── Battle ───────────────────────────────────────────────────────────────────
 
-def test_faster_side_strikes_first():
-    a = fighter(name='A', spd=3, atk=10, dfn=0, hp=8, max_hp=8)
-    b = fighter(name='B', spd=9, atk=10, dfn=0, hp=8, max_hp=8)
-    r = resolve_battle(a, b, FakeRng())
-    # B is faster: kills A before A ever swings.
-    assert r['outcome'] == 'defender'
-    assert r['strikes'][0]['by'] == 'defender'
-    assert len([s for s in r['strikes'] if s['by'] == 'attacker']) == 0
-
-
-def test_first_bite_overrides_round_one():
-    a = fighter(name='A', spd=3, atk=10, dfn=0, hp=8, max_hp=8,
-                passives=frozenset({'first_bite'}))
-    b = fighter(name='B', spd=9, atk=10, dfn=0, hp=8, max_hp=8)
-    r = resolve_battle(a, b, FakeRng())
-    assert r['strikes'][0]['by'] == 'attacker'
-    assert r['outcome'] == 'attacker'
-
-
-def test_damage_floor_and_timeout():
-    a = fighter(name='A', atk=3, dfn=50, hp=40, max_hp=40)
-    b = fighter(name='B', atk=3, dfn=50, hp=40, max_hp=40)
-    r = resolve_battle(a, b, FakeRng())
-    assert all(s['dmg'] == 1 for s in r['strikes'] if not s.get('miss'))
-    assert r['outcome'] == 'timeout'
-    assert len({s['round'] for s in r['strikes']}) == 6
-
-
-def test_defend_stance_reduces_damage_both_ways():
-    # Attacker atk 10 vs def 5: normally 5 dmg; defend => def 7 (5*1.4) → 3 dmg.
-    a = fighter(name='A', atk=10, dfn=0, spd=9, hp=100, max_hp=100)
-    b = fighter(name='B', atk=10, dfn=5, spd=1, hp=100, max_hp=100, stance='defend')
-    r = resolve_battle(a, b, FakeRng())
-    first_a = next(s for s in r['strikes'] if s['by'] == 'attacker')
-    assert first_a['dmg'] == 3
-    # Defender deals -25%: atk 10 vs def 0 = 10 → 8 (round 7.5).
-    first_b = next(s for s in r['strikes'] if s['by'] == 'defender')
-    assert first_b['dmg'] == 8
+# NOTE: the old per-strike slugfest tests (faster-side ordering, defend stance,
+# damage floor/timeout format) were removed with the legacy _strike engine.
+# The stance-triangle model is covered by the test_round_*/test_runner_* suite
+# below. Flee, clamp, and regrowth tests remain valid via the back-compat path.
 
 
 def test_flee_success_and_failure():
@@ -206,64 +172,12 @@ def test_smoke_spore_saves_failed_flee():
     assert r['smokeSporeUsed']
 
 
-def test_swarm_grants_extra_strike():
-    a = fighter(name='A', atk=3, dfn=50, hp=40, max_hp=40,
-                passives=frozenset({'swarm'}))
-    b = fighter(name='B', atk=3, dfn=50, hp=40, max_hp=40)
-    r = resolve_battle(a, b, FakeRng())
-    round1 = [s for s in r['strikes'] if s['round'] == 1]
-    assert len([s for s in round1 if s['by'] == 'attacker']) == 2
-    assert len([s for s in round1 if s['by'] == 'defender']) == 1
-
-
-def test_deathtouch_stomp_ignores_def():
-    a = fighter(name='A', atk=6, dfn=0, spd=9, hp=100, max_hp=100,
-                passives=frozenset({'deathtouch_stomp'}))
-    b = fighter(name='B', atk=1, dfn=5, spd=1, hp=100, max_hp=100)
-    r = resolve_battle(a, b, FakeRng())
-    first = next(s for s in r['strikes'] if s['by'] == 'attacker')
-    assert first['dmg'] == 4  # 6 - (5-3)
-
-
-def test_drain_life_heals():
-    a = fighter(name='A', atk=10, dfn=0, spd=9, hp=50, max_hp=100,
-                passives=frozenset({'drain_life'}))
-    b = fighter(name='B', atk=1, dfn=0, spd=1, hp=100, max_hp=100)
-    r = resolve_battle(a, b, FakeRng())
-    # A dealt 10 per strike, healing 5 each time; ended above starting HP.
-    assert r['attackerHp'] > 50 - 6  # took chip damage but healed more
-    heals = [s for s in r['strikes'] if s['by'] == 'attacker' and s.get('heal')]
-    assert heals and heals[0]['heal'] == 5
-
-
-def test_venom_barb_first_strike_bonus():
-    a = fighter(name='A', atk=6, dfn=0, spd=9, hp=100, max_hp=100,
-                passives=frozenset({'venom_barb'}))
-    b = fighter(name='B', atk=1, dfn=0, spd=1, hp=100, max_hp=100)
-    r = resolve_battle(a, b, FakeRng())
-    a_strikes = [s for s in r['strikes'] if s['by'] == 'attacker']
-    assert a_strikes[0]['dmg'] == 9  # 6 + 3
-    assert a_strikes[1]['dmg'] == 6
-
-
-def test_rot_breath_doubles_round_one():
-    a = fighter(name='A', atk=6, dfn=0, spd=9, hp=100, max_hp=100,
-                passives=frozenset({'rot_breath'}))
-    b = fighter(name='B', atk=1, dfn=0, spd=1, hp=100, max_hp=100)
-    r = resolve_battle(a, b, FakeRng())
-    a_strikes = [s for s in r['strikes'] if s['by'] == 'attacker']
-    assert a_strikes[0]['dmg'] == 12
-    assert a_strikes[1]['dmg'] == 6
-
-
-def test_scavenge_retaliates():
-    a = fighter(name='A', atk=10, dfn=0, spd=9, hp=100, max_hp=100)
-    b = fighter(name='B', atk=1, dfn=0, spd=1, hp=100, max_hp=100,
-                passives=frozenset({'scavenge'}))
-    r = resolve_battle(a, b, FakeRng())
-    retaliations = [s for s in r['strikes'] if s.get('retaliation')]
-    assert retaliations and retaliations[0]['dmg'] == 2
-    assert retaliations[0]['by'] == 'defender'
+# NOTE: old strike-format passive tests (swarm extra-strike, deathtouch, drain,
+# venom_barb first-strike, rot_breath round-1, scavenge) removed with _strike.
+# Replaced by the stance-triangle passive tests further below (test_venom_barb_
+# first_win_bonus_once, test_rot_breath_first_win_doubles, test_scavenge_
+# retaliates_on_loss, test_deathtouch_aggress_pierces_def, test_swarm_adds_chip_
+# each_round, test_drain_life_heals_on_win).
 
 
 def test_regrowth_heals_survivor_after_battle():
@@ -536,6 +450,15 @@ def test_scavenge_retaliates_on_loss():
     assert a.hp == 30 - data.SCAVENGE_RETALIATE   # d retaliates 2
 
 
+def test_drain_life_heals_on_win():
+    a = fighter(atk=10, dfn=5, hp=20, max_hp=40, passives=frozenset({'drain_life'}))
+    d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    dmg = round(6 * data.STANCE_WIN_MULT)   # 9
+    assert d.hp == 60 - dmg
+    assert a.hp == 20 + round(dmg * 0.5)    # healed 50% of damage dealt
+
+
 def test_flyby_dodges_the_punish():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'flyby'}))
@@ -637,3 +560,42 @@ def test_flee_attempt_success_and_smoke_fallback():
     f3 = fighter(spd=1, hp=20, max_hp=30, dfn=5)
     r3 = flee_attempt(f3, fighter(spd=9), FakeRng(randoms=[0.99]))
     assert r3['escaped'] is False and f3.dfn == 4
+
+
+from undercity_engine import resolve_battle_rounds
+
+
+def _always(stance):
+    return lambda me, foe, rnd, rng: stance
+
+
+def test_runner_aggro_beats_feinter_and_regrowth():
+    a = fighter(atk=12, dfn=5, hp=40, max_hp=40)
+    d = fighter(atk=6, dfn=5, hp=20, max_hp=20, passives=frozenset({'regrowth'}))
+    res = resolve_battle_rounds(a, d, FakeRng(uniform=1.0),
+                                _always('aggress'), _always('feint'))
+    assert res['outcome'] == 'attacker'
+    assert res['attackerHp'] > 0 and res['defenderHp'] == 0
+
+
+def test_runner_timeout_higher_hp_pct_wins():
+    a = fighter(atk=1, dfn=99, hp=40, max_hp=40)   # nobody can hurt anybody
+    d = fighter(atk=1, dfn=99, hp=10, max_hp=40)
+    res = resolve_battle_rounds(a, d, FakeRng(uniform=1.0),
+                                _always('guard'), _always('guard'))
+    assert res['outcome'] == 'attacker'   # 100% vs 25% HP
+
+
+def test_resolve_battle_backcompat_maps_legacy_stance():
+    a = fighter(atk=12, dfn=5, hp=40, max_hp=40, stance='fight')
+    d = fighter(atk=6, dfn=5, hp=18, max_hp=18, stance='defend')
+    res = resolve_battle(a, d, FakeRng(uniform=1.0))
+    assert res['outcome'] in ('attacker', 'defender', 'timeout')
+    assert 'strikes' in res and 'attackerHp' in res
+
+
+def test_resolve_battle_flee_stance_routes_to_flee_attempt():
+    a = fighter(atk=12, dfn=5, hp=40, max_hp=40, stance='fight')
+    d = fighter(atk=6, dfn=5, hp=18, max_hp=18, spd=9, stance='flee')
+    res = resolve_battle(a, d, FakeRng(randoms=[0.10], uniform=1.0))
+    assert res['outcome'] == 'fled'

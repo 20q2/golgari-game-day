@@ -248,120 +248,32 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
     return entries
 
 
-def _effective_def(target: Combatant, striker: Combatant) -> int:
-    d = target.dfn
-    if target.stance == 'defend':
-        d = round(d * DEFEND_DEF_MULT)
-    if striker.has('deathtouch_stomp'):
-        d = max(0, d - 3)
-    return d
-
-
-def _strike(striker, target, side, rnd, first_of_round_for_striker, rng, strikes):
-    """One strike; appends entries to `strikes`; returns True if target died."""
-    base = round(striker.atk * rng.uniform(0.85, 1.15))
-    if striker.has('venom_barb') and not striker.struck_yet:
-        base += 3
-    dmg = max(1, base - _effective_def(target, striker))
-    if striker.stance == 'defend':
-        dmg = max(1, round(dmg * DEFEND_DMG_MULT))
-    if striker.has('rot_breath') and rnd == 1 and first_of_round_for_striker:
-        dmg *= 2
-
-    entry = {'round': rnd, 'by': side, 'dmg': dmg}
-
-    if target.has('flyby') and rng.random() < FLYBY_MISS:
-        entry['dmg'] = 0
-        entry['miss'] = True
-        strikes.append(entry)
-        striker.struck_yet = True
-        return False
-
-    target.hp -= dmg
-    if striker.has('drain_life'):
-        heal = round(dmg * 0.5)
-        striker.hp = min(striker.max_hp, striker.hp + heal)
-        entry['heal'] = heal
-    strikes.append(entry)
-    striker.struck_yet = True
-
-    if target.hp <= 0:
-        return True
-
-    if target.has('scavenge'):
-        striker.hp -= 2
-        strikes.append({'round': rnd, 'by': 'defender' if side == 'attacker' else 'attacker',
-                        'dmg': 2, 'retaliation': True})
-        if striker.hp <= 0:
-            return False  # striker died to retaliation; caller checks hp
-    return False
-
-
-def _round_order(attacker: Combatant, defender: Combatant, rnd: int):
-    """Yield ('attacker'|'defender') strike order for a round."""
-    if rnd == 1 and (attacker.has('first_bite') or defender.has('first_bite')):
-        first = 'attacker' if attacker.has('first_bite') else 'defender'
-    elif attacker.spd >= defender.spd:
-        first = 'attacker'
-    else:
-        first = 'defender'
-    order = [first, 'defender' if first == 'attacker' else 'attacker']
-    # Swarm: one extra strike per round, taken immediately after the normal one.
-    out = []
-    for side in order:
-        out.append(side)
-        c = attacker if side == 'attacker' else defender
-        if c.has('swarm'):
-            out.append(side)
-    return out
-
-
-def resolve_battle(attacker: Combatant, defender: Combatant, rng) -> dict:
+def resolve_battle_rounds(attacker, defender, rng, pick_a, pick_d) -> dict:
     """
-    Resolve a full battle. Returns
-      {outcome: 'attacker'|'defender'|'timeout'|'fled', strikes: [...],
-       attackerHp, defenderHp, smokeSporeUsed, defenderFleeFailed}
-    HP values in the result are final (post-Regrowth). Combatant objects are
-    mutated; callers should treat them as consumed.
+    Drive resolve_round for up to MAX_ROUNDS_COMBAT rounds. pick_a/pick_d are
+    callables (me, foe, rnd, rng) -> stance. Applies Regrowth to survivors and
+    resolves a timeout by higher HP%. Combatants are mutated/consumed.
     """
     strikes = []
-    smoke_used = False
-    flee_failed = False
-
-    if defender.stance == 'flee':
-        chance = min(95, flee_chance(defender.spd, attacker.spd) + defender.flee_bonus)
-        if rng.random() * 100 < chance:
-            return {'outcome': 'fled', 'strikes': [], 'attackerHp': attacker.hp,
-                    'defenderHp': defender.hp, 'smokeSporeUsed': False,
-                    'defenderFleeFailed': False}
-        if defender.has_smoke_spore:
-            return {'outcome': 'fled', 'strikes': [], 'attackerHp': attacker.hp,
-                    'defenderHp': defender.hp, 'smokeSporeUsed': True,
-                    'defenderFleeFailed': False}
-        flee_failed = True
-        defender.dfn = max(0, defender.dfn - 1)  # caught off guard
-
     outcome = 'timeout'
-    for rnd in range(1, MAX_ROUNDS + 1):
-        first_striker_done = set()
-        for side in _round_order(attacker, defender, rnd):
-            striker = attacker if side == 'attacker' else defender
-            target = defender if side == 'attacker' else attacker
-            if striker.hp <= 0:
-                continue
-            first_of_round = side not in first_striker_done
-            first_striker_done.add(side)
-            _strike(striker, target, side, rnd, first_of_round, rng, strikes)
-            if target.hp <= 0:
-                outcome = side
-                break
-            if striker.hp <= 0:  # died to scavenge retaliation
-                outcome = 'defender' if side == 'attacker' else 'attacker'
-                break
-        if outcome != 'timeout':
+    for rnd in range(1, data.MAX_ROUNDS_COMBAT + 1):
+        a_stance = pick_a(attacker, defender, rnd, rng)
+        d_stance = pick_d(defender, attacker, rnd, rng)
+        strikes.extend(resolve_round(attacker, defender, a_stance, d_stance, rnd, rng))
+        if defender.hp <= 0 and attacker.hp <= 0:
+            outcome = 'attacker' if attacker.hp >= defender.hp else 'defender'
             break
+        if defender.hp <= 0:
+            outcome = 'attacker'; break
+        if attacker.hp <= 0:
+            outcome = 'defender'; break
 
-    # Regrowth: survivors heal 20% max (35% with Rootwall) after any battle.
+    if outcome == 'timeout':
+        a_pct = attacker.hp / attacker.max_hp if attacker.max_hp else 0
+        d_pct = defender.hp / defender.max_hp if defender.max_hp else 0
+        if a_pct != d_pct:
+            outcome = 'attacker' if a_pct > d_pct else 'defender'
+
     for c in (attacker, defender):
         if c.hp > 0 and c.has('regrowth'):
             pct = 0.35 if c.has('rootwall') else 0.20
@@ -369,7 +281,38 @@ def resolve_battle(attacker: Combatant, defender: Combatant, rng) -> dict:
 
     return {'outcome': outcome, 'strikes': strikes,
             'attackerHp': max(0, attacker.hp), 'defenderHp': max(0, defender.hp),
-            'smokeSporeUsed': smoke_used, 'defenderFleeFailed': flee_failed}
+            'smokeSporeUsed': False, 'defenderFleeFailed': False}
+
+
+def _always_policy(stance):
+    return lambda me, foe, rnd, rng: stance
+
+
+_LEGACY_STANCE = {'fight': 'aggress', 'defend': 'guard'}
+
+
+def resolve_battle(attacker: Combatant, defender: Combatant, rng) -> dict:
+    """
+    Back-compat wrapper for existing call sites. Legacy `.stance` values map to
+    fixed triangle policies (fight->aggress, defend->guard). A defender set to
+    `flee` attempts to flee first (as before). This path is a transitional
+    stopgap; interactive PvE and monster AI arrive in Plan 2.
+    """
+    if defender.stance == 'flee':
+        r = flee_attempt(defender, attacker, rng)
+        if r['escaped']:
+            return {'outcome': 'fled', 'strikes': [], 'attackerHp': attacker.hp,
+                    'defenderHp': defender.hp,
+                    'smokeSporeUsed': r['smokeSporeUsed'], 'defenderFleeFailed': False}
+        flee_failed = True
+    else:
+        flee_failed = False
+
+    a_pol = _always_policy(_LEGACY_STANCE.get(attacker.stance, 'aggress'))
+    d_pol = _always_policy(_LEGACY_STANCE.get(defender.stance, 'aggress'))
+    res = resolve_battle_rounds(attacker, defender, rng, a_pol, d_pol)
+    res['defenderFleeFailed'] = flee_failed
+    return res
 
 
 def pvp_spore_steal(loser_spores: int, loser_stance: str, winner_passives: frozenset) -> int:
