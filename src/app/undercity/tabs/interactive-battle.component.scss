@@ -646,3 +646,26 @@
 
   .uc-btn { margin-top: 8px; }
 }
+
+// ── Creature shadows: crisp drop-shadow + a ground shadow that breathes ──────
+// Only transform/opacity animate (GPU-composited) so this stays cheap.
+.side .sprite {
+  filter: drop-shadow(0 9px 7px rgba(0, 0, 0, 0.65));
+}
+.side .sprite-icon {
+  filter: drop-shadow(0 9px 7px rgba(0, 0, 0, 0.65));
+}
+
+.side .platform {
+  animation: uc-shadow-breathe 3.2s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.side.flipped .platform { animation-delay: -1.6s; }
+.side.hit .platform,
+.side.ko .platform { animation: none; }
+
+// Counter-phase to uc-breathe: as the creature rises, its shadow tightens.
+@keyframes uc-shadow-breathe {
+  0%, 100% { transform: translateX(-50%) scaleX(1); opacity: 1; }
+  50% { transform: translateX(-50%) scaleX(0.84); opacity: 0.72; }
+}

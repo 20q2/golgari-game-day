@@ -3,7 +3,7 @@
     <!-- Name / HP plates (above the arena where the action plays) -->
     <div class="plates">
       <div class="plate">
-        <span class="side-name">{{ attacker.name }}</span>
+        <span class="side-name">You</span>
         <div class="hp-track">
           <div class="hp-fill" [class.low]="hpPct('attacker') <= 50" [class.crit]="hpPct('attacker') <= 25" [style.width.%]="hpPct('attacker')"></div>
         </div>
