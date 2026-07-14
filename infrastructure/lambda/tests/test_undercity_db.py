@@ -976,3 +976,29 @@ def test_legacy_spore_species_normalizes_to_zombie(table):
     doc = db._get_player(table, sid, 'user-alex')
     assert doc['species'] == 'zombie'
     assert doc['form'] == 'zombie'
+
+
+# ── Combat wiring (Plan 2) ───────────────────────────────────────────────────
+
+def test_combatant_carries_riders_and_buffs_from_gear(table):
+    act(table, 'join', starter='saproling')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['gear'] = {'fang': 'kraul_barb', 'charm': 'glint_charm'}
+    doc['buffs'] = [{'kind': 'harden_shell'}]
+    c = db._combatant(doc)
+    assert 'deep_biter' in c.riders and 'glint' in c.riders
+    assert 'harden_shell' in c.buffs
+
+
+def test_buy_charm_equips_into_charm_slot(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['spores'] = 500
+    doc['position'] = next(n for n, v in data.MAP_NODES.items() if v['type'] == 'shop')
+    db._put_player(table, doc)
+    status, resp = act(table, 'buy', itemId='quartz_charm')
+    assert status == 200, resp
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['gear'].get('charm') == 'quartz_charm'

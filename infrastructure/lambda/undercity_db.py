@@ -154,6 +154,20 @@ def _passives(doc):
     return frozenset(doc.get('passives') or [])
 
 
+def _riders(doc):
+    """Gear rider tags across all equipped slots (fang/carapace/charm)."""
+    out = set()
+    for gid in (doc.get('gear') or {}).values():
+        rider = data.GEAR.get(gid, {}).get('rider')
+        if rider:
+            out.add(rider)
+    return frozenset(out)
+
+
+def _active_buff_kinds(doc):
+    return frozenset(b.get('kind') for b in (doc.get('buffs') or []) if b.get('kind'))
+
+
 def _shielded(doc):
     su = doc.get('shieldUntil')
     return bool(su) and su > _now()
@@ -166,6 +180,7 @@ def _combatant(doc):
         atk=eff['atk'], dfn=eff['def'], spd=eff['spd'],
         passives=_passives(doc), stance=doc.get('stance', 'fight'),
         level=doc.get('level', 1),
+        riders=_riders(doc), buffs=_active_buff_kinds(doc),
         has_smoke_spore='smoke_spore' in (doc.get('bag') or []),
         flee_bonus=(10 if doc.get('homeBiome') == 'cavern' else 0)
                    + (15 if any(b.get('kind') == 'glowveil'
