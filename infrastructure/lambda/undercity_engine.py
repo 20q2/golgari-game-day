@@ -98,6 +98,14 @@ def _deal(striker, target, side, rnd, raw, mult, entries, tag=None):
     entries.append(entry)
 
 
+def _scavenge(loser, winner, loser_side, rnd, entries):
+    """A losing combatant with scavenge retaliates a flat amount."""
+    if loser.has('scavenge') and winner.hp > 0:
+        winner.hp -= data.SCAVENGE_RETALIATE
+        entries.append({'round': rnd, 'by': loser_side, 'dmg': data.SCAVENGE_RETALIATE,
+                        'retaliation': True})
+
+
 def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
     """
     Resolve ONE round given both stances. Mutates both combatants. Returns a
@@ -116,7 +124,12 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
         winr, losr = ((attacker, defender) if winner == 'attacker'
                       else (defender, attacker))
         win_stance = a_stance if winner == 'attacker' else d_stance
-        if win_stance == 'guard':
+
+        if losr.has('flyby') and rng.random() < data.FLYBY_DODGE:
+            # loser evades the whole punish.
+            entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
+                            'miss': True, 'winner': win_side})
+        elif win_stance == 'guard':
             # Guard beats Aggress: aggressor's hit is mitigated, guard counters.
             raw_agg = _base_hit(losr, winr, rng)
             _deal(losr, winr, lose_side, rnd, raw_agg,
@@ -124,12 +137,37 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
             raw_ctr = _base_hit(winr, losr, rng)
             _deal(winr, losr, win_side, rnd, raw_ctr,
                   data.STANCE_GUARD_COUNTER, entries, tag='counter')
+            _scavenge(losr, winr, lose_side, rnd, entries)
         else:
-            raw = _base_hit(winr, losr, rng)
-            _deal(winr, losr, win_side, rnd, raw, data.STANCE_WIN_MULT, entries)
+            pierce = (data.DEATHTOUCH_PIERCE
+                      if win_stance == 'aggress' and winr.has('deathtouch_stomp') else 0)
+            raw = _base_hit(winr, losr, rng, pierce)
+            mult = data.STANCE_WIN_MULT
+            bonus = 0
+            if not winr.first_win_used:
+                if winr.has('rot_breath'):
+                    mult *= data.FIRST_WIN_ROT_BREATH_MULT
+                if winr.has('venom_barb'):
+                    bonus += data.VENOM_BARB_BONUS
+                winr.first_win_used = True
+            dmg = max(0, round(raw * mult) + bonus)
+            if dmg > 0:
+                losr.hp -= dmg
+                entry = {'round': rnd, 'by': win_side, 'dmg': dmg, 'winner': win_side}
+                if winr.has('drain_life'):
+                    heal = round(dmg * 0.5)
+                    winr.hp = min(winr.max_hp, winr.hp + heal); entry['heal'] = heal
+                entries.append(entry)
+            _scavenge(losr, winr, lose_side, rnd, entries)
     elif winner == 'clash':
         # A-vs-A: both strike full; SPD-first lands first (matters for a kill).
-        first = 'attacker' if attacker.spd >= defender.spd else 'defender'
+        # first_bite forces striking first regardless of SPD.
+        if attacker.has('first_bite') and not defender.has('first_bite'):
+            first = 'attacker'
+        elif defender.has('first_bite') and not attacker.has('first_bite'):
+            first = 'defender'
+        else:
+            first = 'attacker' if attacker.spd >= defender.spd else 'defender'
         order = [first, 'defender' if first == 'attacker' else 'attacker']
         for side in order:
             s, t = ((attacker, defender) if side == 'attacker'

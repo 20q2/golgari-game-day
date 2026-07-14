@@ -507,3 +507,54 @@ def test_rot_stacks_tick_end_of_round():
     d.rot_stacks = 2
     resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0))
     assert d.hp == 30 - 2 * data.ROT_PER_STACK  # 30 - 4 = 26
+
+
+def test_venom_barb_first_win_bonus_once():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'venom_barb'}))
+    d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
+    rng = FakeRng(uniform=1.0)
+    resolve_round(a, d, 'aggress', 'feint', 1, rng)   # win: 6*1.5=9 +3 =12
+    assert d.hp == 60 - (round(6 * data.STANCE_WIN_MULT) + data.VENOM_BARB_BONUS)
+    assert a.first_win_used
+    hp_after_first = d.hp
+    resolve_round(a, d, 'aggress', 'feint', 2, rng)   # no bonus second time: 9
+    assert d.hp == hp_after_first - round(6 * data.STANCE_WIN_MULT)
+
+
+def test_rot_breath_first_win_doubles():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'rot_breath'}))
+    d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
+    resolve_round(a, d, 'feint', 'guard', 1, FakeRng(uniform=1.0))  # feint>guard win
+    # base 6*1.5=9, *2 => 18
+    assert d.hp == 60 - round(6 * data.STANCE_WIN_MULT) * data.FIRST_WIN_ROT_BREATH_MULT
+
+
+def test_scavenge_retaliates_on_loss():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)                       # winner
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'scavenge'}))
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))   # d loses
+    assert a.hp == 30 - data.SCAVENGE_RETALIATE   # d retaliates 2
+
+
+def test_flyby_dodges_the_punish():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'flyby'}))
+    # random() returns 0.10 < 0.25 => dodge
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(randoms=[0.10], uniform=1.0))
+    assert d.hp == 30   # punish dodged
+
+
+def test_deathtouch_aggress_pierces_def():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'deathtouch_stomp'}))
+    d = fighter(atk=10, dfn=8, hp=60, max_hp=60)
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    # pierce 3 => eff def 5; hit 10-5=5 *1.5 => round(7.5)=8
+    assert d.hp == 60 - round((10 - (8 - data.DEATHTOUCH_PIERCE)) * data.STANCE_WIN_MULT)
+
+
+def test_first_bite_wins_clash_order():
+    a = fighter(atk=10, dfn=0, hp=6, max_hp=6, spd=1, passives=frozenset({'first_bite'}))
+    d = fighter(atk=10, dfn=0, hp=30, max_hp=30, spd=9)  # faster, but...
+    resolve_round(a, d, 'aggress', 'aggress', 1, FakeRng(uniform=1.0))
+    # first_bite makes A strike first; A deals 10 -> d.hp 20; then d strikes back
+    assert d.hp == 20
