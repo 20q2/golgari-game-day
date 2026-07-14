@@ -75,7 +75,7 @@
               }
             </div>
           </div>
-          @for (region of ['body', 'belly', 'stripes']; track region) {
+          @for (region of paintRegions(); track region) {
             <div class="wardrobe-group">
               <span class="wardrobe-label">{{ region }}</span>
               <div class="swatch-row">
@@ -200,6 +200,18 @@
               <div class="gear-tile-body">
                 <span class="gear-tile-slot">Carapace</span>
                 @if (you.gear['carapace']; as g) {
+                  <span class="gear-tile-name">{{ gearMap[g].name }}</span>
+                  <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
+                } @else {
+                  <span class="gear-tile-empty">empty</span>
+                }
+              </div>
+            </div>
+            <div class="gear-tile" [class.empty]="!you.gear['charm']">
+              <mat-icon class="mi slot-mi">auto_awesome</mat-icon>
+              <div class="gear-tile-body">
+                <span class="gear-tile-slot">Charm</span>
+                @if (you.gear['charm']; as g) {
                   <span class="gear-tile-name">{{ gearMap[g].name }}</span>
                   <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
                 } @else {
