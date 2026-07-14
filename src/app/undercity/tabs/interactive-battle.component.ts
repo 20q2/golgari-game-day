@@ -133,6 +133,11 @@ export class InteractiveBattleComponent implements OnInit {
     this.busy.set(false);
   }
 
+  /** Re-enable input after a failed network action (nothing resolved). */
+  unlock(): void {
+    this.busy.set(false);
+  }
+
   /** The battle ended: freeze HP, show the outcome banner + spoils. */
   finish(outcome: Outcome, playerHp: number, npcHp: number, text: string, rewards: BattleRewards | null): void {
     this.attackerHp.set(playerHp);

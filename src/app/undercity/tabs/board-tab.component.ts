@@ -18,10 +18,13 @@ import { legalSteps, boardDistance, nodesWithin } from '../engine/board-movement
 import {
   AwayEvent,
   BattleResult,
+  CombatFlee,
+  CombatRound,
   DigGrid,
   Occupant,
   PublicPlayer,
   SpaceEvent,
+  Stance,
   TradeStockItem,
   VaultView,
   isShielded,
@@ -53,6 +56,7 @@ import { formName } from '../data/forms';
 import { formSprite } from '../data/species';
 import { getRecoloredDataUrl } from '../engine/sprite-engine';
 import { BattlePlaybackComponent, BattleSide, BattleRewards } from './battle-playback.component';
+import { InteractiveBattleComponent, BattleItem } from './interactive-battle.component';
 import { DiceRollComponent } from './dice-roll.component';
 import { ExcavationModalComponent } from './excavation.component';
 import { CrystalVeinModalComponent } from './crystal-vein.component';
@@ -65,6 +69,16 @@ interface BattleView {
   defender: BattleSide;
   resultText: string;
   rewards: BattleRewards | null;
+}
+
+interface LiveBattle {
+  attacker: BattleSide;
+  defender: BattleSide;
+  personality: string;
+  telegraph: Stance;
+  kind: string;
+  items: BattleItem[];
+  hasScry: boolean;
 }
 
 /** Local walk-in-progress: the spaces walked so far (start first) and steps left. */
@@ -88,6 +102,7 @@ function stepPrev(step: StepState): string | null {
     CommonModule,
     MatIconModule,
     BattlePlaybackComponent,
+    InteractiveBattleComponent,
     DiceRollComponent,
     ExcavationModalComponent,
     CrystalVeinModalComponent,
@@ -109,6 +124,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly spaceModal = signal<SpaceEvent | null>(null);
   protected readonly occupants = signal<Occupant[]>([]);
   protected readonly battleView = signal<BattleView | null>(null);
+  protected readonly liveBattle = signal<LiveBattle | null>(null);
+  @ViewChild(InteractiveBattleComponent) private liveB?: InteractiveBattleComponent;
   protected readonly showShop = signal(false);
   protected readonly showShrine = signal(false);
   protected readonly showWarp = signal<string[] | null>(null);
@@ -657,6 +674,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Open the right modal/animation for a landing event (move or teleport). */
   private routeSpaceEvent(ev: SpaceEvent, preHp: number): void {
+    if (ev.type === 'battle_start' && ev.npc) {
+      this.openLiveBattle(ev, preHp);
+      return;
+    }
     const fightTypes = ['wild', 'elite', 'barrier', 'lair', 'boss'];
     if (fightTypes.includes(ev.type) && ev.battle && ev.npc) {
       this.battleView.set({
@@ -937,6 +958,102 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   closeBattle(): void {
     this.battleView.set(null);
+    void this.store.refresh();
+  }
+
+  // ── Interactive PvE battle (Plan 3) ──────────────────────────────────────────
+
+  private openLiveBattle(ev: SpaceEvent, preHp: number): void {
+    const you = this.store.you();
+    const bag = you?.bag ?? [];
+    const items: BattleItem[] = bag
+      .map((id) => CONSUMABLE_MAP[id])
+      .filter((c): c is ConsumableInfo => !!c && !!c.inBattle)
+      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '' }));
+    this.liveBattle.set({
+      attacker: {
+        name: this.youBattleName(),
+        spriteUrl: this.youSpriteUrl(),
+        startHp: preHp,
+        maxHp: you?.maxHp ?? preHp,
+      },
+      defender: {
+        name: ev.npc!.name,
+        spriteUrl: this.npcSpriteUrl(ev.kind!, ev.npc!.id),
+        icon: NPC_ICONS[ev.npc!.id] ?? 'bug_report',
+        startHp: ev.npc!.hp,
+        maxHp: ev.npc!.maxHp ?? ev.npc!.hp,
+      },
+      personality: ev.npc!.personality ?? 'balanced',
+      telegraph: ev.telegraph ?? 'aggress',
+      kind: ev.kind ?? 'wild',
+      items,
+      hasScry: bag.includes('scrying_spore'),
+    });
+  }
+
+  /** Held combat items may be consumed each round — recompute the button list. */
+  private refreshBagFlags(): void {
+    const lb = this.liveBattle();
+    if (!lb) return;
+    const bag = this.store.you()?.bag ?? [];
+    const items: BattleItem[] = bag
+      .map((id) => CONSUMABLE_MAP[id])
+      .filter((c): c is ConsumableInfo => !!c && !!c.inBattle)
+      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '' }));
+    this.liveBattle.set({ ...lb, items, hasScry: bag.includes('scrying_spore') });
+  }
+
+  async onStance(e: { stance: Stance; item?: string }): Promise<void> {
+    try {
+      const resp = await this.store.action('combat-round', {
+        stance: e.stance,
+        ...(e.item ? { item: e.item } : {}),
+      });
+      if (resp.spaceEvent) {
+        this.finishLiveBattle(resp.spaceEvent);
+        return;
+      }
+      const c = resp.combat as CombatRound | undefined;
+      if (c && 'entries' in c) {
+        this.liveB?.applyRound(c.entries, c.telegraph, c.playerHp, c.npcHp);
+      }
+      this.refreshBagFlags();
+    } catch {
+      this.liveB?.unlock();
+    }
+  }
+
+  async onPeek(): Promise<void> {
+    try {
+      const resp = await this.store.action('combat-peek');
+      if (resp.peek) this.liveB?.applyPeek(resp.peek.trueIntent);
+      else this.liveB?.unlock();
+      this.refreshBagFlags();
+    } catch {
+      this.liveB?.unlock();
+    }
+  }
+
+  async onFlee(): Promise<void> {
+    try {
+      const resp = await this.store.action('combat-flee');
+      const c = resp.combat as CombatFlee | undefined;
+      this.liveB?.fleeResult(!!c?.fled);
+    } catch {
+      this.liveB?.unlock();
+    }
+  }
+
+  private finishLiveBattle(ev: SpaceEvent): void {
+    const you = this.store.you();
+    const outcome = ev.battle?.outcome ?? 'timeout';
+    const npcHp = ev.battle?.defenderHp ?? 0;
+    this.liveB?.finish(outcome, you?.hp ?? 0, npcHp, ev.text ?? '', this.buildRewards(ev));
+  }
+
+  closeLiveBattle(): void {
+    this.liveBattle.set(null);
     void this.store.refresh();
   }
 

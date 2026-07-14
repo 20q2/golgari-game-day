@@ -465,7 +465,7 @@
     />
   }
 
-  <!-- Battle playback -->
+  <!-- Battle playback (PvP one-shot) -->
   @if (battleView(); as bv) {
     <app-undercity-battle-playback
       [battle]="bv.battle"
@@ -474,6 +474,23 @@
       [resultText]="bv.resultText"
       [rewards]="bv.rewards"
       (closed)="closeBattle()"
+    />
+  }
+
+  <!-- Interactive PvE battle -->
+  @if (liveBattle(); as lb) {
+    <app-undercity-interactive-battle
+      [attacker]="lb.attacker"
+      [defender]="lb.defender"
+      [personality]="lb.personality"
+      [telegraph]="lb.telegraph"
+      [canFlee]="lb.kind !== 'barrier' && lb.kind !== 'boss'"
+      [items]="lb.items"
+      [hasScry]="lb.hasScry"
+      (submitStance)="onStance($event)"
+      (peek)="onPeek()"
+      (flee)="onFlee()"
+      (closed)="closeLiveBattle()"
     />
   }
 
