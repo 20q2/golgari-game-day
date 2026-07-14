@@ -1290,11 +1290,11 @@ def _combat_round(table, sid, doc, payload):
             outcome = 'attacker'
         elif player_c.hp <= 0:
             outcome = 'defender'
-        else:  # timeout -> higher HP%
-            a_pct = player_c.hp / max(1, player_c.max_hp)
-            d_pct = npc_c.hp / max(1, npc_c.max_hp)
-            outcome = ('attacker' if a_pct > d_pct
-                       else 'defender' if d_pct > a_pct else 'timeout')
+        else:
+            # Both survive the round cap: a neutral timeout. This is load-bearing
+            # for persistent-pool foes (lair/boss) — a non-kill must NOT award a
+            # slay/sigil; the foe lingers at its current HP (see _finish_*).
+            outcome = 'timeout'
         for c in (player_c, npc_c):  # Regrowth on survivors
             if c.hp > 0 and c.has('regrowth'):
                 pct = 0.35 if c.has('rootwall') else 0.20

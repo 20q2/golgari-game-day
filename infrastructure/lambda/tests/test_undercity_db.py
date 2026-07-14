@@ -103,47 +103,73 @@ def test_full_join_roll_move_flow(table, monkeypatch):
     assert state['wardrobe']['seals'] == 1
 
 
+# ── Interactive-battle test helpers (Plan 2) ─────────────────────────────────
+
+_COUNTER = {'aggress': 'guard', 'guard': 'feint', 'feint': 'aggress'}
+
+
+def _kill_npc(att, dfn, *a, **k):
+    dfn.hp = 0
+    return [{'round': 1, 'by': 'attacker', 'dmg': 99, 'winner': 'attacker'}]
+
+
+def _kill_player(att, dfn, *a, **k):
+    att.hp = 0
+    return [{'round': 1, 'by': 'defender', 'dmg': 99, 'winner': 'defender'}]
+
+
+def _finish_started_battle(table, monkeypatch, doc, outcome='attacker',
+                           defender_hp=0, user='user-alex', name='Alex'):
+    """Given a doc with a freshly started battle, persist it, stub resolve_round
+    to reach `outcome`, submit one combat-round, and return its spaceEvent."""
+    if outcome == 'timeout':
+        doc['battle']['round'] = data.MAX_ROUNDS_COMBAT   # end on this call
+
+        def _stub(att, dfn, *a, **k):
+            dfn.hp = defender_hp
+            return []
+        monkeypatch.setattr(db.engine, 'resolve_round', _stub)
+    else:
+        monkeypatch.setattr(db.engine, 'resolve_round',
+                            _kill_npc if outcome == 'attacker' else _kill_player)
+    db._put_player(table, doc)
+    status, resp = act(table, 'combat-round', user=user, name=name, stance='aggress')
+    assert status == 200, resp
+    return resp.get('spaceEvent', resp)
+
+
 def test_wild_win_surfaces_rewards(table, monkeypatch):
     # The victory popup depends on the win event carrying spores + xp (+ levels).
     act(table, 'join', starter='pest')
-    sid, _ = db._active_season(table)
+    sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
-        'outcome': 'attacker', 'strikes': [], 'attackerHp': doc['hp'],
-        'defenderHp': 0, 'smokeSporeUsed': False,
-    })
-    out = db._wild_battle(table, sid, doc)
-    assert out['type'] == 'wild'
-    assert out['spores'] >= 1                       # bounty
-    assert out['xp'] == 10                          # per-NPC xp (normal tier)
-    assert 'levels' not in out                      # 10 xp < first level-up cost
+    ev = db._wild_battle(table, sid, doc)
+    assert ev['type'] == 'battle_start'
+    se = _finish_started_battle(table, monkeypatch, doc, 'attacker')
+    assert se['type'] == 'wild'
+    assert se['spores'] >= 1                        # bounty
+    assert se['xp'] == 10                           # per-NPC xp (normal tier)
+    assert 'levels' not in se                       # 10 xp < first level-up cost
 
 
 def test_elite_battle_pulls_from_elite_pool(table, monkeypatch):
     act(table, 'join', starter='pest')
-    sid, _ = db._active_season(table)
+    sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
-        'outcome': 'attacker', 'strikes': [], 'attackerHp': doc['hp'],
-        'defenderHp': 0, 'smokeSporeUsed': False,
-    })
-    out = db._wild_battle(table, sid, doc, elite=True)
-    assert out['type'] == 'elite'
-    assert out['npc']['id'] in {'fetid_imp', 'rot_shambler'}
-    assert out['xp'] == 25
+    ev = db._wild_battle(table, sid, doc, elite=True)
+    assert ev['type'] == 'battle_start' and ev['npc']['id'] in {'fetid_imp', 'rot_shambler'}
+    se = _finish_started_battle(table, monkeypatch, doc, 'attacker')
+    assert se['type'] == 'elite'
+    assert se['xp'] == 25
 
 
 def test_elite_space_resolves_to_elite_battle(table, monkeypatch):
     act(table, 'join', starter='pest')
-    sid, _ = db._active_season(table)
+    sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
-        'outcome': 'attacker', 'strikes': [], 'attackerHp': doc['hp'],
-        'defenderHp': 0, 'smokeSporeUsed': False,
-    })
     assert data.MAP_NODES['city_i1']['type'] == 'elite'
     ev = db._resolve_space(table, sid, doc, 'city_i1', None)
-    assert ev['type'] == 'elite'
+    assert ev['type'] == 'battle_start'
     assert ev['npc']['id'] in {'fetid_imp', 'rot_shambler'}
 
 
@@ -583,23 +609,18 @@ def _player_at(table, node, **fields):
 
 def test_dungeon_wild_is_the_biome_fauna(table, monkeypatch):
     sid, doc = _player_at(table, 'city_d0')  # a Broodwarrens wild space
-    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
-        'outcome': 'attacker', 'strikes': [], 'attackerHp': doc['hp'],
-        'defenderHp': 0, 'smokeSporeUsed': False,
-    })
-    out = db._wild_battle(table, sid, doc)
-    assert out['npc']['id'] == 'broodling'
-    assert out['spores'] >= data.DUNGEON_NPCS['city']['bounty']
+    ev = db._wild_battle(table, sid, doc)
+    assert ev['type'] == 'battle_start' and ev['npc']['id'] == 'broodling'
+    se = _finish_started_battle(table, monkeypatch, doc, 'attacker')
+    assert se['spores'] >= data.DUNGEON_NPCS['city']['bounty']
 
 
 def test_bone_chill_consumed_by_next_battle(table, monkeypatch):
     sid, doc = _player_at(table, 'city_r1', buffs=[{'kind': 'bone_chill'}])
-    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
-        'outcome': 'attacker', 'strikes': [], 'attackerHp': doc['hp'],
-        'defenderHp': 0, 'smokeSporeUsed': False,
-    })
-    db._wild_battle(table, sid, doc)
-    assert not any(b.get('kind') == 'bone_chill' for b in doc.get('buffs', []))
+    db._wild_battle(table, sid, doc)                 # start (buff frozen into rec)
+    _finish_started_battle(table, monkeypatch, doc, 'attacker')
+    fresh = db._get_player(table, sid, 'user-alex')
+    assert not any(b.get('kind') == 'bone_chill' for b in fresh.get('buffs', []))
 
 
 def test_webbing_halves_next_roll(table):
@@ -682,16 +703,17 @@ def test_ladder_blurb_names_the_dungeon(table):
 # ── Persistent lair pools + Vestiges ────────────────────────────────────────
 
 def _lair_fight(table, sid, user, outcome, defender_hp, monkeypatch):
-    """Run one lair fight for `user` with a scripted battle result."""
+    """Start + resolve one lair fight for `user` with a scripted end state.
+    Returns (doc, merged-out) where merged-out carries both the entering npc
+    (hp/maxHp/name, from battle_start) and the finish rewards (spores/sigil)."""
     doc = db._get_player(table, sid, user)
     doc['position'] = 'city_lair'
-    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
-        'outcome': outcome, 'strikes': [], 'attackerHp': doc['hp'],
-        'defenderHp': defender_hp, 'smokeSporeUsed': False,
-    })
-    out = db._lair(table, sid, doc, 'city_lair')
-    assert db._save_or_conflict(table, doc) is None  # persist like _move does
-    return doc, out
+    ev = db._lair(table, sid, doc, 'city_lair')          # battle_start
+    se = _finish_started_battle(table, monkeypatch, doc, outcome, defender_hp,
+                                user=user, name=user)
+    out = dict(se)
+    out['npc'] = {**ev.get('npc', {}), **se.get('npc', {})}  # entering hp + name
+    return db._get_player(table, sid, user), out
 
 
 def test_lair_hp_lingers_between_challengers(table, monkeypatch):
@@ -787,12 +809,8 @@ def test_boss_phase_drops_the_sigil_gate(table, monkeypatch):
     # The host awakens her: the same sigil-less player now gets the fight.
     act(table, 'boss-awaken', hostKey='swampking')
     doc['position'] = 'boss'
-    monkeypatch.setattr(db.engine, 'resolve_battle', lambda *a, **k: {
-        'outcome': 'timeout', 'strikes': [], 'attackerHp': doc['hp'],
-        'defenderHp': 100, 'smokeSporeUsed': False,
-    })
     out = db._boss(table, sid, doc, 'boss', 'isl_ossuary')
-    assert out['type'] == 'boss'
+    assert out['type'] == 'battle_start' and out['kind'] == 'boss'
 
 
 def test_vein_landing_forces_first_strike(table, monkeypatch):
@@ -1030,3 +1048,80 @@ def test_start_battle_persists_record_with_first_telegraph(table):
     assert rec['npcShown'] in data.STANCES and rec['npcActual'] in data.STANCES
     assert ev['telegraph'] == rec['npcShown']
     assert rec['player']['hp'] == doc['hp']
+
+
+# ── Interactive combat flow (Plan 2) ─────────────────────────────────────────
+
+_FODDER = {'id': 'drudge_beetle', 'name': 'Drudge Beetle', 'hp': 30, 'atk': 3,
+           'def': 0, 'spd': 1, 'bounty': 6, 'xp': 10, 'itemChance': 0.0,
+           'personality': 'brute', 'bluff': 0.0}
+
+
+def _begin(table, sid, kind='wild', npc=None, ctx=None, user='user-alex'):
+    doc = db._get_player(table, sid, user)
+    ev = db._start_battle(table, sid, doc, kind, dict(npc or _FODDER),
+                          node=doc.get('position'), ctx=ctx)
+    db._put_player(table, doc)
+    return ev
+
+
+def test_wild_battle_start_then_round_continues(table, monkeypatch):
+    act(table, 'join', starter='kraul')
+    sid = _sid(table)
+    ev = _begin(table, sid)
+    assert ev['type'] == 'battle_start' and ev['telegraph'] in data.STANCES
+    monkeypatch.setattr(db.engine, 'resolve_round', lambda *a, **k: [])  # nobody dies
+    status, resp = act(table, 'combat-round', stance='aggress')
+    assert status == 200
+    assert resp['combat']['round'] == 2 and resp['combat']['telegraph'] in data.STANCES
+
+
+def test_battle_blocks_roll_and_move(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    _begin(table, sid)
+    status, _ = act(table, 'roll')
+    assert status == 409
+    status, _ = act(table, 'move', to='anywhere')
+    assert status == 409
+
+
+def test_combat_peek_reveals_true_intent_and_spends_item(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['bag'] = ['scrying_spore']
+    db._put_player(table, doc)
+    _begin(table, sid)
+    status, resp = act(table, 'combat-peek')
+    assert status == 200
+    fresh = db._get_player(table, sid, 'user-alex')
+    assert resp['peek']['trueIntent'] == fresh['battle']['npcActual']
+    assert 'scrying_spore' not in fresh['bag']
+
+
+def test_combat_flee_escapes_and_clears_battle(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['spd'] = 20
+    db._put_player(table, doc)
+    _begin(table, sid)
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.01)   # flee succeeds
+    status, resp = act(table, 'combat-flee')
+    assert status == 200 and resp['combat']['fled'] is True
+    assert db._get_player(table, sid, 'user-alex').get('battle') is None
+
+
+def test_combat_consumable_auto_win(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['bag'] = ['ambush_musk']
+    db._put_player(table, doc)
+    # a beefy foe the player could not out-trade normally
+    _begin(table, sid, npc=dict(_FODDER, hp=4, atk=1))
+    status, resp = act(table, 'combat-round', stance='guard', item='ambush_musk')
+    assert status == 200
+    fresh = db._get_player(table, sid, 'user-alex')
+    assert 'ambush_musk' not in (fresh.get('bag') or [])   # item consumed
