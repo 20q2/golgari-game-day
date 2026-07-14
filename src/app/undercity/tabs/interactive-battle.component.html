@@ -1,15 +1,33 @@
 <div class="battle-overlay">
   <div class="battle-card">
-    <!-- Help toggle -->
-    <button class="help-btn" (click)="showHelp.set(!showHelp())" title="How to fight">
-      <mat-icon class="mi">{{ showHelp() ? 'close' : 'help_outline' }}</mat-icon>
-    </button>
+    <!-- Name / HP plates (above the arena where the action plays) -->
+    <div class="plates">
+      <div class="plate">
+        <span class="side-name">{{ attacker.name }}</span>
+        <div class="hp-track">
+          <div class="hp-fill" [class.low]="hpPct('attacker') <= 50" [class.crit]="hpPct('attacker') <= 25" [style.width.%]="hpPct('attacker')"></div>
+        </div>
+        <span class="hp-num">{{ attackerHp() }}/{{ attacker.maxHp }} HP</span>
+      </div>
+      <div class="plate right">
+        <span class="side-name">{{ defender.name }}</span>
+        <div class="hp-track">
+          <div class="hp-fill" [class.low]="hpPct('defender') <= 50" [class.crit]="hpPct('defender') <= 25" [style.width.%]="hpPct('defender')"></div>
+        </div>
+        <span class="hp-num">{{ defenderHp() }}/{{ defender.maxHp }} HP</span>
+      </div>
+    </div>
 
     <!-- Arena stage: [your stats] you  VS  foe [foe stats] -->
     <div
       class="stage"
       style="background-image: linear-gradient(rgba(10, 12, 10, 0.3), rgba(10, 12, 10, 0.55)), url('undercity/arena_background.png')"
     >
+      <!-- Help toggle (over the arena art) -->
+      <button class="help-btn" (click)="showHelp.set(!showHelp())" title="How to fight">
+        <mat-icon class="mi">{{ showHelp() ? 'close' : 'help_outline' }}</mat-icon>
+      </button>
+
       @if (attackerStats; as s) {
         <div class="stat-col">
           <span class="stat"><mat-icon class="mi">sports_mma</mat-icon>{{ s.atk }}</span>
@@ -70,24 +88,6 @@
           {{ outcomeLabel() }}
         </div>
       }
-    </div>
-
-    <!-- Name / HP plates -->
-    <div class="plates">
-      <div class="plate">
-        <span class="side-name">{{ attacker.name }}</span>
-        <div class="hp-track">
-          <div class="hp-fill" [class.low]="hpPct('attacker') <= 50" [class.crit]="hpPct('attacker') <= 25" [style.width.%]="hpPct('attacker')"></div>
-        </div>
-        <span class="hp-num">{{ attackerHp() }}/{{ attacker.maxHp }} HP</span>
-      </div>
-      <div class="plate right">
-        <span class="side-name">{{ defender.name }}</span>
-        <div class="hp-track">
-          <div class="hp-fill" [class.low]="hpPct('defender') <= 50" [class.crit]="hpPct('defender') <= 25" [style.width.%]="hpPct('defender')"></div>
-        </div>
-        <span class="hp-num">{{ defenderHp() }}/{{ defender.maxHp }} HP</span>
-      </div>
     </div>
 
     <!-- Compact telegraph caption (the icon over the foe carries the intent) -->
