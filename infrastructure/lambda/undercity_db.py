@@ -227,6 +227,55 @@ def _bt_store(c, rec_side):
     rec_side['reveal_next'] = bool(c.reveal_next)
 
 
+def _npc_combatant(npc):
+    return engine.Combatant(
+        name=npc['name'], hp=npc['hp'], max_hp=npc.get('maxHp', npc['hp']),
+        atk=npc['atk'], dfn=npc['def'], spd=npc['spd'],
+        passives=frozenset(npc.get('passives') or []))
+
+
+def _telegraph_next(rec):
+    """Pick the npc's next true stance from personality, telegraph it (maybe a
+    bluff), store both on the record, and return the shown stance."""
+    personality = rec['npc'].get('personality', data.NPC_DEFAULT_PERSONALITY)
+    bluff = float(rec['npc'].get('bluff', data.NPC_DEFAULT_BLUFF))
+    actual = engine.pick_stance(personality, _rng)
+    shown = engine.telegraph(actual, bluff, _rng)
+    rec['npcActual'] = actual
+    rec['npcShown'] = shown
+    rec['peeked'] = False
+    return shown
+
+
+def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
+    """Snapshot combatants into doc['battle'], telegraph round 1, return the
+    battle_start space event. Player buffs/stats freeze here; rewards resolve
+    in _finish_battle when the fight ends."""
+    player_c = _combatant(doc)
+    if kind in ('wild', 'elite') and doc.get('homeBiome') == 'bone':
+        player_c.dfn += 2  # Marrowborn hatch perk vs wilds (preserved)
+    npc_snap = _bt_snapshot(_npc_combatant(npc))
+    npc_snap['personality'] = npc.get('personality', data.NPC_DEFAULT_PERSONALITY)
+    npc_snap['bluff'] = float(npc.get('bluff', data.NPC_DEFAULT_BLUFF))
+    rec = {
+        'kind': kind, 'node': node, 'round': 1,
+        'player': _bt_snapshot(player_c),
+        'npc': npc_snap,
+        'npcMeta': npc,          # full spec for reward resolution
+        'ctx': ctx or {},        # kind-specific (lair slain flag, boss hp pool, ...)
+        'strikes': [],
+    }
+    doc['battle'] = rec
+    shown = _telegraph_next(rec)
+    return {'type': 'battle_start', 'kind': kind,
+            'npc': {'name': npc['name'], 'id': npc.get('id'),
+                    'hp': npc_snap['hp'], 'maxHp': npc_snap['maxHp'],
+                    'atk': npc_snap['atk'], 'def': npc_snap['dfn'],
+                    'spd': npc_snap['spd']},
+            'telegraph': shown, 'round': 1,
+            'text': f'A {npc["name"]} bars your path!'}
+
+
 def _form_name(doc):
     return data.ALL_FORMS.get(doc.get('form', ''), {}).get('name', 'creature')
 

@@ -1014,3 +1014,19 @@ def test_battle_combatant_roundtrips_through_dict(table):
     c2 = db._bt_to_combatant(snap)
     assert c2.hp == 25 and c2.rot_stacks == 2 and c2.first_win_used
     assert 'barbed' in c2.riders and 'rot_surge' in c2.buffs and 'swarm' in c2.passives
+
+
+def test_start_battle_persists_record_with_first_telegraph(table):
+    act(table, 'join', starter='kraul')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    npc = {'id': 'drudge_beetle', 'name': 'Drudge Beetle', 'hp': 16, 'atk': 4,
+           'def': 1, 'spd': 4, 'bounty': 6, 'xp': 10, 'itemChance': 0.0,
+           'personality': 'brute', 'bluff': 0.0}
+    ev = db._start_battle(table, sid, doc, 'wild', npc, node=doc['position'])
+    assert ev['type'] == 'battle_start'
+    rec = doc['battle']
+    assert rec['kind'] == 'wild' and rec['round'] == 1
+    assert rec['npcShown'] in data.STANCES and rec['npcActual'] in data.STANCES
+    assert ev['telegraph'] == rec['npcShown']
+    assert rec['player']['hp'] == doc['hp']
