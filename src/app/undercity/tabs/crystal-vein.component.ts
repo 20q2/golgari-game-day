@@ -13,7 +13,7 @@ import { VEIN_CAVE_IN_PCT_PER_LEVEL, VEIN_MAX_DEPTH } from '../data/vein-vault';
   imports: [CommonModule],
   template: `
     <div class="vein-overlay" (click)="closed.emit()">
-      <div class="vein-card" (click)="$event.stopPropagation()">
+      <div class="vein-card" (click)="$event.stopPropagation()" [style.background-image]="washBg">
         <h3>💎 Crystal Vein</h3>
         <p class="vein-sub">
           Shaft depth <strong>{{ depth }}</strong> / {{ MAX }} ·
@@ -151,6 +151,8 @@ export class CrystalVeinModalComponent {
   @Input() strikesLeft = 0;
   @Input() busy = false;
   @Input() log: string | null = null;
+  /** Region biome wash painted behind the card (from the board tab). */
+  @Input() washBg: string | null = null;
   @Output() strike = new EventEmitter<void>();
   @Output() closed = new EventEmitter<void>();
 

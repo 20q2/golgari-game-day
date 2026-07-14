@@ -15,7 +15,7 @@ import { DigGrid } from '../services/undercity-models';
   imports: [CommonModule],
   template: `
     <div class="dig-overlay" (click)="closed.emit()">
-      <div class="dig-card" (click)="$event.stopPropagation()">
+      <div class="dig-card" (click)="$event.stopPropagation()" [style.background-image]="washBg">
         <h3>⛏️ Dig Site</h3>
         <p class="dig-sub">
           {{ grid.remaining }} find{{ grid.remaining === 1 ? '' : 's' }} still buried ·
@@ -156,6 +156,8 @@ export class ExcavationModalComponent {
   @Input({ required: true }) grid!: DigGrid;
   @Input() digsLeft = 0;
   @Input() busy = false;
+  /** Region biome wash painted behind the card (from the board tab). */
+  @Input() washBg: string | null = null;
   @Output() dig = new EventEmitter<{ r: number; c: number }>();
   @Output() closed = new EventEmitter<void>();
 

@@ -14,7 +14,7 @@ import { VAULT_SIGILS, VAULT_SLOTS } from '../data/vein-vault';
   imports: [CommonModule],
   template: `
     <div class="vault-overlay" (click)="closed.emit()">
-      <div class="vault-card" (click)="$event.stopPropagation()">
+      <div class="vault-card" (click)="$event.stopPropagation()" [style.background-image]="washBg">
         <h3>🔐 The Guildvault</h3>
         <p class="vault-sub">
           Pot: <strong>{{ vault.pot }}</strong> Spores ·
@@ -230,6 +230,8 @@ export class GuildvaultModalComponent {
   @Input({ required: true }) vault!: VaultView;
   @Input() picksLeft = 0;
   @Input() busy = false;
+  /** Region biome wash painted behind the card (from the board tab). */
+  @Input() washBg: string | null = null;
   @Output() guess = new EventEmitter<string[]>();
   @Output() closed = new EventEmitter<void>();
 

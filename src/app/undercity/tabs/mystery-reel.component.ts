@@ -50,7 +50,7 @@ const rand = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
   standalone: true,
   imports: [CommonModule, MatIconModule],
   template: `
-    <div class="reel-overlay" [class.leaving]="leaving()">
+    <div class="reel-overlay" [class.leaving]="leaving()" [style.background-image]="washBg">
       <div class="reel-machine" [class.jackpot]="jackpot()">
         <div class="reel-title">✦ MYSTERY ✦</div>
         <div class="reel-window">
@@ -250,6 +250,8 @@ const rand = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 })
 export class MysteryReelComponent implements AfterViewInit {
   @Input({ required: true }) target!: string;
+  /** Region biome wash painted behind the machine, on the scrim (from the board tab). */
+  @Input() washBg: string | null = null;
   @Output() settled = new EventEmitter<void>();
 
   protected readonly symbols = SYMBOLS;
