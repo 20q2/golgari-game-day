@@ -195,7 +195,9 @@ GEAR_SELL_BACK = 0.5  # replacing gear auto-sells old piece for 50% of cost
 # ── Combat: stance triangle tuning (spec 2026-07-14 §1) ──────────────────────
 # The triangle decides who wins an exchange; ATK/DEF set the magnitude. A "hit"
 # is max(1, round(atk * uniform(0.85,1.15)) - effective_def); the multipliers
-# below scale that hit per matchup. Starting values — balance pass is Plan 2/3.
+# below scale that hit per matchup. Balance baseline validated 2026-07-14
+# (test_balance_good_play_beats_fodder: perfect reads beat fodder in ~3 rounds;
+# a bare L1 creature cannot mash past an elite) — revisit after live playtest.
 STANCES = ('aggress', 'guard', 'feint')
 
 STANCE_WIN_MULT       = 1.5   # decisive winner (A>F, F>G) deals hit * this

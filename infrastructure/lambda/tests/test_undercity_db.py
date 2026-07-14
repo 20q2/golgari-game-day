@@ -1135,3 +1135,30 @@ def test_all_battle_specs_have_valid_personality():
         p = s.get('personality', data.NPC_DEFAULT_PERSONALITY)
         assert p in data.STANCE_PERSONALITIES, s.get('name')
         assert 0.0 <= s.get('bluff', data.NPC_DEFAULT_BLUFF) <= 1.0
+
+
+def test_balance_good_play_beats_fodder(monkeypatch):
+    """Perfect reads (counter every non-bluffing tell) should reliably compost
+    tier-appropriate fodder — the floor that guards balance tuning."""
+    import random
+    fodder = data.NPCS[0]            # Drudge Beetle, brute, bluff 0
+    wins = 0
+    for seed in range(20):
+        t = FakeTable()
+        act(t, 'season-start', hostKey='swampking')
+        monkeypatch.setattr(db, '_rng', random.Random(seed))
+        act(t, 'join', starter='kraul')
+        sid = _sid(t)
+        doc = db._get_player(t, sid, 'user-alex')
+        db._start_battle(t, sid, doc, 'wild', dict(fodder), node=doc.get('position'))
+        db._put_player(t, doc)
+        outcome = None
+        for _ in range(data.MAX_ROUNDS_COMBAT):
+            shown = db._get_player(t, sid, 'user-alex')['battle']['npcShown']
+            status, resp = act(t, 'combat-round', stance=_COUNTER[shown])
+            assert status == 200, resp
+            if 'spaceEvent' in resp:
+                outcome = resp['spaceEvent']['battle']['outcome']
+                break
+        wins += 1 if outcome == 'attacker' else 0
+    assert wins >= 18, f'only {wins}/20 wins with perfect play'
