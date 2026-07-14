@@ -71,6 +71,83 @@ def exchange_winner(a_stance: str, d_stance: str) -> str:
     return 'defender'
 
 
+def _base_hit(striker: Combatant, target: Combatant, rng, pierce: int = 0) -> int:
+    """The raw ATK-vs-DEF hit before stance multipliers. Floors at 1. A pending
+    dmg_penalty (from a Serrated feint) is spent here on the striker's next hit."""
+    swing = round(striker.atk * rng.uniform(0.85, 1.15))
+    hit = max(1, swing - max(0, target.dfn - pierce))
+    if striker.dmg_penalty:
+        hit = max(1, hit - striker.dmg_penalty)
+        striker.dmg_penalty = 0
+    return hit
+
+
+def _deal(striker, target, side, rnd, raw, mult, entries, tag=None):
+    """Apply round(raw*mult) damage striker->target; log an entry; drain_life."""
+    dmg = max(0, round(raw * mult))
+    if dmg <= 0:
+        return
+    target.hp -= dmg
+    entry = {'round': rnd, 'by': side, 'dmg': dmg}
+    if tag:
+        entry[tag] = True
+    if striker.has('drain_life'):
+        heal = round(dmg * 0.5)
+        striker.hp = min(striker.max_hp, striker.hp + heal)
+        entry['heal'] = heal
+    entries.append(entry)
+
+
+def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
+    """
+    Resolve ONE round given both stances. Mutates both combatants. Returns a
+    list of log entries. Damage magnitude comes from _base_hit; the triangle
+    picks who lands the amplified hit. (Passives, riders, rot and swarm are
+    layered on in later tasks.)
+    """
+    entries = []
+    winner = exchange_winner(a_stance, d_stance)
+    entries.append({'round': rnd, 'winner': winner,
+                    'aStance': a_stance, 'dStance': d_stance})
+
+    if winner in ('attacker', 'defender'):
+        win_side = winner
+        lose_side = 'defender' if winner == 'attacker' else 'attacker'
+        winr, losr = ((attacker, defender) if winner == 'attacker'
+                      else (defender, attacker))
+        win_stance = a_stance if winner == 'attacker' else d_stance
+        if win_stance == 'guard':
+            # Guard beats Aggress: aggressor's hit is mitigated, guard counters.
+            raw_agg = _base_hit(losr, winr, rng)
+            _deal(losr, winr, lose_side, rnd, raw_agg,
+                  data.STANCE_GUARD_MITIGATE, entries, tag='mitigated')
+            raw_ctr = _base_hit(winr, losr, rng)
+            _deal(winr, losr, win_side, rnd, raw_ctr,
+                  data.STANCE_GUARD_COUNTER, entries, tag='counter')
+        else:
+            raw = _base_hit(winr, losr, rng)
+            _deal(winr, losr, win_side, rnd, raw, data.STANCE_WIN_MULT, entries)
+    elif winner == 'clash':
+        # A-vs-A: both strike full; SPD-first lands first (matters for a kill).
+        first = 'attacker' if attacker.spd >= defender.spd else 'defender'
+        order = [first, 'defender' if first == 'attacker' else 'attacker']
+        for side in order:
+            s, t = ((attacker, defender) if side == 'attacker'
+                    else (defender, attacker))
+            if s.hp <= 0:
+                continue
+            raw = _base_hit(s, t, rng)
+            _deal(s, t, side, rnd, raw, data.STANCE_CLASH_MULT, entries)
+    elif winner == 'stall':
+        # G-vs-G: chip only.
+        for side, (s, t) in (('attacker', (attacker, defender)),
+                             ('defender', (defender, attacker))):
+            raw = _base_hit(s, t, rng)
+            _deal(s, t, side, rnd, raw, data.STANCE_STALL_MULT, entries)
+    # whiff: nothing.
+    return entries
+
+
 def _effective_def(target: Combatant, striker: Combatant) -> int:
     d = target.dfn
     if target.stance == 'defend':

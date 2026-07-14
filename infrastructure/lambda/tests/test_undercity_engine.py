@@ -453,3 +453,42 @@ def test_exchange_triangle():
     assert exchange_winner('aggress', 'aggress') == 'clash'
     assert exchange_winner('guard', 'guard') == 'stall'
     assert exchange_winner('feint', 'feint') == 'whiff'
+
+
+from undercity_engine import resolve_round
+
+
+def test_round_aggress_beats_feint_full_punish():
+    # uniform=1.0 so hit = round(atk*1.0) - def; atk10 vs def4 => 6, *WIN 1.5 => 9
+    a = fighter(atk=10, dfn=5, spd=5)
+    d = fighter(atk=10, dfn=4, spd=5, hp=30, max_hp=30)
+    rng = FakeRng(uniform=1.0)
+    entries = resolve_round(a, d, 'aggress', 'feint', 1, rng)
+    assert d.hp == 30 - round(6 * data.STANCE_WIN_MULT)   # 30 - 9 = 21
+    assert a.hp == 30                                       # feinter dealt nothing
+    assert any(e.get('winner') == 'attacker' for e in entries)
+
+
+def test_round_guard_beats_aggress_mitigate_and_counter():
+    a = fighter(atk=10, dfn=5, spd=5, hp=30, max_hp=30)   # aggressor
+    d = fighter(atk=10, dfn=5, spd=5, hp=30, max_hp=30)   # guard
+    rng = FakeRng(uniform=1.0)
+    resolve_round(a, d, 'aggress', 'guard', 1, rng)
+    # aggressor hit 10-5=5, mitigated *0.4 => 2 to guard
+    assert d.hp == 30 - round(5 * data.STANCE_GUARD_MITIGATE)  # 30 - 2 = 28
+    # guard counters 10-5=5 *0.6 => 3 to aggressor
+    assert a.hp == 30 - round(5 * data.STANCE_GUARD_COUNTER)   # 30 - 3 = 27
+
+
+def test_round_clash_both_take_full():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, spd=6)
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, spd=5)
+    rng = FakeRng(uniform=1.0)
+    resolve_round(a, d, 'aggress', 'aggress', 1, rng)
+    assert a.hp == 25 and d.hp == 25   # both 10-5=5 full
+
+
+def test_round_whiff_nobody_hit():
+    a = fighter(hp=30, max_hp=30); d = fighter(hp=30, max_hp=30)
+    resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0))
+    assert a.hp == 30 and d.hp == 30
