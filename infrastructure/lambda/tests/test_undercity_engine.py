@@ -492,3 +492,18 @@ def test_round_whiff_nobody_hit():
     a = fighter(hp=30, max_hp=30); d = fighter(hp=30, max_hp=30)
     resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0))
     assert a.hp == 30 and d.hp == 30
+
+
+def test_swarm_adds_chip_each_round():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'swarm'}))
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0))  # whiff
+    # whiff deals nothing, but swarm chips: round(5*0.5)=2
+    assert d.hp == 28
+
+
+def test_rot_stacks_tick_end_of_round():
+    a = fighter(hp=30, max_hp=30); d = fighter(hp=30, max_hp=30)
+    d.rot_stacks = 2
+    resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0))
+    assert d.hp == 30 - 2 * data.ROT_PER_STACK  # 30 - 4 = 26

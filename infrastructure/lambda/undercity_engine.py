@@ -145,6 +145,27 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
             raw = _base_hit(s, t, rng)
             _deal(s, t, side, rnd, raw, data.STANCE_STALL_MULT, entries)
     # whiff: nothing.
+
+    # Swarm: one extra chip hit per round regardless of stance (min 1).
+    for side, (s, t) in (('attacker', (attacker, defender)),
+                         ('defender', (defender, attacker))):
+        if s.has('swarm') and s.hp > 0 and t.hp > 0:
+            chip = max(1, round(_base_hit(s, t, rng) * data.SWARM_CHIP_MULT))
+            t.hp -= chip
+            entry = {'round': rnd, 'by': side, 'dmg': chip, 'swarm': True}
+            if s.has('drain_life'):
+                heal = round(chip * 0.5)
+                s.hp = min(s.max_hp, s.hp + heal); entry['heal'] = heal
+            entries.append(entry)
+
+    # Rot DoT ticks at end of round (stacks present at round start; freshly
+    # applied rot in later tasks is added AFTER this loop so it waits a round).
+    for side, c in (('attacker', attacker), ('defender', defender)):
+        if c.rot_stacks > 0 and c.hp > 0:
+            tick = c.rot_stacks * data.ROT_PER_STACK
+            c.hp -= tick
+            entries.append({'round': rnd, 'by': side, 'dmg': tick, 'rot': True})
+
     return entries
 
 
