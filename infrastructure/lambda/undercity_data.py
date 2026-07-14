@@ -167,6 +167,29 @@ CONSUMABLES = {
 BAG_SIZE = 3
 GEAR_SELL_BACK = 0.5  # replacing gear auto-sells old piece for 50% of cost
 
+# ── Combat: stance triangle tuning (spec 2026-07-14 §1) ──────────────────────
+# The triangle decides who wins an exchange; ATK/DEF set the magnitude. A "hit"
+# is max(1, round(atk * uniform(0.85,1.15)) - effective_def); the multipliers
+# below scale that hit per matchup. Starting values — balance pass is Plan 2/3.
+STANCES = ('aggress', 'guard', 'feint')
+
+STANCE_WIN_MULT       = 1.5   # decisive winner (A>F, F>G) deals hit * this
+STANCE_GUARD_MITIGATE = 0.4   # aggressor's hit when Guard wins (G>A)
+STANCE_GUARD_COUNTER  = 0.6   # guard's counter hit when Guard wins (G>A)
+STANCE_CLASH_MULT     = 1.0   # both sides on A-vs-A
+STANCE_STALL_MULT     = 0.15  # both sides on G-vs-G
+# F-vs-F is a whiff: no damage either way.
+
+ROT_PER_STACK   = 2   # damage per rot stack, ticked at end of each round
+SWARM_CHIP_MULT = 0.5 # swarm: extra hit each round = hit * this (min 1)
+SCAVENGE_RETALIATE = 2  # scavenge: damage dealt back when you LOSE an exchange
+DEATHTOUCH_PIERCE  = 3  # deathtouch_stomp: Aggress reduces target eff-DEF by this
+FLYBY_DODGE        = 0.25  # chance to dodge the punish when you LOSE an exchange
+VENOM_BARB_BONUS   = 3   # first winning exchange +this
+FIRST_WIN_ROT_BREATH_MULT = 2  # rot_breath: first winning exchange * this
+
+MAX_ROUNDS_COMBAT = 6  # round cap; higher HP% wins a timeout
+
 # ── Spells & grimoires ───────────────────────────────────────────────────────
 # The spell system (specs/2026-07-10-undercity-spells-design.md). Innate biome
 # spells are always castable; grimoire spells require the book equipped — you
