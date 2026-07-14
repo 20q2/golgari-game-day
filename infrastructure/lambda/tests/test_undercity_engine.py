@@ -618,3 +618,22 @@ def test_harden_shell_heals_on_guard_win():
     resolve_round(a, d, 'aggress', 'guard', 1, FakeRng(uniform=1.0))
     # d took mitigated 5*0.4=2 (->18) then heals 3 (->21)
     assert d.hp == 20 - round(5 * data.STANCE_GUARD_MITIGATE) + 3
+
+
+from undercity_engine import flee_attempt
+
+
+def test_flee_attempt_success_and_smoke_fallback():
+    # spd 8 vs 5 => chance 35+15=50; random 0.10*100=10 < 50 => escaped
+    f = fighter(spd=8, hp=20, max_hp=30)
+    e = fighter(spd=5)
+    assert flee_attempt(f, e, FakeRng(randoms=[0.10]))['escaped'] is True
+    # fail, but smoke spore saves it
+    f2 = fighter(spd=1, hp=20, max_hp=30, has_smoke_spore=True)
+    e2 = fighter(spd=9)
+    r = flee_attempt(f2, e2, FakeRng(randoms=[0.99]))
+    assert r['escaped'] is True and r['smokeSporeUsed'] is True
+    # fail, no smoke => not escaped, DEF drop applied
+    f3 = fighter(spd=1, hp=20, max_hp=30, dfn=5)
+    r3 = flee_attempt(f3, fighter(spd=9), FakeRng(randoms=[0.99]))
+    assert r3['escaped'] is False and f3.dfn == 4

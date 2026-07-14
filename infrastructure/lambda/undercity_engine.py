@@ -71,6 +71,21 @@ def exchange_winner(a_stance: str, d_stance: str) -> str:
     return 'defender'
 
 
+def flee_attempt(fleer: Combatant, enemy: Combatant, rng) -> dict:
+    """
+    One flee action (replaces the old flee stance). Uses the existing
+    SPD-based flee_chance + home-biome bonus; a smoke spore auto-succeeds a
+    failed roll. On failure the fleer is caught off guard (-1 DEF).
+    """
+    chance = min(95, flee_chance(fleer.spd, enemy.spd) + fleer.flee_bonus)
+    if rng.random() * 100 < chance:
+        return {'escaped': True, 'smokeSporeUsed': False}
+    if fleer.has_smoke_spore:
+        return {'escaped': True, 'smokeSporeUsed': True}
+    fleer.dfn = max(0, fleer.dfn - 1)
+    return {'escaped': False, 'smokeSporeUsed': False}
+
+
 def _base_hit(striker: Combatant, target: Combatant, rng, pierce: int = 0) -> int:
     """The raw ATK-vs-DEF hit before stance multipliers. Floors at 1. A pending
     dmg_penalty (from a Serrated feint) is spent here on the striker's next hit."""
