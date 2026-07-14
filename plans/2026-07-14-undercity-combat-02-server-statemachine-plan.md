@@ -1087,6 +1087,50 @@ git commit -m "chore(undercity): remove _fixed_battle; final Plan 2 regression"
 
 ---
 
+## Task 13: Combat authoring reference doc
+
+**Files:**
+- Create: `specs/undercity-combat.md`
+- Modify: `CLAUDE.md` (add a pointer, next to the existing spells-reference bullet)
+
+A living reference — modeled on the existing `specs/undercity-spells.md` — so adding a new enemy, piece of equipment, or effect is a fast, checklist-driven edit rather than a code archaeology dig. Write it **last**, from the code as actually built, so it is accurate (not from this plan's projected shape).
+
+- [ ] **Step 1: Write `specs/undercity-combat.md`** covering, with real symbol names and file/line references as they exist post-implementation:
+
+  1. **Model overview** — the stance triangle (who-beats-whom), how magnitude comes from `_base_hit` × `STANCE_*` multipliers, rot/swarm, the round loop, telegraph/bluff, timeout-by-HP%. One diagram/table of the matchup outcomes.
+  2. **Effect-kind vocabulary** — the four levers and where each lives:
+     - **Creature passives** (`undercity_data.py` form specs → `Combatant.passives` → branches in `resolve_round`)
+     - **Gear riders** (`GEAR[*].rider` + `GEAR_RIDERS` → `Combatant.riders` → `resolve_round`)
+     - **Spell-buffs** (`SPELLS`/`buffs` → `Combatant.buffs` → `resolve_round` + `effective_stats`)
+     - **Combat consumables** (`CONSUMABLES[*].combat/effect` → `_COMBAT_ITEM` → `resolve_round` round-modifiers)
+     Note the exact hook point for each so an author knows which function to touch.
+  3. **Add-an-enemy checklist** — append a spec to the right table (`NPCS`/`ELITE_NPCS`/`DUNGEON_NPCS`/`BARRIER_GUARDIANS`/`LAIR_BOSSES`), required fields (`hp/atk/def/spd/bounty/xp/itemChance/personality/bluff`), how it enters battle (which starter routes it), how rewards resolve (which `_finish_*`), and the balance invariant test to update. Include a copy-paste template dict.
+  4. **Add-equipment checklist** — a `GEAR` entry (slot ∈ fang/carapace/charm, stats, `rider`) and, if it needs a new rider, the `GEAR_RIDERS` entry + the `resolve_round` branch + a rider unit test. Copy-paste templates + the TS display-mirror pointer (filled in by Plan 3).
+  5. **Add-an-effect checklist** — three sub-recipes: a new **passive** (form spec + `resolve_round` hook + test), a new **buff** (`SPELLS` + `ONE_BATTLE_BUFFS` + `resolve_round`/`effective_stats` hook + test), a new **combat consumable** (`CONSUMABLES` + `_COMBAT_ITEM` + engine round-modifier if novel + test).
+  6. **Invariants** — no effect may reduce HP below the documented floors; balance numbers are mirrored in `src/app/undercity/data/*.ts` (Plan 3); the pytest suite must stay green; combat is PvE-only (PvP is one-shot).
+  7. **Tuning knobs** — the `STANCE_*`, `ROT_*`, `SWARM_*`, `*_BLUFF`, `STANCE_PERSONALITIES` constants, what each does, and the balance-invariant test that guards them.
+
+- [ ] **Step 2: Add a pointer in `CLAUDE.md`**
+
+Under the Undercity section's Spells bullet, add:
+
+```markdown
+- **Combat:** stance-triangle model + add-an-enemy / add-equipment / add-an-effect checklists in [specs/undercity-combat.md](specs/undercity-combat.md).
+```
+
+- [ ] **Step 3: Verify the doc's references resolve**
+
+Spot-check every file/symbol the doc names still exists (grep a handful): `resolve_round`, `GEAR_RIDERS`, `_COMBAT_ITEM`, `STANCE_PERSONALITIES`, `_finish_wild`. Fix any drift.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add specs/undercity-combat.md CLAUDE.md
+git commit -m "docs(undercity): combat authoring reference (add enemy/equipment/effect)"
+```
+
+---
+
 ## Done criteria (Plan 2)
 
 - Landing on wild/elite/barrier/lair/boss returns a `battle_start` with a telegraph; `combat-round` drives it a round at a time; rewards apply only on end via `_finish_battle`.
@@ -1095,6 +1139,7 @@ git commit -m "chore(undercity): remove _fixed_battle; final Plan 2 regression"
 - Charm slot equips; gear riders + buffs flow into `Combatant` in real battles.
 - PvP unchanged (one-shot auto).
 - Full lambda suite green against the committed map.
+- `specs/undercity-combat.md` exists with accurate add-an-enemy / add-equipment / add-an-effect checklists, linked from `CLAUDE.md`.
 
 ## Follow-on: Plan 3 (client)
 
