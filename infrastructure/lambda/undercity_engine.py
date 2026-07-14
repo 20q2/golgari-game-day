@@ -140,15 +140,22 @@ def _scavenge(loser, winner, loser_side, rnd, entries):
                         'retaliation': True})
 
 
-def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
+def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
+                  force_winner=None, double_win_for=None, negate_loss_for=None) -> list:
     """
     Resolve ONE round given both stances. Mutates both combatants. Returns a
     list of log entries. Damage magnitude comes from _base_hit; the triangle
-    picks who lands the amplified hit. (Passives, riders, rot and swarm are
-    layered on in later tasks.)
+    picks who lands the amplified hit.
+
+    Optional one-round modifiers (combat consumables map onto these):
+      force_winner    'attacker'|'defender' — override the triangle result.
+      double_win_for  side — double that side's damage if it wins the exchange.
+      negate_loss_for side — cancel the punish that side takes if it loses.
     """
     entries = []
     winner = exchange_winner(a_stance, d_stance)
+    if force_winner in ('attacker', 'defender'):
+        winner = force_winner
     entries.append({'round': rnd, 'winner': winner,
                     'aStance': a_stance, 'dStance': d_stance})
 
@@ -159,7 +166,11 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
                       else (defender, attacker))
         win_stance = a_stance if winner == 'attacker' else d_stance
 
-        if losr.has('flyby') and rng.random() < data.FLYBY_DODGE:
+        if negate_loss_for == lose_side:
+            # loser cancels the decisive punish (rot/swarm tail still applies).
+            entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
+                            'negated': True, 'winner': win_side})
+        elif losr.has('flyby') and rng.random() < data.FLYBY_DODGE:
             # loser evades the whole punish.
             entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
                             'miss': True, 'winner': win_side})
@@ -169,6 +180,8 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
             _deal(losr, winr, lose_side, rnd, raw_agg,
                   data.STANCE_GUARD_MITIGATE, entries, tag='mitigated')
             ctr_mult = data.STANCE_GUARD_COUNTER * (1.5 if winr.has_rider('spiked') else 1.0)
+            if double_win_for == win_side:
+                ctr_mult *= 2
             raw_ctr = _base_hit(winr, losr, rng)
             _deal(winr, losr, win_side, rnd, raw_ctr, ctr_mult, entries, tag='counter')
             if winr.has_buff('harden_shell'):
@@ -193,6 +206,8 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
                     bonus += data.VENOM_BARB_BONUS
                 winr.first_win_used = True
             dmg = max(0, round(raw * mult) + bonus)
+            if double_win_for == win_side:
+                dmg *= 2
             # trickster: a lost Feint is not fully punished.
             if lose_stance == 'feint' and losr.has_rider('trickster'):
                 dmg = round(dmg / 2)

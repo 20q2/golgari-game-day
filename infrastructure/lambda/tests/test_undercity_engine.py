@@ -459,6 +459,32 @@ def test_drain_life_heals_on_win():
     assert a.hp == 20 + round(dmg * 0.5)    # healed 50% of damage dealt
 
 
+def test_force_winner_overrides_triangle():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d = fighter(atk=10, dfn=4, hp=30, max_hp=30)
+    # both feint => normally a whiff (nobody hit). Force attacker to win: a lands
+    # the decisive hit, d takes it, a takes nothing (clean auto-win semantics).
+    resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0),
+                  force_winner='attacker')
+    assert a.hp == 30 and d.hp == 30 - round(6 * data.STANCE_WIN_MULT)
+
+
+def test_double_win_for_doubles_winner_damage():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0),
+                  double_win_for='attacker')
+    assert d.hp == 60 - round(6 * data.STANCE_WIN_MULT) * 2   # 9 -> 18
+
+
+def test_negate_loss_cancels_punish():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)   # winner by triangle
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30)   # loser, negates
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0),
+                  negate_loss_for='defender')
+    assert d.hp == 30   # punish negated
+
+
 def test_flyby_dodges_the_punish():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'flyby'}))
