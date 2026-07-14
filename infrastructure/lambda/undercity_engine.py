@@ -56,6 +56,21 @@ def flee_chance(flee_spd: int, enemy_spd: int) -> int:
     return max(10, min(90, 35 + 5 * (flee_spd - enemy_spd)))
 
 
+# ── Stance triangle (spec 2026-07-14 §1) ─────────────────────────────────────
+# Aggress beats Feint, Feint beats Guard, Guard beats Aggress. Returns the side
+# that WINS the exchange ('attacker'|'defender') or the mirror kind.
+_BEATS = {('aggress', 'feint'), ('feint', 'guard'), ('guard', 'aggress')}
+_MIRROR = {'aggress': 'clash', 'guard': 'stall', 'feint': 'whiff'}
+
+
+def exchange_winner(a_stance: str, d_stance: str) -> str:
+    if a_stance == d_stance:
+        return _MIRROR[a_stance]
+    if (a_stance, d_stance) in _BEATS:
+        return 'attacker'
+    return 'defender'
+
+
 def _effective_def(target: Combatant, striker: Combatant) -> int:
     d = target.dfn
     if target.stance == 'defend':

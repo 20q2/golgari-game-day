@@ -434,3 +434,22 @@ def test_level3_beats_every_dungeon_wild():
     for biome, spec in data.DUNGEON_NPCS.items():
         out = resolve_battle(_ref(3), _foe(spec), FakeRng())
         assert out['outcome'] == 'attacker', biome
+
+
+# ── Stance triangle (spec 2026-07-14 §1) ─────────────────────────────────────
+
+from undercity_engine import exchange_winner
+
+
+def test_exchange_triangle():
+    # decisive matchups
+    assert exchange_winner('aggress', 'feint') == 'attacker'
+    assert exchange_winner('feint', 'aggress') == 'defender'
+    assert exchange_winner('feint', 'guard') == 'attacker'
+    assert exchange_winner('guard', 'feint') == 'defender'
+    assert exchange_winner('guard', 'aggress') == 'attacker'
+    assert exchange_winner('aggress', 'guard') == 'defender'
+    # mirrors
+    assert exchange_winner('aggress', 'aggress') == 'clash'
+    assert exchange_winner('guard', 'guard') == 'stall'
+    assert exchange_winner('feint', 'feint') == 'whiff'
