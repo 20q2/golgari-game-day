@@ -197,6 +197,47 @@ export interface BattleResult {
   smokeSporeUsed?: boolean;
 }
 
+// ── Interactive PvE combat (Plan 2/3) ────────────────────────────────────────
+
+export type Stance = 'aggress' | 'guard' | 'feint';
+
+export interface CombatEntry {
+  round: number;
+  by?: 'attacker' | 'defender';
+  winner?: 'attacker' | 'defender' | 'clash' | 'stall' | 'whiff';
+  aStance?: Stance;
+  dStance?: Stance;
+  dmg?: number;
+  heal?: number;
+  miss?: boolean;
+  negated?: boolean;
+  rot?: boolean;
+  swarm?: boolean;
+  retaliation?: boolean;
+  rotApplied?: number;
+}
+
+export interface CombatRound {
+  round: number;
+  entries: CombatEntry[];
+  telegraph: Stance;
+  playerHp: number;
+  npcHp: number;
+  revealNext: boolean;
+}
+
+export interface CombatFlee {
+  fled: boolean;
+  smokeSporeUsed?: boolean;
+  round?: number;
+  telegraph?: Stance;
+}
+
+export interface CombatPeek {
+  trueIntent: Stance;
+  round: number;
+}
+
 /** One slot of a trading post's shared stock. */
 export interface TradeStockItem {
   item: string;
@@ -278,13 +319,18 @@ export interface SpaceEvent {
     name: string;
     hp: number;
     maxHp?: number;
-    atk: number;
-    def: number;
-    spd: number;
-    bounty: number;
+    atk?: number;
+    def?: number;
+    spd?: number;
+    bounty?: number;
+    personality?: string;
   };
   battle?: BattleResult;
   sporesLost?: number;
+  // battle_start (interactive PvE, Plan 2)
+  kind?: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss';
+  telegraph?: Stance;
+  round?: number;
 }
 
 export interface Occupant {
@@ -305,6 +351,8 @@ export interface ActionResponse {
   spaceEvent?: SpaceEvent;
   occupants?: Occupant[];
   battle?: BattleResult;
+  combat?: CombatRound | CombatFlee;
+  peek?: CombatPeek;
   cast?: CastResult;
   target?: { userId: string; username: string; formName: string; creatureName?: string };
   winner?: string;
