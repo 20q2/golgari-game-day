@@ -81,6 +81,30 @@ def flee_attempt(fleer: Combatant, enemy: Combatant, rng) -> dict:
     return {'escaped': False, 'smokeSporeUsed': False}
 
 
+# ── Monster AI (spec §1) ─────────────────────────────────────────────────────
+
+def pick_stance(personality: str, rng) -> str:
+    """Draw a monster's true stance from its personality weight triple."""
+    weights = data.STANCE_PERSONALITIES.get(
+        personality, data.STANCE_PERSONALITIES[data.NPC_DEFAULT_PERSONALITY])
+    r = rng.random()
+    cum = 0.0
+    for stance, w in zip(data.STANCES, weights):
+        cum += w
+        if r < cum:
+            return stance
+    return data.STANCES[-1]
+
+
+def telegraph(actual: str, bluff: float, rng) -> str:
+    """What the monster SHOWS for its upcoming stance — the truth, unless it
+    bluffs (rng.random() < bluff), in which case it shows one of the other two."""
+    if rng.random() < bluff:
+        others = [s for s in data.STANCES if s != actual]
+        return others[rng.randint(0, len(others) - 1)]
+    return actual
+
+
 def _base_hit(striker: Combatant, target: Combatant, rng, pierce: int = 0) -> int:
     """The raw ATK-vs-DEF hit before stance multipliers. Floors at 1. A pending
     dmg_penalty (from a Serrated feint) is spent here on the striker's next hit."""

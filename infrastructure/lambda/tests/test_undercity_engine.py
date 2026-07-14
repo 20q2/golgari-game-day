@@ -562,6 +562,28 @@ def test_flee_attempt_success_and_smoke_fallback():
     assert r3['escaped'] is False and f3.dfn == 4
 
 
+from undercity_engine import pick_stance, telegraph
+
+
+def test_pick_stance_uses_weights_via_cumulative_roll():
+    # random() picks along the cumulative (aggress, guard, feint) distribution.
+    assert pick_stance('brute', FakeRng(randoms=[0.00])) == 'aggress'
+    assert pick_stance('brute', FakeRng(randoms=[0.70])) == 'guard'   # 0.60..0.85
+    assert pick_stance('brute', FakeRng(randoms=[0.90])) == 'feint'   # 0.85..1.0
+    assert pick_stance('turtle', FakeRng(randoms=[0.50])) == 'guard'
+
+
+def test_telegraph_truthful_when_no_bluff():
+    # bluff 0 => always shows the true stance.
+    assert telegraph('aggress', bluff=0.0, rng=FakeRng(randoms=[0.00])) == 'aggress'
+
+
+def test_telegraph_bluffs_to_a_different_stance():
+    # random() < bluff => show a DIFFERENT stance (chosen from the other two).
+    shown = telegraph('aggress', bluff=0.5, rng=FakeRng(randoms=[0.10]))
+    assert shown in ('guard', 'feint') and shown != 'aggress'
+
+
 from undercity_engine import resolve_battle_rounds
 
 

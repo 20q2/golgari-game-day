@@ -215,6 +215,18 @@ FIRST_WIN_ROT_BREATH_MULT = 2  # rot_breath: first winning exchange * this
 
 MAX_ROUNDS_COMBAT = 6  # round cap; higher HP% wins a timeout
 
+# Monster AI (spec §1). Each personality is a weight triple over
+# (aggress, guard, feint); the monster's true stance is drawn from it and then
+# telegraphed truthfully except on a bluff. Bluff rate scales difficulty.
+STANCE_PERSONALITIES = {
+    'brute':     (0.60, 0.25, 0.15),
+    'turtle':    (0.20, 0.60, 0.20),
+    'trickster': (0.20, 0.20, 0.60),
+    'balanced':  (0.34, 0.33, 0.33),
+}
+NPC_DEFAULT_PERSONALITY = 'balanced'
+NPC_DEFAULT_BLUFF = 0.0   # overworld fodder never bluffs; elites/bosses do
+
 # ── Spells & grimoires ───────────────────────────────────────────────────────
 # The spell system (specs/2026-07-10-undercity-spells-design.md). Innate biome
 # spells are always castable; grimoire spells require the book equipped — you
