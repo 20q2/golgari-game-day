@@ -3,19 +3,33 @@
 export interface GearInfo {
   id: string;
   name: string;
-  slot: 'fang' | 'carapace';
+  slot: 'fang' | 'carapace' | 'charm';
   tier: 1 | 2 | 3;
   cost: number;
   desc: string;
+  /** Stance-rider tag (mirrors GEAR_RIDERS); undefined for plain stat gear. */
+  rider?: string;
 }
 
 export const GEAR: GearInfo[] = [
-  { id: 'rusted_fang', name: 'Rusted Fang', slot: 'fang', tier: 1, cost: 20, desc: '+2 ATK' },
-  { id: 'kraul_barb', name: 'Kraul Barb', slot: 'fang', tier: 2, cost: 45, desc: '+4 ATK' },
-  { id: 'wurm_tooth', name: 'Wurm Tooth', slot: 'fang', tier: 3, cost: 80, desc: '+6 ATK, +1 SPD' },
-  { id: 'chitin_scrap', name: 'Chitin Scrap', slot: 'carapace', tier: 1, cost: 20, desc: '+2 DEF' },
-  { id: 'bark_hide', name: 'Bark Hide', slot: 'carapace', tier: 2, cost: 45, desc: '+4 DEF' },
-  { id: 'troll_hide', name: 'Troll Hide', slot: 'carapace', tier: 3, cost: 80, desc: '+5 DEF, +6 max HP' },
+  { id: 'rusted_fang', name: 'Rusted Fang', slot: 'fang', tier: 1, cost: 20, rider: 'barbed',
+    desc: '+2 ATK · Barbed: Aggress applies rot even on a loss.' },
+  { id: 'kraul_barb', name: 'Kraul Barb', slot: 'fang', tier: 2, cost: 45, rider: 'deep_biter',
+    desc: '+4 ATK · Deep-biter: winning hits hit harder.' },
+  { id: 'wurm_tooth', name: 'Wurm Tooth', slot: 'fang', tier: 3, cost: 80, rider: 'deep_biter',
+    desc: '+6 ATK, +1 SPD · Deep-biter: winning hits hit harder.' },
+  { id: 'chitin_scrap', name: 'Chitin Scrap', slot: 'carapace', tier: 1, cost: 20, rider: 'thick',
+    desc: '+2 DEF · Thick: Guard chips in a stall, softer when wrong.' },
+  { id: 'bark_hide', name: 'Bark Hide', slot: 'carapace', tier: 2, cost: 45, rider: 'spiked',
+    desc: '+4 DEF · Spiked: Guard counter reflects extra.' },
+  { id: 'troll_hide', name: 'Troll Hide', slot: 'carapace', tier: 3, cost: 80, rider: 'spiked',
+    desc: '+5 DEF, +6 max HP · Spiked: Guard counter reflects extra.' },
+  { id: 'quartz_charm', name: 'Quartz Charm', slot: 'charm', tier: 1, cost: 20, rider: 'trickster',
+    desc: '+1 SPD · Trickster: a lost Feint isn’t fully punished.' },
+  { id: 'serrated_charm', name: 'Serrated Charm', slot: 'charm', tier: 2, cost: 45, rider: 'serrated',
+    desc: '+1 SPD · Serrated: Feint break saps the enemy next round.' },
+  { id: 'glint_charm', name: 'Glint Charm', slot: 'charm', tier: 3, cost: 80, rider: 'glint',
+    desc: '+2 SPD · Glint: winning a Feint reveals the true next intent.' },
 ];
 
 export interface ConsumableInfo {
@@ -25,6 +39,10 @@ export interface ConsumableInfo {
   desc: string;
   /** Material Icons ligature name. */
   icon: string;
+  /** Usable during a battle (Plan 2 combat consumables). */
+  inBattle?: boolean;
+  /** Combat effect kind (reveal | double_punish | negate | auto_win). */
+  effect?: string;
 }
 
 export const CONSUMABLES: ConsumableInfo[] = [
@@ -32,6 +50,14 @@ export const CONSUMABLES: ConsumableInfo[] = [
   { id: 'smoke_spore', name: 'Smoke Spore', cost: 15, desc: 'Held: your next failed flee auto-succeeds.', icon: 'air' },
   { id: 'loaded_die', name: 'Loaded Die', cost: 25, desc: 'Choose your next roll’s value (1–6).', icon: 'casino' },
   { id: 'snare', name: 'Snare', cost: 18, desc: 'Trap your current space for the next visitor.', icon: 'gps_fixed' },
+  { id: 'scrying_spore', name: 'Scrying Spore', cost: 20, icon: 'visibility', inBattle: true,
+    effect: 'reveal', desc: 'In battle: reveal the enemy’s true intent this round.' },
+  { id: 'rot_bomb', name: 'Rot Bomb', cost: 22, icon: 'coronavirus', inBattle: true,
+    effect: 'double_punish', desc: 'In battle: double your damage if you win this round.' },
+  { id: 'chitin_ward', name: 'Chitin Ward', cost: 22, icon: 'security', inBattle: true,
+    effect: 'negate', desc: 'In battle: cancel the punish from one wrong guess.' },
+  { id: 'ambush_musk', name: 'Ambush Musk', cost: 25, icon: 'bolt', inBattle: true,
+    effect: 'auto_win', desc: 'In battle: win one exchange regardless of choices.' },
 ];
 
 export const GEAR_MAP: Record<string, GearInfo> = Object.fromEntries(GEAR.map((g) => [g.id, g]));
