@@ -1,0 +1,138 @@
+<div class="battle-overlay">
+  <div class="battle-card">
+    <!-- Arena stage -->
+    <div
+      class="stage"
+      style="background-image: linear-gradient(rgba(10, 12, 10, 0.3), rgba(10, 12, 10, 0.55)), url('undercity/arena_background.png')"
+    >
+      <div class="side" [class.hit]="hit() === 'attacker'" [class.ko]="done() && outcome() === 'defender'">
+        <span class="platform"></span>
+        @if (attacker.spriteUrl && !attackerSpriteFailed()) {
+          <img class="sprite" [src]="attacker.spriteUrl" [alt]="attacker.name" (error)="attackerSpriteFailed.set(true)" />
+        } @else {
+          <mat-icon class="sprite-icon">{{ attacker.icon ?? 'pets' }}</mat-icon>
+        }
+      </div>
+
+      <div class="vs-badge">VS</div>
+
+      <div class="side flipped" [class.hit]="hit() === 'defender'" [class.ko]="done() && outcome() === 'attacker'">
+        <span class="platform"></span>
+        @if (defender.spriteUrl && !defenderSpriteFailed()) {
+          <img class="sprite" [src]="defender.spriteUrl" [alt]="defender.name" (error)="defenderSpriteFailed.set(true)" />
+        } @else {
+          <mat-icon class="sprite-icon">{{ defender.icon ?? 'bug_report' }}</mat-icon>
+        }
+      </div>
+
+      @if (done()) {
+        <div class="outcome-banner" [class.win]="outcome() === 'attacker'" [class.lose]="outcome() === 'defender'">
+          {{ outcomeLabel() }}
+        </div>
+      }
+    </div>
+
+    <!-- Name / HP plates -->
+    <div class="plates">
+      <div class="plate">
+        <span class="side-name">{{ attacker.name }}</span>
+        <div class="hp-track">
+          <div class="hp-fill" [class.low]="hpPct('attacker') <= 50" [class.crit]="hpPct('attacker') <= 25" [style.width.%]="hpPct('attacker')"></div>
+        </div>
+        <span class="hp-num">{{ attackerHp() }}/{{ attacker.maxHp }} HP</span>
+      </div>
+      <div class="plate right">
+        <span class="side-name">{{ defender.name }}</span>
+        <div class="hp-track">
+          <div class="hp-fill" [class.low]="hpPct('defender') <= 50" [class.crit]="hpPct('defender') <= 25" [style.width.%]="hpPct('defender')"></div>
+        </div>
+        <span class="hp-num">{{ defenderHp() }}/{{ defender.maxHp }} HP</span>
+      </div>
+    </div>
+
+    <!-- Telegraph + controls (while fighting) -->
+    @if (!done()) {
+      <div class="tele">
+        <span class="tell">The {{ defender.name }} is {{ tellText() }}…</span>
+        @if (revealed(); as r) {
+          <span class="intent scried">
+            <mat-icon class="mi">visibility</mat-icon>
+            It WILL {{ stanceMap[r].label }} — {{ stanceMap[r].blurb }}
+          </span>
+        } @else {
+          <span class="intent">
+            It {{ telegraphText() }} — looks like <strong>{{ stanceMap[telegraph].label }}</strong>.
+          </span>
+        }
+      </div>
+
+      <div class="stance-row">
+        @for (s of STANCES; track s.id) {
+          <button class="stance-btn" [disabled]="busy()" (click)="play(s.id)" [title]="s.blurb">
+            <mat-icon class="mi">{{ s.icon }}</mat-icon>
+            <span class="stance-label">{{ s.label }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="util-row">
+        @if (hasScry) {
+          <button class="util-btn" [disabled]="busy() || !!revealed()" (click)="doPeek()">
+            <mat-icon class="mi">visibility</mat-icon> Scry
+          </button>
+        }
+        @if (canFlee) {
+          <button class="util-btn" [disabled]="busy()" (click)="doFlee()">
+            <mat-icon class="mi">directions_run</mat-icon> Flee
+          </button>
+        }
+        @for (it of items; track it.id) {
+          <button
+            class="util-btn item-btn"
+            [class.armed]="pendingItem() === it.id"
+            [disabled]="busy()"
+            (click)="toggleItem(it.id)"
+            [title]="it.name"
+          >
+            <mat-icon class="mi">{{ it.icon }}</mat-icon>
+          </button>
+        }
+      </div>
+      @if (pendingItem()) {
+        <div class="armed-hint">Item armed — pick a stance to use it.</div>
+      }
+    }
+
+    <!-- Victory spoils -->
+    @if (done() && hasRewards() && rewards(); as r) {
+      <div class="rewards">
+        <span class="rewards-title">Spoils</span>
+        <div class="reward-chips">
+          @if (r.spores) { <span class="reward-chip spores"><mat-icon class="mi">grain</mat-icon> +{{ r.spores }} Spores</span> }
+          @if (r.xp) { <span class="reward-chip xp"><mat-icon class="mi">auto_awesome</mat-icon> +{{ r.xp }} XP</span> }
+          @if (r.itemName) { <span class="reward-chip item"><mat-icon class="mi">{{ r.itemIcon ?? 'inventory_2' }}</mat-icon> {{ r.itemName }}</span> }
+          @if (r.levels) { <span class="reward-chip levelup"><mat-icon class="mi">arrow_upward</mat-icon> Level up{{ r.levels > 1 ? ' ×' + r.levels : '' }}!</span> }
+        </div>
+      </div>
+    }
+
+    <!-- Round log, newest first -->
+    <div class="battle-log">
+      @if (done() && resultText()) {
+        <div class="log-result"><mat-icon class="mi">flag</mat-icon><span>{{ resultText() }}</span></div>
+      }
+      @for (line of logNewestFirst(); track $index) {
+        <div class="log-line" [class.you]="line.tone === 'you'" [class.foe]="line.tone === 'foe'">
+          @if (line.round) { <span class="log-round">R{{ line.round }}</span> }
+          <span class="log-text">{{ line.text }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="battle-actions">
+      @if (done()) {
+        <button class="uc-btn uc-btn-primary" (click)="close()">Continue</button>
+      }
+    </div>
+  </div>
+</div>
