@@ -1555,8 +1555,7 @@ def _boss(table, sid, doc, node, prev):
 
     boss = data.ROT_SOVEREIGN
     hp_before = _boss_hp(table, sid)
-    npc = dict(boss, hp=hp_before, maxHp=boss['hp'],
-               personality='trickster', bluff=0.30)
+    npc = dict(boss, hp=hp_before, maxHp=boss['hp'])
     return _start_battle(table, sid, doc, 'boss', npc, node=node,
                          ctx={'hpBefore': hp_before})
 

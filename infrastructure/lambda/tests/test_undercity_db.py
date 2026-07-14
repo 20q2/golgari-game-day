@@ -1125,3 +1125,13 @@ def test_combat_consumable_auto_win(table, monkeypatch):
     assert status == 200
     fresh = db._get_player(table, sid, 'user-alex')
     assert 'ambush_musk' not in (fresh.get('bag') or [])   # item consumed
+
+
+def test_all_battle_specs_have_valid_personality():
+    specs = list(data.NPCS) + list(data.ELITE_NPCS) + list(data.DUNGEON_NPCS.values()) \
+        + list(data.BARRIER_GUARDIANS.values()) + list(data.LAIR_BOSSES.values()) \
+        + [data.ROT_SOVEREIGN]
+    for s in specs:
+        p = s.get('personality', data.NPC_DEFAULT_PERSONALITY)
+        assert p in data.STANCE_PERSONALITIES, s.get('name')
+        assert 0.0 <= s.get('bluff', data.NPC_DEFAULT_BLUFF) <= 1.0

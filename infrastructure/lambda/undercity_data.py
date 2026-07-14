@@ -388,26 +388,28 @@ VAULT_POT_PER_FAIL = 2
 #   elite  — easy meat at level 4-5, lethal to a level 1-2 (flee!)
 # XP rides on each spec (per-tier rewards); wild_loss/timeout stay flat.
 
+# `personality`/`bluff` drive the stance AI (spec §1). Overworld fodder is
+# readable (no bluff) so good play reliably wins; elites/bosses bluff more.
 NPCS = [
     {'id': 'drudge_beetle', 'name': 'Drudge Beetle',
      'hp': 16, 'atk': 4, 'def': 1, 'spd': 4, 'bounty': 6, 'xp': 10,
-     'itemChance': 0.0},
+     'itemChance': 0.0, 'personality': 'brute', 'bluff': 0.0},
     {'id': 'sewer_shambler', 'name': 'Sewer Shambler',
      'hp': 20, 'atk': 5, 'def': 2, 'spd': 3, 'bounty': 9, 'xp': 10,
-     'itemChance': 0.0},
+     'itemChance': 0.0, 'personality': 'balanced', 'bluff': 0.0},
     {'id': 'myconid', 'name': 'Myconid',
      'hp': 24, 'atk': 4, 'def': 2, 'spd': 2, 'bounty': 9, 'xp': 10,
-     'itemChance': 0.0},
+     'itemChance': 0.0, 'personality': 'turtle', 'bluff': 0.0},
 ]
 
 # Elites live only at 'elite' board spaces — never a surprise on a wild space.
 ELITE_NPCS = [
     {'id': 'fetid_imp', 'name': 'Fetid Imp',
      'hp': 30, 'atk': 10, 'def': 5, 'spd': 8, 'bounty': 20, 'xp': 25,
-     'itemChance': 0.25},
+     'itemChance': 0.25, 'personality': 'trickster', 'bluff': 0.15},
     {'id': 'rot_shambler', 'name': 'Rot Shambler',
      'hp': 32, 'atk': 11, 'def': 5, 'spd': 4, 'bounty': 25, 'xp': 25,
-     'itemChance': 0.30},
+     'itemChance': 0.30, 'personality': 'brute', 'bluff': 0.10},
 ]
 
 
@@ -485,9 +487,11 @@ SNARE_SPILL_PCT = 0.20
 # (shared) and pays the winner alone.
 BARRIER_GUARDIANS = {
     'bar_e': {'id': 'rubble_hulk', 'name': 'Golgari Grave-Troll',
-              'hp': 36, 'atk': 11, 'def': 6, 'spd': 3, 'bounty': 30, 'xp': 25},
+              'hp': 36, 'atk': 11, 'def': 6, 'spd': 3, 'bounty': 30, 'xp': 25,
+              'personality': 'turtle', 'bluff': 0.15},
     'bar_s': {'id': 'bone_warden', 'name': 'Josu Vess, Lich Knight',
-              'hp': 42, 'atk': 12, 'def': 6, 'spd': 5, 'bounty': 35, 'xp': 25},
+              'hp': 42, 'atk': 12, 'def': 6, 'spd': 5, 'bounty': 35, 'xp': 25,
+              'personality': 'turtle', 'bluff': 0.20},
 }
 
 # Mini-bosses at the lairs. First kill per player pays `first`; repeats pay
@@ -497,17 +501,23 @@ BARRIER_GUARDIANS = {
 _LAIR_REWARD = {'first': {'spores': 60, 'xp': 35}, 'repeat': {'spores': 15, 'xp': 12}}
 LAIR_BOSSES = {
     'lair_titan': {'id': 'gravebound_colossus', 'name': 'Lord of Extinction',
-                   'hp': 46, 'atk': 14, 'def': 7, 'spd': 4, **_LAIR_REWARD},
+                   'hp': 46, 'atk': 14, 'def': 7, 'spd': 4,
+                   'personality': 'brute', 'bluff': 0.20, **_LAIR_REWARD},
     'city_lair': {'id': 'broodmother', 'name': 'Ishkanah, Grafwidow',
-                  'hp': 42, 'atk': 14, 'def': 5, 'spd': 8, **_LAIR_REWARD},
+                  'hp': 42, 'atk': 14, 'def': 5, 'spd': 8,
+                  'personality': 'trickster', 'bluff': 0.20, **_LAIR_REWARD},
     'cavern_lair': {'id': 'gloomglow_tyrant', 'name': 'Ghave, Guru of Spores',
-                    'hp': 44, 'atk': 13, 'def': 6, 'spd': 7, **_LAIR_REWARD},
+                    'hp': 44, 'atk': 13, 'def': 6, 'spd': 7,
+                    'personality': 'balanced', 'bluff': 0.20, **_LAIR_REWARD},
     'bog_lair': {'id': 'moor_wyrm', 'name': 'The Gitrog Monster',
-                 'hp': 48, 'atk': 12, 'def': 7, 'spd': 5, **_LAIR_REWARD},
+                 'hp': 48, 'atk': 12, 'def': 7, 'spd': 5,
+                 'personality': 'turtle', 'bluff': 0.20, **_LAIR_REWARD},
     'bone_lair': {'id': 'marrow_king', 'name': 'Death Baron',
-                  'hp': 40, 'atk': 15, 'def': 6, 'spd': 6, **_LAIR_REWARD},
+                  'hp': 40, 'atk': 15, 'def': 6, 'spd': 6,
+                  'personality': 'brute', 'bluff': 0.25, **_LAIR_REWARD},
     'garden_lair': {'id': 'rot_shepherd', 'name': 'Slimefoot, the Stowaway',
-                    'hp': 46, 'atk': 13, 'def': 7, 'spd': 4, **_LAIR_REWARD},
+                    'hp': 46, 'atk': 13, 'def': 7, 'spd': 4,
+                    'personality': 'turtle', 'bluff': 0.20, **_LAIR_REWARD},
 }
 
 # The treasure vault: first visit per player pays out, later visits are set
@@ -537,19 +547,19 @@ DUNGEONS = {
 DUNGEON_NPCS = {
     'city':   {'id': 'broodling',  'name': 'Hatchery Spider',
                'hp': 26, 'atk': 8, 'def': 3, 'spd': 6, 'bounty': 14, 'xp': 15,
-               'itemChance': 0.10},
+               'itemChance': 0.10, 'personality': 'trickster', 'bluff': 0.10},
     'cavern': {'id': 'glowmite',   'name': 'Vigorspore Wurm',
                'hp': 22, 'atk': 9, 'def': 2, 'spd': 8, 'bounty': 14, 'xp': 15,
-               'itemChance': 0.10},
+               'itemChance': 0.10, 'personality': 'brute', 'bluff': 0.10},
     'bog':    {'id': 'mire_leech', 'name': 'Festering Newt',
                'hp': 28, 'atk': 7, 'def': 3, 'spd': 4, 'bounty': 14, 'xp': 15,
-               'itemChance': 0.10},
+               'itemChance': 0.10, 'personality': 'turtle', 'bluff': 0.10},
     'bone':   {'id': 'gravewight', 'name': 'Wight of Precinct Six',
                'hp': 24, 'atk': 8, 'def': 4, 'spd': 3, 'bounty': 15, 'xp': 15,
-               'itemChance': 0.10},
+               'itemChance': 0.10, 'personality': 'balanced', 'bluff': 0.10},
     'garden': {'id': 'rot_grub',   'name': 'Thallid',
                'hp': 28, 'atk': 7, 'def': 3, 'spd': 5, 'bounty': 14, 'xp': 15,
-               'itemChance': 0.15},
+               'itemChance': 0.15, 'personality': 'turtle', 'bluff': 0.10},
 }
 
 # Signature hazards — display copy here; behavior lives in undercity_db._hazard.
@@ -675,6 +685,7 @@ SIGILS_REQUIRED = 3
 ROT_SOVEREIGN = {
     'id': 'rot_sovereign', 'name': 'Savra, Queen of the Golgari',
     'hp': 240, 'atk': 14, 'def': 9, 'spd': 6,
+    'personality': 'trickster', 'bluff': 0.30,
     'first': {'spores': 120, 'xp': 60},
     'repeat': {'spores': 40, 'xp': 20},
 }
