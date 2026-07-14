@@ -137,6 +137,11 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
             ctr_mult = data.STANCE_GUARD_COUNTER * (1.5 if winr.has_rider('spiked') else 1.0)
             raw_ctr = _base_hit(winr, losr, rng)
             _deal(winr, losr, win_side, rnd, raw_ctr, ctr_mult, entries, tag='counter')
+            if winr.has_buff('harden_shell'):
+                heal = min(winr.max_hp - winr.hp, 3)
+                if heal:
+                    winr.hp += heal
+                    entries.append({'round': rnd, 'by': win_side, 'heal': heal})
             _scavenge(losr, winr, lose_side, rnd, entries)
         else:
             lose_stance = d_stance if winner == 'attacker' else a_stance
@@ -168,7 +173,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
             if win_stance == 'feint':
                 if winr.has_rider('serrated'):
                     losr.dmg_penalty += 2
-                if winr.has_rider('glint'):
+                if winr.has_rider('glint') or winr.has_buff('glowveil'):
                     winr.reveal_next = True
             _scavenge(losr, winr, lose_side, rnd, entries)
     elif winner == 'clash':
@@ -216,11 +221,12 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng) -> list:
             c.hp -= tick
             entries.append({'round': rnd, 'by': side, 'dmg': tick, 'rot': True})
 
-    # Barbed: an Aggress applies +1 rot to the target regardless of win/loss.
-    # Applied AFTER the tick so a fresh stack first ticks next round.
+    # Barbed rider / Rot Surge buff: an Aggress applies +1 rot to the target
+    # regardless of win/loss. Applied AFTER the tick so a fresh stack first
+    # ticks next round.
     for side, (s, t), st in (('attacker', (attacker, defender), a_stance),
                              ('defender', (defender, attacker), d_stance)):
-        if st == 'aggress' and s.has_rider('barbed') and t.hp > 0:
+        if st == 'aggress' and (s.has_rider('barbed') or s.has_buff('rot_surge')) and t.hp > 0:
             t.rot_stacks += 1
             entries.append({'round': rnd, 'by': side, 'rotApplied': 1})
 

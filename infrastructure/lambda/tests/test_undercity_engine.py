@@ -603,3 +603,18 @@ def test_glint_sets_reveal():
     d = fighter(hp=60, max_hp=60)
     resolve_round(a, d, 'feint', 'guard', 1, FakeRng(uniform=1.0))
     assert a.reveal_next is True
+
+
+def test_rot_surge_buff_applies_rot_on_aggress():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, buffs=frozenset({'rot_surge'}))
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    resolve_round(a, d, 'aggress', 'guard', 1, FakeRng(uniform=1.0))
+    assert d.rot_stacks == 1
+
+
+def test_harden_shell_heals_on_guard_win():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)                    # aggressor
+    d = fighter(atk=10, dfn=5, hp=20, max_hp=30, buffs=frozenset({'harden_shell'}))
+    resolve_round(a, d, 'aggress', 'guard', 1, FakeRng(uniform=1.0))
+    # d took mitigated 5*0.4=2 (->18) then heals 3 (->21)
+    assert d.hp == 20 - round(5 * data.STANCE_GUARD_MITIGATE) + 3
