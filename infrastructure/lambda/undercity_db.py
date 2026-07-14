@@ -119,10 +119,25 @@ def _open_barrier(table, sid, barrier_id):
                          'open': sorted(opened)})
 
 
+def _to_decimal(obj):
+    """DynamoDB rejects Python float — convert floats to Decimal recursively
+    (the write-side mirror of _clean's Decimal->number on read). Ints, strings,
+    bools, and existing Decimals pass through unchanged."""
+    if isinstance(obj, bool):
+        return obj
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    if isinstance(obj, dict):
+        return {k: _to_decimal(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_to_decimal(v) for v in obj]
+    return obj
+
+
 def _put_player(table, doc):
     """Optimistic write: bumps ver, fails (409) if someone wrote in between."""
     expected = doc.get('ver', 0)
-    doc = dict(doc)
+    doc = _to_decimal(dict(doc))
     doc['ver'] = expected + 1
     try:
         if expected == 0:
@@ -487,13 +502,18 @@ def handle_state(table, query_params):
 
 
 def _public_player(p):
+    # Effective stats (gear + buffs) are surfaced publicly so the spectator/TV
+    # broadcast can show each creature's build on its hero card.
+    eff = engine.effective_stats(p)
     return {
         'userId': p['userId'], 'username': p.get('username', '?'),
         'species': p.get('species'), 'form': p.get('form'), 'tier': p.get('tier', 1),
         'formName': _form_name(p),
         'creatureName': p.get('creatureName') or _form_name(p),
         'level': p.get('level', 1), 'hp': p.get('hp', 0),
-        'maxHp': engine.effective_stats(p)['maxHp'],
+        'maxHp': eff['maxHp'],
+        'atk': eff['atk'], 'def': eff['def'], 'spd': eff['spd'],
+        'gear': p.get('gear') or {},
         'position': p.get('position'), 'stance': p.get('stance', 'fight'),
         'shieldUntil': p.get('shieldUntil'),
         'spores': p.get('spores', 0), 'rolls': p.get('rolls', 0),

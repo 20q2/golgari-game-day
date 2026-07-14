@@ -1,6 +1,6 @@
 """Integration tests for the action dispatcher against an in-memory table."""
-import json
 import sys
+from decimal import Decimal
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -10,6 +10,23 @@ from botocore.exceptions import ClientError
 
 import undercity_data as data
 import undercity_db as db
+
+
+def _ddb_copy(obj, reject_float=False):
+    """Deep-copy a value the way boto3's DynamoDB resource treats it: Python
+    floats are UNSUPPORTED (must be Decimal) — mirror that so the suite catches
+    float-persistence bugs. Decimals pass through (as real DynamoDB stores them)."""
+    if isinstance(obj, bool):
+        return obj
+    if isinstance(obj, float):
+        if reject_float:
+            raise TypeError('Float types are not supported. Use Decimal types instead.')
+        return obj
+    if isinstance(obj, dict):
+        return {k: _ddb_copy(v, reject_float) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_ddb_copy(v, reject_float) for v in obj]
+    return obj
 
 
 class FakeTable:
@@ -29,12 +46,13 @@ class FakeTable:
             existing = self.items.get(key)
             if not existing or existing.get('ver') != ExpressionAttributeValues[':v']:
                 raise ClientError({'Error': {'Code': 'ConditionalCheckFailedException'}}, 'PutItem')
-        self.items[key] = json.loads(json.dumps(Item))
+        # Real DynamoDB rejects float; the write path must convert to Decimal.
+        self.items[key] = _ddb_copy(Item, reject_float=True)
         return {}
 
     def get_item(self, Key):
         item = self.items.get(self._key(Key))
-        return {'Item': json.loads(json.dumps(item))} if item else {}
+        return {'Item': _ddb_copy(item)} if item else {}
 
     def delete_item(self, Key):
         self.items.pop(self._key(Key), None)
@@ -56,7 +74,7 @@ class FakeTable:
         out.sort(key=lambda i: i['sk'], reverse=not ScanIndexForward)
         if Limit:
             out = out[:Limit]
-        return {'Items': json.loads(json.dumps(out))}
+        return {'Items': _ddb_copy(out)}
 
 
 def act(table, atype, user='user-alex', name='Alex', **payload):
@@ -590,6 +608,26 @@ def test_state_payloads_carry_creature_name(table):
     by_id = {p['userId']: p for p in state['players']}
     assert by_id['user-alex']['creatureName'] == 'Mulch'
     assert by_id['user-sam']['creatureName'] == 'Puffcap'
+
+
+def test_public_player_exposes_gear_and_effective_stats(table):
+    """The spectator/TV broadcast reads gear + atk/def/spd from public state."""
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    # Equip a fang directly (independent of the shop flow) so the projection has
+    # gear to surface and a stat bonus to fold into the effective numbers.
+    fang = next(iter(data.GEAR))
+    doc['gear'] = {'fang': fang}
+    db._put_player(table, doc)
+
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    pub = {p['userId']: p for p in state['players']}['user-alex']
+    assert pub['gear'].get('fang') == fang
+    # Effective stats mirror engine.effective_stats (base + gear bonuses).
+    eff = db.engine.effective_stats(db._get_player(table, sid, 'user-alex'))
+    for stat in ('atk', 'def', 'spd'):
+        assert pub[stat] == eff[stat]
 
 
 def _sid(table):
@@ -1162,3 +1200,31 @@ def test_balance_good_play_beats_fodder(monkeypatch):
                 break
         wins += 1 if outcome == 'attacker' else 0
     assert wins >= 18, f'only {wins}/20 wins with perfect play'
+
+
+def test_started_battle_persists_without_floats(table):
+    """Regression: doc['battle'] must contain no Python float — real DynamoDB
+    rejects float (needs Decimal). A wild start persists bluff/itemChance, which
+    _put_player must convert to Decimal (else a 500 on every combat landing)."""
+    from decimal import Decimal
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    db._start_battle(table, sid, doc, 'wild', dict(_FODDER, bluff=0.15), node=doc.get('position'))
+    assert db._put_player(table, doc) is True   # would raise TypeError pre-fix
+    stored = table.items[(db._season_pk(sid), 'PLAYER#user-alex')]['battle']
+
+    def has_float(o):
+        if isinstance(o, bool):
+            return False
+        if isinstance(o, float):
+            return True
+        if isinstance(o, dict):
+            return any(has_float(v) for v in o.values())
+        if isinstance(o, list):
+            return any(has_float(v) for v in o)
+        return False
+
+    assert not has_float(stored)
+    # bluff survives the round-trip as a usable number for the telegraph.
+    assert isinstance(stored['npc']['bluff'], Decimal)
