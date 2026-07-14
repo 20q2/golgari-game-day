@@ -149,12 +149,29 @@ ALL_FORMS = {**{k: dict(v, tier=1) for k, v in STARTERS.items()},
 # ── Equipment & consumables ──────────────────────────────────────────────────
 
 GEAR = {
-    'rusted_fang':  {'name': 'Rusted Fang',  'slot': 'fang',     'tier': 1, 'cost': 20, 'atk': 2},
-    'kraul_barb':   {'name': 'Kraul Barb',   'slot': 'fang',     'tier': 2, 'cost': 45, 'atk': 4},
-    'wurm_tooth':   {'name': 'Wurm Tooth',   'slot': 'fang',     'tier': 3, 'cost': 80, 'atk': 6, 'spd': 1},
-    'chitin_scrap': {'name': 'Chitin Scrap', 'slot': 'carapace', 'tier': 1, 'cost': 20, 'def': 2},
-    'bark_hide':    {'name': 'Bark Hide',    'slot': 'carapace', 'tier': 2, 'cost': 45, 'def': 4},
-    'troll_hide':   {'name': 'Troll Hide',   'slot': 'carapace', 'tier': 3, 'cost': 80, 'def': 5, 'maxHp': 6},
+    # Fang — Aggress riders
+    'rusted_fang':  {'name': 'Rusted Fang',  'slot': 'fang', 'tier': 1, 'cost': 20, 'atk': 2, 'rider': 'barbed'},
+    'kraul_barb':   {'name': 'Kraul Barb',   'slot': 'fang', 'tier': 2, 'cost': 45, 'atk': 4, 'rider': 'deep_biter'},
+    'wurm_tooth':   {'name': 'Wurm Tooth',   'slot': 'fang', 'tier': 3, 'cost': 80, 'atk': 6, 'spd': 1, 'rider': 'deep_biter'},
+    # Carapace — Guard riders
+    'chitin_scrap': {'name': 'Chitin Scrap', 'slot': 'carapace', 'tier': 1, 'cost': 20, 'def': 2, 'rider': 'thick'},
+    'bark_hide':    {'name': 'Bark Hide',    'slot': 'carapace', 'tier': 2, 'cost': 45, 'def': 4, 'rider': 'spiked'},
+    'troll_hide':   {'name': 'Troll Hide',   'slot': 'carapace', 'tier': 3, 'cost': 80, 'def': 5, 'maxHp': 6, 'rider': 'spiked'},
+    # Charm — Feint riders (new slot; light on raw stats, value is the rider)
+    'quartz_charm':   {'name': 'Quartz Charm',   'slot': 'charm', 'tier': 1, 'cost': 20, 'spd': 1, 'rider': 'trickster'},
+    'serrated_charm': {'name': 'Serrated Charm', 'slot': 'charm', 'tier': 2, 'cost': 45, 'spd': 1, 'rider': 'serrated'},
+    'glint_charm':    {'name': 'Glint Charm',    'slot': 'charm', 'tier': 3, 'cost': 80, 'spd': 2, 'rider': 'glint'},
+}
+
+# Rider → the stance it modifies + a human blurb (client reads this in Plan 3).
+GEAR_RIDERS = {
+    'barbed':    {'stance': 'aggress', 'blurb': 'Your Aggress applies rot even on a clash or loss.'},
+    'deep_biter':{'stance': 'aggress', 'blurb': 'Winning exchanges hit harder; nothing on a loss.'},
+    'thick':     {'stance': 'guard',   'blurb': 'Your Guard chips in a stall and softens being wrong.'},
+    'spiked':    {'stance': 'guard',   'blurb': 'Your Guard counter reflects part of the blocked hit.'},
+    'trickster': {'stance': 'feint',   'blurb': 'A lost Feint is not fully punished.'},
+    'serrated':  {'stance': 'feint',   'blurb': 'Your Feint break lowers the enemy next-round damage.'},
+    'glint':     {'stance': 'feint',   'blurb': 'Winning a Feint reveals the enemy true next intent.'},
 }
 
 CONSUMABLES = {
@@ -162,6 +179,14 @@ CONSUMABLES = {
     'smoke_spore':  {'name': 'Smoke Spore',  'cost': 15, 'blurb': 'Held: your next failed flee auto-succeeds (consumed).'},
     'loaded_die':   {'name': 'Loaded Die',   'cost': 25, 'blurb': 'Choose your next roll’s value (1–6).'},
     'snare':        {'name': 'Snare',        'cost': 18, 'blurb': 'Trap your current space: next visitor spills 20% of their Spores and skips the space event.'},
+    'scrying_spore': {'name': 'Scrying Spore', 'cost': 20, 'combat': True,
+                      'effect': 'reveal', 'blurb': 'In battle: reveal the enemy true intent this round.'},
+    'rot_bomb':      {'name': 'Rot Bomb', 'cost': 22, 'combat': True,
+                      'effect': 'double_punish', 'blurb': 'In battle: double your damage if you win this round.'},
+    'chitin_ward':   {'name': 'Chitin Ward', 'cost': 22, 'combat': True,
+                      'effect': 'negate', 'blurb': 'In battle: cancel the punish from one wrong guess.'},
+    'ambush_musk':   {'name': 'Ambush Musk', 'cost': 25, 'combat': True,
+                      'effect': 'auto_win', 'blurb': 'In battle: win one exchange regardless of choices.'},
 }
 
 BAG_SIZE = 3
