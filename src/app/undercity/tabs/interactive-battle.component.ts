@@ -31,18 +31,18 @@ export interface CombatStats {
 type Outcome = 'attacker' | 'defender' | 'timeout' | 'fled';
 type Side = 'attacker' | 'defender';
 
-/** One rendered line in the round log. */
-interface UiLog {
-  round: number;
-  tone: 'you' | 'foe' | 'neutral';
-  text: string;
-}
+const ACTION_WORD: Record<Stance, string> = {
+  aggress: 'Strike!',
+  guard: 'Guard!',
+  feint: 'Feint!',
+};
 
 /**
  * Interactive PvE battle (Plan 3): shows the monster's telegraph + personality,
- * takes one stance (± peek/flee/consumable) per round, and plays the
- * server-resolved exchange back beat-by-beat (RPG pacing) via applyRound/finish.
- * The parent (board-tab) owns the network round-trips.
+ * takes one stance (± peek/flee/consumable) per round, then plays the
+ * server-resolved exchange as an animated bout — each fighter performs its
+ * chosen stance (leaping strike / brace-and-shield / feint jab), the struck side
+ * flashes red with a damage number. No text log; the sprites tell the story.
  */
 @Component({
   selector: 'app-undercity-interactive-battle',
@@ -75,7 +75,6 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   protected readonly busy = signal(false);
   protected readonly revealed = signal<Stance | null>(null);
   protected readonly pendingItem = signal<string | null>(null);
-  protected readonly log = signal<UiLog[]>([]);
   protected readonly done = signal(false);
   protected readonly outcome = signal<Outcome | null>(null);
   protected readonly resultText = signal('');
@@ -84,12 +83,16 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   protected readonly attackerSpriteFailed = signal(false);
   protected readonly defenderSpriteFailed = signal(false);
 
-  // Animation state driven by the beat sequence.
-  protected readonly hit = signal<Side | null>(null);
-  protected readonly lunge = signal<Side | null>(null);
+  // Bout animation state driven by the beat sequence.
+  protected readonly stanceAnim = signal<{ attacker?: Stance; defender?: Stance }>({});
+  protected readonly actWord = signal<{ attacker?: string; defender?: string }>({});
+  protected readonly guard = signal<{ attacker: boolean; defender: boolean }>({
+    attacker: false,
+    defender: false,
+  });
+  protected readonly struck = signal<Side | null>(null);
   protected readonly pop = signal<{ side: Side; text: string; kind: 'dmg' | 'heal' | 'miss' } | null>(null);
-  protected readonly clash = signal<string | null>(null);
-  /** True while the round telegraph should be hidden (during the exchange). */
+  /** Hide the telegraph/controls while the exchange plays. */
   protected readonly resolving = signal(false);
 
   private timers: ReturnType<typeof setTimeout>[] = [];
@@ -114,8 +117,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   protected telegraphText(): string {
     return TELEGRAPH_TEXT[this.telegraph];
   }
-  protected logNewestFirst(): UiLog[] {
-    return [...this.log()].reverse();
+  protected stanceOf(side: Side): Stance | undefined {
+    return this.stanceAnim()[side];
   }
 
   // ── Player actions ─────────────────────────────────────────────────────────
@@ -150,7 +153,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
 
   // ── Parent-driven results ────────────────────────────────────────────────────
 
-  /** Play one resolved round beat-by-beat, then advance the telegraph + unlock. */
+  /** Play one resolved round as an animated bout, then advance + unlock. */
   applyRound(entries: CombatEntry[], telegraph: Stance, playerHp: number, npcHp: number): void {
     this.runSequence(entries, playerHp, npcHp, () => {
       this.telegraph = telegraph;
@@ -202,7 +205,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
 
   fleeResult(escaped: boolean): void {
     if (escaped) {
-      this.log.set([...this.log(), { round: 0, tone: 'neutral', text: 'You slip away into the dark.' }]);
+      this.resultText.set('You slip away into the dark.');
       this.outcome.set('fled');
       this.done.set(true);
     }
@@ -212,8 +215,9 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   // ── Beat sequencer ───────────────────────────────────────────────────────────
 
   /**
-   * Replay a round's entries with RPG pacing: read the clash, then land each
-   * blow on its own beat, then settle on the authoritative HP and call onDone.
+   * Replay a round: both fighters perform their stance (word pops + animation),
+   * the winner's blow lands mid-swing (struck side flashes red + damage pops),
+   * then settle on the authoritative HP and call onDone.
    */
   private runSequence(
     entries: CombatEntry[],
@@ -230,61 +234,55 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     };
 
     const header = entries.find((e) => e.winner && e.aStance && e.dStance);
+    const effects = entries.filter((e) => this.entryHasEffect(e));
+
     if (header) {
+      const a = header.aStance!;
+      const d = header.dStance!;
       at(0, () => {
-        this.clash.set(
-          `You ${this.stanceMap[header.aStance!].label} · ${this.defender.name} ${this.stanceMap[header.dStance!].label}`,
-        );
-        this.pushLog(header);
-        const first: Side = header.winner === 'defender' ? 'defender' : 'attacker';
-        this.lunge.set(first);
+        this.stanceAnim.set({ attacker: a, defender: d });
+        this.actWord.set({ attacker: ACTION_WORD[a], defender: ACTION_WORD[d] });
+        this.guard.set({ attacker: a === 'guard', defender: d === 'guard' });
       });
-      at(320, () => this.lunge.set(null));
+      at(750, () => this.actWord.set({})); // words fade once the wind-up reads
     }
 
-    for (const e of entries) {
-      if (e === header || !this.entryHasEffect(e)) {
-        if (e !== header) at(120, () => this.pushLog(e));
-        continue;
-      }
-      at(560, () => this.animateEntry(e));
+    let first = true;
+    for (const e of effects) {
+      // First blow lands at the aggressor's impact (~mid leap); rest space out.
+      at(first ? (header ? 780 : 220) : 560, () => this.animateEntry(e));
+      first = false;
     }
 
-    at(700, () => {
+    at(720, () => {
       this.attackerHp.set(finalPlayerHp);
       this.defenderHp.set(finalNpcHp);
-      this.clash.set(null);
-      this.lunge.set(null);
+      this.stanceAnim.set({});
+      this.guard.set({ attacker: false, defender: false });
+      this.actWord.set({});
+      this.struck.set(null);
       this.pop.set(null);
-      this.hit.set(null);
       this.resolving.set(false);
       onDone();
     });
   }
 
   private entryHasEffect(e: CombatEntry): boolean {
-    return !!(e.dmg || e.heal || e.miss || e.negated || e.rotApplied);
+    return !!(e.dmg || e.heal || e.miss || e.negated);
   }
 
   private animateEntry(e: CombatEntry): void {
     const rot = !!e.rot;
     // strike/counter/swarm: `by` is the dealer → target is the other side.
     // rot tick: `by` is the side taking the rot → it IS the target.
-    const target: Side = rot
-      ? (e.by as Side)
-      : e.by === 'attacker'
-        ? 'defender'
-        : 'attacker';
+    const target: Side = rot ? (e.by as Side) : e.by === 'attacker' ? 'defender' : 'attacker';
 
     if (e.dmg) {
       const cur = target === 'attacker' ? this.attackerHp() : this.defenderHp();
-      const next = Math.max(0, cur - e.dmg);
-      (target === 'attacker' ? this.attackerHp : this.defenderHp).set(next);
-      this.hit.set(target);
+      (target === 'attacker' ? this.attackerHp : this.defenderHp).set(Math.max(0, cur - e.dmg));
+      this.struck.set(target);
       this.pop.set({ side: target, text: `-${e.dmg}`, kind: 'dmg' });
-      this.lunge.set(rot ? null : (e.by as Side));
-      this.timers.push(setTimeout(() => this.hit.set(null), 300));
-      this.timers.push(setTimeout(() => this.lunge.set(null), 300));
+      this.timers.push(setTimeout(() => this.struck.set(null), 380));
     } else if (e.miss || e.negated) {
       this.pop.set({ side: target, text: e.negated ? 'ward' : 'miss', kind: 'miss' });
     }
@@ -297,8 +295,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
       if (!e.dmg) this.pop.set({ side: healer, text: `+${e.heal}`, kind: 'heal' });
     }
 
-    this.pushLog(e);
-    this.timers.push(setTimeout(() => this.pop.set(null), 480));
+    this.timers.push(setTimeout(() => this.pop.set(null), 520));
   }
 
   protected hasRewards(): boolean {
@@ -323,32 +320,5 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     const hp = side === 'attacker' ? this.attackerHp() : this.defenderHp();
     const max = side === 'attacker' ? this.attacker.maxHp : this.defender.maxHp;
     return Math.max(0, Math.min(100, Math.round((hp / Math.max(1, max)) * 100)));
-  }
-
-  private pushLog(e: CombatEntry): void {
-    const foe = this.defender.name;
-    let tone: UiLog['tone'] = 'neutral';
-    let text = '';
-    if (e.winner && e.aStance && e.dStance) {
-      text = `You ${this.stanceMap[e.aStance].label}, it ${this.stanceMap[e.dStance].label}.`;
-    } else if (e.negated) {
-      text = 'Warded — the blow is turned aside.';
-    } else if (e.miss) {
-      text = 'Dodged!';
-    } else if (e.rotApplied) {
-      text = `Rot takes hold of ${foe}.`;
-    } else if (e.rot) {
-      tone = e.by === 'attacker' ? 'you' : 'foe';
-      text = `Rot festers for ${e.dmg}.`;
-    } else if (e.heal && !e.dmg) {
-      tone = 'you';
-      text = `You drain ${e.heal} back.`;
-    } else if (e.dmg) {
-      tone = e.by === 'attacker' ? 'you' : 'foe';
-      const who = e.by === 'attacker' ? `You hit ${foe}` : `${foe} hits you`;
-      const suffix = e.retaliation ? ' (counter)' : e.heal ? ` (drain ${e.heal})` : '';
-      text = `${who} for ${e.dmg}${suffix}.`;
-    }
-    if (text) this.log.set([...this.log(), { round: e.round, tone, text }]);
   }
 }

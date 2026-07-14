@@ -36,9 +36,18 @@
         </div>
       }
 
-      <div class="side" [class.lunge-right]="lunge() === 'attacker'" [class.hit]="hit() === 'attacker'" [class.ko]="done() && outcome() === 'defender'">
+      <div
+        class="side"
+        [class.act-aggress]="stanceOf('attacker') === 'aggress'"
+        [class.act-guard]="stanceOf('attacker') === 'guard'"
+        [class.act-feint]="stanceOf('attacker') === 'feint'"
+        [class.struck]="struck() === 'attacker'"
+        [class.ko]="done() && outcome() === 'defender'"
+      >
         <span class="platform"></span>
+        @if (actWord().attacker; as w) { <span class="act-word">{{ w }}</span> }
         <span class="body">
+          @if (guard().attacker) { <span class="barrier"></span> }
           @if (attacker.spriteUrl && !attackerSpriteFailed()) {
             <img class="sprite" [src]="attacker.spriteUrl" [alt]="attacker.name" (error)="attackerSpriteFailed.set(true)" />
           } @else {
@@ -52,8 +61,16 @@
 
       <div class="vs-badge">VS</div>
 
-      <div class="side flipped" [class.lunge-left]="lunge() === 'defender'" [class.hit]="hit() === 'defender'" [class.ko]="done() && outcome() === 'attacker'">
+      <div
+        class="side flipped"
+        [class.act-aggress]="stanceOf('defender') === 'aggress'"
+        [class.act-guard]="stanceOf('defender') === 'guard'"
+        [class.act-feint]="stanceOf('defender') === 'feint'"
+        [class.struck]="struck() === 'defender'"
+        [class.ko]="done() && outcome() === 'attacker'"
+      >
         <span class="platform"></span>
+        @if (actWord().defender; as w) { <span class="act-word">{{ w }}</span> }
         <!-- Slay-the-Spire intent: floats above the foe until the exchange plays -->
         @if (!done() && !resolving()) {
           <div class="intent-float" [class.scried]="revealed()" [title]="stanceMap[revealed() ?? telegraph].label">
@@ -61,6 +78,7 @@
           </div>
         }
         <span class="body">
+          @if (guard().defender) { <span class="barrier"></span> }
           @if (defender.spriteUrl && !defenderSpriteFailed()) {
             <img class="sprite" [src]="defender.spriteUrl" [alt]="defender.name" (error)="defenderSpriteFailed.set(true)" />
           } @else {
@@ -80,9 +98,6 @@
         </div>
       }
 
-      @if (clash(); as c) {
-        <div class="clash-banner">{{ c }}</div>
-      }
       @if (done()) {
         <div class="outcome-banner" [class.win]="outcome() === 'attacker'" [class.lose]="outcome() === 'defender'">
           {{ outcomeLabel() }}
@@ -147,18 +162,10 @@
       </div>
     }
 
-    <!-- Round log, newest first -->
-    <div class="battle-log">
-      @if (done() && resultText()) {
-        <div class="log-result"><mat-icon class="mi">flag</mat-icon><span>{{ resultText() }}</span></div>
-      }
-      @for (line of logNewestFirst(); track $index) {
-        <div class="log-line" [class.you]="line.tone === 'you'" [class.foe]="line.tone === 'foe'">
-          @if (line.round) { <span class="log-round">R{{ line.round }}</span> }
-          <span class="log-text">{{ line.text }}</span>
-        </div>
-      }
-    </div>
+    <!-- Outcome line (no per-round log — the sprites tell the story) -->
+    @if (done() && resultText()) {
+      <div class="result-line"><mat-icon class="mi">flag</mat-icon><span>{{ resultText() }}</span></div>
+    }
 
     <div class="battle-actions">
       @if (done()) {

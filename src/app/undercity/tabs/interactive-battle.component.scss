@@ -669,3 +669,149 @@
   0%, 100% { transform: translateX(-50%) scaleX(1); opacity: 1; }
   50% { transform: translateX(-50%) scaleX(0.84); opacity: 0.72; }
 }
+
+// ── Bout animations (Plan-3 combat feel) ─────────────────────────────────────
+
+// Dialed-up shadows: a deep drop-shadow + a darker ground pool.
+.side .sprite,
+.side .sprite-icon {
+  filter: drop-shadow(0 13px 9px rgba(0, 0, 0, 0.82));
+}
+.side .platform {
+  width: 112px;
+  height: 34px;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.72) 0%, transparent 70%);
+}
+
+.side .body { position: relative; }
+
+// The action word ("Strike!/Guard!/Feint!") pops off the sprite and fades.
+.act-word {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 6;
+  font-weight: 900;
+  font-size: 1.05rem;
+  letter-spacing: 0.03em;
+  color: #fff;
+  white-space: nowrap;
+  text-shadow: 0 2px 4px #000, 0 0 10px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  animation: uc-word-pop 0.75s ease forwards;
+}
+
+@keyframes uc-word-pop {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(0.7); }
+  22% { opacity: 1; transform: translate(-50%, -6px) scale(1.12); }
+  72% { opacity: 1; transform: translate(-50%, -12px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -22px) scale(1); }
+}
+
+// AGGRESS — power up (pull back + glow) then a big leaping whammy.
+.side.act-aggress { animation: uc-aggress-r 0.9s ease; }
+.side.flipped.act-aggress { animation: uc-aggress-l 0.9s ease; }
+
+@keyframes uc-aggress-r {
+  0% { transform: translateX(0) scale(1); filter: brightness(1); }
+  24% { transform: translateX(-16px) scale(1.14); filter: brightness(1.6); }
+  32% { transform: translateX(-16px) scale(1.14); filter: brightness(1.5); }
+  54% { transform: translateX(52px) scale(1.2); filter: brightness(1.1); }
+  66% { transform: translateX(44px) scale(1.05); filter: brightness(1); }
+  100% { transform: translateX(0) scale(1); filter: brightness(1); }
+}
+@keyframes uc-aggress-l {
+  0% { transform: translateX(0) scale(1); filter: brightness(1); }
+  24% { transform: translateX(16px) scale(1.14); filter: brightness(1.6); }
+  32% { transform: translateX(16px) scale(1.14); filter: brightness(1.5); }
+  54% { transform: translateX(-52px) scale(1.2); filter: brightness(1.1); }
+  66% { transform: translateX(-44px) scale(1.05); filter: brightness(1); }
+  100% { transform: translateX(0) scale(1); filter: brightness(1); }
+}
+
+// FEINT — dart in, pull back, quick jab.
+.side.act-feint { animation: uc-feint-r 0.58s ease; }
+.side.flipped.act-feint { animation: uc-feint-l 0.58s ease; }
+
+@keyframes uc-feint-r {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(20px); }
+  38% { transform: translateX(2px); }
+  56% { transform: translateX(28px); }
+  74% { transform: translateX(0); }
+  100% { transform: translateX(0); }
+}
+@keyframes uc-feint-l {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-20px); }
+  38% { transform: translateX(-2px); }
+  56% { transform: translateX(-28px); }
+  74% { transform: translateX(0); }
+  100% { transform: translateX(0); }
+}
+
+// GUARD — brace and hold (a shield bubble also appears, see .barrier).
+.side.act-guard { animation: uc-guard 0.4s ease forwards; }
+@keyframes uc-guard {
+  0% { transform: translateX(0) scale(1); }
+  45% { transform: scale(0.93) translateY(3px); }
+  100% { transform: scale(0.95) translateY(2px); }
+}
+
+// Guard shield bubble around the fighter.
+.barrier {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: 116px;
+  height: 116px;
+  margin: -58px 0 0 -58px;
+  border-radius: 50%;
+  border: 2px solid rgba(130, 205, 255, 0.85);
+  background: radial-gradient(circle, rgba(130, 205, 255, 0.14), transparent 68%);
+  box-shadow: 0 0 16px rgba(130, 205, 255, 0.55), inset 0 0 18px rgba(130, 205, 255, 0.35);
+  pointer-events: none;
+  animation: uc-barrier-in 0.22s ease, uc-barrier-pulse 1.4s ease-in-out 0.22s infinite;
+}
+@keyframes uc-barrier-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes uc-barrier-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(130, 205, 255, 0.45), inset 0 0 14px rgba(130, 205, 255, 0.3); }
+  50% { box-shadow: 0 0 22px rgba(130, 205, 255, 0.7), inset 0 0 22px rgba(130, 205, 255, 0.45); }
+}
+
+// STRUCK — the hit fighter flashes red and shakes; a damage number pops.
+.side.struck .body { animation: uc-shake 0.38s ease; }
+.side.struck .body::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 12px;
+  background: rgba(255, 55, 40, 0.6);
+  pointer-events: none;
+  animation: uc-flash 0.38s ease;
+}
+@keyframes uc-flash {
+  0% { opacity: 0; }
+  25% { opacity: 0.75; }
+  100% { opacity: 0; }
+}
+
+// Outcome caption (replaces the removed combat log).
+.result-line {
+  flex-shrink: 0;
+  margin: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-weight: 800;
+  color: #fde68a;
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.05));
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  .mi { color: #fbbf24; flex-shrink: 0; }
+}
