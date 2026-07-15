@@ -20,8 +20,11 @@ def table():
 
 
 def _admin(table, cmd, host='swampking', **payload):
-    return act(table, 'admin', user='user-host', name='Host',
-               cmd=cmd, hostKey=host, **payload)
+    # Call the dispatcher directly (not the `act` helper) so an admin payload
+    # key like `name` (the bot's name) can't collide with act()'s username kwarg.
+    return db.handle_action(table, {
+        'type': 'admin', 'userId': 'user-host', 'username': 'Host',
+        'payload': {'cmd': cmd, 'hostKey': host, **payload}})
 
 
 def test_admin_rejects_wrong_hostkey(table):
@@ -44,4 +47,34 @@ def test_broadcast_requires_text(table):
 
 def test_unknown_admin_cmd(table):
     status, resp = _admin(table, 'frobnicate')
+    assert status == 400
+
+
+def test_bot_add_creates_public_player(table):
+    status, resp = _admin(table, 'bot-add', species='saproling', home='cavern',
+                          name='Mossy')
+    assert status == 200
+    bot = resp['bot']
+    assert bot['isBot'] is True
+    assert bot['species'] == 'saproling'
+    assert bot['userId'].startswith('BOT#')
+    assert bot['hp'] == 38 and bot['position'] == 'cavern_r0'
+
+    # It appears in the season roster like any player.
+    _, state = db.handle_state(table, {'userId': 'user-host'})
+    ids = [p['userId'] for p in state['players']]
+    assert bot['userId'] in ids
+    assert any(p.get('isBot') for p in state['players'])
+
+
+def test_bot_add_random_species_and_home(table):
+    status, resp = _admin(table, 'bot-add')  # no species/home => random
+    assert status == 200
+    bot = resp['bot']
+    assert bot['species'] in data.STARTERS
+    assert bot['isBot'] is True
+
+
+def test_bot_add_rejects_bad_species(table):
+    status, resp = _admin(table, 'bot-add', species='dragon')
     assert status == 400

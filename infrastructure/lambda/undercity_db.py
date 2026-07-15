@@ -635,6 +635,7 @@ def _public_player(p):
         'pvpWins': p.get('pvpWins', 0), 'wildWins': p.get('wildWins', 0),
         'composts': p.get('composts', 0),
         'paint': p.get('paint'), 'hat': p.get('hat'),
+        'isBot': p.get('isBot', False),
         'renown': data.compute_renown(p),
     }
 
@@ -799,8 +800,34 @@ def _admin_broadcast(table, sid, payload):
     return 200, {'ok': True}
 
 
+def _admin_bot_add(table, sid, payload):
+    species = payload.get('species')
+    if species in (None, '', 'random'):
+        species = random.choice(list(data.STARTERS))
+    if species not in data.STARTERS:
+        return _err('Unknown species: ' + str(species))
+    home = payload.get('home')
+    if home in (None, '', 'random'):
+        home = random.choice(list(data.BIOMES))
+    if home not in data.BIOMES:
+        return _err('Unknown home biome: ' + str(home))
+    name = str(payload.get('name') or '').strip()[:16]
+    bot_id = 'BOT#' + uuid.uuid4().hex[:8]
+    username = name or ('Bot ' + bot_id[4:8])
+    doc = _new_player_doc(sid, bot_id, username, species, home,
+                          creature_name=name, is_bot=True)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    _event(table, sid, 'hatch',
+           f"A {data.STARTERS[species]['name']} named {doc['creatureName']} "
+           f"skitters into the Undercity.", actor=bot_id)
+    return 200, {'ok': True, 'bot': _public_player(doc)}
+
+
 _ADMIN_CMDS = {
     'broadcast': _admin_broadcast,
+    'bot-add': _admin_bot_add,
 }
 
 
