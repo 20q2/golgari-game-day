@@ -246,7 +246,7 @@
     }
 
     <!-- Outcome line (no per-round log — the sprites tell the story) -->
-    @if (done() && resultText()) {
+    @if (done() && resultText() && !hasRewards()) {
       <div class="result-line"><mat-icon class="mi">flag</mat-icon><span>{{ resultText() }}</span></div>
     }
 
