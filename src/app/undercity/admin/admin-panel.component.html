@@ -14,6 +14,22 @@
   <app-undercity-host-panel />
 
   <section class="admin-section">
+    <h2>Add bot</h2>
+    <div class="grant-controls">
+      <input [(ngModel)]="botName" placeholder="Name (optional)" maxlength="16" />
+      <select [(ngModel)]="botSpecies">
+        @for (s of speciesList; track s) { <option [value]="s">{{ s }}</option> }
+      </select>
+      <select [(ngModel)]="botHome">
+        @for (b of biomeList; track b) { <option [value]="b">{{ b }}</option> }
+      </select>
+      <button (click)="addBot()" [disabled]="busy() || !hostKey.trim()">
+        <mat-icon class="mi">add</mat-icon> Add
+      </button>
+    </div>
+  </section>
+
+  <section class="admin-section">
     <h2>Grant defaults</h2>
     <div class="grant-controls">
       <select [(ngModel)]="grantResource">
@@ -70,6 +86,17 @@
           }
         </tbody>
       </table>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <h2>Broadcast</h2>
+    <div class="grant-controls">
+      <input [(ngModel)]="broadcastText" placeholder="Message to the log / TV ticker"
+             maxlength="280" class="broadcast-input" />
+      <button (click)="broadcast()" [disabled]="busy() || !hostKey.trim()">
+        <mat-icon class="mi">campaign</mat-icon> Send
+      </button>
     </div>
   </section>
 </div>
