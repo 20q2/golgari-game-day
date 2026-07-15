@@ -224,6 +224,12 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                     losr.dmg_penalty += 2
                 if winr.has_rider('glint') or winr.has_buff('glowveil'):
                     winr.reveal_next = True
+            # Feint into an Aggress still lands a poke: the caught feinter takes
+            # the big hit but chips the aggressor back.
+            if lose_stance == 'feint' and losr.hp > 0:
+                chip_raw = _base_hit(losr, winr, rng)
+                _deal(losr, winr, lose_side, rnd, chip_raw, data.STANCE_STALL_MULT,
+                      entries, tag='chip')
             _scavenge(losr, winr, lose_side, rnd, entries)
     elif winner == 'clash':
         # A-vs-A: both strike full; SPD-first lands first (matters for a kill).
@@ -243,13 +249,19 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             raw = _base_hit(s, t, rng)
             _deal(s, t, side, rnd, raw, data.STANCE_CLASH_MULT, entries)
     elif winner == 'stall':
-        # G-vs-G: chip only. Thick doubles your stall chip.
+        # G-vs-G: both fully block — NO damage, unless a Thick carapace chips
+        # through (its whole identity: "Guard chips even in a stall").
         for side, (s, t) in (('attacker', (attacker, defender)),
                              ('defender', (defender, attacker))):
-            mult = data.STANCE_STALL_MULT * (2 if s.has_rider('thick') else 1)
+            if s.has_rider('thick'):
+                raw = _base_hit(s, t, rng)
+                _deal(s, t, side, rnd, raw, data.STANCE_STALL_MULT, entries, tag='chip')
+    elif winner == 'whiff':
+        # F-vs-F: two tricks cancel, but both still poke — each takes chip.
+        for side, (s, t) in (('attacker', (attacker, defender)),
+                             ('defender', (defender, attacker))):
             raw = _base_hit(s, t, rng)
-            _deal(s, t, side, rnd, raw, mult, entries)
-    # whiff: nothing.
+            _deal(s, t, side, rnd, raw, data.STANCE_STALL_MULT, entries, tag='chip')
 
     # Swarm: one extra chip hit per round regardless of stance (min 1).
     for side, (s, t) in (('attacker', (attacker, defender)),
@@ -450,16 +462,17 @@ def apply_level_ups(player: dict) -> int:
 
 
 def spend_stat(player: dict, stat: str) -> bool:
-    """Spend one banked stat point; max +1 per stat per level (GDD §5)."""
+    """Spend one banked stat point on any core stat (GDD §5).
+
+    Points can be stacked freely — multiple into a single stat is allowed;
+    the only limit is how many banked points you have."""
     if stat not in ('atk', 'def', 'spd'):
         return False
     if player.get('statPoints', 0) < 1:
         return False
-    spent = player.setdefault('spentThisLevel', {'atk': 0, 'def': 0, 'spd': 0})
-    if spent.get(stat, 0) >= 1:
-        return False
     player[stat] += 1
     player['statPoints'] -= 1
+    spent = player.setdefault('spentThisLevel', {'atk': 0, 'def': 0, 'spd': 0})
     spent[stat] = spent.get(stat, 0) + 1
     return True
 

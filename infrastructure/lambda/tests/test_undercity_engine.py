@@ -65,13 +65,13 @@ def test_level_cap():
     assert p['level'] == 12
 
 
-def test_spend_stat_caps_one_per_stat_per_level():
+def test_spend_stat_stacks_freely_until_out_of_points():
     p = {'statPoints': 2, 'atk': 6, 'def': 5, 'spd': 5,
          'spentThisLevel': {'atk': 0, 'def': 0, 'spd': 0}}
     assert spend_stat(p, 'atk')
     assert p['atk'] == 7 and p['statPoints'] == 1
-    assert not spend_stat(p, 'atk')          # second point into same stat blocked
-    assert spend_stat(p, 'spd')
+    assert spend_stat(p, 'atk')              # second point into same stat now allowed
+    assert p['atk'] == 8 and p['statPoints'] == 0
     assert not spend_stat(p, 'def')          # no points left
 
 
@@ -379,7 +379,8 @@ def test_round_aggress_beats_feint_full_punish():
     rng = FakeRng(uniform=1.0)
     entries = resolve_round(a, d, 'aggress', 'feint', 1, rng)
     assert d.hp == 30 - round(6 * data.STANCE_WIN_MULT)   # 30 - 9 = 21
-    assert a.hp == 30                                       # feinter dealt nothing
+    # the caught feinter still pokes back for chip (5 * 0.15 -> 1)
+    assert a.hp == 30 - round(5 * data.STANCE_STALL_MULT)
     assert any(e.get('winner') == 'attacker' for e in entries)
 
 
@@ -405,15 +406,38 @@ def test_round_clash_both_take_full():
 def test_round_whiff_nobody_hit():
     a = fighter(hp=30, max_hp=30); d = fighter(hp=30, max_hp=30)
     resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0))
-    assert a.hp == 30 and d.hp == 30
+    assert a.hp == 30 and d.hp == 30   # atk6-def5 chip rounds to 0
+
+
+def test_double_guard_deals_no_damage():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    resolve_round(a, d, 'guard', 'guard', 1, FakeRng(uniform=1.0))
+    assert a.hp == 30 and d.hp == 30   # both fully block
+
+
+def test_thick_still_chips_in_a_stall():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, riders=frozenset({'thick'}))
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    resolve_round(a, d, 'guard', 'guard', 1, FakeRng(uniform=1.0))
+    assert d.hp == 30 - round(5 * data.STANCE_STALL_MULT)  # thick chips through
+    assert a.hp == 30                                       # plain guard: unscathed
+
+
+def test_double_feint_both_chip():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0))
+    chip = round(5 * data.STANCE_STALL_MULT)   # 1
+    assert a.hp == 30 - chip and d.hp == 30 - chip
 
 
 def test_swarm_adds_chip_each_round():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'swarm'}))
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30)
     resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0))  # whiff
-    # whiff deals nothing, but swarm chips: round(5*0.5)=2
-    assert d.hp == 28
+    # whiff chips each for round(5*0.15)=1; swarm adds round(5*0.5)=2 onto d
+    assert d.hp == 27 and a.hp == 29
 
 
 def test_rot_stacks_tick_end_of_round():
@@ -447,7 +471,8 @@ def test_scavenge_retaliates_on_loss():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)                       # winner
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'scavenge'}))
     resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))   # d loses
-    assert a.hp == 30 - data.SCAVENGE_RETALIATE   # d retaliates 2
+    # d retaliates 2 (scavenge) AND pokes 1 (caught feint)
+    assert a.hp == 30 - data.SCAVENGE_RETALIATE - round(5 * data.STANCE_STALL_MULT)
 
 
 def test_drain_life_heals_on_win():
@@ -456,17 +481,19 @@ def test_drain_life_heals_on_win():
     resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
     dmg = round(6 * data.STANCE_WIN_MULT)   # 9
     assert d.hp == 60 - dmg
-    assert a.hp == 20 + round(dmg * 0.5)    # healed 50% of damage dealt
+    # healed 50% of damage dealt, minus the feinter's chip-back (1)
+    assert a.hp == 20 + round(dmg * 0.5) - round(5 * data.STANCE_STALL_MULT)
 
 
 def test_force_winner_overrides_triangle():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
     d = fighter(atk=10, dfn=4, hp=30, max_hp=30)
-    # both feint => normally a whiff (nobody hit). Force attacker to win: a lands
-    # the decisive hit, d takes it, a takes nothing (clean auto-win semantics).
+    # both feint => normally a whiff. Force attacker to win: a lands the decisive
+    # hit; the caught feinter (d) still pokes a for chip (5 * 0.15 -> 1).
     resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0),
                   force_winner='attacker')
-    assert a.hp == 30 and d.hp == 30 - round(6 * data.STANCE_WIN_MULT)
+    assert d.hp == 30 - round(6 * data.STANCE_WIN_MULT)
+    assert a.hp == 30 - round(5 * data.STANCE_STALL_MULT)
 
 
 def test_double_win_for_doubles_winner_damage():
