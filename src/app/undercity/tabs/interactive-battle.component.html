@@ -205,6 +205,8 @@
       </div>
       @if (pendingItem()) {
         <div class="armed-hint">Item armed — pick a stance to use it.</div>
+      } @else if (canFlee && !hasActed()) {
+        <div class="flee-hint">You can't flee on the first round — make a move.</div>
       }
     }
 
