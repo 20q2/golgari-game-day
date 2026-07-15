@@ -208,54 +208,79 @@
         <h3><mat-icon class="mi">storefront</mat-icon> Rot-Farm Bazaar</h3>
         <p class="modal-sub">
           You carry <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ store.you()?.spores }}
+          · Restocks in {{ bazaarRestockLabel() }}
         </p>
-        <div class="shop-section">Gear (auto-equips; old piece trades in at 50%)</div>
-        @for (g of gear; track g.id) {
-          <div class="shop-row">
-            <span class="shop-name">{{ g.name }} <em>{{ g.desc }}</em></span>
-            <button
-              class="uc-btn shop-buy"
-              [disabled]="busy() || store.you()?.gear?.[g.slot] === g.id"
-              (click)="buy(g)"
-            >
-              @if (store.you()?.gear?.[g.slot] === g.id) {
-                Equipped
-              } @else {
-                {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-              }
-            </button>
-          </div>
+
+        <div class="shop-tabs" role="tablist">
+          <button class="shop-tab" [class.active]="shopTab() === 'gear'" (click)="shopTab.set('gear')">Gear</button>
+          <button class="shop-tab" [class.active]="shopTab() === 'consumables'" (click)="shopTab.set('consumables')">Consumables</button>
+          <button class="shop-tab" [class.active]="shopTab() === 'grimoires'" (click)="shopTab.set('grimoires')">Grimoires</button>
+        </div>
+
+        @switch (shopTab()) {
+          @case ('gear') {
+            <div class="shop-hint">Auto-equips; old piece trades in at 50%.</div>
+            @for (r of shopGearRows(); track r.info.id) {
+              <div class="shop-row">
+                <span class="shop-name">{{ r.info.name }} <em>{{ r.info.desc }}</em></span>
+                <button
+                  class="uc-btn shop-buy"
+                  [disabled]="busy() || r.qty <= 0 || store.you()?.gear?.[r.info.slot] === r.info.id"
+                  (click)="buy(r.info)"
+                >
+                  @if (store.you()?.gear?.[r.info.slot] === r.info.id) {
+                    Equipped
+                  } @else if (r.qty <= 0) {
+                    Sold out
+                  } @else {
+                    {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> <span class="shop-qty">×{{ r.qty }}</span>
+                  }
+                </button>
+              </div>
+            } @empty {
+              <div class="shop-empty">The gear racks are bare. Check back after the restock.</div>
+            }
+          }
+          @case ('consumables') {
+            <div class="shop-hint">Bag {{ store.you()?.bag?.length ?? 0 }}/3.</div>
+            @for (r of shopConsumableRows(); track r.info.id) {
+              <div class="shop-row">
+                <span class="shop-name">
+                  <mat-icon class="mi">{{ r.info.icon }}</mat-icon> {{ r.info.name }} <em>{{ r.info.desc }}</em>
+                </span>
+                <button class="uc-btn shop-buy" [disabled]="busy() || r.qty <= 0" (click)="buy(r.info)">
+                  @if (r.qty <= 0) {
+                    Sold out
+                  } @else {
+                    {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> <span class="shop-qty">×{{ r.qty }}</span>
+                  }
+                </button>
+              </div>
+            } @empty {
+              <div class="shop-empty">No consumables in stock. Check back after the restock.</div>
+            }
+          }
+          @case ('grimoires') {
+            <div class="shop-hint">Yours forever; open one from the Creature tab.</div>
+            @for (g of shopGrimoireRows(); track g.id) {
+              <div class="shop-row">
+                <span class="shop-name">
+                  <mat-icon class="mi">menu_book</mat-icon> {{ g.name }} <em>{{ grimoireSpellList(g) }}</em>
+                </span>
+                <button class="uc-btn shop-buy" [disabled]="busy() || ownsGrimoire(g.id)" (click)="buy(g)">
+                  @if (ownsGrimoire(g.id)) {
+                    Owned
+                  } @else {
+                    {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+                  }
+                </button>
+              </div>
+            } @empty {
+              <div class="shop-empty">No tomes on the shelf right now.</div>
+            }
+          }
         }
-        <div class="shop-section">Consumables (bag {{ store.you()?.bag?.length ?? 0 }}/3)</div>
-        @for (c of consumables; track c.id) {
-          <div class="shop-row">
-            <span class="shop-name">
-              <mat-icon class="mi">{{ c.icon }}</mat-icon> {{ c.name }} <em>{{ c.desc }}</em>
-            </span>
-            <button class="uc-btn shop-buy" [disabled]="busy()" (click)="buy(c)">
-              {{ c.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-            </button>
-          </div>
-        }
-        <div class="shop-section">Grimoires (yours forever; open one from the Creature tab)</div>
-        @for (g of shopGrimoires; track g.id) {
-          <div class="shop-row">
-            <span class="shop-name">
-              <mat-icon class="mi">menu_book</mat-icon> {{ g.name }} <em>{{ grimoireSpellList(g) }}</em>
-            </span>
-            <button
-              class="uc-btn shop-buy"
-              [disabled]="busy() || ownsGrimoire(g.id)"
-              (click)="buy(g)"
-            >
-              @if (ownsGrimoire(g.id)) {
-                Owned
-              } @else {
-                {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-              }
-            </button>
-          </div>
-        }
+
         <button class="uc-btn close-btn" (click)="closeFacilities()">Leave</button>
       </div>
     </div>
@@ -491,6 +516,7 @@
       [defenderStats]="lb.defenderStats"
       [resume]="lb.resume"
       [resumeRevealed]="lb.resumeRevealed"
+      [startRound]="lb.startRound"
       (submitStance)="onStance($event)"
       (peek)="onPeek()"
       (flee)="onFlee()"

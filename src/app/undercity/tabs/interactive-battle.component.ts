@@ -19,6 +19,8 @@ export interface BattleItem {
   name: string;
   icon: string;
   effect: string;
+  /** Human-readable description shown in the inventory tray. */
+  desc: string;
 }
 
 /** Combat stats shown beside a fighter. */
@@ -65,6 +67,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   /** Reopening a fight after a reload — skip the entrance, restore any scry. */
   @Input() resume = false;
   @Input() resumeRevealed: Stance | null = null;
+  /** Round the fight opens on (>1 when resuming a fight already under way). */
+  @Input() startRound = 1;
 
   @Output() submitStance = new EventEmitter<{ stance: Stance; item?: string }>();
   @Output() peek = new EventEmitter<void>();
@@ -84,6 +88,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   protected readonly resultText = signal('');
   protected readonly rewards = signal<BattleRewards | null>(null);
   protected readonly showHelp = signal(false);
+  protected readonly showItems = signal(false);
   protected readonly attackerSpriteFailed = signal(false);
   protected readonly defenderSpriteFailed = signal(false);
 
@@ -105,11 +110,15 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   protected readonly enteredStats = signal(false);
   protected readonly introDone = signal(false);
 
+  /** You can't flee until you've traded at least one blow (server also gates). */
+  protected readonly hasActed = signal(false);
+
   private timers: ReturnType<typeof setTimeout>[] = [];
 
   ngOnInit(): void {
     this.attackerHp.set(this.attacker.startHp);
     this.defenderHp.set(this.defender.startHp);
+    this.hasActed.set(this.startRound > 1); // resumed mid-fight: already acted
     if (this.resume) {
       // Reopened after a reload: fighters are already in the ring.
       this.enteredFighters.set(true);
@@ -150,9 +159,11 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     this.pendingItem.set(null);
   }
 
-  protected toggleItem(id: string): void {
+  /** Arm (or disarm) an item from the inventory panel, then dismiss the panel. */
+  protected armItem(id: string): void {
     if (this.busy() || this.done()) return;
     this.pendingItem.set(this.pendingItem() === id ? null : id);
+    this.showItems.set(false);
   }
 
   protected doPeek(): void {
@@ -162,7 +173,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   }
 
   protected doFlee(): void {
-    if (this.busy() || this.done()) return;
+    if (this.busy() || this.done() || !this.hasActed()) return;
     this.busy.set(true);
     this.flee.emit();
   }
@@ -175,6 +186,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
 
   /** Play one resolved round as an animated bout, then advance + unlock. */
   applyRound(entries: CombatEntry[], telegraph: Stance | null, playerHp: number, npcHp: number): void {
+    this.hasActed.set(true); // a blow's been traded — fleeing is now allowed
     this.runSequence(entries, playerHp, npcHp, () => {
       this.telegraph = telegraph;
       this.revealed.set(null); // a scry only lasts its round

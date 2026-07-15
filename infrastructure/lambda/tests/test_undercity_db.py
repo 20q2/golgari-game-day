@@ -1,5 +1,6 @@
 """Integration tests for the action dispatcher against an in-memory table."""
 import sys
+from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -323,21 +324,80 @@ def test_ossuary_three_rolls_then_locked(table):
     assert doc['ossuaryRollsLeft'] == data.OSSUARY_ROLLS_PER_VISIT
 
 
-def test_buy_gear_and_consumables(table):
+def _seed_shop(table, sid, node, gear=None, consumables=None, grimoires=None):
+    """Write a deterministic bazaar stock for the current window."""
+    rec = {
+        'window': db._shop_window(),
+        'gear': gear if gear is not None else [{'item': 'rusted_fang', 'qty': 2}],
+        'consumables': (consumables if consumables is not None
+                        else [{'item': 'healing_moss', 'qty': 2}]),
+        'grimoires': grimoires if grimoires is not None else ['moldering_folio'],
+    }
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'SHOP#{node}', **rec})
+    return node
+
+
+def _at_shop(table, spores=200):
     act(table, 'join', starter='pest')
     sid = _sid(table)
+    node = next(n for n, v in data.MAP_NODES.items() if v['type'] == 'shop')
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'bog_r3'  # a Rot-Farm Bazaar (every shop stocks all tiers)
-    doc['spores'] = 200
+    doc['position'] = node
+    doc['spores'] = spores
     db._put_player(table, doc)
+    return sid, node
 
+
+def test_buy_depletes_stock_then_sold_out(table):
+    sid, node = _at_shop(table)
+    _seed_shop(table, sid, node, consumables=[{'item': 'healing_moss', 'qty': 2}])
+    # Two units in stock -> two buys succeed, third is sold out.
+    for _ in range(2):
+        status, resp = act(table, 'buy', itemId='healing_moss')
+        assert status == 200
+    status, resp = act(table, 'buy', itemId='healing_moss')
+    assert status == 409 and 'Sold out' in resp['error']
+
+
+def test_buy_rejects_unstocked_item(table):
+    sid, node = _at_shop(table)
+    _seed_shop(table, sid, node, gear=[{'item': 'rusted_fang', 'qty': 2}])
+    status, resp = act(table, 'buy', itemId='wurm_tooth')  # not in the seeded stock
+    assert status == 409 and 'stocking' in resp['error']
+
+
+def test_buy_grimoire_requires_stock_but_never_depletes(table):
+    sid, node = _at_shop(table)
+    _seed_shop(table, sid, node, grimoires=['moldering_folio'])
+    # Not stocked -> refused.
+    status, resp = act(table, 'buy', itemId='gardeners_primer')
+    assert status == 409
+    # Stocked -> alex buys; the stock is NOT decremented (no qty on grimoires).
+    status, resp = act(table, 'buy', itemId='moldering_folio')
+    assert status == 200 and 'moldering_folio' in resp['you']['grimoires']
+    rec = db._get(table, db._season_pk(sid), f'SHOP#{node}')
+    assert rec['grimoires'] == ['moldering_folio']
+    # A second player can still buy the same tome this window (no depletion).
+    act(table, 'join', user='user-bea', name='Bea', starter='kraul')
+    bea = db._get_player(table, sid, 'user-bea')
+    bea['position'] = node
+    bea['spores'] = 200
+    db._put_player(table, bea)
+    status, resp = act(table, 'buy', user='user-bea', name='Bea', itemId='moldering_folio')
+    assert status == 200 and 'moldering_folio' in resp['you']['grimoires']
+
+
+def test_buy_gear_and_consumables(table):
+    sid, node = _at_shop(table)
+    _seed_shop(table, sid, node,
+               gear=[{'item': 'rusted_fang', 'qty': 2}, {'item': 'wurm_tooth', 'qty': 2}],
+               consumables=[{'item': 'healing_moss', 'qty': 2}])
     status, resp = act(table, 'buy', itemId='rusted_fang')
     assert status == 200 and resp['you']['gear']['fang'] == 'rusted_fang'
     assert resp['you']['spores'] == 180
     status, resp = act(table, 'buy', itemId='wurm_tooth')  # trade-in refunds 10
     assert resp['you']['spores'] == 180 - 80 + 10
     assert resp['you']['gear']['fang'] == 'wurm_tooth'
-
     status, resp = act(table, 'buy', itemId='healing_moss')
     assert status == 200 and 'healing_moss' in resp['you']['bag']
 
@@ -1048,12 +1108,8 @@ def test_combatant_carries_riders_and_buffs_from_gear(table):
 
 
 def test_buy_charm_equips_into_charm_slot(table):
-    act(table, 'join', starter='pest')
-    sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex')
-    doc['spores'] = 500
-    doc['position'] = next(n for n, v in data.MAP_NODES.items() if v['type'] == 'shop')
-    db._put_player(table, doc)
+    sid, node = _at_shop(table, spores=500)
+    _seed_shop(table, sid, node, gear=[{'item': 'quartz_charm', 'qty': 2}])
     status, resp = act(table, 'buy', itemId='quartz_charm')
     assert status == 200, resp
     doc = db._get_player(table, sid, 'user-alex')
@@ -1160,6 +1216,8 @@ def test_combat_flee_escapes_and_clears_battle(table, monkeypatch):
     doc['spd'] = 20
     db._put_player(table, doc)
     _begin(table, sid)
+    monkeypatch.setattr(db.engine, 'resolve_round', lambda *a, **k: [])
+    act(table, 'combat-round', stance='guard')             # must act before fleeing
     monkeypatch.setattr(db._rng, 'random', lambda: 0.01)   # flee succeeds
     status, resp = act(table, 'combat-flee')
     assert status == 200 and resp['combat']['fled'] is True
@@ -1318,3 +1376,108 @@ def test_read_chance_rises_with_reader_passive_and_gear():
     assert db._read_chance(dict(base, passives=['first_bite'])) > plain
     assert db._read_chance(dict(base, gear={'charm': 'seer_charm'})) > plain
     assert db._read_chance(dict(base, gear={'charm': 'glint_charm'})) > plain
+
+
+# ── Rot-Farm Bazaar: rotating limited stock ──────────────────────────────────
+
+def test_shop_window_math():
+    base = datetime(2026, 7, 15, 12, 0, 0)
+    w = db._shop_window(base)
+    # Same 30-min window a few minutes later; next window after the boundary.
+    assert db._shop_window(base + timedelta(minutes=5)) == w
+    assert db._shop_window(base + timedelta(minutes=31)) == w + 1
+    # The window-end ISO is strictly after the window's own start instant.
+    assert db._shop_window_end(w) > base.isoformat(timespec='seconds')
+
+
+def test_gen_shop_stock_shape_and_determinism():
+    node = next(n for n, v in data.MAP_NODES.items() if v['type'] == 'shop')
+    stock = db._gen_shop_stock(node, 100)
+
+    # Gear: SHOP_GEAR_SLOTS lines, all valid, spread across distinct slots.
+    assert len(stock['gear']) == data.SHOP_GEAR_SLOTS
+    slots = [data.GEAR[e['item']]['slot'] for e in stock['gear']]
+    assert len(set(slots)) == len(slots)
+    assert all(e['qty'] == data.SHOP_GEAR_QTY for e in stock['gear'])
+
+    # Consumables: SHOP_CONSUMABLE_SLOTS distinct lines, >=1 in-battle ('combat').
+    assert len(stock['consumables']) == data.SHOP_CONSUMABLE_SLOTS
+    cids = [e['item'] for e in stock['consumables']]
+    assert len(set(cids)) == len(cids)
+    assert any(data.CONSUMABLES[cid].get('combat') for cid in cids)
+    assert all(e['qty'] == data.SHOP_CONSUMABLE_QTY for e in stock['consumables'])
+
+    # Grimoires: SHOP_GRIMOIRE_SLOTS distinct tier-1 ids, no qty.
+    assert len(stock['grimoires']) == data.SHOP_GRIMOIRE_SLOTS
+    assert len(set(stock['grimoires'])) == len(stock['grimoires'])
+    assert all(data.GRIMOIRES[g]['tier'] == 1 for g in stock['grimoires'])
+
+    # Deterministic per (node, window); a different window always differs (window field).
+    assert db._gen_shop_stock(node, 100) == stock
+    assert db._gen_shop_stock(node, 101) != stock
+    assert stock['window'] == 100
+
+
+def test_shop_stock_reads_current_regenerates_stale(table):
+    sid = _sid(table)
+    node = next(n for n, v in data.MAP_NODES.items() if v['type'] == 'shop')
+    window = db._shop_window()
+
+    # No record yet -> fresh full-quantity stock for the current window.
+    fresh = db._shop_stock(table, sid, node)
+    assert fresh['window'] == window
+    assert fresh['gear'][0]['qty'] == data.SHOP_GEAR_QTY
+
+    # A persisted record for the CURRENT window is returned verbatim (depleted).
+    depleted = db._gen_shop_stock(node, window)
+    depleted['gear'][0]['qty'] = 0
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'SHOP#{node}', **depleted})
+    got = db._shop_stock(table, sid, node)
+    assert got['gear'][0]['qty'] == 0
+
+    # A persisted record from a STALE window is ignored -> regenerated full.
+    stale = db._gen_shop_stock(node, window - 5)
+    stale['gear'][0]['qty'] = 0
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'SHOP#{node}', **stale})
+    got = db._shop_stock(table, sid, node)
+    assert got['window'] == window
+    assert got['gear'][0]['qty'] == data.SHOP_GEAR_QTY
+
+
+def test_state_surfaces_bazaars(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+
+    shop_nodes = [n for n, v in data.MAP_NODES.items() if v['type'] == 'shop']
+    assert set(state['bazaars']) == set(shop_nodes)      # one view per shop node
+    view = state['bazaars'][shop_nodes[0]]
+    assert len(view['gear']) == data.SHOP_GEAR_SLOTS
+    assert len(view['consumables']) == data.SHOP_CONSUMABLE_SLOTS
+    assert len(view['grimoires']) == data.SHOP_GRIMOIRE_SLOTS
+    assert view['refreshesAt'] == db._shop_window_end(db._shop_window())
+
+    # A depleted persisted record is reflected in the view.
+    node = shop_nodes[0]
+    depleted = db._gen_shop_stock(node, db._shop_window())
+    depleted['consumables'][0]['qty'] = 0
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'SHOP#{node}', **depleted})
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert state['bazaars'][node]['consumables'][0]['qty'] == 0
+
+
+def test_cannot_flee_before_acting(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['spd'] = 20
+    db._put_player(table, doc)
+    _begin(table, sid)                                  # round 1, no action yet
+    status, resp = act(table, 'combat-flee')
+    assert status == 409 and 'move' in resp['error'].lower()
+    # after one resolved round, fleeing is allowed
+    monkeypatch.setattr(db.engine, 'resolve_round', lambda *a, **k: [])
+    act(table, 'combat-round', stance='guard')          # round advances to 2
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.01)  # flee succeeds
+    status, resp = act(table, 'combat-flee')
+    assert status == 200 and resp['combat']['fled'] is True

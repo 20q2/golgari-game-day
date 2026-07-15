@@ -19,6 +19,7 @@ import {
   AwayEvent,
   BattleResult,
   BattleResume,
+  BazaarView,
   CombatFlee,
   CombatRound,
   DigGrid,
@@ -34,15 +35,13 @@ import { VAULT_POT_SEED } from '../data/vein-vault';
 import {
   BIOME_SPELLS,
   GRIMOIRE_MAP,
-  GRIMOIRES,
   GrimoireInfo,
   SPELL_MAP,
   SpellInfo,
   cooldownLeftMin,
 } from '../data/spells';
 import {
-  GEAR,
-  CONSUMABLES,
+  GEAR_MAP,
   CONSUMABLE_MAP,
   SPACE_NAMES,
   SPACE_BLURBS,
@@ -84,6 +83,7 @@ interface LiveBattle {
   defenderStats: CombatStats | null;
   resume: boolean;
   resumeRevealed: Stance | null;
+  startRound: number;
 }
 
 /** Local walk-in-progress: the spaces walked so far (start first) and steps left. */
@@ -132,6 +132,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly liveBattle = signal<LiveBattle | null>(null);
   @ViewChild(InteractiveBattleComponent) private liveB?: InteractiveBattleComponent;
   protected readonly showShop = signal(false);
+  protected readonly shopTab = signal<'gear' | 'consumables' | 'grimoires'>('gear');
   protected readonly showShrine = signal(false);
   protected readonly showWarp = signal<string[] | null>(null);
   protected readonly showOssuary = signal(false);
@@ -182,10 +183,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Blade indices for the Spore Mound grass-rustle banner. */
   protected readonly grassBlades = [0, 1, 2, 3, 4, 5, 6];
 
-  protected readonly gear = GEAR;
-  protected readonly consumables = CONSUMABLES;
   protected readonly isShielded = isShielded;
-  protected readonly shopGrimoires = GRIMOIRES.filter((g) => g.tier === 1);
 
   protected readonly castableSpells = computed<SpellInfo[]>(() => {
     const you = this.store.you();
@@ -288,6 +286,38 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   protected grimoireSpellList(g: GrimoireInfo): string {
     return g.spells.map((s) => SPELL_MAP[s]?.name ?? s).join(', ');
+  }
+
+  // ── Bazaar (rotating limited stock) ──────────────────────────────────────
+  protected readonly currentBazaar = computed<BazaarView | null>(() => {
+    const pos = this.store.you()?.position;
+    return pos ? (this.store.bazaars()[pos] ?? null) : null;
+  });
+
+  protected shopGearRows(): { info: GearInfo; qty: number }[] {
+    return (this.currentBazaar()?.gear ?? [])
+      .map((s) => ({ info: GEAR_MAP[s.item], qty: s.qty }))
+      .filter((r) => !!r.info);
+  }
+
+  protected shopConsumableRows(): { info: ConsumableInfo; qty: number }[] {
+    return (this.currentBazaar()?.consumables ?? [])
+      .map((s) => ({ info: CONSUMABLE_MAP[s.item], qty: s.qty }))
+      .filter((r) => !!r.info);
+  }
+
+  protected shopGrimoireRows(): GrimoireInfo[] {
+    return (this.currentBazaar()?.grimoires ?? [])
+      .map((id) => GRIMOIRE_MAP[id])
+      .filter((g): g is GrimoireInfo => !!g);
+  }
+
+  protected bazaarRestockLabel(): string {
+    const at = this.currentBazaar()?.refreshesAt;
+    if (!at) return '—';
+    const ms = new Date(at + 'Z').getTime() - Date.now();
+    const min = Math.max(0, Math.ceil(ms / 60_000));
+    return min <= 1 ? 'under a minute' : `${min} min`;
   }
 
   protected spaceIcon(type: string): string {
@@ -716,6 +746,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     } else if (ev.type === 'warp' && ev.options) {
       this.showWarp.set(ev.options);
     } else if (ev.type === 'shop') {
+      this.shopTab.set('gear');
       this.showShop.set(true);
     } else if (ev.type === 'shrine') {
       this.showShrine.set(true);
@@ -980,7 +1011,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const items: BattleItem[] = bag
       .map((id) => CONSUMABLE_MAP[id])
       .filter((c): c is ConsumableInfo => !!c && !!c.inBattle)
-      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '' }));
+      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '', desc: c.desc ?? '' }));
     this.liveBattle.set({
       attacker: {
         name: this.youBattleName(),
@@ -1007,6 +1038,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           : null,
       resume: false,
       resumeRevealed: null,
+      startRound: 1,
     });
   }
 
@@ -1018,7 +1050,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const items: BattleItem[] = bag
       .map((id) => CONSUMABLE_MAP[id])
       .filter((c): c is ConsumableInfo => !!c && !!c.inBattle)
-      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '' }));
+      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '', desc: c.desc ?? '' }));
     this.liveBattle.set({
       attacker: {
         name: this.youBattleName(),
@@ -1045,6 +1077,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           : null,
       resume: true,
       resumeRevealed: pb.revealed ?? null,
+      startRound: pb.round ?? 1,
     });
   }
 
@@ -1056,7 +1089,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const items: BattleItem[] = bag
       .map((id) => CONSUMABLE_MAP[id])
       .filter((c): c is ConsumableInfo => !!c && !!c.inBattle)
-      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '' }));
+      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '', desc: c.desc ?? '' }));
     this.liveBattle.set({ ...lb, items, hasScry: bag.includes('scrying_spore') });
   }
 

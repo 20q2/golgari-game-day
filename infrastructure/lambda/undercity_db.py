@@ -1633,6 +1633,8 @@ def _combat_flee(table, sid, doc, payload):
         return _err('No battle in progress.', 409)
     if rec['kind'] in ('barrier', 'boss'):
         return _err('There is no fleeing this fight.', 409)
+    if rec.get('round', 1) < 2:  # must trade at least one blow before bolting
+        return _err('You must make a move before fleeing.', 409)
     player_c = _bt_to_combatant(rec['player'])
     npc_c = _bt_to_combatant(rec['npc'])
     r = engine.flee_attempt(player_c, npc_c, _rng)
