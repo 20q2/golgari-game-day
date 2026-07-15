@@ -1,0 +1,36 @@
+.admin {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem;
+  color: var(--primary-color, #e8e8e8);
+}
+
+.admin-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.4rem;
+}
+
+.admin-key {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 320px;
+  margin: 0.5rem 0 1rem;
+
+  input {
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #555;
+    background: #1c1c1c;
+    color: inherit;
+  }
+}
+
+.admin-msg {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: rgba(180, 60, 60, 0.2);
+  border: 1px solid rgba(180, 60, 60, 0.5);
+}

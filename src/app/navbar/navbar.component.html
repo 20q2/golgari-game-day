@@ -12,8 +12,8 @@
       <span class="nav-text">Games</span>
     </a>
     <a mat-button routerLink="/tv" routerLinkActive="active" class="nav-link desktop-only">
-      <mat-icon>qr_code_2</mat-icon>
-      <span class="nav-text">TV</span>
+      <mat-icon>live_tv</mat-icon>
+      <span class="nav-text">Spectate</span>
     </a>
     @if (isLocalhost) {
       <a
@@ -35,6 +35,16 @@
       >
         <mat-icon>map</mat-icon>
         <span class="nav-text">Map Editor</span>
+      </a>
+      <a
+        mat-button
+        routerLink="/undercity/admin"
+        routerLinkActive="active"
+        class="nav-link"
+        title="Undercity host admin panel (localhost only)"
+      >
+        <mat-icon>shield</mat-icon>
+        <span class="nav-text">Admin</span>
       </a>
     }
 

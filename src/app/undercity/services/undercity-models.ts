@@ -35,6 +35,7 @@ export interface PublicPlayer {
   paint: Record<string, number>;
   hat: string | null;
   renown: number;
+  isBot?: boolean;
 }
 
 export interface PendingMove {
@@ -172,6 +173,8 @@ export interface GameState {
   snares: string[];
   /** Trading post node id -> its 3 shared stock slots. */
   tradingPosts?: Record<string, TradeStockItem[]>;
+  /** Shop node id -> its current shared stock and restock clock. */
+  bazaars?: Record<string, BazaarView>;
   /** Excavation node id -> its masked dig-site grid. */
   excavations?: Record<string, DigGrid>;
   /** Region -> shared crystal-vein depth. */
@@ -270,6 +273,21 @@ export interface BattleResume {
 export interface TradeStockItem {
   item: string;
   foundBy: string;
+}
+
+/** One stocked line in a bazaar tab (grimoires carry no qty). */
+export interface ShopStockItem {
+  item: string;
+  qty: number;
+}
+
+/** A bazaar node's current shared stock + when it restocks. */
+export interface BazaarView {
+  gear: ShopStockItem[];
+  consumables: ShopStockItem[];
+  grimoires: string[];
+  /** ISO timestamp (UTC, no suffix) of the next restock. */
+  refreshesAt: string;
 }
 
 /** Masked view of a shared excavation dig site. */

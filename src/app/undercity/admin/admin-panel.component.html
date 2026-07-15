@@ -1,0 +1,17 @@
+<div class="admin">
+  <h1 class="admin-title"><mat-icon>shield</mat-icon> Undercity Admin</h1>
+
+  <label class="admin-key">
+    Host passphrase
+    <input type="password" [(ngModel)]="hostKey" (blur)="rememberKey()"
+           autocomplete="off" placeholder="Host passphrase" />
+  </label>
+
+  @if (message(); as msg) {
+    <p class="admin-msg">{{ msg }}</p>
+  }
+
+  <app-undercity-host-panel />
+
+  <!-- Roster, add-bot, grant, and broadcast sections are added in later tasks. -->
+</div>
