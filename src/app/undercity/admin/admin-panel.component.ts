@@ -121,6 +121,18 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     void this.admin('kick', { target: userId });
   }
 
+  /** Take one bot's turn: a short random wander off its current node. */
+  protected botStep(userId: string): void {
+    void this.admin('bot-step', { target: userId });
+  }
+
+  /** Walk every bot a step — handy for clearing the starting gates at once. */
+  protected async stepAllBots(): Promise<void> {
+    for (const p of this.store.players()) {
+      if (p.isBot) await this.admin('bot-step', { target: p.userId });
+    }
+  }
+
   protected broadcast(): void {
     const text = this.broadcastText.trim();
     if (!text) return;

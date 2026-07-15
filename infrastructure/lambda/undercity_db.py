@@ -883,6 +883,32 @@ def _admin_teleport(table, sid, payload):
     return 200, {'ok': True}
 
 
+def _admin_bot_step(table, sid, payload):
+    """Take a bot's turn: a short random wander (1–4 hops by the real movement
+    rules, respecting sealed barriers) with NO landing effects. Bots are
+    non-combat puppets, so we can't run roll→move (a wild landing would trap the
+    bot in a battle nothing drives); this just shifts them off their gate."""
+    doc, err = _admin_target(table, sid, payload)
+    if err:
+        return err
+    if not doc.get('isBot'):
+        return _err('bot-step moves bots only.')
+    closed = _closed_barriers(table, sid)
+    dests = set()
+    for steps in range(random.randint(1, 4), 0, -1):
+        dests = engine.legal_destinations(data.MAP_NODES, doc['position'], steps, closed)
+        if dests:
+            break
+    if not dests:
+        return _err('This bot has nowhere to step.')
+    doc['position'] = random.choice(sorted(dests))
+    doc['pendingMove'] = None
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return 200, {'ok': True}
+
+
 def _admin_kick(table, sid, payload):
     target = payload.get('target')
     if not target:
@@ -902,6 +928,7 @@ _ADMIN_CMDS = {
     'grant': _admin_grant,
     'heal': _admin_heal,
     'teleport': _admin_teleport,
+    'bot-step': _admin_bot_step,
     'kick': _admin_kick,
 }
 
@@ -2256,7 +2283,7 @@ def _set_stance(table, sid, doc, payload):
 def _spend_stat(table, sid, doc, payload):
     stat = payload.get('stat')
     if not engine.spend_stat(doc, stat):
-        return _err('Cannot spend a point there (max +1 per stat per level).', 409)
+        return _err('No stat points to spend.', 409)
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict

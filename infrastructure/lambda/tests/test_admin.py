@@ -148,3 +148,21 @@ def test_kick_bot(table):
     assert status == 200
     _, state = db.handle_state(table, {'userId': 'user-host'})
     assert bot_id not in [p['userId'] for p in state['players']]
+
+
+def test_bot_step_moves_bot_off_its_gate(table):
+    _, resp = _admin(table, 'bot-add', species='pest', home='city')
+    bot_id = resp['bot']['userId']
+    start = resp['bot']['position']
+    status, resp = _admin(table, 'bot-step', target=bot_id)
+    assert status == 200 and resp['ok'] is True
+    moved = db._get_player(table, db._active_season(table)[0], bot_id)
+    assert moved['position'] != start          # it actually shifted
+    assert moved['position'] in data.MAP_NODES  # to a real node
+
+
+def test_bot_step_rejects_non_bot(table):
+    _join_alex(table)
+    status, resp = _admin(table, 'bot-step', target='user-alex')
+    assert status == 400
+    assert 'bot' in resp['error'].lower()
