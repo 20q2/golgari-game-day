@@ -34,3 +34,67 @@
   background: rgba(180, 60, 60, 0.2);
   border: 1px solid rgba(180, 60, 60, 0.5);
 }
+
+.admin-section {
+  margin: 1.25rem 0;
+
+  h2 {
+    font-size: 1.05rem;
+    margin-bottom: 0.5rem;
+  }
+}
+
+.grant-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  .amt { width: 5rem; }
+  .hint { opacity: 0.6; font-size: 0.85rem; }
+}
+
+.roster-wrap { overflow-x: auto; }
+
+.roster {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+
+  th, td {
+    text-align: left;
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid #333;
+    white-space: nowrap;
+  }
+
+  .sub { opacity: 0.55; font-size: 0.75rem; }
+  .node { font-family: monospace; }
+  tr.is-bot { background: rgba(90, 140, 90, 0.12); }
+  .empty { text-align: center; opacity: 0.6; padding: 1rem; }
+}
+
+.bot-tag {
+  font-size: 0.6rem;
+  background: #4a7a4a;
+  color: #fff;
+  padding: 0 0.3rem;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.3rem;
+
+  button, select {
+    padding: 0.2rem 0.4rem;
+    border-radius: 5px;
+    border: 1px solid #555;
+    background: #262626;
+    color: inherit;
+    cursor: pointer;
+  }
+  .danger { border-color: #7a3a3a; }
+}
+
+select, input, button { font-family: inherit; }
