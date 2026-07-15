@@ -673,6 +673,8 @@ def handle_action(table, body):
         return _season_end(table, sid, config, payload)
     if atype == 'boss-awaken':
         return _boss_awaken(table, sid, config, payload)
+    if atype == 'admin':
+        return _admin(table, sid, config, payload)
 
     if atype == 'join':
         return _join(table, sid, user_id, username, payload)
@@ -770,6 +772,36 @@ def _boss_awaken(table, sid, config, payload):
            'THE ROT-WARDS FALL! Savra, Queen of the Golgari, stirs atop the '
            'floating island — every creature may now storm her lair.')
     return 200, {'ok': True}
+
+
+# ── Host admin (passphrase-gated) ────────────────────────────────────────────
+
+def _admin(table, sid, config, payload):
+    """Single gated entry point for host tooling. Verifies the passphrase once,
+    then routes on `cmd`. Handlers return plain {'ok': True, ...} envelopes
+    (never a `you` doc) — the admin client refreshes state rather than patching
+    its own creature."""
+    host_key = (payload.get('hostKey') or '').strip()
+    if config.get('hostKey') != host_key:
+        return _err('Wrong host passphrase.', 403)
+    cmd = payload.get('cmd')
+    handler = _ADMIN_CMDS.get(cmd)
+    if not handler:
+        return _err(f'Unknown admin cmd: {cmd}')
+    return handler(table, sid, payload)
+
+
+def _admin_broadcast(table, sid, payload):
+    text = str(payload.get('text') or '').strip()[:280]
+    if not text:
+        return _err('Broadcast text required.')
+    _event(table, sid, 'host', text)
+    return 200, {'ok': True}
+
+
+_ADMIN_CMDS = {
+    'broadcast': _admin_broadcast,
+}
 
 
 def _archive_season(table, sid, config):
