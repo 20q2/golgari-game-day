@@ -825,9 +825,54 @@ def _admin_bot_add(table, sid, payload):
     return 200, {'ok': True, 'bot': _public_player(doc)}
 
 
+def _admin_target(table, sid, payload):
+    """Resolve payload.target to a live player doc. Returns (doc, None) or
+    (None, error_tuple)."""
+    target = payload.get('target')
+    if not target:
+        return None, _err('target userId required.')
+    doc = _get_player(table, sid, target)
+    if not doc:
+        return None, _err('No such player this season.')
+    return doc, None
+
+
+def _admin_grant(table, sid, payload):
+    doc, err = _admin_target(table, sid, payload)
+    if err:
+        return err
+    rolls = int(payload.get('rolls') or 0)
+    spores = int(payload.get('spores') or 0)
+    xp = int(payload.get('xp') or 0)
+    if rolls:
+        doc['rolls'] = doc.get('rolls', 0) + rolls
+    if spores:
+        doc['spores'] = doc.get('spores', 0) + spores
+    if xp:
+        _grant_xp(table, sid, doc, xp)  # mutates doc; fires level events
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return 200, {'ok': True}
+
+
+def _admin_heal(table, sid, payload):
+    doc, err = _admin_target(table, sid, payload)
+    if err:
+        return err
+    doc['hp'] = engine.effective_stats(doc)['maxHp']
+    doc['hpUpdatedAt'] = _now()
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return 200, {'ok': True}
+
+
 _ADMIN_CMDS = {
     'broadcast': _admin_broadcast,
     'bot-add': _admin_bot_add,
+    'grant': _admin_grant,
+    'heal': _admin_heal,
 }
 
 

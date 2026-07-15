@@ -78,3 +78,40 @@ def test_bot_add_random_species_and_home(table):
 def test_bot_add_rejects_bad_species(table):
     status, resp = _admin(table, 'bot-add', species='dragon')
     assert status == 400
+
+
+def _join_alex(table):
+    status, resp = act(table, 'join', user='user-alex', name='Alex',
+                       starter='pest', home='city')
+    assert status == 200
+    return resp['you']
+
+
+def test_grant_rolls_spores_and_xp_levels_up(table):
+    _join_alex(table)
+    status, resp = _admin(table, 'grant', target='user-alex',
+                          rolls=5, spores=10, xp=1000)
+    assert status == 200 and resp['ok'] is True
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    me = state['you']
+    assert me['rolls'] == 3 + 5
+    assert me['spores'] == 15 + 10   # city start (15) + 10
+    assert me['level'] > 1           # 1000 xp forces level-ups
+
+
+def test_grant_unknown_target(table):
+    status, resp = _admin(table, 'grant', target='nobody', rolls=1)
+    assert status == 400
+    assert 'no such player' in resp['error'].lower()
+
+
+def test_heal_restores_full_hp(table):
+    _join_alex(table)
+    # Wound Alex directly, then heal.
+    doc = db._get_player(table, db._active_season(table)[0], 'user-alex')
+    doc['hp'] = 1
+    db._put_player(table, doc)
+    status, resp = _admin(table, 'heal', target='user-alex')
+    assert status == 200
+    healed = db._get_player(table, db._active_season(table)[0], 'user-alex')
+    assert healed['hp'] == healed['maxHp']
