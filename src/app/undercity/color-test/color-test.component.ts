@@ -10,7 +10,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { rgbToHsv, hsvToRgb } from '../engine/colors';
 import { ALL_SPRITES } from '../data/species';
-import { classifierFor, buildRegionMap } from '../engine/sprite-engine';
+import { classifierFor, buildRegionMap, buildRegionMapFromMask } from '../engine/sprite-engine';
 import { PAINTS } from '../data/cosmetics';
 
 type RegionKey = 'body' | 'belly' | 'stripes';
@@ -100,13 +100,17 @@ export class ColorTestComponent implements AfterViewInit {
     { key: 'stripes', name: 'Stripes · region 2 (accent)' },
   ];
 
-  // Smoothed region map cached against the image it was built from, so dragging
-  // the hue sliders doesn't rebuild it every frame.
-  private regionCache: { img: HTMLImageElement | null; map: Int8Array | null } = {
-    img: null,
-    map: null,
-  };
+  // Smoothed region map cached against the image (and mask) it was built from, so
+  // dragging the hue sliders doesn't rebuild it every frame.
+  private regionCache: {
+    img: HTMLImageElement | null;
+    mask: HTMLImageElement | null;
+    map: Int8Array | null;
+  } = { img: null, mask: null, map: null };
   private readonly imageCache = new Map<string, HTMLImageElement>();
+  // Authored masks loaded on demand for the selected sprite (null once a fetch fails).
+  private readonly maskCache = new Map<string, HTMLImageElement | null>();
+  private readonly currentMask = signal<HTMLImageElement | null>(null);
   private readonly currentImage = signal<HTMLImageElement | null>(null);
   private objectUrl: string | null = null;
   private viewReady = false;
@@ -136,6 +140,30 @@ export class ColorTestComponent implements AfterViewInit {
       img.src = url;
     });
 
+    // Load the authored mask for the selected sprite key (if any), so the
+    // sandbox segments exactly like the board. Uploads (null key) never have one.
+    effect(() => {
+      const key = this.spriteKey();
+      if (!key) {
+        this.currentMask.set(null);
+        return;
+      }
+      if (this.maskCache.has(key)) {
+        this.currentMask.set(this.maskCache.get(key)!);
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        this.maskCache.set(key, img);
+        this.currentMask.set(img);
+      };
+      img.onerror = () => {
+        this.maskCache.set(key, null);
+        this.currentMask.set(null);
+      };
+      img.src = `undercity/player_sprites/${key}.mask.png`;
+    });
+
     // Redraw whenever the image, hues, selected sprite, or view options change.
     effect(() => {
       const img = this.currentImage();
@@ -143,6 +171,7 @@ export class ColorTestComponent implements AfterViewInit {
       const regions = this.showRegions();
       const scale = this.scale();
       this.spriteKey(); // re-render when the classifier changes
+      this.currentMask(); // re-render when the authored mask loads
       if (this.viewReady && img) this.render(img, h, regions, scale);
     });
   }
@@ -279,9 +308,22 @@ export class ColorTestComponent implements AfterViewInit {
     const data = imageData.data;
     const targetHues = [hues.body, hues.belly, hues.stripes];
 
-    // Same block-scale-smoothed region map the board/plaza use, cached per image.
-    if (this.regionCache.img !== img) {
-      this.regionCache = { img, map: buildRegionMap(data, w, h, classifierFor(this.spriteKey())) };
+    // Prefer the authored mask (board parity); else the smoothed classifier map.
+    // Cache invalidates on either the image or the mask changing.
+    const mask = this.currentMask();
+    if (this.regionCache.img !== img || this.regionCache.mask !== mask) {
+      let map: Int8Array;
+      if (mask && (mask.naturalWidth || mask.width) === w && (mask.naturalHeight || mask.height) === h) {
+        const mc = document.createElement('canvas');
+        mc.width = w;
+        mc.height = h;
+        const mctx = mc.getContext('2d')!;
+        mctx.drawImage(mask, 0, 0);
+        map = buildRegionMapFromMask(mctx.getImageData(0, 0, w, h).data, w, h);
+      } else {
+        map = buildRegionMap(data, w, h, classifierFor(this.spriteKey()));
+      }
+      this.regionCache = { img, mask, map };
     }
     const regionMap = this.regionCache.map!;
     const tally = { outline: 0, body: 0, belly: 0, stripes: 0 };
