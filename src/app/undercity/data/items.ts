@@ -28,8 +28,10 @@ export const GEAR: GearInfo[] = [
     desc: '+1 SPD · Trickster: a lost Feint isn’t fully punished.' },
   { id: 'serrated_charm', name: 'Serrated Charm', slot: 'charm', tier: 2, cost: 45, rider: 'serrated',
     desc: '+1 SPD · Serrated: Feint break saps the enemy next round.' },
+  { id: 'seer_charm', name: 'Seer Charm', slot: 'charm', tier: 2, cost: 50, rider: 'seer',
+    desc: '+1 SPD · Seer: sharply raises how often you read the foe’s intent.' },
   { id: 'glint_charm', name: 'Glint Charm', slot: 'charm', tier: 3, cost: 80, rider: 'glint',
-    desc: '+2 SPD · Glint: winning a Feint reveals the true next intent.' },
+    desc: '+2 SPD · Glint: winning a Feint reveals the true next intent; +read rate.' },
 ];
 
 export interface ConsumableInfo {

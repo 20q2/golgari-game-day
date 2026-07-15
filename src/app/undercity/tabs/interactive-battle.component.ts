@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { BattleSide, BattleRewards } from './battle-playback.component';
 import { CombatEntry, Stance } from '../services/undercity-models';
-import { STANCES, STANCE_MAP, PERSONALITY_TELL, TELEGRAPH_TEXT } from '../data/combat';
+import { STANCES, STANCE_MAP, PERSONALITY_TELL } from '../data/combat';
 
 /** A held combat consumable the player may fire this round. */
 export interface BattleItem {
@@ -55,7 +55,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   @Input({ required: true }) attacker!: BattleSide;
   @Input({ required: true }) defender!: BattleSide;
   @Input({ required: true }) personality!: string;
-  @Input({ required: true }) telegraph!: Stance;
+  /** Foe's predicted stance for the round — null when no read procced. */
+  @Input() telegraph: Stance | null = null;
   @Input() canFlee = true;
   @Input() items: BattleItem[] = [];
   @Input() hasScry = false;
@@ -136,9 +137,6 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   protected tellText(): string {
     return PERSONALITY_TELL[this.personality] ?? 'watching you';
   }
-  protected telegraphText(): string {
-    return TELEGRAPH_TEXT[this.telegraph];
-  }
   protected stanceOf(side: Side): Stance | undefined {
     return this.stanceAnim()[side];
   }
@@ -176,7 +174,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   // ── Parent-driven results ────────────────────────────────────────────────────
 
   /** Play one resolved round as an animated bout, then advance + unlock. */
-  applyRound(entries: CombatEntry[], telegraph: Stance, playerHp: number, npcHp: number): void {
+  applyRound(entries: CombatEntry[], telegraph: Stance | null, playerHp: number, npcHp: number): void {
     this.runSequence(entries, playerHp, npcHp, () => {
       this.telegraph = telegraph;
       this.revealed.set(null); // a scry only lasts its round

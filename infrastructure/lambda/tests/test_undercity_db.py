@@ -1072,7 +1072,21 @@ def test_battle_combatant_roundtrips_through_dict(table):
     assert 'barbed' in c2.riders and 'rot_surge' in c2.buffs and 'swarm' in c2.passives
 
 
-def test_start_battle_persists_record_with_first_telegraph(table):
+class _ZeroRng:
+    """Deterministic rng for read tests: random()=0 → the read always procs and
+    the (bluffable) telegraph shows the true stance."""
+    def random(self):
+        return 0.0
+    def randint(self, a, b):
+        return a
+    def choice(self, seq):
+        return seq[0]
+    def uniform(self, a, b):
+        return 1.0
+
+
+def test_start_battle_persists_record_with_first_telegraph(table, monkeypatch):
+    monkeypatch.setattr(db, '_rng', _ZeroRng())   # force a read this round
     act(table, 'join', starter='kraul')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
@@ -1104,6 +1118,7 @@ def _begin(table, sid, kind='wild', npc=None, ctx=None, user='user-alex'):
 
 
 def test_wild_battle_start_then_round_continues(table, monkeypatch):
+    monkeypatch.setattr(db, '_rng', _ZeroRng())   # force reads so telegraph shows
     act(table, 'join', starter='kraul')
     sid = _sid(table)
     ev = _begin(table, sid)
@@ -1230,9 +1245,10 @@ def test_started_battle_persists_without_floats(table):
     assert isinstance(stored['npc']['bluff'], Decimal)
 
 
-def test_state_exposes_sanitized_battle_resume(table):
+def test_state_exposes_sanitized_battle_resume(table, monkeypatch):
     """A refreshed player must be able to reopen a pending fight — and must NOT
     receive npcActual (the hidden intent) in either `you` or the resume."""
+    monkeypatch.setattr(db, '_rng', _ZeroRng())   # force a read so telegraph shows
     act(table, 'join', starter='kraul')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
@@ -1260,3 +1276,45 @@ def test_state_battle_resume_reveals_only_after_scry(table):
     _, state = db.handle_state(table, {'userId': 'user-alex'})
     true_intent = db._get_player(table, sid, 'user-alex')['battle']['npcActual']
     assert state['battle']['revealed'] == true_intent        # scried => shown
+
+
+class _HiRng:
+    """random()=0.99 → a read never procs at ordinary chances."""
+    def random(self):
+        return 0.99
+    def randint(self, a, b):
+        return a
+    def choice(self, seq):
+        return seq[0]
+    def uniform(self, a, b):
+        return 1.0
+
+
+def test_no_read_hides_the_telegraph(table, monkeypatch):
+    monkeypatch.setattr(db, '_rng', _HiRng())
+    act(table, 'join', starter='saproling')       # slow, no reader passive
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    ev = db._start_battle(table, sid, doc, 'wild', dict(_FODDER), node=doc.get('position'))
+    assert ev['telegraph'] is None                # no read → nothing predicted
+    assert doc['battle']['npcActual'] in data.STANCES  # still tracked server-side
+
+
+def test_reveal_next_forces_a_true_read(monkeypatch):
+    monkeypatch.setattr(db, '_rng', _HiRng())     # base read would NOT proc
+    rec = {'npc': {'personality': 'brute', 'bluff': 0.0},
+           'player': {'reveal_next': True}, 'readChance': 0.0}
+    shown = db._telegraph_next(rec)
+    assert rec['read'] is True and rec['readTrue'] is True
+    assert shown == rec['npcActual']              # true intent, not a bluff
+    assert rec['player']['reveal_next'] is False  # consumed
+
+
+def test_read_chance_rises_with_reader_passive_and_gear():
+    base = {'level': 1, 'hp': 30, 'maxHp': 30, 'atk': 6, 'def': 5, 'spd': 5,
+            'passives': [], 'gear': {}, 'buffs': []}
+    plain = db._read_chance(dict(base))
+    assert abs(plain - (data.READ_BASE + data.READ_SPD_COEFF * 5)) < 1e-9
+    assert db._read_chance(dict(base, passives=['first_bite'])) > plain
+    assert db._read_chance(dict(base, gear={'charm': 'seer_charm'})) > plain
+    assert db._read_chance(dict(base, gear={'charm': 'glint_charm'})) > plain

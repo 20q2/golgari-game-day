@@ -247,15 +247,43 @@
 
 // ── Stance + utility controls ─────────────────────────────────────────────────
 
-.stance-row {
-  display: flex;
+// Rock-paper-scissors triangle: Aggress top, Guard bottom-left, Feint
+// bottom-right, with faint arrows tracing the beats-cycle between them.
+.stance-triangle {
+  position: relative;
   flex-shrink: 0;
-  gap: 8px;
-  padding: 0 14px;
+  margin: 0 14px;
+  aspect-ratio: 100 / 58; // matches the SVG viewBox so arc coords map 1:1 to %
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  align-content: space-between; // Aggress hugs the top, Guard/Feint the bottom
+  align-items: center;
+  justify-items: center;
+}
+
+.cycle-arrows {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+
+  .arc {
+    fill: none;
+    stroke: rgba(183, 228, 199, 0.4);
+    stroke-width: 1.4;
+    stroke-linecap: round;
+  }
+  #uc-arrowhead path { fill: rgba(183, 228, 199, 0.55); }
 }
 
 .stance-btn {
-  flex: 1;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 148px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -268,6 +296,10 @@
   border: 1px solid rgba(74, 124, 89, 0.4);
   transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
 
+  &.pos-aggress { grid-column: 1 / span 2; grid-row: 1; }
+  &.pos-guard { grid-column: 1; grid-row: 2; justify-self: start; }
+  &.pos-feint { grid-column: 2; grid-row: 2; justify-self: end; }
+
   .mi { font-size: 1.5rem; width: 1.5rem; height: 1.5rem; color: #b7e4c7; }
   .stance-label { font-weight: 700; font-size: 0.82rem; }
 
@@ -279,6 +311,7 @@
 .util-row {
   display: flex;
   flex-shrink: 0;
+  justify-content: flex-end;
   gap: 8px;
   padding: 0 14px;
   flex-wrap: wrap;
@@ -433,23 +466,8 @@
 
 // ── Plan-3 polish: breathing, intent float, stats, clash, help ───────────────
 
-.help-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 5;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #cdd8cd;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  .mi { font-size: 1.1rem; width: 1.1rem; height: 1.1rem; }
-  &:hover { background: rgba(0, 0, 0, 0.6); color: #fff; }
+.util-btn.help-btn {
+  padding: 8px 10px;
 }
 
 // Sprites drop in on entrance, then breathe (wrapper animates so the flip
@@ -842,3 +860,13 @@
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+// No-read state: a muted "?" over the foe instead of a stance icon.
+.intent-float.unknown {
+  background: radial-gradient(circle at 35% 30%, #7a7a7a, #3a3a3a 78%);
+  border-color: rgba(190, 190, 190, 0.5);
+  animation: none;
+  &::after { border-top-color: rgba(190, 190, 190, 0.5); }
+}
+.tele-caption .intent.read { color: #fde68a; }
+.tele-caption .intent.none { color: #9aa79a; font-style: italic; }

@@ -228,7 +228,8 @@ export interface CombatEntry {
 export interface CombatRound {
   round: number;
   entries: CombatEntry[];
-  telegraph: Stance;
+  /** The foe's predicted stance — null when no read procced this round. */
+  telegraph: Stance | null;
   playerHp: number;
   npcHp: number;
   revealNext: boolean;
@@ -250,7 +251,7 @@ export interface CombatPeek {
 export interface BattleResume {
   kind: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss';
   round: number;
-  telegraph: Stance;
+  telegraph: Stance | null;
   playerHp: number;
   revealed: Stance | null;
   npc: {

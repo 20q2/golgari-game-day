@@ -76,7 +76,7 @@ interface LiveBattle {
   attacker: BattleSide;
   defender: BattleSide;
   personality: string;
-  telegraph: Stance;
+  telegraph: Stance | null;
   kind: string;
   items: BattleItem[];
   hasScry: boolean;
@@ -996,7 +996,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         maxHp: ev.npc!.maxHp ?? ev.npc!.hp,
       },
       personality: ev.npc!.personality ?? 'balanced',
-      telegraph: ev.telegraph ?? 'aggress',
+      telegraph: ev.telegraph ?? null,
       kind: ev.kind ?? 'wild',
       items,
       hasScry: bag.includes('scrying_spore'),

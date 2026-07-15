@@ -249,17 +249,43 @@ def _npc_combatant(npc):
         passives=frozenset(npc.get('passives') or []))
 
 
+def _read_chance(doc):
+    """How often the player gets an on-screen read of the foe's intent —
+    snapshotted once per battle. Base + SPD + reader passives + reader gear."""
+    eff = engine.effective_stats(doc)
+    chance = data.READ_BASE + data.READ_SPD_COEFF * eff.get('spd', 0)
+    for p in _passives(doc):
+        chance += data.READ_PASSIVE_BONUS.get(p, 0)
+    for gid in (doc.get('gear') or {}).values():
+        chance += data.GEAR.get(gid, {}).get('readBonus', 0)
+    return max(0.0, min(data.READ_MAX, chance))
+
+
+def _shown_telegraph(rec):
+    """The intent to display this round: None when no read procced, the true
+    intent when the read is guaranteed-true (scry/glint), else the (bluffable)
+    telegraph."""
+    if not rec.get('read'):
+        return None
+    return rec['npcActual'] if rec.get('readTrue') else rec['npcShown']
+
+
 def _telegraph_next(rec):
-    """Pick the npc's next true stance from personality, telegraph it (maybe a
-    bluff), store both on the record, and return the shown stance."""
+    """Pick the npc's next true stance + telegraph, and roll whether the player
+    gets a READ of it this round. A pending reveal_next (Glint feint-win)
+    guarantees a true read. Returns the intent to show (None if no read)."""
     personality = rec['npc'].get('personality', data.NPC_DEFAULT_PERSONALITY)
     bluff = float(rec['npc'].get('bluff', data.NPC_DEFAULT_BLUFF))
-    actual = engine.pick_stance(personality, _rng)
-    shown = engine.telegraph(actual, bluff, _rng)
-    rec['npcActual'] = actual
-    rec['npcShown'] = shown
+    rec['npcActual'] = engine.pick_stance(personality, _rng)
+    rec['npcShown'] = engine.telegraph(rec['npcActual'], bluff, _rng)
+    if rec['player'].get('reveal_next'):
+        rec['read'], rec['readTrue'] = True, True   # Glint: guaranteed true read
+        rec['player']['reveal_next'] = False
+    else:
+        rec['read'] = _rng.random() < rec.get('readChance', data.READ_BASE)
+        rec['readTrue'] = False
     rec['peeked'] = False
-    return shown
+    return _shown_telegraph(rec)
 
 
 def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
@@ -279,6 +305,7 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
         'npcMeta': npc,          # full spec for reward resolution
         'ctx': ctx or {},        # kind-specific (lair slain flag, boss hp pool, ...)
         'strikes': [],
+        'readChance': _read_chance(doc),  # frozen for the fight
     }
     doc['battle'] = rec
     shown = _telegraph_next(rec)
@@ -1385,7 +1412,7 @@ def _battle_resume(rec, player_hp):
     return {
         'kind': rec.get('kind'),
         'round': rec.get('round', 1),
-        'telegraph': rec.get('npcShown'),
+        'telegraph': _shown_telegraph(rec),
         'playerHp': player_hp,
         'revealed': rec.get('npcActual') if peeked else None,
         'npc': {

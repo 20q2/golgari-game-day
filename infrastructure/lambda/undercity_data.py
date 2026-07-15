@@ -160,7 +160,8 @@ GEAR = {
     # Charm — Feint riders (new slot; light on raw stats, value is the rider)
     'quartz_charm':   {'name': 'Quartz Charm',   'slot': 'charm', 'tier': 1, 'cost': 20, 'spd': 1, 'rider': 'trickster'},
     'serrated_charm': {'name': 'Serrated Charm', 'slot': 'charm', 'tier': 2, 'cost': 45, 'spd': 1, 'rider': 'serrated'},
-    'glint_charm':    {'name': 'Glint Charm',    'slot': 'charm', 'tier': 3, 'cost': 80, 'spd': 2, 'rider': 'glint'},
+    'seer_charm':     {'name': 'Seer Charm',     'slot': 'charm', 'tier': 2, 'cost': 50, 'spd': 1, 'rider': 'seer', 'readBonus': 0.30},
+    'glint_charm':    {'name': 'Glint Charm',    'slot': 'charm', 'tier': 3, 'cost': 80, 'spd': 2, 'rider': 'glint', 'readBonus': 0.15},
 }
 
 # Rider → the stance it modifies + a human blurb (client reads this in Plan 3).
@@ -171,7 +172,8 @@ GEAR_RIDERS = {
     'spiked':    {'stance': 'guard',   'blurb': 'Your Guard counter reflects part of the blocked hit.'},
     'trickster': {'stance': 'feint',   'blurb': 'A lost Feint is not fully punished.'},
     'serrated':  {'stance': 'feint',   'blurb': 'Your Feint break lowers the enemy next-round damage.'},
-    'glint':     {'stance': 'feint',   'blurb': 'Winning a Feint reveals the enemy true next intent.'},
+    'glint':     {'stance': 'feint',   'blurb': 'Winning a Feint reveals the enemy true next intent; +read rate.'},
+    'seer':      {'stance': 'feint',   'blurb': 'Sharply raises how often you read the enemy intent.'},
 }
 
 CONSUMABLES = {
@@ -216,6 +218,17 @@ VENOM_BARB_BONUS   = 3   # first winning exchange +this
 FIRST_WIN_ROT_BREATH_MULT = 2  # rot_breath: first winning exchange * this
 
 MAX_ROUNDS_COMBAT = 6  # round cap; higher HP% wins a timeout
+
+# Reads: a "read" is an on-screen prediction of the foe's next stance. It only
+# procs some rounds (base below) — reading is the reader build's payoff, not a
+# freebie. Chance is snapshotted once per battle from the player's SPD, reader
+# passives, and reader gear. Scrying Spore forces a true read on demand; a Glint
+# feint-win guarantees the next round's read (see engine reveal_next).
+READ_BASE = 0.25
+READ_MAX = 0.90              # cap so a read is never fully guaranteed by stacking
+READ_SPD_COEFF = 0.015       # faster creatures read better (+1.5%/SPD)
+READ_PASSIVE_BONUS = {'first_bite': 0.20, 'flyby': 0.15}  # the fast insect lines
+# gear read bonuses live on GEAR[*]['readBonus'] (Glint + Seer charms)
 
 # Monster AI (spec §1). Each personality is a weight triple over
 # (aggress, guard, feint); the monster's true stance is drawn from it and then

@@ -49,6 +49,17 @@ the round cap is a **neutral timeout** — load-bearing for persistent-pool foes
 `trickster`/`balanced`) → `engine.pick_stance`; `engine.telegraph(actual, bluff)`
 shows the truth unless it bluffs. Bluff rate + stats are the difficulty dials.
 
+**Reads (occasional predictions):** the on-screen intent is NOT shown every
+round — each round `_telegraph_next` rolls against a per-battle **read chance**
+(`_read_chance`, snapshotted at `_start_battle` into `rec['readChance']`):
+`READ_BASE` + `READ_SPD_COEFF`×SPD + `READ_PASSIVE_BONUS` (reader passives
+`first_bite`/`flyby`) + gear `readBonus` (Seer/Glint charms), capped `READ_MAX`.
+When it misses, `_shown_telegraph` returns `None` (client shows a muted "?").
+A Scrying Spore (`combat-peek`) forces a true read on demand; a Glint feint-win
+sets `reveal_next`, guaranteeing the next round is a true read. The client
+telegraph field is therefore nullable everywhere (battle_start / combat-round /
+resume).
+
 ## 2. Effect-kind vocabulary — the four levers
 
 | Lever | Lives in (data) | Carried on `Combatant` | Applied in |
@@ -100,7 +111,9 @@ Combat consumables map to three general one-round modifiers on `resolve_round`:
 2. **New rider?** Add to `GEAR_RIDERS` (`stance` + `blurb`), then implement its
    effect in the matching stance branch of `engine.resolve_round` (see the
    `has_rider('...')` checks), and add a unit test in `test_undercity_engine.py`.
-3. **Plan 3 (client):** mirror the gear/rider into `src/app/undercity/data/*.ts`
+3. **Read-rate gear:** add a `readBonus` float to the `GEAR` entry (see Seer /
+   Glint charms). `_read_chance` sums it automatically — no other wiring.
+4. **Plan 3 (client):** mirror the gear/rider into `src/app/undercity/data/*.ts`
    for display.
 
 ## 5. Add an effect
@@ -138,5 +151,6 @@ Combat consumables map to three general one-round modifiers on `resolve_round`:
 `STANCE_CLASH_MULT`, `STANCE_STALL_MULT`, `ROT_PER_STACK`, `SWARM_CHIP_MULT`,
 `SCAVENGE_RETALIATE`, `DEATHTOUCH_PIERCE`, `FLYBY_DODGE`, `VENOM_BARB_BONUS`,
 `FIRST_WIN_ROT_BREATH_MULT`, `MAX_ROUNDS_COMBAT`, `STANCE_PERSONALITIES`,
-`NPC_DEFAULT_PERSONALITY`, `NPC_DEFAULT_BLUFF`. The
+`NPC_DEFAULT_PERSONALITY`, `NPC_DEFAULT_BLUFF`. Read-rate knobs: `READ_BASE`,
+`READ_MAX`, `READ_SPD_COEFF`, `READ_PASSIVE_BONUS`, and per-gear `readBonus`. The
 `test_balance_good_play_beats_fodder` invariant guards changes to these.
