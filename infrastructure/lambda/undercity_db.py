@@ -868,11 +868,41 @@ def _admin_heal(table, sid, payload):
     return 200, {'ok': True}
 
 
+def _admin_teleport(table, sid, payload):
+    doc, err = _admin_target(table, sid, payload)
+    if err:
+        return err
+    node = payload.get('node')
+    if node not in data.MAP_NODES:
+        return _err('Unknown node: ' + str(node))
+    doc['position'] = node
+    doc['pendingMove'] = None
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return 200, {'ok': True}
+
+
+def _admin_kick(table, sid, payload):
+    target = payload.get('target')
+    if not target:
+        return _err('target userId required.')
+    doc = _get_player(table, sid, target)
+    if not doc:
+        return _err('No such player this season.')
+    table.delete_item(Key={'pk': _season_pk(sid), 'sk': f'PLAYER#{target}'})
+    _event(table, sid, 'host',
+           f"{doc.get('username', 'A creature')} left the Undercity.")
+    return 200, {'ok': True, 'removed': target}
+
+
 _ADMIN_CMDS = {
     'broadcast': _admin_broadcast,
     'bot-add': _admin_bot_add,
     'grant': _admin_grant,
     'heal': _admin_heal,
+    'teleport': _admin_teleport,
+    'kick': _admin_kick,
 }
 
 

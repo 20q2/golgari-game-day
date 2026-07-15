@@ -115,3 +115,36 @@ def test_heal_restores_full_hp(table):
     assert status == 200
     healed = db._get_player(table, db._active_season(table)[0], 'user-alex')
     assert healed['hp'] == healed['maxHp']
+
+
+def test_teleport_moves_to_valid_node(table):
+    _join_alex(table)
+    dest = next(iter(data.MAP_NODES))
+    status, resp = _admin(table, 'teleport', target='user-alex', node=dest)
+    assert status == 200
+    moved = db._get_player(table, db._active_season(table)[0], 'user-alex')
+    assert moved['position'] == dest
+
+
+def test_teleport_rejects_bad_node(table):
+    _join_alex(table)
+    status, resp = _admin(table, 'teleport', target='user-alex', node='atlantis')
+    assert status == 400
+
+
+def test_kick_removes_player(table):
+    _join_alex(table)
+    status, resp = _admin(table, 'kick', target='user-alex')
+    assert status == 200 and resp['removed'] == 'user-alex'
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    ids = [p['userId'] for p in state['players']]
+    assert 'user-alex' not in ids
+
+
+def test_kick_bot(table):
+    _, resp = _admin(table, 'bot-add', species='pest', home='city')
+    bot_id = resp['bot']['userId']
+    status, resp = _admin(table, 'kick', target=bot_id)
+    assert status == 200
+    _, state = db.handle_state(table, {'userId': 'user-host'})
+    assert bot_id not in [p['userId'] for p in state['players']]
