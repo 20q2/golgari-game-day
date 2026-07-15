@@ -19,6 +19,7 @@ Item layout (existing single table, pk/sk strings):
 import json
 import random
 import uuid
+import zlib
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -41,6 +42,67 @@ def _now():
 
 def _now_ms():
     return datetime.utcnow().isoformat(timespec='milliseconds')
+
+
+_EPOCH = datetime(1970, 1, 1)
+
+
+def _shop_window(now=None):
+    """Which fixed wall-clock window the bazaar stock belongs to (shared by all
+    players). Advancing a window rerolls the selection and resets quantities."""
+    now = now or datetime.utcnow()
+    secs = int((now - _EPOCH).total_seconds())
+    return secs // (data.SHOP_REFRESH_MIN * 60)
+
+
+def _shop_window_end(window):
+    """ISO timestamp of the next window boundary — the client's restock clock."""
+    end = _EPOCH + timedelta(seconds=(window + 1) * data.SHOP_REFRESH_MIN * 60)
+    return end.isoformat(timespec='seconds')
+
+
+def _gen_shop_stock(node, window):
+    """Deterministic per (node, window) so every player computes the identical
+    stock with no coordinated write. MUST use a stable hash — Python's builtin
+    hash() is per-process salted (PYTHONHASHSEED) and would desync players."""
+    rng = random.Random(zlib.crc32(f'{node}:{window}'.encode()))
+
+    # Gear: one piece per distinct slot (fang/carapace/charm), random tier within.
+    by_slot = {}
+    for gid, g in data.GEAR.items():
+        by_slot.setdefault(g['slot'], []).append(gid)
+    slots = list(by_slot)
+    rng.shuffle(slots)
+    gear = [{'item': rng.choice(by_slot[s]), 'qty': data.SHOP_GEAR_QTY}
+            for s in slots[:data.SHOP_GEAR_SLOTS]]
+
+    # Consumables: guarantee >=1 in-battle ('combat') item, no duplicates.
+    combat = [cid for cid, c in data.CONSUMABLES.items() if c.get('combat')]
+    first = rng.choice(combat)
+    pool = [cid for cid in data.CONSUMABLES if cid != first]
+    rng.shuffle(pool)
+    picks = [first] + pool[:data.SHOP_CONSUMABLE_SLOTS - 1]
+    consumables = [{'item': cid, 'qty': data.SHOP_CONSUMABLE_QTY} for cid in picks]
+
+    # Grimoires: distinct tier-1 tomes, no qty (never deplete).
+    tier1 = [gid for gid, g in data.GRIMOIRES.items() if g['tier'] == 1]
+    rng.shuffle(tier1)
+    grimoires = tier1[:data.SHOP_GRIMOIRE_SLOTS]
+
+    return {'window': window, 'gear': gear,
+            'consumables': consumables, 'grimoires': grimoires}
+
+
+def _shop_stock(table, sid, node):
+    """Current-window stock for a bazaar node: the persisted record if it exists
+    AND belongs to the current window (possibly depleted), else a freshly
+    generated full-quantity stock — NO write on read. A stale-window record is
+    ignored, which is how the 30-minute reset happens."""
+    window = _shop_window()
+    rec = _get(table, _season_pk(sid), f'SHOP#{node}')
+    if rec and rec.get('window') == window:
+        return rec
+    return _gen_shop_stock(node, window)
 
 
 def _clean(obj):
@@ -462,7 +524,7 @@ def handle_state(table, query_params):
     events = [_clean(i) for i in ev['Items']]
 
     players, you, snares, result, posts, sites = [], None, [], None, {}, {}
-    veins, vaults = {}, {}
+    veins, vaults, shops = {}, {}, {}
     now = _now()
     for item in items:
         if item['sk'].startswith('PLAYER#'):
@@ -482,6 +544,8 @@ def handle_state(table, query_params):
             veins[item['sk'].replace('VEIN#', '')] = {'depth': item.get('depth', 0)}
         elif item['sk'].startswith('VAULT#'):
             vaults[item['sk'].replace('VAULT#', '')] = _vault_view(item)
+        elif item['sk'].startswith('SHOP#'):
+            shops[item['sk'].replace('SHOP#', '')] = item
         elif item['sk'] == 'RESULT':
             result = {k: v for k, v in item.items() if k not in ('pk', 'sk')}
 
@@ -512,6 +576,19 @@ def handle_state(table, query_params):
         elif n['type'] == 'vault_lock':
             vaults.setdefault(n['region'], _vault_view(None))
 
+    # Bazaar stock per shop node — the current-window persisted record (possibly
+    # depleted) or a freshly generated full stock. Display-seeded like posts.
+    shop_win = _shop_window()
+    refreshes_at = _shop_window_end(shop_win)
+    bazaars = {}
+    for nid, n in data.MAP_NODES.items():
+        if n['type'] != 'shop':
+            continue
+        rec = shops.get(nid)
+        st = rec if rec and rec.get('window') == shop_win else _gen_shop_stock(nid, shop_win)
+        bazaars[nid] = {'gear': st['gear'], 'consumables': st['consumables'],
+                        'grimoires': st['grimoires'], 'refreshesAt': refreshes_at}
+
     out = {
         'season': {'seasonId': sid, 'status': config.get('status'),
                    'startedAt': config.get('startedAt'),
@@ -520,6 +597,7 @@ def handle_state(table, query_params):
         'players': players,
         'snares': snares,
         'tradingPosts': posts,
+        'bazaars': bazaars,
         'excavations': excavations,
         'veins': veins,
         'vaults': vaults,
@@ -738,29 +816,15 @@ def _archive_season(table, sid, config):
 
 # ── Join / hatch ─────────────────────────────────────────────────────────────
 
-def _join(table, sid, user_id, username, payload):
-    existing = _get_player(table, sid, user_id)
-    if existing:
-        return _ok(existing)
-    starter = payload.get('starter')
-    if starter not in data.STARTERS:
-        return _err('Pick a starter: pest, kraul, saproling, or zombie.')
-    home = payload.get('home', data.DEFAULT_BIOME)
-    if home not in data.BIOMES:
-        return _err('Pick a home biome: ' + ', '.join(data.BIOMES) + '.')
-    creature_name = str(payload.get('creatureName') or '').strip()[:16]
-
-    perm = _get_perm(table, user_id)
-    seals_before = perm.get('seals', 0)
-    perm['seals'] = seals_before + 1
-    perm['nights'] = perm.get('nights', 0) + 1
-    table.put_item(Item=perm)
-
+def _new_player_doc(sid, user_id, username, starter, home, *,
+                    seals_before=0, egg_hue=None, creature_name='', is_bot=False):
+    """Build a fresh, fully-valid season player doc. Shared by human `join`
+    and admin `bot-add` so the two can never drift. Perm-record bookkeeping
+    (seals/nights) stays in `_join`; bots skip it (they have no account)."""
     s = data.STARTERS[starter]
     body_hue = 130
-    egg = payload.get('eggHue')
-    if seals_before >= 1 and isinstance(egg, (int, float)):
-        body_hue = int(egg) % 360
+    if seals_before >= 1 and isinstance(egg_hue, (int, float)):
+        body_hue = int(egg_hue) % 360
     doc = {
         'pk': _season_pk(sid), 'sk': f'PLAYER#{user_id}',
         'userId': user_id, 'username': username or user_id,
@@ -785,6 +849,35 @@ def _join(table, sid, user_id, username, payload):
         'paint': {'body': body_hue, 'belly': 50, 'stripes': body_hue},
         'hat': None, 'joinedAt': _now(), 'ver': 0,
     }
+    if is_bot:
+        doc['isBot'] = True
+    return doc
+
+
+def _join(table, sid, user_id, username, payload):
+    existing = _get_player(table, sid, user_id)
+    if existing:
+        return _ok(existing)
+    starter = payload.get('starter')
+    if starter not in data.STARTERS:
+        return _err('Pick a starter: pest, kraul, saproling, or zombie.')
+    home = payload.get('home', data.DEFAULT_BIOME)
+    if home not in data.BIOMES:
+        return _err('Pick a home biome: ' + ', '.join(data.BIOMES) + '.')
+    creature_name = str(payload.get('creatureName') or '').strip()[:16]
+
+    perm = _get_perm(table, user_id)
+    seals_before = perm.get('seals', 0)
+    perm['seals'] = seals_before + 1
+    perm['nights'] = perm.get('nights', 0) + 1
+    table.put_item(Item=perm)
+
+    s = data.STARTERS[starter]
+    doc = _new_player_doc(
+        sid, user_id, username, starter, home,
+        seals_before=seals_before, egg_hue=payload.get('eggHue'),
+        creature_name=creature_name,
+    )
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
@@ -2079,8 +2172,15 @@ def _buy(table, sid, doc, payload):
     if data.MAP_NODES.get(node, {}).get('type') != 'shop':
         return _err('You are not at a shop.', 409)
     item_id = payload.get('itemId')
+    stock = _shop_stock(table, sid, node)
+    deplete = None  # the stock line to decrement on a successful gear/consumable buy
 
     if item_id in data.GEAR:
+        line = next((e for e in stock['gear'] if e['item'] == item_id), None)
+        if not line:
+            return _err("The bazaar isn't stocking that right now.", 409)
+        if line['qty'] <= 0:
+            return _err('Sold out — check back after the restock.', 409)
         g = data.GEAR[item_id]
         cost = g['cost']
         old_id = (doc.get('gear') or {}).get(g['slot'])
@@ -2090,8 +2190,14 @@ def _buy(table, sid, doc, payload):
         doc['spores'] = doc.get('spores', 0) + refund - cost
         doc.setdefault('gear', {})[g['slot']] = item_id
         # Troll Hide etc. can raise effective max HP; clamp is handled on damage.
+        deplete = line
         text = f"Bought {g['name']}" + (f' (traded in for {refund})' if refund else '')
     elif item_id in data.CONSUMABLES:
+        line = next((e for e in stock['consumables'] if e['item'] == item_id), None)
+        if not line:
+            return _err("The bazaar isn't stocking that right now.", 409)
+        if line['qty'] <= 0:
+            return _err('Sold out — check back after the restock.', 409)
         c = data.CONSUMABLES[item_id]
         if len(doc.get('bag') or []) >= data.BAG_SIZE:
             return _err('Your bag is full (3 slots).', 409)
@@ -2099,11 +2205,14 @@ def _buy(table, sid, doc, payload):
             return _err('Not enough Spores.', 409)
         doc['spores'] -= c['cost']
         doc.setdefault('bag', []).append(item_id)
+        deplete = line
         text = f"Bought {c['name']}"
     elif item_id in data.GRIMOIRES:
         g = data.GRIMOIRES[item_id]
         if g['tier'] != 1:
             return _err('The bazaar does not stock that tome.', 409)
+        if item_id not in stock['grimoires']:
+            return _err("The bazaar isn't stocking that tome right now.", 409)
         if item_id in (doc.get('grimoires') or []):
             return _err('You already own that grimoire.', 409)
         if doc.get('spores', 0) < g['cost']:
@@ -2113,9 +2222,16 @@ def _buy(table, sid, doc, payload):
         text = f"Bought {g['name']}"
     else:
         return _err('Unknown item.')
-    conflict = _save_or_conflict(table, doc)
+
+    conflict = _save_or_conflict(table, doc)  # guard the player write first
     if conflict:
         return conflict
+    if deplete is not None:                    # then the shared stock (last-writer-wins)
+        deplete['qty'] -= 1
+        table.put_item(Item={
+            'pk': _season_pk(sid), 'sk': f'SHOP#{node}',
+            'window': stock['window'], 'gear': stock['gear'],
+            'consumables': stock['consumables'], 'grimoires': stock['grimoires']})
     return _ok(doc, text=text)
 
 
