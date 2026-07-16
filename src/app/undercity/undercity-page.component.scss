@@ -259,6 +259,11 @@
       background: rgba(74, 124, 89, 0.15);
     }
 
+    &:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
     .tab-icon {
       font-size: 1.4rem;
       width: 1.4rem;
