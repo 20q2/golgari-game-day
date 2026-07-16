@@ -134,6 +134,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   @ViewChild(InteractiveBattleComponent) private liveB?: InteractiveBattleComponent;
   protected readonly showShop = signal(false);
   protected readonly shopTab = signal<'gear' | 'consumables' | 'grimoires'>('gear');
+  protected setShopTab(tab: 'gear' | 'consumables' | 'grimoires'): void {
+    this.shopTab.set(tab);
+    this.store.openFacility.set({ kind: 'shop', shopTab: tab });
+  }
   protected readonly showShrine = signal(false);
   protected readonly showWarp = signal<string[] | null>(null);
   protected readonly showOssuary = signal(false);
@@ -555,6 +559,43 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     });
     this.syncBoard();
     this.board.start();
+    this.restoreOpenFacility();
+  }
+
+  /** Reopen whatever facility modal was open before a tab switch destroyed
+   * this component — mirrors the pendingBattle resume pattern in the
+   * constructor, but runs here because openVein/openVault need `this.map`,
+   * which isn't populated until after construction. */
+  private restoreOpenFacility(): void {
+    const openFacility = this.store.openFacility();
+    if (!openFacility) return;
+    switch (openFacility.kind) {
+      case 'shop':
+        this.shopTab.set(openFacility.shopTab ?? 'gear');
+        this.showShop.set(true);
+        break;
+      case 'shrine':
+        this.showShrine.set(true);
+        break;
+      case 'ossuary':
+        this.showOssuary.set(true);
+        break;
+      case 'tradingPost':
+        this.openTradingPost();
+        break;
+      case 'excavation':
+        this.openExcavation();
+        break;
+      case 'vein':
+        this.openVein();
+        break;
+      case 'vault':
+        this.openVault();
+        break;
+      case 'warp':
+        this.showWarp.set(openFacility.warpOptions ?? null);
+        break;
+    }
   }
 
   ngOnDestroy(): void {
@@ -797,13 +838,17 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       });
     } else if (ev.type === 'warp' && ev.options) {
       this.showWarp.set(ev.options);
+      this.store.openFacility.set({ kind: 'warp', warpOptions: ev.options });
     } else if (ev.type === 'shop') {
       this.shopTab.set('gear');
       this.showShop.set(true);
+      this.store.openFacility.set({ kind: 'shop', shopTab: 'gear' });
     } else if (ev.type === 'shrine') {
       this.showShrine.set(true);
+      this.store.openFacility.set({ kind: 'shrine' });
     } else if (ev.type === 'ossuary') {
       this.showOssuary.set(true);
+      this.store.openFacility.set({ kind: 'ossuary' });
     } else if (ev.type === 'trading_post') {
       this.openTradingPost(ev.stock);
     } else if (ev.type === 'excavation') {
@@ -866,7 +911,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     await this.run(async () => {
       const resp = await this.store.action('shrine', { choice });
       this.showToast(resp.text ?? 'The shrine hums.');
-      this.showShrine.set(false);
+      this.closeFacilities();
     });
   }
 
@@ -880,6 +925,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.tradingStock.set(stock ?? this.store.tradingPosts()[pos] ?? []);
     this.giveItem.set(null);
     this.showTradingPost.set(true);
+    this.store.openFacility.set({ kind: 'tradingPost' });
   }
 
   /** Swap the selected bag item for stock slot `takeIndex`. */
@@ -898,6 +944,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     await this.run(async () => {
       await this.store.action('warp', { to });
       this.showWarp.set(null);
+      this.store.openFacility.set(null);
       this.board?.centerOn(to);
     });
   }
@@ -909,6 +956,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const pos = this.store.you()?.position ?? '';
     this.excavationGrid.set(grid ?? this.store.excavations()[pos] ?? null);
     this.showExcavation.set(true);
+    this.store.openFacility.set({ kind: 'excavation' });
   }
 
   /** Reveal one cell; the response carries the updated grid and remaining digs. */
@@ -929,6 +977,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.veinDepth.set(ev?.depth ?? this.store.veins()[region]?.depth ?? 0);
     this.veinLog.set(ev?.text ?? null);
     this.showVein.set(true);
+    this.store.openFacility.set({ kind: 'vein' });
   }
 
   /** One optional swing; the response carries the new shared depth. */
@@ -951,6 +1000,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       ev?.vault ?? this.store.vaults()[region] ?? { pot: VAULT_POT_SEED, history: [] },
     );
     this.showVault.set(true);
+    this.store.openFacility.set({ kind: 'vault' });
   }
 
   /** One pick attempt; the response carries the updated ledger and pot. */
@@ -1219,6 +1269,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.gambleRolling.set(false);
     this.gambleDie.set(null);
     this.gambleWon.set(null);
+    this.store.openFacility.set(null);
   }
 
   protected async run(fn: () => Promise<void>): Promise<void> {

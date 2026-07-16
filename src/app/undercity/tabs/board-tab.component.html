@@ -212,9 +212,9 @@
         </p>
 
         <div class="shop-tabs" role="tablist">
-          <button class="shop-tab" [class.active]="shopTab() === 'gear'" (click)="shopTab.set('gear')">Gear</button>
-          <button class="shop-tab" [class.active]="shopTab() === 'consumables'" (click)="shopTab.set('consumables')">Consumables</button>
-          <button class="shop-tab" [class.active]="shopTab() === 'grimoires'" (click)="shopTab.set('grimoires')">Grimoires</button>
+          <button class="shop-tab" [class.active]="shopTab() === 'gear'" (click)="setShopTab('gear')">Gear</button>
+          <button class="shop-tab" [class.active]="shopTab() === 'consumables'" (click)="setShopTab('consumables')">Consumables</button>
+          <button class="shop-tab" [class.active]="shopTab() === 'grimoires'" (click)="setShopTab('grimoires')">Grimoires</button>
         </div>
 
         @switch (shopTab()) {
