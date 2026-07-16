@@ -1354,8 +1354,11 @@ def _trigger_snare(table, sid, doc, node, space):
 
 
 def _mystery(table, sid, doc):
+    biome = data.MAP_NODES.get(doc['position'], {}).get('region')
+    if biome not in data.BIOMES:
+        biome = None
     res = engine.roll_mystery(_rng, 'drift' in _passives(doc),
-                              'doubling_rot' in _passives(doc))
+                              'doubling_rot' in _passives(doc), biome)
     eff = engine.effective_stats(doc)
     if res['spores']:
         doc['spores'] = max(0, doc.get('spores', 0) + res['spores'])
