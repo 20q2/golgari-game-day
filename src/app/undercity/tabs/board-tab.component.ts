@@ -27,6 +27,7 @@ import {
   PublicPlayer,
   SpaceEvent,
   Stance,
+  TradeOffer,
   TradeStockItem,
   VaultView,
   isShielded,
@@ -286,6 +287,57 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   protected grimoireSpellList(g: GrimoireInfo): string {
     return g.spells.map((s) => SPELL_MAP[s]?.name ?? s).join(', ');
+  }
+
+  // ── Trading post (leave-one-take-one, any owned item) ───────────────────
+  private readonly SLOT_ICONS: Record<string, string> = {
+    fang: 'hardware',
+    carapace: 'shield',
+    charm: 'auto_awesome',
+  };
+
+  protected tradeOffers(): TradeOffer[] {
+    const you = this.store.you();
+    if (!you) return [];
+    const offers: TradeOffer[] = [];
+    for (const id of you.bag ?? []) {
+      const c = CONSUMABLE_MAP[id];
+      if (c) offers.push({ id, kind: 'consumable', icon: c.icon, label: c.name, sub: c.desc });
+    }
+    for (const [slot, id] of Object.entries(you.gear ?? {})) {
+      const g = GEAR_MAP[id];
+      if (g) offers.push({ id, kind: 'gear', icon: this.SLOT_ICONS[slot] ?? 'hardware', label: g.name, sub: g.desc });
+    }
+    for (const id of you.grimoires ?? []) {
+      const g = GRIMOIRE_MAP[id];
+      if (g) offers.push({ id, kind: 'grimoire', icon: 'menu_book', label: g.name, sub: this.grimoireSpellList(g) });
+    }
+    return offers;
+  }
+
+  protected tradeStockDetail(id: string): { icon: string; label: string; sub: string } {
+    const c = CONSUMABLE_MAP[id];
+    if (c) return { icon: c.icon, label: c.name, sub: c.desc };
+    const g = GEAR_MAP[id];
+    if (g) return { icon: this.SLOT_ICONS[g.slot] ?? 'hardware', label: g.name, sub: g.desc };
+    const gr = GRIMOIRE_MAP[id];
+    if (gr) return { icon: 'menu_book', label: gr.name, sub: this.grimoireSpellList(gr) };
+    return { icon: 'help', label: id, sub: '' };
+  }
+
+  /** Client-side mirror of the server's take-side guards, so blocked takes read as a disabled button. */
+  protected canTakeStock(item: string): boolean {
+    const you = this.store.you();
+    if (!you) return false;
+    if (CONSUMABLE_MAP[item]) {
+      const givingConsumable = !!CONSUMABLE_MAP[this.giveItem() ?? ''];
+      const effectiveBagLen = (you.bag?.length ?? 0) - (givingConsumable ? 1 : 0);
+      return effectiveBagLen < 3;
+    }
+    if (GRIMOIRE_MAP[item]) {
+      return !(you.grimoires ?? []).includes(item);
+    }
+    return true;
   }
 
   // ── Bazaar (rotating limited stock) ──────────────────────────────────────

@@ -275,6 +275,16 @@ export interface TradeStockItem {
   foundBy: string;
 }
 
+/** Something the player can offer at a trading post: a bag item, an equipped
+ * gear piece, or an owned grimoire. */
+export interface TradeOffer {
+  id: string;
+  kind: 'consumable' | 'gear' | 'grimoire';
+  icon: string;
+  label: string;
+  sub: string;
+}
+
 /** One stocked line in a bazaar tab (grimoires carry no qty). */
 export interface ShopStockItem {
   item: string;
