@@ -557,6 +557,50 @@
   margin-top: 6px;
 }
 
+.shop-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+
+.shop-tab {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #9aa79a;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+
+  &.active {
+    color: #d8f3dc;
+    border-color: var(--accent-color);
+    background: rgba(0, 0, 0, 0.42);
+  }
+}
+
+.shop-hint {
+  font-size: 0.75rem;
+  color: #8a978a;
+  margin: 4px 0 2px;
+}
+
+.shop-qty {
+  font-size: 0.72rem;
+  color: #9aa79a;
+  margin-left: 2px;
+}
+
+.shop-empty {
+  font-size: 0.82rem;
+  color: #9aa79a;
+  font-style: italic;
+  text-align: center;
+  padding: 12px 4px;
+}
+
 .shop-row {
   display: flex;
   align-items: center;

@@ -78,7 +78,7 @@ def test_trading_post_swap_grimoire(table):
     assert status == 200
     you = resp['you']
     assert you['grimoires'] == ['gardeners_primer']
-    assert you['equippedGrimoire'] is None                # cleared, not auto-reassigned
+    assert you['equippedGrimoire'] == 'gardeners_primer'  # cleared, then auto-equipped from the take
     assert resp['stock'][0] == {'item': 'moldering_folio', 'foundBy': 'Alex'}
 
 

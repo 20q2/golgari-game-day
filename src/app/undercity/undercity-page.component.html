@@ -106,7 +106,13 @@
             <mat-icon class="tab-icon">map</mat-icon><span class="tab-label">Board</span>
           </button>
           <button [class.active]="tab() === 'creature'" [disabled]="inBattle()" (click)="setTab('creature')">
-            <mat-icon class="tab-icon">pets</mat-icon><span class="tab-label">Creature</span>
+            <span class="tab-icon-wrap">
+              <mat-icon class="tab-icon">pets</mat-icon>
+              @if (you.statPoints > 0) {
+                <span class="tab-badge">{{ you.statPoints }}</span>
+              }
+            </span>
+            <span class="tab-label">Creature</span>
           </button>
           <button [class.active]="tab() === 'plaza'" [disabled]="inBattle()" (click)="setTab('plaza')">
             <mat-icon class="tab-icon">park</mat-icon><span class="tab-label">Plaza</span>

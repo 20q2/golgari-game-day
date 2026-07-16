@@ -35,10 +35,6 @@
               <span class="bar-num">{{ you.xp }} / {{ xpNext() }}</span>
             </div>
           </div>
-
-          <button class="uc-btn wardrobe-btn" (click)="showWardrobe.set(!showWardrobe())">
-            <mat-icon class="mi">checkroom</mat-icon> Wardrobe
-          </button>
         </div>
       </section>
 
@@ -48,253 +44,290 @@
         </button>
       }
 
-      <!-- Wardrobe (toggled from the hero) -->
-      @if (showWardrobe()) {
-        <section class="card">
-          <h3>Wardrobe <span class="muted">(yours forever, every night)</span></h3>
-          <div class="wardrobe-group">
-            <span class="wardrobe-label">Hat</span>
-            <div class="swatch-row">
-              <button
-                class="hat-chip"
-                [class.selected]="!you.hat"
-                [disabled]="busy()"
-                (click)="setHat(null)"
-              >
-                none
-              </button>
-              @for (h of ownedHats(); track h.id) {
-                <button
-                  class="hat-chip"
-                  [class.selected]="you.hat === h.id"
-                  [disabled]="busy()"
-                  (click)="setHat(h.id)"
-                >
-                  <img [src]="'undercity/hats/' + h.file" [alt]="h.name" [title]="h.name" />
-                </button>
-              }
-            </div>
-          </div>
-          @for (region of paintRegions(); track region) {
-            <div class="wardrobe-group">
-              <span class="wardrobe-label">{{ region }}</span>
-              <div class="swatch-row">
-                @for (p of ownedPaints(); track p.id) {
-                  <button
-                    class="paint-swatch"
-                    [class.selected]="you.paint[region] === p.hue"
-                    [style.background]="'hsl(' + p.hue + ', 60%, 45%)'"
-                    [title]="p.name"
-                    [disabled]="busy()"
-                    (click)="setPaint($any(region), p)"
-                  ></button>
-                }
-              </div>
-            </div>
+      <!-- Sub-tabs: Stats / Gear / Wardrobe / Sigils -->
+      <nav class="subtab-bar">
+        <button type="button" [class.active]="subTab() === 'stats'" (click)="subTab.set('stats')">
+          <mat-icon class="mi">bar_chart</mat-icon> Stats
+          @if (you.statPoints > 0) {
+            <span class="subtab-badge">{{ you.statPoints }}</span>
           }
-        </section>
-      }
+        </button>
+        <button type="button" [class.active]="subTab() === 'gear'" (click)="subTab.set('gear')">
+          <mat-icon class="mi">backpack</mat-icon> Gear
+        </button>
+        <button type="button" [class.active]="subTab() === 'wardrobe'" (click)="subTab.set('wardrobe')">
+          <mat-icon class="mi">checkroom</mat-icon> Wardrobe
+        </button>
+        <button type="button" [class.active]="subTab() === 'sigils'" (click)="subTab.set('sigils')">
+          <mat-icon class="mi">workspace_premium</mat-icon> Sigils
+        </button>
+      </nav>
 
-      <div class="card-grid">
-        <!-- Stats -->
-        <section class="card stats-card">
-          <h3>
-            Stats
-            <span class="stats-hint muted">tap a stat</span>
-            @if (you.statPoints > 0) {
-              <span class="points-chip">{{ you.statPoints }} to spend</span>
-            }
-          </h3>
-          <div class="stats-body">
-            <div class="stat-tiles">
-              @for (stat of ['atk', 'def', 'spd']; track stat) {
-                <button
-                  type="button"
-                  class="stat-tile"
-                  [class.active]="openStat() === stat"
-                  (click)="selectStat(stat)"
-                >
-                  <mat-icon class="mi">{{ statInfo[stat].icon }}</mat-icon>
-                  <span class="stat-tile-val">{{ $any(you)[stat] }}</span>
-                  <span class="stat-tile-name">{{ stat.toUpperCase() }}</span>
-                  @if (you.statPoints > 0 && you.spentThisLevel[stat] < 1) {
-                    <span
-                      class="uc-btn plus-btn"
-                      role="button"
-                      [class.disabled]="busy()"
-                      (click)="spendStat(stat); $event.stopPropagation()"
+      <div class="subtab-body">
+        @switch (subTab()) {
+          @case ('stats') {
+            <!-- Stats -->
+            <section class="card">
+              <h3>
+                Stats
+                <span class="stats-hint muted">tap a stat</span>
+                @if (you.statPoints > 0) {
+                  <span class="points-chip">{{ you.statPoints }} to spend</span>
+                }
+              </h3>
+              <div class="stats-body">
+                <div class="stat-tiles">
+                  @for (stat of ['atk', 'def', 'spd']; track stat) {
+                    <button
+                      type="button"
+                      class="stat-tile"
+                      [class.active]="openStat() === stat"
+                      [class.celebrate]="rollStat() === stat"
+                      (click)="selectStat(stat)"
                     >
-                      +1
-                    </span>
+                      @if (statInfo[stat].icon.startsWith('uc-')) {
+                        <mat-icon class="mi" [svgIcon]="statInfo[stat].icon"></mat-icon>
+                      } @else {
+                        <mat-icon class="mi">{{ statInfo[stat].icon }}</mat-icon>
+                      }
+                      @if (rollStat() === stat) {
+                        <span class="stat-tile-val rolling">
+                          <span class="roll-out">{{ rollFrom() }}</span>
+                          <span class="roll-in">{{ $any(you)[stat] }}</span>
+                        </span>
+                        <span class="stat-pop">+1</span>
+                      } @else {
+                        <span class="stat-tile-val">{{ $any(you)[stat] }}</span>
+                      }
+                      <span class="stat-tile-name">{{ stat.toUpperCase() }}</span>
+                      @if (you.statPoints > 0) {
+                        <span
+                          class="uc-btn plus-btn"
+                          role="button"
+                          [class.disabled]="busy()"
+                          (click)="spendStat(stat); $event.stopPropagation()"
+                        >
+                          +1
+                        </span>
+                      }
+                    </button>
                   }
-                </button>
-              }
-            </div>
-            @if (openStat(); as s) {
-              <aside class="stat-desc">
-                <div class="stat-desc-head">
-                  <mat-icon class="mi">{{ statInfo[s].icon }}</mat-icon> {{ statInfo[s].label }}
                 </div>
-                <p>{{ statInfo[s].desc }}</p>
-              </aside>
-            }
-          </div>
-          <div class="passives">
-            @for (p of you.passives; track p) {
-              <div class="passive-pill">
-                <strong>{{ passiveName(p) }}</strong> {{ passiveBlurbs[p] }}
-              </div>
-            }
-          </div>
-        </section>
-
-        <!-- Stance (full width) -->
-        <section class="card stance-card">
-          <h3>Stance <span class="muted">(how you defend while your phone is down)</span></h3>
-          <div class="stance-row">
-            <button
-              class="stance-btn"
-              [class.selected]="you.stance === 'fight'"
-              [disabled]="busy()"
-              (click)="setStance('fight')"
-            >
-              <mat-icon>sports_mma</mat-icon> Fight<small>battle as normal</small>
-            </button>
-            <button
-              class="stance-btn"
-              [class.selected]="you.stance === 'defend'"
-              [disabled]="busy()"
-              (click)="setStance('defend')"
-            >
-              <mat-icon>shield</mat-icon> Defend<small>+40% DEF, −25% dmg, lose less when composted</small>
-            </button>
-            <button
-              class="stance-btn"
-              [class.selected]="you.stance === 'flee'"
-              [disabled]="busy()"
-              (click)="setStance('flee')"
-            >
-              <mat-icon>directions_run</mat-icon> Flee<small>try to escape before round 1</small>
-            </button>
-          </div>
-        </section>
-
-        <!-- Equipment -->
-        <section class="card">
-          <h3>Equipment</h3>
-          <div class="gear-tiles">
-            <div class="gear-tile" [class.empty]="!you.gear['fang']">
-              <mat-icon class="mi slot-mi">hardware</mat-icon>
-              <div class="gear-tile-body">
-                <span class="gear-tile-slot">Fang</span>
-                @if (you.gear['fang']; as g) {
-                  <span class="gear-tile-name">{{ gearMap[g].name }}</span>
-                  <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
-                } @else {
-                  <span class="gear-tile-empty">empty</span>
+                @if (openStat(); as s) {
+                  <aside class="stat-desc">
+                    <div class="stat-desc-head">
+                      @if (statInfo[s].icon.startsWith('uc-')) {
+                        <mat-icon class="mi" [svgIcon]="statInfo[s].icon"></mat-icon>
+                      } @else {
+                        <mat-icon class="mi">{{ statInfo[s].icon }}</mat-icon>
+                      }
+                      {{ statInfo[s].label }}
+                    </div>
+                    <p>{{ statInfo[s].desc }}</p>
+                  </aside>
                 }
               </div>
-            </div>
-            <div class="gear-tile" [class.empty]="!you.gear['carapace']">
-              <mat-icon class="mi slot-mi">shield</mat-icon>
-              <div class="gear-tile-body">
-                <span class="gear-tile-slot">Carapace</span>
-                @if (you.gear['carapace']; as g) {
-                  <span class="gear-tile-name">{{ gearMap[g].name }}</span>
-                  <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
-                } @else {
-                  <span class="gear-tile-empty">empty</span>
+              <div class="passives">
+                @for (p of you.passives; track p) {
+                  <div class="passive-pill">
+                    <strong>{{ passiveName(p) }}</strong> {{ passiveBlurbs[p] }}
+                  </div>
                 }
               </div>
-            </div>
-            <div class="gear-tile" [class.empty]="!you.gear['charm']">
-              <mat-icon class="mi slot-mi">auto_awesome</mat-icon>
-              <div class="gear-tile-body">
-                <span class="gear-tile-slot">Charm</span>
-                @if (you.gear['charm']; as g) {
-                  <span class="gear-tile-name">{{ gearMap[g].name }}</span>
-                  <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
-                } @else {
-                  <span class="gear-tile-empty">empty</span>
-                }
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Bag -->
-        <section class="card">
-          <h3>Bag <span class="muted">({{ you.bag.length }}/3)</span></h3>
-          @if (!you.bag.length) {
-            <p class="muted bag-empty">Empty. The bazaars stock helpful rot.</p>
+            </section>
           }
-          <div class="bag-rows">
-            @for (item of you.bag; track $index) {
-              <div class="bag-row">
-                <span class="bag-item">
-                  <mat-icon class="mi">{{ consumableMap[item].icon }}</mat-icon>
-                  {{ consumableMap[item].name }}
-                </span>
-                <button class="uc-btn use-btn" [disabled]="busy()" (click)="useItem(item)">
-                  {{ item === 'snare' ? 'Plant here' : item === 'smoke_spore' ? 'Passive' : 'Use' }}
-                </button>
+          @case ('gear') {
+            <!-- Equipment -->
+            <section class="card">
+              <h3>Equipment</h3>
+              <div class="gear-tiles">
+                <div class="gear-tile" [class.empty]="!you.gear['fang']">
+                  <mat-icon class="mi slot-mi">hardware</mat-icon>
+                  <div class="gear-tile-body">
+                    <span class="gear-tile-slot">Fang</span>
+                    @if (you.gear['fang']; as g) {
+                      <span class="gear-tile-name">{{ gearMap[g].name }}</span>
+                      <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
+                    } @else {
+                      <span class="gear-tile-empty">empty</span>
+                    }
+                  </div>
+                </div>
+                <div class="gear-tile" [class.empty]="!you.gear['carapace']">
+                  <mat-icon class="mi slot-mi">shield</mat-icon>
+                  <div class="gear-tile-body">
+                    <span class="gear-tile-slot">Carapace</span>
+                    @if (you.gear['carapace']; as g) {
+                      <span class="gear-tile-name">{{ gearMap[g].name }}</span>
+                      <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
+                    } @else {
+                      <span class="gear-tile-empty">empty</span>
+                    }
+                  </div>
+                </div>
+                <div class="gear-tile" [class.empty]="!you.gear['charm']">
+                  <mat-icon class="mi slot-mi">auto_awesome</mat-icon>
+                  <div class="gear-tile-body">
+                    <span class="gear-tile-slot">Charm</span>
+                    @if (you.gear['charm']; as g) {
+                      <span class="gear-tile-name">{{ gearMap[g].name }}</span>
+                      <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
+                    } @else {
+                      <span class="gear-tile-empty">empty</span>
+                    }
+                  </div>
+                </div>
               </div>
-            }
-          </div>
-          @if (you.pendingLoadedDie) {
-            <p class="loaded-note">
-              <mat-icon class="mi">casino</mat-icon> Loaded die primed — next roll will be a
-              {{ you.pendingLoadedDie }}
-            </p>
-          }
-        </section>
+            </section>
 
-        <!-- Grimoire -->
-        <section class="card">
-          <h3>Grimoire <span class="muted">({{ (you.grimoires ?? []).length }} collected)</span></h3>
-          <div class="spell-rows">
-            @if (innateSpell(); as sp) {
-              <div class="spell-row innate">
-                <span class="spell-name">
-                  <mat-icon class="mi">{{ sp.icon }}</mat-icon>
-                  {{ sp.name }} <em>{{ sp.desc }}</em>
-                </span>
-                <span class="spell-cd" [class.ready]="cooldownLabel(sp.id) === 'Ready'">
-                  {{ cooldownLabel(sp.id) }}
-                </span>
+            <!-- Bag -->
+            <section class="card">
+              <h3>Bag <span class="muted">({{ you.bag.length }}/3)</span></h3>
+              @if (!you.bag.length) {
+                <p class="muted bag-empty">Empty. The bazaars stock helpful rot.</p>
+              }
+              <div class="bag-rows">
+                @for (item of you.bag; track $index) {
+                  <div class="bag-row">
+                    <span class="bag-item">
+                      <mat-icon class="mi">{{ consumableMap[item].icon }}</mat-icon>
+                      {{ consumableMap[item].name }}
+                    </span>
+                    <button class="uc-btn use-btn" [disabled]="busy()" (click)="useItem(item)">
+                      {{ item === 'snare' ? 'Plant here' : item === 'smoke_spore' ? 'Passive' : 'Use' }}
+                    </button>
+                  </div>
+                }
               </div>
-            }
-            @if (equippedBook(); as book) {
-              @for (sp of bookSpells(book); track sp.id) {
-                <div class="spell-row">
-                  <span class="spell-name">
-                    <mat-icon class="mi">{{ sp.icon }}</mat-icon>
-                    {{ sp.name }} <em>{{ sp.desc }}</em>
-                  </span>
-                  <span class="spell-cd" [class.ready]="cooldownLabel(sp.id) === 'Ready'">
-                    {{ cooldownLabel(sp.id) }}
-                  </span>
+              @if (you.pendingLoadedDie) {
+                <p class="loaded-note">
+                  <mat-icon class="mi">casino</mat-icon> Loaded die primed — next roll will be a
+                  {{ you.pendingLoadedDie }}
+                </p>
+              }
+            </section>
+
+            <!-- Grimoire -->
+            <section class="card">
+              <h3>Grimoire <span class="muted">({{ (you.grimoires ?? []).length }} collected)</span></h3>
+              <div class="spell-rows">
+                @if (innateSpell(); as sp) {
+                  <div class="spell-row innate">
+                    <span class="spell-name">
+                      <mat-icon class="mi">{{ sp.icon }}</mat-icon>
+                      {{ sp.name }} <em>{{ sp.desc }}</em>
+                    </span>
+                    <span class="spell-cd" [class.ready]="cooldownLabel(sp.id) === 'Ready'">
+                      {{ cooldownLabel(sp.id) }}
+                    </span>
+                  </div>
+                }
+                @if (equippedBook(); as book) {
+                  @for (sp of bookSpells(book); track sp.id) {
+                    <div class="spell-row">
+                      <span class="spell-name">
+                        <mat-icon class="mi">{{ sp.icon }}</mat-icon>
+                        {{ sp.name }} <em>{{ sp.desc }}</em>
+                      </span>
+                      <span class="spell-cd" [class.ready]="cooldownLabel(sp.id) === 'Ready'">
+                        {{ cooldownLabel(sp.id) }}
+                      </span>
+                    </div>
+                  }
+                } @else {
+                  <p class="muted bag-empty">No grimoire open. Books wait in the bazaars.</p>
+                }
+              </div>
+              @if ((you.grimoires ?? []).length) {
+                <div class="book-list">
+                  @for (g of ownedBooks(); track g.id) {
+                    <button
+                      class="uc-btn book-chip"
+                      [class.selected]="you.equippedGrimoire === g.id"
+                      [disabled]="busy()"
+                      (click)="equipBook(g.id)"
+                    >
+                      <mat-icon class="mi">menu_book</mat-icon> {{ g.name }}
+                    </button>
+                  }
                 </div>
               }
-            } @else {
-              <p class="muted bag-empty">No grimoire open. Books wait in the bazaars.</p>
-            }
-          </div>
-          @if ((you.grimoires ?? []).length) {
-            <div class="book-list">
-              @for (g of ownedBooks(); track g.id) {
-                <button
-                  class="uc-btn book-chip"
-                  [class.selected]="you.equippedGrimoire === g.id"
-                  [disabled]="busy()"
-                  (click)="equipBook(g.id)"
-                >
-                  <mat-icon class="mi">menu_book</mat-icon> {{ g.name }}
-                </button>
-              }
-            </div>
+            </section>
           }
-        </section>
+          @case ('wardrobe') {
+            <section class="card">
+              <h3>Wardrobe <span class="muted">(yours forever, every night)</span></h3>
+              <div class="wardrobe-group">
+                <span class="wardrobe-label">Hat</span>
+                <div class="swatch-row">
+                  <button
+                    class="hat-chip"
+                    [class.selected]="!you.hat"
+                    [disabled]="busy()"
+                    (click)="setHat(null)"
+                  >
+                    none
+                  </button>
+                  @for (h of ownedHats(); track h.id) {
+                    <button
+                      class="hat-chip"
+                      [class.selected]="you.hat === h.id"
+                      [disabled]="busy()"
+                      (click)="setHat(h.id)"
+                    >
+                      <img [src]="'undercity/hats/' + h.file" [alt]="h.name" [title]="h.name" />
+                    </button>
+                  }
+                </div>
+              </div>
+              @for (region of paintRegions(); track region) {
+                <div class="wardrobe-group">
+                  <span class="wardrobe-label">{{ region }}</span>
+                  <div class="swatch-row">
+                    @for (p of ownedPaints(); track p.id) {
+                      <button
+                        class="paint-swatch"
+                        [class.selected]="you.paint[region] === p.hue"
+                        [style.background]="'hsl(' + p.hue + ', 60%, 45%)'"
+                        [title]="p.name"
+                        [disabled]="busy()"
+                        (click)="setPaint($any(region), p)"
+                      ></button>
+                    }
+                  </div>
+                </div>
+              }
+            </section>
+          }
+          @case ('sigils') {
+            <section class="card">
+              <h3>
+                Guild Sigils
+                <span class="stats-hint muted">defeat a lair boss to claim its sigil</span>
+              </h3>
+              <p class="sigil-progress">
+                <mat-icon class="mi gold">workspace_premium</mat-icon>
+                {{ sigilCount() }} / {{ sigilsRequired }} claimed
+                <span class="muted">— the island boss unseals at {{ sigilsRequired }}</span>
+              </p>
+              <div class="sigil-grid">
+                @for (d of sigilEntries; track d.biome) {
+                  <div class="sigil-tile" [class.claimed]="hasSigil(d.biome)">
+                    <div class="sigil-portrait">
+                      <img [src]="'undercity/guardians/' + d.lairNpcId + '.png'" [alt]="d.lairName" />
+                      @if (!hasSigil(d.biome)) {
+                        <mat-icon class="mi sigil-lock">lock</mat-icon>
+                      }
+                    </div>
+                    <span class="sigil-biome">{{ d.biomeName }}</span>
+                    <span class="sigil-boss-name">{{ d.lairName }}</span>
+                    <span class="sigil-state">{{ hasSigil(d.biome) ? 'Defeated' : 'Undefeated' }}</span>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+        }
       </div>
     </div>
 

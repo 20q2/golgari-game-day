@@ -42,7 +42,10 @@
         @if (actWord().attacker; as w) { <span class="act-word">{{ w }}</span> }
         @if (enteredFighters()) {
           <span class="platform"></span>
-          <span class="body drop-in">
+          <span
+            class="body drop-in"
+            [style.--uc-sprite]="attacker.spriteUrl && !attackerSpriteFailed() ? 'url(\'' + attacker.spriteUrl + '\')' : null"
+          >
             @if (guard().attacker) { <span class="barrier"></span> }
             @if (attacker.spriteUrl && !attackerSpriteFailed()) {
               <img class="sprite" [src]="attacker.spriteUrl" [alt]="attacker.name" (error)="attackerSpriteFailed.set(true)" />
@@ -85,7 +88,10 @@
         }
         @if (enteredFighters()) {
           <span class="platform"></span>
-          <span class="body drop-in">
+          <span
+            class="body drop-in"
+            [style.--uc-sprite]="defender.spriteUrl && !defenderSpriteFailed() ? 'url(\'' + defender.spriteUrl + '\')' : null"
+          >
             @if (guard().defender) { <span class="barrier"></span> }
             @if (defender.spriteUrl && !defenderSpriteFailed()) {
               <img class="sprite" [src]="defender.spriteUrl" [alt]="defender.name" (error)="defenderSpriteFailed.set(true)" />

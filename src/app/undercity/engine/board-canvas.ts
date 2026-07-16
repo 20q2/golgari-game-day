@@ -623,6 +623,11 @@ export class BoardCanvas {
     );
     const minZoom = Math.max(Math.min(fit, 1), MIN_ZOOM);
     this.zoom = Math.min(MAX_ZOOM, Math.max(minZoom, this.zoom));
+    // Spectator broadcast: let the camera roam past the world edge so it can
+    // center any biome dead-on (edge regions included) instead of stopping at
+    // an invisible wall — that wall-stop is what made the camera "bounce".
+    // The letterboxed void matches the wall colour, so it just reads as cave.
+    if (!this.interactive) return;
     const vw = this.canvas.width / this.zoom;
     const vh = this.canvas.height / this.zoom;
     // Center any axis whose view is wider than the layer; clamp the rest.

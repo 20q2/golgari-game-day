@@ -675,8 +675,10 @@
 // border beneath it to separate it from the stance controls.
 .tele-section {
   flex-shrink: 0;
-  padding: 0 14px 8px;
+  margin-top: -4px; // tuck toward the arena divider without bleeding over it
+  padding: 0 14px 6px;
   border-bottom: 1px solid rgba(74, 124, 89, 0.4);
+  overflow: hidden; // never let the caption spill past its section
 }
 
 .tele-caption {
@@ -967,14 +969,27 @@
 
 // STRUCK — the hit fighter flashes red (a damage number pops from the TS).
 // Flash lives on ::after so it never resets the body's drop-in/breathe anim.
+// The red is masked by the sprite's own alpha (--uc-sprite, set per side) so it
+// tints only the creature's pixels — not the whole rectangular sprite box.
 .side.struck .body::after {
   content: '';
   position: absolute;
-  inset: -6px;
-  border-radius: 12px;
+  top: 50%;
+  left: 50%;
+  width: 96px;
+  height: 96px;
+  transform: translate(-50%, -50%);
+  border-radius: 12px; // only shows in the no-sprite (icon) fallback where the mask is absent
   background: rgba(255, 55, 40, 0.6);
   pointer-events: none;
   animation: uc-flash 0.38s ease;
+
+  -webkit-mask: var(--uc-sprite) center / contain no-repeat;
+  mask: var(--uc-sprite) center / contain no-repeat;
+}
+// Match the mirrored sprite so the red silhouette lines up.
+.side.flipped.struck .body::after {
+  transform: translate(-50%, -50%) scaleX(-1);
 }
 @keyframes uc-flash {
   0% { opacity: 0; }

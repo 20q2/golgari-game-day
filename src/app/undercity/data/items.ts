@@ -134,10 +134,10 @@ export const NPC_ICONS: Record<string, string> = {
   fetid_imp: 'whatshot',
   rot_shambler: 'coronavirus',
   // v3 guardians & mini-bosses
-  rubble_hulk: 'landslide',
-  bone_warden: 'security',
+  golgari_grave_troll: 'landslide',
+  wight_of_the_reliquary: 'security',
   gravebound_colossus: 'domain_disabled',
-  broodmother: 'pest_control',
+  ishkanah: 'pest_control',
   // v6 dungeon fauna (battle art: undercity/enemies/<id>.png, icon fallback)
   broodling: 'pest_control',
   glowmite: 'flare',
@@ -150,24 +150,25 @@ export const NPC_ICONS: Record<string, string> = {
  * Which guardian creature blocks each barrier space — mirrors the backend
  * BARRIER_GUARDIANS ids (undercity_data.py). The board draws this creature
  * standing on a still-sealed barrier (it vanishes once the route is broken).
- * Real art lives at `undercity/guardians/<id>.png` (transparent); until that
- * file exists a placeholder token sprite stands in (GUARDIAN_PLACEHOLDER_SPRITE).
+ * Real art lives at `undercity/guardians/<id>.png` (transparent); if a future
+ * guardian ships without art yet, a placeholder token sprite stands in
+ * (GUARDIAN_PLACEHOLDER_SPRITE).
  */
 export const BARRIER_GUARDIANS: Record<string, string> = {
-  bar_e: 'rubble_hulk',
-  bar_s: 'bone_warden',
+  bar_e: 'golgari_grave_troll',
+  bar_s: 'wight_of_the_reliquary',
 };
 
 /** Guardian shown when a barrier node isn't in the map above. */
-export const DEFAULT_GUARDIAN = 'rubble_hulk';
+export const DEFAULT_GUARDIAN = 'golgari_grave_troll';
 
 /**
  * Placeholder token sprite per guardian (keys index FORM_SPRITES sprite assets,
  * already preloaded) until real transparent guardian art is dropped in.
  */
 export const GUARDIAN_PLACEHOLDER_SPRITE: Record<string, string> = {
-  rubble_hulk: 'godzilla',
-  bone_warden: 'pachy',
+  golgari_grave_troll: 'godzilla',
+  wight_of_the_reliquary: 'pachy',
 };
 
 /** Fallback placeholder sprite for any guardian without a specific mapping. */

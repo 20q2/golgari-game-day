@@ -1,0 +1,146 @@
+<div class="broadcast" [attr.data-scene]="scene().kind" (mousemove)="onActivity()">
+  <!-- The board camera (read-only, driven by the director) -->
+  <div class="board-stage">
+    <canvas #boardCanvas></canvas>
+  </div>
+
+  <!-- Vignette so overlays stay legible over busy terrain -->
+  <div class="vignette"></div>
+
+  <!-- Broadcast wordmark, top-left -->
+  <div class="brandchip">
+    <span class="dot" [class.live]="store.season()?.status === 'active'"></span>
+    <span class="title">The Undercity</span>
+    <span class="sub">{{ store.season()?.status === 'active' ? 'LIVE' : 'STANDBY' }}</span>
+  </div>
+
+  <!-- Exit (operator affordance) — tucked under the wordmark, shown on mouse move -->
+  <button
+    class="exit-btn"
+    [class.show]="controlsVisible()"
+    type="button"
+    (click)="exit()"
+    aria-label="Leave broadcast"
+  >
+    <mat-icon>close</mat-icon>
+    <span>Exit</span>
+  </button>
+
+  <!-- Persistent QR — always in the corner, the hook for new players -->
+  <div class="qr-badge">
+    <canvas #qrCanvas></canvas>
+    <div class="qr-cap">Scan to Join</div>
+  </div>
+
+  <!-- Between-scenes wipe + lower-third label -->
+  <div class="scene-cut" *ngIf="transition() as t">
+    <div class="wipe"></div>
+    <div class="scene-label">
+      <mat-icon>{{ t.icon }}</mat-icon>
+      <span>{{ t.label }}</span>
+    </div>
+  </div>
+
+  <!-- Compact renown rail (hotspot / boss scenes) -->
+  <div class="rail" [class.show]="showRail()">
+    <div class="rail-head">Renown</div>
+    <div class="rail-row" *ngFor="let p of leaderboard().slice(0, 6); let i = index">
+      <span class="rk">{{ i + 1 }}</span>
+      <img class="pip" *ngIf="portrait(p) as src" [src]="src" alt="" />
+      <span class="nm">{{ p.username }}</span>
+      <span class="rn">{{ p.renown }}</span>
+    </div>
+  </div>
+
+  <!-- Hero card (hero scene) -->
+  <div class="hero-card" *ngIf="scene().kind === 'hero' && scene().player as hp">
+    <div class="hero-portrait">
+      <img *ngIf="portrait(hp) as src" [src]="src" alt="" />
+      <img class="hat" *ngIf="hatUrl(hp) as h" [src]="h" alt="" />
+    </div>
+    <div class="hero-body">
+      <div class="hero-name">{{ creatureTitle(hp) }}</div>
+      <div class="hero-meta">
+        <span class="race">{{ raceLabel(hp) }}</span>
+        <span class="chip">Tier {{ hp.tier }} · Lv {{ hp.level }}</span>
+        <span class="chip renown">{{ hp.renown }} Renown</span>
+      </div>
+      <div class="hero-bars">
+        <div class="bar">
+          <span class="bar-label">HP</span>
+          <span class="bar-track"><span class="bar-fill hp" [style.width.%]="hpPct(hp)"></span></span>
+          <span class="bar-num">{{ hp.hp }}/{{ hp.maxHp }}</span>
+        </div>
+      </div>
+      <div class="hero-stats">
+        <span class="stat"><mat-icon svgIcon="uc-sword"></mat-icon>{{ hp.atk ?? '—' }}</span>
+        <span class="stat"><mat-icon>shield</mat-icon>{{ hp.def ?? '—' }}</span>
+        <span class="stat"><mat-icon>bolt</mat-icon>{{ hp.spd ?? '—' }}</span>
+        <span class="stat"><mat-icon>sports_kabaddi</mat-icon>{{ hp.pvpWins }}</span>
+        <span class="stat"><mat-icon>bug_report</mat-icon>{{ hp.wildWins }}</span>
+      </div>
+      <div class="hero-gear" *ngIf="gearRows(hp).length">
+        <span class="gear" *ngFor="let g of gearRows(hp)">{{ g.name }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaderboard spotlight (leaderboard scene) -->
+  <div class="spotlight" *ngIf="scene().kind === 'leaderboard'">
+    <div class="spot-head">Renown Standings</div>
+    <table class="spot-table">
+      <tr>
+        <th>#</th>
+        <th></th>
+        <th>Creature</th>
+        <th><mat-icon>sports_kabaddi</mat-icon></th>
+        <th><mat-icon>bug_report</mat-icon></th>
+        <th>Renown</th>
+      </tr>
+      <tr *ngFor="let p of leaderboard().slice(0, 8); let i = index" [class.lead]="i === 0">
+        <td class="rk">{{ i + 1 }}</td>
+        <td class="pic">
+          <img *ngIf="portrait(p) as src" [src]="src" alt="" />
+          <img class="hat" *ngIf="hatUrl(p) as h" [src]="h" alt="" />
+        </td>
+        <td class="who">
+          <div class="nm">{{ p.username }}</div>
+          <div class="cr">{{ creatureTitle(p) }}</div>
+        </td>
+        <td class="num">{{ p.pvpWins }}</td>
+        <td class="num">{{ p.wildWins }}</td>
+        <td class="num rn">{{ p.renown }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Boss banner (boss scene) -->
+  <div class="boss-banner" *ngIf="scene().kind === 'boss'">
+    <mat-icon>emoji_events</mat-icon>
+    <div class="boss-text">
+      <div class="boss-title">Savra Stirs</div>
+      <div class="boss-sub">The Queen of the Golgari has awoken — strike her down.</div>
+    </div>
+  </div>
+
+  <!-- Event ticker along the bottom -->
+  <div class="ticker" *ngIf="store.events().length as n">
+    <mat-icon>rss_feed</mat-icon>
+    <span class="ticker-text">{{ store.events()[n - 1].text }}</span>
+  </div>
+
+  <!-- Attract screen — full-bleed when nobody's playing -->
+  <div class="attract" [class.show]="scene().kind === 'attract'">
+    <div class="attract-inner">
+      <div class="attract-kicker">Golgari Palace Game Day</div>
+      <h1 class="attract-title">Descend into The Undercity</h1>
+      <p class="attract-copy">
+        Hatch a creature, roam the rot-gardens, duel, evolve, and climb the Renown board.
+      </p>
+      <div class="attract-qr">
+        <canvas #qrCanvasBig></canvas>
+        <div class="attract-scan">Scan to play</div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -178,13 +178,6 @@
   }
 }
 
-.wardrobe-btn {
-  align-self: flex-start;
-  margin-top: 2px;
-  padding: 5px 12px;
-  font-size: 0.8rem;
-}
-
 .evolve-cta {
   font-size: 1rem;
   padding: 14px;
@@ -201,22 +194,75 @@
   }
 }
 
-// ── Lower cards grid ─────────────────────────────────────────────────────────
+// ── Sub-tabs (Stats / Gear / Wardrobe) ────────────────────────────────────────
 
-.card-grid {
+.subtab-bar {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(74, 124, 89, 0.3);
+  border-radius: 12px;
 
-  // On narrow screens everything stacks.
-  @media (max-width: 520px) {
-    grid-template-columns: 1fr;
+  button {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 8px 2px 7px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: #8a978a;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 0.66rem;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+
+    .mi {
+      font-size: 1.15rem;
+      width: 1.15rem;
+      height: 1.15rem;
+    }
+
+    &:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    &.active {
+      background: rgba(74, 124, 89, 0.35);
+      color: #eafff0;
+    }
   }
 }
 
-.stance-card,
-.stats-card {
-  grid-column: 1 / -1; // span the full width — stats needs room for the side panel
+// Unspent level-up point count on the Stats sub-tab button.
+.subtab-badge {
+  position: absolute;
+  top: 2px;
+  right: 14px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #a78bfa;
+  color: #1a1815;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  box-shadow: 0 0 6px rgba(167, 139, 250, 0.7);
+}
+
+.subtab-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 // ── Stats ────────────────────────────────────────────────────────────────────
@@ -332,6 +378,11 @@
     background: rgba(74, 124, 89, 0.2);
   }
 
+  // Spending a point is a celebrated moment: pop the tile, roll the number.
+  &.celebrate {
+    animation: uc-stat-celebrate 0.6s ease;
+  }
+
   .plus-btn.disabled {
     opacity: 0.45;
     pointer-events: none;
@@ -349,6 +400,37 @@
     font-size: 1.4rem;
     color: #eafff0;
     line-height: 1.1;
+
+    // Count-up: old digit slides up and out, new gold digit rises in behind it.
+    &.rolling {
+      position: relative;
+      display: inline-grid;
+      overflow: hidden;
+
+      .roll-out,
+      .roll-in {
+        grid-area: 1 / 1;
+      }
+      .roll-out {
+        animation: uc-roll-out 0.45s ease forwards;
+      }
+      .roll-in {
+        animation: uc-roll-in 0.45s ease 0.05s both;
+      }
+    }
+  }
+
+  // The little "+1" that floats off the tile as the number lands.
+  .stat-pop {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #fbbf24;
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.75);
+    pointer-events: none;
+    animation: uc-stat-pop 0.7s ease forwards;
   }
 
   .stat-tile-name {
@@ -364,6 +446,62 @@
     border-color: rgba(167, 139, 250, 0.6);
     background: rgba(167, 139, 250, 0.18);
     color: #d8ccfa;
+  }
+}
+
+@keyframes uc-stat-celebrate {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(251, 191, 36, 0);
+  }
+  40% {
+    transform: scale(1.09);
+    box-shadow: 0 0 16px rgba(251, 191, 36, 0.6);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(251, 191, 36, 0);
+  }
+}
+
+@keyframes uc-roll-out {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-90%);
+    opacity: 0;
+  }
+}
+
+@keyframes uc-roll-in {
+  0% {
+    transform: translateY(90%);
+    opacity: 0;
+    color: #fde68a;
+  }
+  60% {
+    color: #fde68a;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+    color: #eafff0;
+  }
+}
+
+@keyframes uc-stat-pop {
+  0% {
+    transform: translate(-50%, 6px);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -16px);
+    opacity: 0;
   }
 }
 
@@ -385,63 +523,6 @@
     strong {
       color: #fbbf24;
       display: block;
-    }
-  }
-}
-
-// ── Stance ─────────────────────────────────────────────────────────────────
-
-.stance-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-
-  @media (max-width: 400px) {
-    grid-template-columns: 1fr;
-  }
-}
-
-.stance-btn {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: center;
-  text-align: center;
-
-  mat-icon {
-    font-size: 1.4rem;
-    width: 1.4rem;
-    height: 1.4rem;
-  }
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(74, 124, 89, 0.3);
-  border-radius: 10px;
-  padding: 12px 8px;
-  color: #d8f3dc;
-  font-family: inherit;
-  font-weight: 700;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
-
-  small {
-    font-weight: 400;
-    font-size: 0.65rem;
-    color: #8a978a;
-    line-height: 1.3;
-  }
-
-  &:hover:not(:disabled):not(.selected) {
-    background: rgba(255, 255, 255, 0.07);
-  }
-
-  &.selected {
-    border-color: #fbbf24;
-    background: rgba(251, 191, 36, 0.12);
-    color: #fde68a;
-
-    small {
-      color: #cdb98a;
     }
   }
 }
@@ -628,6 +709,106 @@
 
   &.selected {
     border-color: #fbbf24;
+  }
+}
+
+// ── Sigils ───────────────────────────────────────────────────────────────────
+
+.sigil-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #d8f3dc;
+
+  .muted {
+    font-weight: 400;
+  }
+}
+
+.sigil-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.sigil-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(74, 124, 89, 0.25);
+  opacity: 0.65;
+
+  &.claimed {
+    opacity: 1;
+    border-color: rgba(251, 191, 36, 0.55);
+    background: rgba(251, 191, 36, 0.08);
+  }
+
+  .sigil-portrait {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 4px;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .sigil-lock {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 1.4rem;
+    height: 1.4rem;
+    font-size: 1.4rem;
+    color: #eafff0;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 50%;
+    padding: 6px;
+    box-sizing: content-box;
+  }
+
+  .sigil-biome {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #eafff0;
+  }
+
+  .sigil-boss-name {
+    font-size: 0.68rem;
+    font-style: italic;
+    color: #9aa79a;
+  }
+
+  .sigil-state {
+    margin-top: 3px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #8a978a;
+  }
+
+  &.claimed .sigil-state {
+    color: #fbbf24;
   }
 }
 

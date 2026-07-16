@@ -1,7 +1,7 @@
 {
  "worldW": 3600,
  "worldH": 2400,
- "gate": "n128",
+ "gate": "city_r0",
  "boss": "boss",
  "nodes": [
   {
@@ -17,9 +17,9 @@
   },
   {
    "id": "cavern_r1",
-   "type": "crystal_vein",
-   "x": 1069,
-   "y": 926,
+   "type": "shop",
+   "x": 928,
+   "y": 910,
    "region": "cavern",
    "neighbors": [
     "cavern_r0",
@@ -41,9 +41,9 @@
   },
   {
    "id": "cavern_r3",
-   "type": "shop",
-   "x": 644,
-   "y": 633,
+   "type": "crystal_vein",
+   "x": 563,
+   "y": 637,
    "region": "cavern",
    "neighbors": [
     "cavern_r2",
@@ -52,9 +52,9 @@
   },
   {
    "id": "cavern_r4",
-   "type": "mystery",
-   "x": 503,
-   "y": 468,
+   "type": "crystal_vein",
+   "x": 519,
+   "y": 453,
    "region": "cavern",
    "neighbors": [
     "cavern_r3",
@@ -64,8 +64,8 @@
   {
    "id": "cavern_r5",
    "type": "hazard",
-   "x": 671,
-   "y": 256,
+   "x": 647,
+   "y": 279,
    "region": "cavern",
    "neighbors": [
     "cavern_r4",
@@ -86,9 +86,9 @@
   },
   {
    "id": "cavern_r7",
-   "type": "warp",
-   "x": 1044,
-   "y": 303,
+   "type": "crystal_vein",
+   "x": 1066,
+   "y": 329,
    "region": "cavern",
    "neighbors": [
     "cavern_r6",
@@ -109,7 +109,7 @@
   },
   {
    "id": "cavern_r9",
-   "type": "shrine",
+   "type": "warp",
    "x": 1244,
    "y": 525,
    "region": "cavern",
@@ -221,9 +221,9 @@
   },
   {
    "id": "bog_r0",
-   "type": "gate",
-   "x": 2825,
-   "y": 488,
+   "type": "mystery",
+   "x": 2800,
+   "y": 438,
    "region": "bog",
    "neighbors": [
     "n124",
@@ -233,13 +233,12 @@
   {
    "id": "bog_r1",
    "type": "loot",
-   "x": 2337,
-   "y": 566,
+   "x": 2314,
+   "y": 515,
    "region": "bog",
    "neighbors": [
     "bog_r2",
-    "t_cavern_bog1",
-    "bog_r6"
+    "t_cavern_bog1"
    ]
   },
   {
@@ -256,7 +255,7 @@
   },
   {
    "id": "bog_r3",
-   "type": "shop",
+   "type": "loot",
    "x": 2708,
    "y": 294,
    "region": "bog",
@@ -268,36 +267,33 @@
   },
   {
    "id": "bog_r4",
-   "type": "mystery",
-   "x": 2928,
-   "y": 224,
+   "type": "gate",
+   "x": 2878,
+   "y": 188,
    "region": "bog",
    "neighbors": [
-    "bog_r3",
-    "bog_r5"
+    "bog_r3"
    ]
   },
   {
    "id": "bog_r5",
    "type": "hazard",
-   "x": 3077,
-   "y": 278,
+   "x": 3122,
+   "y": 324,
    "region": "bog",
    "neighbors": [
-    "bog_r4",
     "bog_lt",
     "n125"
    ]
   },
   {
    "id": "bog_r6",
-   "type": "loot",
-   "x": 2375,
-   "y": 842,
+   "type": "shop",
+   "x": 2492,
+   "y": 865,
    "region": "bog",
    "neighbors": [
-    "bog_r9",
-    "bog_r1"
+    "bog_r8"
    ]
   },
   {
@@ -321,19 +317,8 @@
    "region": "bog",
    "neighbors": [
     "bog_r7",
-    "bog_r9",
     "bog_i1",
-    "t_bog_garden0"
-   ]
-  },
-  {
-   "id": "bog_r9",
-   "type": "shrine",
-   "x": 2548,
-   "y": 886,
-   "region": "bog",
-   "neighbors": [
-    "bog_r8",
+    "t_bog_garden0",
     "bog_r6"
    ]
   },
@@ -350,7 +335,7 @@
   },
   {
    "id": "bog_i1",
-   "type": "elite",
+   "type": "mystery",
    "x": 2653,
    "y": 678,
    "region": "bog",
@@ -452,65 +437,70 @@
   },
   {
    "id": "garden_r0",
-   "type": "gate",
-   "x": 2723,
-   "y": 1535,
+   "type": "loot",
+   "x": 2683,
+   "y": 1572,
    "region": "garden",
    "neighbors": [
-    "garden_r1",
-    "garden_r9"
+    "garden_r9",
+    "n132"
    ]
   },
   {
    "id": "garden_r1",
-   "type": "loot",
-   "x": 2846,
-   "y": 1437,
+   "type": "mystery",
+   "x": 2906,
+   "y": 1401,
    "region": "garden",
    "neighbors": [
-    "garden_r0",
     "garden_r2",
-    "t_bog_garden1"
+    "t_bog_garden1",
+    "n131",
+    "n132"
    ]
   },
   {
    "id": "garden_r2",
-   "type": "wild",
-   "x": 3047,
-   "y": 1382,
+   "type": "gate",
+   "x": 3089,
+   "y": 1402,
    "region": "garden",
    "neighbors": [
     "garden_r1",
     "garden_r3"
-   ]
+   ],
+   "spriteDist": 32
   },
   {
    "id": "garden_r3",
    "type": "shop",
-   "x": 3157,
-   "y": 1427,
+   "x": 3263,
+   "y": 1483,
    "region": "garden",
    "neighbors": [
     "garden_r2",
     "garden_r4"
-   ]
+   ],
+   "spriteAngle": 80,
+   "spriteDist": 58
   },
   {
    "id": "garden_r4",
-   "type": "mystery",
-   "x": 3259,
-   "y": 1610,
+   "type": "elite",
+   "x": 3327,
+   "y": 1598,
    "region": "garden",
    "neighbors": [
     "garden_r3",
-    "garden_r5"
+    "garden_r5",
+    "n131"
    ]
   },
   {
    "id": "garden_r5",
    "type": "hazard",
-   "x": 3277,
-   "y": 1765,
+   "x": 3320,
+   "y": 1750,
    "region": "garden",
    "neighbors": [
     "garden_r4",
@@ -520,9 +510,9 @@
   },
   {
    "id": "garden_r6",
-   "type": "loot",
-   "x": 3154,
-   "y": 1863,
+   "type": "hazard",
+   "x": 3226,
+   "y": 1884,
    "region": "garden",
    "neighbors": [
     "garden_r5",
@@ -532,35 +522,39 @@
   {
    "id": "garden_r7",
    "type": "warp",
-   "x": 2953,
-   "y": 1918,
+   "x": 3019,
+   "y": 1938,
    "region": "garden",
    "neighbors": [
     "garden_r6",
-    "garden_r8"
-   ]
+    "n131",
+    "n133"
+   ],
+   "spriteAngle": 55,
+   "spriteDist": 64
   },
   {
    "id": "garden_r8",
    "type": "wild",
-   "x": 2843,
-   "y": 1873,
+   "x": 2760,
+   "y": 1839,
    "region": "garden",
    "neighbors": [
-    "garden_r7",
-    "garden_r9"
+    "garden_r9",
+    "n133"
    ]
   },
   {
    "id": "garden_r9",
-   "type": "shrine",
-   "x": 2741,
-   "y": 1690,
+   "type": "hazard",
+   "x": 2698,
+   "y": 1712,
    "region": "garden",
    "neighbors": [
     "garden_r8",
     "garden_r0",
-    "t_garden_city0"
+    "t_garden_city0",
+    "n131"
    ]
   },
   {
@@ -656,9 +650,9 @@
   },
   {
    "id": "city_r0",
-   "type": "shrine",
-   "x": 1800,
-   "y": 1640,
+   "type": "gate",
+   "x": 1792,
+   "y": 1646,
    "region": "city",
    "neighbors": [
     "city_r1",
@@ -668,8 +662,8 @@
   {
    "id": "city_r1",
    "type": "loot",
-   "x": 1985,
-   "y": 1678,
+   "x": 2027,
+   "y": 1652,
    "region": "city",
    "neighbors": [
     "city_r0",
@@ -686,25 +680,28 @@
     "city_r1",
     "city_i0",
     "t_garden_city1",
-    "n129"
+    "n129",
+    "n128"
    ]
   },
   {
    "id": "city_r3",
    "type": "shop",
-   "x": 2030,
+   "x": 2196,
    "y": 2290,
    "region": "city",
    "neighbors": [
     "city_r4",
     "n129"
-   ]
+   ],
+   "spriteAngle": 100,
+   "spriteDist": 74
   },
   {
    "id": "city_r4",
-   "type": "vault_lock",
-   "x": 1985,
-   "y": 2422,
+   "type": "hazard",
+   "x": 1988,
+   "y": 2283,
    "region": "city",
    "neighbors": [
     "city_r3",
@@ -714,8 +711,8 @@
   {
    "id": "city_r5",
    "type": "wild",
-   "x": 1800,
-   "y": 2460,
+   "x": 1799,
+   "y": 2286,
    "region": "city",
    "neighbors": [
     "city_r4",
@@ -725,9 +722,9 @@
   },
   {
    "id": "city_r6",
-   "type": "vault_lock",
-   "x": 1615,
-   "y": 2422,
+   "type": "mystery",
+   "x": 1622,
+   "y": 2278,
    "region": "city",
    "neighbors": [
     "city_r5",
@@ -737,14 +734,16 @@
   {
    "id": "city_r7",
    "type": "warp",
-   "x": 1570,
-   "y": 2290,
+   "x": 1455,
+   "y": 2264,
    "region": "city",
    "neighbors": [
     "city_r6",
     "s0",
     "n130"
-   ]
+   ],
+   "spriteDist": 66,
+   "spriteAngle": 315
   },
   {
    "id": "city_r8",
@@ -756,14 +755,15 @@
     "city_r9",
     "city_i1",
     "t_city_bone0",
-    "n130"
+    "n130",
+    "n128"
    ]
   },
   {
    "id": "city_r9",
    "type": "loot",
-   "x": 1615,
-   "y": 1678,
+   "x": 1589,
+   "y": 1646,
    "region": "city",
    "neighbors": [
     "city_r8",
@@ -772,7 +772,7 @@
   },
   {
    "id": "city_i0",
-   "type": "vault_lock",
+   "type": "elite",
    "x": 1877,
    "y": 1810,
    "region": "city",
@@ -795,13 +795,15 @@
   {
    "id": "city_lt",
    "type": "ladder",
-   "x": 1800,
-   "y": 2240,
+   "x": 1801,
+   "y": 2454,
    "region": "city",
    "neighbors": [
     "city_r5",
     "city_lb"
-   ]
+   ],
+   "spriteDist": 68,
+   "spriteAngle": 45
   },
   {
    "id": "city_lb",
@@ -916,7 +918,9 @@
     "bone_r1",
     "bone_r3",
     "bone_i0"
-   ]
+   ],
+   "spriteAngle": 125,
+   "spriteDist": 74
   },
   {
    "id": "bone_r3",
@@ -932,14 +936,16 @@
   },
   {
    "id": "bone_r4",
-   "type": "shrine",
+   "type": "mystery",
    "x": 468,
    "y": 1847,
    "region": "bone",
    "neighbors": [
     "bone_r3",
     "bone_r5"
-   ]
+   ],
+   "spriteDist": 48,
+   "spriteAngle": 50
   },
   {
    "id": "bone_r5",
@@ -1027,8 +1033,8 @@
   {
    "id": "bone_lt",
    "type": "ladder",
-   "x": 164,
-   "y": 1760,
+   "x": 171,
+   "y": 1750,
    "region": "bone",
    "neighbors": [
     "bone_r5",
@@ -1106,7 +1112,7 @@
   },
   {
    "id": "t_cavern_bog0",
-   "type": "crystal_vein",
+   "type": "loot",
    "x": 1500,
    "y": 520,
    "region": "cavern",
@@ -1139,7 +1145,7 @@
   },
   {
    "id": "t_bog_garden1",
-   "type": "mystery",
+   "type": "loot",
    "x": 2900,
    "y": 1273,
    "region": "garden",
@@ -1151,8 +1157,8 @@
   {
    "id": "t_garden_city0",
    "type": "loot",
-   "x": 2600,
-   "y": 1783,
+   "x": 2544,
+   "y": 1793,
    "region": "garden",
    "neighbors": [
     "garden_r9",
@@ -1377,7 +1383,9 @@
    "neighbors": [
     "s3",
     "s2"
-   ]
+   ],
+   "spriteAngle": 295,
+   "spriteDist": 70
   },
   {
    "id": "s3",
@@ -1392,8 +1400,8 @@
   },
   {
    "id": "n124",
-   "type": "loot",
-   "x": 2934,
+   "type": "mystery",
+   "x": 2916,
    "y": 613,
    "region": "bog",
    "neighbors": [
@@ -1438,13 +1446,15 @@
   },
   {
    "id": "n128",
-   "type": "gate",
-   "x": 1803,
-   "y": 2025,
+   "type": "vault_lock",
+   "x": 1802,
+   "y": 2028,
    "region": "city",
    "neighbors": [
     "n129",
-    "n130"
+    "n130",
+    "city_r2",
+    "city_r8"
    ]
   },
   {
@@ -1462,13 +1472,50 @@
   {
    "id": "n130",
    "type": "loot",
-   "x": 1587,
-   "y": 2020,
+   "x": 1567,
+   "y": 2036,
    "region": "city",
    "neighbors": [
     "n128",
     "city_r8",
     "city_r7"
+   ]
+  },
+  {
+   "id": "n131",
+   "type": "shrine",
+   "x": 3017,
+   "y": 1652,
+   "region": "garden",
+   "neighbors": [
+    "garden_r1",
+    "garden_r9",
+    "garden_r7",
+    "garden_r4"
+   ],
+   "spriteAngle": 60,
+   "spriteDist": 46
+  },
+  {
+   "id": "n132",
+   "type": "loot",
+   "x": 2778,
+   "y": 1467,
+   "region": "garden",
+   "neighbors": [
+    "garden_r0",
+    "garden_r1"
+   ]
+  },
+  {
+   "id": "n133",
+   "type": "wild",
+   "x": 2891,
+   "y": 1912,
+   "region": "garden",
+   "neighbors": [
+    "garden_r8",
+    "garden_r7"
    ]
   }
  ],

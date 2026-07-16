@@ -10,7 +10,7 @@ import undercity_data as data
 import undercity_engine as engine
 import undercity_db as db
 
-from test_undercity_db import FakeTable, act
+from test_undercity_db import FakeTable, act, _seed_shop
 
 
 @pytest.fixture
@@ -65,6 +65,17 @@ def test_every_grimoire_spell_exists():
         assert 1 <= len(g['spells']) <= 3, gid
         for sp in g['spells']:
             assert sp in data.SPELLS, f'{gid} carries unknown spell {sp}'
+
+
+def test_tier1_grimoire_pool_enriched():
+    tier1 = [gid for gid, g in data.GRIMOIRES.items() if g['tier'] == 1]
+    assert len(tier1) == 7, tier1
+    for gid in ('warcasters_screed', 'hexweavers_codex',
+                'nightrunners_ledger', 'tinkers_manual'):
+        g = data.GRIMOIRES[gid]
+        assert g['tier'] == 1 and 1 <= len(g['spells']) <= 3
+        for sp in g['spells']:
+            assert sp in data.SPELLS
 
 
 def test_biome_spells_cover_every_biome():
@@ -474,10 +485,14 @@ def _shop_node():
 
 def test_buy_tier1_grimoire_auto_equips(table):
     act(table, 'join', starter='pest', home='city')
-    doc = db._get_player(table, _sid(table), 'user-alex')
-    doc['position'] = _shop_node()
+    sid = _sid(table)
+    node = _shop_node()
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = node
     doc['spores'] = 100
     db._put_player(table, doc)
+    # Stock this bazaar with the tome under test (+ a tier-II id to prove the guard).
+    _seed_shop(table, sid, node, grimoires=['gardeners_primer', 'kraul_warcodex'])
 
     status, resp = act(table, 'buy', itemId='gardeners_primer')
     assert status == 200

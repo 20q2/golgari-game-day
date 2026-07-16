@@ -155,6 +155,21 @@ body {
 // `::ng-deep` rules don't reach it. These overrides MUST live in this global
 // stylesheet.
 
+// The Undercity map editor is a full-screen fixed panel at z-index 1001
+// (above the navbar's 1000). The theme's default overlay container is exactly
+// 1000, which buries tooltips/dialogs beneath the editor — keep it higher.
+.cdk-overlay-container {
+  z-index: 1002;
+}
+
+// Tooltips are read-only hints. The CDK gives every overlay pane
+// `pointer-events: auto`, so a tooltip that opens under the cursor steals
+// hover/clicks from the control beneath it (and flickers on mouseleave).
+.mat-mdc-tooltip-panel,
+.mat-mdc-tooltip-panel .mat-mdc-tooltip {
+  pointer-events: none;
+}
+
 // Game details dialog — dark themed surface to match the games page.
 .cdk-overlay-pane.game-details-dialog .mat-mdc-dialog-surface {
   background: linear-gradient(180deg, #0a1410 0%, #131c16 60%, #1a2a20 100%);

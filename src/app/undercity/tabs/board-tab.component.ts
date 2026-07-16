@@ -1064,9 +1064,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Battle-card art path per foe class (missing files fall back to icons). */
   private npcSpriteUrl(evType: string, npcId: string): string {
     if (evType === 'wild' || evType === 'elite') return `undercity/enemies/${npcId}.png`;
-    if (evType === 'barrier') return `undercity/guardians/${npcId}.jfif`;
-    // Lair mini-bosses and the island boss share the sigil_boss folder.
-    return `undercity/sigil_boss/${npcId}.jfif`;
+    // Barriers, lair mini-bosses, and the island boss all share the guardians folder.
+    return `undercity/guardians/${npcId}.png`;
   }
 
   protected youSpriteUrl(): string | null {

@@ -157,7 +157,11 @@
             <span class="log-badge miss-badge"><mat-icon class="mi">air</mat-icon> miss</span>
           } @else {
             <span class="log-badge dmg-badge">
-              <mat-icon class="mi">{{ e.retaliation ? 'bolt' : 'sports_mma' }}</mat-icon>
+              @if (e.retaliation) {
+                <mat-icon class="mi">bolt</mat-icon>
+              } @else {
+                <mat-icon class="mi" svgIcon="uc-sword"></mat-icon>
+              }
               −{{ e.dmg }}
             </span>
           }
