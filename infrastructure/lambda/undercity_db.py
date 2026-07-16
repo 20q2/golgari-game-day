@@ -2419,28 +2419,89 @@ def _save_trading_post(table, sid, node, stock):
     table.put_item(Item={'pk': _season_pk(sid), 'sk': f'POST#{node}', 'stock': stock})
 
 
+def _item_kind(item_id):
+    if item_id in data.CONSUMABLES:
+        return 'consumable'
+    if item_id in data.GEAR:
+        return 'gear'
+    if item_id in data.GRIMOIRES:
+        return 'grimoire'
+    return None
+
+
+def _item_name(item_id):
+    kind = _item_kind(item_id)
+    if kind == 'consumable':
+        return data.CONSUMABLES[item_id]['name']
+    if kind == 'gear':
+        return data.GEAR[item_id]['name']
+    if kind == 'grimoire':
+        return data.GRIMOIRES[item_id]['name']
+    return item_id
+
+
 def _trade(table, sid, doc, payload):
-    """Swap one bag consumable for one of the post's 3 stock items. The item
-    you leave becomes the next visitor's stock, tagged with your name."""
+    """Swap one owned item (consumable, equipped gear, or an owned grimoire)
+    for one of the post's 3 stock items. The item you leave becomes the next
+    visitor's stock, tagged with your name."""
     node = doc.get('position')
     if data.MAP_NODES.get(node, {}).get('type') != 'trading_post':
         return _err('You are not at a trading post.', 409)
     give = payload.get('give')
     take_index = payload.get('takeIndex')
-    bag = doc.get('bag') or []
-    if give not in data.CONSUMABLES:
+    give_kind = _item_kind(give)
+    if give_kind is None:
         return _err('Unknown item.')
-    if give not in bag:
+
+    bag = doc.get('bag') or []
+    gear = doc.get('gear') or {}
+    grimoires = doc.get('grimoires') or []
+
+    if give_kind == 'consumable' and give not in bag:
         return _err("You don't have that item to trade.", 409)
+    if give_kind == 'gear' and gear.get(data.GEAR[give]['slot']) != give:
+        return _err("You don't have that piece equipped.", 409)
+    if give_kind == 'grimoire' and give not in grimoires:
+        return _err("You don't own that grimoire.", 409)
+
     stock = _trading_post_stock(table, sid, node)
     if not isinstance(take_index, int) or not (0 <= take_index < len(stock)):
         return _err('Pick something to take.', 409)
 
     taken = stock[take_index]
-    bag = list(bag)
-    bag.remove(give)               # give one…
-    bag.append(taken['item'])      # …take one (net bag size unchanged)
-    doc['bag'] = bag
+    take_kind = _item_kind(taken['item'])
+    if take_kind == 'consumable':
+        effective_bag_len = len(bag) - (1 if give_kind == 'consumable' else 0)
+        if effective_bag_len >= data.BAG_SIZE:
+            return _err('Your bag is full (3 slots).', 409)
+    if take_kind == 'grimoire' and taken['item'] in grimoires:
+        return _err('You already own that grimoire.', 409)
+
+    # Remove the given item.
+    if give_kind == 'consumable':
+        bag = list(bag)
+        bag.remove(give)
+        doc['bag'] = bag
+    elif give_kind == 'gear':
+        gear = dict(gear)
+        del gear[data.GEAR[give]['slot']]
+        doc['gear'] = gear
+    elif give_kind == 'grimoire':
+        grimoires = [g for g in grimoires if g != give]
+        doc['grimoires'] = grimoires
+        if doc.get('equippedGrimoire') == give:
+            doc['equippedGrimoire'] = None
+
+    # Apply the taken item.
+    if take_kind == 'consumable':
+        doc.setdefault('bag', []).append(taken['item'])
+    elif take_kind == 'gear':
+        doc.setdefault('gear', {})[data.GEAR[taken['item']]['slot']] = taken['item']
+    elif take_kind == 'grimoire':
+        doc.setdefault('grimoires', []).append(taken['item'])
+        if not doc.get('equippedGrimoire'):
+            doc['equippedGrimoire'] = taken['item']
+
     stock = list(stock)
     stock[take_index] = {'item': give, 'foundBy': doc.get('username', 'someone')}
 
@@ -2449,8 +2510,8 @@ def _trade(table, sid, doc, payload):
         return conflict
     _save_trading_post(table, sid, node, stock)  # then the shared stock
 
-    give_name = data.CONSUMABLES[give]['name']
-    take_name = data.CONSUMABLES[taken['item']]['name']
+    give_name = _item_name(give)
+    take_name = _item_name(taken['item'])
     _event(table, sid, 'trade',
            f"{doc['username']} traded a {give_name} for {take_name} "
            f"(left by {taken['foundBy']}) at the trading post.", actor=doc['userId'])

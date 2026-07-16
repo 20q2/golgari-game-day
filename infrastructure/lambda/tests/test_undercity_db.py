@@ -493,6 +493,121 @@ def test_trading_post_pre_seed_and_swap(table):
     assert ev2['stock'][0] == {'item': 'snare', 'foundBy': 'Alex'}
 
 
+def test_trading_post_swap_gear(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['gear'] = {'fang': 'rusted_fang'}
+    db._put_player(table, doc)
+
+    # Seed the post with a gear item left behind by an earlier visitor.
+    db._save_trading_post(table, sid, 'isl_trade',
+                           [{'item': 'kraul_barb', 'foundBy': 'Sam'},
+                            {'item': 'healing_moss', 'foundBy': 'the Swarm'},
+                            {'item': 'loaded_die', 'foundBy': 'the Swarm'}])
+
+    status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
+    assert status == 200
+    you = resp['you']
+    assert you['gear']['fang'] == 'kraul_barb'          # new piece equipped
+    stock = resp['stock']
+    assert stock[0] == {'item': 'rusted_fang', 'foundBy': 'Alex'}  # old piece left behind
+
+
+def test_trading_post_swap_grimoire(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['grimoires'] = ['moldering_folio']
+    doc['equippedGrimoire'] = 'moldering_folio'
+    db._put_player(table, doc)
+
+    db._save_trading_post(table, sid, 'isl_trade',
+                           [{'item': 'gardeners_primer', 'foundBy': 'Sam'},
+                            {'item': 'healing_moss', 'foundBy': 'the Swarm'},
+                            {'item': 'loaded_die', 'foundBy': 'the Swarm'}])
+
+    status, resp = act(table, 'trade', give='moldering_folio', takeIndex=0)
+    assert status == 200
+    you = resp['you']
+    assert you['grimoires'] == ['gardeners_primer']
+    assert you['equippedGrimoire'] == 'gardeners_primer'  # cleared, then auto-equipped from the take
+    assert resp['stock'][0] == {'item': 'moldering_folio', 'foundBy': 'Alex'}
+
+
+def test_trading_post_take_grimoire_auto_equips_if_none_owned(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['bag'] = ['snare']
+    db._put_player(table, doc)
+
+    db._save_trading_post(table, sid, 'isl_trade',
+                           [{'item': 'gardeners_primer', 'foundBy': 'Sam'},
+                            {'item': 'healing_moss', 'foundBy': 'the Swarm'},
+                            {'item': 'loaded_die', 'foundBy': 'the Swarm'}])
+
+    status, resp = act(table, 'trade', give='snare', takeIndex=0)
+    assert status == 200
+    you = resp['you']
+    assert you['grimoires'] == ['gardeners_primer']
+    assert you['equippedGrimoire'] == 'gardeners_primer'   # auto-equipped, had none
+
+
+def test_trading_post_rejects_duplicate_grimoire_take(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['bag'] = ['snare']
+    doc['grimoires'] = ['gardeners_primer']
+    db._put_player(table, doc)
+
+    db._save_trading_post(table, sid, 'isl_trade',
+                           [{'item': 'gardeners_primer', 'foundBy': 'Sam'},
+                            {'item': 'healing_moss', 'foundBy': 'the Swarm'},
+                            {'item': 'loaded_die', 'foundBy': 'the Swarm'}])
+
+    status, _ = act(table, 'trade', give='snare', takeIndex=0)
+    assert status == 409  # already own that grimoire
+
+
+def test_trading_post_rejects_bag_overflow_take(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['gear'] = {'fang': 'rusted_fang'}
+    doc['bag'] = ['healing_moss', 'smoke_spore', 'loaded_die']  # already full
+    db._put_player(table, doc)
+
+    db._save_trading_post(table, sid, 'isl_trade',
+                           [{'item': 'snare', 'foundBy': 'the Swarm'},
+                            {'item': 'chitin_scrap', 'foundBy': 'the Swarm'},
+                            {'item': 'moldering_folio', 'foundBy': 'the Swarm'}])
+
+    status, _ = act(table, 'trade', give='rusted_fang', takeIndex=0)
+    assert status == 409  # bag is full, can't take a consumable
+
+
+def test_trading_post_rejects_give_not_owned(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['gear'] = {}
+    doc['grimoires'] = []
+    db._put_player(table, doc)
+
+    status, _ = act(table, 'trade', give='rusted_fang', takeIndex=0)
+    assert status == 409  # don't have that gear equipped
+    status, _ = act(table, 'trade', give='moldering_folio', takeIndex=0)
+    assert status == 409  # don't own that grimoire
+
+
 def test_trading_post_guards(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)
