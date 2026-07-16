@@ -533,11 +533,13 @@ def regen_hp(player: dict, now_iso: str) -> None:
 
 # ── Mystery table (GDD §6, d12) ──────────────────────────────────────────────
 
-def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool) -> dict:
+def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool, biome: str = None) -> dict:
     """
     Roll the d12 mystery table. Returns a description of what happened; the db
     layer applies it. Spore gains double with Doubling Rot; losses never do.
-    Drift rerolls a bad outcome (8–11) once.
+    Drift rerolls a bad outcome (8–11) once. `biome` is the region of the node
+    the player currently occupies (a key of data.BIOMES, or None outside the
+    home rings) and reflavors rolls 1 and 7 for a few of the five biomes.
     """
     roll = rng.randint(1, 12)
     if has_drift and 8 <= roll <= 11:
@@ -548,7 +550,14 @@ def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool) -> dict:
            'paint': False, 'hat': False, 'heal': False, 'buff': None,
            'teleport': False, 'curse': False}
     if roll == 1:
-        out.update(text='Spore stash! +{} Spores.'.format(20 * mult), spores=20 * mult)
+        if biome == 'garden':
+            out.update(text='Composting spores overflow the mulch pile. +{} Spores.'.format(26 * mult),
+                        spores=26 * mult)
+        elif biome == 'city':
+            out.update(text='A storm-drain stash, rat-picked and ready. +{} Spores.'.format(26 * mult),
+                        spores=26 * mult)
+        else:
+            out.update(text='Spore stash! +{} Spores.'.format(20 * mult), spores=20 * mult)
     elif roll == 2:
         out.update(text='A corpse blooms with insight. +10 XP.', xp=10)
     elif roll == 3:
@@ -560,7 +569,15 @@ def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool) -> dict:
     elif roll == 6:
         out.update(text='A free consumable lies discarded.', item='random')
     elif roll == 7:
-        out.update(text='Rot surges through you: +3 ATK next battle.', buff='rot_surge')
+        if biome == 'cavern':
+            out.update(text='Glowcap mist swirls, quick and hard to pin down. +2 SPD next battle.',
+                        buff='glowveil')
+        elif biome == 'bog':
+            out.update(text='Mire mud sets like armor. +2 DEF next battle.', buff='harden_shell')
+        elif biome == 'bone':
+            out.update(text='Marrow stiffens under your skin. +2 DEF next battle.', buff='harden_shell')
+        else:
+            out.update(text='Rot surges through you: +3 ATK next battle.', buff='rot_surge')
     elif roll == 8:
         out.update(text='A pickpocket imp! -10 Spores.', spores=-10)
     elif roll == 9:

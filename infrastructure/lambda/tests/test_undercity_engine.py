@@ -239,6 +239,34 @@ def test_mystery_doubling_rot_doubles_spore_gains():
     assert lose['spores'] == -10
 
 
+def test_mystery_roll1_biome_bonus():
+    garden = roll_mystery(FakeRng(randints=[1]), has_drift=False, has_doubling_rot=False, biome='garden')
+    city = roll_mystery(FakeRng(randints=[1]), has_drift=False, has_doubling_rot=False, biome='city')
+    plain = roll_mystery(FakeRng(randints=[1]), has_drift=False, has_doubling_rot=False, biome='bog')
+    assert garden['spores'] == 26
+    assert city['spores'] == 26
+    assert plain['spores'] == 20
+    # doubling rot still applies to the bumped amount
+    doubled = roll_mystery(FakeRng(randints=[1]), has_drift=False, has_doubling_rot=True, biome='city')
+    assert doubled['spores'] == 52
+
+
+def test_mystery_roll7_biome_buff():
+    cavern = roll_mystery(FakeRng(randints=[7]), has_drift=False, has_doubling_rot=False, biome='cavern')
+    bog = roll_mystery(FakeRng(randints=[7]), has_drift=False, has_doubling_rot=False, biome='bog')
+    bone = roll_mystery(FakeRng(randints=[7]), has_drift=False, has_doubling_rot=False, biome='bone')
+    garden = roll_mystery(FakeRng(randints=[7]), has_drift=False, has_doubling_rot=False, biome='garden')
+    city = roll_mystery(FakeRng(randints=[7]), has_drift=False, has_doubling_rot=False, biome='city')
+    plain = roll_mystery(FakeRng(randints=[7]), has_drift=False, has_doubling_rot=False, biome=None)
+    assert cavern['buff'] == 'glowveil'
+    assert bog['buff'] == 'harden_shell'
+    assert bone['buff'] == 'harden_shell'
+    assert bog['text'] != bone['text']  # same buff, different flavor
+    assert garden['buff'] == 'rot_surge'
+    assert city['buff'] == 'rot_surge'
+    assert plain['buff'] == 'rot_surge'
+
+
 # ── NPCs ─────────────────────────────────────────────────────────────────────
 
 def test_npc_fixed_stats():
