@@ -415,22 +415,25 @@
         (click)="$event.stopPropagation()"
         [style.background-image]="regionWashBg()"
       >
+        <img class="modal-art" src="undercity/icons/trading_post.png" alt="" />
         <h3><mat-icon class="mi">swap_horiz</mat-icon> Trading Post</h3>
-        <p class="modal-sub">Leave one of your items, take one another player left behind.</p>
+        <p class="modal-sub">
+          Leave a consumable, a piece of gear, or a grimoire — take one another player left behind.
+        </p>
 
         <div class="shop-section">Your items — tap one to offer</div>
-        @if ((store.you()?.bag?.length ?? 0) === 0) {
-          <p class="trade-empty">Your bag is empty — nothing to trade yet.</p>
+        @if (tradeOffers().length === 0) {
+          <p class="trade-empty">You have nothing to trade yet.</p>
         } @else {
           <div class="trade-bag">
-            @for (b of store.you()?.bag ?? []; track $index) {
+            @for (o of tradeOffers(); track o.id) {
               <button
                 class="trade-chip"
-                [class.selected]="giveItem() === b"
-                (click)="giveItem.set(b)"
+                [class.selected]="giveItem() === o.id"
+                (click)="giveItem.set(o.id)"
               >
-                <mat-icon class="mi">{{ consumableMap[b].icon }}</mat-icon>
-                {{ consumableMap[b].name }}
+                <mat-icon class="mi">{{ o.icon }}</mat-icon>
+                {{ o.label }}
               </button>
             }
           </div>
@@ -440,10 +443,15 @@
         @for (s of tradingStock(); track $index) {
           <div class="shop-row">
             <span class="shop-name">
-              <mat-icon class="mi">{{ consumableMap[s.item].icon }}</mat-icon>
-              {{ consumableMap[s.item].name }} <em>found by {{ s.foundBy }}</em>
+              <mat-icon class="mi">{{ tradeStockDetail(s.item).icon }}</mat-icon>
+              {{ tradeStockDetail(s.item).label }}
+              <em>{{ tradeStockDetail(s.item).sub }} — found by {{ s.foundBy }}</em>
             </span>
-            <button class="uc-btn shop-buy" [disabled]="busy() || !giveItem()" (click)="trade($index)">
+            <button
+              class="uc-btn shop-buy"
+              [disabled]="busy() || !giveItem() || !canTakeStock(s.item)"
+              (click)="trade($index)"
+            >
               Take
             </button>
           </div>
