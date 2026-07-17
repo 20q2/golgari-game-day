@@ -24,3 +24,4 @@ Done! Your site is live on GitHub Pages.
 ---
 
 *Angular app for the board gaming community at Golgari Palace*
+https://20q2.github.io/golgari-game-day/
