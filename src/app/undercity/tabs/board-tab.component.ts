@@ -376,14 +376,35 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return min <= 1 ? 'under a minute' : `${min} min`;
   }
 
-  /** Which shopkeeper is "on shift" — alternates with the shared restock
-   * window (mirrors data.SHOP_REFRESH_MIN = 30 server-side) so every player
-   * sees the same vendor until the next restock. */
-  protected shopkeeperArt(): string {
+  /** Bazaar vendors, in rotation order. Which one is "on shift" alternates
+   * with the shared restock window (mirrors data.SHOP_REFRESH_MIN = 30
+   * server-side) so every player sees the same vendor until the next restock. */
+  private readonly BAZAAR_KEEPERS: { art: string; quote: string }[] = [
+    {
+      art: 'undercity/map_events/shopkeeper1.png',
+      quote: 'Spare a few spores, friend? Good honest wares — I swear it on me turnips.',
+    },
+    {
+      art: 'undercity/map_events/shopkeeper2.png',
+      quote: 'I hawked turnips at this very stall, once. One little bargain later… the stock improved, and so did the terms.',
+    },
+    {
+      art: 'undercity/map_events/shopkeeper4.png',
+      quote: 'Come closer, morsel. Baba has cauldrons to fill and coin to make. Buy something, hmm?',
+    },
+  ];
+
+  /** Trading Post is tended by the collector ooze — one fixed vendor. */
+  protected readonly tradingKeeper = {
+    art: 'undercity/map_events/shopkeeper3.png',
+    quote: 'Ooh, what have you got? One of everything — that is Ooze’s motto. Leave a trinket, take a trinket.',
+  };
+
+  protected bazaarKeeper(): { art: string; quote: string } {
     const at = this.currentBazaar()?.refreshesAt;
     const windowEndMs = at ? new Date(at + 'Z').getTime() : Date.now();
     const windowIdx = Math.round(windowEndMs / (30 * 60_000));
-    return `undercity/map_events/shopkeeper${(windowIdx % 2) + 1}.png`;
+    return this.BAZAAR_KEEPERS[windowIdx % this.BAZAAR_KEEPERS.length];
   }
 
   protected spaceIcon(type: string): string {

@@ -204,8 +204,9 @@
         (click)="$event.stopPropagation()"
         [style.background-image]="regionWashBg()"
       >
-        <img class="modal-art" [src]="shopkeeperArt()" alt="" />
+        <img class="modal-art" [src]="bazaarKeeper().art" alt="" />
         <h3><mat-icon class="mi">storefront</mat-icon> Rot-Farm Bazaar</h3>
+        <p class="shop-quote">“{{ bazaarKeeper().quote }}”</p>
         <p class="modal-sub">
           You carry <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ store.you()?.spores }}
           · Restocks in {{ bazaarRestockLabel() }}
@@ -415,8 +416,9 @@
         (click)="$event.stopPropagation()"
         [style.background-image]="regionWashBg()"
       >
-        <img class="modal-art" src="undercity/map_events/shopkeeper3.png" alt="" />
+        <img class="modal-art" [src]="tradingKeeper.art" alt="" />
         <h3><mat-icon class="mi">swap_horiz</mat-icon> Trading Post</h3>
+        <p class="shop-quote">“{{ tradingKeeper.quote }}”</p>
         <p class="modal-sub">
           Leave a consumable, a piece of gear, or a grimoire — take one another player left behind.
         </p>

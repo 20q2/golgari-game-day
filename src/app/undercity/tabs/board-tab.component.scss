@@ -543,9 +543,19 @@
   text-align: left;
 
   h3,
-  .modal-sub {
+  .modal-sub,
+  .shop-quote {
     text-align: center;
   }
+}
+
+// Vendor flavor line — an in-character quote under the shopkeeper portrait.
+.shop-quote {
+  margin: -2px 0 2px;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: #c9b6d8;
+  line-height: 1.35;
 }
 
 .shop-section {
