@@ -687,15 +687,15 @@ def test_death_offers_respawn_choice_and_respawn(table):
     # Provisional wake at home; a choice is offered between home + last biome.
     assert doc['position'] == 'cavern_r0'
     gates = {o['gate'] for o in doc['pendingRespawn']['options']}
-    assert gates == {'cavern_r0', 'bog_r0'}
+    assert gates == {'cavern_r0', 'bog_r4'}
     db._put_player(table, doc)
 
-    status, resp = act(table, 'respawn', gate='bog_r0')
+    status, resp = act(table, 'respawn', gate='bog_r4')
     assert status == 200
-    assert resp['you']['position'] == 'bog_r0'
+    assert resp['you']['position'] == 'bog_r4'
     assert 'pendingRespawn' not in resp['you']
 
-    status, _ = act(table, 'respawn', gate='bog_r0')
+    status, _ = act(table, 'respawn', gate='bog_r4')
     assert status == 409  # nothing pending anymore
 
 
@@ -1030,10 +1030,10 @@ def test_vein_landing_forces_first_strike(table, monkeypatch):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'cavern_r1'
+    doc['position'] = 'cavern_r3'
     monkeypatch.setattr(db._rng, 'random', lambda: 1.0)   # never cave in, no bonus items
     spores_before = doc.get('spores', 0)
-    ev = db._resolve_space(table, sid, doc, 'cavern_r1', 'cavern_r0')
+    ev = db._resolve_space(table, sid, doc, 'cavern_r3', 'cavern_r2')
     assert ev['type'] == 'crystal_vein'
     assert ev['depth'] == 1                                # surface -> level 1
     assert ev['strikesLeft'] == data.VEIN_STRIKES_PER_VISIT - 1
@@ -1047,10 +1047,10 @@ def test_vein_cave_in_hurts_and_resets(table, monkeypatch):
     sid = _sid(table)
     db._save_vein(table, sid, 'cavern', 9)                 # deep, dangerous shaft
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'cavern_r1'
+    doc['position'] = 'cavern_r3'
     hp_before = doc['hp']
     monkeypatch.setattr(db._rng, 'random', lambda: 0.0)    # guaranteed cave-in
-    ev = db._resolve_space(table, sid, doc, 'cavern_r1', 'cavern_r0')
+    ev = db._resolve_space(table, sid, doc, 'cavern_r3', 'cavern_r2')
     assert ev['collapsed'] is True
     assert doc['hp'] == max(1, hp_before - 10 * data.VEIN_CAVE_IN_DMG_PER_LEVEL)
     assert doc['veinStrikesLeft'] == 0                     # the visit ends under rubble
@@ -1065,7 +1065,7 @@ def test_vein_strike_action_and_guards(table, monkeypatch):
     assert status == 409                                    # not at a vein
 
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'cavern_r1'
+    doc['position'] = 'cavern_r3'
     doc['veinStrikesLeft'] = 2
     db._put_player(table, doc)
     db._save_vein(table, sid, 'cavern', 3)
@@ -1086,7 +1086,7 @@ def test_vein_heartstone_pays_and_resets(table, monkeypatch):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'cavern_r1'
+    doc['position'] = 'cavern_r3'
     doc['veinStrikesLeft'] = 1
     doc['bag'] = []
     db._put_player(table, doc)
@@ -1108,8 +1108,8 @@ def test_vault_landing_refills_picks_and_hides_combo(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'city_r4'
-    ev = db._resolve_space(table, sid, doc, 'city_r4', 'city_r3')
+    doc['position'] = 'n128'
+    ev = db._resolve_space(table, sid, doc, 'n128', 'city_r2')
     assert ev['type'] == 'vault_lock'
     assert ev['picksLeft'] == data.VAULT_PICKS_PER_VISIT
     assert doc['vaultPicksLeft'] == data.VAULT_PICKS_PER_VISIT
@@ -1120,7 +1120,7 @@ def test_vault_landing_refills_picks_and_hides_combo(table):
 def _park_at_vault(table, picks=3):
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'city_r4'
+    doc['position'] = 'n128'
     doc['vaultPicksLeft'] = picks
     doc['bag'] = []
     db._put_player(table, doc)
