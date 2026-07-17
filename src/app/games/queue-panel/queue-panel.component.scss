@@ -1,0 +1,85 @@
+:host {
+  display: block;
+}
+
+.queue-panel {
+  background: var(--games-surface);
+  border: 1px solid var(--games-surface-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 10px 0;
+}
+
+.queue-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 8px;
+
+  .queue-icon {
+    color: var(--accent-color);
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.queue-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.queue-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.queue-entry-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.queue-game-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.queue-members {
+  font-size: 11px;
+  color: var(--games-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-join-btn {
+  flex-shrink: 0;
+  border: 1px solid var(--accent-color);
+  background: transparent;
+  color: var(--accent-color);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &.joined {
+    background: var(--accent-color);
+    color: white;
+  }
+}
+
+.queue-error {
+  color: #c0392b;
+  font-size: 11px;
+  margin: 8px 0 0;
+}

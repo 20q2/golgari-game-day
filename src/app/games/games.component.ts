@@ -30,6 +30,7 @@ import { GamesGenreStripComponent } from './games-genre-strip/games-genre-strip.
 import { GamesHeroComponent } from './games-hero/games-hero.component';
 import { GamesListComponent } from './games-list/games-list.component';
 import { GamesFeaturedCarouselComponent } from './games-featured-carousel/games-featured-carousel.component';
+import { QueuePanelComponent } from './queue-panel/queue-panel.component';
 
 import {
   countActiveFilters,
@@ -61,6 +62,7 @@ const SURFACE_GENRE_COUNT = 6;
     GamesHeroComponent,
     GamesListComponent,
     GamesFeaturedCarouselComponent,
+    QueuePanelComponent,
   ],
   templateUrl: './games.component.html',
   styleUrls: ['./games.component.scss'],
