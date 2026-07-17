@@ -165,3 +165,61 @@ def test_push_unsubscribe_removes_subscription():
     })
     assert status == 200
     assert q._subscriptions_for(t, 'user-alex') == []
+
+
+def test_join_notifies_other_lobby_members(monkeypatch):
+    sent = []
+    monkeypatch.setattr(q.push, 'send', lambda sub, message, game_id: sent.append(
+        (sub['endpoint'], message, game_id)))
+
+    t = FakeTable()
+    start_night(t)
+    q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    q.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
+
+    assert sent == []  # first join: no one else in the lobby yet
+
+    status, body = q.handle_action(t, {'type': 'join', 'userId': 'user-sam', 'username': 'Sam',
+                                        'payload': {'gameId': 'catan'}})
+    assert status == 200
+    assert len(sent) == 1
+    endpoint, message, game_id = sent[0]
+    assert endpoint == 'https://push.example/abc123'  # sent to Alex, not the joiner (Sam)
+    assert 'Sam' in message and 'Catan' in message
+    assert game_id == 'catan'
+
+
+def test_rejoin_does_not_renotify(monkeypatch):
+    sent = []
+    monkeypatch.setattr(q.push, 'send', lambda sub, message, game_id: sent.append(1))
+
+    t = FakeTable()
+    start_night(t)
+    q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    q.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
+    q.handle_action(t, {'type': 'join', 'userId': 'user-sam', 'username': 'Sam',
+                         'payload': {'gameId': 'catan'}})
+    assert len(sent) == 1
+
+    q.handle_action(t, {'type': 'join', 'userId': 'user-sam', 'username': 'Sam',
+                         'payload': {'gameId': 'catan'}})
+    assert len(sent) == 1  # re-join is a no-op, no second push
+
+
+def test_dead_subscription_is_deleted_on_push_failure(monkeypatch):
+    def fake_send(sub, message, game_id):
+        raise q.push.PushGone()
+    monkeypatch.setattr(q.push, 'send', fake_send)
+
+    t = FakeTable()
+    start_night(t)
+    q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    q.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
+
+    status, body = q.handle_action(t, {'type': 'join', 'userId': 'user-sam', 'username': 'Sam',
+                                        'payload': {'gameId': 'catan'}})
+    assert status == 200  # the join itself still succeeds
+    assert q._subscriptions_for(t, 'user-alex') == []  # but the dead subscription is gone

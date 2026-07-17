@@ -13,6 +13,7 @@ import hashlib
 import json
 import time
 
+import push
 import undercity_db
 
 
@@ -110,8 +111,23 @@ def _join(table, sid, user_id, username, payload):
     if not already_in:
         entry['joined'].append({'userId': user_id, 'username': username})
         table.put_item(Item=entry)
+        _notify_others(table, entry, joiner_id=user_id, joiner_name=username)
 
     return _ok(entry=_public_entry(entry))
+
+
+def _notify_others(table, entry, joiner_id, joiner_name):
+    others = [m['userId'] for m in entry['joined'] if m['userId'] != joiner_id]
+    if not others:
+        return
+    who = joiner_name or joiner_id
+    message = f'{who} wants to play {entry["gameTitle"]} too'
+    for user_id in others:
+        for sub in _subscriptions_for(table, user_id):
+            try:
+                push.send(sub, message, entry['gameId'])
+            except push.PushGone:
+                table.delete_item(Key={'pk': sub['pk'], 'sk': sub['sk']})
 
 
 def _leave(table, sid, user_id, payload):
