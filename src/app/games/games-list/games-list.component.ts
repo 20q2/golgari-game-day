@@ -1,9 +1,11 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { Game, GameGenre } from '../../models/game.model';
 import { GameStats } from '../../services/data-aggregation.service';
 import { GenreIconService } from '../../services/genre-icon.service';
+import { QueueService } from '../../services/queue.service';
+import { UserService } from '../../services/user.service';
 
 @Component({
   selector: 'app-games-list',
@@ -18,6 +20,9 @@ export class GamesListComponent {
   @Input() statsById: Record<string, GameStats> = {};
 
   @Output() open = new EventEmitter<Game>();
+
+  readonly queue = inject(QueueService);
+  private readonly userService = inject(UserService);
 
   constructor(public iconService: GenreIconService) {}
 
@@ -43,5 +48,19 @@ export class GamesListComponent {
 
   comments(g: Game): number {
     return this.statsById[g.id]?.totalComments ?? 0;
+  }
+
+  queuedCount(g: Game): number {
+    return this.queue.entryFor(g.id)?.joined.length ?? 0;
+  }
+
+  async toggleQueue(event: Event, g: Game): Promise<void> {
+    event.stopPropagation(); // don't also open the game details dialog
+    if (!(await this.userService.requireSignIn())) return;
+    if (this.queue.isJoined(g.id)) {
+      await this.queue.leave(g.id);
+    } else {
+      await this.queue.join(g.id, g.title);
+    }
   }
 }
