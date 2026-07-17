@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { UserService } from './user.service';
 import { QueueApiService } from './queue-api.service';
+import { QueuePushService } from './queue-push.service';
 import { QueueEntry, QueueState } from './queue-models';
 
 const POLL_INTERVAL_MS = 20_000;
@@ -15,6 +16,7 @@ const POLL_INTERVAL_MS = 20_000;
 export class QueueService {
   private readonly api = inject(QueueApiService);
   private readonly userService = inject(UserService);
+  private readonly push = inject(QueuePushService);
 
   private readonly _state = signal<QueueState>({ seasonId: null, entries: [] });
   private readonly _loading = signal(false);
@@ -77,6 +79,7 @@ export class QueueService {
       const resp = await this.api.join(gameId, gameTitle);
       this.applyEntry(gameId, resp.entry);
       this._error.set(null);
+      void this.push.ensureSubscribed();
     } catch (e) {
       this._error.set(e instanceof Error ? e.message : 'Could not join the queue.');
       throw e;
