@@ -25,11 +25,14 @@ result, or `'clash'` (A-v-A), `'stall'` (G-v-G), `'whiff'` (F-v-F) for mirrors.
 `max(1, round(atk * uniform(0.85,1.15)) - effective_def)` (`engine._base_hit`),
 scaled by the matchup multiplier:
 
-- decisive win → `STANCE_WIN_MULT` (winner deals, loser deals nothing)
+- decisive win → `STANCE_WIN_MULT` (winner's big hit). The loser deals nothing —
+  EXCEPT a caught **feint into an aggress** still pokes back for `STANCE_STALL_MULT`
+  chip (you take the big hit but chip them).
 - Guard beats Aggress → aggressor's hit × `STANCE_GUARD_MITIGATE`, guard counters × `STANCE_GUARD_COUNTER`
-- clash → both × `STANCE_CLASH_MULT` (SPD, or `first_bite`, lands first)
-- stall → both × `STANCE_STALL_MULT` (chip)
-- whiff → nothing
+- clash (A-vs-A) → both × `STANCE_CLASH_MULT` (SPD, or `first_bite`, lands first)
+- stall (G-vs-G) → **no damage** (both fully block); only a `thick` carapace chips
+  through (× `STANCE_STALL_MULT`)
+- whiff (F-vs-F) → both take `STANCE_STALL_MULT` chip (two tricks cancel but both poke)
 
 Then per round: **rot** ticks (`ROT_PER_STACK` × stacks), **swarm** chips, and
 freshly-applied rot (barbed/rot_surge) is added *after* the tick so it waits a

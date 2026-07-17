@@ -19,6 +19,7 @@ import {
   AwayEvent,
   BattleResult,
   BattleResume,
+  BazaarView,
   CombatFlee,
   CombatRound,
   DigGrid,
@@ -26,6 +27,7 @@ import {
   PublicPlayer,
   SpaceEvent,
   Stance,
+  TradeOffer,
   TradeStockItem,
   VaultView,
   isShielded,
@@ -34,15 +36,13 @@ import { VAULT_POT_SEED } from '../data/vein-vault';
 import {
   BIOME_SPELLS,
   GRIMOIRE_MAP,
-  GRIMOIRES,
   GrimoireInfo,
   SPELL_MAP,
   SpellInfo,
   cooldownLeftMin,
 } from '../data/spells';
 import {
-  GEAR,
-  CONSUMABLES,
+  GEAR_MAP,
   CONSUMABLE_MAP,
   SPACE_NAMES,
   SPACE_BLURBS,
@@ -84,6 +84,7 @@ interface LiveBattle {
   defenderStats: CombatStats | null;
   resume: boolean;
   resumeRevealed: Stance | null;
+  startRound: number;
 }
 
 /** Local walk-in-progress: the spaces walked so far (start first) and steps left. */
@@ -132,6 +133,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly liveBattle = signal<LiveBattle | null>(null);
   @ViewChild(InteractiveBattleComponent) private liveB?: InteractiveBattleComponent;
   protected readonly showShop = signal(false);
+  protected readonly shopTab = signal<'gear' | 'consumables' | 'grimoires'>('gear');
+  protected setShopTab(tab: 'gear' | 'consumables' | 'grimoires'): void {
+    this.shopTab.set(tab);
+    this.store.openFacility.set({ kind: 'shop', shopTab: tab });
+  }
   protected readonly showShrine = signal(false);
   protected readonly showWarp = signal<string[] | null>(null);
   protected readonly showOssuary = signal(false);
@@ -182,10 +188,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Blade indices for the Spore Mound grass-rustle banner. */
   protected readonly grassBlades = [0, 1, 2, 3, 4, 5, 6];
 
-  protected readonly gear = GEAR;
-  protected readonly consumables = CONSUMABLES;
   protected readonly isShielded = isShielded;
-  protected readonly shopGrimoires = GRIMOIRES.filter((g) => g.tier === 1);
 
   protected readonly castableSpells = computed<SpellInfo[]>(() => {
     const you = this.store.you();
@@ -288,6 +291,89 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   protected grimoireSpellList(g: GrimoireInfo): string {
     return g.spells.map((s) => SPELL_MAP[s]?.name ?? s).join(', ');
+  }
+
+  // ── Trading post (leave-one-take-one, any owned item) ───────────────────
+  private readonly SLOT_ICONS: Record<string, string> = {
+    fang: 'hardware',
+    carapace: 'shield',
+    charm: 'auto_awesome',
+  };
+
+  protected tradeOffers(): TradeOffer[] {
+    const you = this.store.you();
+    if (!you) return [];
+    const offers: TradeOffer[] = [];
+    for (const id of you.bag ?? []) {
+      const c = CONSUMABLE_MAP[id];
+      if (c) offers.push({ id, kind: 'consumable', icon: c.icon, label: c.name, sub: c.desc });
+    }
+    for (const [slot, id] of Object.entries(you.gear ?? {})) {
+      const g = GEAR_MAP[id];
+      if (g) offers.push({ id, kind: 'gear', icon: this.SLOT_ICONS[slot] ?? 'hardware', label: g.name, sub: g.desc });
+    }
+    for (const id of you.grimoires ?? []) {
+      const g = GRIMOIRE_MAP[id];
+      if (g) offers.push({ id, kind: 'grimoire', icon: 'menu_book', label: g.name, sub: this.grimoireSpellList(g) });
+    }
+    return offers;
+  }
+
+  protected tradeStockDetail(id: string): { icon: string; label: string; sub: string } {
+    const c = CONSUMABLE_MAP[id];
+    if (c) return { icon: c.icon, label: c.name, sub: c.desc };
+    const g = GEAR_MAP[id];
+    if (g) return { icon: this.SLOT_ICONS[g.slot] ?? 'hardware', label: g.name, sub: g.desc };
+    const gr = GRIMOIRE_MAP[id];
+    if (gr) return { icon: 'menu_book', label: gr.name, sub: this.grimoireSpellList(gr) };
+    return { icon: 'help', label: id, sub: '' };
+  }
+
+  /** Client-side mirror of the server's take-side guards, so blocked takes read as a disabled button. */
+  protected canTakeStock(item: string): boolean {
+    const you = this.store.you();
+    if (!you) return false;
+    if (CONSUMABLE_MAP[item]) {
+      const givingConsumable = !!CONSUMABLE_MAP[this.giveItem() ?? ''];
+      const effectiveBagLen = (you.bag?.length ?? 0) - (givingConsumable ? 1 : 0);
+      return effectiveBagLen < 3;
+    }
+    if (GRIMOIRE_MAP[item]) {
+      return !(you.grimoires ?? []).includes(item);
+    }
+    return true;
+  }
+
+  // ── Bazaar (rotating limited stock) ──────────────────────────────────────
+  protected readonly currentBazaar = computed<BazaarView | null>(() => {
+    const pos = this.store.you()?.position;
+    return pos ? (this.store.bazaars()[pos] ?? null) : null;
+  });
+
+  protected shopGearRows(): { info: GearInfo; qty: number }[] {
+    return (this.currentBazaar()?.gear ?? [])
+      .map((s) => ({ info: GEAR_MAP[s.item], qty: s.qty }))
+      .filter((r) => !!r.info);
+  }
+
+  protected shopConsumableRows(): { info: ConsumableInfo; qty: number }[] {
+    return (this.currentBazaar()?.consumables ?? [])
+      .map((s) => ({ info: CONSUMABLE_MAP[s.item], qty: s.qty }))
+      .filter((r) => !!r.info);
+  }
+
+  protected shopGrimoireRows(): GrimoireInfo[] {
+    return (this.currentBazaar()?.grimoires ?? [])
+      .map((id) => GRIMOIRE_MAP[id])
+      .filter((g): g is GrimoireInfo => !!g);
+  }
+
+  protected bazaarRestockLabel(): string {
+    const at = this.currentBazaar()?.refreshesAt;
+    if (!at) return '—';
+    const ms = new Date(at + 'Z').getTime() - Date.now();
+    const min = Math.max(0, Math.ceil(ms / 60_000));
+    return min <= 1 ? 'under a minute' : `${min} min`;
   }
 
   protected spaceIcon(type: string): string {
@@ -473,6 +559,43 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     });
     this.syncBoard();
     this.board.start();
+    this.restoreOpenFacility();
+  }
+
+  /** Reopen whatever facility modal was open before a tab switch destroyed
+   * this component — mirrors the pendingBattle resume pattern in the
+   * constructor, but runs here because openVein/openVault need `this.map`,
+   * which isn't populated until after construction. */
+  private restoreOpenFacility(): void {
+    const openFacility = this.store.openFacility();
+    if (!openFacility) return;
+    switch (openFacility.kind) {
+      case 'shop':
+        this.shopTab.set(openFacility.shopTab ?? 'gear');
+        this.showShop.set(true);
+        break;
+      case 'shrine':
+        this.showShrine.set(true);
+        break;
+      case 'ossuary':
+        this.showOssuary.set(true);
+        break;
+      case 'tradingPost':
+        this.openTradingPost();
+        break;
+      case 'excavation':
+        this.openExcavation();
+        break;
+      case 'vein':
+        this.openVein();
+        break;
+      case 'vault':
+        this.openVault();
+        break;
+      case 'warp':
+        this.showWarp.set(openFacility.warpOptions ?? null);
+        break;
+    }
   }
 
   ngOnDestroy(): void {
@@ -715,12 +838,17 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       });
     } else if (ev.type === 'warp' && ev.options) {
       this.showWarp.set(ev.options);
+      this.store.openFacility.set({ kind: 'warp', warpOptions: ev.options });
     } else if (ev.type === 'shop') {
+      this.shopTab.set('gear');
       this.showShop.set(true);
+      this.store.openFacility.set({ kind: 'shop', shopTab: 'gear' });
     } else if (ev.type === 'shrine') {
       this.showShrine.set(true);
+      this.store.openFacility.set({ kind: 'shrine' });
     } else if (ev.type === 'ossuary') {
       this.showOssuary.set(true);
+      this.store.openFacility.set({ kind: 'ossuary' });
     } else if (ev.type === 'trading_post') {
       this.openTradingPost(ev.stock);
     } else if (ev.type === 'excavation') {
@@ -783,7 +911,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     await this.run(async () => {
       const resp = await this.store.action('shrine', { choice });
       this.showToast(resp.text ?? 'The shrine hums.');
-      this.showShrine.set(false);
+      this.closeFacilities();
     });
   }
 
@@ -797,6 +925,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.tradingStock.set(stock ?? this.store.tradingPosts()[pos] ?? []);
     this.giveItem.set(null);
     this.showTradingPost.set(true);
+    this.store.openFacility.set({ kind: 'tradingPost' });
   }
 
   /** Swap the selected bag item for stock slot `takeIndex`. */
@@ -815,6 +944,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     await this.run(async () => {
       await this.store.action('warp', { to });
       this.showWarp.set(null);
+      this.store.openFacility.set(null);
       this.board?.centerOn(to);
     });
   }
@@ -826,6 +956,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const pos = this.store.you()?.position ?? '';
     this.excavationGrid.set(grid ?? this.store.excavations()[pos] ?? null);
     this.showExcavation.set(true);
+    this.store.openFacility.set({ kind: 'excavation' });
   }
 
   /** Reveal one cell; the response carries the updated grid and remaining digs. */
@@ -846,6 +977,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.veinDepth.set(ev?.depth ?? this.store.veins()[region]?.depth ?? 0);
     this.veinLog.set(ev?.text ?? null);
     this.showVein.set(true);
+    this.store.openFacility.set({ kind: 'vein' });
   }
 
   /** One optional swing; the response carries the new shared depth. */
@@ -868,6 +1000,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       ev?.vault ?? this.store.vaults()[region] ?? { pot: VAULT_POT_SEED, history: [] },
     );
     this.showVault.set(true);
+    this.store.openFacility.set({ kind: 'vault' });
   }
 
   /** One pick attempt; the response carries the updated ledger and pot. */
@@ -931,9 +1064,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Battle-card art path per foe class (missing files fall back to icons). */
   private npcSpriteUrl(evType: string, npcId: string): string {
     if (evType === 'wild' || evType === 'elite') return `undercity/enemies/${npcId}.png`;
-    if (evType === 'barrier') return `undercity/guardians/${npcId}.jfif`;
-    // Lair mini-bosses and the island boss share the sigil_boss folder.
-    return `undercity/sigil_boss/${npcId}.jfif`;
+    // Barriers, lair mini-bosses, and the island boss all share the guardians folder.
+    return `undercity/guardians/${npcId}.png`;
   }
 
   protected youSpriteUrl(): string | null {
@@ -980,7 +1112,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const items: BattleItem[] = bag
       .map((id) => CONSUMABLE_MAP[id])
       .filter((c): c is ConsumableInfo => !!c && !!c.inBattle)
-      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '' }));
+      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '', desc: c.desc ?? '' }));
     this.liveBattle.set({
       attacker: {
         name: this.youBattleName(),
@@ -1007,6 +1139,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           : null,
       resume: false,
       resumeRevealed: null,
+      startRound: 1,
     });
   }
 
@@ -1018,7 +1151,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const items: BattleItem[] = bag
       .map((id) => CONSUMABLE_MAP[id])
       .filter((c): c is ConsumableInfo => !!c && !!c.inBattle)
-      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '' }));
+      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '', desc: c.desc ?? '' }));
     this.liveBattle.set({
       attacker: {
         name: this.youBattleName(),
@@ -1045,6 +1178,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           : null,
       resume: true,
       resumeRevealed: pb.revealed ?? null,
+      startRound: pb.round ?? 1,
     });
   }
 
@@ -1056,7 +1190,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const items: BattleItem[] = bag
       .map((id) => CONSUMABLE_MAP[id])
       .filter((c): c is ConsumableInfo => !!c && !!c.inBattle)
-      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '' }));
+      .map((c) => ({ id: c.id, name: c.name, icon: c.icon, effect: c.effect ?? '', desc: c.desc ?? '' }));
     this.liveBattle.set({ ...lb, items, hasScry: bag.includes('scrying_spore') });
   }
 
@@ -1134,6 +1268,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.gambleRolling.set(false);
     this.gambleDie.set(null);
     this.gambleWon.set(null);
+    this.store.openFacility.set(null);
   }
 
   protected async run(fn: () => Promise<void>): Promise<void> {

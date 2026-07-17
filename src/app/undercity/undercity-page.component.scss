@@ -259,10 +259,38 @@
       background: rgba(74, 124, 89, 0.15);
     }
 
+    &:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
     .tab-icon {
       font-size: 1.4rem;
       width: 1.4rem;
       height: 1.4rem;
+    }
+
+    .tab-icon-wrap {
+      position: relative;
+      display: inline-flex;
+    }
+
+    // Unspent level-up point count, echoing the creature tab's points-chip accent.
+    .tab-badge {
+      position: absolute;
+      top: -5px;
+      right: -8px;
+      min-width: 15px;
+      height: 15px;
+      padding: 0 3px;
+      border-radius: 999px;
+      background: #a78bfa;
+      color: #1a1815;
+      font-size: 0.62rem;
+      font-weight: 800;
+      line-height: 15px;
+      text-align: center;
+      box-shadow: 0 0 6px rgba(167, 139, 250, 0.7);
     }
 
     .tab-label {

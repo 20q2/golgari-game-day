@@ -272,11 +272,17 @@
 
   .arc {
     fill: none;
-    stroke: rgba(183, 228, 199, 0.4);
-    stroke-width: 1.4;
+    stroke: rgba(183, 228, 199, 0.32);
+    stroke-width: 0.7;
     stroke-linecap: round;
   }
-  #uc-arrowhead path { fill: rgba(183, 228, 199, 0.55); }
+  .head {
+    fill: none;
+    stroke: rgba(183, 228, 199, 0.5);
+    stroke-width: 0.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
 }
 
 .stance-btn {
@@ -308,13 +314,14 @@
   &:disabled { opacity: 0.45; cursor: default; }
 }
 
+// Help pinned to the bottom-left corner, Flee to the bottom-right; any Scry /
+// item buttons float in the middle between the two auto margins.
 .util-row {
   display: flex;
   flex-shrink: 0;
-  justify-content: flex-end;
+  align-items: center;
   gap: 8px;
   padding: 0 14px;
-  flex-wrap: wrap;
 }
 
 .util-btn {
@@ -334,13 +341,57 @@
   .mi { font-size: 1.05rem; width: 1.05rem; height: 1.05rem; }
   &:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
   &:disabled { opacity: 0.4; cursor: default; }
+}
 
-  &.item-btn { padding: 8px 10px; }
+// Inventory button — parked in the middle of the stance triangle.
+.inv-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #e9dcc0;
+  background: radial-gradient(circle at 40% 35%, #2c2822, #17140f);
+  border: 1px solid rgba(233, 220, 192, 0.32);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+  transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+
+  .mi { font-size: 1.5rem; width: 1.5rem; height: 1.5rem; }
+  &:hover:not(:disabled) { transform: translate(-50%, -50%) scale(1.07); border-color: rgba(233, 220, 192, 0.6); }
+  &:active:not(:disabled) { transform: translate(-50%, -50%) scale(0.95); }
+  &:disabled { opacity: 0.5; cursor: default; }
+
   &.armed {
     color: #12100e;
     background: linear-gradient(180deg, #ffe08a, #fbbf24);
-    border-color: rgba(251, 191, 36, 0.8);
+    border-color: rgba(251, 191, 36, 0.85);
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
   }
+}
+
+.inv-count {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #4a7c59;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #1a1815;
 }
 
 .armed-hint {
@@ -348,6 +399,15 @@
   padding: 0 16px;
   font-size: 0.74rem;
   color: #fbbf24;
+}
+
+.flee-hint {
+  flex-shrink: 0;
+  padding: 0 16px;
+  font-size: 0.72rem;
+  color: #9aa79a;
+  font-style: italic;
+  text-align: center;
 }
 
 // ── Rewards + log ──────────────────────────────────────────────────────────────
@@ -468,6 +528,11 @@
 
 .util-btn.help-btn {
   padding: 8px 10px;
+  margin-right: auto; // pin to the left corner
+}
+.util-btn.flee-btn {
+  order: 1; // always sorts last → sits in the right corner
+  margin-left: auto;
 }
 
 // Sprites drop in on entrance, then breathe (wrapper animates so the flip
@@ -606,15 +671,26 @@
 }
 
 // Slim one-line telegraph caption (icon over foe carries the real signal).
+// The telegraph dialogue sits in its own section, closed off with a full-width
+// border beneath it to separate it from the stance controls.
+.tele-section {
+  flex-shrink: 0;
+  margin-top: -4px; // tuck toward the arena divider without bleeding over it
+  padding: 0 14px 6px;
+  border-bottom: 1px solid rgba(74, 124, 89, 0.4);
+  overflow: hidden; // never let the caption spill past its section
+}
+
 .tele-caption {
   flex-shrink: 0;
-  margin: 0 14px;
   font-size: 0.8rem;
   color: #b8a9d8;
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 
   .tell { font-style: italic; }
   .intent {
@@ -672,6 +748,87 @@
   }
 
   .uc-btn { margin-top: 8px; }
+}
+
+// ── Inventory tray ───────────────────────────────────────────────────────────
+.items-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgba(6, 6, 8, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  border-radius: 16px;
+  animation: uc-fade-in 0.15s ease;
+}
+
+.items-body {
+  width: 100%;
+  max-width: 340px;
+  background: #1e1c19;
+  border: 1px solid rgba(233, 220, 192, 0.3);
+  border-radius: 14px;
+  padding: 16px;
+  color: #d8e5d8;
+
+  h3 {
+    margin: 0 0 12px;
+    color: #f0e6d2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    .mi { font-size: 1.2rem; width: 1.2rem; height: 1.2rem; color: #e9dcc0; }
+  }
+}
+
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #e5f0e5;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: background 0.14s ease, border-color 0.14s ease;
+
+  &:hover:not(:disabled) { background: rgba(255, 255, 255, 0.09); }
+  &:disabled { opacity: 0.5; cursor: default; }
+
+  .item-icon { flex-shrink: 0; font-size: 1.4rem; width: 1.4rem; height: 1.4rem; color: #ffd98a; }
+  .item-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+    min-width: 0;
+    strong { font-size: 0.9rem; }
+    small { font-size: 0.72rem; color: #a9b8a9; }
+  }
+  .item-check { flex-shrink: 0; color: #fbbf24; }
+
+  &.armed {
+    background: rgba(251, 191, 36, 0.14);
+    border-color: rgba(251, 191, 36, 0.6);
+  }
+}
+
+.item-hint {
+  margin: 12px 0 0;
+  font-size: 0.74rem;
+  color: #9aa89a;
+  text-align: center;
 }
 
 // ── Creature shadows: crisp drop-shadow + a ground shadow that breathes ──────
@@ -812,14 +969,27 @@
 
 // STRUCK — the hit fighter flashes red (a damage number pops from the TS).
 // Flash lives on ::after so it never resets the body's drop-in/breathe anim.
+// The red is masked by the sprite's own alpha (--uc-sprite, set per side) so it
+// tints only the creature's pixels — not the whole rectangular sprite box.
 .side.struck .body::after {
   content: '';
   position: absolute;
-  inset: -6px;
-  border-radius: 12px;
+  top: 50%;
+  left: 50%;
+  width: 96px;
+  height: 96px;
+  transform: translate(-50%, -50%);
+  border-radius: 12px; // only shows in the no-sprite (icon) fallback where the mask is absent
   background: rgba(255, 55, 40, 0.6);
   pointer-events: none;
   animation: uc-flash 0.38s ease;
+
+  -webkit-mask: var(--uc-sprite) center / contain no-repeat;
+  mask: var(--uc-sprite) center / contain no-repeat;
+}
+// Match the mirrored sprite so the red silhouette lines up.
+.side.flipped.struck .body::after {
+  transform: translate(-50%, -50%) scaleX(-1);
 }
 @keyframes uc-flash {
   0% { opacity: 0; }

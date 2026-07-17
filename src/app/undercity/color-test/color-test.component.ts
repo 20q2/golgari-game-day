@@ -10,6 +10,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { rgbToHsv, hsvToRgb } from '../engine/colors';
 import { ALL_SPRITES } from '../data/species';
+import { classifierFor, buildRegionMap, buildRegionMapFromMask } from '../engine/sprite-engine';
 import { PAINTS } from '../data/cosmetics';
 
 type RegionKey = 'body' | 'belly' | 'stripes';
@@ -17,13 +18,17 @@ type RegionKey = 'body' | 'belly' | 'stripes';
 interface SpriteOption {
   label: string;
   url: string;
+  /** Classifier key (sprite name); undefined for uploaded files. */
+  sprite?: string;
 }
 
 // The recolored player art lives here; keep in sync with public/undercity/player_sprites.
 const PLAYER_SPRITES = [
   'pest',
-  'grub',
+  'insect',
+  'zombie',
   'saproling',
+  'grub',
   'plant',
   'myconid_sporetender',
   'slitherhead',
@@ -60,12 +65,22 @@ export class ColorTestComponent implements AfterViewInit {
   @ViewChild('preview') previewRef!: ElementRef<HTMLCanvasElement>;
 
   protected readonly sprites: SpriteOption[] = [
-    ...PLAYER_SPRITES.map((n) => ({ label: `player: ${n}`, url: `undercity/player_sprites/${n}.png` })),
-    ...ALL_SPRITES.map((n) => ({ label: `placeholder: ${n}`, url: `undercity/sprites/${n}.png` })),
+    ...PLAYER_SPRITES.map((n) => ({
+      label: `player: ${n}`,
+      url: `undercity/player_sprites/${n}.png`,
+      sprite: n,
+    })),
+    ...ALL_SPRITES.map((n) => ({
+      label: `placeholder: ${n}`,
+      url: `undercity/sprites/${n}.png`,
+      sprite: n,
+    })),
   ];
   protected readonly paints = PAINTS;
 
   protected readonly spriteUrl = signal(this.sprites[0].url);
+  // Which classifier to segment with — the selected sprite's key (null for uploads).
+  private readonly spriteKey = signal<string | null>(this.sprites[0].sprite ?? null);
   protected readonly hue = signal<Record<RegionKey, number>>({ body: 130, belly: 50, stripes: 130 });
   protected readonly showRegions = signal(false);
   protected readonly lightBg = signal(false);
@@ -80,12 +95,22 @@ export class ColorTestComponent implements AfterViewInit {
   });
 
   protected readonly regionList: { key: RegionKey; name: string }[] = [
-    { key: 'body', name: 'Body (mid green · region 0)' },
-    { key: 'belly', name: 'Belly (yellow-green highlight · region 1)' },
-    { key: 'stripes', name: 'Stripes (dark green shadow · region 2)' },
+    { key: 'body', name: 'Body · region 0 (primary)' },
+    { key: 'belly', name: 'Belly · region 1 (secondary)' },
+    { key: 'stripes', name: 'Stripes · region 2 (accent)' },
   ];
 
+  // Smoothed region map cached against the image (and mask) it was built from, so
+  // dragging the hue sliders doesn't rebuild it every frame.
+  private regionCache: {
+    img: HTMLImageElement | null;
+    mask: HTMLImageElement | null;
+    map: Int8Array | null;
+  } = { img: null, mask: null, map: null };
   private readonly imageCache = new Map<string, HTMLImageElement>();
+  // Authored masks loaded on demand for the selected sprite (null once a fetch fails).
+  private readonly maskCache = new Map<string, HTMLImageElement | null>();
+  private readonly currentMask = signal<HTMLImageElement | null>(null);
   private readonly currentImage = signal<HTMLImageElement | null>(null);
   private objectUrl: string | null = null;
   private viewReady = false;
@@ -115,12 +140,38 @@ export class ColorTestComponent implements AfterViewInit {
       img.src = url;
     });
 
-    // Redraw whenever the image, hues, or view options change.
+    // Load the authored mask for the selected sprite key (if any), so the
+    // sandbox segments exactly like the board. Uploads (null key) never have one.
+    effect(() => {
+      const key = this.spriteKey();
+      if (!key) {
+        this.currentMask.set(null);
+        return;
+      }
+      if (this.maskCache.has(key)) {
+        this.currentMask.set(this.maskCache.get(key)!);
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        this.maskCache.set(key, img);
+        this.currentMask.set(img);
+      };
+      img.onerror = () => {
+        this.maskCache.set(key, null);
+        this.currentMask.set(null);
+      };
+      img.src = `undercity/player_sprites/${key}.mask.png`;
+    });
+
+    // Redraw whenever the image, hues, selected sprite, or view options change.
     effect(() => {
       const img = this.currentImage();
       const h = this.hue();
       const regions = this.showRegions();
       const scale = this.scale();
+      this.spriteKey(); // re-render when the classifier changes
+      this.currentMask(); // re-render when the authored mask loads
       if (this.viewReady && img) this.render(img, h, regions, scale);
     });
   }
@@ -134,7 +185,9 @@ export class ColorTestComponent implements AfterViewInit {
   // ── Controls ────────────────────────────────────────────────────────────────
 
   selectSprite(event: Event): void {
-    this.spriteUrl.set((event.target as HTMLSelectElement).value);
+    const url = (event.target as HTMLSelectElement).value;
+    this.spriteUrl.set(url);
+    this.spriteKey.set(this.sprites.find((s) => s.url === url)?.sprite ?? null);
   }
 
   onFile(event: Event): void {
@@ -145,6 +198,7 @@ export class ColorTestComponent implements AfterViewInit {
     // Register under its own label so the <select> doesn't fight it.
     const url = this.objectUrl;
     this.spriteUrl.set(url);
+    this.spriteKey.set(null); // uploads use the default green-marker classifier
   }
 
   setHue(region: RegionKey, event: Event): void {
@@ -164,6 +218,67 @@ export class ColorTestComponent implements AfterViewInit {
     this.hue.set({ body: 130, belly: 50, stripes: 130 });
   }
 
+  /**
+   * Export a flat-color region mask PNG for the selected sprite (see
+   * specs/2026-07-15-undercity-sprite-masks-design.md). Bootstraps an authorable
+   * mask from the current classifier output: pure red/green/blue per region,
+   * white for a baked hat-anchor pixel, transparent elsewhere. Uploads (no
+   * sprite key) are skipped.
+   */
+  exportMask(): void {
+    const img = this.currentImage();
+    const key = this.spriteKey();
+    if (!img || !key) return;
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    const off = document.createElement('canvas');
+    off.width = w;
+    off.height = h;
+    const octx = off.getContext('2d')!;
+    octx.drawImage(img, 0, 0);
+    const src = octx.getImageData(0, 0, w, h).data;
+    const regionMap = buildRegionMap(src, w, h, classifierFor(key));
+
+    const maskData = octx.createImageData(w, h);
+    const md = maskData.data;
+    const PURE: Record<number, [number, number, number]> = {
+      0: [255, 0, 0],
+      1: [0, 255, 0],
+      2: [0, 0, 255],
+    };
+    for (let p = 0; p < regionMap.length; p++) {
+      const i = p * 4;
+      // Baked hat-anchor pixel on the sprite → white in the mask.
+      if (src[i] === 255 && src[i + 1] === 0 && src[i + 2] === 0 && src[i + 3] >= 128) {
+        md[i] = 255;
+        md[i + 1] = 255;
+        md[i + 2] = 255;
+        md[i + 3] = 255;
+        continue;
+      }
+      const region = regionMap[p];
+      if (region >= 0 && src[i + 3] >= 128) {
+        const [r, g, b] = PURE[region];
+        md[i] = r;
+        md[i + 1] = g;
+        md[i + 2] = b;
+        md[i + 3] = 255;
+      } else {
+        md[i + 3] = 0; // transparent = untouched
+      }
+    }
+    octx.putImageData(maskData, 0, 0);
+    off.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${key}.mask.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
   toggleRegions(): void {
     this.showRegions.set(!this.showRegions());
   }
@@ -172,18 +287,7 @@ export class ColorTestComponent implements AfterViewInit {
     this.lightBg.set(!this.lightBg());
   }
 
-  // ── Recolor (mirrors sprite-engine.ts classifyPixel + recolorImage) ──────────
-
-  private classify(r: number, g: number, b: number, a: number): number {
-    if (a < 128) return -1;
-    const { h, s, v } = rgbToHsv(r, g, b);
-    if (v > 0.92 && s < 0.12) return -1; // white background
-    if (v < 0.28) return -1; // outline
-    if (h >= 50 && h <= 80 && v > 0.4) return 1; // belly
-    if (h >= 85 && h <= 135 && v > 0.5) return 0; // body
-    if (h >= 85 && h <= 135 && v >= 0.28 && v <= 0.5) return 2; // stripes
-    return -1;
-  }
+  // ── Recolor (uses the sprite-engine smoothed region map, mirroring the board) ──
 
   private render(
     img: HTMLImageElement,
@@ -203,9 +307,29 @@ export class ColorTestComponent implements AfterViewInit {
     const imageData = octx.getImageData(0, 0, w, h);
     const data = imageData.data;
     const targetHues = [hues.body, hues.belly, hues.stripes];
+
+    // Prefer the authored mask (board parity); else the smoothed classifier map.
+    // Cache invalidates on either the image or the mask changing.
+    const mask = this.currentMask();
+    if (this.regionCache.img !== img || this.regionCache.mask !== mask) {
+      let map: Int8Array;
+      if (mask && (mask.naturalWidth || mask.width) === w && (mask.naturalHeight || mask.height) === h) {
+        const mc = document.createElement('canvas');
+        mc.width = w;
+        mc.height = h;
+        const mctx = mc.getContext('2d')!;
+        mctx.drawImage(mask, 0, 0);
+        map = buildRegionMapFromMask(mctx.getImageData(0, 0, w, h).data, w, h);
+      } else {
+        map = buildRegionMap(data, w, h, classifierFor(this.spriteKey()));
+      }
+      this.regionCache = { img, mask, map };
+    }
+    const regionMap = this.regionCache.map!;
     const tally = { outline: 0, body: 0, belly: 0, stripes: 0 };
 
-    for (let i = 0; i < data.length; i += 4) {
+    for (let p = 0; p < regionMap.length; p++) {
+      const i = p * 4;
       const r = data[i],
         g = data[i + 1],
         b = data[i + 2],
@@ -221,8 +345,8 @@ export class ColorTestComponent implements AfterViewInit {
         continue;
       }
 
-      const region = this.classify(r, g, b, a);
-      if (region === -1) {
+      const region = regionMap[p];
+      if (region < 0) {
         tally.outline++;
         continue;
       }
@@ -244,9 +368,15 @@ export class ColorTestComponent implements AfterViewInit {
     octx.putImageData(imageData, 0, 0);
     this.counts.set(tally);
 
+    // Classification ran on the natural-res offscreen canvas above; the visible
+    // canvas only needs a sane backing store. Cap the longest side so the 1024px
+    // player sprites don't blow up to a multi-thousand-px (100MB+) canvas at high
+    // zoom — small pixel sprites still magnify freely.
+    const MAX_SIDE = 1536;
+    const eff = Math.min(scale, MAX_SIDE / Math.max(w, h));
     const canvas = this.previewRef.nativeElement;
-    canvas.width = w * scale;
-    canvas.height = h * scale;
+    canvas.width = Math.round(w * eff);
+    canvas.height = Math.round(h * eff);
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = false;

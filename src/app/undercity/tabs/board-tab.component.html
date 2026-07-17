@@ -208,54 +208,79 @@
         <h3><mat-icon class="mi">storefront</mat-icon> Rot-Farm Bazaar</h3>
         <p class="modal-sub">
           You carry <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ store.you()?.spores }}
+          · Restocks in {{ bazaarRestockLabel() }}
         </p>
-        <div class="shop-section">Gear (auto-equips; old piece trades in at 50%)</div>
-        @for (g of gear; track g.id) {
-          <div class="shop-row">
-            <span class="shop-name">{{ g.name }} <em>{{ g.desc }}</em></span>
-            <button
-              class="uc-btn shop-buy"
-              [disabled]="busy() || store.you()?.gear?.[g.slot] === g.id"
-              (click)="buy(g)"
-            >
-              @if (store.you()?.gear?.[g.slot] === g.id) {
-                Equipped
-              } @else {
-                {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-              }
-            </button>
-          </div>
+
+        <div class="shop-tabs" role="tablist">
+          <button class="shop-tab" [class.active]="shopTab() === 'gear'" (click)="setShopTab('gear')">Gear</button>
+          <button class="shop-tab" [class.active]="shopTab() === 'consumables'" (click)="setShopTab('consumables')">Consumables</button>
+          <button class="shop-tab" [class.active]="shopTab() === 'grimoires'" (click)="setShopTab('grimoires')">Grimoires</button>
+        </div>
+
+        @switch (shopTab()) {
+          @case ('gear') {
+            <div class="shop-hint">Auto-equips; old piece trades in at 50%.</div>
+            @for (r of shopGearRows(); track r.info.id) {
+              <div class="shop-row">
+                <span class="shop-name">{{ r.info.name }} <em>{{ r.info.desc }}</em></span>
+                <button
+                  class="uc-btn shop-buy"
+                  [disabled]="busy() || r.qty <= 0 || store.you()?.gear?.[r.info.slot] === r.info.id"
+                  (click)="buy(r.info)"
+                >
+                  @if (store.you()?.gear?.[r.info.slot] === r.info.id) {
+                    Equipped
+                  } @else if (r.qty <= 0) {
+                    Sold out
+                  } @else {
+                    {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> <span class="shop-qty">×{{ r.qty }}</span>
+                  }
+                </button>
+              </div>
+            } @empty {
+              <div class="shop-empty">The gear racks are bare. Check back after the restock.</div>
+            }
+          }
+          @case ('consumables') {
+            <div class="shop-hint">Bag {{ store.you()?.bag?.length ?? 0 }}/3.</div>
+            @for (r of shopConsumableRows(); track r.info.id) {
+              <div class="shop-row">
+                <span class="shop-name">
+                  <mat-icon class="mi">{{ r.info.icon }}</mat-icon> {{ r.info.name }} <em>{{ r.info.desc }}</em>
+                </span>
+                <button class="uc-btn shop-buy" [disabled]="busy() || r.qty <= 0" (click)="buy(r.info)">
+                  @if (r.qty <= 0) {
+                    Sold out
+                  } @else {
+                    {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> <span class="shop-qty">×{{ r.qty }}</span>
+                  }
+                </button>
+              </div>
+            } @empty {
+              <div class="shop-empty">No consumables in stock. Check back after the restock.</div>
+            }
+          }
+          @case ('grimoires') {
+            <div class="shop-hint">Yours forever; open one from the Creature tab.</div>
+            @for (g of shopGrimoireRows(); track g.id) {
+              <div class="shop-row">
+                <span class="shop-name">
+                  <mat-icon class="mi">menu_book</mat-icon> {{ g.name }} <em>{{ grimoireSpellList(g) }}</em>
+                </span>
+                <button class="uc-btn shop-buy" [disabled]="busy() || ownsGrimoire(g.id)" (click)="buy(g)">
+                  @if (ownsGrimoire(g.id)) {
+                    Owned
+                  } @else {
+                    {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+                  }
+                </button>
+              </div>
+            } @empty {
+              <div class="shop-empty">No tomes on the shelf right now.</div>
+            }
+          }
         }
-        <div class="shop-section">Consumables (bag {{ store.you()?.bag?.length ?? 0 }}/3)</div>
-        @for (c of consumables; track c.id) {
-          <div class="shop-row">
-            <span class="shop-name">
-              <mat-icon class="mi">{{ c.icon }}</mat-icon> {{ c.name }} <em>{{ c.desc }}</em>
-            </span>
-            <button class="uc-btn shop-buy" [disabled]="busy()" (click)="buy(c)">
-              {{ c.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-            </button>
-          </div>
-        }
-        <div class="shop-section">Grimoires (yours forever; open one from the Creature tab)</div>
-        @for (g of shopGrimoires; track g.id) {
-          <div class="shop-row">
-            <span class="shop-name">
-              <mat-icon class="mi">menu_book</mat-icon> {{ g.name }} <em>{{ grimoireSpellList(g) }}</em>
-            </span>
-            <button
-              class="uc-btn shop-buy"
-              [disabled]="busy() || ownsGrimoire(g.id)"
-              (click)="buy(g)"
-            >
-              @if (ownsGrimoire(g.id)) {
-                Owned
-              } @else {
-                {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-              }
-            </button>
-          </div>
-        }
+
         <button class="uc-btn close-btn" (click)="closeFacilities()">Leave</button>
       </div>
     </div>
@@ -390,22 +415,25 @@
         (click)="$event.stopPropagation()"
         [style.background-image]="regionWashBg()"
       >
+        <img class="modal-art" src="undercity/icons/trading_post.png" alt="" />
         <h3><mat-icon class="mi">swap_horiz</mat-icon> Trading Post</h3>
-        <p class="modal-sub">Leave one of your items, take one another player left behind.</p>
+        <p class="modal-sub">
+          Leave a consumable, a piece of gear, or a grimoire — take one another player left behind.
+        </p>
 
         <div class="shop-section">Your items — tap one to offer</div>
-        @if ((store.you()?.bag?.length ?? 0) === 0) {
-          <p class="trade-empty">Your bag is empty — nothing to trade yet.</p>
+        @if (tradeOffers().length === 0) {
+          <p class="trade-empty">You have nothing to trade yet.</p>
         } @else {
           <div class="trade-bag">
-            @for (b of store.you()?.bag ?? []; track $index) {
+            @for (o of tradeOffers(); track o.id) {
               <button
                 class="trade-chip"
-                [class.selected]="giveItem() === b"
-                (click)="giveItem.set(b)"
+                [class.selected]="giveItem() === o.id"
+                (click)="giveItem.set(o.id)"
               >
-                <mat-icon class="mi">{{ consumableMap[b].icon }}</mat-icon>
-                {{ consumableMap[b].name }}
+                <mat-icon class="mi">{{ o.icon }}</mat-icon>
+                {{ o.label }}
               </button>
             }
           </div>
@@ -415,10 +443,15 @@
         @for (s of tradingStock(); track $index) {
           <div class="shop-row">
             <span class="shop-name">
-              <mat-icon class="mi">{{ consumableMap[s.item].icon }}</mat-icon>
-              {{ consumableMap[s.item].name }} <em>found by {{ s.foundBy }}</em>
+              <mat-icon class="mi">{{ tradeStockDetail(s.item).icon }}</mat-icon>
+              {{ tradeStockDetail(s.item).label }}
+              <em>{{ tradeStockDetail(s.item).sub }} — found by {{ s.foundBy }}</em>
             </span>
-            <button class="uc-btn shop-buy" [disabled]="busy() || !giveItem()" (click)="trade($index)">
+            <button
+              class="uc-btn shop-buy"
+              [disabled]="busy() || !giveItem() || !canTakeStock(s.item)"
+              (click)="trade($index)"
+            >
               Take
             </button>
           </div>
@@ -491,6 +524,7 @@
       [defenderStats]="lb.defenderStats"
       [resume]="lb.resume"
       [resumeRevealed]="lb.resumeRevealed"
+      [startRound]="lb.startRound"
       (submitStance)="onStance($event)"
       (peek)="onPeek()"
       (flee)="onFlee()"

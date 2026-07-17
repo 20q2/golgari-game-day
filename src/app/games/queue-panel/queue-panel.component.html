@@ -1,0 +1,25 @@
+<section class="queue-panel" *ngIf="queue.isNightActive() && queue.entries().length > 0">
+  <div class="queue-panel-header">
+    <mat-icon class="queue-icon">casino</mat-icon>
+    <span class="queue-title">Tonight's Queue</span>
+  </div>
+
+  <ul class="queue-list" role="list">
+    <li *ngFor="let entry of queue.entries()" class="queue-entry">
+      <div class="queue-entry-main">
+        <span class="queue-game-title">{{ entry.gameTitle }}</span>
+        <span class="queue-members">{{ memberNames(entry.gameId) }}</span>
+      </div>
+      <button
+        type="button"
+        class="queue-join-btn"
+        [class.joined]="queue.isJoined(entry.gameId)"
+        (click)="toggle(entry.gameId, entry.gameTitle)"
+      >
+        {{ queue.isJoined(entry.gameId) ? 'Leave' : 'Join' }}
+      </button>
+    </li>
+  </ul>
+
+  <p class="queue-error" *ngIf="queue.error() as err">{{ err }}</p>
+</section>

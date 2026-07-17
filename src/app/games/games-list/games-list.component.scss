@@ -176,4 +176,33 @@
       line-height: 1;
     }
   }
+
+  .queue-badge {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(0, 0, 0, 0.75);
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.6;
+    cursor: pointer;
+
+    &.joined {
+      background: var(--accent-color);
+      color: white;
+    }
+
+    .queue-badge-icon {
+      font-size: 11px;
+      width: 11px;
+      height: 11px;
+    }
+  }
 }

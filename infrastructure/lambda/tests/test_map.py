@@ -14,16 +14,18 @@ def test_node_count():
     # (city 7, cavern 6, bog 7, bone 6, garden 7 nodes incl. door).
     # v7 (2026-07 editor pass): +7 nodes (bog loot spur, extra bone digs,
     # relocated city gate + loot), -2 garden inner spaces.
-    assert len(MAP_NODES) == 129
+    # v8 (2026-07 editor pass): +2 nodes overall — more hazards/mystery/elites
+    # and crystal veins, fewer shrines and vault-locks.
+    assert len(MAP_NODES) == 131
 
 
 def test_space_type_distribution():
     counts = Counter(n['type'] for n in MAP_NODES.values())
     assert counts == {
-        'gate': 5, 'loot': 19, 'wild': 24, 'elite': 7, 'shop': 5, 'mystery': 9,
-        'hazard': 12, 'warp': 6, 'shrine': 5, 'ladder': 10, 'lair': 6,
+        'gate': 5, 'loot': 20, 'wild': 24, 'elite': 8, 'shop': 5, 'mystery': 11,
+        'hazard': 15, 'warp': 6, 'shrine': 1, 'ladder': 10, 'lair': 6,
         'ossuary': 1, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
-        'excavation': 4, 'cache': 5, 'crystal_vein': 3, 'vault_lock': 3,
+        'excavation': 4, 'cache': 5, 'crystal_vein': 4, 'vault_lock': 1,
     }
 
 

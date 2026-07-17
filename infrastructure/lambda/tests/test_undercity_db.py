@@ -1,5 +1,6 @@
 """Integration tests for the action dispatcher against an in-memory table."""
 import sys
+from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -323,21 +324,80 @@ def test_ossuary_three_rolls_then_locked(table):
     assert doc['ossuaryRollsLeft'] == data.OSSUARY_ROLLS_PER_VISIT
 
 
-def test_buy_gear_and_consumables(table):
+def _seed_shop(table, sid, node, gear=None, consumables=None, grimoires=None):
+    """Write a deterministic bazaar stock for the current window."""
+    rec = {
+        'window': db._shop_window(),
+        'gear': gear if gear is not None else [{'item': 'rusted_fang', 'qty': 2}],
+        'consumables': (consumables if consumables is not None
+                        else [{'item': 'healing_moss', 'qty': 2}]),
+        'grimoires': grimoires if grimoires is not None else ['moldering_folio'],
+    }
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'SHOP#{node}', **rec})
+    return node
+
+
+def _at_shop(table, spores=200):
     act(table, 'join', starter='pest')
     sid = _sid(table)
+    node = next(n for n, v in data.MAP_NODES.items() if v['type'] == 'shop')
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'bog_r3'  # a Rot-Farm Bazaar (every shop stocks all tiers)
-    doc['spores'] = 200
+    doc['position'] = node
+    doc['spores'] = spores
     db._put_player(table, doc)
+    return sid, node
 
+
+def test_buy_depletes_stock_then_sold_out(table):
+    sid, node = _at_shop(table)
+    _seed_shop(table, sid, node, consumables=[{'item': 'healing_moss', 'qty': 2}])
+    # Two units in stock -> two buys succeed, third is sold out.
+    for _ in range(2):
+        status, resp = act(table, 'buy', itemId='healing_moss')
+        assert status == 200
+    status, resp = act(table, 'buy', itemId='healing_moss')
+    assert status == 409 and 'Sold out' in resp['error']
+
+
+def test_buy_rejects_unstocked_item(table):
+    sid, node = _at_shop(table)
+    _seed_shop(table, sid, node, gear=[{'item': 'rusted_fang', 'qty': 2}])
+    status, resp = act(table, 'buy', itemId='wurm_tooth')  # not in the seeded stock
+    assert status == 409 and 'stocking' in resp['error']
+
+
+def test_buy_grimoire_requires_stock_but_never_depletes(table):
+    sid, node = _at_shop(table)
+    _seed_shop(table, sid, node, grimoires=['moldering_folio'])
+    # Not stocked -> refused.
+    status, resp = act(table, 'buy', itemId='gardeners_primer')
+    assert status == 409
+    # Stocked -> alex buys; the stock is NOT decremented (no qty on grimoires).
+    status, resp = act(table, 'buy', itemId='moldering_folio')
+    assert status == 200 and 'moldering_folio' in resp['you']['grimoires']
+    rec = db._get(table, db._season_pk(sid), f'SHOP#{node}')
+    assert rec['grimoires'] == ['moldering_folio']
+    # A second player can still buy the same tome this window (no depletion).
+    act(table, 'join', user='user-bea', name='Bea', starter='kraul')
+    bea = db._get_player(table, sid, 'user-bea')
+    bea['position'] = node
+    bea['spores'] = 200
+    db._put_player(table, bea)
+    status, resp = act(table, 'buy', user='user-bea', name='Bea', itemId='moldering_folio')
+    assert status == 200 and 'moldering_folio' in resp['you']['grimoires']
+
+
+def test_buy_gear_and_consumables(table):
+    sid, node = _at_shop(table)
+    _seed_shop(table, sid, node,
+               gear=[{'item': 'rusted_fang', 'qty': 2}, {'item': 'wurm_tooth', 'qty': 2}],
+               consumables=[{'item': 'healing_moss', 'qty': 2}])
     status, resp = act(table, 'buy', itemId='rusted_fang')
     assert status == 200 and resp['you']['gear']['fang'] == 'rusted_fang'
     assert resp['you']['spores'] == 180
     status, resp = act(table, 'buy', itemId='wurm_tooth')  # trade-in refunds 10
     assert resp['you']['spores'] == 180 - 80 + 10
     assert resp['you']['gear']['fang'] == 'wurm_tooth'
-
     status, resp = act(table, 'buy', itemId='healing_moss')
     assert status == 200 and 'healing_moss' in resp['you']['bag']
 
@@ -433,6 +493,121 @@ def test_trading_post_pre_seed_and_swap(table):
     assert ev2['stock'][0] == {'item': 'snare', 'foundBy': 'Alex'}
 
 
+def test_trading_post_swap_gear(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['gear'] = {'fang': 'rusted_fang'}
+    db._put_player(table, doc)
+
+    # Seed the post with a gear item left behind by an earlier visitor.
+    db._save_trading_post(table, sid, 'isl_trade',
+                           [{'item': 'kraul_barb', 'foundBy': 'Sam'},
+                            {'item': 'healing_moss', 'foundBy': 'the Swarm'},
+                            {'item': 'loaded_die', 'foundBy': 'the Swarm'}])
+
+    status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
+    assert status == 200
+    you = resp['you']
+    assert you['gear']['fang'] == 'kraul_barb'          # new piece equipped
+    stock = resp['stock']
+    assert stock[0] == {'item': 'rusted_fang', 'foundBy': 'Alex'}  # old piece left behind
+
+
+def test_trading_post_swap_grimoire(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['grimoires'] = ['moldering_folio']
+    doc['equippedGrimoire'] = 'moldering_folio'
+    db._put_player(table, doc)
+
+    db._save_trading_post(table, sid, 'isl_trade',
+                           [{'item': 'gardeners_primer', 'foundBy': 'Sam'},
+                            {'item': 'healing_moss', 'foundBy': 'the Swarm'},
+                            {'item': 'loaded_die', 'foundBy': 'the Swarm'}])
+
+    status, resp = act(table, 'trade', give='moldering_folio', takeIndex=0)
+    assert status == 200
+    you = resp['you']
+    assert you['grimoires'] == ['gardeners_primer']
+    assert you['equippedGrimoire'] == 'gardeners_primer'  # cleared, then auto-equipped from the take
+    assert resp['stock'][0] == {'item': 'moldering_folio', 'foundBy': 'Alex'}
+
+
+def test_trading_post_take_grimoire_auto_equips_if_none_owned(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['bag'] = ['snare']
+    db._put_player(table, doc)
+
+    db._save_trading_post(table, sid, 'isl_trade',
+                           [{'item': 'gardeners_primer', 'foundBy': 'Sam'},
+                            {'item': 'healing_moss', 'foundBy': 'the Swarm'},
+                            {'item': 'loaded_die', 'foundBy': 'the Swarm'}])
+
+    status, resp = act(table, 'trade', give='snare', takeIndex=0)
+    assert status == 200
+    you = resp['you']
+    assert you['grimoires'] == ['gardeners_primer']
+    assert you['equippedGrimoire'] == 'gardeners_primer'   # auto-equipped, had none
+
+
+def test_trading_post_rejects_duplicate_grimoire_take(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['bag'] = ['snare']
+    doc['grimoires'] = ['gardeners_primer']
+    db._put_player(table, doc)
+
+    db._save_trading_post(table, sid, 'isl_trade',
+                           [{'item': 'gardeners_primer', 'foundBy': 'Sam'},
+                            {'item': 'healing_moss', 'foundBy': 'the Swarm'},
+                            {'item': 'loaded_die', 'foundBy': 'the Swarm'}])
+
+    status, _ = act(table, 'trade', give='snare', takeIndex=0)
+    assert status == 409  # already own that grimoire
+
+
+def test_trading_post_rejects_bag_overflow_take(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['gear'] = {'fang': 'rusted_fang'}
+    doc['bag'] = ['healing_moss', 'smoke_spore', 'loaded_die']  # already full
+    db._put_player(table, doc)
+
+    db._save_trading_post(table, sid, 'isl_trade',
+                           [{'item': 'snare', 'foundBy': 'the Swarm'},
+                            {'item': 'chitin_scrap', 'foundBy': 'the Swarm'},
+                            {'item': 'moldering_folio', 'foundBy': 'the Swarm'}])
+
+    status, _ = act(table, 'trade', give='rusted_fang', takeIndex=0)
+    assert status == 409  # bag is full, can't take a consumable
+
+
+def test_trading_post_rejects_give_not_owned(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'isl_trade'
+    doc['gear'] = {}
+    doc['grimoires'] = []
+    db._put_player(table, doc)
+
+    status, _ = act(table, 'trade', give='rusted_fang', takeIndex=0)
+    assert status == 409  # don't have that gear equipped
+    status, _ = act(table, 'trade', give='moldering_folio', takeIndex=0)
+    assert status == 409  # don't own that grimoire
+
+
 def test_trading_post_guards(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)
@@ -512,15 +687,15 @@ def test_death_offers_respawn_choice_and_respawn(table):
     # Provisional wake at home; a choice is offered between home + last biome.
     assert doc['position'] == 'cavern_r0'
     gates = {o['gate'] for o in doc['pendingRespawn']['options']}
-    assert gates == {'cavern_r0', 'bog_r0'}
+    assert gates == {'cavern_r0', 'bog_r4'}
     db._put_player(table, doc)
 
-    status, resp = act(table, 'respawn', gate='bog_r0')
+    status, resp = act(table, 'respawn', gate='bog_r4')
     assert status == 200
-    assert resp['you']['position'] == 'bog_r0'
+    assert resp['you']['position'] == 'bog_r4'
     assert 'pendingRespawn' not in resp['you']
 
-    status, _ = act(table, 'respawn', gate='bog_r0')
+    status, _ = act(table, 'respawn', gate='bog_r4')
     assert status == 409  # nothing pending anymore
 
 
@@ -855,10 +1030,10 @@ def test_vein_landing_forces_first_strike(table, monkeypatch):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'cavern_r1'
+    doc['position'] = 'cavern_r3'
     monkeypatch.setattr(db._rng, 'random', lambda: 1.0)   # never cave in, no bonus items
     spores_before = doc.get('spores', 0)
-    ev = db._resolve_space(table, sid, doc, 'cavern_r1', 'cavern_r0')
+    ev = db._resolve_space(table, sid, doc, 'cavern_r3', 'cavern_r2')
     assert ev['type'] == 'crystal_vein'
     assert ev['depth'] == 1                                # surface -> level 1
     assert ev['strikesLeft'] == data.VEIN_STRIKES_PER_VISIT - 1
@@ -872,10 +1047,10 @@ def test_vein_cave_in_hurts_and_resets(table, monkeypatch):
     sid = _sid(table)
     db._save_vein(table, sid, 'cavern', 9)                 # deep, dangerous shaft
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'cavern_r1'
+    doc['position'] = 'cavern_r3'
     hp_before = doc['hp']
     monkeypatch.setattr(db._rng, 'random', lambda: 0.0)    # guaranteed cave-in
-    ev = db._resolve_space(table, sid, doc, 'cavern_r1', 'cavern_r0')
+    ev = db._resolve_space(table, sid, doc, 'cavern_r3', 'cavern_r2')
     assert ev['collapsed'] is True
     assert doc['hp'] == max(1, hp_before - 10 * data.VEIN_CAVE_IN_DMG_PER_LEVEL)
     assert doc['veinStrikesLeft'] == 0                     # the visit ends under rubble
@@ -890,7 +1065,7 @@ def test_vein_strike_action_and_guards(table, monkeypatch):
     assert status == 409                                    # not at a vein
 
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'cavern_r1'
+    doc['position'] = 'cavern_r3'
     doc['veinStrikesLeft'] = 2
     db._put_player(table, doc)
     db._save_vein(table, sid, 'cavern', 3)
@@ -911,7 +1086,7 @@ def test_vein_heartstone_pays_and_resets(table, monkeypatch):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'cavern_r1'
+    doc['position'] = 'cavern_r3'
     doc['veinStrikesLeft'] = 1
     doc['bag'] = []
     db._put_player(table, doc)
@@ -933,8 +1108,8 @@ def test_vault_landing_refills_picks_and_hides_combo(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'city_r4'
-    ev = db._resolve_space(table, sid, doc, 'city_r4', 'city_r3')
+    doc['position'] = 'n128'
+    ev = db._resolve_space(table, sid, doc, 'n128', 'city_r2')
     assert ev['type'] == 'vault_lock'
     assert ev['picksLeft'] == data.VAULT_PICKS_PER_VISIT
     assert doc['vaultPicksLeft'] == data.VAULT_PICKS_PER_VISIT
@@ -945,7 +1120,7 @@ def test_vault_landing_refills_picks_and_hides_combo(table):
 def _park_at_vault(table, picks=3):
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'city_r4'
+    doc['position'] = 'n128'
     doc['vaultPicksLeft'] = picks
     doc['bag'] = []
     db._put_player(table, doc)
@@ -1048,12 +1223,8 @@ def test_combatant_carries_riders_and_buffs_from_gear(table):
 
 
 def test_buy_charm_equips_into_charm_slot(table):
-    act(table, 'join', starter='pest')
-    sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex')
-    doc['spores'] = 500
-    doc['position'] = next(n for n, v in data.MAP_NODES.items() if v['type'] == 'shop')
-    db._put_player(table, doc)
+    sid, node = _at_shop(table, spores=500)
+    _seed_shop(table, sid, node, gear=[{'item': 'quartz_charm', 'qty': 2}])
     status, resp = act(table, 'buy', itemId='quartz_charm')
     assert status == 200, resp
     doc = db._get_player(table, sid, 'user-alex')
@@ -1160,6 +1331,8 @@ def test_combat_flee_escapes_and_clears_battle(table, monkeypatch):
     doc['spd'] = 20
     db._put_player(table, doc)
     _begin(table, sid)
+    monkeypatch.setattr(db.engine, 'resolve_round', lambda *a, **k: [])
+    act(table, 'combat-round', stance='guard')             # must act before fleeing
     monkeypatch.setattr(db._rng, 'random', lambda: 0.01)   # flee succeeds
     status, resp = act(table, 'combat-flee')
     assert status == 200 and resp['combat']['fled'] is True
@@ -1318,3 +1491,119 @@ def test_read_chance_rises_with_reader_passive_and_gear():
     assert db._read_chance(dict(base, passives=['first_bite'])) > plain
     assert db._read_chance(dict(base, gear={'charm': 'seer_charm'})) > plain
     assert db._read_chance(dict(base, gear={'charm': 'glint_charm'})) > plain
+
+
+# ── Rot-Farm Bazaar: rotating limited stock ──────────────────────────────────
+
+def test_shop_window_math():
+    base = datetime(2026, 7, 15, 12, 0, 0)
+    w = db._shop_window(base)
+    # Same 30-min window a few minutes later; next window after the boundary.
+    assert db._shop_window(base + timedelta(minutes=5)) == w
+    assert db._shop_window(base + timedelta(minutes=31)) == w + 1
+    # The window-end ISO is strictly after the window's own start instant.
+    assert db._shop_window_end(w) > base.isoformat(timespec='seconds')
+
+
+def test_gen_shop_stock_shape_and_determinism():
+    node = next(n for n, v in data.MAP_NODES.items() if v['type'] == 'shop')
+    stock = db._gen_shop_stock(node, 100)
+
+    # Gear: SHOP_GEAR_SLOTS lines, all valid, spread across distinct slots.
+    assert len(stock['gear']) == data.SHOP_GEAR_SLOTS
+    slots = [data.GEAR[e['item']]['slot'] for e in stock['gear']]
+    assert len(set(slots)) == len(slots)
+    assert all(e['qty'] == data.SHOP_GEAR_QTY for e in stock['gear'])
+
+    # Consumables: SHOP_CONSUMABLE_SLOTS distinct lines, >=1 in-battle ('combat').
+    assert len(stock['consumables']) == data.SHOP_CONSUMABLE_SLOTS
+    cids = [e['item'] for e in stock['consumables']]
+    assert len(set(cids)) == len(cids)
+    assert any(data.CONSUMABLES[cid].get('combat') for cid in cids)
+    assert all(e['qty'] == data.SHOP_CONSUMABLE_QTY for e in stock['consumables'])
+
+    # Grimoires: SHOP_GRIMOIRE_SLOTS distinct tier-1 ids, no qty.
+    assert len(stock['grimoires']) == data.SHOP_GRIMOIRE_SLOTS
+    assert len(set(stock['grimoires'])) == len(stock['grimoires'])
+    assert all(data.GRIMOIRES[g]['tier'] == 1 for g in stock['grimoires'])
+
+    # Deterministic per (node, window); a different window always differs (window field).
+    assert db._gen_shop_stock(node, 100) == stock
+    assert db._gen_shop_stock(node, 101) != stock
+    assert stock['window'] == 100
+
+
+def test_shop_stock_reads_current_regenerates_stale(table):
+    sid = _sid(table)
+    node = next(n for n, v in data.MAP_NODES.items() if v['type'] == 'shop')
+    window = db._shop_window()
+
+    # No record yet -> fresh full-quantity stock for the current window.
+    fresh = db._shop_stock(table, sid, node)
+    assert fresh['window'] == window
+    assert fresh['gear'][0]['qty'] == data.SHOP_GEAR_QTY
+
+    # A persisted record for the CURRENT window is returned verbatim (depleted).
+    depleted = db._gen_shop_stock(node, window)
+    depleted['gear'][0]['qty'] = 0
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'SHOP#{node}', **depleted})
+    got = db._shop_stock(table, sid, node)
+    assert got['gear'][0]['qty'] == 0
+
+    # A persisted record from a STALE window is ignored -> regenerated full.
+    stale = db._gen_shop_stock(node, window - 5)
+    stale['gear'][0]['qty'] = 0
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'SHOP#{node}', **stale})
+    got = db._shop_stock(table, sid, node)
+    assert got['window'] == window
+    assert got['gear'][0]['qty'] == data.SHOP_GEAR_QTY
+
+
+def test_state_surfaces_bazaars(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+
+    shop_nodes = [n for n, v in data.MAP_NODES.items() if v['type'] == 'shop']
+    assert set(state['bazaars']) == set(shop_nodes)      # one view per shop node
+    view = state['bazaars'][shop_nodes[0]]
+    assert len(view['gear']) == data.SHOP_GEAR_SLOTS
+    assert len(view['consumables']) == data.SHOP_CONSUMABLE_SLOTS
+    assert len(view['grimoires']) == data.SHOP_GRIMOIRE_SLOTS
+    assert view['refreshesAt'] == db._shop_window_end(db._shop_window())
+
+    # A depleted persisted record is reflected in the view.
+    node = shop_nodes[0]
+    depleted = db._gen_shop_stock(node, db._shop_window())
+    depleted['consumables'][0]['qty'] = 0
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'SHOP#{node}', **depleted})
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert state['bazaars'][node]['consumables'][0]['qty'] == 0
+
+
+def test_cannot_flee_before_acting(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['spd'] = 20
+    db._put_player(table, doc)
+    _begin(table, sid)                                  # round 1, no action yet
+    status, resp = act(table, 'combat-flee')
+    assert status == 409 and 'move' in resp['error'].lower()
+    # after one resolved round, fleeing is allowed
+    monkeypatch.setattr(db.engine, 'resolve_round', lambda *a, **k: [])
+    act(table, 'combat-round', stance='guard')          # round advances to 2
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.01)  # flee succeeds
+    status, resp = act(table, 'combat-flee')
+    assert status == 200 and resp['combat']['fled'] is True
+
+
+def test_get_active_season_public_wrapper():
+    t = FakeTable()
+    assert db.get_active_season(t) == (None, None)
+
+    act(t, 'season-start', hostKey='swampking')
+    sid, config = db.get_active_season(t)
+    assert sid is not None
+    assert config['status'] == 'active'
+    assert config['hostKey'] == 'swampking'

@@ -1,0 +1,711 @@
+// Spectator / TV broadcast. A self-contained fullscreen dark stage that sits
+// above the app shell (covers the navbar) so the whole screen is the show.
+// Tuned for TV viewing distance: large type, high contrast, calm motion.
+
+$gold: #d8c266;
+$green: #6fdc8c;
+$ink: #e6efe6;
+$panel: rgba(9, 16, 11, 0.86);
+$panel-line: rgba(216, 194, 102, 0.35);
+
+:host {
+  display: block;
+}
+
+.broadcast {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  overflow: hidden;
+  background: #07100a;
+  color: $ink;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+.board-stage {
+  position: absolute;
+  inset: 0;
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 260px 80px rgba(0, 0, 0, 0.72);
+}
+
+// ── Brand wordmark ────────────────────────────────────────────────────────────
+.brandchip {
+  position: absolute;
+  top: 22px;
+  left: 24px;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 6px 13px;
+  background: $panel;
+  border: 1px solid $panel-line;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+
+  .dot {
+    align-self: center;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #6a7a70;
+
+    &.live {
+      background: $green;
+      box-shadow: 0 0 0 0 rgba(111, 220, 140, 0.6);
+      animation: pulse 2s infinite;
+    }
+  }
+
+  .title {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+
+  .sub {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: $gold;
+  }
+}
+
+// ── Exit affordance ───────────────────────────────────────────────────────────
+.exit-btn {
+  position: absolute;
+  top: 62px; // tucked just under the brand chip
+  left: 24px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px 6px 9px;
+  color: #cdd9cf;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(9, 16, 11, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  // Hidden until the operator moves the mouse.
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    visibility 0.25s ease,
+    background 0.2s ease;
+
+  &.show {
+    opacity: 0.85;
+    visibility: visible;
+    transform: none;
+  }
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    opacity: 1;
+    background: rgba(20, 32, 22, 0.92);
+  }
+}
+
+// ── Between-scenes transition (wipe + lower-third) ────────────────────────────
+.scene-cut {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+
+  .wipe {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 55%;
+    background: linear-gradient(
+      100deg,
+      transparent,
+      rgba(216, 194, 102, 0.16) 42%,
+      rgba(111, 220, 140, 0.12) 60%,
+      transparent
+    );
+    filter: blur(8px);
+    animation: wipe-sweep 1.05s cubic-bezier(0.45, 0, 0.15, 1) both;
+  }
+
+  .scene-label {
+    position: absolute;
+    top: 76px;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 28px 11px 22px;
+    background: linear-gradient(90deg, rgba(9, 16, 11, 0.94), rgba(9, 16, 11, 0.45));
+    border-left: 4px solid $gold;
+    border-radius: 0 8px 8px 0;
+    animation: label-sweep 2.2s ease both;
+
+    mat-icon {
+      color: $gold;
+      font-size: 26px;
+      width: 26px;
+      height: 26px;
+    }
+    span {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+  }
+}
+
+@keyframes wipe-sweep {
+  0% {
+    transform: translateX(-130%) skewX(-10deg);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(140%) skewX(-10deg);
+    opacity: 0;
+  }
+}
+
+@keyframes label-sweep {
+  0% {
+    transform: translateX(-110%);
+    opacity: 0;
+  }
+  9% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  82% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-110%);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(111, 220, 140, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(111, 220, 140, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(111, 220, 140, 0);
+  }
+}
+
+// ── Persistent QR ─────────────────────────────────────────────────────────────
+.qr-badge {
+  position: absolute;
+  left: 26px;
+  bottom: 56px;
+  padding: 11px 11px 7px;
+  background: #f3efe0;
+  border-radius: 11px;
+  box-shadow: 0 9px 26px rgba(0, 0, 0, 0.52);
+
+  canvas {
+    display: block;
+    // Display size only (QR renders at a high backing resolution, stays crisp).
+    // !important is required: the qrcode lib writes an inline style.width/height
+    // on the canvas, which would otherwise override a plain stylesheet rule.
+    width: 150px !important;
+    height: 150px !important;
+    border-radius: 5px;
+  }
+
+  .qr-cap {
+    margin-top: 6px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #23301f;
+    text-transform: uppercase;
+  }
+}
+
+// ── Compact renown rail ───────────────────────────────────────────────────────
+.rail {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 320px;
+  padding: 14px 16px;
+  background: $panel;
+  border: 1px solid $panel-line;
+  border-radius: 14px;
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transform: translateX(24px);
+  transition:
+    opacity 0.5s ease,
+    transform 0.5s ease;
+  pointer-events: none;
+
+  &.show {
+    opacity: 1;
+    transform: none;
+  }
+
+  .rail-head {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: $gold;
+    margin-bottom: 10px;
+  }
+
+  .rail-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    font-size: 19px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+
+    .rk {
+      width: 20px;
+      color: $gold;
+      font-weight: 800;
+    }
+    .pip {
+      width: 30px;
+      height: 30px;
+      image-rendering: pixelated;
+    }
+    .nm {
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .rn {
+      font-weight: 800;
+      color: $green;
+    }
+  }
+}
+
+// ── Hero card ─────────────────────────────────────────────────────────────────
+.hero-card {
+  position: absolute;
+  left: 50%;
+  bottom: 74px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  min-width: 620px;
+  max-width: 74vw;
+  padding: 22px 30px;
+  background: $panel;
+  border: 1px solid $panel-line;
+  border-radius: 20px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  animation: rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  .hero-portrait {
+    position: relative;
+    width: 128px;
+    height: 128px;
+    flex: 0 0 auto;
+    background: radial-gradient(60% 60% at 50% 40%, rgba(111, 220, 140, 0.18), transparent 70%);
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .hat {
+      position: absolute;
+      inset: 0;
+    }
+  }
+
+  .hero-name {
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+
+  .hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0 12px;
+    flex-wrap: wrap;
+
+    .race {
+      font-size: 15px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: $gold;
+    }
+    .chip {
+      font-size: 15px;
+      padding: 3px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      &.renown {
+        color: #07100a;
+        background: $gold;
+        font-weight: 800;
+      }
+    }
+  }
+
+  .hero-bars .bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+
+    .bar-label {
+      width: 26px;
+      color: #a9c0af;
+      font-weight: 700;
+    }
+    .bar-track {
+      position: relative;
+      flex: 1;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+    }
+    .bar-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      border-radius: 999px;
+      transition: width 0.6s ease;
+      &.hp {
+        background: linear-gradient(90deg, #4a7c59, $green);
+      }
+    }
+    .bar-num {
+      color: #c7d6cb;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 18px;
+    margin-top: 12px;
+    font-size: 20px;
+    font-weight: 700;
+
+    .stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+      color: $gold;
+    }
+  }
+
+  .hero-gear {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+
+    .gear {
+      font-size: 14px;
+      padding: 4px 12px;
+      border-radius: 8px;
+      background: rgba(216, 194, 102, 0.14);
+      border: 1px solid rgba(216, 194, 102, 0.3);
+      color: #ece3bd;
+    }
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 26px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+// ── Leaderboard spotlight ─────────────────────────────────────────────────────
+.spotlight {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(760px, 82vw);
+  padding: 28px 34px;
+  background: $panel;
+  border: 1px solid $panel-line;
+  border-radius: 22px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  animation: rise-center 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  .spot-head {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: $gold;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .spot-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 20px;
+
+    th {
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #9fb4a5;
+      padding-bottom: 8px;
+      text-align: left;
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        vertical-align: middle;
+      }
+    }
+
+    td {
+      padding: 8px 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      vertical-align: middle;
+    }
+
+    tr.lead td {
+      background: rgba(216, 194, 102, 0.08);
+    }
+
+    .rk {
+      width: 34px;
+      font-weight: 800;
+      color: $gold;
+    }
+    .pic {
+      position: relative;
+      width: 52px;
+      img {
+        width: 46px;
+        height: 46px;
+        image-rendering: pixelated;
+      }
+      .hat {
+        position: absolute;
+        inset: 0;
+      }
+    }
+    .who .nm {
+      font-weight: 700;
+    }
+    .who .cr {
+      font-size: 15px;
+      color: #a9c0af;
+    }
+    .num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .rn {
+      font-weight: 800;
+      color: $green;
+    }
+  }
+}
+
+@keyframes rise-center {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 22px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+// ── Boss banner ───────────────────────────────────────────────────────────────
+.boss-banner {
+  position: absolute;
+  top: 92px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 28px;
+  background: linear-gradient(90deg, rgba(70, 20, 30, 0.92), rgba(30, 12, 24, 0.92));
+  border: 1px solid rgba(216, 102, 102, 0.5);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  animation: rise 0.5s ease;
+
+  mat-icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+    color: $gold;
+  }
+  .boss-title {
+    font-size: 28px;
+    font-weight: 800;
+  }
+  .boss-sub {
+    font-size: 16px;
+    color: #e7c3c9;
+  }
+}
+
+// ── Event ticker ──────────────────────────────────────────────────────────────
+.ticker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0));
+
+  mat-icon {
+    color: $gold;
+  }
+  .ticker-text {
+    font-size: 18px;
+    letter-spacing: 0.02em;
+    color: #d7e3d9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+// ── Attract screen ────────────────────────────────────────────────────────────
+.attract {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.6s ease,
+    visibility 0.6s ease;
+  background:
+    radial-gradient(120% 120% at 50% 10%, rgba(36, 66, 46, 0.9) 0%, rgba(7, 16, 10, 0.98) 60%),
+    #07100a;
+
+  &.show {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .attract-inner {
+    text-align: center;
+    max-width: 760px;
+    padding: 40px;
+  }
+
+  .attract-kicker {
+    font-size: 18px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: $gold;
+  }
+
+  .attract-title {
+    font-size: 64px;
+    font-weight: 900;
+    line-height: 1.05;
+    margin: 14px 0 10px;
+  }
+
+  .attract-copy {
+    font-size: 22px;
+    color: #b6c9bc;
+    margin: 0 auto 30px;
+    max-width: 560px;
+  }
+
+  .attract-qr {
+    display: inline-block;
+    padding: 18px 18px 12px;
+    background: #f3efe0;
+    border-radius: 18px;
+    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.55);
+
+    canvas {
+      display: block;
+      width: 260px;
+      height: 260px;
+    }
+    .attract-scan {
+      margin-top: 10px;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #23301f;
+    }
+  }
+}

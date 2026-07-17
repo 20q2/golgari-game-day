@@ -11,6 +11,28 @@ export interface RosterDiff {
   restyled: string[];
 }
 
+/** The 8 popups that represent a real decision point — these remember
+ * whether they're open across a tab switch, since BoardTabComponent (where
+ * they live) is destroyed/recreated every time the active tab changes. */
+export type FacilityKind =
+  | 'shop'
+  | 'shrine'
+  | 'ossuary'
+  | 'tradingPost'
+  | 'excavation'
+  | 'vein'
+  | 'vault'
+  | 'warp';
+
+export interface OpenFacility {
+  kind: FacilityKind;
+  /** Only 'shop' uses this, to restore the selected Bazaar sub-tab. */
+  shopTab?: 'gear' | 'consumables' | 'grimoires';
+  /** Only 'warp' uses this — the destination list isn't derivable from any
+   * other store signal, so it's carried directly. */
+  warpOptions?: string[];
+}
+
 /**
  * Signal store for the Undercity. One 10-second poll (only while the page is
  * mounted and the tab is visible) feeds every tab; own actions apply their
@@ -38,6 +60,7 @@ export class UndercityStateService {
   readonly events = computed(() => this._state()?.events ?? []);
   readonly snares = computed(() => this._state()?.snares ?? []);
   readonly tradingPosts = computed(() => this._state()?.tradingPosts ?? {});
+  readonly bazaars = computed(() => this._state()?.bazaars ?? {});
   readonly excavations = computed(() => this._state()?.excavations ?? {});
   readonly veins = computed(() => this._state()?.veins ?? {});
   readonly vaults = computed(() => this._state()?.vaults ?? {});
@@ -45,6 +68,10 @@ export class UndercityStateService {
   readonly wardrobe = computed(() => this._state()?.wardrobe ?? null);
   readonly result = computed(() => this._state()?.result ?? null);
   readonly hallOfFame = computed(() => this._state()?.hallOfFame ?? []);
+
+  /** Which facility/decision modal is open, if any — survives BoardTabComponent
+   * being torn down and rebuilt when the player switches tabs. */
+  readonly openFacility = signal<OpenFacility | null>(null);
 
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler = () => {

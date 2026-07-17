@@ -105,13 +105,19 @@
           <button [class.active]="tab() === 'board'" (click)="setTab('board')">
             <mat-icon class="tab-icon">map</mat-icon><span class="tab-label">Board</span>
           </button>
-          <button [class.active]="tab() === 'creature'" (click)="setTab('creature')">
-            <mat-icon class="tab-icon">pets</mat-icon><span class="tab-label">Creature</span>
+          <button [class.active]="tab() === 'creature'" [disabled]="inBattle()" (click)="setTab('creature')">
+            <span class="tab-icon-wrap">
+              <mat-icon class="tab-icon">pets</mat-icon>
+              @if (you.statPoints > 0) {
+                <span class="tab-badge">{{ you.statPoints }}</span>
+              }
+            </span>
+            <span class="tab-label">Creature</span>
           </button>
-          <button [class.active]="tab() === 'plaza'" (click)="setTab('plaza')">
+          <button [class.active]="tab() === 'plaza'" [disabled]="inBattle()" (click)="setTab('plaza')">
             <mat-icon class="tab-icon">park</mat-icon><span class="tab-label">Plaza</span>
           </button>
-          <button [class.active]="tab() === 'log'" (click)="setTab('log')">
+          <button [class.active]="tab() === 'log'" [disabled]="inBattle()" (click)="setTab('log')">
             <mat-icon class="tab-icon">receipt_long</mat-icon><span class="tab-label">Log</span>
           </button>
         </nav>

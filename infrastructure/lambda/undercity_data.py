@@ -335,6 +335,18 @@ GRIMOIRES = {
     'vagrants_chapbook': {'name': "Vagrant's Chapbook", 'tier': 1, 'cost': 30,
                           'spells': ['skitter_step'],
                           'blurb': 'Scrawled shortcuts through the tunnels.'},
+    'warcasters_screed': {'name': "Warcaster's Screed", 'tier': 1, 'cost': 35,
+                          'spells': ['rot_surge', 'spore_bolt'],
+                          'blurb': 'Aggressor liturgy: swell with rot, then loose it.'},
+    'hexweavers_codex':  {'name': "Hexweaver's Codex", 'tier': 1, 'cost': 35,
+                          'spells': ['bone_chill', 'bog_snare'],
+                          'blurb': 'Two curses for the price of one grudge.'},
+    'nightrunners_ledger': {'name': "Nightrunner's Ledger", 'tier': 1, 'cost': 32,
+                            'spells': ['glowveil', 'skitter_step'],
+                            'blurb': 'Slip the light, then slip the room.'},
+    'tinkers_manual':    {'name': "Tinker's Manual", 'tier': 1, 'cost': 30,
+                          'spells': ['harden_shell', 'scrap_toss'],
+                          'blurb': 'Brace the shell, then throw the scrap heap.'},
     # Tier II — rare finds (phase 3 acquisition; defined now for the data model)
     'kraul_warcodex':    {'name': 'Kraul Warcodex', 'tier': 2, 'cost': 70,
                           'spells': ['rot_bolt', 'weaken_hex'],
@@ -357,6 +369,14 @@ GRIMOIRES = {
 # tagged with their name. Stock count stays fixed at 3 (swap in = swap out).
 TRADING_POST_SEED = ['healing_moss', 'smoke_spore', 'loaded_die']
 TRADING_POST_SIZE = len(TRADING_POST_SEED)
+
+# ── Rot-Farm Bazaar limited stock ────────────────────────────────────────────
+SHOP_REFRESH_MIN = 30       # wall-clock window length (minutes)
+SHOP_GEAR_SLOTS = 3         # gear lines offered per refresh (distinct slots)
+SHOP_CONSUMABLE_SLOTS = 3   # consumable lines per refresh (>=1 in-battle)
+SHOP_GRIMOIRE_SLOTS = 2     # tier-1 grimoires per refresh (never deplete)
+SHOP_GEAR_QTY = 2           # units per stocked gear line
+SHOP_CONSUMABLE_QTY = 2     # units per stocked consumable line
 
 # Excavation dig sites (Ossuary Fields focus). A shared 5x5 grid holds four
 # buried items sized by footprint; each landing grants 3 digs (reveal one cell
@@ -497,14 +517,14 @@ SNARE_SPILL_PCT = 0.20
 # ── Barriers & points of interest (v3: goals on the map) ────────────────────
 
 # Fixed guardians blocking the gated routes. Staggered milestones: the
-# Grave-Troll falls to a ~level-5 creature, Josu Vess to ~level 6, so the
+# Grave-Troll falls to a ~level-5 creature, the Wight to ~level 6, so the
 # east route opens first. Beating one opens the barrier for the WHOLE season
 # (shared) and pays the winner alone.
 BARRIER_GUARDIANS = {
-    'bar_e': {'id': 'rubble_hulk', 'name': 'Golgari Grave-Troll',
+    'bar_e': {'id': 'golgari_grave_troll', 'name': 'Golgari Grave-Troll',
               'hp': 36, 'atk': 11, 'def': 6, 'spd': 3, 'bounty': 30, 'xp': 25,
               'personality': 'turtle', 'bluff': 0.15},
-    'bar_s': {'id': 'bone_warden', 'name': 'Josu Vess, Lich Knight',
+    'bar_s': {'id': 'wight_of_the_reliquary', 'name': 'Wight of the Reliquary',
               'hp': 42, 'atk': 12, 'def': 6, 'spd': 5, 'bounty': 35, 'xp': 25,
               'personality': 'turtle', 'bluff': 0.20},
 }
@@ -518,19 +538,19 @@ LAIR_BOSSES = {
     'lair_titan': {'id': 'gravebound_colossus', 'name': 'Lord of Extinction',
                    'hp': 46, 'atk': 14, 'def': 7, 'spd': 4,
                    'personality': 'brute', 'bluff': 0.20, **_LAIR_REWARD},
-    'city_lair': {'id': 'broodmother', 'name': 'Ishkanah, Grafwidow',
+    'city_lair': {'id': 'ishkanah', 'name': 'Ishkanah, Grafwidow',
                   'hp': 42, 'atk': 14, 'def': 5, 'spd': 8,
                   'personality': 'trickster', 'bluff': 0.20, **_LAIR_REWARD},
-    'cavern_lair': {'id': 'gloomglow_tyrant', 'name': 'Ghave, Guru of Spores',
+    'cavern_lair': {'id': 'sarulf', 'name': 'Sarulf, Realm Eater',
                     'hp': 44, 'atk': 13, 'def': 6, 'spd': 7,
                     'personality': 'balanced', 'bluff': 0.20, **_LAIR_REWARD},
-    'bog_lair': {'id': 'moor_wyrm', 'name': 'The Gitrog Monster',
+    'bog_lair': {'id': 'gitrog_monster', 'name': 'The Gitrog Monster',
                  'hp': 48, 'atk': 12, 'def': 7, 'spd': 5,
                  'personality': 'turtle', 'bluff': 0.20, **_LAIR_REWARD},
-    'bone_lair': {'id': 'marrow_king', 'name': 'Death Baron',
+    'bone_lair': {'id': 'skullbriar', 'name': 'Skullbriar, the Walking Grave',
                   'hp': 40, 'atk': 15, 'def': 6, 'spd': 6,
                   'personality': 'brute', 'bluff': 0.25, **_LAIR_REWARD},
-    'garden_lair': {'id': 'rot_shepherd', 'name': 'Slimefoot, the Stowaway',
+    'garden_lair': {'id': 'slimefoot', 'name': 'Slimefoot, the Stowaway',
                     'hp': 46, 'atk': 13, 'def': 7, 'spd': 4,
                     'personality': 'turtle', 'bluff': 0.20, **_LAIR_REWARD},
 }

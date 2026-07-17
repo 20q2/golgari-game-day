@@ -91,6 +91,10 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     return getRecoloredDataUrl(spr.sprite, you.paint ?? {}, spr.regions);
   });
 
+  /** True while a battle is in progress — the server tracks this independently
+   * of which tab is mounted, via UndercityStateService.pendingBattle(). */
+  protected readonly inBattle = computed(() => !!this.store.pendingBattle());
+
   async ngOnInit(): Promise<void> {
     void preloadAll().then(() => this.assetsReady.set(true));
     void firstValueFrom(this.http.get<BoardMap>('data/undercity-map.json')).then((m) =>
@@ -111,6 +115,7 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   }
 
   setTab(tab: Tab): void {
+    if (tab !== 'board' && this.inBattle()) return;
     this.tab.set(tab);
   }
 }

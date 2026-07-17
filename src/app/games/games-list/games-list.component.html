@@ -45,6 +45,18 @@
       </span>
     </div>
 
+    <button
+      *ngIf="queue.isNightActive()"
+      type="button"
+      class="queue-badge"
+      [class.joined]="queue.isJoined(g.id)"
+      (click)="toggleQueue($event, g)"
+    >
+      <mat-icon class="queue-badge-icon">casino</mat-icon>
+      <span *ngIf="queuedCount(g) > 0">{{ queuedCount(g) }} queued</span>
+      <span *ngIf="queuedCount(g) === 0">Queue</span>
+    </button>
+
     <div class="trailing">
       <div class="rating" *ngIf="g.bggRating">★ {{ g.bggRating }}</div>
     </div>

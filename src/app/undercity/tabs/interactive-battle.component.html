@@ -25,7 +25,7 @@
     >
       @if (enteredStats() && attackerStats; as s) {
         <div class="stat-col enter">
-          <span class="stat"><mat-icon class="mi">sports_mma</mat-icon>{{ s.atk }}</span>
+          <span class="stat"><mat-icon class="mi" svgIcon="uc-sword"></mat-icon>{{ s.atk }}</span>
           <span class="stat"><mat-icon class="mi">shield</mat-icon>{{ s.def }}</span>
           <span class="stat"><mat-icon class="mi">bolt</mat-icon>{{ s.spd }}</span>
         </div>
@@ -42,7 +42,10 @@
         @if (actWord().attacker; as w) { <span class="act-word">{{ w }}</span> }
         @if (enteredFighters()) {
           <span class="platform"></span>
-          <span class="body drop-in">
+          <span
+            class="body drop-in"
+            [style.--uc-sprite]="attacker.spriteUrl && !attackerSpriteFailed() ? 'url(\'' + attacker.spriteUrl + '\')' : null"
+          >
             @if (guard().attacker) { <span class="barrier"></span> }
             @if (attacker.spriteUrl && !attackerSpriteFailed()) {
               <img class="sprite" [src]="attacker.spriteUrl" [alt]="attacker.name" (error)="attackerSpriteFailed.set(true)" />
@@ -71,7 +74,11 @@
         @if (!done() && !resolving() && introDone()) {
           @if (revealed() || telegraph; as st) {
             <div class="intent-float" [class.scried]="revealed()" [title]="stanceMap[st].label">
-              <mat-icon class="mi">{{ stanceMap[st].icon }}</mat-icon>
+              @if (stanceMap[st].icon.startsWith('uc-')) {
+                <mat-icon class="mi" [svgIcon]="stanceMap[st].icon"></mat-icon>
+              } @else {
+                <mat-icon class="mi">{{ stanceMap[st].icon }}</mat-icon>
+              }
             </div>
           } @else {
             <div class="intent-float unknown" title="No read — the foe's intent is hidden">
@@ -81,7 +88,10 @@
         }
         @if (enteredFighters()) {
           <span class="platform"></span>
-          <span class="body drop-in">
+          <span
+            class="body drop-in"
+            [style.--uc-sprite]="defender.spriteUrl && !defenderSpriteFailed() ? 'url(\'' + defender.spriteUrl + '\')' : null"
+          >
             @if (guard().defender) { <span class="barrier"></span> }
             @if (defender.spriteUrl && !defenderSpriteFailed()) {
               <img class="sprite" [src]="defender.spriteUrl" [alt]="defender.name" (error)="defenderSpriteFailed.set(true)" />
@@ -97,7 +107,7 @@
 
       @if (enteredStats() && defenderStats; as s) {
         <div class="stat-col enter">
-          <span class="stat"><mat-icon class="mi">sports_mma</mat-icon>{{ s.atk }}</span>
+          <span class="stat"><mat-icon class="mi" svgIcon="uc-sword"></mat-icon>{{ s.atk }}</span>
           <span class="stat"><mat-icon class="mi">shield</mat-icon>{{ s.def }}</span>
           <span class="stat"><mat-icon class="mi">bolt</mat-icon>{{ s.spd }}</span>
         </div>
@@ -112,17 +122,19 @@
 
     <!-- Compact telegraph caption (the icon over the foe carries the intent) -->
     @if (!done() && !resolving() && introDone()) {
-      <div class="tele-caption">
-        <span class="tell">{{ defender.name }} is {{ tellText() }}</span>
-        @if (revealed(); as r) {
-          <span class="intent scried"><mat-icon class="mi">visibility</mat-icon> will {{ stanceMap[r].label }} (scried)</span>
-        } @else {
-          @if (telegraph; as t) {
-            <span class="intent read"><mat-icon class="mi">visibility</mat-icon> you read {{ stanceMap[t].label }}</span>
+      <div class="tele-section">
+        <div class="tele-caption">
+          <span class="tell">{{ defender.name }} is {{ tellText() }}</span>
+          @if (revealed(); as r) {
+            <span class="intent scried"><mat-icon class="mi">visibility</mat-icon> will {{ stanceMap[r].label }} (scried)</span>
           } @else {
-            <span class="intent none">— no read; its intent is hidden</span>
+            @if (telegraph; as t) {
+              <span class="intent read"><mat-icon class="mi">visibility</mat-icon> you read {{ stanceMap[t].label }}</span>
+            } @else {
+              <span class="intent none">— no read; its intent is hidden</span>
+            }
           }
-        }
+        </div>
       </div>
     }
 
@@ -133,16 +145,17 @@
              (Aggress→Feint→Guard→Aggress). -->
         <svg class="cycle-arrows" viewBox="0 0 100 58" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
           <defs>
-            <marker id="uc-arrowhead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-              <path d="M0,1 L9,5 L0,9 Z" />
+            <marker id="uc-arrowhead" viewBox="0 0 8 8" refX="3.2" refY="4" markerWidth="4.4" markerHeight="4.4"
+                    markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+              <path class="head" d="M1.5,1.5 L6,4 L1.5,6.5" />
             </marker>
           </defs>
           <!-- Aggress (top) → Feint (bottom-right) -->
-          <path class="arc" d="M64,16 Q86,28 79,42" marker-end="url(#uc-arrowhead)" />
+          <path class="arc" d="M65,18 Q83,29 76,40" marker-end="url(#uc-arrowhead)" />
           <!-- Feint (bottom-right) → Guard (bottom-left) -->
-          <path class="arc" d="M63,52 Q50,58 37,52" marker-end="url(#uc-arrowhead)" />
+          <path class="arc" d="M61,51 Q50,56 39,51" marker-end="url(#uc-arrowhead)" />
           <!-- Guard (bottom-left) → Aggress (top) -->
-          <path class="arc" d="M21,42 Q14,28 36,16" marker-end="url(#uc-arrowhead)" />
+          <path class="arc" d="M24,40 Q17,29 35,18" marker-end="url(#uc-arrowhead)" />
         </svg>
         @for (s of STANCES; track s.id) {
           <button
@@ -154,8 +167,25 @@
             (click)="play(s.id)"
             [title]="s.blurb"
           >
-            <mat-icon class="mi">{{ s.icon }}</mat-icon>
+            @if (s.icon.startsWith('uc-')) {
+              <mat-icon class="mi" [svgIcon]="s.icon"></mat-icon>
+            } @else {
+              <mat-icon class="mi">{{ s.icon }}</mat-icon>
+            }
             <span class="stance-label">{{ s.label }}</span>
+          </button>
+        }
+        <!-- Inventory: sits in the middle of the triangle; opens the item tray -->
+        @if (items.length) {
+          <button
+            class="inv-btn"
+            [class.armed]="pendingItem()"
+            [disabled]="busy()"
+            (click)="showItems.set(true)"
+            title="Items"
+          >
+            <mat-icon class="mi">backpack</mat-icon>
+            @if (items.length > 1) { <span class="inv-count">{{ items.length }}</span> }
           </button>
         }
       </div>
@@ -169,19 +199,43 @@
           </button>
         }
         @if (canFlee) {
-          <button class="util-btn" [disabled]="busy()" (click)="doFlee()">
+          <button
+            class="util-btn flee-btn"
+            [disabled]="busy() || !hasActed()"
+            [title]="hasActed() ? 'Flee the fight' : 'Make a move before you can flee'"
+            (click)="doFlee()"
+          >
             <mat-icon class="mi">directions_run</mat-icon> Flee
-          </button>
-        }
-        @for (it of items; track it.id) {
-          <button class="util-btn item-btn" [class.armed]="pendingItem() === it.id" [disabled]="busy()" (click)="toggleItem(it.id)" [title]="it.name">
-            <mat-icon class="mi">{{ it.icon }}</mat-icon>
           </button>
         }
       </div>
       @if (pendingItem()) {
         <div class="armed-hint">Item armed — pick a stance to use it.</div>
+      } @else if (canFlee && !hasActed()) {
+        <div class="flee-hint">You can't flee on the first round — make a move.</div>
       }
+    }
+
+    <!-- Inventory tray (opened by the center backpack button) -->
+    @if (showItems() && !done()) {
+      <div class="items-panel" (click)="showItems.set(false)">
+        <div class="items-body" (click)="$event.stopPropagation()">
+          <h3><mat-icon class="mi">backpack</mat-icon> Items</h3>
+          <div class="item-list">
+            @for (it of items; track it.id) {
+              <button class="item-row" [class.armed]="pendingItem() === it.id" [disabled]="busy()" (click)="armItem(it.id)">
+                <mat-icon class="mi item-icon">{{ it.icon }}</mat-icon>
+                <span class="item-text">
+                  <strong>{{ it.name }}</strong>
+                  @if (it.desc) { <small>{{ it.desc }}</small> }
+                </span>
+                @if (pendingItem() === it.id) { <mat-icon class="mi item-check">check_circle</mat-icon> }
+              </button>
+            }
+          </div>
+          <p class="item-hint">Tap an item to arm it, then pick a stance to use it.</p>
+        </div>
+      </div>
     }
 
     <!-- Victory spoils -->
@@ -198,7 +252,7 @@
     }
 
     <!-- Outcome line (no per-round log — the sprites tell the story) -->
-    @if (done() && resultText()) {
+    @if (done() && resultText() && !hasRewards()) {
       <div class="result-line"><mat-icon class="mi">flag</mat-icon><span>{{ resultText() }}</span></div>
     }
 
@@ -215,8 +269,8 @@
           <h3>How to fight</h3>
           <p>Each round, read the foe’s telegraphed intent (the icon over its head) and pick the stance that beats it:</p>
           <ul class="help-triangle">
-            <li><mat-icon class="mi">sports_mma</mat-icon> <strong>Aggress</strong> beats Feint</li>
-            <li><mat-icon class="mi">theater_comedy</mat-icon> <strong>Feint</strong> beats Guard</li>
+            <li><mat-icon class="mi" svgIcon="uc-sword"></mat-icon> <strong>Aggress</strong> beats Feint</li>
+            <li><mat-icon class="mi">bolt</mat-icon> <strong>Feint</strong> beats Guard</li>
             <li><mat-icon class="mi">shield</mat-icon> <strong>Guard</strong> beats Aggress</li>
           </ul>
           <p>Win the read and you land the big hit; guess wrong and you eat one. Your <strong>ATK/DEF/SPD</strong> (beside each fighter) set how hard the blows land.</p>

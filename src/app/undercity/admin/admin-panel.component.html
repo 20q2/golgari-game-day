@@ -1,0 +1,110 @@
+<div class="admin">
+  <h1 class="admin-title"><mat-icon>shield</mat-icon> Undercity Admin</h1>
+
+  <label class="admin-key">
+    Host passphrase
+    <input type="password" [(ngModel)]="hostKey" (blur)="rememberKey()"
+           autocomplete="off" placeholder="Host passphrase" />
+  </label>
+
+  @if (message(); as msg) {
+    <p class="admin-msg">{{ msg }}</p>
+  }
+
+  <app-undercity-host-panel />
+
+  <section class="admin-section">
+    <h2>Add bot</h2>
+    <div class="grant-controls">
+      <input [(ngModel)]="botName" placeholder="Name (optional)" maxlength="16" />
+      <select [(ngModel)]="botSpecies">
+        @for (s of speciesList; track s) { <option [value]="s">{{ s }}</option> }
+      </select>
+      <select [(ngModel)]="botHome">
+        @for (b of biomeList; track b) { <option [value]="b">{{ b }}</option> }
+      </select>
+      <button (click)="addBot()" [disabled]="busy() || !hostKey.trim()">
+        <mat-icon class="mi">add</mat-icon> Add
+      </button>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <h2>Grant defaults</h2>
+    <div class="grant-controls">
+      <select [(ngModel)]="grantResource">
+        <option value="rolls">Rolls</option>
+        <option value="xp">XP</option>
+        <option value="spores">Spores</option>
+      </select>
+      <input type="number" [(ngModel)]="grantAmount" min="1" class="amt" />
+      <span class="hint">applied by each row's Grant button</span>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <h2 class="roster-head">
+      Roster ({{ store.players().length }})
+      <button class="step-all" (click)="stepAllBots()" [disabled]="busy() || !hostKey.trim()">
+        <mat-icon class="mi">directions_walk</mat-icon> Step all bots
+      </button>
+    </h2>
+    <div class="roster-wrap">
+      <table class="roster">
+        <thead>
+          <tr>
+            <th>Name</th><th>Form</th><th>Lvl</th><th>HP</th>
+            <th>Node</th><th>Rolls</th><th>Spores</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of store.players(); track p.userId) {
+            <tr [class.is-bot]="p.isBot">
+              <td>
+                {{ p.creatureName || p.formName }}
+                @if (p.isBot) { <span class="bot-tag">BOT</span> }
+                <div class="sub">{{ p.username }}</div>
+              </td>
+              <td>{{ p.formName }}</td>
+              <td>{{ p.level }}</td>
+              <td>{{ p.hp }}/{{ p.maxHp }}</td>
+              <td class="node">{{ p.position }}</td>
+              <td>{{ p.rolls }}</td>
+              <td>{{ p.spores }}</td>
+              <td class="row-actions">
+                @if (p.isBot) {
+                  <button (click)="botStep(p.userId)" [disabled]="busy()">Take turn</button>
+                }
+                <button (click)="grant(p.userId)" [disabled]="busy()">Grant</button>
+                <button (click)="heal(p.userId)" [disabled]="busy()">Heal</button>
+                <select #tp (change)="teleport(p.userId, tp.value); tp.value=''"
+                        [disabled]="busy()">
+                  <option value="">Teleport…</option>
+                  @for (n of nodes(); track n.id) {
+                    <option [value]="n.id">{{ n.id }}</option>
+                  }
+                </select>
+                <button class="danger" (click)="kick(p.userId)" [disabled]="busy()">
+                  Kick
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="8" class="empty">No players yet.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <h2>Broadcast</h2>
+    <div class="grant-controls">
+      <input [(ngModel)]="broadcastText" placeholder="Message to the log / TV ticker"
+             maxlength="280" class="broadcast-input" />
+      <button (click)="broadcast()" [disabled]="busy() || !hostKey.trim()">
+        <mat-icon class="mi">campaign</mat-icon> Send
+      </button>
+    </div>
+  </section>
+</div>

@@ -15,15 +15,21 @@ export interface SpeciesSprite {
 
 const DINO_REGIONS = ['body', 'belly', 'stripes'];
 
+// Full-colour player art whose custom classifier (sprite-engine.ts) segments
+// it into the same body / belly / stripes zones the wardrobe paints target.
+const PLAYER_REGIONS = ['body', 'belly', 'stripes'];
+
 // Finished Golgari art has no recolor markers — regions: [] disables the
 // hue-shift (wardrobe paints won't tint these forms) and hats fall back to
 // the default anchor.
 export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   // Tier 1 starters
-  pest: { sprite: 'pest', regions: [], scale: 0.7 },
-  kraul: { sprite: 'kraul', regions: [], scale: 0.7 },
-  saproling: { sprite: 'saproling', regions: [], scale: 0.7 },
-  zombie: { sprite: 'zombie', regions: [], scale: 0.7 },
+  pest: { sprite: 'pest', regions: PLAYER_REGIONS, scale: 0.7 },
+  // Centipede art (undercity/player_sprites/insect.png) — carapace + legs only,
+  // so just the first two of the standard regions.
+  kraul: { sprite: 'insect', regions: PLAYER_REGIONS.slice(0, 2), scale: 0.7 },
+  saproling: { sprite: 'saproling', regions: PLAYER_REGIONS, scale: 0.7 },
+  zombie: { sprite: 'zombie', regions: PLAYER_REGIONS, scale: 0.7 },
   // Tier 2 — same line sprite, grown up
   brackish_trudge: { sprite: 'brackish_trudge', regions: [], scale: 1.0 },
   stinkweed_imp: { sprite: 'stinkweed_imp', regions: [], scale: 0.9 },

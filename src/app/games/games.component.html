@@ -32,6 +32,8 @@
     ></app-games-featured-carousel>
   </ng-container>
 
+  <app-queue-panel></app-queue-panel>
+
   <ng-container *ngIf="(filteredGames$ | async) as games">
     <div class="section-bar">
       <div class="section-label">{{ isFiltered ? 'Results · ' + games.length : 'All games' }}</div>

@@ -24,6 +24,7 @@ import { HATS, PAINTS, HatInfo, PaintInfo } from '../data/cosmetics';
 import { formSprite } from '../data/species';
 import { getRecoloredDataUrl } from '../engine/sprite-engine';
 import { isShielded } from '../services/undercity-models';
+import { DUNGEONS, SIGILS_REQUIRED } from '../data/dungeons';
 
 @Component({
   selector: 'app-undercity-creature-tab',
@@ -38,28 +39,35 @@ export class CreatureTabComponent {
   protected readonly busy = signal(false);
   protected readonly toast = signal<string | null>(null);
   protected readonly showEvolve = signal(false);
-  protected readonly showWardrobe = signal(false);
   protected readonly loadedDiePick = signal(false);
+
+  /** Which sub-panel of the creature screen is showing below the pinned hero. */
+  protected readonly subTab = signal<'stats' | 'gear' | 'wardrobe' | 'sigils'>('stats');
 
   /** Which stat's description panel is open ('atk' | 'def' | 'spd' | null). */
   protected readonly openStat = signal<string | null>(null);
+
+  /** The stat mid-celebration after a point was spent, plus the number it
+   *  rolled up from — drives the count-up flourish on the tile. */
+  protected readonly rollStat = signal<string | null>(null);
+  protected readonly rollFrom = signal(0);
 
   /** Plain-language stat descriptions, matching the battle engine's math. */
   protected readonly statInfo: Record<string, { label: string; icon: string; desc: string }> = {
     atk: {
       label: 'Attack',
-      icon: 'sports_mma',
+      icon: 'uc-sword',
       desc: "The muscle behind each strike. Higher ATK means more damage per hit — minus whatever the enemy's DEF soaks up.",
     },
     def: {
       label: 'Defense',
       icon: 'shield',
-      desc: 'Armor against blows. Every point of DEF shaves damage off each hit you take. The Defend stance boosts it further.',
+      desc: 'Armor against blows. Every point of DEF shaves damage off each hit you take.',
     },
     spd: {
       label: 'Speed',
       icon: 'bolt',
-      desc: "Strike first when it beats your foe's Speed, and slip away more often when your stance is set to Flee.",
+      desc: "Strike first when it beats your foe's Speed, and slip away more often when you try to flee.",
     },
   };
 
@@ -87,6 +95,14 @@ export class CreatureTabComponent {
     return getRecoloredDataUrl(spr.sprite, you.paint ?? {}, spr.regions);
   });
 
+  /** Recolorable zones for the current form — drives the wardrobe paint groups.
+   * Empty for finished art that isn't tintable, two for the insect, three for
+   * the marker-based sprites. */
+  protected readonly paintRegions = computed(() => {
+    const you = this.store.you();
+    return you ? formSprite(you.form).regions : [];
+  });
+
   protected readonly xpNext = computed(() => {
     const you = this.store.you();
     return you ? xpToNext(you.level) : 0;
@@ -109,6 +125,22 @@ export class CreatureTabComponent {
     const you = this.store.you();
     if (!you) return 0;
     return Math.min(100, Math.round((you.xp / Math.max(1, this.xpNext())) * 100));
+  });
+
+  /** The five biome Guild Sigils, in fixed display order. */
+  protected readonly sigilEntries = Object.entries(DUNGEONS).map(([biome, d]) => ({
+    biome,
+    ...d,
+  }));
+  protected readonly sigilsRequired = SIGILS_REQUIRED;
+
+  hasSigil(biome: string): boolean {
+    return (this.store.you()?.poiClaims ?? []).includes(`${biome}_lair`);
+  }
+
+  protected readonly sigilCount = computed(() => {
+    const claims = this.store.you()?.poiClaims ?? [];
+    return this.sigilEntries.filter((d) => claims.includes(`${d.biome}_lair`)).length;
   });
 
   protected readonly evolveReady = computed(() => {
@@ -180,12 +212,18 @@ export class CreatureTabComponent {
       .join(', ');
   }
 
-  async setStance(stance: string): Promise<void> {
-    await this.run(() => this.store.action('set-stance', { stance }).then(() => undefined));
-  }
-
   async spendStat(stat: string): Promise<void> {
-    await this.run(() => this.store.action('spend-stat', { stat }).then(() => undefined));
+    const you = this.store.you();
+    const before = you ? (you as unknown as Record<string, number>)[stat] : 0;
+    await this.run(async () => {
+      await this.store.action('spend-stat', { stat });
+      // Kick off the roll only once the store holds the new value.
+      this.rollFrom.set(before);
+      this.rollStat.set(stat);
+      setTimeout(() => {
+        if (this.rollStat() === stat) this.rollStat.set(null);
+      }, 700);
+    });
   }
 
   async evolve(form: FormInfo): Promise<void> {

@@ -60,3 +60,30 @@ def test_game_endpoints_through_handler(monkeypatch):
     resp = lambda_function.lambda_handler(_event('OPTIONS', '/game/action'), None)
     assert resp['statusCode'] == 200
     assert resp['headers']['Access-Control-Allow-Origin'] == '*'
+
+
+def test_queue_endpoints_through_handler(monkeypatch):
+    fake = FakeTable()
+    monkeypatch.setattr(lambda_function, 'table', fake)
+
+    status, body = _call('GET', '/queue/state')
+    assert status == 200
+    assert body == {'seasonId': None, 'entries': []}
+
+    status, body = _call('POST', '/game/action',
+                         body={'type': 'season-start', 'userId': 'host',
+                               'username': 'Host', 'payload': {'hostKey': 'k'}})
+    assert status == 200 and body['ok']
+
+    status, body = _call('POST', '/queue/action',
+                         body={'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                               'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    assert status == 200
+    assert body['entry']['gameId'] == 'catan'
+
+    status, body = _call('GET', '/queue/state')
+    assert status == 200
+    assert body['entries'][0]['gameId'] == 'catan'
+
+    status, body = _call('GET', '/queue/nope')
+    assert status == 404

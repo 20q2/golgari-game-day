@@ -224,6 +224,12 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                     losr.dmg_penalty += 2
                 if winr.has_rider('glint') or winr.has_buff('glowveil'):
                     winr.reveal_next = True
+            # Feint into an Aggress still lands a poke: the caught feinter takes
+            # the big hit but chips the aggressor back.
+            if lose_stance == 'feint' and losr.hp > 0:
+                chip_raw = _base_hit(losr, winr, rng)
+                _deal(losr, winr, lose_side, rnd, chip_raw, data.STANCE_STALL_MULT,
+                      entries, tag='chip')
             _scavenge(losr, winr, lose_side, rnd, entries)
     elif winner == 'clash':
         # A-vs-A: both strike full; SPD-first lands first (matters for a kill).
@@ -243,13 +249,19 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             raw = _base_hit(s, t, rng)
             _deal(s, t, side, rnd, raw, data.STANCE_CLASH_MULT, entries)
     elif winner == 'stall':
-        # G-vs-G: chip only. Thick doubles your stall chip.
+        # G-vs-G: both fully block — NO damage, unless a Thick carapace chips
+        # through (its whole identity: "Guard chips even in a stall").
         for side, (s, t) in (('attacker', (attacker, defender)),
                              ('defender', (defender, attacker))):
-            mult = data.STANCE_STALL_MULT * (2 if s.has_rider('thick') else 1)
+            if s.has_rider('thick'):
+                raw = _base_hit(s, t, rng)
+                _deal(s, t, side, rnd, raw, data.STANCE_STALL_MULT, entries, tag='chip')
+    elif winner == 'whiff':
+        # F-vs-F: two tricks cancel, but both still poke — each takes chip.
+        for side, (s, t) in (('attacker', (attacker, defender)),
+                             ('defender', (defender, attacker))):
             raw = _base_hit(s, t, rng)
-            _deal(s, t, side, rnd, raw, mult, entries)
-    # whiff: nothing.
+            _deal(s, t, side, rnd, raw, data.STANCE_STALL_MULT, entries, tag='chip')
 
     # Swarm: one extra chip hit per round regardless of stance (min 1).
     for side, (s, t) in (('attacker', (attacker, defender)),
@@ -450,16 +462,17 @@ def apply_level_ups(player: dict) -> int:
 
 
 def spend_stat(player: dict, stat: str) -> bool:
-    """Spend one banked stat point; max +1 per stat per level (GDD §5)."""
+    """Spend one banked stat point on any core stat (GDD §5).
+
+    Points can be stacked freely — multiple into a single stat is allowed;
+    the only limit is how many banked points you have."""
     if stat not in ('atk', 'def', 'spd'):
         return False
     if player.get('statPoints', 0) < 1:
         return False
-    spent = player.setdefault('spentThisLevel', {'atk': 0, 'def': 0, 'spd': 0})
-    if spent.get(stat, 0) >= 1:
-        return False
     player[stat] += 1
     player['statPoints'] -= 1
+    spent = player.setdefault('spentThisLevel', {'atk': 0, 'def': 0, 'spd': 0})
     spent[stat] = spent.get(stat, 0) + 1
     return True
 
@@ -520,11 +533,13 @@ def regen_hp(player: dict, now_iso: str) -> None:
 
 # ── Mystery table (GDD §6, d12) ──────────────────────────────────────────────
 
-def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool) -> dict:
+def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool, biome: str = None) -> dict:
     """
     Roll the d12 mystery table. Returns a description of what happened; the db
     layer applies it. Spore gains double with Doubling Rot; losses never do.
-    Drift rerolls a bad outcome (8–11) once.
+    Drift rerolls a bad outcome (8–11) once. `biome` is the region of the node
+    the player currently occupies (a key of data.BIOMES, or None outside the
+    home rings) and reflavors rolls 1 and 7 for a few of the five biomes.
     """
     roll = rng.randint(1, 12)
     if has_drift and 8 <= roll <= 11:
@@ -535,7 +550,14 @@ def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool) -> dict:
            'paint': False, 'hat': False, 'heal': False, 'buff': None,
            'teleport': False, 'curse': False}
     if roll == 1:
-        out.update(text='Spore stash! +{} Spores.'.format(20 * mult), spores=20 * mult)
+        if biome == 'garden':
+            out.update(text='Composting spores overflow the mulch pile. +{} Spores.'.format(26 * mult),
+                        spores=26 * mult)
+        elif biome == 'city':
+            out.update(text='A storm-drain stash, rat-picked and ready. +{} Spores.'.format(26 * mult),
+                        spores=26 * mult)
+        else:
+            out.update(text='Spore stash! +{} Spores.'.format(20 * mult), spores=20 * mult)
     elif roll == 2:
         out.update(text='A corpse blooms with insight. +10 XP.', xp=10)
     elif roll == 3:
@@ -547,7 +569,15 @@ def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool) -> dict:
     elif roll == 6:
         out.update(text='A free consumable lies discarded.', item='random')
     elif roll == 7:
-        out.update(text='Rot surges through you: +3 ATK next battle.', buff='rot_surge')
+        if biome == 'cavern':
+            out.update(text='Glowcap mist swirls, quick and hard to pin down. +2 SPD next battle.',
+                        buff='glowveil')
+        elif biome == 'bog':
+            out.update(text='Mire mud sets like armor. +2 DEF next battle.', buff='harden_shell')
+        elif biome == 'bone':
+            out.update(text='Marrow stiffens under your skin. +2 DEF next battle.', buff='harden_shell')
+        else:
+            out.update(text='Rot surges through you: +3 ATK next battle.', buff='rot_surge')
     elif roll == 8:
         out.update(text='A pickpocket imp! -10 Spores.', spores=-10)
     elif roll == 9:
