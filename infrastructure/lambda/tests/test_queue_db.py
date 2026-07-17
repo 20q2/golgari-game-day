@@ -127,3 +127,41 @@ def test_unknown_action_type():
     status, body = q.handle_action(t, {'type': 'nonsense', 'userId': 'user-alex',
                                         'username': 'Alex', 'payload': {}})
     assert status == 400
+
+
+def _subscription(endpoint='https://push.example/abc123'):
+    return {
+        'endpoint': endpoint,
+        'keys': {'p256dh': 'fake-p256dh', 'auth': 'fake-auth'},
+    }
+
+
+def test_push_subscribe_stores_subscription():
+    t = FakeTable()
+    status, body = q.handle_push_subscribe(t, {
+        'userId': 'user-alex', 'subscription': _subscription(),
+    })
+    assert status == 200 and body['ok']
+
+    subs = q._subscriptions_for(t, 'user-alex')
+    assert len(subs) == 1
+    assert subs[0]['endpoint'] == 'https://push.example/abc123'
+    assert subs[0]['keys']['p256dh'] == 'fake-p256dh'
+
+
+def test_push_subscribe_rejects_incomplete_subscription():
+    t = FakeTable()
+    status, body = q.handle_push_subscribe(t, {
+        'userId': 'user-alex', 'subscription': {'endpoint': 'https://push.example/abc123'},
+    })
+    assert status == 400
+
+
+def test_push_unsubscribe_removes_subscription():
+    t = FakeTable()
+    q.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
+    status, body = q.handle_push_unsubscribe(t, {
+        'userId': 'user-alex', 'endpoint': 'https://push.example/abc123',
+    })
+    assert status == 200
+    assert q._subscriptions_for(t, 'user-alex') == []

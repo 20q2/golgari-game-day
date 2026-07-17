@@ -9,6 +9,7 @@ Queue entries are keyed to the currently active Undercity season (via
 undercity_db.get_active_season), so a fresh night starts with an empty
 queue and there is no separate queue lifecycle to manage.
 """
+import hashlib
 import json
 import time
 
@@ -130,3 +131,56 @@ def _leave(table, sid, user_id, payload):
 
     table.put_item(Item=entry)
     return _ok(entry=_public_entry(entry))
+
+
+def _pushsub_pk(user_id):
+    return f'PUSHSUB#{user_id}'
+
+
+def _endpoint_hash(endpoint):
+    return hashlib.sha256(endpoint.encode('utf-8')).hexdigest()[:16]
+
+
+def _subscriptions_for(table, user_id):
+    resp = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': _pushsub_pk(user_id), ':sk': 'SUB#'},
+    )
+    return resp.get('Items', [])
+
+
+def handle_push_subscribe(table, body):
+    try:
+        req = json.loads(body) if isinstance(body, str) else body
+    except (json.JSONDecodeError, TypeError):
+        return _err('Invalid JSON')
+    user_id = req.get('userId')
+    subscription = req.get('subscription') or {}
+    endpoint = subscription.get('endpoint')
+    keys = subscription.get('keys') or {}
+    if not user_id or not endpoint or not keys.get('p256dh') or not keys.get('auth'):
+        return _err('userId and a valid subscription are required')
+
+    table.put_item(Item={
+        'pk': _pushsub_pk(user_id),
+        'sk': f'SUB#{_endpoint_hash(endpoint)}',
+        'userId': user_id,
+        'endpoint': endpoint,
+        'keys': {'p256dh': keys['p256dh'], 'auth': keys['auth']},
+        'createdAt': _now_ts(),
+    })
+    return _ok()
+
+
+def handle_push_unsubscribe(table, body):
+    try:
+        req = json.loads(body) if isinstance(body, str) else body
+    except (json.JSONDecodeError, TypeError):
+        return _err('Invalid JSON')
+    user_id = req.get('userId')
+    endpoint = req.get('endpoint')
+    if not user_id or not endpoint:
+        return _err('userId and endpoint are required')
+
+    table.delete_item(Key={'pk': _pushsub_pk(user_id), 'sk': f'SUB#{_endpoint_hash(endpoint)}'})
+    return _ok()
