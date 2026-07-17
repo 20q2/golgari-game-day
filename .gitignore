@@ -48,3 +48,6 @@ temp/
 # Optional: if you're using the Angular CLI with Git hooks or Husky
 .husky/
 
+# Git worktrees for isolated feature work
+.worktrees/
+
