@@ -376,6 +376,16 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return min <= 1 ? 'under a minute' : `${min} min`;
   }
 
+  /** Which shopkeeper is "on shift" — alternates with the shared restock
+   * window (mirrors data.SHOP_REFRESH_MIN = 30 server-side) so every player
+   * sees the same vendor until the next restock. */
+  protected shopkeeperArt(): string {
+    const at = this.currentBazaar()?.refreshesAt;
+    const windowEndMs = at ? new Date(at + 'Z').getTime() : Date.now();
+    const windowIdx = Math.round(windowEndMs / (30 * 60_000));
+    return `undercity/map_events/shopkeeper${(windowIdx % 2) + 1}.png`;
+  }
+
   protected spaceIcon(type: string): string {
     return SPACE_ICONS[type] ?? 'radio_button_unchecked';
   }
