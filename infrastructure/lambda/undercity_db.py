@@ -153,6 +153,12 @@ def _active_season(table):
     return sid, config
 
 
+def get_active_season(table):
+    """Public lookup for other Lambda modules (e.g. queue_db) that need to
+    key their own data off whichever Undercity night is currently running."""
+    return _active_season(table)
+
+
 def _get_player(table, sid, user_id):
     doc = _get(table, _season_pk(sid), f'PLAYER#{user_id}')
     if doc:

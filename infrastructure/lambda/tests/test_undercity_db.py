@@ -1596,3 +1596,14 @@ def test_cannot_flee_before_acting(table, monkeypatch):
     monkeypatch.setattr(db._rng, 'random', lambda: 0.01)  # flee succeeds
     status, resp = act(table, 'combat-flee')
     assert status == 200 and resp['combat']['fled'] is True
+
+
+def test_get_active_season_public_wrapper():
+    t = FakeTable()
+    assert db.get_active_season(t) == (None, None)
+
+    act(t, 'season-start', hostKey='swampking')
+    sid, config = db.get_active_season(t)
+    assert sid is not None
+    assert config['status'] == 'active'
+    assert config['hostKey'] == 'swampking'
