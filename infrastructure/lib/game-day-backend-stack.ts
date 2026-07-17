@@ -51,17 +51,34 @@ export class GameDayBackendStack extends cdk.Stack {
     const gameDayApi = new lambda.Function(this, 'GameDayApi', {
       functionName: 'game-day-api',
       runtime: lambda.Runtime.PYTHON_3_11,
-      code: lambda.Code.fromAsset(join(__dirname, '../lambda')),
+      // Docker-bundled so pywebpush's cryptography wheel is built for Lambda's
+      // Linux target, not whatever platform `cdk deploy` runs on. Requires
+      // Docker to be running locally at deploy time. Uses `cp -r` (not `-a`) —
+      // archive mode tries to preserve timestamps/ownership, which fails with
+      // "Operation not permitted" on Windows Docker Desktop bind mounts.
+      code: lambda.Code.fromAsset(join(__dirname, '../lambda'), {
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_11.bundlingImage,
+          command: [
+            'bash', '-c',
+            'pip install -r requirements.txt -t /asset-output && cp -r . /asset-output',
+          ],
+        },
+      }),
       handler: 'lambda_function.lambda_handler',
-      
+
       // Optimize for free tier
       memorySize: 128, // Minimum = maximize free tier seconds
       timeout: cdk.Duration.seconds(30), // Reasonable timeout
-      
+
       // Environment variables
       environment: {
         TABLE_NAME: gameDayTable.tableName,
         USER_INDEX_NAME: 'user-index',
+        // Generated once via infrastructure/lambda/scripts/generate_vapid_keys.py;
+        // set VAPID_PRIVATE_KEY in your shell before `cdk deploy` — never commit it.
+        VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY ?? '',
+        VAPID_SUBJECT: 'mailto:admin@golgaripalace.example',
       },
     });
 
