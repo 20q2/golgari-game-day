@@ -4,6 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import push
 import queue_db as q
 from test_undercity_db import FakeTable, act as uc_act
 
@@ -169,7 +170,7 @@ def test_push_unsubscribe_removes_subscription():
 
 def test_join_notifies_other_lobby_members(monkeypatch):
     sent = []
-    monkeypatch.setattr(q.push, 'send', lambda sub, message, game_id: sent.append(
+    monkeypatch.setattr(push, 'send', lambda sub, message, game_id: sent.append(
         (sub['endpoint'], message, game_id)))
 
     t = FakeTable()
@@ -192,7 +193,7 @@ def test_join_notifies_other_lobby_members(monkeypatch):
 
 def test_rejoin_does_not_renotify(monkeypatch):
     sent = []
-    monkeypatch.setattr(q.push, 'send', lambda sub, message, game_id: sent.append(1))
+    monkeypatch.setattr(push, 'send', lambda sub, message, game_id: sent.append(1))
 
     t = FakeTable()
     start_night(t)
@@ -210,8 +211,8 @@ def test_rejoin_does_not_renotify(monkeypatch):
 
 def test_dead_subscription_is_deleted_on_push_failure(monkeypatch):
     def fake_send(sub, message, game_id):
-        raise q.push.PushGone()
-    monkeypatch.setattr(q.push, 'send', fake_send)
+        raise push.PushGone()
+    monkeypatch.setattr(push, 'send', fake_send)
 
     t = FakeTable()
     start_night(t)
@@ -223,3 +224,23 @@ def test_dead_subscription_is_deleted_on_push_failure(monkeypatch):
                                         'payload': {'gameId': 'catan'}})
     assert status == 200  # the join itself still succeeds
     assert q._subscriptions_for(t, 'user-alex') == []  # but the dead subscription is gone
+
+
+def test_join_survives_broken_push_send(monkeypatch):
+    """A web-push send that raises an unexpected error (bad VAPID key, network
+    failure, etc.) must not fail the join — notifications are best-effort."""
+    def fake_send(sub, message, game_id):
+        raise RuntimeError('boom')
+    monkeypatch.setattr(push, 'send', fake_send)
+
+    t = FakeTable()
+    start_night(t)
+    q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    q.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
+
+    status, body = q.handle_action(t, {'type': 'join', 'userId': 'user-sam', 'username': 'Sam',
+                                        'payload': {'gameId': 'catan'}})
+    assert status == 200  # join succeeds despite the send blowing up
+    # The still-valid subscription is left alone (only PushGone deletes it).
+    assert len(q._subscriptions_for(t, 'user-alex')) == 1

@@ -13,8 +13,12 @@ import hashlib
 import json
 import time
 
-import push
 import undercity_db
+
+# NOTE: `push` (and its pywebpush/cryptography dependency) is imported lazily
+# inside _notify_others, never at module load. A broken or missing web-push
+# dependency must only degrade notifications — it must never crash Lambda init
+# and take down the core game/comments/likes endpoints that share this handler.
 
 
 def _queue_pk(sid):
@@ -120,6 +124,13 @@ def _notify_others(table, entry, joiner_id, joiner_name):
     others = [m['userId'] for m in entry['joined'] if m['userId'] != joiner_id]
     if not others:
         return
+    # Best-effort: a web-push problem (missing dependency, bad VAPID key,
+    # network error) must never fail the join that triggered it. Import lazily
+    # so a broken pywebpush only affects this path, not module load.
+    try:
+        import push
+    except Exception:
+        return
     who = joiner_name or joiner_id
     message = f'{who} wants to play {entry["gameTitle"]} too'
     for user_id in others:
@@ -128,6 +139,9 @@ def _notify_others(table, entry, joiner_id, joiner_name):
                 push.send(sub, message, entry['gameId'])
             except push.PushGone:
                 table.delete_item(Key={'pk': sub['pk'], 'sk': sub['sk']})
+            except Exception:
+                # Swallow any other send error — notifications are optional.
+                pass
 
 
 def _leave(table, sid, user_id, payload):
