@@ -4,20 +4,47 @@
     <span class="queue-title">Tonight's Queue</span>
   </div>
 
-  <ul class="queue-list" role="list">
-    <li *ngFor="let entry of queue.entries()" class="queue-entry">
-      <div class="queue-entry-main">
-        <span class="queue-game-title">{{ entry.gameTitle }}</span>
-        <span class="queue-members">{{ memberNames(entry.gameId) }}</span>
-      </div>
-      <button
-        type="button"
-        class="queue-join-btn"
-        [class.joined]="queue.isJoined(entry.gameId)"
-        (click)="toggle(entry.gameId, entry.gameTitle)"
+  <ul class="queue-cards" role="list">
+    <li
+      *ngFor="let entry of queue.entries()"
+      class="queue-card"
+      [class.ready]="isReady(entry.gameId)"
+    >
+      <div
+        class="queue-card-thumb"
+        [style.background-image]="imageFor(entry.gameId) ? 'url(' + imageFor(entry.gameId) + ')' : null"
       >
-        {{ queue.isJoined(entry.gameId) ? 'Leave' : 'Join' }}
-      </button>
+        <span class="queue-card-title">{{ entry.gameTitle }}</span>
+      </div>
+
+      <div class="queue-card-body">
+        <div class="seat-row" [attr.title]="memberNames(entry.gameId)">
+          <mat-icon
+            *ngFor="let seat of seats(entry.gameId)"
+            class="seat"
+            [class.filled]="seat.filled"
+          >{{ seat.filled ? 'person' : 'person_outline' }}</mat-icon>
+        </div>
+
+        <div class="seat-status" [class.ready]="isReady(entry.gameId)">
+          <ng-container *ngIf="isReady(entry.gameId); else needMore">
+            <mat-icon class="status-icon">check_circle</mat-icon>
+            Ready to play
+          </ng-container>
+          <ng-template #needMore>
+            {{ needed(entry.gameId) }} more to start
+          </ng-template>
+        </div>
+
+        <button
+          type="button"
+          class="queue-join-btn"
+          [class.joined]="queue.isJoined(entry.gameId)"
+          (click)="toggle(entry.gameId, entry.gameTitle)"
+        >
+          {{ queue.isJoined(entry.gameId) ? 'Leave' : 'Join' }}
+        </button>
+      </div>
     </li>
   </ul>
 
