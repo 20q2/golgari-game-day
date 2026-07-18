@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import undercity_data as data
 from undercity_engine import (
     Combatant, resolve_battle, legal_destinations, roll_mystery,
-    apply_level_ups, spend_stat, effective_stats, regen_hp, pick_npc,
+    apply_level_ups, spend_stat, effective_stats, regen_hp, regen_rolls, pick_npc,
     pvp_spore_steal,
 )
 
@@ -219,6 +219,41 @@ def test_regen_caps_at_max():
     p = {'hp': 49, 'maxHp': 50, 'hpUpdatedAt': '2026-07-06T20:00:00'}
     regen_hp(p, '2026-07-06T23:00:00')
     assert p['hp'] == 50
+
+
+def test_roll_regen_one_per_interval_keeps_partial_progress():
+    p = {'rolls': 1, 'rollRegenAt': '2026-07-17T20:00:00'}
+    regen_rolls(p, '2026-07-17T20:25:00')
+    assert p['rolls'] == 3                              # 2 full 10-min intervals
+    assert p['rollRegenAt'] == '2026-07-17T20:20:00'    # 5 leftover minutes kept
+
+
+def test_roll_regen_caps_at_roll_cap():
+    p = {'rolls': 5, 'rollRegenAt': '2026-07-17T20:00:00'}
+    regen_rolls(p, '2026-07-17T23:00:00')
+    assert p['rolls'] == data.ROLL_CAP
+
+
+def test_roll_regen_seeds_missing_timestamp():
+    p = {'rolls': 2}
+    regen_rolls(p, '2026-07-17T20:00:00')
+    assert p['rolls'] == 2
+    assert p['rollRegenAt'] == '2026-07-17T20:00:00'
+
+
+def test_roll_regen_advances_clock_while_at_cap():
+    # No hidden stockpile: the timestamp moves even when nothing is granted.
+    p = {'rolls': data.ROLL_CAP, 'rollRegenAt': '2026-07-17T20:00:00'}
+    regen_rolls(p, '2026-07-17T21:00:00')
+    assert p['rolls'] == data.ROLL_CAP
+    assert p['rollRegenAt'] == '2026-07-17T21:00:00'
+
+
+def test_roll_regen_noop_within_interval():
+    p = {'rolls': 1, 'rollRegenAt': '2026-07-17T20:00:00'}
+    regen_rolls(p, '2026-07-17T20:09:59')
+    assert p['rolls'] == 1
+    assert p['rollRegenAt'] == '2026-07-17T20:00:00'
 
 
 # ── Mystery table ────────────────────────────────────────────────────────────
