@@ -1607,3 +1607,45 @@ def test_get_active_season_public_wrapper():
     assert sid is not None
     assert config['status'] == 'active'
     assert config['hostKey'] == 'swampking'
+
+
+# ── Roll regen & debug reporting ─────────────────────────────────────────────
+
+def test_roll_regen_grants_via_action_path(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', False)
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['rolls'] = 0
+    doc['rollRegenAt'] = '2020-01-01T00:00:00'      # ages ago -> regen to cap
+    db._put_player(table, doc)
+    status, resp = act(table, 'roll')               # would 409 without regen
+    assert status == 200
+    assert resp['you']['rolls'] == data.ROLL_CAP - 1
+
+
+def test_state_reports_debug_and_next_roll(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', False)
+    act(table, 'join', starter='pest')              # 3+1 seal rolls < cap of 6
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200
+    assert state['you']['debug'] is False
+    assert state['you']['nextRollAt'] > state['you']['rollRegenAt']
+
+
+def test_next_roll_hidden_at_cap(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', False)
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['rolls'] = data.ROLL_CAP
+    db._put_player(table, doc)
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert 'nextRollAt' not in state['you']
+
+
+def test_action_response_carries_debug_flag(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', True)
+    status, resp = act(table, 'join', starter='pest')
+    assert status == 200
+    assert resp['you']['debug'] is True
