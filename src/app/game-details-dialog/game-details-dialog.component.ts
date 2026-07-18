@@ -1,4 +1,4 @@
-import { Component, Inject, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, Inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -34,6 +34,8 @@ export class GameDetailsDialogComponent implements OnInit, OnDestroy {
   stats: GameStats | null = null;
 
   readonly ratingSlots = Array.from({ length: MAX_RATING }, (_, i) => i + 1);
+
+  readonly lightboxIndex = signal<number | null>(null);
 
   private destroy$ = new Subject<void>();
 
@@ -151,6 +153,41 @@ export class GameDetailsDialogComponent implements OnInit, OnDestroy {
     } finally {
       this.isSubmitting = false;
     }
+  }
+
+  get lightboxImage() {
+    const i = this.lightboxIndex();
+    return i == null ? null : (this.game.bggImages?.[i] ?? null);
+  }
+
+  openLightbox(index: number): void {
+    this.lightboxIndex.set(index);
+  }
+
+  closeLightbox(): void {
+    this.lightboxIndex.set(null);
+  }
+
+  nextImage(): void {
+    const imgs = this.game.bggImages;
+    const i = this.lightboxIndex();
+    if (!imgs?.length || i == null) return;
+    this.lightboxIndex.set((i + 1) % imgs.length);
+  }
+
+  prevImage(): void {
+    const imgs = this.game.bggImages;
+    const i = this.lightboxIndex();
+    if (!imgs?.length || i == null) return;
+    this.lightboxIndex.set((i - 1 + imgs.length) % imgs.length);
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent): void {
+    if (this.lightboxIndex() == null) return;
+    if (event.key === 'Escape') this.closeLightbox();
+    else if (event.key === 'ArrowRight') this.nextImage();
+    else if (event.key === 'ArrowLeft') this.prevImage();
   }
 
   close(): void {

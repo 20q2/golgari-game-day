@@ -421,3 +421,121 @@
   border-radius: 10px;
   font-size: 14px;
 }
+
+.bgg-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--games-action);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--games-action-hover);
+    text-decoration: underline;
+  }
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.bgg-gallery {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-top: 12px;
+  -webkit-overflow-scrolling: touch;
+
+  .bgg-thumb {
+    flex: 0 0 auto;
+    padding: 0;
+    border: 1px solid var(--games-surface-border);
+    background: none;
+    cursor: pointer;
+    border-radius: 8px;
+    overflow: hidden;
+
+    img {
+      display: block;
+      width: 72px;
+      height: 72px;
+      object-fit: cover;
+    }
+
+    &:hover {
+      border-color: var(--games-action);
+    }
+  }
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  padding: 16px;
+
+  .lightbox-content {
+    margin: 0;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    img {
+      max-width: 90vw;
+      max-height: 80vh;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    figcaption {
+      color: #fff;
+      font-size: 14px;
+      text-align: center;
+      max-width: 90vw;
+    }
+  }
+
+  .lightbox-close,
+  .lightbox-nav {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.75);
+    }
+  }
+
+  .lightbox-close {
+    top: 16px;
+    right: 16px;
+  }
+
+  .lightbox-nav.prev {
+    left: 16px;
+  }
+
+  .lightbox-nav.next {
+    right: 16px;
+  }
+}
