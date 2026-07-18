@@ -15,7 +15,7 @@
         <img class="die-icon" src="undercity/icons/die.png" alt="" />
         Roll ({{ debugMode() ? '∞' : rollsBanked() }})
       </button>
-      @if (debugMode()) {
+      @if (pickAllowed()) {
         <button class="uc-btn pick-btn" [disabled]="busy()" (click)="showRollPicker.set(!showRollPicker())">
           <mat-icon class="mi">casino</mat-icon> Pick
         </button>

@@ -8,6 +8,7 @@ import {
   computed,
   effect,
   inject,
+  isDevMode,
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -639,8 +640,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Debug picker (server DEBUG flag): choose the exact die face 1–6. */
   protected readonly showRollPicker = signal(false);
 
-  /** Server-reported DEBUG flag: gates the pick-a-face tool and the ∞ label. */
+  /** Server-reported DEBUG flag: gates the ∞ label / free-roll behavior. */
   protected readonly debugMode = computed(() => !!this.store.you()?.debug);
+
+  /** Pick-a-face needs server DEBUG *and* a local dev build — the deployed
+   * GitHub Pages site never shows it, even while DEBUG is still on. */
+  protected readonly pickAllowed = computed(() => this.debugMode() && isDevMode());
   protected readonly rollsBanked = computed(() => this.store.you()?.rolls ?? 0);
 
   /** Minute-granularity countdown to the next timed roll (null at cap / in debug).
