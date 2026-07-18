@@ -29,9 +29,10 @@ A queue entry (`QUEUE#{sid}` / `GAME#{gameId}`) gains:
 New actions on `POST /queue/action`:
 
 - **`start`** — any member of a `lobby` entry flips it to `active` and locks the
-  roster (`startedAt` set). Allowed regardless of whether the minimum player count
-  is met (the seat/min UI is guidance, not a gate). Idempotent: starting an
-  already-active session is a no-op returning the entry.
+  roster (`startedAt` set). Gated in the client: the Start button is disabled
+  until the lobby meets the game's minimum player count (from the catalog); the
+  handler also refuses early starts. Idempotent: starting an already-active
+  session is a no-op returning the entry.
 - **`close`** — any member of an `active` entry ends it. Payload:
   `{ hadWinner: bool, winnerType?: 'single' | 'group', winnerId?: string }`.
   Grants rewards exactly once (guarded by the `ver` check), deletes the entry,

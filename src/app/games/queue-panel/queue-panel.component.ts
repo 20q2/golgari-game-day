@@ -106,6 +106,7 @@ export class QueuePanelComponent implements OnInit, OnDestroy {
   }
 
   async start(gameId: string): Promise<void> {
+    if (!this.isReady(gameId)) return; // can't start until the minimum is met
     if (!(await this.userService.requireSignIn())) return;
     await this.queue.start(gameId);
   }

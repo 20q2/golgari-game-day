@@ -219,6 +219,14 @@
   color: #fff;
 }
 
+.queue-start-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  background: transparent;
+  color: var(--games-text-secondary);
+  border-color: var(--games-surface-border);
+}
+
 .queue-close-btn {
   background: #c0392b;
   border-color: #c0392b;

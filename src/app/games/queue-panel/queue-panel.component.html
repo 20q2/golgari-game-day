@@ -59,9 +59,11 @@
             type="button"
             class="queue-start-btn"
             *ngIf="queue.isJoined(entry.gameId)"
+            [disabled]="!isReady(entry.gameId)"
+            [attr.title]="isReady(entry.gameId) ? null : (needed(entry.gameId) + ' more player(s) needed to start')"
             (click)="start(entry.gameId)"
           >
-            Start playing
+            {{ isReady(entry.gameId) ? 'Start playing' : 'Need ' + needed(entry.gameId) + ' more' }}
           </button>
         </ng-container>
 
