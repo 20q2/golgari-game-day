@@ -1704,3 +1704,21 @@ def test_post_event_writes_to_feed():
     db.post_event(t, _sid(t), 'claim', 'Catan wrapped up at the table.')
     _, state = db.handle_state(t, {'userId': 'user-alex'})
     assert any(e['text'] == 'Catan wrapped up at the table.' for e in state['events'])
+
+
+def test_banked_rewards_applied_on_join():
+    t = FakeTable()
+    act(t, 'season-start', hostKey='swampking')
+    # Bank a winner reward for someone who hasn't hatched.
+    db.grant_board_game_rewards(t, _sid(t), ['user-late'], ['user-late'])
+    assert db._get(t, db._reward_pk(_sid(t)), 'USER#user-late') is not None
+
+    status, resp = act(t, 'join', user='user-late', name='Late', starter='pest')
+    assert status == 200
+    you = resp['you']
+    # JOIN_ROLLS=3 + banked (2 participation + 1 winner) = 6, capped at ROLL_CAP=6.
+    assert you['rolls'] == min(data.ROLL_CAP,
+                               data.JOIN_ROLLS + data.CLAIM_FINISHED_ROLLS + data.CLAIM_WON_BONUS_ROLLS)
+    assert len(you['bag']) == 1                       # banked item delivered
+    # Bank record consumed.
+    assert db._get(t, db._reward_pk(_sid(t)), 'USER#user-late') is None

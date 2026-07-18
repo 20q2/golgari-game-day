@@ -1143,6 +1143,9 @@ def _join(table, sid, user_id, username, payload):
         seals_before=seals_before, egg_hue=payload.get('eggHue'),
         creature_name=creature_name,
     )
+    # Deliver any board-game rewards banked while this player hadn't hatched yet
+    # (mutates doc's rolls/bag, deletes the bank record, posts an event).
+    apply_banked_rewards(table, sid, user_id, doc)
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
