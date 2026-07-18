@@ -83,6 +83,11 @@ export interface YouDoc {
   spd: number;
   position: string;
   rolls: number;
+  /** Server DEBUG flag — when true the client shows dev tools (pick-your-roll, ∞ rolls). */
+  debug?: boolean;
+  /** ISO time the next timed roll banks; absent while at the roll cap. */
+  nextRollAt?: string;
+  rollRegenAt?: string;
   spores: number;
   /** Ossuary gambles left this visit; refills to 3 when you land there again. */
   ossuaryRollsLeft?: number;

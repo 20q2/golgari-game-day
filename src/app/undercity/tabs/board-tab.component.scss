@@ -24,6 +24,13 @@
   z-index: 5;
 }
 
+.next-roll-hint {
+  font-size: 0.75rem;
+  opacity: 0.75;
+  align-self: center;
+  white-space: nowrap;
+}
+
 .roll-picker {
   flex-basis: 100%;
   display: flex;

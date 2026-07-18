@@ -636,8 +636,21 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   // ── Roll & move ────────────────────────────────────────────────────────────
 
-  /** Dev-mode picker (unlimited rolls): choose the exact die face 1–6. */
+  /** Debug picker (server DEBUG flag): choose the exact die face 1–6. */
   protected readonly showRollPicker = signal(false);
+
+  /** Server-reported DEBUG flag: gates the pick-a-face tool and the ∞ label. */
+  protected readonly debugMode = computed(() => !!this.store.you()?.debug);
+  protected readonly rollsBanked = computed(() => this.store.you()?.rolls ?? 0);
+
+  /** Minute-granularity countdown to the next timed roll (null at cap / in debug).
+   * Re-evaluated on state polls, same approach as bazaarRestockLabel(). */
+  protected nextRollLabel(): string | null {
+    const at = this.store.you()?.nextRollAt;
+    if (!at || this.debugMode()) return null;
+    const min = Math.max(1, Math.ceil((new Date(at + 'Z').getTime() - Date.now()) / 60_000));
+    return min <= 1 ? 'under a minute' : `${min} min`;
+  }
 
   async roll(picked?: number): Promise<void> {
     if (this.busy()) return;

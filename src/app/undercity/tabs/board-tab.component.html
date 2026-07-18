@@ -7,21 +7,28 @@
          isn't spoiled. Once rolled, the steps-left die floats above the token
          (Mario Party style) instead of a banner up here. -->
     @if (!rolling() && !store.you()?.pendingMove) {
-      <!-- TODO: unlimited-rolls dev mode (UNLIMITED_ROLLS in undercity_data.py) —
-           restore the roll-count gate and label before game night. -->
-      <button class="uc-btn uc-btn-primary roll-btn" [disabled]="busy()" (click)="roll()">
-        <img class="die-icon" src="undercity/icons/die.png" alt="" /> Roll (∞)
+      <button
+        class="uc-btn uc-btn-primary roll-btn"
+        [disabled]="busy() || (!debugMode() && rollsBanked() < 1)"
+        (click)="roll()"
+      >
+        <img class="die-icon" src="undercity/icons/die.png" alt="" />
+        Roll ({{ debugMode() ? '∞' : rollsBanked() }})
       </button>
-      <!-- Dev pick-a-face (unlimited-rolls mode) — remove with the ∞ gate before game night. -->
-      <button class="uc-btn pick-btn" [disabled]="busy()" (click)="showRollPicker.set(!showRollPicker())">
-        <mat-icon class="mi">casino</mat-icon> Pick
-      </button>
-      @if (showRollPicker()) {
-        <div class="roll-picker">
-          @for (n of [1, 2, 3, 4, 5, 6]; track n) {
-            <button class="uc-btn pick-face" [disabled]="busy()" (click)="roll(n)">{{ n }}</button>
-          }
-        </div>
+      @if (debugMode()) {
+        <button class="uc-btn pick-btn" [disabled]="busy()" (click)="showRollPicker.set(!showRollPicker())">
+          <mat-icon class="mi">casino</mat-icon> Pick
+        </button>
+        @if (showRollPicker()) {
+          <div class="roll-picker">
+            @for (n of [1, 2, 3, 4, 5, 6]; track n) {
+              <button class="uc-btn pick-face" [disabled]="busy()" (click)="roll(n)">{{ n }}</button>
+            }
+          </div>
+        }
+      }
+      @if (nextRollLabel(); as nrl) {
+        <span class="next-roll-hint">next roll in {{ nrl }}</span>
       }
     }
 
