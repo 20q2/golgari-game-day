@@ -1649,3 +1649,58 @@ def test_action_response_carries_debug_flag(table, monkeypatch):
     status, resp = act(table, 'join', starter='pest')
     assert status == 200
     assert resp['you']['debug'] is True
+
+
+def test_grant_board_game_rewards_applies_rolls_and_item(monkeypatch):
+    t = FakeTable()
+    act(t, 'season-start', hostKey='swampking')
+    act(t, 'join', user='user-alex', name='Alex', starter='pest')
+    act(t, 'join', user='user-sam', name='Sam', starter='pest')
+    # Zero out banked rolls so the +2 / +3 grants are deterministic.
+    for uid in ('user-alex', 'user-sam'):
+        d = db._get_player(t, _sid(t), uid)
+        d['rolls'] = 0
+        db._put_player(t, d)
+
+    summary = db.grant_board_game_rewards(
+        t, _sid(t), ['user-alex', 'user-sam'], ['user-sam'])
+
+    assert set(summary['granted']) == {'user-alex', 'user-sam'}
+    assert summary['banked'] == []
+    alex = db._get_player(t, _sid(t), 'user-alex')
+    sam = db._get_player(t, _sid(t), 'user-sam')
+    assert alex['rolls'] == data.CLAIM_FINISHED_ROLLS            # participation only
+    assert sam['rolls'] == data.CLAIM_FINISHED_ROLLS + data.CLAIM_WON_BONUS_ROLLS
+    assert len(sam['bag']) == 1                                  # winner got an item
+    assert alex['bag'] == []
+
+
+def test_grant_board_game_rewards_banks_for_absent_player():
+    t = FakeTable()
+    act(t, 'season-start', hostKey='swampking')
+    # user-ghost never joined Undercity this night.
+    summary = db.grant_board_game_rewards(t, _sid(t), ['user-ghost'], ['user-ghost'])
+    assert summary['granted'] == []
+    assert summary['banked'] == ['user-ghost']
+
+    rec = db._get(t, db._reward_pk(_sid(t)), 'USER#user-ghost')
+    assert rec['rolls'] == data.CLAIM_FINISHED_ROLLS + data.CLAIM_WON_BONUS_ROLLS
+    assert len(rec['items']) == 1
+
+
+def test_bank_merges_on_repeat():
+    t = FakeTable()
+    act(t, 'season-start', hostKey='swampking')
+    db.grant_board_game_rewards(t, _sid(t), ['user-ghost'], [])            # participation
+    db.grant_board_game_rewards(t, _sid(t), ['user-ghost'], ['user-ghost'])  # winner
+    rec = db._get(t, db._reward_pk(_sid(t)), 'USER#user-ghost')
+    assert rec['rolls'] == data.CLAIM_FINISHED_ROLLS * 2 + data.CLAIM_WON_BONUS_ROLLS
+    assert len(rec['items']) == 1
+
+
+def test_post_event_writes_to_feed():
+    t = FakeTable()
+    act(t, 'season-start', hostKey='swampking')
+    db.post_event(t, _sid(t), 'claim', 'Catan wrapped up at the table.')
+    _, state = db.handle_state(t, {'userId': 'user-alex'})
+    assert any(e['text'] == 'Catan wrapped up at the table.' for e in state['events'])
