@@ -444,16 +444,18 @@
 }
 
 .bgg-gallery {
+  grid-column: 1 / -1;
   display: flex;
+  align-items: flex-start;
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 4px;
-  margin-top: 12px;
   -webkit-overflow-scrolling: touch;
 
   .bgg-thumb {
     flex: 0 0 auto;
     padding: 0;
+    line-height: 0;
     border: 1px solid var(--games-surface-border);
     background: none;
     cursor: pointer;
