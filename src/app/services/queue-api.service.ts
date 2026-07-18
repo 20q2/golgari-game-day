@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { UserService } from './user.service';
-import { QueueActionResponse, QueueState } from './queue-models';
+import { CloseResult, QueueActionResponse, QueueState } from './queue-models';
 
 /** Raised for non-2xx queue responses so callers can show the server's text. */
 export class QueueApiError extends Error {
@@ -38,6 +38,14 @@ export class QueueApiService {
 
   leave(gameId: string): Promise<QueueActionResponse> {
     return this.action('leave', { gameId });
+  }
+
+  start(gameId: string): Promise<QueueActionResponse> {
+    return this.action('start', { gameId });
+  }
+
+  close(gameId: string, result: CloseResult): Promise<QueueActionResponse> {
+    return this.action('close', { gameId, ...result });
   }
 
   async subscribePush(subscription: unknown): Promise<void> {
