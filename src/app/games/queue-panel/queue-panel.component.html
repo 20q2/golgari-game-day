@@ -10,19 +10,25 @@
       class="queue-card"
       [class.ready]="isReady(entry.gameId)"
     >
-      <div
-        class="queue-card-thumb"
-        [style.background-image]="imageFor(entry.gameId) ? 'url(' + imageFor(entry.gameId) + ')' : null"
-      >
+      <div class="queue-card-thumb">
+        <img
+          *ngIf="imageFor(entry.gameId) as img"
+          class="thumb-img"
+          [src]="img"
+          [alt]="entry.gameTitle"
+          loading="lazy"
+        />
         <span class="queue-card-title">{{ entry.gameTitle }}</span>
       </div>
 
       <div class="queue-card-body">
-        <div class="seat-row" [attr.title]="memberNames(entry.gameId)">
+        <div class="seat-row">
           <mat-icon
             *ngFor="let seat of seats(entry.gameId)"
             class="seat"
             [class.filled]="seat.filled"
+            [class.optional]="!seat.required"
+            [class.min-edge]="seat.minEdge"
           >{{ seat.filled ? 'person' : 'person_outline' }}</mat-icon>
         </div>
 
@@ -35,6 +41,8 @@
             {{ needed(entry.gameId) }} more to start
           </ng-template>
         </div>
+
+        <div class="lobby-names" *ngIf="memberNames(entry.gameId) as names">{{ names }}</div>
 
         <button
           type="button"

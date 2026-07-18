@@ -5,10 +5,17 @@ import { QueueService } from '../../services/queue.service';
 import { UserService } from '../../services/user.service';
 import { GamesService } from '../../services/games.service';
 
-/** One person-slot in a lobby's roster row: a filled seat is taken, an
- * outline seat is still needed to reach the game's minimum player count. */
+/**
+ * One person-slot in a lobby's roster row.
+ *  - filled:   a player is in this seat
+ *  - required: this seat counts toward the game's minimum to start
+ *  - minEdge:  this is the last required seat — draw the "minimum" divider
+ *              after it (only when the game seats more than its minimum)
+ */
 interface Seat {
   filled: boolean;
+  required: boolean;
+  minEdge: boolean;
 }
 
 @Component({
@@ -35,15 +42,21 @@ export class QueuePanelComponent implements OnInit, OnDestroy {
     return this.gamesService.getGameById(gameId)?.imageUrl;
   }
 
+  joinedCount(gameId: string): number {
+    return this.queue.entryFor(gameId)?.joined.length ?? 0;
+  }
+
   /** Minimum players needed to start, from the catalog. Falls back to the
    * current lobby size (so an unknown game just reads as "ready"). */
   minPlayers(gameId: string): number {
-    const joined = this.joinedCount(gameId);
-    return this.gamesService.getGameById(gameId)?.minPlayers ?? joined ?? 1;
+    return this.gamesService.getGameById(gameId)?.minPlayers ?? this.joinedCount(gameId) ?? 1;
   }
 
-  joinedCount(gameId: string): number {
-    return this.queue.entryFor(gameId)?.joined.length ?? 0;
+  /** Maximum players the game seats, from the catalog. Never less than the
+   * minimum, and never less than however many have already piled in. */
+  maxPlayers(gameId: string): number {
+    const fromCatalog = this.gamesService.getGameById(gameId)?.maxPlayers;
+    return Math.max(fromCatalog ?? 0, this.minPlayers(gameId), this.joinedCount(gameId));
   }
 
   isReady(gameId: string): boolean {
@@ -55,12 +68,18 @@ export class QueuePanelComponent implements OnInit, OnDestroy {
     return Math.max(0, this.minPlayers(gameId) - this.joinedCount(gameId));
   }
 
-  /** Seat row: one filled seat per joined player, plus outline seats up to
-   * the minimum. Never fewer than the minimum, never fewer than the count. */
+  /** One seat per player the game can seat (its maximum). Filled seats are
+   * players already in; required seats count toward the minimum; the seat at
+   * the minimum draws a divider so everything past it reads as extra capacity. */
   seats(gameId: string): Seat[] {
     const joined = this.joinedCount(gameId);
-    const total = Math.max(this.minPlayers(gameId), joined);
-    return Array.from({ length: total }, (_, i) => ({ filled: i < joined }));
+    const min = this.minPlayers(gameId);
+    const total = this.maxPlayers(gameId);
+    return Array.from({ length: total }, (_, i) => ({
+      filled: i < joined,
+      required: i < min,
+      minEdge: i === min - 1 && min < total,
+    }));
   }
 
   memberNames(gameId: string): string {
