@@ -5,8 +5,10 @@
 Extends the game-night Queue with a **session lifecycle**: a ready lobby can be
 *started* (marking "we're playing now"), and later *closed out* by any
 participant. Closing out reports whether the game had a winner and who won, then
-grants rewards inside the Undercity sub-game — a participation dice roll for
-everyone at the table, and a random item for the winner(s). Rewards for players
+grants rewards inside the Undercity sub-game — participation dice rolls for
+everyone at the table, and bonus rolls plus a random item for the winner(s).
+Reward amounts reuse Undercity's existing self-claim payouts so the two paths
+stay aligned. Rewards for players
 who haven't made an Undercity creature yet this night are **banked** and applied
 when they next create one.
 
@@ -42,24 +44,30 @@ close-out time.
 
 ## Reward rules
 
-Reused/added balance constants in `undercity_config.py`:
+Rewards **reuse** the existing self-claim balance constants
+(`undercity_config.py`) so the two paths pay out identically — no new roll
+constant is introduced:
 
-- `QUEUE_SESSION_ROLLS = 1` — participation rolls granted to every participant.
+- `CLAIM_FINISHED_ROLLS = 2` — participation rolls granted to every participant.
+- `CLAIM_WON_BONUS_ROLLS = 1` — extra rolls granted to each winner (on top of
+  participation).
 - Winner item uses the existing `_give_consumable` path (random `CONSUMABLES`
   entry into `bag`, overflowing to spores if the bag is full at `BAG_SIZE=3`).
+  The item is the session's trophy — the self-claim's `CLAIM_WON_SPORES` is
+  **not** granted here (the item replaces it).
 
 Grant logic (all rolls respect `ROLL_CAP=6` via `_add_rolls`):
 
 | Close-out answer            | Every participant | Winner(s) additionally |
-|-----------------------------|-------------------|------------------------|
-| No winner                   | +1 roll           | —                      |
-| Single winner (`winnerId`)  | +1 roll           | that player: +1 random item |
-| Group victory (coop)        | +1 roll           | every participant: +1 random item |
+|-----------------------------|-------------------|------------------------------------|
+| No winner                   | +2 rolls          | —                                  |
+| Single winner (`winnerId`)  | +2 rolls          | that player: +1 roll + 1 random item |
+| Group victory (coop)        | +2 rolls          | every participant: +1 roll + 1 random item |
 
 For a participant **with** an active Undercity creature: apply immediately
 (`_add_rolls` / `_give_consumable`, then `_save_or_conflict`). For one **without**:
 write/merge a `QUEUEREWARD` bank record. Each applied grant posts an Undercity
-Grapevine event, e.g. *"Catan wrapped up — everyone at the table earned a roll;
+Grapevine event, e.g. *"Catan wrapped up — everyone at the table earned rolls;
 Andrew took the spoils!"*
 
 ## Where the logic lives
@@ -97,8 +105,8 @@ actions, plus the entry `status` in `QueueEntry`.
 1. "Did the game have a winner?" — **Yes / No**.
 2. If Yes: "Who won?" — **Single winner** (radio list of the locked roster) or
    **Group victory (coop)**.
-3. **Confirm** → calls `close` → shows a reward summary toast ("Everyone earned a
-   roll 🎲 — winner grabbed an item!"). Modal closes; the card disappears on the
+3. **Confirm** → calls `close` → shows a reward summary toast ("Everyone earned
+   rolls 🎲 — winner grabbed an item!"). Modal closes; the card disappears on the
    next poll (entry deleted server-side).
 
 State stays backend-truth via the existing 20s poll; actions apply optimistically
@@ -126,7 +134,7 @@ like the rest of the queue.
 Python/FakeTable (`tests/test_queue_db.py` + `tests/test_undercity_db.py`):
 
 - `start` flips status and locks roster; idempotent re-start.
-- `close` with no winner → every participant +1 roll, entry deleted.
+- `close` with no winner → every participant +2 rolls, entry deleted.
 - `close` single winner → winner also gets an item.
 - `close` group victory → every participant gets roll + item.
 - Reward for a non-Undercity participant is banked, then applied on their next
