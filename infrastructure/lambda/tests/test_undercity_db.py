@@ -93,7 +93,7 @@ def table():
 
 
 def test_full_join_roll_move_flow(table, monkeypatch):
-    monkeypatch.setattr(data, 'UNLIMITED_ROLLS', False)  # assert the real roll economy
+    monkeypatch.setattr(data, 'DEBUG', False)  # assert the real roll economy
     status, resp = act(table, 'join', starter='saproling', home='cavern')
     assert status == 200
     you = resp['you']
@@ -192,16 +192,16 @@ def test_elite_space_resolves_to_elite_battle(table, monkeypatch):
     assert ev['npc']['id'] in {'fetid_imp', 'rot_shambler'}
 
 
-def test_roll_picks_exact_face_when_unlimited(table, monkeypatch):
-    monkeypatch.setattr(data, 'UNLIMITED_ROLLS', True)
+def test_roll_picks_exact_face_in_debug(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', True)
     act(table, 'join', starter='saproling', home='cavern')
     status, resp = act(table, 'roll', value=4)
     assert status == 200
     assert resp['roll']['value'] == 4
 
 
-def test_roll_pick_ignored_when_rolls_are_limited(table, monkeypatch):
-    monkeypatch.setattr(data, 'UNLIMITED_ROLLS', False)
+def test_roll_pick_ignored_when_debug_off(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', False)
     monkeypatch.setattr(db._rng, 'randint', lambda a, b: 2)
     act(table, 'join', starter='saproling', home='cavern')
     # A picked value must not bypass the real random roll economy.
@@ -1607,3 +1607,45 @@ def test_get_active_season_public_wrapper():
     assert sid is not None
     assert config['status'] == 'active'
     assert config['hostKey'] == 'swampking'
+
+
+# ── Roll regen & debug reporting ─────────────────────────────────────────────
+
+def test_roll_regen_grants_via_action_path(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', False)
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['rolls'] = 0
+    doc['rollRegenAt'] = '2020-01-01T00:00:00'      # ages ago -> regen to cap
+    db._put_player(table, doc)
+    status, resp = act(table, 'roll')               # would 409 without regen
+    assert status == 200
+    assert resp['you']['rolls'] == data.ROLL_CAP - 1
+
+
+def test_state_reports_debug_and_next_roll(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', False)
+    act(table, 'join', starter='pest')              # 3+1 seal rolls < cap of 6
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200
+    assert state['you']['debug'] is False
+    assert state['you']['nextRollAt'] > state['you']['rollRegenAt']
+
+
+def test_next_roll_hidden_at_cap(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', False)
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['rolls'] = data.ROLL_CAP
+    db._put_player(table, doc)
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert 'nextRollAt' not in state['you']
+
+
+def test_action_response_carries_debug_flag(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', True)
+    status, resp = act(table, 'join', starter='pest')
+    assert status == 200
+    assert resp['you']['debug'] is True

@@ -535,11 +535,13 @@ def handle_state(table, query_params):
     for item in items:
         if item['sk'].startswith('PLAYER#'):
             engine.regen_hp(item, now)  # display-only; persisted on next action
+            engine.regen_rolls(item, now)
             _expire_buffs(item)
             _prune_cooldowns(item)
             players.append(_public_player(item))
             if item['userId'] == user_id:
                 you = {k: v for k, v in item.items() if k not in ('pk', 'sk')}
+                you.update(_roll_meta(item))
         elif item['sk'].startswith('SPACE#'):
             snares.append(item['sk'].replace('SPACE#', ''))
         elif item['sk'].startswith('POST#'):
@@ -690,6 +692,7 @@ def handle_action(table, body):
     if not doc:
         return _err('Join the season first.', 409)
     engine.regen_hp(doc, _now())
+    engine.regen_rolls(doc, _now())
     _expire_buffs(doc)
     _prune_cooldowns(doc)
 
@@ -722,8 +725,19 @@ _BATTLE_ALLOWED_ACTIONS = frozenset({
 })
 
 
+def _roll_meta(doc):
+    """Debug flag + next regen tick, injected into every `you` view so the
+    client can gate its dev tools and show a next-roll countdown."""
+    meta = {'debug': data.DEBUG}
+    if doc.get('rolls', 0) < data.ROLL_CAP and doc.get('rollRegenAt'):
+        nxt = engine._parse_iso(doc['rollRegenAt']) + timedelta(minutes=data.ROLL_REGEN_MINUTES)
+        meta['nextRollAt'] = nxt.strftime('%Y-%m-%dT%H:%M:%S')
+    return meta
+
+
 def _ok(doc, **extra):
     you = {k: v for k, v in doc.items() if k not in ('pk', 'sk')}
+    you.update(_roll_meta(doc))
     return 200, {'ok': True, 'you': you, **extra}
 
 
@@ -1003,6 +1017,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'hp': s['hp'], 'maxHp': s['hp'],
         'atk': s['atk'], 'def': s['def'], 'spd': s['spd'],
         'hpUpdatedAt': _now(),
+        'rollRegenAt': _now(),
         'position': data.HOME_GATES[home],
         'homeBiome': home,
         'rolls': data.JOIN_ROLLS + min(seals_before, data.SEAL_BONUS_CAP),
@@ -1095,21 +1110,21 @@ def _claim(table, sid, doc, payload):
 # ── Roll & move ──────────────────────────────────────────────────────────────
 
 def _roll(table, sid, doc, payload):
-    if not data.UNLIMITED_ROLLS and doc.get('rolls', 0) < 1:
+    if not data.DEBUG and doc.get('rolls', 0) < 1:
         return _err('No rolls banked. Finish a board game to earn more!', 409)
     if doc.get('pendingMove'):
         return _err('You already rolled — pick a destination.', 409)
     # Rolling without choosing a respawn gate accepts the provisional home gate.
     doc.pop('pendingRespawn', None)
 
-    # Dev convenience (only while rolls are unlimited): the client may name the
-    # face it wants instead of rolling randomly. Skips loaded-die / vines so the
-    # picked number is exactly what moves you.
+    # Dev convenience (DEBUG only): the client may name the face it wants
+    # instead of rolling randomly. Skips loaded-die / vines so the picked
+    # number is exactly what moves you.
     picked = payload.get('value') if payload else None
     picked = int(picked) if isinstance(picked, (int, float)) and 1 <= picked <= 6 else None
 
     value = None
-    if data.UNLIMITED_ROLLS and picked is not None:
+    if data.DEBUG and picked is not None:
         value = picked
     elif doc.get('pendingLoadedDie'):
         value = int(doc.pop('pendingLoadedDie'))
@@ -1126,7 +1141,7 @@ def _roll(table, sid, doc, payload):
     if not dests:
         # Dead-end corner case: refund the roll, let them try again.
         return _err('The tunnels shift — no path fits that roll. Try again.', 409)
-    if not data.UNLIMITED_ROLLS:
+    if not data.DEBUG:
         doc['rolls'] -= 1
     doc['pendingMove'] = {'value': value, 'dests': sorted(dests)}
     conflict = _save_or_conflict(table, doc)

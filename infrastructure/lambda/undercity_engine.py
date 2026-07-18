@@ -531,6 +531,24 @@ def regen_hp(player: dict, now_iso: str) -> None:
     player['hpUpdatedAt'] = advanced.strftime(_ISO)
 
 
+def regen_rolls(player: dict, now_iso: str) -> None:
+    """Bank +1 roll per full ROLL_REGEN_MINUTES since rollRegenAt, lazily,
+    capped at ROLL_CAP. The timestamp advances by whole intervals only, so
+    partial progress toward the next roll is never lost — and it advances
+    even at cap, so a full bank doesn't stockpile hidden progress."""
+    last = player.get('rollRegenAt')
+    if not last:
+        player['rollRegenAt'] = now_iso
+        return
+    minutes = (_parse_iso(now_iso) - _parse_iso(last)).total_seconds() / 60
+    intervals = int(minutes // data.ROLL_REGEN_MINUTES)
+    if intervals <= 0:
+        return
+    player['rolls'] = min(data.ROLL_CAP, player.get('rolls', 0) + intervals)
+    advanced = _parse_iso(last) + timedelta(minutes=intervals * data.ROLL_REGEN_MINUTES)
+    player['rollRegenAt'] = advanced.strftime(_ISO)
+
+
 # ── Mystery table (GDD §6, d12) ──────────────────────────────────────────────
 
 def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool, biome: str = None) -> dict:
