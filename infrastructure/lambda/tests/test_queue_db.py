@@ -244,3 +244,57 @@ def test_join_survives_broken_push_send(monkeypatch):
     assert status == 200  # join succeeds despite the send blowing up
     # The still-valid subscription is left alone (only PushGone deletes it).
     assert len(q._subscriptions_for(t, 'user-alex')) == 1
+
+
+def test_new_entry_is_lobby_status():
+    t = FakeTable()
+    start_night(t)
+    _, body = q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                                   'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    assert body['entry']['status'] == 'lobby'
+
+
+def test_start_flips_to_active():
+    t = FakeTable()
+    start_night(t)
+    q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    status, body = q.handle_action(t, {'type': 'start', 'userId': 'user-alex',
+                                        'username': 'Alex', 'payload': {'gameId': 'catan'}})
+    assert status == 200
+    assert body['entry']['status'] == 'active'
+
+    # Idempotent: starting again is a no-op that still reports active.
+    status, body = q.handle_action(t, {'type': 'start', 'userId': 'user-alex',
+                                        'username': 'Alex', 'payload': {'gameId': 'catan'}})
+    assert status == 200 and body['entry']['status'] == 'active'
+
+
+def test_start_requires_membership():
+    t = FakeTable()
+    start_night(t)
+    q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    status, body = q.handle_action(t, {'type': 'start', 'userId': 'user-outsider',
+                                        'username': 'Nope', 'payload': {'gameId': 'catan'}})
+    assert status == 403
+
+
+def test_join_rejected_once_active():
+    t = FakeTable()
+    start_night(t)
+    q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    q.handle_action(t, {'type': 'start', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan'}})
+    status, body = q.handle_action(t, {'type': 'join', 'userId': 'user-sam', 'username': 'Sam',
+                                        'payload': {'gameId': 'catan'}})
+    assert status == 409
+
+
+def test_start_unknown_entry_404():
+    t = FakeTable()
+    start_night(t)
+    status, body = q.handle_action(t, {'type': 'start', 'userId': 'user-alex',
+                                        'username': 'Alex', 'payload': {'gameId': 'nope'}})
+    assert status == 404
