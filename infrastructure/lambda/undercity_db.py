@@ -1095,21 +1095,21 @@ def _claim(table, sid, doc, payload):
 # ── Roll & move ──────────────────────────────────────────────────────────────
 
 def _roll(table, sid, doc, payload):
-    if not data.UNLIMITED_ROLLS and doc.get('rolls', 0) < 1:
+    if not data.DEBUG and doc.get('rolls', 0) < 1:
         return _err('No rolls banked. Finish a board game to earn more!', 409)
     if doc.get('pendingMove'):
         return _err('You already rolled — pick a destination.', 409)
     # Rolling without choosing a respawn gate accepts the provisional home gate.
     doc.pop('pendingRespawn', None)
 
-    # Dev convenience (only while rolls are unlimited): the client may name the
-    # face it wants instead of rolling randomly. Skips loaded-die / vines so the
-    # picked number is exactly what moves you.
+    # Dev convenience (DEBUG only): the client may name the face it wants
+    # instead of rolling randomly. Skips loaded-die / vines so the picked
+    # number is exactly what moves you.
     picked = payload.get('value') if payload else None
     picked = int(picked) if isinstance(picked, (int, float)) and 1 <= picked <= 6 else None
 
     value = None
-    if data.UNLIMITED_ROLLS and picked is not None:
+    if data.DEBUG and picked is not None:
         value = picked
     elif doc.get('pendingLoadedDie'):
         value = int(doc.pop('pendingLoadedDie'))
@@ -1126,7 +1126,7 @@ def _roll(table, sid, doc, payload):
     if not dests:
         # Dead-end corner case: refund the roll, let them try again.
         return _err('The tunnels shift — no path fits that roll. Try again.', 409)
-    if not data.UNLIMITED_ROLLS:
+    if not data.DEBUG:
         doc['rolls'] -= 1
     doc['pendingMove'] = {'value': value, 'dests': sorted(dests)}
     conflict = _save_or_conflict(table, doc)

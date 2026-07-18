@@ -93,7 +93,7 @@ def table():
 
 
 def test_full_join_roll_move_flow(table, monkeypatch):
-    monkeypatch.setattr(data, 'UNLIMITED_ROLLS', False)  # assert the real roll economy
+    monkeypatch.setattr(data, 'DEBUG', False)  # assert the real roll economy
     status, resp = act(table, 'join', starter='saproling', home='cavern')
     assert status == 200
     you = resp['you']
@@ -192,16 +192,16 @@ def test_elite_space_resolves_to_elite_battle(table, monkeypatch):
     assert ev['npc']['id'] in {'fetid_imp', 'rot_shambler'}
 
 
-def test_roll_picks_exact_face_when_unlimited(table, monkeypatch):
-    monkeypatch.setattr(data, 'UNLIMITED_ROLLS', True)
+def test_roll_picks_exact_face_in_debug(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', True)
     act(table, 'join', starter='saproling', home='cavern')
     status, resp = act(table, 'roll', value=4)
     assert status == 200
     assert resp['roll']['value'] == 4
 
 
-def test_roll_pick_ignored_when_rolls_are_limited(table, monkeypatch):
-    monkeypatch.setattr(data, 'UNLIMITED_ROLLS', False)
+def test_roll_pick_ignored_when_debug_off(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', False)
     monkeypatch.setattr(db._rng, 'randint', lambda a, b: 2)
     act(table, 'join', starter='saproling', home='cavern')
     # A picked value must not bypass the real random roll economy.

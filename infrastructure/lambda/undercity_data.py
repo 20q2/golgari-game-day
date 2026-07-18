@@ -11,6 +11,11 @@ from the GDD tables.
 import json
 from pathlib import Path
 
+# Tunables (roll economy, debug flag, facility knobs) live in their own file
+# so balancing never means digging through this one. Re-exported so everything
+# keeps reading `data.ROLL_CAP` etc.
+from undercity_config import *  # noqa: F401,F403
+
 # ── Leveling ─────────────────────────────────────────────────────────────────
 
 LEVEL_CAP = 12
@@ -370,13 +375,7 @@ GRIMOIRES = {
 TRADING_POST_SEED = ['healing_moss', 'smoke_spore', 'loaded_die']
 TRADING_POST_SIZE = len(TRADING_POST_SEED)
 
-# ── Rot-Farm Bazaar limited stock ────────────────────────────────────────────
-SHOP_REFRESH_MIN = 30       # wall-clock window length (minutes)
-SHOP_GEAR_SLOTS = 3         # gear lines offered per refresh (distinct slots)
-SHOP_CONSUMABLE_SLOTS = 3   # consumable lines per refresh (>=1 in-battle)
-SHOP_GRIMOIRE_SLOTS = 2     # tier-1 grimoires per refresh (never deplete)
-SHOP_GEAR_QTY = 2           # units per stocked gear line
-SHOP_CONSUMABLE_QTY = 2     # units per stocked consumable line
+# Rot-Farm Bazaar limited-stock knobs (SHOP_*) live in undercity_config.py.
 
 # Excavation dig sites (Ossuary Fields focus). A shared 5x5 grid holds four
 # buried items sized by footprint; each landing grants 3 digs (reveal one cell
@@ -487,31 +486,8 @@ DEFAULT_PAINTS = ['forest', 'gold']  # everyone owns these from their first hatc
 
 # ── Roll economy ─────────────────────────────────────────────────────────────
 
-
-ROLL_CAP = 6
-JOIN_ROLLS = 3
-SEAL_BONUS_CAP = 3
-CLAIM_FINISHED_ROLLS = 2
-CLAIM_WON_BONUS_ROLLS = 1
-CLAIM_WON_SPORES = 10
-CLAIM_FINISHED_COOLDOWN_MIN = 15
-CLAIM_TAUGHT_ROLLS = 1
-CLAIM_TAUGHT_MAX = 2
-POKE_ROLL_LIMIT = 3          # first N pokes received per night grant +1 roll
-
-HP_REGEN_PCT = 0.10          # of max HP
-HP_REGEN_INTERVAL_MIN = 10
-COMPOST_SHIELD_MIN = 15
-COMPOST_RESPAWN_PCT = 0.5
-PVP_SPORE_STEAL = 0.25
-PVP_SPORE_STEAL_DEFEND = 0.10
-DEATHRITE_STEAL_MULT = 1.5
-
-SHRINE_BLESSING_COST = 15
-SHRINE_TITHE_HP_PCT = 0.25
-OSSUARY_MAX_BET = 20
-OSSUARY_ROLLS_PER_VISIT = 3  # gambles allowed per landing; refills when you land again
-SNARE_SPILL_PCT = 0.20
+# All roll-economy, HP-regen, PvP, shrine/ossuary/snare scalars live in
+# undercity_config.py (re-exported above).
 
 
 # ── Barriers & points of interest (v3: goals on the map) ────────────────────
@@ -658,10 +634,6 @@ def compute_renown(player: dict) -> int:
 # Sigil; hold SIGILS_REQUIRED and the island boss unseals for you. Two
 # barrier-gated side pockets (Titan's Rest, the Sunken Vaults) remain as
 # optional treasure routes.
-
-# TODO: dev/testing switch — rolling never checks or spends banked rolls while
-# True. Flip back to False (and redeploy) before game night.
-UNLIMITED_ROLLS = True
 
 # The board graph — nodes/edges plus client-side regions{} and decals[]
 # (ignored server-side). See map_bootstrap.py for the retired generator.
