@@ -8,7 +8,15 @@ export interface Game {
   description: string;
   imageUrl?: string;
   bggRating?: number;
+  bggId?: number;
+  bggImages?: BggImage[];
   comments?: GameComment[]; // Optional - comments now come from AWS
+}
+
+export interface BggImage {
+  thumb: string; // ~200px, used in the thumbnail strip
+  large: string; // ~1024px, used in the lightbox
+  caption?: string;
 }
 
 export interface GameComment {
@@ -68,4 +76,6 @@ export interface GameJson {
   description: string;
   imageUrl?: string;
   bggRating?: number;
+  bggId?: number;
+  bggImages?: BggImage[];
 }
