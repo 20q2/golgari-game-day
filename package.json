@@ -11,7 +11,8 @@
     "deploy": "npm run build:prod && npx gh-pages -d docs",
     "watch": "ng build --watch --configuration development",
     "lint": "eslint . --ext .ts,.html",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "fetch:bgg": "node scripts/fetch-bgg.mjs"
   },
   "prettier": {
     "overrides": [

@@ -747,6 +747,89 @@ def _save_or_conflict(table, doc):
     return None
 
 
+# ── Board-game session rewards (called by queue_db) ──────────────────────────
+
+def _reward_pk(sid):
+    return f'QUEUEREWARD#{sid}'
+
+
+def _reward_sk(user_id):
+    return f'USER#{user_id}'
+
+
+def _grant_to_player(table, sid, user_id, is_winner):
+    """Apply a board-game reward to a live player doc, retrying on the optimistic
+    version guard (the player might be mid-action). Best-effort: returns True if
+    applied, False if the doc vanished or every retry lost the race."""
+    for _ in range(4):
+        doc = _get_player(table, sid, user_id)
+        if not doc:
+            return False
+        _add_rolls(doc, data.CLAIM_FINISHED_ROLLS)
+        if is_winner:
+            _add_rolls(doc, data.CLAIM_WON_BONUS_ROLLS)
+            _give_consumable(doc)
+        if _put_player(table, doc):
+            return True
+    return False
+
+
+def _bank_reward(table, sid, user_id, is_winner):
+    """Store a reward for a user who has no creature yet; merged on repeats."""
+    rec = _get(table, _reward_pk(sid), _reward_sk(user_id)) or {
+        'pk': _reward_pk(sid), 'sk': _reward_sk(user_id),
+        'userId': user_id, 'rolls': 0, 'items': [],
+    }
+    rec['rolls'] = rec.get('rolls', 0) + data.CLAIM_FINISHED_ROLLS + (
+        data.CLAIM_WON_BONUS_ROLLS if is_winner else 0)
+    if is_winner:
+        rec.setdefault('items', []).append(_rng.choice(list(data.CONSUMABLES.keys())))
+    table.put_item(Item=rec)
+
+
+def grant_board_game_rewards(table, sid, participant_ids, winner_ids):
+    """Public entry point for queue_db. Grants participation rolls to every
+    participant and a bonus roll + item to each winner; banks the reward for
+    anyone who hasn't hatched a creature this night. Returns a summary."""
+    winners = set(winner_ids)
+    granted, banked = [], []
+    for uid in participant_ids:
+        is_winner = uid in winners
+        if _grant_to_player(table, sid, uid, is_winner):
+            granted.append(uid)
+        else:
+            _bank_reward(table, sid, uid, is_winner)
+            banked.append(uid)
+    return {'granted': granted, 'banked': banked}
+
+
+def apply_banked_rewards(table, sid, user_id, doc):
+    """Apply any banked board-game rewards onto a freshly hatched doc (mutates
+    it in place), then delete the bank record and announce it. No-op if none."""
+    rec = _get(table, _reward_pk(sid), _reward_sk(user_id))
+    if not rec:
+        return
+    rolls = int(rec.get('rolls', 0))
+    if rolls:
+        _add_rolls(doc, rolls)
+    items = rec.get('items') or []
+    for item in items:
+        if len(doc.get('bag') or []) >= data.BAG_SIZE:
+            doc['spores'] = doc.get('spores', 0) + 5
+        else:
+            doc.setdefault('bag', []).append(item)
+    table.delete_item(Key={'pk': _reward_pk(sid), 'sk': _reward_sk(user_id)})
+    extra = f", {len(items)} item(s)" if items else ''
+    _event(table, sid, 'claim',
+           f"{doc['username']} collected banked rewards from tonight's games "
+           f"(+{rolls} rolls{extra})", actor=user_id)
+
+
+def post_event(table, sid, etype, text):
+    """Public wrapper so queue_db can post to the Grapevine feed."""
+    _event(table, sid, etype, text)
+
+
 # ── Season lifecycle ─────────────────────────────────────────────────────────
 
 def _season_start(table, payload):
@@ -1060,6 +1143,9 @@ def _join(table, sid, user_id, username, payload):
         seals_before=seals_before, egg_hue=payload.get('eggHue'),
         creature_name=creature_name,
     )
+    # Deliver any board-game rewards banked while this player hadn't hatched yet
+    # (mutates doc's rolls/bag, deletes the bank record, posts an event).
+    apply_banked_rewards(table, sid, user_id, doc)
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict

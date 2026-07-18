@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import push
 import queue_db as q
-from test_undercity_db import FakeTable, act as uc_act
+from test_undercity_db import FakeTable, act as uc_act, _sid
 
 
 def start_night(table, host_key='swampking'):
@@ -244,3 +244,185 @@ def test_join_survives_broken_push_send(monkeypatch):
     assert status == 200  # join succeeds despite the send blowing up
     # The still-valid subscription is left alone (only PushGone deletes it).
     assert len(q._subscriptions_for(t, 'user-alex')) == 1
+
+
+def test_new_entry_is_lobby_status():
+    t = FakeTable()
+    start_night(t)
+    _, body = q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                                   'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    assert body['entry']['status'] == 'lobby'
+
+
+def test_start_flips_to_active():
+    t = FakeTable()
+    start_night(t)
+    q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    status, body = q.handle_action(t, {'type': 'start', 'userId': 'user-alex',
+                                        'username': 'Alex', 'payload': {'gameId': 'catan'}})
+    assert status == 200
+    assert body['entry']['status'] == 'active'
+
+    # Idempotent: starting again is a no-op that still reports active.
+    status, body = q.handle_action(t, {'type': 'start', 'userId': 'user-alex',
+                                        'username': 'Alex', 'payload': {'gameId': 'catan'}})
+    assert status == 200 and body['entry']['status'] == 'active'
+
+
+def test_start_requires_membership():
+    t = FakeTable()
+    start_night(t)
+    q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    status, body = q.handle_action(t, {'type': 'start', 'userId': 'user-outsider',
+                                        'username': 'Nope', 'payload': {'gameId': 'catan'}})
+    assert status == 403
+
+
+def test_join_rejected_once_active():
+    t = FakeTable()
+    start_night(t)
+    q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    q.handle_action(t, {'type': 'start', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan'}})
+    status, body = q.handle_action(t, {'type': 'join', 'userId': 'user-sam', 'username': 'Sam',
+                                        'payload': {'gameId': 'catan'}})
+    assert status == 409
+
+
+def test_start_unknown_entry_404():
+    t = FakeTable()
+    start_night(t)
+    status, body = q.handle_action(t, {'type': 'start', 'userId': 'user-alex',
+                                        'username': 'Alex', 'payload': {'gameId': 'nope'}})
+    assert status == 404
+
+
+def _start_active_game(t, members):
+    """Season already started. members = [(uid, name), ...]; first is the host."""
+    for i, (uid, name) in enumerate(members):
+        payload = {'gameId': 'catan'}
+        if i == 0:
+            payload['gameTitle'] = 'Catan'
+        q.handle_action(t, {'type': 'join', 'userId': uid, 'username': name, 'payload': payload})
+    q.handle_action(t, {'type': 'start', 'userId': members[0][0], 'username': members[0][1],
+                         'payload': {'gameId': 'catan'}})
+
+
+def test_close_no_winner_grants_participation_and_deletes(monkeypatch):
+    import undercity_db as ucdb
+    t = FakeTable()
+    start_night(t)
+    ucdb.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                            'payload': {'starter': 'pest'}})
+    ucdb.handle_action(t, {'type': 'join', 'userId': 'user-sam', 'username': 'Sam',
+                            'payload': {'starter': 'pest'}})
+    _start_active_game(t, [('user-alex', 'Alex'), ('user-sam', 'Sam')])
+
+    status, body = q.handle_action(t, {'type': 'close', 'userId': 'user-alex', 'username': 'Alex',
+                                        'payload': {'gameId': 'catan', 'hadWinner': False}})
+    assert status == 200 and body['closed'] is True
+
+    _, state = q.handle_state(t, {})
+    assert state['entries'] == []
+    for uid in ('user-alex', 'user-sam'):
+        d = ucdb._get_player(t, _sid(t), uid)
+        assert d['bag'] == []
+
+
+def test_close_single_winner_gives_item(monkeypatch):
+    import undercity_db as ucdb
+    t = FakeTable()
+    start_night(t)
+    ucdb.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                            'payload': {'starter': 'pest'}})
+    ucdb.handle_action(t, {'type': 'join', 'userId': 'user-sam', 'username': 'Sam',
+                            'payload': {'starter': 'pest'}})
+    _start_active_game(t, [('user-alex', 'Alex'), ('user-sam', 'Sam')])
+
+    status, body = q.handle_action(t, {'type': 'close', 'userId': 'user-alex', 'username': 'Alex',
+                                        'payload': {'gameId': 'catan', 'hadWinner': True,
+                                                    'winnerType': 'single', 'winnerId': 'user-sam'}})
+    assert status == 200
+    assert len(ucdb._get_player(t, _sid(t), 'user-sam')['bag']) == 1     # winner
+    assert ucdb._get_player(t, _sid(t), 'user-alex')['bag'] == []        # not the winner
+
+
+def test_close_group_victory_gives_everyone_item(monkeypatch):
+    import undercity_db as ucdb
+    t = FakeTable()
+    start_night(t)
+    ucdb.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                            'payload': {'starter': 'pest'}})
+    ucdb.handle_action(t, {'type': 'join', 'userId': 'user-sam', 'username': 'Sam',
+                            'payload': {'starter': 'pest'}})
+    _start_active_game(t, [('user-alex', 'Alex'), ('user-sam', 'Sam')])
+
+    q.handle_action(t, {'type': 'close', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'hadWinner': True, 'winnerType': 'group'}})
+    for uid in ('user-alex', 'user-sam'):
+        assert len(ucdb._get_player(t, _sid(t), uid)['bag']) == 1
+
+
+def test_close_banks_for_non_undercity_participant(monkeypatch):
+    import undercity_db as ucdb
+    t = FakeTable()
+    start_night(t)
+    ucdb.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                            'payload': {'starter': 'pest'}})
+    # user-ghost is in the board-game lobby but never hatched a creature.
+    _start_active_game(t, [('user-alex', 'Alex'), ('user-ghost', 'Ghost')])
+
+    q.handle_action(t, {'type': 'close', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'hadWinner': True,
+                                     'winnerType': 'single', 'winnerId': 'user-ghost'}})
+    rec = ucdb._get(t, ucdb._reward_pk(_sid(t)), 'USER#user-ghost')
+    assert rec is not None and len(rec['items']) == 1
+
+
+def test_close_on_lobby_is_409():
+    t = FakeTable()
+    start_night(t)
+    q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    status, body = q.handle_action(t, {'type': 'close', 'userId': 'user-alex', 'username': 'Alex',
+                                        'payload': {'gameId': 'catan', 'hadWinner': False}})
+    assert status == 409
+
+
+def test_close_bad_winner_id_is_400():
+    t = FakeTable()
+    start_night(t)
+    q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
+    q.handle_action(t, {'type': 'start', 'userId': 'user-alex', 'username': 'Alex',
+                         'payload': {'gameId': 'catan'}})
+    status, body = q.handle_action(t, {'type': 'close', 'userId': 'user-alex', 'username': 'Alex',
+                                        'payload': {'gameId': 'catan', 'hadWinner': True,
+                                                    'winnerType': 'single', 'winnerId': 'nobody'}})
+    assert status == 400
+
+
+def test_second_close_is_404_and_no_double_grant():
+    import undercity_db as ucdb
+    t = FakeTable()
+    start_night(t)
+    ucdb.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
+                            'payload': {'starter': 'pest'}})
+    d = ucdb._get_player(t, _sid(t), 'user-alex')
+    d['rolls'] = 0
+    ucdb._put_player(t, d)
+    _start_active_game(t, [('user-alex', 'Alex')])
+
+    status, _ = q.handle_action(t, {'type': 'close', 'userId': 'user-alex', 'username': 'Alex',
+                                     'payload': {'gameId': 'catan', 'hadWinner': False}})
+    assert status == 200
+    rolls_after = ucdb._get_player(t, _sid(t), 'user-alex')['rolls']
+    assert rolls_after == ucdb.data.CLAIM_FINISHED_ROLLS
+
+    status, _ = q.handle_action(t, {'type': 'close', 'userId': 'user-alex', 'username': 'Alex',
+                                     'payload': {'gameId': 'catan', 'hadWinner': False}})
+    assert status == 404
+    assert ucdb._get_player(t, _sid(t), 'user-alex')['rolls'] == rolls_after

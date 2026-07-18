@@ -1,9 +1,12 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDialog } from '@angular/material/dialog';
 import { QueueService } from '../../services/queue.service';
 import { UserService } from '../../services/user.service';
 import { GamesService } from '../../services/games.service';
+import { CloseResult } from '../../services/queue-models';
+import { CloseOutDialogComponent, CloseOutData } from './close-out-dialog.component';
 
 /**
  * One person-slot in a lobby's roster row.
@@ -29,6 +32,7 @@ export class QueuePanelComponent implements OnInit, OnDestroy {
   readonly queue = inject(QueueService);
   private readonly userService = inject(UserService);
   private readonly gamesService = inject(GamesService);
+  private readonly dialog = inject(MatDialog);
 
   ngOnInit(): void {
     this.queue.startPolling();
@@ -94,6 +98,29 @@ export class QueuePanelComponent implements OnInit, OnDestroy {
       await this.queue.leave(gameId);
     } else {
       await this.queue.join(gameId, gameTitle);
+    }
+  }
+
+  isActive(gameId: string): boolean {
+    return this.queue.statusOf(gameId) === 'active';
+  }
+
+  async start(gameId: string): Promise<void> {
+    if (!(await this.userService.requireSignIn())) return;
+    await this.queue.start(gameId);
+  }
+
+  async closeOut(entryGameId: string, gameTitle: string): Promise<void> {
+    if (!(await this.userService.requireSignIn())) return;
+    const entry = this.queue.entryFor(entryGameId);
+    if (!entry) return;
+    const data: CloseOutData = { gameTitle, roster: entry.joined };
+    const result: CloseResult | null | undefined = await this.dialog
+      .open(CloseOutDialogComponent, { data, width: '320px' })
+      .afterClosed()
+      .toPromise();
+    if (result) {
+      await this.queue.close(entryGameId, result);
     }
   }
 }

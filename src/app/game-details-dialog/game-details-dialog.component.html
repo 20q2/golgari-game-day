@@ -27,6 +27,21 @@
       </div>
     }
 
+    @if (game.bggImages?.length) {
+      <div class="bgg-gallery">
+        @for (img of game.bggImages; track img.thumb; let i = $index) {
+          <button
+            type="button"
+            class="bgg-thumb"
+            (click)="openLightbox(i)"
+            [attr.aria-label]="'View picture ' + (i + 1) + (img.caption ? ': ' + img.caption : '')"
+          >
+            <img [src]="img.thumb" [alt]="img.caption || game.title" loading="lazy" />
+          </button>
+        }
+      </div>
+    }
+
     <div class="game-meta">
       @if (game.genres.length) {
         <div class="genre-chips">
@@ -48,6 +63,18 @@
           <span>{{ getAllComments().length }} comment{{ getAllComments().length === 1 ? '' : 's' }}</span>
         }
       </div>
+
+      @if (game.bggId) {
+        <a
+          class="bgg-link"
+          [href]="'https://boardgamegeek.com/boardgame/' + game.bggId"
+          target="_blank"
+          rel="noopener"
+        >
+          <mat-icon>open_in_new</mat-icon>
+          View on BoardGameGeek
+        </a>
+      }
 
       @if (game.bggRating || getAverageRating() != null) {
         <div class="ratings-row">
@@ -150,3 +177,35 @@
     }
   </section>
 </div>
+
+@if (lightboxImage; as img) {
+  <div class="lightbox" (click)="closeLightbox()">
+    <button type="button" class="lightbox-close" (click)="closeLightbox()" aria-label="Close image">
+      <mat-icon>close</mat-icon>
+    </button>
+    @if ((game.bggImages?.length ?? 0) > 1) {
+      <button
+        type="button"
+        class="lightbox-nav prev"
+        (click)="prevImage(); $event.stopPropagation()"
+        aria-label="Previous image"
+      >
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <button
+        type="button"
+        class="lightbox-nav next"
+        (click)="nextImage(); $event.stopPropagation()"
+        aria-label="Next image"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    }
+    <figure class="lightbox-content" (click)="$event.stopPropagation()">
+      <img [src]="img.large" [alt]="img.caption || game.title" />
+      @if (img.caption) {
+        <figcaption>{{ img.caption }}</figcaption>
+      }
+    </figure>
+  </div>
+}

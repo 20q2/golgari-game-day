@@ -4,6 +4,8 @@
     <span class="queue-title">Tonight's Queue</span>
   </div>
 
+  <p class="reward-banner" *ngIf="queue.reward() as msg">{{ msg }}</p>
+
   <ul class="queue-cards" role="list">
     <li
       *ngFor="let entry of queue.entries()"
@@ -44,14 +46,36 @@
 
         <div class="lobby-names" *ngIf="memberNames(entry.gameId) as names">{{ names }}</div>
 
-        <button
-          type="button"
-          class="queue-join-btn"
-          [class.joined]="queue.isJoined(entry.gameId)"
-          (click)="toggle(entry.gameId, entry.gameTitle)"
-        >
-          {{ queue.isJoined(entry.gameId) ? 'Leave' : 'Join' }}
-        </button>
+        <ng-container *ngIf="!isActive(entry.gameId); else activeControls">
+          <button
+            type="button"
+            class="queue-join-btn"
+            [class.joined]="queue.isJoined(entry.gameId)"
+            (click)="toggle(entry.gameId, entry.gameTitle)"
+          >
+            {{ queue.isJoined(entry.gameId) ? 'Leave' : 'Join' }}
+          </button>
+          <button
+            type="button"
+            class="queue-start-btn"
+            *ngIf="queue.isJoined(entry.gameId)"
+            (click)="start(entry.gameId)"
+          >
+            Start playing
+          </button>
+        </ng-container>
+
+        <ng-template #activeControls>
+          <span class="in-progress"><mat-icon class="ip-icon">sports_esports</mat-icon> In progress</span>
+          <button
+            type="button"
+            class="queue-close-btn"
+            *ngIf="queue.isJoined(entry.gameId)"
+            (click)="closeOut(entry.gameId, entry.gameTitle)"
+          >
+            Close out
+          </button>
+        </ng-template>
       </div>
     </li>
   </ul>
