@@ -154,7 +154,9 @@
 .content {
   padding: 0;
   min-height: calc(100vh - 64px);
-  min-height: calc(100lvh - 64px);
+  // dvh so the content area matches the live visible viewport on mobile,
+  // leaving no dead scroll space below a full-height child (e.g. Undercity).
+  min-height: calc(100dvh - 64px);
 }
 
 // Tablet and below: route nav-text hides; username and sign-in text stay.

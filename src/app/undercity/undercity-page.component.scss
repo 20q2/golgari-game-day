@@ -5,7 +5,10 @@
   display: flex;
   flex-direction: column;
   height: calc(100vh - 64px);
-  height: calc(100lvh - 64px);
+  // dvh tracks the *currently* visible viewport (URL bar in or out), so the
+  // bottom tab-bar stays on-screen on mobile. lvh/vh measure the largest
+  // possible height and push the bar below the fold when the URL bar shows.
+  height: calc(100dvh - 64px);
   background: #12100e;
   color: #e5f0e5;
   overflow: hidden;
