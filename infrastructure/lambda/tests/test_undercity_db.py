@@ -1722,3 +1722,21 @@ def test_banked_rewards_applied_on_join():
     assert len(you['bag']) == 1                       # banked item delivered
     # Bank record consumed.
     assert db._get(t, db._reward_pk(_sid(t)), 'USER#user-late') is None
+
+
+# ── Renown shop (pre-spawn) ──────────────────────────────────────────────────
+
+def test_renown_shop_price_tables_are_sane():
+    # Seed lets a brand-new player buy exactly one common hat OR one plain color.
+    assert data.SHOP_START_RENOWN == 50
+    assert data.HAT_PRICES == {'common': 50, 'uncommon': 120, 'legendary': 300}
+    assert data.PAINT_PRICE == 40
+    # Every hat/paint id resolves through the new maps.
+    assert data.HAT_MAP['party_hat']['rarity'] == 'common'
+    assert data.PAINT_MAP['crimson']['hue'] == 0
+    # Starter kit: real item ids (or the synthetic spore pouch), each with a cost.
+    ids = {i['id'] for i in data.RENOWN_SHOP_ITEMS}
+    assert ids == {'healing_moss', 'rusted_fang', 'chitin_scrap', 'spore_pouch'}
+    for it in data.RENOWN_SHOP_ITEMS:
+        assert it['cost'] > 0 and it['kind'] in ('consumable', 'gear', 'spores')
+    assert data.RENOWN_SHOP_ITEMS_MAP['spore_pouch']['amount'] == 15

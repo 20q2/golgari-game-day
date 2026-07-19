@@ -49,3 +49,6 @@ SHRINE_TITHE_HP_PCT = 0.25
 OSSUARY_MAX_BET = 20
 OSSUARY_ROLLS_PER_VISIT = 3  # gambles allowed per landing; refills when you land again
 SNARE_SPILL_PCT = 0.20
+
+# ── Renown shop (pre-spawn) ──────────────────────────────────────────────────
+SHOP_START_RENOWN = 50       # seed for a brand-new player: one common hat OR one plain color

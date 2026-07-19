@@ -199,6 +199,21 @@ CONSUMABLES = {
 BAG_SIZE = 3
 GEAR_SELL_BACK = 0.5  # replacing gear auto-sells old piece for 50% of cost
 
+GEAR_SLOTS = ('fang', 'carapace', 'charm')
+
+# Gear drops from loot sources. Each entry: (chance, {tier: weight}).
+# Common sources sit at ~0.10; one-time/hard POIs are elevated so a "treasure"
+# actually feels like one. Chances/weights are the tuning surface.
+GEAR_DROP = {
+    'wild':     (0.10, {1: 1.0}),
+    'elite':    (0.12, {1: 0.6, 2: 0.4}),
+    'loot':     (0.10, {1: 1.0}),
+    'mystery':  (0.12, {1: 0.6, 2: 0.4}),
+    'treasure': (0.50, {2: 0.6, 3: 0.4}),
+    'lair':     (0.35, {2: 0.5, 3: 0.5}),
+    'boss':     (0.35, {2: 0.4, 3: 0.6}),
+}
+
 # ── Combat: stance triangle tuning (spec 2026-07-14 §1) ──────────────────────
 # The triangle decides who wins an exchange; ATK/DEF set the magnitude. A "hit"
 # is max(1, round(atk * uniform(0.85,1.15)) - effective_def); the multipliers
@@ -482,6 +497,23 @@ PAINTS = [
     {'id': 'rose', 'name': 'Rose', 'hue': 340},
 ]
 DEFAULT_PAINTS = ['forest', 'gold']  # everyone owns these from their first hatch
+
+HAT_MAP = {h['id']: h for h in HATS}
+PAINT_MAP = {p['id']: p for p in PAINTS}
+
+# ── Renown shop (pre-spawn) prices ───────────────────────────────────────────
+HAT_PRICES = {'common': 50, 'uncommon': 120, 'legendary': 300}
+PAINT_PRICE = 40  # any non-default color
+
+# Fixed one-night starter kit. Real ids grant from GEAR/CONSUMABLES; the
+# synthetic 'spore_pouch' just adds `amount` Spores. Costs are in Renown.
+RENOWN_SHOP_ITEMS = [
+    {'id': 'healing_moss', 'kind': 'consumable', 'cost': 20},
+    {'id': 'rusted_fang',  'kind': 'gear',       'cost': 25},
+    {'id': 'chitin_scrap', 'kind': 'gear',       'cost': 25},
+    {'id': 'spore_pouch',  'kind': 'spores', 'amount': 15, 'cost': 15},
+]
+RENOWN_SHOP_ITEMS_MAP = {i['id']: i for i in RENOWN_SHOP_ITEMS}
 
 
 # ── Roll economy ─────────────────────────────────────────────────────────────
