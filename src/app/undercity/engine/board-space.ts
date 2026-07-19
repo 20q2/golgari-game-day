@@ -48,7 +48,7 @@ function isLightHex(hex: string): boolean {
 }
 
 /** Bone skull glyph for boss + monster lairs — 'Material Icons' has no skull ligature. */
-function drawSkull(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
+export function drawSkull(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.scale(1.25, 1.25);

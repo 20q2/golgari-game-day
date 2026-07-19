@@ -18,7 +18,7 @@ import {
   GUARDIAN_PLACEHOLDER_SPRITE,
   DEFAULT_GUARDIAN_SPRITE,
 } from '../data/items';
-import { drawSpaceDisc, NODE_R, DISC_RY } from './board-space';
+import { drawSpaceDisc, drawSkull, NODE_R, DISC_RY } from './board-space';
 import { BoardAmbient } from './board-ambient';
 import {
   renderTerrain,
@@ -236,12 +236,17 @@ const GUARDIAN_SWAY = 3; // px side-to-side pacing
 
 // A lair boss paces behind its gate: heavier/slower breathing than a token and
 // an occasional lunge — mostly stationary, reads as a caged beast.
-const LAIR_H = 84; // bigger than a barrier guardian — it's a boss
+const LAIR_H = 116; // bigger than a barrier guardian — it's a boss
 const LAIR_BREATH_SPEED = 1.3; // slow, deep breathing
 const LAIR_BREATH_AMT = 0.07; // ±7% vertical wobble
 const LAIR_LUNGE_PERIOD = 5.0; // seconds between lunges
 const LAIR_LUNGE_AMT = 12; // px forward dip at the lunge peak
 const LAIR_BACK_OFFSET = 26; // px north — sits behind the lair space
+// Once you hold a lair's sigil the boss lingers only as a vestige of itself:
+// darker, drained of colour, softly blurred and see-through so it reads as a
+// weakened echo rather than the living threat it used to be.
+const VESTIGE_FILTER = 'brightness(0.42) saturate(0.35) blur(0.7px)';
+const VESTIGE_ALPHA = 0.55; // translucent — you can see the floor through it
 
 /** One render/view layer: its node subset + world bounds, and its terrain. */
 interface Layer {
@@ -1052,6 +1057,12 @@ export class BoardCanvas {
     // Sigil bosses pace behind their lair spaces.
     if (n.type === 'lair') this.drawLairBoss(n, elapsed);
 
+    // A rusty ladder whose dungeon boss has already fallen wears a small skull
+    // badge — the den below holds nothing now but the boss's vestige.
+    if (n.type === 'ladder' && this.clearedDungeons.has(n.id.split('_')[0])) {
+      this.drawVestigeBadge(n, elapsed);
+    }
+
     // Disturbed ground — the only tell that a snare lurks here.
     if (this.snares.has(n.id)) {
       ctx.beginPath();
@@ -1136,13 +1147,56 @@ export class BoardCanvas {
     const cx = n.x;
     const footAnchor = n.y - LAIR_BACK_OFFSET + lunge; // behind the space, dips on lunge
 
+    // Beaten boss (its sigil is claimed) → render the weakened vestige.
+    const vestige = n.id.endsWith('_lair') && this.clearedDungeons.has(n.id.split('_')[0]);
+
     ctx.save();
+    if (vestige) {
+      ctx.filter = VESTIGE_FILTER;
+      ctx.globalAlpha = VESTIGE_ALPHA;
+    }
     const drawH = LAIR_H * breath;
     const w = art.img.width * (LAIR_H / art.img.height);
     const top = footAnchor - drawH;
     ctx.imageSmoothingEnabled = !art.pixelArt;
     ctx.drawImage(art.img, cx - w / 2, top, w, drawH);
     ctx.imageSmoothingEnabled = true;
+    ctx.restore();
+  }
+
+  /**
+   * A small skull badge pinned to the top-right of a ladder coin once its
+   * dungeon boss is dead: the passage still leads down, but only the boss's
+   * vestige lingers below. A faint ghostly halo pulses so it reads as spent.
+   */
+  private drawVestigeBadge(n: BoardNode, elapsed: number): void {
+    const ctx = this.ctx;
+    const bx = n.x + NODE_R * 0.72;
+    const by = n.y - DISC_RY - 2;
+    const pulse = 0.5 + 0.5 * Math.sin(elapsed * 2.4 + hashStr(n.id));
+
+    ctx.save();
+    // Ghostly halo behind the badge.
+    const halo = ctx.createRadialGradient(bx, by, 0, bx, by, 13);
+    halo.addColorStop(0, `rgba(150, 190, 175, ${0.28 + 0.18 * pulse})`);
+    halo.addColorStop(1, 'rgba(150, 190, 175, 0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(bx - 13, by - 13, 26, 26);
+
+    // Dark disc badge so the pale skull reads on any floor.
+    ctx.beginPath();
+    ctx.arc(bx, by, 8.5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(18, 22, 20, 0.82)';
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = `rgba(170, 205, 190, ${0.55 + 0.3 * pulse})`;
+    ctx.stroke();
+
+    // The existing bone skull, shrunk to fit the badge and slightly ghosted.
+    ctx.translate(bx, by + 1);
+    ctx.scale(0.62, 0.62);
+    ctx.globalAlpha = 0.9;
+    drawSkull(ctx, 0, 0);
     ctx.restore();
   }
 

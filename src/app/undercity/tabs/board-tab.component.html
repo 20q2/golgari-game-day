@@ -577,6 +577,38 @@
     />
   }
 
+  <!-- Guild Sigil claimed: auto-dismissing sunburst fanfare -->
+  @if (sigilCelebration(); as sc) {
+    <div
+      class="uc-modal-backdrop sigil-backdrop"
+      (click)="closeSigilCelebration()"
+      role="dialog"
+      aria-live="assertive"
+    >
+      <div class="sigil-rays" aria-hidden="true"></div>
+      <div class="sigil-glow" aria-hidden="true"></div>
+      <div class="sigil-card" (click)="$event.stopPropagation()">
+        <span class="sigil-eyebrow">Guild Sigil Claimed</span>
+        <div class="sigil-portrait">
+          <img [src]="'undercity/guardians/' + sc.lairNpcId + '.png'" [alt]="sc.lairName" />
+          <mat-icon class="mi sigil-seal">workspace_premium</mat-icon>
+        </div>
+        <h3>You bested {{ sc.lairName }}!</h3>
+        <p class="sigil-sub">
+          You claim the <strong>{{ sc.biomeName }}</strong> Guild Sigil.
+        </p>
+        <p class="sigil-count">
+          {{ sc.count }} / {{ sc.required }} sigils
+          @if (sc.unsealed) {
+            <span class="sigil-unsealed">— the island boss is unsealed!</span>
+          } @else {
+            <span class="muted">claimed</span>
+          }
+        </p>
+      </div>
+    </div>
+  }
+
   <!-- While you were away -->
   @if (awayModal(); as events) {
     <div class="uc-modal-backdrop">

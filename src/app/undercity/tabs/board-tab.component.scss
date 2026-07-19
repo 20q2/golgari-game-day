@@ -830,3 +830,180 @@
     opacity: 1;
   }
 }
+
+/* ── Guild Sigil claimed: auto-dismissing sunburst fanfare ─────────────────── */
+.sigil-backdrop {
+  position: absolute;
+  z-index: 1300;
+  overflow: hidden;
+  background: rgba(6, 5, 3, 0.78);
+}
+
+/* Rotating gold rays radiating from behind the card. */
+.sigil-rays {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 180vmax;
+  height: 180vmax;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(224, 192, 120, 0.28) 0deg 4deg,
+    transparent 4deg 13deg
+  );
+  /* fade the rays out toward the edges so they bloom from the centre */
+  -webkit-mask-image: radial-gradient(circle at center, #000 0%, rgba(0, 0, 0, 0.55) 34%, transparent 62%);
+  mask-image: radial-gradient(circle at center, #000 0%, rgba(0, 0, 0, 0.55) 34%, transparent 62%);
+  animation:
+    uc-sunburst-spin 34s linear infinite,
+    uc-sunburst-in 0.6s ease-out both;
+  pointer-events: none;
+}
+
+/* Soft warm halo pooled behind the card. */
+.sigil-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 78vmin;
+  height: 78vmin;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle at center,
+    rgba(224, 192, 120, 0.4) 0%,
+    rgba(122, 208, 122, 0.14) 38%,
+    transparent 70%
+  );
+  animation: uc-sunburst-in 0.6s ease-out both;
+  pointer-events: none;
+}
+
+.sigil-card {
+  position: relative;
+  z-index: 1;
+  width: min(340px, 100%);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 22px 22px;
+  background: linear-gradient(180deg, #201d17, #17140f);
+  border: 1px solid rgba(224, 192, 120, 0.5);
+  border-radius: 18px;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.7),
+    0 0 34px rgba(224, 192, 120, 0.22),
+    inset 0 1px 0 rgba(255, 236, 190, 0.12);
+  animation: uc-modal-in 0.4s cubic-bezier(0.2, 1.5, 0.35, 1);
+
+  .sigil-eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #e0c088;
+    font-weight: 700;
+  }
+
+  .sigil-portrait {
+    position: relative;
+    width: 92px;
+    height: 92px;
+    margin: 4px 0 2px;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
+      animation: sigil-portrait-rise 0.5s ease both;
+    }
+
+    .sigil-seal {
+      position: absolute;
+      right: -6px;
+      bottom: -6px;
+      color: #e0c088;
+      filter: drop-shadow(0 0 6px rgba(224, 192, 120, 0.8));
+      animation: sigil-seal-stamp 0.5s 0.28s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+    }
+  }
+
+  h3 {
+    margin: 0;
+    color: #f0d9a8;
+  }
+
+  .sigil-sub {
+    margin: 0;
+    color: #cdbfa6;
+    font-size: 0.9rem;
+
+    strong {
+      color: #82bd5a;
+    }
+  }
+
+  .sigil-count {
+    margin: 4px 0 0;
+    font-size: 0.82rem;
+    color: #e0c088;
+    font-weight: 600;
+
+    .muted {
+      color: #9aa79a;
+      font-weight: 400;
+    }
+
+    .sigil-unsealed {
+      display: block;
+      margin-top: 2px;
+      color: #82bd5a;
+    }
+  }
+}
+
+@keyframes uc-sunburst-spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes uc-sunburst-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sigil-portrait-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sigil-seal-stamp {
+  from {
+    opacity: 0;
+    transform: scale(2.2) rotate(-18deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sigil-rays {
+    animation: uc-sunburst-in 0.4s ease-out both;
+  }
+}

@@ -436,6 +436,9 @@ export interface SpaceEvent {
   };
   battle?: BattleResult;
   sporesLost?: number;
+  /** Biome key of a Guild Sigil just claimed by clearing its lair boss (first
+   * kill only). Drives the sigil-claimed celebration overlay. */
+  sigil?: string;
   // battle_start (interactive PvE, Plan 2)
   kind?: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss';
   telegraph?: Stance;

@@ -56,7 +56,7 @@ import {
   GearInfo,
   ConsumableInfo,
 } from '../data/items';
-import { DUNGEONS, dungeonBiome } from '../data/dungeons';
+import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome } from '../data/dungeons';
 import { formName } from '../data/forms';
 import { formSprite } from '../data/species';
 import { getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
@@ -157,6 +157,19 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly flowPuzzle = signal<FlowPuzzleView | null>(null);
   /** Bonus Spores from clearing a dig site — drives the "site cleared" popup. */
   protected readonly digCleared = signal<number | null>(null);
+  /** Guild Sigil just claimed — drives the auto-dismissing sunburst fanfare.
+   * Set when a lair-boss win reports `sigil`, shown once its battle closes. */
+  protected readonly sigilCelebration = signal<{
+    biomeName: string;
+    lairName: string;
+    lairNpcId: string;
+    count: number;
+    required: number;
+    unsealed: boolean;
+  } | null>(null);
+  /** Biome awaiting its sigil fanfare until the victory screen is dismissed. */
+  private pendingSigilBiome: string | null = null;
+  private sigilTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly showVein = signal(false);
   protected readonly veinDepth = signal(0);
   protected readonly veinLog = signal<string | null>(null);
@@ -686,6 +699,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.board?.stop();
     this.board = null;
+    if (this.sigilTimer) clearTimeout(this.sigilTimer);
   }
 
   // ── Roll & move ────────────────────────────────────────────────────────────
@@ -1416,12 +1430,44 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // so the last exchange animates before the outcome banner drops, instead of
     // the fight snapping straight to VICTORY.
     const entries = (ev.battle?.strikes ?? []) as unknown as CombatEntry[];
+    // A first-kill lair boss reports the sigil it drops — remember it so the
+    // sunburst fanfare can fire once the player dismisses the victory screen.
+    this.pendingSigilBiome = outcome === 'attacker' && ev.sigil ? ev.sigil : null;
     this.liveB?.finish(outcome, you?.hp ?? 0, npcHp, ev.text ?? '', this.buildRewards(ev), entries);
   }
 
-  closeLiveBattle(): void {
+  async closeLiveBattle(): Promise<void> {
+    const biome = this.pendingSigilBiome;
+    this.pendingSigilBiome = null;
     this.liveBattle.set(null);
-    void this.store.refresh();
+    await this.store.refresh(); // so poiClaims reflects the just-won sigil
+    if (biome) this.openSigilCelebration(biome);
+  }
+
+  /** Pop the auto-dismissing "Guild Sigil claimed!" fanfare for a biome. */
+  private openSigilCelebration(biome: string): void {
+    const d = DUNGEONS[biome];
+    if (!d) return;
+    const claims = this.store.you()?.poiClaims ?? [];
+    const count = Object.keys(DUNGEONS).filter((b) => claims.includes(`${b}_lair`)).length;
+    this.sigilCelebration.set({
+      biomeName: d.biomeName,
+      lairName: d.lairName,
+      lairNpcId: d.lairNpcId,
+      count,
+      required: SIGILS_REQUIRED,
+      unsealed: count >= SIGILS_REQUIRED,
+    });
+    if (this.sigilTimer) clearTimeout(this.sigilTimer);
+    this.sigilTimer = setTimeout(() => this.closeSigilCelebration(), 5600);
+  }
+
+  protected closeSigilCelebration(): void {
+    if (this.sigilTimer) {
+      clearTimeout(this.sigilTimer);
+      this.sigilTimer = null;
+    }
+    this.sigilCelebration.set(null);
   }
 
   closeSpaceModal(): void {
