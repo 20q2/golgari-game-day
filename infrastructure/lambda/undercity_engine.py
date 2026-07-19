@@ -310,18 +310,23 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
     return entries
 
 
-def resolve_battle_rounds(attacker, defender, rng, pick_a, pick_d) -> dict:
+def resolve_battle_rounds(attacker, defender, rng, pick_a, pick_d,
+                          frenzy_from=data.FRENZY_START) -> dict:
     """
-    Drive resolve_round for up to MAX_ROUNDS_COMBAT rounds. pick_a/pick_d are
-    callables (me, foe, rnd, rng) -> stance. Applies Regrowth to survivors and
-    resolves a timeout by higher HP%. Combatants are mutated/consumed.
+    Drive resolve_round to the death (sudden death — autobattles to completion).
+    pick_a/pick_d are callables (me, foe, rnd, rng) -> stance. The Collapse
+    (frenzy_from, on by default) guarantees a real kill well before the
+    COMBAT_HARD_CAP safety bound. Applies Regrowth to survivors. The higher-HP%
+    tiebreak only fires in the (unreachable-in-practice) case that both survive
+    the hard cap. Combatants are mutated/consumed.
     """
     strikes = []
     outcome = 'timeout'
-    for rnd in range(1, data.MAX_ROUNDS_COMBAT + 1):
+    for rnd in range(1, data.COMBAT_HARD_CAP + 1):
         a_stance = pick_a(attacker, defender, rnd, rng)
         d_stance = pick_d(defender, attacker, rnd, rng)
-        strikes.extend(resolve_round(attacker, defender, a_stance, d_stance, rnd, rng))
+        strikes.extend(resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
+                                     frenzy_from=frenzy_from))
         if defender.hp <= 0 and attacker.hp <= 0:
             outcome = 'attacker' if attacker.hp >= defender.hp else 'defender'
             break

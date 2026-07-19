@@ -237,16 +237,21 @@ FLYBY_DODGE        = 0.25  # chance to dodge the punish when you LOSE an exchang
 VENOM_BARB_BONUS   = 3   # first winning exchange +this
 FIRST_WIN_ROT_BREATH_MULT = 2  # rot_breath: first winning exchange * this
 
-MAX_ROUNDS_COMBAT = 6  # round cap; higher HP% wins a timeout
+MAX_ROUNDS_COMBAT = 6  # reference span the collapse ramp is tuned around (see FRENZY_*)
+COMBAT_HARD_CAP   = 24  # safety terminator: no fight can exceed this many rounds. The
+                        # collapse (below) forces a death by ~round 6, so this is
+                        # unreachable insurance against a mis-tuned ramp — NOT a
+                        # stalemate cap. Every fight resolves to a kill well before it.
 
 # The Collapse (specs/2026-07-19-undercity-combat-collapse-design.md): past
 # FRENZY_START the unstable cavern caves in on BOTH fighters — unavoidable,
 # ramping end-of-round damage = max_hp * FRENZY_PCT * tier (tier = rnd -
-# FRENZY_START + 1). Cumulative over rounds 4-6 exceeds 100% of max HP, so a
-# slayable fight ALWAYS ends in a real kill (no empty timeout), and the fighter
+# FRENZY_START + 1). Cumulative over rounds 4-6 exceeds 100% of max HP, so EVERY
+# fight ends in a real kill (sudden death — no empty timeout), and the fighter
 # who entered the collapse at the higher HP FRACTION (the tank) outlasts the
-# foe. Enabled per-battle by undercity_db for wild/elite/barrier only; boss/lair
-# pass frenzy_from=None so their persistent pools still linger on a timeout.
+# foe. Enabled for ALL fight kinds (wild/elite/barrier/lair/boss) and PvP; a
+# persistent-pool foe (lair/boss) simply lingers at its chipped HP when the
+# player is the one who dies.
 FRENZY_START = 4     # first round the collapse damage applies (of MAX_ROUNDS_COMBAT)
 FRENZY_PCT   = 0.18  # per-tier fraction of max HP taken at end of round
 

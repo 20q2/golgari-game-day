@@ -27,8 +27,9 @@ the **gate closed**, so a tank can effectively *never open a barrier*.
 ## Solution — "The Collapse"
 
 Sudden-death escalation: unstable-cavern environmental damage that ramps once a
-fight drags past a threshold, guaranteeing every slayable-foe fight ends in a
-**real kill** (full rewards) rather than an empty timeout.
+fight drags past a threshold, guaranteeing **every** fight (PvE of any kind, and
+PvP) ends in a **real kill** rather than an empty timeout. See the updated scope
+below — this now covers `lair`/`boss` and PvP, not just slayable foes.
 
 ### Mechanic
 
@@ -72,19 +73,33 @@ Intended flip side: a glass build that **fails to close a kill by round 4** now
 risks dying to the collapse instead of walking away neutral. Glass should kill
 fast or pay for it — this is the tension that makes the tank archetype good.
 
-## Scope & invariants
+## Scope & invariants (updated 2026-07-19 — sudden death everywhere)
 
-- **Frenzy applies only to slayable foes:** `wild`, `elite`, and **`barrier`**.
-  Including `barrier` is deliberate — it lets a tank actually win and open a
-  gate instead of timing out with it still sealed.
-- **Boss & lair are exempt** (`frenzy_from = None`). Their persistent HP pools
-  **must linger** on a neutral timeout (the load-bearing invariant in
-  [undercity-combat.md](undercity-combat.md) §6); frenzy would wrongly force the
-  player's death there. Their multi-encounter chip loop is by design, not the
-  stalemate being removed.
-- **PvP is untouched.** PvP resolves one-shot via `engine.resolve_battle` /
-  `resolve_battle_rounds`, which never enable frenzy (`frenzy_from` defaults to
-  `None`).
+The original cut of the Collapse enabled frenzy only for `wild`/`elite`/`barrier`
+and left `boss`/`lair` (and PvP) on the old round-cap timeout. That reintroduced
+the exact stalemate this feature exists to kill: a tank that outlasts a sigil
+guardian or Savra still "timed out" and walked away with nothing. **Frenzy now
+applies to every fight.**
+
+- **Frenzy applies to ALL fight kinds:** `wild`, `elite`, `barrier`, `lair`, and
+  `boss` — `_frenzy_from` returns `FRENZY_START` unconditionally. No PvE fight
+  can end in a neutral no-winner timeout.
+- **PvP autobattles to completion too.** `resolve_battle_rounds` (the one-shot
+  auto-resolver behind PvP and the balance-proxy tests) now passes
+  `frenzy_from=FRENZY_START` by default and loops until a death.
+- **Persistent pools linger on a LOSS, not a timeout.** A `lair`/`boss` HP pool
+  is season-shared; under sudden death a non-kill only happens because the
+  *player* died, and `_finish_lair`/`_finish_boss` already linger the pool at its
+  chipped HP on a `defender` outcome. The multi-encounter chip loop survives
+  intact — you just can't "draw" your way out of it anymore. Landing the kill
+  (by burst or by outlasting) claims the slay/sigil and reforms the pool.
+- **No round cap; a hard safety bound instead.** `MAX_ROUNDS_COMBAT` is no longer
+  a terminator — it is only the span the ramp is tuned around. Fights run until a
+  death (`_combat_round` per-exchange; `resolve_battle_rounds` in a loop), bounded
+  by `COMBAT_HARD_CAP = 24` purely as insurance against a mis-tuned ramp. With the
+  default `FRENZY_PCT` the collapse forces a death by ~round 6, so the cap is
+  unreachable in practice; if it is ever hit, the fight resolves as a non-kill
+  timeout (persistent pools linger, no slay awarded).
 - **Damage floor:** frenzy is additive end-of-round damage; it does not touch
   the `_base_hit` floor-at-1 rule for stance hits. No other floor is violated.
 
@@ -130,10 +145,12 @@ Add both to the tuning-knobs list in [undercity-combat.md](undercity-combat.md)
 
 - `resolve_round` with `frenzy_from` set applies the ramped damage on/after the
   threshold and nothing before it.
-- A frenzy-enabled battle between two survivors **always** ends in a kill by the
-  round cap (no timeout outcome).
+- A frenzy-enabled battle between two survivors **always** ends in a kill (no
+  timeout outcome) — including `lair`/`boss` and the PvP auto-resolver.
 - The **higher-HP-fraction** combatant wins the collapse.
-- Boss / lair battles never receive `frenzy_from` and can still time out (linger).
+- A `lair`/`boss` pool lingers at its chipped HP on a **player loss** (`defender`
+  outcome), and reforms on a kill — the persistent chip loop is preserved without
+  a draw path.
 - Keep `test_balance_good_play_beats_fodder` green.
 
 ## Tunables summary
@@ -141,4 +158,5 @@ Add both to the tuning-knobs list in [undercity-combat.md](undercity-combat.md)
 | Knob | Default | Effect |
 |---|---|---|
 | `FRENZY_START` | 4 | First round the collapse damage applies. Lower = fights end sooner. |
-| `FRENZY_PCT` | 0.18 | Per-tier fraction of max HP. Cumulative over rounds 4–6 must stay ≥ 1.0 to guarantee resolution. |
+| `FRENZY_PCT` | 0.18 | Per-tier fraction of max HP. Cumulative from `FRENZY_START` must stay ≥ 1.0 within `COMBAT_HARD_CAP` to guarantee resolution. |
+| `COMBAT_HARD_CAP` | 24 | Safety terminator — max rounds any fight can run. Unreachable with the default ramp; raise `FRENZY_START`/lower `FRENZY_PCT` and it becomes the fallback (non-kill timeout, pools linger). |

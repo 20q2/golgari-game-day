@@ -44,15 +44,17 @@ combatants onto `doc['battle']`, picks the monster's round-1 stance from its
 personality, and telegraphs it. The client submits `combat-round` (a stance ±
 one combat consumable); `_combat_round` resolves one exchange, re-telegraphs,
 and on end calls `_finish_battle` → the per-kind reward finisher. A pending
-`doc['battle']` blocks turn actions (`_BATTLE_ALLOWED_ACTIONS`). A non-kill at
-the round cap is a **neutral timeout** — load-bearing for persistent-pool foes
-(lair/boss linger; they are NOT slain on a timeout). For **slayable** foes
-(`wild`/`elite`/`barrier`) the timeout is instead pre-empted by **The Collapse**:
-from `FRENZY_START` onward both fighters take ramping `max_hp * FRENZY_PCT *
-tier` end-of-round damage, so the fight always resolves to a real kill won by
-the higher-HP-fraction side (see
+`doc['battle']` blocks turn actions (`_BATTLE_ALLOWED_ACTIONS`). **Sudden death:
+every fight runs until a death** — there is no round cap and no neutral timeout.
+**The Collapse** guarantees termination for EVERY kind (`wild`/`elite`/`barrier`/
+`lair`/`boss`, and the PvP auto-resolver): from `FRENZY_START` onward both
+fighters take ramping `max_hp * FRENZY_PCT * tier` end-of-round damage, so the
+fight always resolves to a real kill won by the higher-HP-fraction side (the
+tank), by ~round 6 (see
 [2026-07-19-undercity-combat-collapse-design.md](2026-07-19-undercity-combat-collapse-design.md)).
-Boss/lair pass `frenzy_from=None` and still linger.
+A persistent-pool foe (lair/boss) lingers at its chipped HP when the **player**
+dies, and reforms on a kill. `COMBAT_HARD_CAP` (24) is an unreachable safety
+bound, not a stalemate cap.
 
 **Monster AI:** `STANCE_PERSONALITIES` weight triples (`brute`/`turtle`/
 `trickster`/`balanced`) → `engine.pick_stance`; `engine.telegraph(actual, bluff)`
@@ -145,12 +147,16 @@ Combat consumables map to three general one-round modifiers on `resolve_round`:
 
 - **No effect may reduce a combatant below the documented floors** (player/boss
   pools floor per existing rules; `_base_hit` floors damage at 1).
-- **Timeout is neutral** — never award a slay/sigil/loot on a round-cap timeout;
-  persistent-pool foes must linger.
+- **Sudden death — no draws.** Every fight resolves to a kill (the Collapse
+  guarantees it). A persistent-pool foe (lair/boss) lingers at its chipped HP
+  only when the **player** dies; it is never slain, and never awards a
+  slay/sigil, without an actual killing blow. The `COMBAT_HARD_CAP` timeout is
+  unreachable insurance, not a normal outcome.
 - **Balance numbers are mirrored** in `src/app/undercity/data/*.ts` for display
   (Plan 3) — update both when you tune.
-- **Combat is PvE-only.** PvP uses the one-shot `resolve_battle`; don't route it
-  through `doc['battle']`.
+- **Interactive combat is PvE-only.** PvP uses the one-shot `resolve_battle`
+  (which now autobattles to completion via the Collapse); don't route it through
+  `doc['battle']`.
 - The pytest suite (`cd infrastructure/lambda && python -m pytest tests -q`)
   must stay green (run against the committed `map.json`).
 
@@ -159,7 +165,8 @@ Combat consumables map to three general one-round modifiers on `resolve_round`:
 `STANCE_WIN_MULT`, `STANCE_GUARD_MITIGATE`, `STANCE_GUARD_COUNTER`,
 `STANCE_CLASH_MULT`, `STANCE_STALL_MULT`, `ROT_PER_STACK`, `SWARM_CHIP_MULT`,
 `SCAVENGE_RETALIATE`, `DEATHTOUCH_PIERCE`, `FLYBY_DODGE`, `VENOM_BARB_BONUS`,
-`FIRST_WIN_ROT_BREATH_MULT`, `MAX_ROUNDS_COMBAT`, `FRENZY_START`, `FRENZY_PCT`,
+`FIRST_WIN_ROT_BREATH_MULT`, `MAX_ROUNDS_COMBAT`, `COMBAT_HARD_CAP`,
+`FRENZY_START`, `FRENZY_PCT`,
 `STANCE_PERSONALITIES`,
 `NPC_DEFAULT_PERSONALITY`, `NPC_DEFAULT_BLUFF`. Read-rate knobs: `READ_BASE`,
 `READ_MAX`, `READ_SPD_COEFF`, `READ_PASSIVE_BONUS`, and per-gear `readBonus`. The

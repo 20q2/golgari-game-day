@@ -206,12 +206,15 @@ def test_regrowth_heals_survivor_after_battle():
     assert r['attackerHp'] == 100  # 20% max heal tops it back up past the chip
 
 def test_rootwall_upgrades_regrowth():
+    # Fast kill (b dies by round 3, before the Collapse) isolates the heal: A
+    # enters at 60, takes only a couple of chip, and rootwall's 35% regrowth
+    # (35, vs plain regrowth's 20) tops it back to ~93. Plain regrowth would
+    # land near 80 and fail this bound.
     a = fighter(name='A', atk=10, dfn=0, spd=9, hp=60, max_hp=100,
                 passives=frozenset({'regrowth', 'rootwall'}))
-    b = fighter(name='B', atk=1, dfn=50, spd=1, hp=6, max_hp=100)
+    b = fighter(name='B', atk=1, dfn=0, spd=1, hp=25, max_hp=100)
     r = resolve_battle(a, b, FakeRng())
-    # never damaged (def 50 → min 1... actually b atk 1 vs a def 0 = 1/round)
-    # a took ≤6 chip; heal is 35 → capped at 100
+    assert r['outcome'] == 'attacker'
     assert r['attackerHp'] >= 89
 
 
@@ -391,7 +394,7 @@ def _foe(spec):
                      atk=spec['atk'], dfn=spec['def'], spd=spec['spd'])
 
 
-def test_level7_kills_every_lair_boss_within_the_cap():
+def test_level7_kills_every_lair_boss():
     for lair, spec in data.LAIR_BOSSES.items():
         out = resolve_battle(_ref(7), _foe(spec), FakeRng())
         assert out['outcome'] == 'attacker', lair
@@ -416,12 +419,15 @@ def test_level1_loses_to_elites():
         assert out['outcome'] == 'defender', spec['id']
 
 
-def test_level5_beats_every_elite_taking_chip_damage():
+def test_level5_beats_every_elite_and_survives_comfortably():
+    # An even elite fight now runs into the Collapse (round 4+), so the winner
+    # pays real HP for the drawn-out kill — but a tier-5 creature still wins
+    # decisively and walks away above half HP.
     for spec in data.ELITE_NPCS:
         me = _ref(5)
         out = resolve_battle(me, _foe(spec), FakeRng())
         assert out['outcome'] == 'attacker', spec['id']
-        assert out['attackerHp'] >= me.max_hp - 8, spec['id']
+        assert out['attackerHp'] >= me.max_hp // 2, spec['id']
 
 
 def test_level3_beats_every_dungeon_wild():
@@ -733,19 +739,24 @@ def test_runner_aggro_beats_feinter_and_regrowth():
     assert res['attackerHp'] > 0 and res['defenderHp'] == 0
 
 
-def test_runner_timeout_higher_hp_pct_wins():
-    a = fighter(atk=1, dfn=99, hp=40, max_hp=40)   # nobody can hurt anybody
+def test_pure_stall_resolved_by_the_collapse():
+    # atk=1/dfn=99 guards: no stance damage ever lands, so without the Collapse
+    # this would run forever. Frenzy is a fraction of each fighter's OWN max HP,
+    # so the one who entered lower (d, at 25%) crosses zero first — a real kill,
+    # not a timeout.
+    a = fighter(atk=1, dfn=99, hp=40, max_hp=40)
     d = fighter(atk=1, dfn=99, hp=10, max_hp=40)
     res = resolve_battle_rounds(a, d, FakeRng(uniform=1.0),
                                 _always('guard'), _always('guard'))
-    assert res['outcome'] == 'attacker'   # 100% vs 25% HP
+    assert res['outcome'] == 'attacker'
+    assert res['defenderHp'] == 0
 
 
 def test_resolve_battle_backcompat_maps_legacy_stance():
     a = fighter(atk=12, dfn=5, hp=40, max_hp=40, stance='fight')
     d = fighter(atk=6, dfn=5, hp=18, max_hp=18, stance='defend')
     res = resolve_battle(a, d, FakeRng(uniform=1.0))
-    assert res['outcome'] in ('attacker', 'defender', 'timeout')
+    assert res['outcome'] in ('attacker', 'defender')   # sudden death: always a kill
     assert 'strikes' in res and 'attackerHp' in res
 
 
