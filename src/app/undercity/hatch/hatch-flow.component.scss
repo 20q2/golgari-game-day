@@ -332,3 +332,77 @@
     font-style: italic;
   }
 }
+
+.renown-bal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--accent-color);
+
+  .renown-spent {
+    color: #c98a8a;
+    font-weight: 600;
+  }
+}
+
+.shop-head {
+  margin: 1.1rem 0 0.4rem;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+
+  .shop-sub {
+    font-size: 0.7rem;
+    opacity: 0.6;
+    margin-left: 0.35rem;
+  }
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: 0.5rem;
+  width: min(560px, 92vw);
+}
+
+.shop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.6rem;
+  background: rgba(20, 20, 24, 0.6);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+
+  &.carted {
+    border-color: var(--accent-color);
+    background: rgba(120, 90, 40, 0.35);
+  }
+  &.owned {
+    opacity: 0.9;
+  }
+  &.worn {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 1px var(--primary-color) inset;
+  }
+
+  .shop-name { font-size: 0.8rem; font-weight: 600; text-align: center; }
+  .shop-desc { font-size: 0.68rem; opacity: 0.75; text-align: center; }
+  .shop-cost { font-size: 0.78rem; font-weight: 700; color: var(--accent-color); }
+  .shop-tag { font-size: 0.7rem; opacity: 0.8; }
+  .shop-item-icon { font-size: 1.4rem; height: 1.4rem; width: 1.4rem; }
+}
+
+.swatch-card .swatch {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}

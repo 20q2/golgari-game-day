@@ -43,6 +43,81 @@
       }
     </button>
     <p class="tap-hint">Tap the egg… ({{ taps() }}/3)</p>
+  } @else if (inShop()) {
+    <h1>The Renown Shop</h1>
+    <p class="choose-hint">Spend banked Renown before you spawn. Hats &amp; colors are yours forever; items last one night.</p>
+    <p class="renown-bal">
+      <mat-icon class="mi">military_tech</mat-icon>
+      {{ remaining() }} Renown
+      @if (cartCost() > 0) { <span class="renown-spent">(−{{ cartCost() }})</span> }
+    </p>
+    @if (error(); as err) {
+      <p class="error-text">{{ err }}</p>
+    }
+
+    <h2 class="shop-head">Hats <span class="shop-sub">permanent</span></h2>
+    <div class="shop-grid">
+      @for (hat of allHats; track hat.id) {
+        <button
+          class="shop-card"
+          [class.owned]="ownsHat(hat.id)"
+          [class.carted]="cartHats().includes(hat.id)"
+          [class.worn]="equipHat() === hat.id"
+          (click)="ownsHat(hat.id) ? wearHat(hat.id) : toggleHat(hat.id)"
+        >
+          <span class="shop-name">{{ hat.name }}</span>
+          @if (ownsHat(hat.id)) {
+            <span class="shop-tag">{{ equipHat() === hat.id ? 'wearing' : 'wear' }}</span>
+          } @else {
+            <span class="shop-cost">{{ hatPrices[hat.rarity] }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    <h2 class="shop-head">Colors <span class="shop-sub">permanent</span></h2>
+    <div class="shop-grid">
+      @for (paint of paints; track paint.id) {
+        <button
+          class="shop-card swatch-card"
+          [class.owned]="ownsPaint(paint.id)"
+          [class.carted]="cartPaints().includes(paint.id)"
+          [class.worn]="equipPaint() === paint.id"
+          (click)="ownsPaint(paint.id) ? wearPaint(paint.id) : togglePaint(paint.id)"
+        >
+          <span class="swatch" [style.background]="'hsl(' + paint.hue + ', 60%, 45%)'"></span>
+          <span class="shop-name">{{ paint.name }}</span>
+          @if (ownsPaint(paint.id)) {
+            <span class="shop-tag">{{ equipPaint() === paint.id ? 'wearing' : 'wear' }}</span>
+          } @else {
+            <span class="shop-cost">{{ paintPrice }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    <h2 class="shop-head">Starter items <span class="shop-sub">one night</span></h2>
+    <div class="shop-grid">
+      @for (item of shopItems; track item.id) {
+        <button
+          class="shop-card"
+          [class.carted]="cartItems().includes(item.id)"
+          (click)="toggleItem(item)"
+        >
+          <mat-icon class="mi shop-item-icon">{{ item.icon }}</mat-icon>
+          <span class="shop-name">{{ item.name }}</span>
+          <span class="shop-desc">{{ item.desc }}</span>
+          <span class="shop-cost">{{ item.cost }}</span>
+        </button>
+      }
+    </div>
+
+    <button class="hatch-btn" (click)="hatch()" [disabled]="joining()">
+      Spawn into the world →
+    </button>
+    <button class="biome-back" (click)="inShop.set(false)" [disabled]="joining()">
+      ← back to naming
+    </button>
   } @else if (chosenStarter() && chosenBiome()) {
     @if (chosenStarter(); as chosen) {
       <h1>Name your {{ chosen.name }}</h1>
@@ -66,8 +141,8 @@
           <mat-icon>casino</mat-icon>
         </button>
       </div>
-      <button class="hatch-btn" (click)="hatch()" [disabled]="joining() || !nameValid()">
-        Hatch!
+      <button class="hatch-btn" (click)="enterShop()" [disabled]="joining() || !nameValid()">
+        Next: Renown Shop →
       </button>
       <button class="biome-back" (click)="chosenBiome.set(null)" [disabled]="joining()">
         ← pick a different biome
