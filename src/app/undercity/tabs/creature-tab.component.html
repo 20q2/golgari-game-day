@@ -257,6 +257,13 @@
             <!-- Grimoire -->
             <section class="card">
               <h3>Grimoire <span class="muted">({{ (you.grimoires ?? []).length }} collected)</span></h3>
+              @if (equippedBook(); as book) {
+                <div class="open-book-head">
+                  <mat-icon class="mi">menu_book</mat-icon>
+                  <span class="open-book-name">{{ book.name }}</span>
+                  <span class="open-badge">◆ OPEN</span>
+                </div>
+              }
               <div class="spell-rows">
                 @if (innateSpell(); as sp) {
                   <div class="spell-row innate">
@@ -281,6 +288,8 @@
                       </span>
                     </div>
                   }
+                } @else if ((you.grimoires ?? []).length) {
+                  <p class="muted bag-empty">Tap a book below to open it.</p>
                 } @else {
                   <p class="muted bag-empty">No grimoire open. Books wait in the bazaars.</p>
                 }
@@ -288,22 +297,30 @@
               @if ((you.grimoires ?? []).length) {
                 <div class="book-list">
                   @for (g of ownedBooks(); track g.id) {
+                    @let isOpen = you.equippedGrimoire === g.id;
+                    @let locked = grimoireSwapLeft() > 0 && !isOpen;
                     <button
                       class="uc-btn book-chip"
-                      [class.selected]="you.equippedGrimoire === g.id"
-                      [disabled]="
-                        busy() ||
-                        (grimoireSwapLeft() > 0 && you.equippedGrimoire !== g.id)
-                      "
+                      [class.selected]="isOpen"
+                      [class.locked]="locked"
+                      [disabled]="busy() || locked"
                       (click)="equipBook(g.id)"
                     >
-                      <mat-icon class="mi">menu_book</mat-icon> {{ g.name }}
+                      <span class="chip-title"><mat-icon class="mi">menu_book</mat-icon> {{ g.name }}</span>
+                      @if (isOpen) {
+                        <span class="chip-badge open">✓ OPEN</span>
+                      } @else if (locked) {
+                        <span class="chip-badge lock">🔒 {{ grimoireSwapLeft() }}m</span>
+                      } @else {
+                        <span class="chip-badge hint">Tap to open</span>
+                      }
                     </button>
                   }
                 </div>
                 @if (grimoireSwapLeft() > 0) {
                   <p class="muted bag-empty">
-                    Grimoire swap on cooldown — {{ grimoireSwapLeft() }} min until you can open a different book.
+                    Swapping books starts a 30-min cooldown — you carry one loadout at a time.
+                    {{ grimoireSwapLeft() }} min until you can open a different book.
                   </p>
                 }
               }

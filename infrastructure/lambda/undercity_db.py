@@ -180,6 +180,36 @@ def _closed_barriers(table, sid):
     return frozenset(set(data.BARRIER_GUARDIANS) - _open_barriers(table, sid))
 
 
+def _wild_warp_dest(node):
+    """A random legal node to be flung to — never into a POI or past a barrier."""
+    no_go = {'boss', 'barrier', 'lair', 'vault'}
+    options = [n for n, nd in data.MAP_NODES.items()
+               if n != node and nd['type'] not in no_go
+               and nd.get('region') != 'ruin']
+    return _rng.choice(options)
+
+
+def _set_wild_warp_node(table, sid, node):
+    table.put_item(Item={'pk': _season_pk(sid), 'sk': 'WILDWARP', 'node': node})
+
+
+def _wild_warp_node(table, sid):
+    """The one warp mushroom that always wild-warps. Lazily seeded to a random
+    warp and reassigned each time it fires, so no biome owns it forever."""
+    node = (_get(table, _season_pk(sid), 'WILDWARP') or {}).get('node')
+    if node not in data.WARP_NODES:
+        node = _rng.choice(data.WARP_NODES)
+        _set_wild_warp_node(table, sid, node)
+    return node
+
+
+def _rotate_wild_warp(table, sid, current):
+    """Hop the wild designation to a different warp mushroom."""
+    others = [w for w in data.WARP_NODES if w != current]
+    if others:
+        _set_wild_warp_node(table, sid, _rng.choice(others))
+
+
 def _open_barrier(table, sid, barrier_id):
     opened = _open_barriers(table, sid)
     opened.add(barrier_id)
@@ -1488,13 +1518,17 @@ def _resolve_space(table, sid, doc, node, prev):
         return _hazard(table, sid, doc, node)
 
     if ntype == 'warp':
+        # One roaming warp is always wild: no picker, always a random fling.
+        if node == _wild_warp_node(table, sid):
+            dest = _wild_warp_dest(node)
+            doc['position'] = dest
+            _rotate_wild_warp(table, sid, node)   # move the wildness elsewhere
+            return {'type': 'wild_warp',
+                    'text': 'Something went wrong… WILD WARP!!! The spores '
+                            'misfire and hurl you across the Undercity.',
+                    'to': dest}
         if _rng.random() < 0.20:
-            # Never wild-warp someone past a sealed barrier or into a POI.
-            no_go = {'boss', 'barrier', 'lair', 'vault'}
-            options = [n for n, nd in data.MAP_NODES.items()
-                       if n != node and nd['type'] not in no_go
-                       and nd.get('region') != 'ruin']
-            dest = _rng.choice(options)
+            dest = _wild_warp_dest(node)
             doc['position'] = dest
             return {'type': 'wild_warp', 'text': 'The mushroom convulses — a WILD warp!',
                     'to': dest}

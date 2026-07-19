@@ -884,6 +884,47 @@ def test_spore_cloud_teleports_within_pocket(table):
     assert doc['position'].startswith('cavern_')
 
 
+def test_wild_warp_node_always_relocates(table, monkeypatch):
+    warp = data.WARP_NODES[0]
+    sid, doc = _player_at(table, warp)
+    db._set_wild_warp_node(table, sid, warp)
+    # random() >= 0.20 would NOT trigger the ambient 20% — proves the designated
+    # wild warp fires unconditionally, not via the roll.
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)
+    monkeypatch.setattr(db._rng, 'choice', lambda seq: seq[0])
+    out = db._resolve_space(table, sid, doc, warp, warp)
+    assert out['type'] == 'wild_warp'
+    assert 'options' not in out
+    assert doc['position'] != warp
+    dest = data.MAP_NODES[doc['position']]
+    assert dest['type'] not in ('boss', 'barrier', 'lair', 'vault')
+    assert dest.get('region') != 'ruin'
+
+
+def test_wild_warp_rotates_after_firing(table, monkeypatch):
+    warp = data.WARP_NODES[0]
+    sid, doc = _player_at(table, warp)
+    db._set_wild_warp_node(table, sid, warp)
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)
+    monkeypatch.setattr(db._rng, 'choice', lambda seq: seq[0])
+    db._resolve_space(table, sid, doc, warp, warp)
+    # The wildness must have hopped to a different warp mushroom.
+    assert db._wild_warp_node(table, sid) != warp
+    assert db._wild_warp_node(table, sid) in data.WARP_NODES
+
+
+def test_normal_warp_still_shows_picker(table, monkeypatch):
+    wild = data.WARP_NODES[0]
+    other = data.WARP_NODES[1]
+    sid, doc = _player_at(table, other)
+    db._set_wild_warp_node(table, sid, wild)
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)  # miss the ambient 20%
+    out = db._resolve_space(table, sid, doc, other, other)
+    assert out['type'] == 'warp'
+    assert 'options' in out and out['options']
+    assert doc['position'] == other
+
+
 def test_sinkwater_takes_15_pct_spores(table):
     sid, doc = _player_at(table, 'bog_d1', spores=100)
     out = db._hazard(table, sid, doc, 'bog_d1')

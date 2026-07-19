@@ -197,11 +197,15 @@ export class CreatureTabComponent {
   );
 
   async equipBook(id: string): Promise<void> {
-    const already = this.store.you()?.equippedGrimoire === id;
+    // Clicking the already-open book is a no-op — never stow to no-book (that
+    // silently strips every spell and confuses players). Opening a *different*
+    // book is what the swap cooldown gates.
+    if (this.store.you()?.equippedGrimoire === id) {
+      this.showToast('Already open.');
+      return;
+    }
     await this.run(async () => {
-      const resp = await this.store.action('equip-grimoire', {
-        grimoireId: already ? null : id,
-      });
+      const resp = await this.store.action('equip-grimoire', { grimoireId: id });
       this.showToast(resp.text ?? 'Done.');
     });
   }

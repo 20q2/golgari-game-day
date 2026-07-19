@@ -1045,13 +1045,72 @@
   }
 }
 
+.open-book-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.2rem 0 0.5rem;
+
+  .open-book-name {
+    font-weight: 600;
+  }
+
+  .open-badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--accent-color, #9ac26e);
+  }
+}
+
 .book-list {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.4rem;
   margin-top: 0.6rem;
 
-  .book-chip.selected {
-    outline: 2px solid var(--accent-color, #9ac26e);
+  .book-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    text-align: left;
+
+    .chip-title {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      min-width: 0;
+    }
+
+    .chip-badge {
+      flex-shrink: 0;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+
+      &.open {
+        color: #10221a;
+      }
+      &.hint {
+        font-weight: 500;
+        opacity: 0.6;
+      }
+      &.lock {
+        opacity: 0.85;
+      }
+    }
+
+    &.selected {
+      background: var(--accent-color, #9ac26e);
+      border-color: var(--accent-color, #9ac26e);
+      color: #10221a;
+    }
+
+    &.locked {
+      opacity: 0.55;
+    }
   }
 }
