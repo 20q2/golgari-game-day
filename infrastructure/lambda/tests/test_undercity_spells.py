@@ -531,3 +531,16 @@ def test_mystery_item_can_upgrade_to_grimoire(table, monkeypatch):
     monkeypatch.setattr(db, '_rng', FixedRng(random_values=[0.99]))
     out = db._mystery(table, sid, doc)
     assert 'grimoire' not in out and out.get('item')
+
+
+# ── Guardian targeting (specs/2026-07-19-undercity-guardian-targeting-design.md) ─
+
+def test_guardian_debuff_applies_flat_penalty():
+    npc = {'atk': 11, 'def': 6, 'spd': 3}
+    db._apply_guardian_debuffs(npc, [{'kind': 'bone_chill'}, {'kind': 'vines'}])
+    assert npc['atk'] == 11 - 2      # bone_chill
+    assert npc['spd'] == 3 - 2       # vines -> speed bite
+    # Penalties floor at 1, unknown kinds are ignored.
+    npc2 = {'atk': 2, 'def': 6, 'spd': 3}
+    db._apply_guardian_debuffs(npc2, [{'kind': 'weaken_hex'}, {'kind': 'nonsense'}])
+    assert npc2['atk'] == 1          # max(1, 2 - 3)

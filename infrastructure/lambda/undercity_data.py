@@ -574,6 +574,17 @@ LAIR_BOSSES = {
                     'personality': 'turtle', 'bluff': 0.20, **_LAIR_REWARD},
 }
 
+# Field-curse buffs, when they land on a rooted guardian/boss, resolve to a
+# flat NPC stat penalty applied for its NEXT battle (floored at 1). Roll-halving
+# (vines/bog_snare) is meaningless for an NPC, so it becomes a speed bite.
+# Keys are field_curse buffKinds; mirror any new field curse here.
+GUARDIAN_DEBUFF = {
+    'bone_chill': {'atk': -2},
+    'weaken_hex': {'atk': -3},
+    'vines':      {'spd': -2},
+}
+
+
 # The treasure vault: first visit per player pays out, later visits are set
 # dressing.
 VAULT_REWARD = {'spores': 80, 'xp': 20}

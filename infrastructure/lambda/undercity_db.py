@@ -2320,6 +2320,18 @@ def _apply_buff(doc, kind, until=None):
     doc['buffs'].append(entry)
 
 
+def _apply_guardian_debuffs(npc, buffs):
+    """Translate persisted field-curse buffs into flat NPC stat penalties for
+    this one battle (each stat floored at 1). Guardians are rooted, so a
+    roll-halving curse becomes a speed penalty (see data.GUARDIAN_DEBUFF)."""
+    for b in buffs or []:
+        delta = data.GUARDIAN_DEBUFF.get(b.get('kind'))
+        if not delta:
+            continue
+        for stat, d in delta.items():
+            npc[stat] = max(1, npc.get(stat, 0) + d)
+
+
 def _push_away_event(target, entry):
     events = target.setdefault('awayEvents', [])
     events.append(entry)
