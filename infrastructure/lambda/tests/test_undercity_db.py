@@ -1757,3 +1757,73 @@ def test_archive_banks_each_players_renown(table):
     perm = db._get_perm(table, 'user-alex')
     # Seed (50) + this night's earned renown (10).
     assert perm['renown'] == data.SHOP_START_RENOWN + 10
+
+
+def _fund(table, user, renown):
+    """Give a not-yet-hatched player a fatter Renown wallet for a test."""
+    perm = db._get_perm(table, user)
+    perm['renown'] = renown
+    table.put_item(Item=perm)
+
+
+def test_join_buys_and_equips_permanent_cosmetics(table):
+    _fund(table, 'user-alex', 200)  # afford a common hat (50) + a color (40)
+    status, resp = act(table, 'join', starter='pest', home='city',
+                       buyHats=['party_hat'], buyPaints=['crimson'],
+                       equipHat='party_hat', equipPaint='crimson')
+    assert status == 200, resp
+    you = resp['you']
+    assert you['hat'] == 'party_hat'
+    assert you['paint']['body'] == 0 and you['paint']['stripes'] == 0  # crimson hue
+    perm = db._get_perm(table, 'user-alex')
+    assert 'party_hat' in perm['hats'] and 'crimson' in perm['paints']
+    assert perm['renown'] == 200 - data.HAT_PRICES['common'] - data.PAINT_PRICE
+
+
+def test_join_rejects_unaffordable_cart_without_charging(table):
+    # Seed 50 can't cover a common hat (50) AND a paint (40) = 90.
+    status, resp = act(table, 'join', starter='pest', home='city',
+                       buyHats=['party_hat'], buyPaints=['crimson'])
+    assert status == 409
+    assert 'Renown' in resp['error']
+    # No player doc, no perm mutation: a retry must still see the full seed.
+    perm = db._get_perm(table, 'user-alex')
+    assert perm['renown'] == data.SHOP_START_RENOWN
+    assert perm['hats'] == [] and 'crimson' not in perm['paints']
+
+
+def test_join_grants_one_night_starter_items(table):
+    _fund(table, 'user-alex', 100)  # kit is 20 + 25 + 15 = 60, over the 50 seed
+    status, resp = act(table, 'join', starter='pest', home='city',
+                       buyItems=['healing_moss', 'rusted_fang', 'spore_pouch'])
+    assert status == 200, resp
+    you = resp['you']
+    assert 'healing_moss' in you['bag']
+    assert you['gear']['fang'] == 'rusted_fang'
+    assert you['spores'] == 15 + 15  # City Rat perk + spore pouch
+    perm = db._get_perm(table, 'user-alex')
+    assert perm['renown'] == 100 - 20 - 25 - 15
+
+
+def test_join_rejects_equipping_unowned_cosmetic(table):
+    status, resp = act(table, 'join', starter='pest', home='city',
+                       equipHat='crown')  # never bought
+    assert status == 409
+    assert 'own' in resp['error']
+
+
+def test_join_with_no_purchases_is_unchanged(table):
+    status, resp = act(table, 'join', starter='pest', home='city')
+    assert status == 200
+    assert resp['you']['hat'] is None
+    assert db._get_perm(table, 'user-alex')['renown'] == data.SHOP_START_RENOWN
+
+
+def test_rejoin_does_not_double_charge(table):
+    act(table, 'join', starter='pest', home='city', buyHats=['party_hat'])
+    before = db._get_perm(table, 'user-alex')['renown']
+    # Idempotent re-join with a fresh cart must not spend again.
+    status, resp = act(table, 'join', starter='pest', home='city', buyHats=['top_hat'])
+    assert status == 200
+    assert db._get_perm(table, 'user-alex')['renown'] == before
+    assert 'top_hat' not in db._get_perm(table, 'user-alex')['hats']

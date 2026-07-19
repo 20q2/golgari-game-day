@@ -1153,6 +1153,72 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
     return doc
 
 
+def _apply_shop_purchases(perm, doc, payload):
+    """Spend banked Renown at the pre-spawn shop, then equip chosen cosmetics.
+    Validates the FULL cart before mutating anything, so a bad request leaves
+    `perm` and `doc` untouched and costs the player nothing. Mutates both in
+    place on success; returns an (status, body) error tuple on failure, else None."""
+    buy_hats = list(dict.fromkeys(payload.get('buyHats') or []))
+    buy_paints = list(dict.fromkeys(payload.get('buyPaints') or []))
+    buy_items = list(payload.get('buyItems') or [])
+    equip_hat = payload.get('equipHat') or None
+    equip_paint = payload.get('equipPaint') or None
+
+    total = 0
+    for hid in buy_hats:
+        h = data.HAT_MAP.get(hid)
+        if not h:
+            return _err(f'Unknown hat: {hid}')
+        if hid in perm['hats']:
+            return _err('You already own that hat.')
+        total += data.HAT_PRICES[h['rarity']]
+    for pid in buy_paints:
+        if pid not in data.PAINT_MAP:
+            return _err(f'Unknown color: {pid}')
+        if pid in perm['paints']:
+            return _err('You already own that color.')
+        total += data.PAINT_PRICE
+    grants = []
+    for iid in buy_items:
+        it = data.RENOWN_SHOP_ITEMS_MAP.get(iid)
+        if not it:
+            return _err(f'Unknown item: {iid}')
+        total += it['cost']
+        grants.append(it)
+
+    if total > perm.get('renown', 0):
+        return _err('Not enough Renown for that.', 409)
+
+    n_bag = sum(1 for it in grants if it['kind'] == 'consumable')
+    if len(doc.get('bag') or []) + n_bag > data.BAG_SIZE:
+        return _err('Your bag can’t hold that many starter items.', 409)
+
+    owned_hats = set(perm['hats']) | set(buy_hats)
+    owned_paints = set(perm['paints']) | set(buy_paints)
+    if equip_hat and equip_hat not in owned_hats:
+        return _err('You do not own that hat.', 409)
+    if equip_paint and equip_paint not in owned_paints:
+        return _err('You do not own that color.', 409)
+
+    # ── All validated — commit. ──────────────────────────────────────────────
+    perm['renown'] = perm.get('renown', 0) - total
+    perm['hats'] = perm['hats'] + buy_hats
+    perm['paints'] = perm['paints'] + buy_paints
+    for it in grants:
+        if it['kind'] == 'consumable':
+            doc['bag'].append(it['id'])
+        elif it['kind'] == 'gear':
+            doc['gear'][data.GEAR[it['id']]['slot']] = it['id']
+        elif it['kind'] == 'spores':
+            doc['spores'] = doc.get('spores', 0) + it['amount']
+    if equip_hat:
+        doc['hat'] = equip_hat
+    if equip_paint:
+        hue = data.PAINT_MAP[equip_paint]['hue']
+        doc['paint'] = {'body': hue, 'belly': doc['paint'].get('belly', 50), 'stripes': hue}
+    return None
+
+
 def _join(table, sid, user_id, username, payload):
     existing = _get_player(table, sid, user_id)
     if existing:
@@ -1169,7 +1235,6 @@ def _join(table, sid, user_id, username, payload):
     seals_before = perm.get('seals', 0)
     perm['seals'] = seals_before + 1
     perm['nights'] = perm.get('nights', 0) + 1
-    table.put_item(Item=perm)
 
     s = data.STARTERS[starter]
     doc = _new_player_doc(
@@ -1177,6 +1242,13 @@ def _join(table, sid, user_id, username, payload):
         seals_before=seals_before, egg_hue=payload.get('eggHue'),
         creature_name=creature_name,
     )
+    # Spend banked Renown at the pre-spawn shop before we write anything: on any
+    # validation failure this returns an error and no doc/perm is persisted.
+    err = _apply_shop_purchases(perm, doc, payload)
+    if err:
+        return err
+    table.put_item(Item=perm)
+
     # Deliver any board-game rewards banked while this player hadn't hatched yet
     # (mutates doc's rolls/bag, deletes the bank record, posts an event).
     apply_banked_rewards(table, sid, user_id, doc)
