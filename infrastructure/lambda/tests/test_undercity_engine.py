@@ -96,6 +96,23 @@ def test_dead_end_paths_die_out():
     assert legal_destinations(data.MAP_NODES, 'isl_warp', 4) == set()
 
 
+def test_can_circle_back_to_start_on_a_loop():
+    # A ring of six nodes: rolling exactly 6 walks all the way around and lands
+    # back on the space you started from. The no-backtrack rule still forbids a
+    # trivial there-and-back, but a genuine loop is a legal exact-count landing.
+    ring = {
+        'a': {'neighbors': ['b', 'f']},
+        'b': {'neighbors': ['a', 'c']},
+        'c': {'neighbors': ['b', 'd']},
+        'd': {'neighbors': ['c', 'e']},
+        'e': {'neighbors': ['d', 'f']},
+        'f': {'neighbors': ['e', 'a']},
+    }
+    assert 'a' in legal_destinations(ring, 'a', 6)      # all the way round → home
+    assert legal_destinations(ring, 'a', 3) == {'d'}    # half way is the far node
+    assert 'a' not in legal_destinations(ring, 'a', 2)  # no trivial reversal
+
+
 # ── Barriers (v3) ────────────────────────────────────────────────────────────
 
 def test_closed_barrier_is_a_valid_final_stop():
@@ -737,3 +754,59 @@ def test_resolve_battle_flee_stance_routes_to_flee_attempt():
     d = fighter(atk=6, dfn=5, hp=18, max_hp=18, spd=9, stance='flee')
     res = resolve_battle(a, d, FakeRng(randoms=[0.10], uniform=1.0))
     assert res['outcome'] == 'fled'
+
+
+# ── The Collapse (specs/2026-07-19-undercity-combat-collapse-design.md) ───────
+
+def test_frenzy_kicks_in_at_threshold():
+    # Guard-vs-guard is a stall (no stance damage), isolating the collapse.
+    a = fighter(hp=30, max_hp=30)
+    d = fighter(hp=30, max_hp=30)
+    entries = resolve_round(a, d, 'guard', 'guard', data.FRENZY_START,
+                            FakeRng(uniform=1.0), frenzy_from=data.FRENZY_START)
+    tier1 = round(30 * data.FRENZY_PCT * 1)
+    assert a.hp == 30 - tier1 and d.hp == 30 - tier1
+    assert sum(1 for e in entries if e.get('frenzy')) == 2
+
+
+def test_no_frenzy_before_threshold():
+    a = fighter(hp=30, max_hp=30)
+    d = fighter(hp=30, max_hp=30)
+    entries = resolve_round(a, d, 'guard', 'guard', data.FRENZY_START - 1,
+                            FakeRng(uniform=1.0), frenzy_from=data.FRENZY_START)
+    assert a.hp == 30 and d.hp == 30
+    assert not any(e.get('frenzy') for e in entries)
+
+
+def test_frenzy_disabled_when_no_frenzy_from():
+    # boss/lair path: default frenzy_from=None means the collapse never fires.
+    a = fighter(hp=30, max_hp=30)
+    d = fighter(hp=30, max_hp=30)
+    resolve_round(a, d, 'guard', 'guard', data.FRENZY_START, FakeRng(uniform=1.0))
+    assert a.hp == 30 and d.hp == 30
+
+
+def test_frenzy_guarantees_a_kill_by_the_cap():
+    # Two turtles that only ever guard would stall forever without the collapse.
+    a = fighter(hp=30, max_hp=30)
+    d = fighter(hp=30, max_hp=30)
+    rng = FakeRng(uniform=1.0)
+    for rnd in range(data.FRENZY_START, data.MAX_ROUNDS_COMBAT + 1):
+        resolve_round(a, d, 'guard', 'guard', rnd, rng, frenzy_from=data.FRENZY_START)
+    assert a.hp <= 0 or d.hp <= 0
+
+
+def test_the_collapse_lets_the_healthier_fighter_win():
+    # Same max HP, but the tank enters the collapse at full while the foe is
+    # already chipped — the collapse drops the foe first.
+    a = fighter(hp=30, max_hp=30)   # tank: untouched
+    d = fighter(hp=15, max_hp=30)   # foe: half HP
+    rng = FakeRng(uniform=1.0)
+    dead_round = None
+    for rnd in range(data.FRENZY_START, data.MAX_ROUNDS_COMBAT + 1):
+        resolve_round(a, d, 'guard', 'guard', rnd, rng, frenzy_from=data.FRENZY_START)
+        if d.hp <= 0:
+            dead_round = rnd
+            break
+    assert dead_round is not None
+    assert a.hp > 0   # the tank outlasts the foe

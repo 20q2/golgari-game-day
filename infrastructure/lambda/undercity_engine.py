@@ -141,7 +141,8 @@ def _scavenge(loser, winner, loser_side, rnd, entries):
 
 
 def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
-                  force_winner=None, double_win_for=None, negate_loss_for=None) -> list:
+                  force_winner=None, double_win_for=None, negate_loss_for=None,
+                  frenzy_from=None) -> list:
     """
     Resolve ONE round given both stances. Mutates both combatants. Returns a
     list of log entries. Damage magnitude comes from _base_hit; the triangle
@@ -291,6 +292,21 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             t.rot_stacks += 1
             entries.append({'round': rnd, 'by': side, 'rotApplied': 1})
 
+    # The Collapse (spec 2026-07-19): past frenzy_from the unstable cavern caves
+    # in on both fighters — unavoidable, ramping end-of-round damage that forces
+    # a slayable fight to a real kill by the round cap. Applied AFTER rot so a
+    # combatant the rot just killed isn't double-hit. drain_life does NOT heal
+    # off it (environmental, not a strike). Enabled per-battle by the db layer.
+    if frenzy_from is not None and rnd >= frenzy_from:
+        tier = rnd - frenzy_from + 1
+        for side, c in (('attacker', attacker), ('defender', defender)):
+            if c.hp > 0:
+                dmg = round(c.max_hp * data.FRENZY_PCT * tier)
+                if dmg > 0:
+                    c.hp -= dmg
+                    entries.append({'round': rnd, 'by': side, 'dmg': dmg,
+                                    'frenzy': True})
+
     return entries
 
 
@@ -405,7 +421,10 @@ def legal_destinations(nodes: dict, start: str, steps: int,
             if nb == prev:
                 continue
             stack.append((nb, node, remaining - 1))
-    results.discard(start)
+    # Note: we do NOT discard `start`. The no-backtrack rule above already
+    # forbids a trivial there-and-back, so any walk that returns to `start`
+    # with the roll fully spent is a genuine loop (girth >= 3) — a legal
+    # exact-count landing. Circling a loop back onto your own space is allowed.
     return results
 
 
