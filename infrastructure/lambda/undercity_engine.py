@@ -112,8 +112,15 @@ _STANCE_STAT = {'aggress': 'atk', 'guard': 'dfn', 'feint': 'spd'}
 
 
 def _swing_base(striker: 'Combatant', stance: str) -> float:
-    sig = getattr(striker, _STANCE_STAT.get(stance, 'atk'))
-    return striker.atk + data.STANCE_STAT_WEIGHT * sig
+    if stance == 'aggress':
+        # Aggress double-dips on ATK (str is the aggressor's whole identity):
+        # swing = atk + STANCE_STAT_WEIGHT × atk.
+        return striker.atk * (1 + data.STANCE_STAT_WEIGHT)
+    # Guard/Feint lean on their OWN signature stat (DEF / SPD) and take only a
+    # partial ATK base, so a pure-ATK build can't also swing hard while guarding
+    # or feinting, and a dedicated DEF/SPD build's stance hits for real.
+    sig = getattr(striker, _STANCE_STAT[stance])
+    return data.STANCE_OFFHAND_ATK_WEIGHT * striker.atk + data.STANCE_SIG_WEIGHT * sig
 
 
 def _base_hit(striker: Combatant, target: Combatant, rng, pierce: int = 0,

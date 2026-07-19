@@ -327,7 +327,7 @@ def test_mystery_roll7_biome_buff():
 def test_npc_fixed_stats():
     npc = pick_npc(FakeRng())              # FakeRng.choice -> first pool entry
     assert npc == {'id': 'drudge_beetle', 'name': 'Drudge Beetle',
-                   'hp': 16, 'atk': 4, 'def': 1, 'spd': 4,
+                   'hp': 22, 'atk': 6, 'def': 2, 'spd': 5,
                    'bounty': 6, 'xp': 10, 'itemChance': 0.0}
 
 
@@ -407,9 +407,23 @@ def test_guardians_fall_at_their_target_levels():
     assert south['outcome'] == 'attacker'
 
 
-def test_level1_beats_every_normal_wild():
+def test_level1_bare_starter_can_lose_to_basic_wilds():
+    # Basic wilds are a real threat to an UNGEARED starter (design 2026-07-19):
+    # at least one normal wild beats a bare level-1 in a straight fight, so
+    # farming fodder is no longer free — you need gear or luck.
+    losses = [spec['id'] for spec in data.NPCS
+              if resolve_battle(_ref(1), _foe(spec), FakeRng())['outcome'] != 'attacker']
+    assert losses, 'a bare L1 should lose to at least one basic wild'
+
+
+def test_level1_geared_starter_beats_every_wild():
+    # One gear piece each (rusted_fang +2 ATK, chitin_scrap +2 DEF) tips every
+    # basic wild back in the starter's favour — gear is the intended out.
     for spec in data.NPCS:
-        out = resolve_battle(_ref(1), _foe(spec), FakeRng())
+        me = _ref(1)
+        me.atk += 2
+        me.dfn += 2
+        out = resolve_battle(me, _foe(spec), FakeRng())
         assert out['outcome'] == 'attacker', spec['id']
 
 
@@ -477,8 +491,8 @@ def test_round_guard_beats_aggress_mitigate_and_counter():
     resolve_round(a, d, 'aggress', 'guard', 1, rng)
     # aggressor base 1.5*10=15, -def5=10, mitigated *0.4 => 4 to guard
     assert d.hp == 26
-    # guard counter base 10+0.5*5=12, -def5=7, *0.6 => round(4.2)=4 to aggressor
-    assert a.hp == 26
+    # guard counter base 0.5*10 + 1.0*5 = 10, -def5=5, *0.6 => round(3.0)=3
+    assert a.hp == 27
 
 
 def test_round_clash_both_take_full():
@@ -503,8 +517,9 @@ def test_guard_swing_scales_with_defense():
     lo_hit = _base_hit(lo, tgt, rng, stance='guard')
     hi_hit = _base_hit(hi, tgt, rng, stance='guard')
     assert hi_hit > lo_hit
-    assert lo_hit == round(10 + data.STANCE_STAT_WEIGHT * 2)   # 11
-    assert hi_hit == round(10 + data.STANCE_STAT_WEIGHT * 8)   # 14
+    # Guard swing = OFFHAND_ATK×atk + SIG×def (DEF is the driver now).
+    assert lo_hit == round(data.STANCE_OFFHAND_ATK_WEIGHT * 10 + data.STANCE_SIG_WEIGHT * 2)  # 7
+    assert hi_hit == round(data.STANCE_OFFHAND_ATK_WEIGHT * 10 + data.STANCE_SIG_WEIGHT * 8)  # 13
 
 
 def test_feint_swing_scales_with_speed():
@@ -561,8 +576,8 @@ def test_swarm_adds_chip_each_round():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'swarm'}))
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30)
     resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0))  # whiff
-    # whiff chips each for 1; swarm adds round(7*0.5)=4 onto d (feint base 12, -def5=7)
-    assert d.hp == 25 and a.hp == 29
+    # whiff chips each for 1; swarm adds round(5*0.5)=2 onto d (feint base 0.5*10+1.0*5=10, -def5=5)
+    assert d.hp == 27 and a.hp == 29
 
 
 def test_rot_stacks_tick_end_of_round():
@@ -588,8 +603,8 @@ def test_rot_breath_first_win_doubles():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'rot_breath'}))
     d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
     resolve_round(a, d, 'feint', 'guard', 1, FakeRng(uniform=1.0))  # feint>guard win
-    # feint base 10+0.5*5=12, -def4=8; *WIN1.5*rot_breath2 => 24
-    assert d.hp == 60 - 24
+    # feint base 0.5*10+1.0*5=10, -def4=6; *WIN1.5*rot_breath2 => 18
+    assert d.hp == 60 - 18
 
 
 def test_scavenge_retaliates_on_loss():
@@ -617,8 +632,8 @@ def test_force_winner_overrides_triangle():
     # hit; the caught feinter (d) still pokes a for chip (5 * 0.15 -> 1).
     resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0),
                   force_winner='attacker')
-    # forced winner plays feint: base 10+0.5*5=12, -def4=8, *WIN1.5 => 12
-    assert d.hp == 30 - 12
+    # forced winner plays feint: base 0.5*10+1.0*5=10, -def4=6, *WIN1.5 => 9
+    assert d.hp == 30 - 9
     assert a.hp == 30 - round(5 * data.STANCE_STALL_MULT)  # chip-back still 1
 
 
@@ -681,8 +696,8 @@ def test_spiked_boosts_guard_counter():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)                        # aggressor
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30, riders=frozenset({'spiked'}))
     resolve_round(a, d, 'aggress', 'guard', 1, FakeRng(uniform=1.0))
-    # counter base 12, -def5=7, *0.6*spiked1.5=0.9 => round(6.3)=6
-    assert a.hp == 30 - 6
+    # counter base 0.5*10+1.0*5=10, -def5=5, *0.6*spiked1.5=0.9 => round(4.5)=4
+    assert a.hp == 30 - 4
 
 
 def test_trickster_halves_lost_feint_punish():

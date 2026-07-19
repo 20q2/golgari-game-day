@@ -227,9 +227,16 @@ STANCE_GUARD_MITIGATE = 0.4   # aggressor's hit when Guard wins (G>A)
 STANCE_GUARD_COUNTER  = 0.6   # guard's counter hit when Guard wins (G>A)
 STANCE_CLASH_MULT     = 1.0   # both sides on A-vs-A
 STANCE_STALL_MULT     = 0.15  # both sides on G-vs-G
-STANCE_STAT_WEIGHT    = 0.5   # each stance's swing += this × its signature stat
-                              # (Aggress↔ATK, Guard↔DEF, Feint↔SPD); ATK is the
-                              # universal base so it boosts every attack.
+STANCE_STAT_WEIGHT    = 0.5   # Aggress double-dip: swing = atk × (1 + this). ATK
+                              # is the aggressor's whole identity, so it stacks.
+STANCE_OFFHAND_ATK_WEIGHT = 0.5  # ATK's PARTIAL base on Guard/Feint swings — low
+                              # so a pure-ATK build can't also swing hard while
+                              # guarding or feinting.
+STANCE_SIG_WEIGHT     = 1.0   # Guard↔DEF / Feint↔SPD scaling. Guard swing =
+                              # OFFHAND_ATK×atk + this×def; Feint likewise off SPD.
+                              # Set high (≥ the double-dip) so a DEDICATED tank or
+                              # speedster hits hard in its stance — DEF/SPD builds
+                              # feel good to play, not just ATK.
 # F-vs-F is a whiff: no damage either way.
 
 ROT_PER_STACK   = 2   # damage per rot stack, ticked at end of each round
@@ -458,15 +465,20 @@ VAULT_POT_PER_FAIL = 2
 
 # `personality`/`bluff` drive the stance AI (spec §1). Overworld fodder is
 # readable (no bluff) so good play reliably wins; elites/bosses bluff more.
+# Basic wilds are a REAL threat to a bare level-1 starter (design 2026-07-19):
+# an ungeared creature can lose to the tougher two, and only reliably clears
+# the whole pool once it has a gear piece (rusted_fang / chitin_scrap) or gets
+# lucky with reads. See the level-1 balance tests. The weak-but-fast beetle is
+# the one a bare starter still beats.
 NPCS = [
     {'id': 'drudge_beetle', 'name': 'Drudge Beetle',
-     'hp': 16, 'atk': 4, 'def': 1, 'spd': 4, 'bounty': 6, 'xp': 10,
+     'hp': 22, 'atk': 6, 'def': 2, 'spd': 5, 'bounty': 6, 'xp': 10,
      'itemChance': 0.0, 'personality': 'brute', 'bluff': 0.0},
     {'id': 'sewer_shambler', 'name': 'Sewer Shambler',
-     'hp': 20, 'atk': 5, 'def': 2, 'spd': 3, 'bounty': 9, 'xp': 10,
+     'hp': 30, 'atk': 8, 'def': 4, 'spd': 4, 'bounty': 9, 'xp': 10,
      'itemChance': 0.0, 'personality': 'balanced', 'bluff': 0.0},
     {'id': 'myconid', 'name': 'Myconid',
-     'hp': 24, 'atk': 4, 'def': 2, 'spd': 2, 'bounty': 9, 'xp': 10,
+     'hp': 34, 'atk': 7, 'def': 5, 'spd': 2, 'bounty': 9, 'xp': 10,
      'itemChance': 0.0, 'personality': 'turtle', 'bluff': 0.0},
 ]
 
@@ -753,7 +765,11 @@ SIGILS_REQUIRED = 3
 # the Sovereign reforms at full strength for the next challenger.
 ROT_SOVEREIGN = {
     'id': 'rot_sovereign', 'name': 'Savra, Queen of the Golgari',
-    'hp': 240, 'atk': 14, 'def': 9, 'spd': 6,
+    # Tuned as a tough-but-doable finale for a T3 apex creature with T3 gear
+    # (was 240/9 — a lvl-8 glass cannon melted it in one attempt). It's a
+    # SHARED persistent pool, so a full table brings her down faster; a lone
+    # challenger needs ~2 strong attempts plus chip.
+    'hp': 400, 'atk': 14, 'def': 11, 'spd': 6,
     'personality': 'trickster', 'bluff': 0.30,
     'first': {'spores': 120, 'xp': 60},
     'repeat': {'spores': 40, 'xp': 20},
