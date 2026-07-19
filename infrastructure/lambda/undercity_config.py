@@ -11,7 +11,7 @@ events, NPC pools) stay in undercity_data.py — this file is scalars only.
 # True: rolling never checks or spends banked rolls, and the client may pick
 # the exact die face (the client shows its dev tools when the server reports
 # this flag). Flip to False and `cdk deploy` before game night.
-DEBUG = True
+DEBUG = False
 
 # ── Roll economy ─────────────────────────────────────────────────────────────
 ROLL_CAP = 6
