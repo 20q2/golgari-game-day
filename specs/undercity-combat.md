@@ -22,7 +22,10 @@ three stances (`undercity_data.STANCES = ('aggress', 'guard', 'feint')`):
 result, or `'clash'` (A-v-A), `'stall'` (G-v-G), `'whiff'` (F-v-F) for mirrors.
 
 **Magnitude comes from stats.** A "hit" is
-`max(1, round(atk * uniform(0.85,1.15)) - effective_def)` (`engine._base_hit`),
+`max(1, round((atk + STANCE_STAT_WEIGHT * signature) * uniform(0.85,1.15)) - effective_def)`
+(`engine._base_hit`), where the striker's stance picks the signature stat
+(Aggress↔ATK, Guard↔DEF, Feint↔SPD) and ATK is the universal base added to every
+swing — so ATK boosts all attacks and Aggress double-dips on it. That hit is then
 scaled by the matchup multiplier:
 
 - decisive win → `STANCE_WIN_MULT` (winner's big hit). The loser deals nothing —
@@ -163,7 +166,7 @@ Combat consumables map to three general one-round modifiers on `resolve_round`:
 ## 7. Tuning knobs (all in `undercity_data.py`)
 
 `STANCE_WIN_MULT`, `STANCE_GUARD_MITIGATE`, `STANCE_GUARD_COUNTER`,
-`STANCE_CLASH_MULT`, `STANCE_STALL_MULT`, `ROT_PER_STACK`, `SWARM_CHIP_MULT`,
+`STANCE_CLASH_MULT`, `STANCE_STALL_MULT`, `STANCE_STAT_WEIGHT`, `ROT_PER_STACK`, `SWARM_CHIP_MULT`,
 `SCAVENGE_RETALIATE`, `DEATHTOUCH_PIERCE`, `FLYBY_DODGE`, `VENOM_BARB_BONUS`,
 `FIRST_WIN_ROT_BREATH_MULT`, `MAX_ROUNDS_COMBAT`, `COMBAT_HARD_CAP`,
 `FRENZY_START`, `FRENZY_PCT`,

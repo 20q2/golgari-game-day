@@ -11,9 +11,9 @@ export interface StanceInfo {
 // Stance icons mirror the stat they lean on: Aggress↔ATK (sword), Guard↔DEF
 // (shield), Feint↔SPD (bolt). `uc-`-prefixed tokens are SVG icons ([svgIcon]).
 export const STANCES: StanceInfo[] = [
-  { id: 'aggress', label: 'Aggress', icon: 'uc-sword', blurb: 'Beats Feint. Loses to Guard.' },
-  { id: 'guard', label: 'Guard', icon: 'shield', blurb: 'Beats Aggress. Loses to Feint.' },
-  { id: 'feint', label: 'Feint', icon: 'bolt', blurb: 'Beats Guard. Loses to Aggress.' },
+  { id: 'aggress', label: 'Aggress', icon: 'uc-sword', blurb: 'Beats Feint. Loses to Guard. Damage scales with ATK.' },
+  { id: 'guard', label: 'Guard', icon: 'shield', blurb: 'Beats Aggress. Loses to Feint. Damage scales with DEF.' },
+  { id: 'feint', label: 'Feint', icon: 'bolt', blurb: 'Beats Guard. Loses to Aggress. Damage scales with SPD.' },
 ];
 
 export const STANCE_MAP: Record<Stance, StanceInfo> = Object.fromEntries(
