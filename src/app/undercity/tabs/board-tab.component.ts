@@ -237,6 +237,29 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       .filter((t): t is { p: PublicPlayer; dist: number } => t.dist !== null);
   }
 
+  /** In-range guardians/bosses a field spell can hit, with distance + HP.
+   * Barrier/lair targets carry their node id; Savra carries the 'boss' token. */
+  protected spellGuardianTargets(
+    spell: SpellInfo,
+  ): { target: string; name: string; hp: number; maxHp: number; dist: number }[] {
+    const you = this.store.you();
+    if (!you || !spell.range) return [];
+    const closed = this.closedBarrierIds();
+    const out: { target: string; name: string; hp: number; maxHp: number; dist: number }[] = [];
+    for (const [node, g] of Object.entries(this.store.guardians())) {
+      const dist = boardDistance(this.map, you.position, node, spell.range, closed);
+      if (dist !== null) out.push({ target: node, name: g.name, hp: g.hp, maxHp: g.maxHp, dist });
+    }
+    const boss = this.store.state()?.boss;
+    const bossNode = this.map.boss;
+    if (boss && bossNode) {
+      const dist = boardDistance(this.map, you.position, bossNode, spell.range, closed);
+      if (dist !== null)
+        out.push({ target: 'boss', name: 'Savra, the Queen', hp: boss.hp, maxHp: boss.maxHp, dist });
+    }
+    return out.sort((a, b) => a.dist - b.dist);
+  }
+
   /** Route a spell-picker tap to the right follow-up (target/value/node/cast). */
   pickSpell(spell: SpellInfo): void {
     if (!this.spellReady(spell.id)) return;

@@ -612,9 +612,9 @@
     <div class="uc-modal-backdrop" (click)="closeSpellPickers()">
       <div class="uc-modal" (click)="$event.stopPropagation()">
         <h3><mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}</h3>
-        <p class="modal-sub">Pick a rival within {{ sp.range }} spaces.</p>
-        @if (!spellTargets(sp).length) {
-          <p class="modal-sub">No one is in range. Stalk closer.</p>
+        <p class="modal-sub">Pick a target within {{ sp.range }} spaces.</p>
+        @if (!spellTargets(sp).length && !spellGuardianTargets(sp).length) {
+          <p class="modal-sub">Nothing is in range. Stalk closer.</p>
         }
         @for (t of spellTargets(sp); track t.p.userId) {
           <div class="shop-row">
@@ -623,6 +623,17 @@
               <em>{{ t.dist }} space{{ t.dist === 1 ? '' : 's' }} away · {{ t.p.hp }} HP</em>
             </span>
             <button class="uc-btn shop-buy" [disabled]="busy()" (click)="castSpell(sp, { target: t.p.userId })">
+              Cast
+            </button>
+          </div>
+        }
+        @for (g of spellGuardianTargets(sp); track g.target) {
+          <div class="shop-row">
+            <span class="shop-name">
+              {{ g.name }}
+              <em>{{ g.dist }} space{{ g.dist === 1 ? '' : 's' }} away · {{ g.hp }}/{{ g.maxHp }} HP</em>
+            </span>
+            <button class="uc-btn shop-buy" [disabled]="busy()" (click)="castSpell(sp, { target: g.target })">
               Cast
             </button>
           </div>

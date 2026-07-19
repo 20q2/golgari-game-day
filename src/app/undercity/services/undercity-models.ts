@@ -175,6 +175,15 @@ export interface Wardrobe {
   renown: number;
 }
 
+export interface GuardianPool {
+  kind: 'barrier' | 'lair';
+  name: string;
+  npcId: string;
+  hp: number;
+  maxHp: number;
+  buffs: string[];
+}
+
 export interface GameState {
   season: Season | null;
   you: YouDoc | null;
@@ -192,6 +201,10 @@ export interface GameState {
   vaults?: Record<string, VaultView>;
   /** Barrier node ids broken open this season (shared by all players). */
   barriersOpen?: string[];
+  /** Island-boss (Savra) persistent HP pool. */
+  boss?: { hp: number; maxHp: number };
+  /** Barrier/lair node id -> its live guardian HP pool (field-spell targets). */
+  guardians?: Record<string, GuardianPool>;
   events: GameEvent[];
   result: SeasonResult | null;
   wardrobe?: Wardrobe;
