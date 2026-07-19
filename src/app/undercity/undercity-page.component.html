@@ -61,7 +61,14 @@
       @if (store.you(); as you) {
         <header class="hud">
           @if (youSpriteUrl(); as url) {
-            <img class="hud-avatar" [src]="url" [alt]="formName(you.form)" />
+            <img
+              class="hud-avatar"
+              [class.tappable]="tab() === 'board'"
+              [src]="url"
+              [alt]="formName(you.form)"
+              [title]="tab() === 'board' ? 'Center the map on your creature' : ''"
+              (click)="focusOwnCreature()"
+            />
           }
           <div class="hud-creature">
             <span class="hud-name">{{ you.creatureName || formName(you.form) }}</span>

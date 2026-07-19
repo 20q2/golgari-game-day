@@ -744,6 +744,7 @@ def handle_action(table, body):
         'set-stance': _set_stance, 'spend-stat': _spend_stat, 'evolve': _evolve,
         'buy': _buy, 'use-item': _use_item, 'shrine': _shrine, 'warp': _warp,
         'gamble': _gamble, 'poke': _poke, 'customize': _customize,
+        'drop-item': _drop_item,
         'attack-boss': _attack_boss, 'trade': _trade, 'dig': _dig, 'strike': _strike,
         'vault-guess': _vault_guess, 'respawn': _respawn,
         'cast': _cast,
@@ -3179,6 +3180,8 @@ def _use_item(table, sid, doc, payload):
         text = 'You bury the snare beneath the mulch and cackle quietly.'
     elif item == 'smoke_spore':
         return _err('Smoke Spores trigger on their own when a flee fails.', 409)
+    elif data.CONSUMABLES.get(item, {}).get('combat'):
+        return _err('Save that for a fight — it only works mid-battle.', 409)
     else:
         return _err('Unknown item.')
     doc['bag'] = bag
@@ -3186,6 +3189,22 @@ def _use_item(table, sid, doc, payload):
     if conflict:
         return conflict
     return _ok(doc, text=text)
+
+
+def _drop_item(table, sid, doc, payload):
+    """Toss one consumable from the bag — the pure-discard counterpart to the
+    Trading Post's leave-one-take-one. Removes a single instance by id."""
+    item = payload.get('item')
+    bag = doc.get('bag') or []
+    if item not in bag:
+        return _err('Not in your bag.', 409)
+    bag.remove(item)
+    doc['bag'] = bag
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    name = data.CONSUMABLES.get(item, {}).get('name', 'item')
+    return _ok(doc, text=f'You toss the {name} into the mulch.')
 
 
 def _shrine(table, sid, doc, payload):

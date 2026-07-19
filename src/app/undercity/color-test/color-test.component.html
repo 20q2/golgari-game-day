@@ -47,6 +47,9 @@
         <button class="btn" [class.active]="lightBg()" (click)="toggleBg()">
           {{ lightBg() ? 'Light bg' : 'Dark bg' }}
         </button>
+        <button class="btn" [class.active]="showTophat()" (click)="toggleTophat()">
+          {{ showTophat() ? 'Tophat on' : 'Tophat off' }}
+        </button>
         <button class="btn" (click)="reset()">Reset hues</button>
         <button class="btn" (click)="exportMask()">Export region mask</button>
       </div>

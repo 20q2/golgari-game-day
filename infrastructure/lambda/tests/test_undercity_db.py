@@ -456,6 +456,34 @@ def test_poke_same_target_on_cooldown(table):
     assert 'min left' in resp['error']
 
 
+def test_drop_item_removes_one(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    alex = db._get_player(table, sid, 'user-alex')
+    alex['bag'] = ['healing_moss', 'healing_moss', 'rot_bomb']
+    db._put_player(table, alex)
+    status, resp = act(table, 'drop-item', item='healing_moss')
+    assert status == 200
+    assert resp['you']['bag'] == ['healing_moss', 'rot_bomb']  # only one removed
+    # Dropping something you don't hold is rejected.
+    status, _ = act(table, 'drop-item', item='snare')
+    assert status == 409
+
+
+def test_use_combat_item_out_of_battle_is_rejected(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    alex = db._get_player(table, sid, 'user-alex')
+    alex['bag'] = ['rot_bomb']
+    db._put_player(table, alex)
+    # Combat consumables must not fall through to "Unknown item."
+    status, resp = act(table, 'use-item', item='rot_bomb')
+    assert status == 409
+    assert 'Unknown item' not in resp['error']
+    # And it stays in the bag.
+    assert db._get_player(table, sid, 'user-alex')['bag'] == ['rot_bomb']
+
+
 def test_snare_plant_and_trigger(table):
     act(table, 'join', starter='pest')
     act(table, 'join', user='user-sam', name='Sam', starter='zombie')

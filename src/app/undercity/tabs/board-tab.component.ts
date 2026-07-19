@@ -10,6 +10,7 @@ import {
   inject,
   isDevMode,
   signal,
+  untracked,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,6 +22,7 @@ import {
   BattleResult,
   BattleResume,
   BazaarView,
+  CombatEntry,
   CombatFlee,
   CombatRound,
   DigGrid,
@@ -148,6 +150,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly giveItem = signal<string | null>(null);
   protected readonly showExcavation = signal(false);
   protected readonly excavationGrid = signal<DigGrid | null>(null);
+  /** Bonus Spores from clearing a dig site — drives the "site cleared" popup. */
+  protected readonly digCleared = signal<number | null>(null);
   protected readonly showVein = signal(false);
   protected readonly veinDepth = signal(0);
   protected readonly veinLog = signal<string | null>(null);
@@ -565,6 +569,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     effect(() => {
       const pb = this.store.pendingBattle();
       if (pb && !this.liveBattle()) this.resumeLiveBattle(pb);
+    });
+    // HUD portrait tap → glide the camera back to your own creature. Track only
+    // the pulse (read the position untracked) so polls don't yank the camera.
+    effect(() => {
+      this.store.recenterRequest();
+      const pos = untracked(() => this.store.you()?.position);
+      if (pos) this.board?.centerOn(pos);
     });
   }
 
@@ -1022,9 +1033,20 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   async dig(cell: { r: number; c: number }): Promise<void> {
     await this.run(async () => {
       const resp = await this.store.action('dig', { r: cell.r, c: cell.c });
-      if (resp.grid) this.excavationGrid.set(resp.grid);
-      if (resp.found || resp.cleared) this.showToast(resp.text ?? 'You dig…');
+      if (resp.grid) this.excavationGrid.set(resp.grid); // fresh board on clear
+      if (resp.cleared) {
+        // The site is picked clean: celebrate the clean-up bonus in a popup;
+        // the board underneath has already reset to a fresh dig.
+        this.digCleared.set(resp.bonus ?? 0);
+      } else if (resp.found) {
+        this.showToast(resp.text ?? 'You dig…');
+      }
     });
+  }
+
+  /** Dismiss the "site cleared" popup — the fresh board is already in place. */
+  protected closeDigCleared(): void {
+    this.digCleared.set(null);
   }
 
   // ── Crystal Vein ───────────────────────────────────────────────────────────
@@ -1312,7 +1334,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const you = this.store.you();
     const outcome = ev.battle?.outcome ?? 'timeout';
     const npcHp = ev.battle?.defenderHp ?? 0;
-    this.liveB?.finish(outcome, you?.hp ?? 0, npcHp, ev.text ?? '', this.buildRewards(ev));
+    // The killing round isn't returned as a `combat` payload — its blows live in
+    // the accumulated strike list (rich CombatEntry dicts). Hand them to finish()
+    // so the last exchange animates before the outcome banner drops, instead of
+    // the fight snapping straight to VICTORY.
+    const entries = (ev.battle?.strikes ?? []) as unknown as CombatEntry[];
+    this.liveB?.finish(outcome, you?.hp ?? 0, npcHp, ev.text ?? '', this.buildRewards(ev), entries);
   }
 
   closeLiveBattle(): void {

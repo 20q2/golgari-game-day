@@ -489,6 +489,22 @@
     />
   }
 
+  <!-- Dig site cleared: bonus-Spore celebration (layers over the fresh board) -->
+  @if (digCleared() !== null) {
+    <div class="uc-modal-backdrop dig-clear-backdrop" (click)="closeDigCleared()">
+      <div class="uc-modal dig-clear-modal" (click)="$event.stopPropagation()">
+        <div class="dig-clear-burst">⛏️✨</div>
+        <h3>Site picked clean!</h3>
+        <p class="modal-sub">
+          You tidy up the dig site and pocket a
+          <strong>+{{ digCleared() }} Spore</strong> bonus. Fresh finds have
+          buried themselves anew.
+        </p>
+        <button class="uc-btn close-btn" (click)="closeDigCleared()">Keep digging</button>
+      </div>
+    </div>
+  }
+
   <!-- Crystal vein -->
   @if (showVein()) {
     <app-undercity-crystal-vein

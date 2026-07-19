@@ -123,4 +123,11 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     if (tab !== 'board' && this.inBattle()) return;
     this.tab.set(tab);
   }
+
+  /** Tapping the HUD portrait re-centers the board camera on your creature.
+   * Only meaningful while the board is showing, so it's a no-op elsewhere. */
+  focusOwnCreature(): void {
+    if (this.tab() !== 'board') return;
+    this.store.requestRecenter();
+  }
 }

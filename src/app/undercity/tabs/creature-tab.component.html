@@ -199,13 +199,50 @@
               <div class="bag-rows">
                 @for (item of you.bag; track $index) {
                   <div class="bag-row">
-                    <span class="bag-item">
+                    <span class="bag-item" [title]="consumableMap[item].desc">
                       <mat-icon class="mi">{{ consumableMap[item].icon }}</mat-icon>
                       {{ consumableMap[item].name }}
                     </span>
-                    <button class="uc-btn use-btn" [disabled]="busy()" (click)="useItem(item)">
-                      {{ item === 'snare' ? 'Plant here' : item === 'smoke_spore' ? 'Passive' : 'Use' }}
-                    </button>
+                    @if (dropConfirm() === $index) {
+                      <span class="bag-actions">
+                        <span class="drop-q">Drop it?</span>
+                        <button class="uc-btn use-btn danger" [disabled]="busy()" (click)="confirmDrop(item)">
+                          Drop
+                        </button>
+                        <button class="uc-btn use-btn ghost" [disabled]="busy()" (click)="cancelDrop()">
+                          Keep
+                        </button>
+                      </span>
+                    } @else {
+                      <span class="bag-actions">
+                        @switch (itemAction(item)) {
+                          @case ('plant') {
+                            <button class="uc-btn use-btn" [disabled]="busy()" (click)="useItem(item)">
+                              Plant here
+                            </button>
+                          }
+                          @case ('passive') {
+                            <span class="bag-tag" title="Triggers on its own when a flee fails.">Auto</span>
+                          }
+                          @case ('battle') {
+                            <span class="bag-tag" title="Used from your item tray during a fight.">Battle</span>
+                          }
+                          @default {
+                            <button class="uc-btn use-btn" [disabled]="busy()" (click)="useItem(item)">
+                              Use
+                            </button>
+                          }
+                        }
+                        <button
+                          class="drop-btn"
+                          title="Drop this item"
+                          [disabled]="busy()"
+                          (click)="askDrop($index)"
+                        >
+                          <mat-icon class="mi">delete_outline</mat-icon>
+                        </button>
+                      </span>
+                    }
                   </div>
                 }
               </div>

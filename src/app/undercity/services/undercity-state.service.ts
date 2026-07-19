@@ -73,6 +73,14 @@ export class UndercityStateService {
    * being torn down and rebuilt when the player switches tabs. */
   readonly openFacility = signal<OpenFacility | null>(null);
 
+  /** Monotonic pulse asking the mounted board canvas to re-center on the
+   * player's own creature (e.g. tapping the HUD portrait). Bumped, not toggled,
+   * so repeat taps keep firing. */
+  readonly recenterRequest = signal(0);
+  requestRecenter(): void {
+    this.recenterRequest.update((n) => n + 1);
+  }
+
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler = () => {
     if (document.visibilityState === 'visible') void this.refresh();

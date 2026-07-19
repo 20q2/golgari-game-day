@@ -10,7 +10,13 @@ import {
 import { CommonModule } from '@angular/common';
 import { rgbToHsv, hsvToRgb } from '../engine/colors';
 import { ALL_SPRITES } from '../data/species';
-import { classifierFor, buildRegionMap, buildRegionMapFromMask } from '../engine/sprite-engine';
+import {
+  classifierFor,
+  buildRegionMap,
+  buildRegionMapFromMask,
+  hatPlacement,
+  preloadAll,
+} from '../engine/sprite-engine';
 import { PAINTS } from '../data/cosmetics';
 
 type RegionKey = 'body' | 'belly' | 'stripes';
@@ -84,6 +90,10 @@ export class ColorTestComponent implements AfterViewInit {
   protected readonly hue = signal<Record<RegionKey, number>>({ body: 130, belly: 50, stripes: 130 });
   protected readonly showRegions = signal(false);
   protected readonly lightBg = signal(false);
+  /** Draw a tophat on the sprite via its hat guide (or head anchor fallback). */
+  protected readonly showTophat = signal(false);
+  /** True once preloadAll() has the hat art + guides resident. */
+  private readonly hatReady = signal(false);
   protected readonly scale = signal(5);
   protected readonly loadError = signal<string | null>(null);
   protected readonly dims = signal<{ w: number; h: number } | null>(null);
@@ -172,6 +182,8 @@ export class ColorTestComponent implements AfterViewInit {
       const scale = this.scale();
       this.spriteKey(); // re-render when the classifier changes
       this.currentMask(); // re-render when the authored mask loads
+      this.showTophat(); // re-render when the tophat toggles
+      this.hatReady(); // re-render once the hat art has loaded
       if (this.viewReady && img) this.render(img, h, regions, scale);
     });
   }
@@ -180,6 +192,8 @@ export class ColorTestComponent implements AfterViewInit {
     this.viewReady = true;
     const img = this.currentImage();
     if (img) this.render(img, this.hue(), this.showRegions(), this.scale());
+    // Load the hat art + per-sprite hat guides so the tophat toggle can draw.
+    void preloadAll().then(() => this.hatReady.set(true));
   }
 
   // ── Controls ────────────────────────────────────────────────────────────────
@@ -287,6 +301,10 @@ export class ColorTestComponent implements AfterViewInit {
     this.lightBg.set(!this.lightBg());
   }
 
+  toggleTophat(): void {
+    this.showTophat.set(!this.showTophat());
+  }
+
   // ── Recolor (uses the sprite-engine smoothed region map, mirroring the board) ──
 
   private render(
@@ -374,12 +392,30 @@ export class ColorTestComponent implements AfterViewInit {
     // zoom — small pixel sprites still magnify freely.
     const MAX_SIDE = 1536;
     const eff = Math.min(scale, MAX_SIDE / Math.max(w, h));
+
+    // Tophat overlay (mirrors the game): placement is in sprite-pixel space, so
+    // it maps to the offscreen render 1:1 and scales to the preview by `eff`.
+    // The canvas grows upward/sideways so a high or wide hat isn't clipped.
+    const rect =
+      this.showTophat() && this.hatReady() ? hatPlacement(this.spriteKey() ?? '', 'top_hat') : null;
+    const topPad = rect ? Math.max(0, -rect.sy) : 0;
+    const sidePad = rect ? Math.max(0, -rect.sx, rect.sx + rect.sw - w) : 0;
+
     const canvas = this.previewRef.nativeElement;
-    canvas.width = Math.round(w * eff);
-    canvas.height = Math.round(h * eff);
+    canvas.width = Math.round((w + sidePad * 2) * eff);
+    canvas.height = Math.round((h + topPad) * eff);
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(off, sidePad * eff, topPad * eff, w * eff, h * eff);
+    if (rect) {
+      ctx.drawImage(
+        rect.img,
+        (sidePad + rect.sx) * eff,
+        (topPad + rect.sy) * eff,
+        rect.sw * eff,
+        rect.sh * eff,
+      );
+    }
   }
 }

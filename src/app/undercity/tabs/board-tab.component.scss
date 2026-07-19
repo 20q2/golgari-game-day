@@ -790,3 +790,43 @@
     color: #d66;
   }
 }
+
+// Dig-site cleared celebration — sits above the dig overlay (z 1150).
+.dig-clear-backdrop {
+  position: fixed;
+  z-index: 1200;
+}
+
+.dig-clear-modal {
+  text-align: center;
+
+  .dig-clear-burst {
+    font-size: 2.6rem;
+    line-height: 1;
+    margin-bottom: 4px;
+    animation: dig-clear-pop 0.4s ease;
+  }
+
+  h3 {
+    margin: 0 0 6px;
+    color: #e0c088;
+  }
+
+  strong {
+    color: #7ad07a;
+  }
+}
+
+@keyframes dig-clear-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
