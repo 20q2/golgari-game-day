@@ -18,6 +18,9 @@
       var redirect = sessionStorage.redirect;
       delete sessionStorage.redirect;
       if (redirect && redirect !== location.href) {
+        // A deep link may arrive as .../undercity/index.html — normalize the
+        // stray index.html back to the clean route the Angular router expects.
+        redirect = redirect.replace(/\/index\.html(?=$|[?#])/, '');
         history.replaceState(null, null, redirect);
       }
     })();
