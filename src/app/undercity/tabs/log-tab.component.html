@@ -6,6 +6,11 @@
       @for (p of leaderboard(); track p.userId; let i = $index) {
         <div class="lb-row" [class.own]="p.userId === store.ownUserId">
           <span class="lb-rank">{{ i + 1 }}</span>
+          <span class="lb-sprite">
+            @if (p.spriteUrl) {
+              <img [src]="p.spriteUrl" [alt]="p.formName" />
+            }
+          </span>
           <span class="lb-name">
             {{ p.username }}
             <small>{{ p.creatureName || p.formName }} · L{{ p.level }}</small>
