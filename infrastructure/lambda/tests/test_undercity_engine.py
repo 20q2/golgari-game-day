@@ -843,3 +843,47 @@ def test_flow_puzzle_lookup():
     first = data.FLOW_PUZZLES[0]['id']
     assert data.flow_puzzle(first)['id'] == first
     assert data.flow_puzzle('nope') is None
+
+
+import undercity_engine as _eng_flow
+
+_P = {'w': 4, 'h': 4, 'start': [0, 0], 'end': [3, 0], 'rocks': []}
+_SNAKE = [[0, 0], [0, 1], [0, 2], [0, 3], [1, 3], [1, 2], [1, 1], [1, 0],
+          [2, 0], [2, 1], [2, 2], [2, 3], [3, 3], [3, 2], [3, 1], [3, 0]]
+
+
+def test_validate_flow_accepts_full_solution():
+    assert _eng_flow.validate_flow_solution(_P, _SNAKE) is True
+
+
+def test_validate_flow_rejects_empty():
+    assert _eng_flow.validate_flow_solution(_P, []) is False
+
+
+def test_validate_flow_rejects_wrong_endpoints():
+    assert _eng_flow.validate_flow_solution(_P, _SNAKE[::-1]) is False  # starts at end
+
+
+def test_validate_flow_rejects_diagonal_step():
+    bad = [[0, 0], [1, 1]] + _SNAKE[1:]
+    assert _eng_flow.validate_flow_solution(_P, bad) is False
+
+
+def test_validate_flow_rejects_revisit():
+    bad = _SNAKE[:-1] + [_SNAKE[-2]]  # repeats a cell, ends off-target
+    assert _eng_flow.validate_flow_solution(_P, bad) is False
+
+
+def test_validate_flow_rejects_incomplete_coverage():
+    assert _eng_flow.validate_flow_solution(_P, [[0, 0], [1, 0], [2, 0], [3, 0]]) is False
+
+
+def test_validate_flow_rejects_entering_rock():
+    p = {'w': 4, 'h': 4, 'start': [0, 0], 'end': [0, 3], 'rocks': [[1, 1], [2, 1]]}
+    path = [[0, 0], [1, 1], [0, 3]]  # steps onto a rock
+    assert _eng_flow.validate_flow_solution(p, path) is False
+
+
+def test_flow_puzzles_all_solvable():
+    for p in data.FLOW_PUZZLES:
+        assert _eng_flow.validate_flow_solution(p, p['solution']) is True, p['id']

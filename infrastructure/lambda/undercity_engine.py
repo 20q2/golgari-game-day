@@ -647,3 +647,32 @@ def npc_from_spec(spec: dict) -> dict:
 def pick_npc(rng, pool=None) -> dict:
     """Random NPC from a tier pool (defaults to the overworld normal pool)."""
     return npc_from_spec(rng.choice(pool if pool is not None else data.NPCS))
+
+
+def validate_flow_solution(puzzle, path):
+    """True iff `path` is a complete single-line Flow solution for `puzzle`.
+
+    `path` is a list of [row, col]. Rules: begins at start, ends at end, every
+    consecutive pair is orthogonally adjacent (one step), no cell repeats, no cell
+    is a rock or out of bounds, and the path covers every non-rock cell exactly
+    once.
+    """
+    w, h = puzzle['w'], puzzle['h']
+    rocks = {tuple(c) for c in puzzle['rocks']}
+    start, end = tuple(puzzle['start']), tuple(puzzle['end'])
+    if not path:
+        return False
+    cells = [tuple(c) for c in path]
+    for r, c in cells:
+        if not (0 <= r < h and 0 <= c < w):
+            return False
+        if (r, c) in rocks:
+            return False
+    if cells[0] != start or cells[-1] != end:
+        return False
+    for (r1, c1), (r2, c2) in zip(cells, cells[1:]):
+        if abs(r1 - r2) + abs(c1 - c2) != 1:
+            return False
+    if len(set(cells)) != len(cells):
+        return False
+    return len(cells) == w * h - len(rocks)
