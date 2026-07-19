@@ -96,6 +96,10 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   protected readonly inBattle = computed(() => !!this.store.pendingBattle());
 
   async ngOnInit(): Promise<void> {
+    // Lock the document to the visible viewport for this full-screen sub-game.
+    // The global `body.undercity-page` rules kill the default min-height:100lvh
+    // that otherwise leaves scrollable dead space below the app on mobile.
+    document.body.classList.add('undercity-page');
     void preloadAll().then(() => this.assetsReady.set(true));
     void firstValueFrom(this.http.get<BoardMap>('data/undercity-map.json')).then((m) =>
       this.map.set(m),
@@ -106,6 +110,7 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    document.body.classList.remove('undercity-page');
     this.store.stopPolling();
   }
 

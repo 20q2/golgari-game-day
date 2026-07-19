@@ -146,6 +146,47 @@ body {
         url('./assets/image4.png') center/cover;
     }
   }
+
+  // The Undercity is a fixed, non-scrolling full-screen sub-game. Lock the
+  // document to the *currently visible* viewport (dvh) so no dead scroll space
+  // appears below the app on mobile. Without this, body's default
+  // min-height:100lvh (the largest viewport, URL bar hidden) is taller than the
+  // live dvh whenever the URL bar shows, and the light page background peeks
+  // through below the app as scrollable white space.
+  &.undercity-page {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    background: #12100e;
+
+    // Drop the light readability veil — the sub-game paints its own dark bg.
+    &::before {
+      content: none;
+    }
+
+    // Flex-fill the app column so it fits the locked viewport exactly, instead
+    // of relying on a hardcoded 64px navbar offset (Material's toolbar is 56px
+    // on portrait phones, which left an 8px seam under the old calc()).
+    app-navbar {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    .content {
+      flex: 1;
+      min-height: 0;
+    }
+
+    app-undercity-page {
+      display: block;
+      height: 100%;
+    }
+
+    .undercity {
+      height: 100%;
+    }
+  }
 }
 
 // ===== CDK OVERLAY PANEL OVERRIDES =====
