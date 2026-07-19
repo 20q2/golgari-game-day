@@ -771,9 +771,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         title = d.hazardName;
         body = d.hazardBlurb;
       } else if (node.type === 'wild') {
-        body = `A ${d.wildName} hunts these tunnels. Beat it for XP and a fat bounty.`;
+        body = `A ${d.wildName} hunts these tunnels. Beat it for XP and a fat bounty. Beatable from Level 1+.`;
       } else if (node.type === 'lair') {
-        body = `The den of ${d.lairName}. First kill claims the ${d.name} Guild Sigil.`;
+        body = `The den of ${d.lairName}. First kill claims the ${d.name} Guild Sigil. Come at Level 5+.`;
       }
     }
     if (this.store.snares().includes(nodeId)) {

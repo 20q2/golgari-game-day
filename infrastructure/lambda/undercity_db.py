@@ -682,7 +682,7 @@ def _public_player(p):
         'shieldUntil': p.get('shieldUntil'),
         'spores': p.get('spores', 0), 'rolls': p.get('rolls', 0),
         'pvpWins': p.get('pvpWins', 0), 'wildWins': p.get('wildWins', 0),
-        'composts': p.get('composts', 0),
+        'composts': p.get('composts', 0), 'sigils': _sigil_count(p),
         'paint': p.get('paint'), 'hat': p.get('hat'),
         'isBot': p.get('isBot', False),
         'renown': data.compute_renown(p),

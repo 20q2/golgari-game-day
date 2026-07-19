@@ -207,8 +207,8 @@ export const DEFAULT_GUARDIAN_SPRITE = 'godzilla';
 /** One-line "what does this space do" blurbs for the board popover. */
 export const SPACE_BLURBS: Record<string, string> = {
   loot: 'Rustle through the tall grass for Spores — sometimes a buried consumable.',
-  wild: 'A wild creature lurks here. Beat it for XP and a Spore bounty.',
-  elite: 'An elite predator claims this ground. Rich XP and Spores — but a death sentence for fresh hatchlings.',
+  wild: 'A wild creature lurks here. Beat it for XP and a Spore bounty. Beatable from Level 1+.',
+  elite: 'An elite predator claims this ground. Rich XP and Spores — but a death sentence for fresh hatchlings. We recommend Level 3+ before you fight one.',
   mystery: 'Roll the d12 mystery table — fortune, junk, or misfortune.',
   shop: 'Buy gear and consumables for Spores.',
   trading_post: 'Swap one of your consumables for one left here by another player.',
@@ -221,10 +221,10 @@ export const SPACE_BLURBS: Record<string, string> = {
   hazard: 'Swamp gas, grasping vines, or choking spore clouds. It will cost you.',
   warp: 'A warp mushroom — step through to another cap, if it behaves.',
   gate: 'The Gate of the Swarm. Entering mends you fully.',
-  boss: 'The sealed boss lair. The Swarm stirs behind it.',
+  boss: 'The sealed boss lair. The Swarm stirs behind it. Savra is a brutal fight — be Level 10+ before you take her on.',
   ossuary: 'Serious Fun. Call high or low on the bone die — a win doubles your bet.',
   barrier: 'A guardian seals this passage. Beat it and the route opens for everyone.',
-  lair: 'A mini-boss den. Your first kill pays a huge bounty; repeats pay small.',
+  lair: 'A mini-boss den. Your first kill pays a huge bounty; repeats pay small. Come at Level 5+.',
   vault: 'A treasure hoard, deep behind a barrier. First visit pays big — once.',
   cache: 'A stashed treasure — a rich first-visit payout for every explorer.',
   ladder: 'A rusted ladder between the surface and the dungeon below.',

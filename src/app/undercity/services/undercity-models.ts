@@ -32,6 +32,8 @@ export interface PublicPlayer {
   pvpWins: number;
   wildWins: number;
   composts: number;
+  /** Guild Sigils claimed (lair first-kills) — count of poiClaims in SIGIL_LAIRS. */
+  sigils: number;
   paint: Record<string, number>;
   hat: string | null;
   renown: number;
