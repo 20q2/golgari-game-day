@@ -55,27 +55,6 @@
       <p class="error-text">{{ err }}</p>
     }
 
-    <h2 class="shop-head">Hats <span class="shop-sub">permanent</span></h2>
-    <div class="shop-grid">
-      @for (hat of allHats; track hat.id) {
-        <button
-          class="shop-card"
-          [class.owned]="ownsHat(hat.id)"
-          [class.carted]="cartHats().includes(hat.id)"
-          [class.worn]="equipHat() === hat.id"
-          (click)="ownsHat(hat.id) ? wearHat(hat.id) : toggleHat(hat.id)"
-        >
-          <img class="shop-hat-sprite" [src]="'undercity/hats/' + hat.file" [alt]="hat.name" />
-          <span class="shop-name">{{ hat.name }}</span>
-          @if (ownsHat(hat.id)) {
-            <span class="shop-tag">{{ equipHat() === hat.id ? 'wearing' : 'wear' }}</span>
-          } @else {
-            <span class="shop-cost">{{ hatPrices[hat.rarity] }}</span>
-          }
-        </button>
-      }
-    </div>
-
     <h2 class="shop-head">Colors <span class="shop-sub">permanent</span></h2>
     <div class="shop-grid">
       @for (paint of paints; track paint.id) {
@@ -92,6 +71,27 @@
             <span class="shop-tag">{{ equipPaint() === paint.id ? 'wearing' : 'wear' }}</span>
           } @else {
             <span class="shop-cost">{{ paintPrice }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    <h2 class="shop-head">Hats <span class="shop-sub">permanent</span></h2>
+    <div class="shop-grid">
+      @for (hat of allHats; track hat.id) {
+        <button
+          class="shop-card"
+          [class.owned]="ownsHat(hat.id)"
+          [class.carted]="cartHats().includes(hat.id)"
+          [class.worn]="equipHat() === hat.id"
+          (click)="ownsHat(hat.id) ? wearHat(hat.id) : toggleHat(hat.id)"
+        >
+          <img class="shop-hat-sprite" [src]="'undercity/hats/' + hat.file" [alt]="hat.name" />
+          <span class="shop-name">{{ hat.name }}</span>
+          @if (ownsHat(hat.id)) {
+            <span class="shop-tag">{{ equipHat() === hat.id ? 'wearing' : 'wear' }}</span>
+          } @else {
+            <span class="shop-cost">{{ hatPrices[hat.rarity] }}</span>
           }
         </button>
       }
