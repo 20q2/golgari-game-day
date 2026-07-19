@@ -127,30 +127,21 @@ def test_full_join_roll_move_flow(table, monkeypatch):
 _COUNTER = {'aggress': 'guard', 'guard': 'feint', 'feint': 'aggress'}
 
 
-def _kill_npc(att, dfn, *a, **k):
-    dfn.hp = 0
-    return [{'round': 1, 'by': 'attacker', 'dmg': 99, 'winner': 'attacker'}]
-
-
-def _kill_player(att, dfn, *a, **k):
-    att.hp = 0
-    return [{'round': 1, 'by': 'defender', 'dmg': 99, 'winner': 'defender'}]
-
-
 def _finish_started_battle(table, monkeypatch, doc, outcome='attacker',
                            defender_hp=0, user='user-alex', name='Alex'):
     """Given a doc with a freshly started battle, persist it, stub resolve_round
-    to reach `outcome`, submit one combat-round, and return its spaceEvent."""
-    if outcome == 'timeout':
-        doc['battle']['round'] = data.MAX_ROUNDS_COMBAT   # end on this call
-
-        def _stub(att, dfn, *a, **k):
-            dfn.hp = defender_hp
-            return []
-        monkeypatch.setattr(db.engine, 'resolve_round', _stub)
-    else:
-        monkeypatch.setattr(db.engine, 'resolve_round',
-                            _kill_npc if outcome == 'attacker' else _kill_player)
+    to reach `outcome` in one exchange, submit one combat-round, and return its
+    spaceEvent. `outcome='attacker'` slays the foe; anything else is a player
+    death that leaves the foe lingering at `defender_hp` (sudden death — a
+    non-kill only ever happens because the player fell)."""
+    def _stub(att, dfn, *a, **k):
+        if outcome == 'attacker':
+            dfn.hp = 0
+            return [{'round': 1, 'by': 'attacker', 'dmg': 99, 'winner': 'attacker'}]
+        att.hp = 0
+        dfn.hp = defender_hp
+        return [{'round': 1, 'by': 'defender', 'dmg': 99, 'winner': 'defender'}]
+    monkeypatch.setattr(db.engine, 'resolve_round', _stub)
     db._put_player(table, doc)
     status, resp = act(table, 'combat-round', user=user, name=name, stance='aggress')
     assert status == 200, resp
@@ -974,13 +965,13 @@ def test_lair_hp_lingers_between_challengers(table, monkeypatch):
     act(table, 'join', starter='pest')
     sid, _ = db._active_season(table)
     boss_hp = data.LAIR_BOSSES['city_lair']['hp']
-    # First challenger wounds her to 20 and times out.
-    _, out = _lair_fight(table, sid, 'user-alex', 'timeout', 20, monkeypatch)
+    # First challenger wounds her to 20 but falls — the pool lingers, not slain.
+    _, out = _lair_fight(table, sid, 'user-alex', 'defender', 20, monkeypatch)
     assert out['npc']['hp'] == boss_hp        # entered at full
     assert out['npc']['maxHp'] == boss_hp
     # Next challenger meets her at 20 HP.
     act(table, 'join', user='user-bea', name='Bea', starter='kraul')
-    _, out2 = _lair_fight(table, sid, 'user-bea', 'timeout', 12, monkeypatch)
+    _, out2 = _lair_fight(table, sid, 'user-bea', 'defender', 12, monkeypatch)
     assert out2['npc']['hp'] == 20
     assert out2['npc']['maxHp'] == boss_hp
 
@@ -1018,9 +1009,9 @@ def test_vestige_hp_also_lingers(table, monkeypatch):
     sid, _ = db._active_season(table)
     b = data.LAIR_BOSSES['city_lair']
     _lair_fight(table, sid, 'user-alex', 'attacker', 0, monkeypatch)   # slain -> Vestige
-    _, out = _lair_fight(table, sid, 'user-alex', 'timeout', 9, monkeypatch)
+    _, out = _lair_fight(table, sid, 'user-alex', 'defender', 9, monkeypatch)
     assert out['npc']['name'] == f"Vestige of {b['name']}"
-    _, out2 = _lair_fight(table, sid, 'user-alex', 'timeout', 5, monkeypatch)
+    _, out2 = _lair_fight(table, sid, 'user-alex', 'defender', 5, monkeypatch)
     assert out2['npc']['hp'] == 9
 
 
@@ -1067,20 +1058,22 @@ def test_boss_phase_drops_the_sigil_gate(table, monkeypatch):
     assert out['type'] == 'battle_start' and out['kind'] == 'boss'
 
 
-def test_vein_landing_forces_first_strike(table, monkeypatch):
+def test_vein_landing_opens_without_striking(table, monkeypatch):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
     doc['position'] = 'cavern_r3'
-    monkeypatch.setattr(db._rng, 'random', lambda: 1.0)   # never cave in, no bonus items
+    db._put_player(table, doc)
     spores_before = doc.get('spores', 0)
     ev = db._resolve_space(table, sid, doc, 'cavern_r3', 'cavern_r2')
     assert ev['type'] == 'crystal_vein'
-    assert ev['depth'] == 1                                # surface -> level 1
-    assert ev['strikesLeft'] == data.VEIN_STRIKES_PER_VISIT - 1
-    assert doc['spores'] == spores_before + 2              # 1 + level
+    assert ev['depth'] == 0                                # fresh shaft, surface
+    assert ev['strikesLeft'] == data.VEIN_STRIKES_PER_VISIT # all swings are the player's
+    assert 'collapsed' not in ev                           # no cave-in on arrival
+    assert doc['spores'] == spores_before                  # nothing awarded yet
+    assert doc['veinStrikesLeft'] == data.VEIN_STRIKES_PER_VISIT
     rec = db._get(table, db._season_pk(sid), 'VEIN#cavern')
-    assert rec['depth'] == 1                               # shared depth persisted
+    assert rec is None                                     # nothing persisted on landing
 
 
 def test_vein_cave_in_hurts_and_resets(table, monkeypatch):
@@ -1089,10 +1082,14 @@ def test_vein_cave_in_hurts_and_resets(table, monkeypatch):
     db._save_vein(table, sid, 'cavern', 9)                 # deep, dangerous shaft
     doc = db._get_player(table, sid, 'user-alex')
     doc['position'] = 'cavern_r3'
+    doc['veinStrikesLeft'] = data.VEIN_STRIKES_PER_VISIT   # landed, ready to swing
     hp_before = doc['hp']
+    db._put_player(table, doc)
     monkeypatch.setattr(db._rng, 'random', lambda: 0.0)    # guaranteed cave-in
-    ev = db._resolve_space(table, sid, doc, 'cavern_r3', 'cavern_r2')
-    assert ev['collapsed'] is True
+    status, resp = act(table, 'strike')                    # the swing triggers the collapse
+    assert status == 200
+    assert resp['collapsed'] is True
+    doc = db._get_player(table, sid, 'user-alex')
     assert doc['hp'] == max(1, hp_before - 10 * data.VEIN_CAVE_IN_DMG_PER_LEVEL)
     assert doc['veinStrikesLeft'] == 0                     # the visit ends under rubble
     rec = db._get(table, db._season_pk(sid), 'VEIN#cavern')
@@ -1870,9 +1867,9 @@ def test_rejoin_does_not_double_charge(table):
     assert 'top_hat' not in db._get_perm(table, 'user-alex')['hats']
 
 
-def test_collapse_enabled_for_wild_disabled_for_lair(table, monkeypatch):
-    # wild/elite/barrier fights enable the collapse; boss/lair must NOT (their
-    # persistent pools linger on a timeout).
+def test_collapse_enabled_for_every_fight_kind(table, monkeypatch):
+    # Sudden death: the collapse is on for EVERY kind, including the persistent-
+    # pool lair/boss (they linger on a player loss, not on a timeout).
     act(table, 'join', starter='pest')
     sid = _sid(table)
     seen = {}
@@ -1896,7 +1893,7 @@ def test_collapse_enabled_for_wild_disabled_for_lair(table, monkeypatch):
     db._lair(table, sid, doc, 'city_lair')
     db._put_player(table, doc)
     act(table, 'combat-round', user='user-alex', name='Alex', stance='aggress')
-    assert seen['frenzy_from'] is None
+    assert seen['frenzy_from'] == data.FRENZY_START
 
 
 def test_battle_start_reports_frenzy_from(table):

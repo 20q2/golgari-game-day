@@ -1505,13 +1505,14 @@ def _resolve_space(table, sid, doc, node, prev):
                 'grid': _dig_view(rec), 'digsLeft': data.EXCAVATION_DIGS_PER_VISIT}
 
     if ntype == 'crystal_vein':
-        # The first swing is mandatory — you landed in a mine, you swing.
+        # Landing just opens the shaft — every swing is a deliberate Strike so
+        # the player keeps full agency (no auto-swing, no arrival cave-in).
         doc['veinStrikesLeft'] = data.VEIN_STRIKES_PER_VISIT
-        res = _vein_strike_once(table, sid, doc)
+        region = data.MAP_NODES[node]['region']
+        depth = _vein_rec(table, sid, region)['depth']
         return {'type': 'crystal_vein', 'node': node,
-                'strikesLeft': doc['veinStrikesLeft'], **res,
-                'text': 'The crystal vein glitters — your pick is already '
-                        'swinging. ' + res['text']}
+                'strikesLeft': data.VEIN_STRIKES_PER_VISIT, 'depth': depth,
+                'text': 'You reach the crystal vein — ready your pick.'}
 
     if ntype == 'vault_lock':
         doc['vaultPicksLeft'] = data.VAULT_PICKS_PER_VISIT
@@ -3226,7 +3227,8 @@ def _vault_view(rec):
 
 
 def _strike(table, sid, doc, payload):
-    """Optional strikes 2-3 at the vein (the first happens on landing)."""
+    """A deliberate swing at the vein. All strikes this visit are optional —
+    landing no longer auto-swings."""
     node = doc.get('position')
     if data.MAP_NODES.get(node, {}).get('type') != 'crystal_vein':
         return _err('You are not at a crystal vein.', 409)

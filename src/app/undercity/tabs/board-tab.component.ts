@@ -534,7 +534,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Excavation digs remaining this visit. */
   protected readonly excavationDigsLeft = computed(() => this.store.you()?.excavationDigsLeft ?? 0);
 
-  /** Crystal-vein strikes remaining this visit (the first is spent on landing). */
+  /** Crystal-vein strikes remaining this visit. */
   protected readonly veinStrikesLeft = computed(() => this.store.you()?.veinStrikesLeft ?? 0);
 
   /** Guildvault picks remaining this visit. */
