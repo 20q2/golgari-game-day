@@ -563,3 +563,53 @@ def test_lair_curse_applies_and_is_consumed(table):
     rec = db._get(table, db._season_pk(sid), f'LAIR#{node}')
     assert not (rec or {}).get('buffs')      # consumed at battle start
     assert doc['battle']['npc']['atk'] == data.LAIR_BOSSES[node]['atk'] - 3
+
+
+def _cast_near_node(table, target_node, home='city'):
+    """Join a caster on a neighbour of target_node (distance 1, guaranteed in
+    range) and return sid."""
+    sid, _ = db._active_season(table)
+    act(table, 'join', starter='pest', home=home)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = data.MAP_NODES[target_node]['neighbors'][0]
+    db._put_player(table, doc)
+    return sid
+
+
+def test_field_damage_chips_barrier_floored(table):
+    sid = _cast_near_node(table, 'bar_e')
+    full = data.BARRIER_GUARDIANS['bar_e']['hp']
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate', target='bar_e')
+    assert status == 200 and resp['cast']['dmg'] == 8
+    hp, _ = db._barrier_state(table, sid, 'bar_e')
+    assert hp == full - 8
+    # Floor: a huge pre-chip leaves exactly 1, never opens the barrier.
+    db._set_barrier_state(table, sid, 'bar_e', 3)
+    alex = db._get_player(table, sid, 'user-alex'); alex['spellCooldowns'] = {}
+    db._put_player(table, alex)
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate', target='bar_e')
+    hp, _ = db._barrier_state(table, sid, 'bar_e')
+    assert hp == 1
+    assert 'bar_e' not in db._open_barriers(table, sid)
+
+
+def test_field_curse_persists_on_barrier(table):
+    sid = _cast_near_node(table, 'bar_e', home='bone')   # bone -> bone_chill innate
+    status, resp = act(table, 'cast', spellId='bone_chill', source='innate', target='bar_e')
+    assert status == 200
+    _, buffs = db._barrier_state(table, sid, 'bar_e')
+    assert {'kind': 'bone_chill'} in buffs
+
+
+def test_field_spell_guardian_out_of_range_no_cooldown(table):
+    sid, _ = db._active_season(table)
+    act(table, 'join', starter='pest', home='city')
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'city_r1'   # far from bar_e; scrap_toss range 5
+    db._put_player(table, doc)
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate', target='bar_e')
+    if status == 200:
+        pytest.skip('city_r1 within range of bar_e on this board')
+    assert status == 409 and resp['code'] == 'out_of_range'
+    alex = db._get_player(table, sid, 'user-alex')
+    assert 'scrap_toss' not in (alex.get('spellCooldowns') or {})

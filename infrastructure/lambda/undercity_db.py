@@ -2420,7 +2420,7 @@ def _cast(table, sid, doc, payload):
         doc['hp'] += heal
         result = {'text': f'Torn flesh knits closed (+{heal} HP).', 'hp': heal}
     elif effect in ('field_damage', 'field_curse'):
-        out = _cast_at_player(table, sid, doc, spell_id, spell, payload.get('target'))
+        out = _cast_field(table, sid, doc, spell_id, spell, payload.get('target'))
         if isinstance(out, tuple):
             return out
         result = out
@@ -2456,6 +2456,76 @@ def _cast(table, sid, doc, payload):
     if conflict:
         return conflict
     return _ok(doc, cast={'spellId': spell_id, 'effect': effect, **result}, **extra)
+
+
+def _cast_field(table, sid, doc, spell_id, spell, target_id):
+    """Route a field spell to a guardian/boss target, else a rival player."""
+    if target_id == 'boss' or target_id in data.BARRIER_GUARDIANS or target_id in data.LAIR_BOSSES:
+        return _cast_at_guardian(table, sid, doc, spell, target_id)
+    return _cast_at_player(table, sid, doc, spell_id, spell, target_id)
+
+
+def _cast_at_guardian(table, sid, doc, spell, target_id):
+    """Field damage/curse at a rooted guardian/boss within range. Chips its
+    persistent pool (floored at 1 — no remote kill/open) or persists a curse
+    read at its next battle. No dodge, no bounty. An error tuple leaves the
+    caster's cooldown unstarted."""
+    if target_id == 'boss':
+        node = data.BOSS_NODE
+        name = data.ROT_SOVEREIGN['name']
+        hp = _boss_hp(table, sid)
+        maxhp = data.ROT_SOVEREIGN['hp']
+        buffs = _boss_buffs(table, sid)
+
+        def save(new_hp, new_buffs):
+            _set_boss_hp(table, sid, new_hp, new_buffs)
+    elif target_id in data.BARRIER_GUARDIANS:
+        if target_id in _open_barriers(table, sid):
+            return _spell_err('That barrier already lies in rubble.', 'invalid_target', 409)
+        node = target_id
+        name = data.BARRIER_GUARDIANS[target_id]['name']
+        maxhp = data.BARRIER_GUARDIANS[target_id]['hp']
+        hp, buffs = _barrier_state(table, sid, target_id)
+
+        def save(new_hp, new_buffs):
+            _set_barrier_state(table, sid, target_id, new_hp, new_buffs)
+    else:  # lair boss
+        node = target_id
+        b = data.LAIR_BOSSES[target_id]
+        hp, slain, buffs = _lair_state(table, sid, target_id)
+        name = f"Vestige of {b['name']}" if slain else b['name']
+        maxhp = (b['hp'] // 2) if slain else b['hp']
+
+        def save(new_hp, new_buffs):
+            _set_lair_state(table, sid, target_id, new_hp, slain, new_buffs)
+
+    dist = engine.board_distance(data.MAP_NODES, doc['position'], node,
+                                 spell['range'], _closed_barriers(table, sid))
+    if dist is None:
+        return _spell_err(f"It is beyond the spell's reach ({spell['range']} spaces).",
+                          'out_of_range')
+
+    if spell['effect'] == 'field_damage':
+        new_hp = max(1, hp - spell['power'])
+        dealt = hp - new_hp
+        save(new_hp, buffs)
+        if dealt:
+            _event(table, sid, 'spell',
+                   f"{doc['username']}'s {spell['name']} wounds {name} from afar "
+                   f'({new_hp}/{maxhp} HP)!', actor=doc['userId'])
+            text = f'{spell["name"]} wounds {name} for {dealt}! ({new_hp}/{maxhp} HP)'
+        else:
+            text = f'{name} is already at the brink — finish it in person.'
+        return {'dmg': dealt, 'targetName': name, 'text': text}
+
+    # field_curse: refresh-don't-stack, then persist.
+    buffs = [x for x in buffs if x.get('kind') != spell['buffKind']]
+    buffs.append({'kind': spell['buffKind']})
+    save(hp, buffs)
+    _event(table, sid, 'spell',
+           f"{doc['username']} cursed {name} with {spell['name']}!", actor=doc['userId'])
+    return {'targetName': name,
+            'text': f'{spell["name"]} settles over {name} — it will fester in its next fight.'}
 
 
 def _cast_at_player(table, sid, doc, spell_id, spell, target_id):
