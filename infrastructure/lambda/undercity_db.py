@@ -1091,6 +1091,8 @@ def _archive_season(table, sid, config):
         perm['lifetimePvpWins'] = perm.get('lifetimePvpWins', 0) + p.get('pvpWins', 0)
         if p.get('tier') == 3:
             perm['apexReached'] = perm.get('apexReached', 0) + 1
+        # Bank this night's earned Renown for the pre-spawn shop.
+        perm['renown'] = perm.get('renown', 0) + data.compute_renown(p)
         table.put_item(Item=perm)
     standings.sort(key=lambda s: -s['renown'])
 

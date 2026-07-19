@@ -1747,3 +1747,13 @@ def test_new_player_is_seeded_with_renown_and_it_is_surfaced(table):
     status, state = db.handle_state(table, {'userId': 'user-alex'})
     assert status == 200
     assert state['wardrobe']['renown'] == data.SHOP_START_RENOWN
+
+
+def test_archive_banks_each_players_renown(table):
+    # Fresh level-1 pest in cavern: compute_renown = 10*1 + 0 spores//5 = 10.
+    act(table, 'join', starter='pest', home='cavern')
+    status, resp = act(table, 'season-end', hostKey='swampking')
+    assert status == 200
+    perm = db._get_perm(table, 'user-alex')
+    # Seed (50) + this night's earned renown (10).
+    assert perm['renown'] == data.SHOP_START_RENOWN + 10
