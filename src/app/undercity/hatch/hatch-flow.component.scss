@@ -1,5 +1,16 @@
+// Fill the .undercity flex column so .hatch has a real bounded height to
+// scroll within (the host element is otherwise auto-height and the tall
+// Renown-shop step gets clipped by .undercity's overflow:hidden).
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .hatch {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
