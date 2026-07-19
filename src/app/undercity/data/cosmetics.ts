@@ -50,3 +50,11 @@ export const PAINTS: PaintInfo[] = [
 ];
 
 export const PAINT_MAP: Record<string, PaintInfo> = Object.fromEntries(PAINTS.map((p) => [p.id, p]));
+
+/** Renown prices (mirror HAT_PRICES / PAINT_PRICE in undercity_data.py). */
+export const HAT_PRICES: Record<HatInfo['rarity'], number> = {
+  common: 50,
+  uncommon: 120,
+  legendary: 300,
+};
+export const PAINT_PRICE = 40;

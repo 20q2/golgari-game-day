@@ -67,6 +67,30 @@ export const CONSUMABLE_MAP: Record<string, ConsumableInfo> = Object.fromEntries
   CONSUMABLES.map((c) => [c.id, c]),
 );
 
+/** Pre-spawn Renown shop starter kit (mirrors RENOWN_SHOP_ITEMS in
+ * undercity_data.py). One-night items granted into the fresh player at spawn. */
+export interface RenownShopItem {
+  id: string;
+  kind: 'consumable' | 'gear' | 'spores';
+  /** Renown cost. */
+  cost: number;
+  name: string;
+  desc: string;
+  /** Material Icons ligature. */
+  icon: string;
+}
+
+export const RENOWN_SHOP_ITEMS: RenownShopItem[] = [
+  { id: 'healing_moss', kind: 'consumable', cost: 20, name: 'Healing Moss',
+    desc: 'Spawn holding a heal (50% max HP).', icon: 'healing' },
+  { id: 'rusted_fang', kind: 'gear', cost: 25, name: 'Rusted Fang',
+    desc: 'Spawn with a +2 ATK fang equipped.', icon: 'colorize' },
+  { id: 'chitin_scrap', kind: 'gear', cost: 25, name: 'Chitin Scrap',
+    desc: 'Spawn with a +2 DEF carapace equipped.', icon: 'shield' },
+  { id: 'spore_pouch', kind: 'spores', cost: 15, name: 'Spore Pouch',
+    desc: 'Spawn with +15 Spores.', icon: 'grain' },
+];
+
 /** Material Icons ligature per space type — used in templates AND drawn onto the board canvas. */
 export const SPACE_ICONS: Record<string, string> = {
   loot: 'grass',

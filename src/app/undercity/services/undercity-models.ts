@@ -169,6 +169,8 @@ export interface Wardrobe {
   paints: string[];
   seals: number;
   nights: number;
+  /** Spendable renown balance for the pre-spawn shop. */
+  renown: number;
 }
 
 export interface GameState {
@@ -355,6 +357,14 @@ export interface SpaceEvent {
   text: string;
   spores?: number;
   item?: string;
+  /** A gear drop from a loot source (mirrors undercity_db._roll_gear_drop). */
+  gear?: {
+    id: string;
+    slot: string;
+    outcome: 'equipped' | 'salvaged';
+    soldSpores: number;
+    displaced?: string | null;
+  };
   xp?: number;
   levels?: number;
   hp?: number;
