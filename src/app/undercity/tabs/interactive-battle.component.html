@@ -138,6 +138,18 @@
       </div>
     }
 
+    <!-- The Collapse: warn before/while the cavern caves in -->
+    @if (!done() && !resolving() && introDone() && collapseState(); as cs) {
+      <div class="collapse-warn" [class.active]="cs === 'active'">
+        <mat-icon class="mi">warning</mat-icon>
+        @if (cs === 'active') {
+          <span>The cavern is caving in — nobody walks away now.</span>
+        } @else {
+          <span>The cavern groans — it collapses next round.</span>
+        }
+      </div>
+    }
+
     <!-- Controls -->
     @if (!done() && introDone()) {
       <div class="stance-triangle">

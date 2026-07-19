@@ -41,3 +41,8 @@ export const TELEGRAPH_TEXT: Record<Stance, string> = {
   guard: 'braces to block',
   feint: 'weaves a trick',
 };
+
+/** The Collapse: from FRENZY_START the arena caves in on both fighters
+ *  (mirrors undercity_data.py FRENZY_START/FRENZY_PCT — display only). */
+export const FRENZY_START = 4;
+export const FRENZY_PCT = 0.18;

@@ -86,6 +86,7 @@ interface LiveBattle {
   resume: boolean;
   resumeRevealed: Stance | null;
   startRound: number;
+  frenzyFrom: number | null;
 }
 
 /** Local walk-in-progress: the spaces walked so far (start first) and steps left. */
@@ -1205,6 +1206,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       resume: false,
       resumeRevealed: null,
       startRound: 1,
+      frenzyFrom: ev.frenzyFrom ?? null,
     });
   }
 
@@ -1244,6 +1246,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       resume: true,
       resumeRevealed: pb.revealed ?? null,
       startRound: pb.round ?? 1,
+      frenzyFrom: pb.frenzyFrom ?? null,
     });
   }
 

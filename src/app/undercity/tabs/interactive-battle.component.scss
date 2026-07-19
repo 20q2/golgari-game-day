@@ -1040,3 +1040,29 @@
 }
 .tele-caption .intent.read { color: #fde68a; }
 .tele-caption .intent.none { color: #9aa79a; font-style: italic; }
+
+.collapse-warn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: center;
+  margin: 0.35rem auto 0;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #e8c37a;
+  background: rgba(120, 70, 20, 0.25);
+  border: 1px solid rgba(232, 195, 122, 0.4);
+
+  &.active {
+    color: #ff9d6b;
+    background: rgba(150, 40, 20, 0.3);
+    border-color: rgba(255, 120, 80, 0.5);
+  }
+
+  .mi {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}

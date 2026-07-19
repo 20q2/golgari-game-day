@@ -69,6 +69,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   @Input() resumeRevealed: Stance | null = null;
   /** Round the fight opens on (>1 when resuming a fight already under way). */
   @Input() startRound = 1;
+  /** Round the collapse begins for this fight, or null (boss/lair). */
+  @Input() frenzyFrom: number | null = null;
 
   @Output() submitStance = new EventEmitter<{ stance: Stance; item?: string }>();
   @Output() peek = new EventEmitter<void>();
@@ -113,11 +115,15 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   /** You can't flee until you've traded at least one blow (server also gates). */
   protected readonly hasActed = signal(false);
 
+  /** The round the player is about to act on (drives the collapse warning). */
+  protected readonly round = signal(1);
+
   private timers: ReturnType<typeof setTimeout>[] = [];
 
   ngOnInit(): void {
     this.attackerHp.set(this.attacker.startHp);
     this.defenderHp.set(this.defender.startHp);
+    this.round.set(this.startRound);
     this.hasActed.set(this.startRound > 1); // resumed mid-fight: already acted
     if (this.resume) {
       // Reopened after a reload: fighters are already in the ring.
@@ -145,6 +151,16 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
 
   protected tellText(): string {
     return PERSONALITY_TELL[this.personality] ?? 'watching you';
+  }
+
+  /** Whether the cavern is caving in this round ('active'), about to next round
+   *  ('imminent'), or not a factor (null). */
+  protected collapseState(): 'active' | 'imminent' | null {
+    if (this.frenzyFrom == null) return null;
+    const r = this.round();
+    if (r >= this.frenzyFrom) return 'active';
+    if (r + 1 >= this.frenzyFrom) return 'imminent';
+    return null;
   }
   protected stanceOf(side: Side): Stance | undefined {
     return this.stanceAnim()[side];
@@ -189,6 +205,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     this.hasActed.set(true); // a blow's been traded — fleeing is now allowed
     this.runSequence(entries, playerHp, npcHp, () => {
       this.telegraph = telegraph;
+      this.round.update((r) => r + 1);
       this.revealed.set(null); // a scry only lasts its round
       this.busy.set(false);
     });
@@ -304,7 +321,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   }
 
   private animateEntry(e: CombatEntry): void {
-    const rot = !!e.rot;
+    // rot + frenzy: `by` is the side TAKING the damage → it IS the target.
+    const rot = !!e.rot || !!e.frenzy;
     // strike/counter/swarm: `by` is the dealer → target is the other side.
     // rot tick: `by` is the side taking the rot → it IS the target.
     const target: Side = rot ? (e.by as Side) : e.by === 'attacker' ? 'defender' : 'attacker';
