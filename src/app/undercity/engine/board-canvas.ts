@@ -13,6 +13,7 @@ import { getRecolored, getRawImage, hatPlacement } from './sprite-engine';
 import { formSprite } from '../data/species';
 import {
   BARRIER_GUARDIANS,
+  LAIR_GUARDIANS,
   DEFAULT_GUARDIAN,
   GUARDIAN_PLACEHOLDER_SPRITE,
   DEFAULT_GUARDIAN_SPRITE,
@@ -232,6 +233,15 @@ const GUARDIAN_H = 64; // draw height, a shade bigger than a player token
 const GUARDIAN_HOP_SPEED = 3.0; // bob cadence
 const GUARDIAN_HOP_HEIGHT = 5; // px lift at the peak — deliberately small
 const GUARDIAN_SWAY = 3; // px side-to-side pacing
+
+// A lair boss paces behind its gate: heavier/slower breathing than a token and
+// an occasional lunge — mostly stationary, reads as a caged beast.
+const LAIR_H = 84; // bigger than a barrier guardian — it's a boss
+const LAIR_BREATH_SPEED = 1.3; // slow, deep breathing
+const LAIR_BREATH_AMT = 0.07; // ±7% vertical wobble
+const LAIR_LUNGE_PERIOD = 5.0; // seconds between lunges
+const LAIR_LUNGE_AMT = 12; // px forward dip at the lunge peak
+const LAIR_BACK_OFFSET = 26; // px north — sits behind the lair space
 
 /** One render/view layer: its node subset + world bounds, and its terrain. */
 interface Layer {
@@ -1039,6 +1049,9 @@ export class BoardCanvas {
     // the route; it's drawn no more the moment someone breaks the barrier.
     if (sealed) this.drawGuardian(n, elapsed);
 
+    // Sigil bosses pace behind their lair spaces.
+    if (n.type === 'lair') this.drawLairBoss(n, elapsed);
+
     // Disturbed ground — the only tell that a snare lurks here.
     if (this.snares.has(n.id)) {
       ctx.beginPath();
@@ -1099,6 +1112,37 @@ export class BoardCanvas {
       ctx.imageSmoothingEnabled = true;
     }
 
+    ctx.restore();
+  }
+
+  /**
+   * The sigil boss lurking behind its lair space: a slow, deep breathing idle
+   * with an occasional forward lunge, drawn north of the coin so the lair
+   * building reads as standing in front of it. Reuses the barrier guardian's
+   * lazy art loader (undercity/guardians/<id>.png; placeholder sprite until).
+   */
+  private drawLairBoss(n: BoardNode, elapsed: number): void {
+    const ctx = this.ctx;
+    const bossId = LAIR_GUARDIANS[n.id] ?? DEFAULT_GUARDIAN;
+    const art = this.guardianArt(bossId);
+    if (!art) return;
+
+    const phase = ((hashStr(n.id) % 1000) / 1000) * Math.PI * 2;
+    const breath = 1 + Math.sin(elapsed * LAIR_BREATH_SPEED + phase) * LAIR_BREATH_AMT;
+    // A lunge every ~LAIR_LUNGE_PERIOD s: a brief forward dip, else it settles.
+    const t = (elapsed + phase) % LAIR_LUNGE_PERIOD;
+    const lunge = t < 0.6 ? Math.sin((t / 0.6) * Math.PI) * LAIR_LUNGE_AMT : 0;
+
+    const cx = n.x;
+    const footAnchor = n.y - LAIR_BACK_OFFSET + lunge; // behind the space, dips on lunge
+
+    ctx.save();
+    const drawH = LAIR_H * breath;
+    const w = art.img.width * (LAIR_H / art.img.height);
+    const top = footAnchor - drawH;
+    ctx.imageSmoothingEnabled = !art.pixelArt;
+    ctx.drawImage(art.img, cx - w / 2, top, w, drawH);
+    ctx.imageSmoothingEnabled = true;
     ctx.restore();
   }
 

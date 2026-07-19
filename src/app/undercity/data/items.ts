@@ -204,6 +204,20 @@ export const GUARDIAN_PLACEHOLDER_SPRITE: Record<string, string> = {
 /** Fallback placeholder sprite for any guardian without a specific mapping. */
 export const DEFAULT_GUARDIAN_SPRITE = 'godzilla';
 
+/**
+ * Which boss lurks behind each lair space — mirrors LAIR_BOSSES ids
+ * (undercity_data.py). Drawn pacing behind the lair; art at
+ * undercity/guardians/<id>.png with the same placeholder fallback as barriers.
+ */
+export const LAIR_GUARDIANS: Record<string, string> = {
+  lair_titan: 'gravebound_colossus',
+  city_lair: 'ishkanah',
+  cavern_lair: 'sarulf',
+  bog_lair: 'gitrog_monster',
+  bone_lair: 'skullbriar',
+  garden_lair: 'slimefoot',
+};
+
 /** One-line "what does this space do" blurbs for the board popover. */
 export const SPACE_BLURBS: Record<string, string> = {
   loot: 'Rustle through the tall grass for Spores — sometimes a buried consumable.',
