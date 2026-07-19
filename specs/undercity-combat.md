@@ -46,7 +46,13 @@ one combat consumable); `_combat_round` resolves one exchange, re-telegraphs,
 and on end calls `_finish_battle` → the per-kind reward finisher. A pending
 `doc['battle']` blocks turn actions (`_BATTLE_ALLOWED_ACTIONS`). A non-kill at
 the round cap is a **neutral timeout** — load-bearing for persistent-pool foes
-(lair/boss linger; they are NOT slain on a timeout).
+(lair/boss linger; they are NOT slain on a timeout). For **slayable** foes
+(`wild`/`elite`/`barrier`) the timeout is instead pre-empted by **The Collapse**:
+from `FRENZY_START` onward both fighters take ramping `max_hp * FRENZY_PCT *
+tier` end-of-round damage, so the fight always resolves to a real kill won by
+the higher-HP-fraction side (see
+[2026-07-19-undercity-combat-collapse-design.md](2026-07-19-undercity-combat-collapse-design.md)).
+Boss/lair pass `frenzy_from=None` and still linger.
 
 **Monster AI:** `STANCE_PERSONALITIES` weight triples (`brute`/`turtle`/
 `trickster`/`balanced`) → `engine.pick_stance`; `engine.telegraph(actual, bluff)`
@@ -153,7 +159,8 @@ Combat consumables map to three general one-round modifiers on `resolve_round`:
 `STANCE_WIN_MULT`, `STANCE_GUARD_MITIGATE`, `STANCE_GUARD_COUNTER`,
 `STANCE_CLASH_MULT`, `STANCE_STALL_MULT`, `ROT_PER_STACK`, `SWARM_CHIP_MULT`,
 `SCAVENGE_RETALIATE`, `DEATHTOUCH_PIERCE`, `FLYBY_DODGE`, `VENOM_BARB_BONUS`,
-`FIRST_WIN_ROT_BREATH_MULT`, `MAX_ROUNDS_COMBAT`, `STANCE_PERSONALITIES`,
+`FIRST_WIN_ROT_BREATH_MULT`, `MAX_ROUNDS_COMBAT`, `FRENZY_START`, `FRENZY_PCT`,
+`STANCE_PERSONALITIES`,
 `NPC_DEFAULT_PERSONALITY`, `NPC_DEFAULT_BLUFF`. Read-rate knobs: `READ_BASE`,
 `READ_MAX`, `READ_SPD_COEFF`, `READ_PASSIVE_BONUS`, and per-gear `readBonus`. The
 `test_balance_good_play_beats_fodder` invariant guards changes to these.
