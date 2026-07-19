@@ -3,7 +3,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  // `safe center` keeps short steps (egg tap) vertically centered, but when a
+  // tall step (the Renown shop) overflows it aligns to the top so the first
+  // section stays scroll-reachable instead of being clipped above the viewport.
+  justify-content: safe center;
   gap: 14px;
   padding: 20px;
   overflow-y: auto;
