@@ -398,6 +398,12 @@
   .shop-cost { font-size: 0.78rem; font-weight: 700; color: var(--accent-color); }
   .shop-tag { font-size: 0.7rem; opacity: 0.8; }
   .shop-item-icon { font-size: 1.4rem; height: 1.4rem; width: 1.4rem; }
+  .shop-hat-sprite {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
 }
 
 .swatch-card .swatch {

@@ -65,6 +65,7 @@
           [class.worn]="equipHat() === hat.id"
           (click)="ownsHat(hat.id) ? wearHat(hat.id) : toggleHat(hat.id)"
         >
+          <img class="shop-hat-sprite" [src]="'undercity/hats/' + hat.file" [alt]="hat.name" />
           <span class="shop-name">{{ hat.name }}</span>
           @if (ownsHat(hat.id)) {
             <span class="shop-tag">{{ equipHat() === hat.id ? 'wearing' : 'wear' }}</span>
