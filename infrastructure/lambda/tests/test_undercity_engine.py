@@ -464,7 +464,7 @@ def test_round_aggress_beats_feint_full_punish():
     d = fighter(atk=10, dfn=4, spd=5, hp=30, max_hp=30)
     rng = FakeRng(uniform=1.0)
     entries = resolve_round(a, d, 'aggress', 'feint', 1, rng)
-    assert d.hp == 30 - round(6 * data.STANCE_WIN_MULT)   # 30 - 9 = 21
+    assert d.hp == 14   # aggress base 1.5*10=15, -def4=11, *WIN1.5 => round(16.5)=16
     # the caught feinter still pokes back for chip (5 * 0.15 -> 1)
     assert a.hp == 30 - round(5 * data.STANCE_STALL_MULT)
     assert any(e.get('winner') == 'attacker' for e in entries)
@@ -475,10 +475,10 @@ def test_round_guard_beats_aggress_mitigate_and_counter():
     d = fighter(atk=10, dfn=5, spd=5, hp=30, max_hp=30)   # guard
     rng = FakeRng(uniform=1.0)
     resolve_round(a, d, 'aggress', 'guard', 1, rng)
-    # aggressor hit 10-5=5, mitigated *0.4 => 2 to guard
-    assert d.hp == 30 - round(5 * data.STANCE_GUARD_MITIGATE)  # 30 - 2 = 28
-    # guard counters 10-5=5 *0.6 => 3 to aggressor
-    assert a.hp == 30 - round(5 * data.STANCE_GUARD_COUNTER)   # 30 - 3 = 27
+    # aggressor base 1.5*10=15, -def5=10, mitigated *0.4 => 4 to guard
+    assert d.hp == 26
+    # guard counter base 10+0.5*5=12, -def5=7, *0.6 => round(4.2)=4 to aggressor
+    assert a.hp == 26
 
 
 def test_round_clash_both_take_full():
@@ -486,7 +486,7 @@ def test_round_clash_both_take_full():
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30, spd=5)
     rng = FakeRng(uniform=1.0)
     resolve_round(a, d, 'aggress', 'aggress', 1, rng)
-    assert a.hp == 25 and d.hp == 25   # both 10-5=5 full
+    assert a.hp == 20 and d.hp == 20   # both aggress base 15, -def5=10 full
 
 
 def test_round_whiff_nobody_hit():
@@ -561,8 +561,8 @@ def test_swarm_adds_chip_each_round():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'swarm'}))
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30)
     resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0))  # whiff
-    # whiff chips each for round(5*0.15)=1; swarm adds round(5*0.5)=2 onto d
-    assert d.hp == 27 and a.hp == 29
+    # whiff chips each for 1; swarm adds round(7*0.5)=4 onto d (feint base 12, -def5=7)
+    assert d.hp == 25 and a.hp == 29
 
 
 def test_rot_stacks_tick_end_of_round():
@@ -576,20 +576,20 @@ def test_venom_barb_first_win_bonus_once():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'venom_barb'}))
     d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
     rng = FakeRng(uniform=1.0)
-    resolve_round(a, d, 'aggress', 'feint', 1, rng)   # win: 6*1.5=9 +3 =12
-    assert d.hp == 60 - (round(6 * data.STANCE_WIN_MULT) + data.VENOM_BARB_BONUS)
+    resolve_round(a, d, 'aggress', 'feint', 1, rng)   # win: (15-4)=11*1.5=16 +3 =19
+    assert d.hp == 60 - (16 + data.VENOM_BARB_BONUS)
     assert a.first_win_used
     hp_after_first = d.hp
-    resolve_round(a, d, 'aggress', 'feint', 2, rng)   # no bonus second time: 9
-    assert d.hp == hp_after_first - round(6 * data.STANCE_WIN_MULT)
+    resolve_round(a, d, 'aggress', 'feint', 2, rng)   # no bonus second time: 16
+    assert d.hp == hp_after_first - 16
 
 
 def test_rot_breath_first_win_doubles():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'rot_breath'}))
     d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
     resolve_round(a, d, 'feint', 'guard', 1, FakeRng(uniform=1.0))  # feint>guard win
-    # base 6*1.5=9, *2 => 18
-    assert d.hp == 60 - round(6 * data.STANCE_WIN_MULT) * data.FIRST_WIN_ROT_BREATH_MULT
+    # feint base 10+0.5*5=12, -def4=8; *WIN1.5*rot_breath2 => 24
+    assert d.hp == 60 - 24
 
 
 def test_scavenge_retaliates_on_loss():
@@ -604,10 +604,10 @@ def test_drain_life_heals_on_win():
     a = fighter(atk=10, dfn=5, hp=20, max_hp=40, passives=frozenset({'drain_life'}))
     d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
     resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
-    dmg = round(6 * data.STANCE_WIN_MULT)   # 9
+    dmg = round((round(1.5 * 10) - 4) * data.STANCE_WIN_MULT)   # (15-4=11)*1.5 -> 16
     assert d.hp == 60 - dmg
-    # healed 50% of damage dealt, minus the feinter's chip-back (1)
-    assert a.hp == 20 + round(dmg * 0.5) - round(5 * data.STANCE_STALL_MULT)
+    # healed 50% of damage dealt (8), minus the feinter's chip-back (1)
+    assert a.hp == 20 + round(dmg * 0.5) - 1
 
 
 def test_force_winner_overrides_triangle():
@@ -617,8 +617,9 @@ def test_force_winner_overrides_triangle():
     # hit; the caught feinter (d) still pokes a for chip (5 * 0.15 -> 1).
     resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0),
                   force_winner='attacker')
-    assert d.hp == 30 - round(6 * data.STANCE_WIN_MULT)
-    assert a.hp == 30 - round(5 * data.STANCE_STALL_MULT)
+    # forced winner plays feint: base 10+0.5*5=12, -def4=8, *WIN1.5 => 12
+    assert d.hp == 30 - 12
+    assert a.hp == 30 - round(5 * data.STANCE_STALL_MULT)  # chip-back still 1
 
 
 def test_double_win_for_doubles_winner_damage():
@@ -626,7 +627,7 @@ def test_double_win_for_doubles_winner_damage():
     d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
     resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0),
                   double_win_for='attacker')
-    assert d.hp == 60 - round(6 * data.STANCE_WIN_MULT) * 2   # 9 -> 18
+    assert d.hp == 60 - 32   # aggress (15-4=11)*1.5=16, doubled => 32
 
 
 def test_negate_loss_cancels_punish():
@@ -649,16 +650,16 @@ def test_deathtouch_aggress_pierces_def():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'deathtouch_stomp'}))
     d = fighter(atk=10, dfn=8, hp=60, max_hp=60)
     resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
-    # pierce 3 => eff def 5; hit 10-5=5 *1.5 => round(7.5)=8
-    assert d.hp == 60 - round((10 - (8 - data.DEATHTOUCH_PIERCE)) * data.STANCE_WIN_MULT)
+    # aggress base 15; pierce 3 => eff def 5; hit 15-5=10 *1.5 => 15
+    assert d.hp == 60 - 15
 
 
 def test_first_bite_wins_clash_order():
     a = fighter(atk=10, dfn=0, hp=6, max_hp=6, spd=1, passives=frozenset({'first_bite'}))
     d = fighter(atk=10, dfn=0, hp=30, max_hp=30, spd=9)  # faster, but...
     resolve_round(a, d, 'aggress', 'aggress', 1, FakeRng(uniform=1.0))
-    # first_bite makes A strike first; A deals 10 -> d.hp 20; then d strikes back
-    assert d.hp == 20
+    # first_bite makes A strike first; aggress base 1.5*10=15 -> d.hp 30-15=15
+    assert d.hp == 15
 
 
 def test_barbed_aggress_applies_rot_even_on_loss():
@@ -672,24 +673,24 @@ def test_deep_biter_boosts_winning_hit():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30, riders=frozenset({'deep_biter'}))
     d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
     resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
-    # 6 * (1.5+0.5) = 12
-    assert d.hp == 60 - round(6 * (data.STANCE_WIN_MULT + 0.5))
+    # aggress (15-4)=11 * (1.5 + deep_biter 0.5 = 2.0) = 22
+    assert d.hp == 60 - 22
 
 
 def test_spiked_boosts_guard_counter():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)                        # aggressor
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30, riders=frozenset({'spiked'}))
     resolve_round(a, d, 'aggress', 'guard', 1, FakeRng(uniform=1.0))
-    # counter 5*0.6=3, spiked *1.5 => round(4.5)=4
-    assert a.hp == 30 - round(5 * data.STANCE_GUARD_COUNTER * 1.5)
+    # counter base 12, -def5=7, *0.6*spiked1.5=0.9 => round(6.3)=6
+    assert a.hp == 30 - 6
 
 
 def test_trickster_halves_lost_feint_punish():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)                        # aggressor wins
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30, riders=frozenset({'trickster'}))
     resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
-    # normal punish 5*1.5=8 (round 7.5->8), halved => 4
-    assert d.hp == 30 - round(round(5 * data.STANCE_WIN_MULT) / 2)
+    # aggress (15-5)=10*1.5=15, trickster halves => round(15/2)=8
+    assert d.hp == 30 - 8
 
 
 def test_serrated_penalizes_enemy_next_round():
@@ -717,8 +718,8 @@ def test_harden_shell_heals_on_guard_win():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)                    # aggressor
     d = fighter(atk=10, dfn=5, hp=20, max_hp=30, buffs=frozenset({'harden_shell'}))
     resolve_round(a, d, 'aggress', 'guard', 1, FakeRng(uniform=1.0))
-    # d took mitigated 5*0.4=2 (->18) then heals 3 (->21)
-    assert d.hp == 20 - round(5 * data.STANCE_GUARD_MITIGATE) + 3
+    # d took mitigated (15-5=10)*0.4=4 (->16) then heals 3 (->19)
+    assert d.hp == 20 - 4 + 3
 
 
 from undercity_engine import flee_attempt
