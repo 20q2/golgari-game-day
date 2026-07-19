@@ -239,6 +239,17 @@ FIRST_WIN_ROT_BREATH_MULT = 2  # rot_breath: first winning exchange * this
 
 MAX_ROUNDS_COMBAT = 6  # round cap; higher HP% wins a timeout
 
+# The Collapse (specs/2026-07-19-undercity-combat-collapse-design.md): past
+# FRENZY_START the unstable cavern caves in on BOTH fighters — unavoidable,
+# ramping end-of-round damage = max_hp * FRENZY_PCT * tier (tier = rnd -
+# FRENZY_START + 1). Cumulative over rounds 4-6 exceeds 100% of max HP, so a
+# slayable fight ALWAYS ends in a real kill (no empty timeout), and the fighter
+# who entered the collapse at the higher HP FRACTION (the tank) outlasts the
+# foe. Enabled per-battle by undercity_db for wild/elite/barrier only; boss/lair
+# pass frenzy_from=None so their persistent pools still linger on a timeout.
+FRENZY_START = 4     # first round the collapse damage applies (of MAX_ROUNDS_COMBAT)
+FRENZY_PCT   = 0.18  # per-tier fraction of max HP taken at end of round
+
 # Reads: a "read" is an on-screen prediction of the foe's next stance. It only
 # procs some rounds (base below) — reading is the reader build's payoff, not a
 # freebie. Chance is snapshotted once per battle from the player's SPD, reader
