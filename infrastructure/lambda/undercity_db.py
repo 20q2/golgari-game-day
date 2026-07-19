@@ -226,7 +226,9 @@ def _get_perm(table, user_id):
     if not doc:
         doc = {'pk': f'UNDERCITYUSER#{user_id}', 'sk': 'META',
                'seals': 0, 'hats': [], 'paints': list(data.DEFAULT_PAINTS),
-               'nights': 0, 'lifetimePvpWins': 0, 'apexReached': 0}
+               'nights': 0, 'lifetimePvpWins': 0, 'apexReached': 0,
+               'renown': data.SHOP_START_RENOWN}
+    doc.setdefault('renown', data.SHOP_START_RENOWN)  # backfill existing perm docs
     for p in data.DEFAULT_PAINTS:
         if p not in doc['paints']:
             doc['paints'].append(p)
@@ -459,6 +461,35 @@ def _give_consumable(doc):
     return item
 
 
+def _roll_gear_drop(doc, tier_weights):
+    """Drop a gear piece per the tier profile. A strict upgrade auto-equips
+    (displaced piece sells for GEAR_SELL_BACK of its cost); equal/worse tier
+    salvages into spores and leaves the equipped slot alone.
+    Returns {'id','slot','outcome','soldSpores','displaced'} or None."""
+    slot = _rng.choice(data.GEAR_SLOTS)
+    tiers = list(tier_weights)
+    tier = _rng.choices(tiers, weights=[tier_weights[t] for t in tiers])[0]
+    pool = [gid for gid, g in data.GEAR.items()
+            if g['slot'] == slot and g['tier'] == tier]
+    if not pool:
+        return None
+    gid = _rng.choice(pool)
+    g = data.GEAR[gid]
+    cur = (doc.get('gear') or {}).get(slot)
+    cur_tier = data.GEAR[cur]['tier'] if cur else 0
+    if g['tier'] > cur_tier:
+        sold = int(data.GEAR[cur]['cost'] * data.GEAR_SELL_BACK) if cur else 0
+        if sold:
+            doc['spores'] = doc.get('spores', 0) + sold
+        doc.setdefault('gear', {})[slot] = gid
+        return {'id': gid, 'slot': slot, 'outcome': 'equipped',
+                'soldSpores': sold, 'displaced': cur}
+    salvage = int(g['cost'] * data.GEAR_SELL_BACK)
+    doc['spores'] = doc.get('spores', 0) + salvage
+    return {'id': gid, 'slot': slot, 'outcome': 'salvaged',
+            'soldSpores': salvage, 'displaced': None}
+
+
 def _grant_grimoire(doc, gid):
     """Add a book to the permanent collection; the first one auto-opens.
     Duplicates convert to Spores. Returns True when the book was new."""
@@ -618,7 +649,8 @@ def handle_state(table, query_params):
     if user_id:
         perm = _get_perm(table, user_id)
         out['wardrobe'] = {'hats': perm['hats'], 'paints': perm['paints'],
-                           'seals': perm['seals'], 'nights': perm.get('nights', 0)}
+                           'seals': perm['seals'], 'nights': perm.get('nights', 0),
+                           'renown': perm.get('renown', 0)}
     if config.get('status') == 'ended':
         out['hallOfFame'] = _hall_of_fame(table)
     return 200, out
@@ -1314,6 +1346,14 @@ def _resolve_space(table, sid, doc, node, prev):
         return {'type': 'pile', 'text': f'You scoop up {pile} spilled Spores!', 'spores': pile}
 
     if ntype == 'loot':
+        chance, tiers = data.GEAR_DROP['loot']
+        if _rng.random() < chance:
+            drop = _roll_gear_drop(doc, tiers)
+            if drop:
+                verb = 'equip' if drop['outcome'] == 'equipped' else 'salvage'
+                return {'type': 'loot',
+                        'text': f'You unearth a piece of gear and {verb} it!',
+                        'gear': drop}
         if _rng.random() < 0.10:
             item = _give_consumable(doc)
             if item:
@@ -1488,17 +1528,24 @@ def _mystery(table, sid, doc):
         res['to'] = dest
     out = {'type': 'mystery', 'roll': res['roll'], 'text': res['text']}
     if res['item']:
-        unowned = [g for g, spec in data.GRIMOIRES.items()
-                   if spec['tier'] == 1 and g not in (doc.get('grimoires') or [])]
-        if unowned and _rng.random() < data.MYSTERY_GRIMOIRE_CHANCE:
-            gid = _rng.choice(unowned)
-            _grant_grimoire(doc, gid)
-            out['grimoire'] = gid
-            out['text'] += f" It's a grimoire — the {data.GRIMOIRES[gid]['name']}!"
+        chance, tiers = data.GEAR_DROP['mystery']
+        drop = _roll_gear_drop(doc, tiers) if _rng.random() < chance else None
+        if drop:
+            out['gear'] = drop
+            verb = 'equip it' if drop['outcome'] == 'equipped' else 'salvage it'
+            out['text'] += f" It's a piece of gear — you {verb}!"
         else:
-            item = _give_consumable(doc)
-            if item:
-                out['item'] = item
+            unowned = [g for g, spec in data.GRIMOIRES.items()
+                       if spec['tier'] == 1 and g not in (doc.get('grimoires') or [])]
+            if unowned and _rng.random() < data.MYSTERY_GRIMOIRE_CHANCE:
+                gid = _rng.choice(unowned)
+                _grant_grimoire(doc, gid)
+                out['grimoire'] = gid
+                out['text'] += f" It's a grimoire — the {data.GRIMOIRES[gid]['name']}!"
+            else:
+                item = _give_consumable(doc)
+                if item:
+                    out['item'] = item
     perm = None
     if res['paint']:
         perm = _get_perm(table, doc['userId'])
@@ -1831,7 +1878,13 @@ def _finish_wild(table, sid, doc, rec, result):
         out['xp'] = npc['xp']
         if levels:
             out['levels'] = levels
-        if npc['itemChance'] and _rng.random() < npc['itemChance']:
+        source = 'elite' if elite else 'wild'
+        chance, tiers = data.GEAR_DROP[source]
+        if _rng.random() < chance:
+            drop = _roll_gear_drop(doc, tiers)
+            if drop:
+                out['gear'] = drop
+        elif npc['itemChance'] and _rng.random() < npc['itemChance']:
             item = _give_consumable(doc)
             if item:
                 out['item'] = item
@@ -1903,6 +1956,11 @@ def _finish_lair(table, sid, doc, rec, result):
         out['xp'] = reward['xp']
         if levels:
             out['levels'] = levels
+        chance, tiers = data.GEAR_DROP['lair']
+        if _rng.random() < chance:
+            drop = _roll_gear_drop(doc, tiers)
+            if drop:
+                out['gear'] = drop
         sigil_biome = data.SIGIL_LAIRS.get(node)
         if personal_first and sigil_biome:
             have = len([c for c in claims if c in data.SIGIL_LAIRS])
@@ -1958,6 +2016,11 @@ def _finish_boss(table, sid, doc, rec, result):
         out['xp'] = reward['xp']
         if levels:
             out['levels'] = levels
+        chance, tiers = data.GEAR_DROP['boss']
+        if _rng.random() < chance:
+            drop = _roll_gear_drop(doc, tiers)
+            if drop:
+                out['gear'] = drop
         out['text'] = (f'SAVRA, QUEEN OF THE GOLGARI FALLS! +{reward["spores"]} Spores. '
                        'Her husk collapses — and already the rot begins to knit anew…')
         _event(table, sid, 'boss',
@@ -2019,8 +2082,10 @@ def _vault(table, sid, doc):
     _grant_xp(table, sid, doc, r['xp'])
     _event(table, sid, 'vault',
            f"{doc['username']} plundered the Sunken Vault!", actor=doc['userId'])
-    return {'type': 'vault', 'spores': r['spores'],
-            'text': f"The hoard of the Erstwhile! +{r['spores']} Spores."}
+    out = {'type': 'vault', 'spores': r['spores'],
+           'text': f"The hoard of the Erstwhile! +{r['spores']} Spores."}
+    _append_treasure_gear(doc, out)
+    return out
 
 
 def _cache(table, sid, doc, node):
@@ -2037,8 +2102,21 @@ def _cache(table, sid, doc, node):
     dname = data.DUNGEONS[biome]['name'] if biome else 'the depths'
     _event(table, sid, 'cache',
            f"{doc['username']} plundered the treasure of {dname}!", actor=doc['userId'])
-    return {'type': 'cache', 'spores': r['spores'],
-            'text': f"A hidden trove! +{r['spores']} Spores."}
+    out = {'type': 'cache', 'spores': r['spores'],
+           'text': f"A hidden trove! +{r['spores']} Spores."}
+    _append_treasure_gear(doc, out)
+    return out
+
+
+def _append_treasure_gear(doc, out):
+    """Big-ticket treasure spaces roll for a high-tier gear drop."""
+    chance, tiers = data.GEAR_DROP['treasure']
+    if _rng.random() < chance:
+        drop = _roll_gear_drop(doc, tiers)
+        if drop:
+            out['gear'] = drop
+            out['text'] += (' A piece of gear gleams among the hoard — '
+                            + ('equipped!' if drop['outcome'] == 'equipped' else 'salvaged.'))
 
 
 def _battle(table, sid, doc, payload):

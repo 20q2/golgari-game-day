@@ -1740,3 +1740,10 @@ def test_renown_shop_price_tables_are_sane():
     for it in data.RENOWN_SHOP_ITEMS:
         assert it['cost'] > 0 and it['kind'] in ('consumable', 'gear', 'spores')
     assert data.RENOWN_SHOP_ITEMS_MAP['spore_pouch']['amount'] == 15
+
+
+def test_new_player_is_seeded_with_renown_and_it_is_surfaced(table):
+    act(table, 'join', starter='pest', home='city')
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200
+    assert state['wardrobe']['renown'] == data.SHOP_START_RENOWN
