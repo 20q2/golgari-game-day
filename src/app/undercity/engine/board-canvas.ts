@@ -244,6 +244,7 @@ export class BoardCanvas {
   private players: BoardPlayer[] = [];
   private snares = new Set<string>();
   private barriersOpen = new Set<string>();
+  private diceMarkers = new Set<string>();
   /** Nodes sealed behind an unbroken barrier — rendered greyed. */
   private lockedIds = new Set<string>();
   // Real transparent guardian art, lazily loaded from undercity/guardians/<id>.png.
@@ -467,6 +468,14 @@ export class BoardCanvas {
 
   setSnares(nodeIds: string[]): void {
     this.snares = new Set(nodeIds);
+  }
+
+  /**
+   * User ids currently seated at an active board-game table (from the queue).
+   * Their token wears a floating 🎲 badge so spectators can tell who's mid-game.
+   */
+  setDiceMarkers(userIds: string[]): void {
+    this.diceMarkers = new Set(userIds);
   }
 
   /** Barrier nodes broken open this season — sealed ones wear rubble. */
@@ -896,6 +905,14 @@ export class BoardCanvas {
     placed.sort((a, b) => a.y - b.y);
     for (const t of placed) this.drawToken(t.p, t.x, t.y, t.hopY, t.breath);
     for (const t of placed) this.drawLabel(t.p, t.x, t.y);
+    // 🎲 badge over anyone seated at an active board-game table.
+    if (this.diceMarkers.size) {
+      for (const t of placed) {
+        if (!this.diceMarkers.has(t.p.userId)) continue;
+        const targetH = this.tokenHeight(t.p.userId === this.ownUserId) * formSprite(t.p.form).scale;
+        this.drawDiceBadge(t.x, t.y - targetH + t.hopY, ts);
+      }
+    }
     // Hand-placed over-layer decals cover tokens (foreground dressing).
     drawDecals(ctx, this.map, 'over', this.active.spec);
     // Steps-left die floats above your head (Mario Party style), above tokens.
@@ -1458,6 +1475,25 @@ export class BoardCanvas {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(String(value), 0, 1);
+    ctx.restore();
+  }
+
+  /**
+   * Floating 🎲 badge over a token whose owner is mid-game at a physical table
+   * (spectator broadcast only). Bobs gently so it reads as an alive status pip.
+   */
+  private drawDiceBadge(cx: number, headTop: number, ts: number): void {
+    const ctx = this.ctx;
+    const bob = Math.sin(ts * 0.004 + cx) * 3;
+    const cy = headTop - 20 + bob; // hover just above the creature's head
+    ctx.save();
+    ctx.font = '22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
+    ctx.fillText('🎲', cx, cy);
     ctx.restore();
   }
 }

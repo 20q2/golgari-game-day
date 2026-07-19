@@ -2,6 +2,7 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  NgZone,
   OnDestroy,
   OnInit,
   ViewChild,
@@ -18,6 +19,8 @@ import { firstValueFrom } from 'rxjs';
 import * as QRCode from 'qrcode';
 
 import { UndercityStateService } from '../services/undercity-state.service';
+import { QueueService } from '../../services/queue.service';
+import { QueueEntry } from '../../services/queue-models';
 import { PublicPlayer, isShielded } from '../services/undercity-models';
 import { BoardCanvas, BoardMap, BoardNode } from '../engine/board-canvas';
 import { preloadAll, getRecoloredDataUrl } from '../engine/sprite-engine';
@@ -47,8 +50,10 @@ const GEAR_BY_ID = new Map(GEAR.map((g) => [g.id, g]));
 })
 export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly store = inject(UndercityStateService);
+  protected readonly queue = inject(QueueService);
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly zone = inject(NgZone);
 
   @ViewChild('boardCanvas', { static: true }) boardRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('qrCanvas', { static: true }) qrRef!: ElementRef<HTMLCanvasElement>;
@@ -93,11 +98,13 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     // (and jump the queue for a highlight) on the next scene change.
     effect(() => {
       const state = this.store.state();
+      const entries = this.queue.entries();
       if (!this.director || !state) return;
       this.director.update({
         players: this.store.players(),
         events: this.store.events(),
         season: this.store.season(),
+        queue: entries,
       });
       // If the game just went live (or just ended) while we're on the wrong
       // kind of screen, cut over now instead of waiting out the current hold.
@@ -116,7 +123,26 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
       const barriers = this.store.barriersOpen();
       this.syncRoster(players, snares, barriers);
     });
+
+    // Badge the board tokens of anyone seated at an active board-game table.
+    // Read the signal FIRST so the dependency is tracked even before the board
+    // exists (mirrors the roster effect's ordering).
+    effect(() => {
+      const ids = this.activeGameUserIds();
+      if (!this.board) return;
+      this.board.setDiceMarkers(ids);
+    });
   }
+
+  /** User ids currently seated at a game whose status is 'active'. */
+  protected readonly activeGameUserIds = computed(() => {
+    const ids = new Set<string>();
+    for (const e of this.queue.entries()) {
+      if (e.status !== 'active') continue;
+      for (const m of e.joined) ids.add(m.userId);
+    }
+    return [...ids];
+  });
 
   private syncRoster(players: PublicPlayer[], snares: string[], barriers: string[]): void {
     if (!this.board) return;
@@ -141,6 +167,7 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
       this.map.set(m),
     );
     this.store.startPolling();
+    this.queue.startPolling();
   }
 
   ngAfterViewInit(): void {
@@ -154,6 +181,7 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.store.stopPolling();
+    this.queue.stopPolling();
     if (this.sceneTimer) clearTimeout(this.sceneTimer);
     if (this.transitionTimer) clearTimeout(this.transitionTimer);
     if (this.controlsTimer) clearTimeout(this.controlsTimer);
@@ -176,15 +204,21 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.board = new BoardCanvas(this.boardRef.nativeElement, map, () => {}, null, {
       interactive: false,
     });
-    this.board.start();
+    // Run the render loop OUTSIDE Angular. Zone.js patches requestAnimationFrame,
+    // so a loop scheduled inside the zone would trigger full change detection
+    // every frame — the source of the spectator camera's jitter. rAF re-schedules
+    // itself from within this callback, so the whole loop stays zone-free.
+    this.zone.runOutsideAngular(() => this.board!.start());
     // Populate tokens immediately — the roster effect won't re-fire just because
     // the board went non-null (it isn't a signal), so seed it here.
     this.syncRoster(this.store.players(), this.store.snares(), this.store.barriersOpen());
+    this.board.setDiceMarkers(this.activeGameUserIds());
     this.director = new SpectatorDirector(this.toMapInfo(map));
     this.director.update({
       players: this.store.players(),
       events: this.store.events(),
       season: this.store.season(),
+      queue: this.queue.entries(),
     });
     this.runNextScene();
   }
@@ -230,6 +264,8 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
         return { label: scene.player?.username ?? 'Action', icon: 'my_location' };
       case 'boss':
         return { label: 'Savra Stirs', icon: 'emoji_events' };
+      case 'queue':
+        return { label: 'Tonight at the Table', icon: 'casino' };
       case 'flyover':
       default:
         return { label: 'The Undercity', icon: 'travel_explore' };
@@ -279,9 +315,33 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.scene().kind === 'hotspot' || this.scene().kind === 'boss';
   }
 
+  /** Queued games currently being played at a table. */
+  protected activeGames(): QueueEntry[] {
+    return this.queue.entries().filter((e) => e.status === 'active');
+  }
+
+  /** Queued games still gathering players. */
+  protected lobbyGames(): QueueEntry[] {
+    return this.queue.entries().filter((e) => e.status === 'lobby');
+  }
+
+  /** Comma-joined player names for a queue entry (fallbacks to the count). */
+  protected rosterNames(e: QueueEntry): string {
+    return e.joined.map((m) => m.username || 'Player').join(', ');
+  }
+
+  /** Recolored-portrait cache: toDataURL() is costly, and the template asks for
+   *  the same form+paint on every change-detection pass. Key by form + paint. */
+  private readonly portraitCache = new Map<string, string | null>();
+
   protected portrait(p: PublicPlayer): string | null {
+    const key = `${p.form}|${JSON.stringify(p.paint ?? {})}`;
+    const hit = this.portraitCache.get(key);
+    if (hit !== undefined) return hit;
     const spr = formSprite(p.form);
-    return getRecoloredDataUrl(spr.sprite, p.paint ?? {}, spr.regions);
+    const url = getRecoloredDataUrl(spr.sprite, p.paint ?? {}, spr.regions);
+    this.portraitCache.set(key, url);
+    return url;
   }
 
   protected hatUrl(p: Pick<PublicPlayer, 'hat'>): string | null {

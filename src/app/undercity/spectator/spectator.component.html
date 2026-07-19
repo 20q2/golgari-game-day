@@ -123,6 +123,41 @@
     </div>
   </div>
 
+  <!-- Games/queue card (queue scene) -->
+  <div class="queue-card" *ngIf="scene().kind === 'queue'">
+    <div class="queue-head">
+      <mat-icon>casino</mat-icon>
+      <span>Tonight at the Table</span>
+    </div>
+    <div class="queue-cols">
+      <!-- Now playing -->
+      <div class="queue-col">
+        <div class="col-head playing">
+          <span class="dot live"></span> Now Playing
+        </div>
+        <div class="q-empty" *ngIf="!activeGames().length">No games underway right now.</div>
+        <div class="q-row active" *ngFor="let e of activeGames()">
+          <div class="q-title">🎲 {{ e.gameTitle }}</div>
+          <div class="q-players">{{ rosterNames(e) }}</div>
+        </div>
+      </div>
+      <!-- Waiting for players -->
+      <div class="queue-col">
+        <div class="col-head waiting">
+          <span class="dot"></span> Waiting for Players
+        </div>
+        <div class="q-empty" *ngIf="!lobbyGames().length">Queue's clear — scan to add one.</div>
+        <div class="q-row" *ngFor="let e of lobbyGames()">
+          <div class="q-title">{{ e.gameTitle }}</div>
+          <div class="q-players">
+            <span class="q-count">{{ e.joined.length }} in</span>
+            <span class="q-names">{{ rosterNames(e) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Event ticker along the bottom -->
   <div class="ticker" *ngIf="store.events().length as n">
     <mat-icon>rss_feed</mat-icon>

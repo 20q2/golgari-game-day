@@ -580,6 +580,130 @@ $panel-line: rgba(216, 194, 102, 0.35);
   }
 }
 
+// ── Games / queue card ────────────────────────────────────────────────────────
+.queue-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(880px, 88vw);
+  padding: 26px 30px 30px;
+  background: $panel;
+  border: 1px solid $panel-line;
+  border-radius: 22px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  animation: rise-center 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  .queue-head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: $gold;
+    margin-bottom: 20px;
+
+    mat-icon {
+      font-size: 30px;
+      width: 30px;
+      height: 30px;
+    }
+  }
+
+  .queue-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 26px;
+
+    @media (max-width: 720px) {
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+  }
+
+  .col-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #9fb4a5;
+    padding-bottom: 10px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #6b7a6f;
+
+      &.live {
+        background: $green;
+        box-shadow: 0 0 10px rgba(111, 220, 140, 0.8);
+        animation: pulse-dot 1.6s ease-in-out infinite;
+      }
+    }
+  }
+
+  .q-empty {
+    font-size: 16px;
+    color: #7f9384;
+    padding: 10px 2px;
+    font-style: italic;
+  }
+
+  .q-row {
+    padding: 9px 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+
+    &:first-of-type {
+      border-top: none;
+    }
+
+    &.active {
+      background: rgba(111, 220, 140, 0.07);
+      border-radius: 8px;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    .q-title {
+      font-size: 21px;
+      font-weight: 700;
+      color: $ink;
+    }
+
+    .q-players {
+      font-size: 15px;
+      color: #a9c0af;
+      margin-top: 2px;
+
+      .q-count {
+        color: $gold;
+        font-weight: 700;
+        margin-right: 8px;
+      }
+    }
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
 // ── Boss banner ───────────────────────────────────────────────────────────────
 .boss-banner {
   position: absolute;

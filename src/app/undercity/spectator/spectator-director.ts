@@ -12,8 +12,16 @@
  * logic here (no Angular, no canvas) makes the rotation unit-testable.
  */
 import { GameEvent, PublicPlayer, Season } from '../services/undercity-models';
+import { QueueEntry } from '../../services/queue-models';
 
-export type SceneKind = 'attract' | 'flyover' | 'hero' | 'leaderboard' | 'hotspot' | 'boss';
+export type SceneKind =
+  | 'attract'
+  | 'flyover'
+  | 'hero'
+  | 'leaderboard'
+  | 'hotspot'
+  | 'boss'
+  | 'queue';
 
 export interface Scene {
   kind: SceneKind;
@@ -40,6 +48,8 @@ export interface SpectatorState {
   players: PublicPlayer[];
   events: GameEvent[];
   season: Season | null;
+  /** Tonight's board-game queue (lobby + active tables); [] when nothing queued. */
+  queue?: QueueEntry[];
 }
 
 // Scene hold durations (ms) and camera zooms — tuned for a glanceable TV loop.
@@ -50,6 +60,7 @@ export const HOLD = {
   leaderboard: 12_000,
   hotspot: 10_000,
   boss: 10_000,
+  queue: 13_000,
 } as const;
 
 export const ZOOM = {
@@ -71,7 +82,15 @@ export const GLIDE = {
 } as const;
 
 /** The rotation of scene "slots"; boss is skipped when the Queen sleeps. */
-const BASE_ROTATION: SceneKind[] = ['flyover', 'hero', 'leaderboard', 'hero', 'hotspot', 'boss'];
+const BASE_ROTATION: SceneKind[] = [
+  'flyover',
+  'hero',
+  'leaderboard',
+  'queue',
+  'hero',
+  'hotspot',
+  'boss',
+];
 
 /** Event types worth interrupting the rotation to celebrate. */
 const HIGHLIGHT_EVENTS = new Set([
@@ -88,6 +107,7 @@ export class SpectatorDirector {
   private players: PublicPlayer[] = [];
   private events: GameEvent[] = [];
   private season: Season | null = null;
+  private queue: QueueEntry[] = [];
 
   private slot = -1; // index into BASE_ROTATION
   private heroIdx = 0; // round-robin over players for hero beats
@@ -103,6 +123,7 @@ export class SpectatorDirector {
     this.players = state.players ?? [];
     this.events = state.events ?? [];
     this.season = state.season ?? null;
+    this.queue = state.queue ?? [];
     this.detectNewHighlight();
   }
 
@@ -160,6 +181,7 @@ export class SpectatorDirector {
       this.slot = (this.slot + 1) % BASE_ROTATION.length;
       const kind = BASE_ROTATION[this.slot];
       if (kind === 'boss' && !this.season?.bossPhase) continue;
+      if (kind === 'queue' && this.queue.length === 0) continue; // nothing to show
       return this.sceneFor(kind);
     }
     // Rotation was entirely skippable (only a sleeping boss slot) — flyover.
@@ -180,6 +202,14 @@ export class SpectatorDirector {
         };
       case 'hotspot':
         return this.hotspotScene();
+      case 'queue':
+        return {
+          kind: 'queue',
+          focusNodeId: this.nextAnchor(),
+          zoom: ZOOM.flyover,
+          glideMs: GLIDE.flyover,
+          holdMs: HOLD.queue,
+        };
       case 'boss':
         return {
           kind: 'boss',
