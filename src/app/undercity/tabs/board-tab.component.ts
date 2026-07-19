@@ -26,6 +26,7 @@ import {
   CombatFlee,
   CombatRound,
   DigGrid,
+  FlowPuzzleView,
   Occupant,
   PublicPlayer,
   SpaceEvent,
@@ -63,6 +64,7 @@ import { BattlePlaybackComponent, BattleSide, BattleRewards } from './battle-pla
 import { InteractiveBattleComponent, BattleItem, CombatStats } from './interactive-battle.component';
 import { DiceRollComponent } from './dice-roll.component';
 import { ExcavationModalComponent } from './excavation.component';
+import { FlowPuzzleModalComponent } from './flow-puzzle.component';
 import { CrystalVeinModalComponent, VeinEffect } from './crystal-vein.component';
 import { GuildvaultModalComponent } from './guildvault.component';
 import { MysteryReelComponent } from './mystery-reel.component';
@@ -115,6 +117,7 @@ function stepPrev(step: StepState): string | null {
     InteractiveBattleComponent,
     DiceRollComponent,
     ExcavationModalComponent,
+    FlowPuzzleModalComponent,
     CrystalVeinModalComponent,
     GuildvaultModalComponent,
     MysteryReelComponent,
@@ -150,6 +153,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly giveItem = signal<string | null>(null);
   protected readonly showExcavation = signal(false);
   protected readonly excavationGrid = signal<DigGrid | null>(null);
+  protected readonly showFlowPuzzle = signal(false);
+  protected readonly flowPuzzle = signal<FlowPuzzleView | null>(null);
   /** Bonus Spores from clearing a dig site — drives the "site cleared" popup. */
   protected readonly digCleared = signal<number | null>(null);
   protected readonly showVein = signal(false);
@@ -663,6 +668,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       case 'excavation':
         this.openExcavation();
         break;
+      case 'flowPuzzle':
+        this.openFlowPuzzle();
+        break;
       case 'vein':
         this.openVein();
         break;
@@ -948,6 +956,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       this.openTradingPost(ev.stock);
     } else if (ev.type === 'excavation') {
       this.openExcavation(ev.grid);
+    } else if (ev.type === 'loot_puzzle') {
+      this.openFlowPuzzle(ev.puzzle);
     } else if (ev.type === 'crystal_vein') {
       this.openVein(ev);
     } else if (ev.type === 'vault_lock') {
@@ -1052,6 +1062,41 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.excavationGrid.set(grid ?? this.store.excavations()[pos] ?? null);
     this.showExcavation.set(true);
     this.store.openFacility.set({ kind: 'excavation' });
+  }
+
+  /** Open the Flow loot puzzle, seeding from the landing event or the polled
+   * player state (pendingLoot survives a refresh/tab switch). */
+  openFlowPuzzle(view?: FlowPuzzleView | null): void {
+    const pending = this.store.you()?.pendingLoot;
+    this.flowPuzzle.set(view ?? pending?.view ?? null);
+    if (!this.flowPuzzle()) return; // nothing pending — don't open an empty modal
+    this.showFlowPuzzle.set(true);
+    this.store.openFacility.set({ kind: 'flowPuzzle' });
+  }
+
+  private closeFlowPuzzle(): void {
+    this.showFlowPuzzle.set(false);
+    this.flowPuzzle.set(null);
+    if (this.store.openFacility()?.kind === 'flowPuzzle') this.store.openFacility.set(null);
+  }
+
+  /** Player solved the puzzle — claim the deferred reward and show it. */
+  async solveFlowPuzzle(path: [number, number][]): Promise<void> {
+    const preHp = this.store.you()?.hp ?? 0;
+    await this.run(async () => {
+      const resp = await this.store.action('solve-loot-puzzle', { path });
+      this.closeFlowPuzzle();
+      const ev = resp.spaceEvent;
+      if (ev) this.routeSpaceEvent(ev, preHp); // 'loot' → the normal reward dialog
+    });
+  }
+
+  /** Player gave up — forfeit the reward, no penalty. */
+  async giveUpFlowPuzzle(): Promise<void> {
+    await this.run(async () => {
+      await this.store.action('cancel-loot-puzzle', {});
+      this.closeFlowPuzzle();
+    });
   }
 
   /** Reveal one cell; the response carries the updated grid and remaining digs. */
@@ -1392,6 +1437,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.giveItem.set(null);
     this.showExcavation.set(false);
     this.excavationGrid.set(null);
+    this.showFlowPuzzle.set(false);
+    this.flowPuzzle.set(null);
     this.showVein.set(false);
     this.veinLog.set(null);
     this.showVault.set(false);

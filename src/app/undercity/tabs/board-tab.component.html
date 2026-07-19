@@ -489,6 +489,17 @@
     />
   }
 
+  <!-- Flow loot puzzle -->
+  @if (showFlowPuzzle() && flowPuzzle(); as puzzle) {
+    <app-undercity-flow-puzzle
+      [puzzle]="puzzle"
+      [busy]="busy()"
+      [washBg]="regionWashBg()"
+      (solved)="solveFlowPuzzle($event)"
+      (gaveUp)="giveUpFlowPuzzle()"
+    />
+  }
+
   <!-- Dig site cleared: bonus-Spore celebration (layers over the fresh board) -->
   @if (digCleared() !== null) {
     <div class="uc-modal-backdrop dig-clear-backdrop" (click)="closeDigCleared()">
