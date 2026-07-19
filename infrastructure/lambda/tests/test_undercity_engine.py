@@ -821,3 +821,25 @@ def test_the_collapse_lets_the_healthier_fighter_win():
             break
     assert dead_round is not None
     assert a.hp > 0   # the tank outlasts the foe
+
+
+# ── Flow loot puzzles ────────────────────────────────────────────────────────
+
+def test_flow_puzzles_pack_is_well_formed():
+    assert len(data.FLOW_PUZZLES) >= 12
+    ids = [p['id'] for p in data.FLOW_PUZZLES]
+    assert len(ids) == len(set(ids)), 'puzzle ids must be unique'
+    for p in data.FLOW_PUZZLES:
+        w, h = p['w'], p['h']
+        cells = {(r, c) for r in range(h) for c in range(w)}
+        rocks = {tuple(x) for x in p['rocks']}
+        assert rocks <= cells, f"{p['id']}: rock out of bounds"
+        assert tuple(p['start']) in cells and tuple(p['start']) not in rocks
+        assert tuple(p['end']) in cells and tuple(p['end']) not in rocks
+        assert tuple(p['start']) != tuple(p['end'])
+
+
+def test_flow_puzzle_lookup():
+    first = data.FLOW_PUZZLES[0]['id']
+    assert data.flow_puzzle(first)['id'] == first
+    assert data.flow_puzzle('nope') is None
