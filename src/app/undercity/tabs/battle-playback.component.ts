@@ -28,6 +28,10 @@ export interface BattleRewards {
   levels?: number;
   itemName?: string;
   itemIcon?: string;
+  gearName?: string;
+  gearIcon?: string;
+  gearEquipped?: boolean;
+  gearSpores?: number;
 }
 
 /** One rendered strike in the battle log. */
@@ -65,7 +69,7 @@ export class BattlePlaybackComponent implements OnInit, OnDestroy {
     return (
       this.battle.outcome === 'attacker' &&
       !!r &&
-      (!!r.spores || !!r.xp || !!r.levels || !!r.itemName)
+      (!!r.spores || !!r.xp || !!r.levels || !!r.itemName || !!r.gearName)
     );
   }
 

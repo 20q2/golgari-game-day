@@ -332,7 +332,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
 
   protected hasRewards(): boolean {
     const r = this.rewards();
-    return this.outcome() === 'attacker' && !!r && (!!r.spores || !!r.xp || !!r.levels || !!r.itemName);
+    return this.outcome() === 'attacker' && !!r && (!!r.spores || !!r.xp || !!r.levels || !!r.itemName || !!r.gearName);
   }
 
   protected outcomeLabel(): string {

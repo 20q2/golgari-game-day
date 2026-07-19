@@ -186,6 +186,13 @@
             @if (ev.item && itemInfo(ev.item); as info) {
               <span class="chip item"><mat-icon class="mi">{{ info.icon }}</mat-icon> {{ info.name }}</span>
             }
+            @if (ev.gear && gearInfo(ev.gear.id); as g) {
+              <span class="chip item">
+                <mat-icon class="mi">{{ slotIcon(ev.gear.slot) }}</mat-icon>
+                {{ g.name }} —
+                {{ ev.gear.outcome === 'equipped' ? 'equipped!' : 'salvaged (+' + ev.gear.soldSpores + ')' }}
+              </span>
+            }
             @if (ev.paint) {
               <span class="chip item">
                 <mat-icon class="mi">palette</mat-icon> {{ ev.duplicate ? 'Duplicate paint' : 'New paint!' }}

@@ -120,6 +120,12 @@
       color: var(--accent-color);
     }
 
+    // An extra body squeezed in past the box's max — flag it red. Declared
+    // after .filled so it wins (overflow seats are always filled).
+    &.overflow.filled {
+      color: var(--error);
+    }
+
     // Divider after the last required seat: everything to its right is extra.
     &.min-edge {
       margin-right: 9px;

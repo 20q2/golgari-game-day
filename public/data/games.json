@@ -3139,5 +3139,36 @@
         "caption": "Box"
       }
     ]
+  },
+  {
+    "id": "63",
+    "title": "Riftbound: League of Legends TCG",
+    "genres": [
+      "Card Game",
+      "Strategy"
+    ],
+    "minPlayers": 2,
+    "maxPlayers": 4,
+    "playTime": "30-60 minutes",
+    "description": "Riot Games' trading card game set in the League of Legends universe. Pick a champion and marshal your units and spells to seize battlefields and score points, in 1v1, 2v2, or four-player free-for-all.",
+    "imageUrl": "https://cdn.sanity.io/images/dsfx7636/consumer_products_live/a2ca8f9bc247fc5435432e9a97c4efc5b79020c4-2560x2560.png",
+    "bggRating": 7.5,
+    "comments": []
+  },
+  {
+    "id": "64",
+    "title": "Magic: The Gathering — Commander",
+    "genres": [
+      "Card Game",
+      "Strategy",
+      "Social"
+    ],
+    "minPlayers": 2,
+    "maxPlayers": 8,
+    "playTime": "60-120 minutes",
+    "description": "The multiplayer Magic format built around a legendary commander and a 100-card singleton deck. Politics, big swingy plays, and table-wide threats make every pod a fresh negotiation.",
+    "imageUrl": "https://images.ctfassets.net/s5n2t79q9icq/2xZKeAKnZzs5BEeNN6tMhL/607cbc4e1939707afb8a4cafd1a29b2e/0VcnpKMDau_1600x1080.jpg",
+    "bggRating": 7.5,
+    "comments": []
   }
 ]

@@ -110,6 +110,12 @@
               <mat-icon class="mi">{{ r.itemIcon ?? 'inventory_2' }}</mat-icon> {{ r.itemName }}
             </span>
           }
+          @if (r.gearName) {
+            <span class="reward-chip item">
+              <mat-icon class="mi">{{ r.gearIcon ?? 'hardware' }}</mat-icon>
+              {{ r.gearName }} — {{ r.gearEquipped ? 'equipped!' : 'salvaged (+' + r.gearSpores + ')' }}
+            </span>
+          }
           @if (r.levels) {
             <span class="reward-chip levelup">
               <mat-icon class="mi">arrow_upward</mat-icon>

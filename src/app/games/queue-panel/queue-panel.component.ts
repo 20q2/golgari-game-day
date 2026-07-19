@@ -14,11 +14,14 @@ import { CloseOutDialogComponent, CloseOutData } from './close-out-dialog.compon
  *  - required: this seat counts toward the game's minimum to start
  *  - minEdge:  this is the last required seat — draw the "minimum" divider
  *              after it (only when the game seats more than its minimum)
+ *  - overflow: this seat sits past the game's catalogued max — an extra body
+ *              we squeezed in (flagged red). Only ever shown when filled.
  */
 interface Seat {
   filled: boolean;
   required: boolean;
   minEdge: boolean;
+  overflow: boolean;
 }
 
 @Component({
@@ -79,10 +82,14 @@ export class QueuePanelComponent implements OnInit, OnDestroy {
     const joined = this.joinedCount(gameId);
     const min = this.minPlayers(gameId);
     const total = this.maxPlayers(gameId);
+    // The game's catalogued ceiling — seats past this are extra bodies we
+    // squeezed in beyond what the box seats.
+    const cap = this.gamesService.getGameById(gameId)?.maxPlayers ?? total;
     return Array.from({ length: total }, (_, i) => ({
       filled: i < joined,
       required: i < min,
       minEdge: i === min - 1 && min < total,
+      overflow: i >= cap,
     }));
   }
 

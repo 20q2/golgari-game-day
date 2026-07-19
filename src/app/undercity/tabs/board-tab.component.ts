@@ -480,11 +480,19 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return CONSUMABLE_MAP[id] ?? null;
   }
 
+  protected gearInfo(id: string): GearInfo | null {
+    return GEAR_MAP[id] ?? null;
+  }
+
+  protected slotIcon(slot: string): string {
+    return this.SLOT_ICONS[slot] ?? 'hardware';
+  }
+
   protected eventHasChips(ev: SpaceEvent): boolean {
     // Loot spores are shown inline in the grass scene, not as a chip — so a
     // plain forage doesn't render an empty chip row.
     const spores = ev.spores && ev.type !== 'loot';
-    return !!(spores || ev.sporesLost || ev.hp || ev.item || ev.paint || ev.hat);
+    return !!(spores || ev.sporesLost || ev.hp || ev.item || ev.gear || ev.paint || ev.hat);
   }
 
   protected readonly nodeType = computed(() => {
@@ -1138,12 +1146,20 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     xp?: number;
     levels?: number;
     item?: string;
+    gear?: SpaceEvent['gear'];
   }): BattleRewards {
     const rewards: BattleRewards = { spores: src.spores, xp: src.xp, levels: src.levels };
     if (src.item) {
       const info = CONSUMABLE_MAP[src.item];
       rewards.itemName = info?.name ?? src.item;
       rewards.itemIcon = info?.icon;
+    }
+    if (src.gear) {
+      const g = GEAR_MAP[src.gear.id];
+      rewards.gearName = g?.name ?? src.gear.id;
+      rewards.gearIcon = this.SLOT_ICONS[src.gear.slot] ?? 'hardware';
+      rewards.gearEquipped = src.gear.outcome === 'equipped';
+      rewards.gearSpores = src.gear.soldSpores;
     }
     return rewards;
   }

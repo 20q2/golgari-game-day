@@ -516,7 +516,9 @@ def test_mystery_item_can_upgrade_to_grimoire(table, monkeypatch):
         'paint': False, 'hat': False, 'heal': False, 'buff': None,
         'teleport': False, 'curse': False,
         'text': 'A free consumable lies discarded.'})
-    monkeypatch.setattr(db, '_rng', FixedRng(random_values=[0.0]))  # force upgrade
+    # First random() skips the gear-drop roll (>= GEAR_DROP['mystery'] chance);
+    # the second forces the grimoire upgrade.
+    monkeypatch.setattr(db, '_rng', FixedRng(random_values=[0.99, 0.0]))
     out = db._mystery(table, sid, doc)
     assert out['grimoire'] in data.GRIMOIRES
     assert data.GRIMOIRES[out['grimoire']]['tier'] == 1
@@ -525,6 +527,7 @@ def test_mystery_item_can_upgrade_to_grimoire(table, monkeypatch):
 
     # Once every tier-1 book is owned, the same roll falls back to an item.
     doc['grimoires'] = [g for g, spec in data.GRIMOIRES.items() if spec['tier'] == 1]
-    monkeypatch.setattr(db, '_rng', FixedRng(random_values=[0.0]))
+    # 0.99 skips the gear-drop roll so this still falls back to a plain item.
+    monkeypatch.setattr(db, '_rng', FixedRng(random_values=[0.99]))
     out = db._mystery(table, sid, doc)
     assert 'grimoire' not in out and out.get('item')
