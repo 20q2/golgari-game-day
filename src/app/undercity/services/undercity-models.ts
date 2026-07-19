@@ -233,6 +233,9 @@ export interface CombatEntry {
   swarm?: boolean;
   retaliation?: boolean;
   rotApplied?: number;
+  /** Environmental "collapse" damage (spec 2026-07-19). `by` is the side TAKING
+   *  it (like `rot`), not the dealer. */
+  frenzy?: boolean;
 }
 
 export interface CombatRound {
@@ -240,6 +243,8 @@ export interface CombatRound {
   entries: CombatEntry[];
   /** The foe's predicted stance — null when no read procced this round. */
   telegraph: Stance | null;
+  /** Round the collapse begins for this fight, or null for boss/lair. */
+  frenzyFrom?: number | null;
   playerHp: number;
   npcHp: number;
   revealNext: boolean;
@@ -262,6 +267,7 @@ export interface BattleResume {
   kind: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss';
   round: number;
   telegraph: Stance | null;
+  frenzyFrom?: number | null;
   playerHp: number;
   revealed: Stance | null;
   npc: {
@@ -402,6 +408,7 @@ export interface SpaceEvent {
   kind?: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss';
   telegraph?: Stance;
   round?: number;
+  frenzyFrom?: number | null;
 }
 
 export interface Occupant {
