@@ -22,7 +22,8 @@ export type FacilityKind =
   | 'excavation'
   | 'vein'
   | 'vault'
-  | 'warp';
+  | 'warp'
+  | 'flowPuzzle';
 
 export interface OpenFacility {
   kind: FacilityKind;

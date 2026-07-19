@@ -99,6 +99,9 @@ export interface YouDoc {
   veinStrikesLeft?: number;
   /** Guildvault pick attempts left this visit; refills to 3 on landing. */
   vaultPicksLeft?: number;
+  /** A loot puzzle awaiting a solve; carries the masked view so a reopened tab
+   * can restore the modal. Cleared on solve or give-up. */
+  pendingLoot?: { puzzleId: string; view: FlowPuzzleView } | null;
   bag: string[];
   gear: Record<string, string>;
   stance: string;
@@ -373,6 +376,16 @@ export interface DigFound {
   bagFull?: boolean;
 }
 
+/** Masked Flow puzzle sent to the client — layout only, never the solution. */
+export interface FlowPuzzleView {
+  id: string;
+  w: number;
+  h: number;
+  start: [number, number];
+  end: [number, number];
+  rocks: [number, number][];
+}
+
 export interface SpaceEvent {
   type: string;
   text: string;
@@ -398,6 +411,8 @@ export interface SpaceEvent {
   node?: string;
   stock?: TradeStockItem[];
   grid?: DigGrid;
+  /** loot_puzzle: the masked Flow puzzle to solve for the deferred loot. */
+  puzzle?: FlowPuzzleView;
   digsLeft?: number;
   depth?: number;
   collapsed?: boolean;
