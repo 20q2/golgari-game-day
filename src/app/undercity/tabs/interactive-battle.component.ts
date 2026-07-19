@@ -362,7 +362,9 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
       case 'fled':
         return 'ESCAPED';
       default:
-        return 'STALEMATE';
+        // No fight can draw anymore — the Collapse forces a kill. This only
+        // surfaces via the unreachable COMBAT_HARD_CAP safety bound.
+        return 'THE CAVERN CLAIMS YOU BOTH';
     }
   }
 

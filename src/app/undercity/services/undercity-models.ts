@@ -115,6 +115,8 @@ export interface YouDoc {
   /** Grimoires ever found — a permanent collection; one may be open at a time. */
   grimoires?: string[];
   equippedGrimoire?: string | null;
+  /** ISO time the open grimoire was last changed; opening another is gated. */
+  lastGrimoireSwap?: string | null;
   /** spellId -> ISO time it comes off cooldown (server clock, no trailing Z). */
   spellCooldowns?: Record<string, string>;
   awayEvents?: AwayEvent[];

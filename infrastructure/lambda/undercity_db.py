@@ -2702,6 +2702,17 @@ def _equip_grimoire(table, sid, doc, payload):
     gid = payload.get('grimoireId') or None
     if gid and gid not in (doc.get('grimoires') or []):
         return _err('You do not own that grimoire.', 409)
+    # Opening a *different* grimoire is gated by a cooldown so a player can't
+    # hot-swap spell loadouts on demand. Stowing (gid=None) is always free, and
+    # re-opening after a stow is still gated — so it can't be used to bypass.
+    if gid and gid != doc.get('equippedGrimoire'):
+        last = doc.get('lastGrimoireSwap')
+        if last:
+            elapsed = datetime.utcnow() - datetime.fromisoformat(last)
+            if elapsed < timedelta(minutes=data.GRIMOIRE_SWAP_COOLDOWN_MIN):
+                wait = data.GRIMOIRE_SWAP_COOLDOWN_MIN - int(elapsed.total_seconds() // 60)
+                return _err(f'Grimoire swap on cooldown ({wait} min left).', 429)
+        doc['lastGrimoireSwap'] = _now()
     doc['equippedGrimoire'] = gid
     conflict = _save_or_conflict(table, doc)
     if conflict:

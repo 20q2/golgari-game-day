@@ -291,13 +291,21 @@
                     <button
                       class="uc-btn book-chip"
                       [class.selected]="you.equippedGrimoire === g.id"
-                      [disabled]="busy()"
+                      [disabled]="
+                        busy() ||
+                        (grimoireSwapLeft() > 0 && you.equippedGrimoire !== g.id)
+                      "
                       (click)="equipBook(g.id)"
                     >
                       <mat-icon class="mi">menu_book</mat-icon> {{ g.name }}
                     </button>
                   }
                 </div>
+                @if (grimoireSwapLeft() > 0) {
+                  <p class="muted bag-empty">
+                    Grimoire swap on cooldown — {{ grimoireSwapLeft() }} min until you can open a different book.
+                  </p>
+                }
               }
             </section>
           }

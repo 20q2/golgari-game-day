@@ -464,6 +464,36 @@ def test_equip_grimoire_owned_only(table):
     assert status == 200 and resp['you']['equippedGrimoire'] is None
 
 
+def test_equip_grimoire_swap_cooldown(table):
+    act(table, 'join', starter='pest', home='city')
+    give_book(table, 'user-alex', 'moldering_folio', equip=False)
+    give_book(table, 'user-alex', 'gardeners_primer', equip=False)
+
+    # First open is free and stamps the cooldown.
+    status, resp = act(table, 'equip-grimoire', grimoireId='moldering_folio')
+    assert status == 200 and resp['you']['equippedGrimoire'] == 'moldering_folio'
+
+    # Opening a different book right away is blocked...
+    status, resp = act(table, 'equip-grimoire', grimoireId='gardeners_primer')
+    assert status == 429
+
+    # ...and stowing (free) can't be used to bypass it.
+    status, resp = act(table, 'equip-grimoire', grimoireId=None)
+    assert status == 200 and resp['you']['equippedGrimoire'] is None
+    status, resp = act(table, 'equip-grimoire', grimoireId='gardeners_primer')
+    assert status == 429
+
+    # Once the cooldown lapses, the swap goes through.
+    from datetime import datetime, timedelta
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    doc['lastGrimoireSwap'] = (
+        datetime.utcnow() - timedelta(minutes=data.GRIMOIRE_SWAP_COOLDOWN_MIN + 1)
+    ).isoformat(timespec='seconds')
+    db._put_player(table, doc)
+    status, resp = act(table, 'equip-grimoire', grimoireId='gardeners_primer')
+    assert status == 200 and resp['you']['equippedGrimoire'] == 'gardeners_primer'
+
+
 def test_ack_events_clears_inbox_and_cap(table):
     act(table, 'join', starter='pest', home='city')
     doc = db._get_player(table, _sid(table), 'user-alex')

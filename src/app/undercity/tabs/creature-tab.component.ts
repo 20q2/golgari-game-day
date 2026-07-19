@@ -19,6 +19,7 @@ import {
   SPELL_MAP,
   SpellInfo,
   cooldownLeftMin,
+  grimoireSwapLeftMin,
 } from '../data/spells';
 import { HATS, PAINTS, HatInfo, PaintInfo } from '../data/cosmetics';
 import { formSprite } from '../data/species';
@@ -189,6 +190,11 @@ export class CreatureTabComponent {
     const left = cooldownLeftMin(this.store.you()?.spellCooldowns, spellId);
     return left > 0 ? `${left} min` : 'Ready';
   }
+
+  /** Minutes until a *different* grimoire can be opened (0 = ready). */
+  protected readonly grimoireSwapLeft = computed(() =>
+    grimoireSwapLeftMin(this.store.you()?.lastGrimoireSwap),
+  );
 
   async equipBook(id: string): Promise<void> {
     const already = this.store.you()?.equippedGrimoire === id;

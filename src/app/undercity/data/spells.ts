@@ -96,3 +96,14 @@ export function cooldownLeftMin(
   const ms = new Date(readyAt + 'Z').getTime() - Date.now();
   return ms > 0 ? Math.ceil(ms / 60_000) : 0;
 }
+
+/** Mirror of GRIMOIRE_SWAP_COOLDOWN_MIN in infrastructure/lambda/undercity_config.py. */
+export const GRIMOIRE_SWAP_COOLDOWN_MIN = 30;
+
+/** Whole minutes until a different grimoire can be opened (0 = ready now). */
+export function grimoireSwapLeftMin(lastSwap: string | null | undefined): number {
+  if (!lastSwap) return 0;
+  const readyMs = new Date(lastSwap + 'Z').getTime() + GRIMOIRE_SWAP_COOLDOWN_MIN * 60_000;
+  const ms = readyMs - Date.now();
+  return ms > 0 ? Math.ceil(ms / 60_000) : 0;
+}
