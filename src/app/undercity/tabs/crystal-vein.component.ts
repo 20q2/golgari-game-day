@@ -1,6 +1,25 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  Output,
+  ViewChild,
+  ElementRef,
+  AfterViewInit,
+  OnChanges,
+  OnDestroy,
+  SimpleChanges,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { VEIN_CAVE_IN_PCT_PER_LEVEL, VEIN_MAX_DEPTH } from '../data/vein-vault';
+import { VeinCanvas } from '../engine/vein-canvas';
+
+/** Which scripted animation the 3D wall should play, with a monotonic `seq`
+ *  so repeat kinds (two strikes in a row) still retrigger via ngOnChanges. */
+export interface VeinEffect {
+  kind: 'strike' | 'cave-in' | 'heartstone';
+  seq: number;
+}
 
 /**
  * The crystal-vein modal: a shared shaft everyone digs deeper. Pure
@@ -21,14 +40,21 @@ import { VEIN_CAVE_IN_PCT_PER_LEVEL, VEIN_MAX_DEPTH } from '../data/vein-vault';
           visit
         </p>
 
-        <div class="shaft">
-          @for (lv of levels; track lv) {
-            <div
-              class="rung"
-              [class.dug]="lv <= depth"
-              [class.next]="lv === depth + 1"
-              [class.heart]="lv === MAX"
-            ></div>
+        <div class="vein-stage">
+          @if (!failed) {
+            <canvas #veinCanvas class="vein-canvas" [class.hidden]="!ready"></canvas>
+          }
+          @if (failed) {
+            <div class="shaft">
+              @for (lv of levels; track lv) {
+                <div
+                  class="rung"
+                  [class.dug]="lv <= depth"
+                  [class.next]="lv === depth + 1"
+                  [class.heart]="lv === MAX"
+                ></div>
+              }
+            </div>
           }
         </div>
 
@@ -90,6 +116,21 @@ import { VEIN_CAVE_IN_PCT_PER_LEVEL, VEIN_MAX_DEPTH } from '../data/vein-vault';
       .vein-sub strong {
         color: #8fd0dd;
       }
+      .vein-stage {
+        position: relative;
+        width: 100%;
+        height: 180px;
+        margin: 2px auto;
+      }
+      .vein-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        border-radius: 10px;
+      }
+      .vein-canvas.hidden {
+        visibility: hidden;
+      }
       .shaft {
         display: flex;
         flex-direction: column-reverse;
@@ -146,20 +187,62 @@ import { VEIN_CAVE_IN_PCT_PER_LEVEL, VEIN_MAX_DEPTH } from '../data/vein-vault';
     `,
   ],
 })
-export class CrystalVeinModalComponent {
+export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() depth = 0;
   @Input() strikesLeft = 0;
   @Input() busy = false;
   @Input() log: string | null = null;
   /** Region biome wash painted behind the card (from the board tab). */
   @Input() washBg: string | null = null;
+  /** Set by the parent after each strike response to trigger a wall animation. */
+  @Input() effect: VeinEffect | null = null;
   @Output() strike = new EventEmitter<void>();
   @Output() closed = new EventEmitter<void>();
 
+  @ViewChild('veinCanvas') private canvasRef?: ElementRef<HTMLCanvasElement>;
+
   protected readonly MAX = VEIN_MAX_DEPTH;
   protected readonly levels = Array.from({ length: VEIN_MAX_DEPTH }, (_, i) => i + 1);
+  protected ready = false;
+  protected failed = false;
+
+  private readonly vein = new VeinCanvas();
+  private lastSeq = -1;
+  private resizeObs?: ResizeObserver;
 
   protected get riskPct(): number {
     return Math.round((this.depth + 1) * VEIN_CAVE_IN_PCT_PER_LEVEL * 100);
+  }
+
+  async ngAfterViewInit(): Promise<void> {
+    const el = this.canvasRef?.nativeElement;
+    if (!el) {
+      this.failed = true;
+      return;
+    }
+    const ok = await this.vein.mount(el);
+    if (!ok) {
+      this.failed = true;
+      return;
+    }
+    this.ready = true;
+    this.vein.setDepth(this.depth, this.MAX);
+    this.resizeObs = new ResizeObserver(() => this.vein.resize());
+    this.resizeObs.observe(el);
+  }
+
+  ngOnChanges(ch: SimpleChanges): void {
+    if (ch['depth'] && this.ready) this.vein.setDepth(this.depth, this.MAX);
+    if (ch['effect'] && this.ready && this.effect && this.effect.seq !== this.lastSeq) {
+      this.lastSeq = this.effect.seq;
+      if (this.effect.kind === 'cave-in') this.vein.playCaveIn();
+      else if (this.effect.kind === 'heartstone') this.vein.playHeartstone();
+      else this.vein.playStrike();
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.resizeObs?.disconnect();
+    this.vein.dispose();
   }
 }
