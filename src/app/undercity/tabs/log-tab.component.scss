@@ -26,54 +26,6 @@
   font-size: 0.78rem;
 }
 
-// Claims
-.claim-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.won-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.88rem;
-  color: #d8f3dc;
-  cursor: pointer;
-
-  input {
-    accent-color: #4a7c59;
-    width: 18px;
-    height: 18px;
-  }
-}
-
-.claim-btn {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  align-items: center;
-
-  .claim-line {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  small {
-    font-weight: 400;
-    font-size: 0.7rem;
-    opacity: 0.8;
-  }
-}
-
-.honor-note {
-  margin: 2px 0 0;
-  font-size: 0.75rem;
-  color: #8a978a;
-  text-align: center;
-}
-
 // Leaderboard
 .lb-rows {
   display: flex;
@@ -170,17 +122,4 @@
     color: #6a776a;
     font-size: 0.72rem;
   }
-}
-
-.tab-toast {
-  position: sticky;
-  bottom: 8px;
-  align-self: center;
-  background: rgba(20, 18, 14, 0.95);
-  border: 1px solid rgba(74, 124, 89, 0.5);
-  color: #d8f3dc;
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  z-index: 6;
 }

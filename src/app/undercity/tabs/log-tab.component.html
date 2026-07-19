@@ -1,37 +1,4 @@
 <div class="log-tab">
-  <!-- Claim buttons: real game night feeds the game -->
-  <section class="card claim-card">
-    <h3>Earn rolls at the table</h3>
-    <div class="claim-row">
-      <label class="won-toggle">
-        <input type="checkbox" [checked]="wonToggle()" (change)="wonToggle.set(!wonToggle())" />
-        …and I won! <span class="muted">(+1 roll, +10 Spores)</span>
-      </label>
-      <button
-        class="uc-btn uc-btn-primary claim-btn"
-        [disabled]="busy() || finishedCooldownLeft() > 0"
-        (click)="claimFinished()"
-      >
-        <span class="claim-line"><mat-icon class="mi">sports_score</mat-icon> We finished a game (+2 rolls)</span>
-        @if (finishedCooldownLeft() > 0) {
-          <small>{{ finishedCooldownLeft() }}m cooldown</small>
-        }
-      </button>
-      <button
-        class="uc-btn claim-btn"
-        [disabled]="busy() || taughtLeft() < 1"
-        (click)="claimTaught()"
-      >
-        <span class="claim-line"><mat-icon class="mi">school</mat-icon> I taught someone a new game (+1 roll, +5 XP)</span>
-        <small>{{ taughtLeft() }} left tonight</small>
-      </button>
-      <p class="honor-note">
-        Claims are public in the Grapevine — the table is watching.
-        <mat-icon class="mi">visibility</mat-icon>
-      </p>
-    </div>
-  </section>
-
   <!-- Leaderboard -->
   <section class="card">
     <h3>Leaderboard</h3>
@@ -71,8 +38,4 @@
   </section>
 
   <app-undercity-host-panel />
-
-  @if (toast(); as t) {
-    <div class="tab-toast">{{ t }}</div>
-  }
 </div>
