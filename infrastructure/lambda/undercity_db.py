@@ -358,6 +358,12 @@ def _telegraph_next(rec):
     return _shown_telegraph(rec)
 
 
+def _frenzy_from(kind):
+    """Round the Collapse begins for this battle kind, or None when the foe's
+    pool must linger on a timeout (boss/lair). See the combat-collapse spec."""
+    return data.FRENZY_START if kind in ('wild', 'elite', 'barrier') else None
+
+
 def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
     """Snapshot combatants into doc['battle'], telegraph round 1, return the
     battle_start space event. Player buffs/stats freeze here; rewards resolve
@@ -385,6 +391,7 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
                     'atk': npc_snap['atk'], 'def': npc_snap['dfn'],
                     'spd': npc_snap['spd']},
             'telegraph': shown, 'round': 1,
+            'frenzyFrom': _frenzy_from(kind),
             'text': f'A {npc["name"]} bars your path!'}
 
 
@@ -1816,10 +1823,11 @@ def _combat_round(table, sid, doc, payload):
     player_c = _bt_to_combatant(rec['player'])
     npc_c = _bt_to_combatant(rec['npc'])
     rnd = rec['round']
+    frenzy_from = _frenzy_from(rec['kind'])
     entries = engine.resolve_round(
         player_c, npc_c, stance, rec['npcActual'], rnd, _rng,
         force_winner=force_winner, double_win_for=double_win_for,
-        negate_loss_for=negate_loss_for)
+        negate_loss_for=negate_loss_for, frenzy_from=frenzy_from)
     rec['strikes'].extend(entries)
     _bt_store(player_c, rec['player'])
     _bt_store(npc_c, rec['npc'])
@@ -1853,6 +1861,7 @@ def _combat_round(table, sid, doc, payload):
         return conflict
     return _ok(doc, combat={'round': rec['round'], 'entries': entries,
                             'telegraph': shown,
+                            'frenzyFrom': frenzy_from,
                             'playerHp': rec['player']['hp'],
                             'npcHp': rec['npc']['hp'],
                             'revealNext': rec['player']['reveal_next']})
@@ -1900,6 +1909,7 @@ def _battle_resume(rec, player_hp):
         'kind': rec.get('kind'),
         'round': rec.get('round', 1),
         'telegraph': _shown_telegraph(rec),
+        'frenzyFrom': _frenzy_from(rec.get('kind')),
         'playerHp': player_hp,
         'revealed': rec.get('npcActual') if peeked else None,
         'npc': {

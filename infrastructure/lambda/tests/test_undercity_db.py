@@ -1827,3 +1827,40 @@ def test_rejoin_does_not_double_charge(table):
     assert status == 200
     assert db._get_perm(table, 'user-alex')['renown'] == before
     assert 'top_hat' not in db._get_perm(table, 'user-alex')['hats']
+
+
+def test_collapse_enabled_for_wild_disabled_for_lair(table, monkeypatch):
+    # wild/elite/barrier fights enable the collapse; boss/lair must NOT (their
+    # persistent pools linger on a timeout).
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    seen = {}
+
+    def _spy(att, dfn, a_st, d_st, rnd, rng, **kw):
+        seen['frenzy_from'] = kw.get('frenzy_from')
+        dfn.hp = 0   # end the fight so the battle record clears
+        return [{'round': rnd, 'by': 'attacker', 'dmg': 99, 'winner': 'attacker'}]
+
+    monkeypatch.setattr(db.engine, 'resolve_round', _spy)
+
+    doc = db._get_player(table, sid, 'user-alex')
+    db._wild_battle(table, sid, doc)
+    db._put_player(table, doc)
+    act(table, 'combat-round', user='user-alex', name='Alex', stance='aggress')
+    assert seen['frenzy_from'] == data.FRENZY_START
+
+    seen.clear()
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'city_lair'
+    db._lair(table, sid, doc, 'city_lair')
+    db._put_player(table, doc)
+    act(table, 'combat-round', user='user-alex', name='Alex', stance='aggress')
+    assert seen['frenzy_from'] is None
+
+
+def test_battle_start_reports_frenzy_from(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    ev = db._wild_battle(table, sid, doc)
+    assert ev['frenzyFrom'] == data.FRENZY_START
