@@ -455,7 +455,7 @@ def test_exchange_triangle():
     assert exchange_winner('feint', 'feint') == 'whiff'
 
 
-from undercity_engine import resolve_round
+from undercity_engine import resolve_round, _base_hit
 
 
 def test_round_aggress_beats_feint_full_punish():
@@ -493,6 +493,45 @@ def test_round_whiff_nobody_hit():
     a = fighter(hp=30, max_hp=30); d = fighter(hp=30, max_hp=30)
     resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0))
     assert a.hp == 30 and d.hp == 30   # atk6-def5 chip rounds to 0
+
+
+def test_guard_swing_scales_with_defense():
+    lo = fighter(atk=10, dfn=2, spd=5)
+    hi = fighter(atk=10, dfn=8, spd=5)
+    tgt = fighter(atk=0, dfn=0)
+    rng = FakeRng(uniform=1.0)
+    lo_hit = _base_hit(lo, tgt, rng, stance='guard')
+    hi_hit = _base_hit(hi, tgt, rng, stance='guard')
+    assert hi_hit > lo_hit
+    assert lo_hit == round(10 + data.STANCE_STAT_WEIGHT * 2)   # 11
+    assert hi_hit == round(10 + data.STANCE_STAT_WEIGHT * 8)   # 14
+
+
+def test_feint_swing_scales_with_speed():
+    slow = fighter(atk=10, dfn=5, spd=2)
+    fast = fighter(atk=10, dfn=5, spd=8)
+    tgt = fighter(atk=0, dfn=0)
+    rng = FakeRng(uniform=1.0)
+    assert (_base_hit(fast, tgt, rng, stance='feint')
+            > _base_hit(slow, tgt, rng, stance='feint'))
+
+
+def test_aggress_swing_scales_with_strength():
+    weak = fighter(atk=6, dfn=5, spd=5)
+    strong = fighter(atk=12, dfn=5, spd=5)
+    tgt = fighter(atk=0, dfn=0)
+    rng = FakeRng(uniform=1.0)
+    assert (_base_hit(strong, tgt, rng, stance='aggress')
+            > _base_hit(weak, tgt, rng, stance='aggress'))
+
+
+def test_aggress_swing_ignores_defense_and_speed():
+    base = fighter(atk=10, dfn=3, spd=3)
+    tanky = fighter(atk=10, dfn=9, spd=9)   # more DEF/SPD, same ATK
+    tgt = fighter(atk=0, dfn=0)
+    rng = FakeRng(uniform=1.0)
+    assert (_base_hit(base, tgt, rng, stance='aggress')
+            == _base_hit(tanky, tgt, rng, stance='aggress'))
 
 
 def test_double_guard_deals_no_damage():
