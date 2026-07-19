@@ -532,9 +532,9 @@ def regen_hp(player: dict, now_iso: str) -> None:
 
 
 def regen_rolls(player: dict, now_iso: str) -> None:
-    """Bank +1 roll per full ROLL_REGEN_MINUTES since rollRegenAt, lazily,
-    capped at ROLL_CAP. The timestamp advances by whole intervals only, so
-    partial progress toward the next roll is never lost — and it advances
+    """Bank ROLLS_PER_REGEN rolls per full ROLL_REGEN_MINUTES since rollRegenAt,
+    lazily, capped at ROLL_CAP. The timestamp advances by whole intervals only,
+    so partial progress toward the next tick is never lost — and it advances
     even at cap, so a full bank doesn't stockpile hidden progress."""
     last = player.get('rollRegenAt')
     if not last:
@@ -544,7 +544,8 @@ def regen_rolls(player: dict, now_iso: str) -> None:
     intervals = int(minutes // data.ROLL_REGEN_MINUTES)
     if intervals <= 0:
         return
-    player['rolls'] = min(data.ROLL_CAP, player.get('rolls', 0) + intervals)
+    player['rolls'] = min(data.ROLL_CAP,
+                          player.get('rolls', 0) + intervals * data.ROLLS_PER_REGEN)
     advanced = _parse_iso(last) + timedelta(minutes=intervals * data.ROLL_REGEN_MINUTES)
     player['rollRegenAt'] = advanced.strftime(_ISO)
 

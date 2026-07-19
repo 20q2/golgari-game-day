@@ -221,11 +221,11 @@ def test_regen_caps_at_max():
     assert p['hp'] == 50
 
 
-def test_roll_regen_one_per_interval_keeps_partial_progress():
-    p = {'rolls': 1, 'rollRegenAt': '2026-07-17T20:00:00'}
-    regen_rolls(p, '2026-07-17T20:25:00')
-    assert p['rolls'] == 3                              # 2 full 10-min intervals
-    assert p['rollRegenAt'] == '2026-07-17T20:20:00'    # 5 leftover minutes kept
+def test_roll_regen_batch_per_interval_keeps_partial_progress():
+    p = {'rolls': 0, 'rollRegenAt': '2026-07-17T20:00:00'}
+    regen_rolls(p, '2026-07-17T20:35:00')
+    assert p['rolls'] == 3                              # 1 full 30-min tick, +3 rolls
+    assert p['rollRegenAt'] == '2026-07-17T20:30:00'    # 5 leftover minutes kept
 
 
 def test_roll_regen_caps_at_roll_cap():
