@@ -29,6 +29,11 @@ const CUSTOM_CLASSIFIERS: Record<string, Classifier> = {
 
 const rawImages: Record<string, HTMLImageElement> = {};
 const maskImages: Record<string, HTMLImageElement> = {};
+// Optional per-sprite hat guides (undercity/player_sprites/<key>.hat.png): a
+// copy of the art with one flat RGB(0,0,255) horizontal line marking where a
+// hat sits — its length is the hat's width, its y is the hat's bottom edge, its
+// midpoint is the hat's horizontal center.
+const hatGuideImages: Record<string, HTMLImageElement> = {};
 
 /** Read an image's pixels into a fresh canvas. */
 function imageDataOf(img: HTMLImageElement): { data: Uint8ClampedArray; w: number; h: number } {
@@ -347,20 +352,35 @@ export function preloadAll(): Promise<void> {
       /* no mask for this sprite — classifier fallback */
     }
   });
+  // Optional hat guides (undercity/player_sprites/<key>.hat.png). Missing guides
+  // are fine — those sprites fall back to the head anchor + native hat size.
+  const hatGuides = ALL_SPRITES.map(async (key) => {
+    try {
+      hatGuideImages[key] = await loadImage(`undercity/player_sprites/${key}.hat.png`);
+    } catch {
+      /* no hat guide for this sprite */
+    }
+  });
   const bg = loadImage('undercity/plaza_background.png').then((img) => {
     plazaBgImage = img;
   });
   // Canvases draw Material Icons ligatures (board glyphs, plaza emotes) —
   // make sure the font is resident before the first frame.
   const iconFont = document.fonts.load("26px 'Material Icons'").then(() => undefined);
-  for (const hat of HATS) {
-    const img = new Image();
-    const entry: HatImage = { img, offsetY: hat.offsetY, loaded: false };
-    img.onload = () => (entry.loaded = true);
-    img.src = `undercity/hats/${hat.file}`;
-    hatCache[hat.id] = entry;
-  }
-  loadPromise = Promise.all([...sprites, ...masks, bg, iconFont]).then(() => undefined);
+  // Hats are awaited (not fire-and-forget) so that once preloadAll resolves,
+  // static <img> sprite portraits can composite the hat in on first render.
+  const hatLoads = HATS.map((hat) =>
+    loadImage(`undercity/hats/${hat.file}`)
+      .then((img) => {
+        hatCache[hat.id] = { img, offsetY: hat.offsetY, loaded: true };
+      })
+      .catch(() => {
+        /* missing hat art — getHatImage returns null and renderers skip it */
+      }),
+  );
+  loadPromise = Promise.all([...sprites, ...masks, ...hatGuides, ...hatLoads, bg, iconFont]).then(
+    () => undefined,
+  );
   return loadPromise;
 }
 
@@ -430,6 +450,142 @@ export function getRecoloredDataUrl(
 
 export function getHatImage(hatId: string): HatImage | null {
   return hatCache[hatId] ?? null;
+}
+
+/**
+ * Placement for a hat on a sprite, read from its <key>.hat.png guide line
+ * (RGB(0,0,255)). All values are in the sprite's own pixel space (same space as
+ * the sprite canvas + getHatAnchor):
+ *   centerX — horizontal midpoint of the line (hat centers here)
+ *   bottomY — the line's row (the hat's bottom edge rests here)
+ *   width   — the line's length in pixels (the hat is scaled to this width)
+ * Null when the sprite has no guide file (or no blue line in it).
+ */
+export interface HatGuide {
+  centerX: number;
+  bottomY: number;
+  width: number;
+}
+const hatGuideCache: Record<string, HatGuide | null> = {};
+
+export function getHatGuide(sprite: string): HatGuide | null {
+  if (sprite in hatGuideCache) return hatGuideCache[sprite];
+  const img = hatGuideImages[sprite];
+  if (!img) {
+    hatGuideCache[sprite] = null;
+    return null;
+  }
+  const { data, w } = imageDataOf(img);
+  let minX = Infinity,
+    maxX = -Infinity,
+    sumY = 0,
+    count = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    // Solid blue marker: high blue, low red/green, opaque.
+    if (data[i] < 80 && data[i + 1] < 80 && data[i + 2] > 200 && data[i + 3] >= 128) {
+      const p = i / 4;
+      const x = p % w;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      sumY += Math.floor(p / w);
+      count++;
+    }
+  }
+  if (count === 0) {
+    hatGuideCache[sprite] = null;
+    return null;
+  }
+  const guide: HatGuide = {
+    centerX: (minX + maxX) / 2,
+    bottomY: Math.round(sumY / count),
+    width: maxX - minX + 1,
+  };
+  hatGuideCache[sprite] = guide;
+  return guide;
+}
+
+/**
+ * Where a hat sits on a sprite, in the sprite's own pixel space (same space as
+ * the recolored sprite canvas). sy may be negative — a hat can poke above the
+ * sprite bounds — so canvas renderers should draw it as a separate image (not
+ * composite into the fixed sprite canvas) unless they add headroom.
+ *
+ * Uses the sprite's blue-line hat guide (width + bottom + center) when present,
+ * else falls back to the head anchor + the hat's native size. Returns null when
+ * there's no hat id or the hat art hasn't loaded yet.
+ */
+export interface HatRect {
+  img: HTMLImageElement;
+  sx: number;
+  sy: number;
+  sw: number;
+  sh: number;
+}
+
+export function hatPlacement(sprite: string, hatId: string | null | undefined): HatRect | null {
+  if (!hatId) return null;
+  const hat = hatCache[hatId];
+  if (!hat || !hat.loaded) return null;
+  const aspect = hat.img.naturalHeight / Math.max(1, hat.img.naturalWidth);
+  const guide = getHatGuide(sprite);
+  if (guide) {
+    const sw = guide.width;
+    const sh = sw * aspect;
+    return { img: hat.img, sx: guide.centerX - sw / 2, sy: guide.bottomY + hat.offsetY - sh, sw, sh };
+  }
+  const anchor = getHatAnchor(sprite);
+  const sw = hat.img.naturalWidth;
+  const sh = hat.img.naturalHeight;
+  return { img: hat.img, sx: anchor.x - sw / 2, sy: anchor.y + hat.offsetY - sh, sw, sh };
+}
+
+// Recolored-sprite-plus-hat canvases, cached by sprite + hues + hat id.
+const recolorHatCache = new Map<string, HTMLCanvasElement>();
+
+/**
+ * A recolored sprite with its hat composited on, for static <img> portraits.
+ * The canvas is expanded upward (and sideways if needed) so a tall or high hat
+ * isn't clipped; the sprite stays bottom-aligned and horizontally centered, so
+ * an `object-fit: contain` box shows creature + hat as one image. Returns the
+ * plain recolor when there's no hat (or it hasn't loaded), and null when the
+ * sprite art is missing.
+ */
+export function getRecoloredWithHat(
+  sprite: string,
+  colors: Record<string, number>,
+  regions: string[],
+  hatId: string | null | undefined,
+): HTMLCanvasElement | null {
+  const base = getRecolored(sprite, colors, regions);
+  if (!base) return null;
+  const rect = hatPlacement(sprite, hatId);
+  if (!rect) return base;
+
+  const hues = regions.map((r) => colors[r] ?? 120);
+  const key = `${sprite}-${hues.join('-')}-${hatId}`;
+  const cached = recolorHatCache.get(key);
+  if (cached) return cached;
+
+  const topPad = Math.max(0, -rect.sy);
+  const sidePad = Math.max(0, -rect.sx, rect.sx + rect.sw - base.width);
+  const out = document.createElement('canvas');
+  out.width = base.width + sidePad * 2;
+  out.height = base.height + topPad;
+  const ctx = out.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(base, sidePad, topPad);
+  ctx.drawImage(rect.img, sidePad + rect.sx, topPad + rect.sy, rect.sw, rect.sh);
+  recolorHatCache.set(key, out);
+  return out;
+}
+
+export function getRecoloredWithHatDataUrl(
+  sprite: string,
+  colors: Record<string, number>,
+  regions: string[],
+  hatId: string | null | undefined,
+): string | null {
+  return getRecoloredWithHat(sprite, colors, regions, hatId)?.toDataURL() ?? null;
 }
 
 /** Head anchor: mask white-blob centroid, else the sprite's pure-red marker, else default. */

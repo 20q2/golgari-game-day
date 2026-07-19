@@ -22,7 +22,7 @@ import {
 } from '../data/spells';
 import { HATS, PAINTS, HatInfo, PaintInfo } from '../data/cosmetics';
 import { formSprite } from '../data/species';
-import { getRecoloredDataUrl } from '../engine/sprite-engine';
+import { getRecoloredDataUrl, getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
 import { isShielded } from '../services/undercity-models';
 import { DUNGEONS, SIGILS_REQUIRED } from '../data/dungeons';
 
@@ -75,6 +75,23 @@ export class CreatureTabComponent {
     this.openStat.update((cur) => (cur === stat ? null : stat));
   }
 
+  /** Flat stat bonus contributed by currently-equipped gear, per stat.
+   * Mirrors the backend's effective_stats() gear sum — the stored atk/def/spd
+   * on `you` are base values, so this surfaces what the gear adds on top. */
+  protected readonly gearMods = computed<Record<string, number>>(() => {
+    const gear = this.store.you()?.gear ?? {};
+    const mods: Record<string, number> = { atk: 0, def: 0, spd: 0, maxHp: 0 };
+    for (const id of Object.values(gear)) {
+      const g = id ? GEAR_MAP[id] : undefined;
+      if (!g) continue;
+      mods['atk'] += g.atk ?? 0;
+      mods['def'] += g.def ?? 0;
+      mods['spd'] += g.spd ?? 0;
+      mods['maxHp'] += g.maxHp ?? 0;
+    }
+    return mods;
+  });
+
   protected readonly passiveBlurbs = PASSIVE_BLURBS;
 
   passiveName(p: string): string {
@@ -92,7 +109,7 @@ export class CreatureTabComponent {
     const you = this.store.you();
     if (!you) return null;
     const spr = formSprite(you.form);
-    return getRecoloredDataUrl(spr.sprite, you.paint ?? {}, spr.regions);
+    return getRecoloredWithHatDataUrl(spr.sprite, you.paint ?? {}, spr.regions, you.hat);
   });
 
   /** Recolorable zones for the current form — drives the wardrobe paint groups.

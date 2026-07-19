@@ -56,7 +56,6 @@
   <div class="hero-card" *ngIf="scene().kind === 'hero' && scene().player as hp">
     <div class="hero-portrait">
       <img *ngIf="portrait(hp) as src" [src]="src" alt="" />
-      <img class="hat" *ngIf="hatUrl(hp) as h" [src]="h" alt="" />
     </div>
     <div class="hero-body">
       <div class="hero-name">{{ creatureTitle(hp) }}</div>
@@ -101,7 +100,6 @@
         <td class="rk">{{ i + 1 }}</td>
         <td class="pic">
           <img *ngIf="portrait(p) as src" [src]="src" alt="" />
-          <img class="hat" *ngIf="hatUrl(p) as h" [src]="h" alt="" />
         </td>
         <td class="who">
           <div class="nm">{{ p.username }}</div>

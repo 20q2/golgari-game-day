@@ -9,28 +9,34 @@ export interface GearInfo {
   desc: string;
   /** Stance-rider tag (mirrors GEAR_RIDERS); undefined for plain stat gear. */
   rider?: string;
+  /** Flat stat modifiers granted while equipped (mirror GEAR[*] in
+   * undercity_data.py — the backend's effective_stats() sums these). */
+  atk?: number;
+  def?: number;
+  spd?: number;
+  maxHp?: number;
 }
 
 export const GEAR: GearInfo[] = [
-  { id: 'rusted_fang', name: 'Rusted Fang', slot: 'fang', tier: 1, cost: 20, rider: 'barbed',
+  { id: 'rusted_fang', name: 'Rusted Fang', slot: 'fang', tier: 1, cost: 20, rider: 'barbed', atk: 2,
     desc: '+2 ATK · Barbed: Aggress applies rot even on a loss.' },
-  { id: 'kraul_barb', name: 'Kraul Barb', slot: 'fang', tier: 2, cost: 45, rider: 'deep_biter',
+  { id: 'kraul_barb', name: 'Kraul Barb', slot: 'fang', tier: 2, cost: 45, rider: 'deep_biter', atk: 4,
     desc: '+4 ATK · Deep-biter: winning hits hit harder.' },
-  { id: 'wurm_tooth', name: 'Wurm Tooth', slot: 'fang', tier: 3, cost: 80, rider: 'deep_biter',
+  { id: 'wurm_tooth', name: 'Wurm Tooth', slot: 'fang', tier: 3, cost: 80, rider: 'deep_biter', atk: 6, spd: 1,
     desc: '+6 ATK, +1 SPD · Deep-biter: winning hits hit harder.' },
-  { id: 'chitin_scrap', name: 'Chitin Scrap', slot: 'carapace', tier: 1, cost: 20, rider: 'thick',
+  { id: 'chitin_scrap', name: 'Chitin Scrap', slot: 'carapace', tier: 1, cost: 20, rider: 'thick', def: 2,
     desc: '+2 DEF · Thick: Guard chips in a stall, softer when wrong.' },
-  { id: 'bark_hide', name: 'Bark Hide', slot: 'carapace', tier: 2, cost: 45, rider: 'spiked',
+  { id: 'bark_hide', name: 'Bark Hide', slot: 'carapace', tier: 2, cost: 45, rider: 'spiked', def: 4,
     desc: '+4 DEF · Spiked: Guard counter reflects extra.' },
-  { id: 'troll_hide', name: 'Troll Hide', slot: 'carapace', tier: 3, cost: 80, rider: 'spiked',
+  { id: 'troll_hide', name: 'Troll Hide', slot: 'carapace', tier: 3, cost: 80, rider: 'spiked', def: 5, maxHp: 6,
     desc: '+5 DEF, +6 max HP · Spiked: Guard counter reflects extra.' },
-  { id: 'quartz_charm', name: 'Quartz Charm', slot: 'charm', tier: 1, cost: 20, rider: 'trickster',
+  { id: 'quartz_charm', name: 'Quartz Charm', slot: 'charm', tier: 1, cost: 20, rider: 'trickster', spd: 1,
     desc: '+1 SPD · Trickster: a lost Feint isn’t fully punished.' },
-  { id: 'serrated_charm', name: 'Serrated Charm', slot: 'charm', tier: 2, cost: 45, rider: 'serrated',
+  { id: 'serrated_charm', name: 'Serrated Charm', slot: 'charm', tier: 2, cost: 45, rider: 'serrated', spd: 1,
     desc: '+1 SPD · Serrated: Feint break saps the enemy next round.' },
-  { id: 'seer_charm', name: 'Seer Charm', slot: 'charm', tier: 2, cost: 50, rider: 'seer',
+  { id: 'seer_charm', name: 'Seer Charm', slot: 'charm', tier: 2, cost: 50, rider: 'seer', spd: 1,
     desc: '+1 SPD · Seer: sharply raises how often you read the foe’s intent.' },
-  { id: 'glint_charm', name: 'Glint Charm', slot: 'charm', tier: 3, cost: 80, rider: 'glint',
+  { id: 'glint_charm', name: 'Glint Charm', slot: 'charm', tier: 3, cost: 80, rider: 'glint', spd: 2,
     desc: '+2 SPD · Glint: winning a Feint reveals the true next intent; +read rate.' },
 ];
 

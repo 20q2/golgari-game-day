@@ -422,6 +422,8 @@ def _prune_cooldowns(doc):
     now = _now()
     cds = doc.get('spellCooldowns') or {}
     doc['spellCooldowns'] = {k: v for k, v in cds.items() if v > now}
+    pcds = doc.get('pokeCooldowns') or {}
+    doc['pokeCooldowns'] = {k: v for k, v in pcds.items() if v > now}
 
 
 def _add_rolls(doc, n):
@@ -1149,7 +1151,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'bag': [], 'gear': {}, 'stance': 'fight',
         'pendingMove': None, 'buffs': [],
         'grimoires': [], 'equippedGrimoire': None,
-        'spellCooldowns': {}, 'awayEvents': [],
+        'spellCooldowns': {}, 'pokeCooldowns': {}, 'awayEvents': [],
         'lastFinishedClaim': None, 'taughtClaims': 0, 'pokesReceived': 0,
         'pvpWins': 0, 'wildWins': 0, 'composts': 0, 'bossDamage': 0,
         'paint': {'body': body_hue, 'belly': 50, 'stripes': body_hue},
@@ -3271,12 +3273,21 @@ def _poke(table, sid, doc, payload):
     target = _get_player(table, sid, target_id)
     if not target:
         return _err('Target not found.', 404)
+    # Per-target cooldown: can't re-poke the same creature until it expires.
+    cds = doc.get('pokeCooldowns') or {}
+    until = cds.get(target_id)
+    if until and until > _now():
+        wait = int((datetime.fromisoformat(until) - datetime.utcnow()).total_seconds() // 60) + 1
+        return _err(f'You already poked {target["username"]} — {wait} min left.', 429)
     granted = 0
     if target.get('pokesReceived', 0) < data.POKE_ROLL_LIMIT:
         granted, _lost = _add_rolls(target, 1)
     target['pokesReceived'] = target.get('pokesReceived', 0) + 1
     if not _put_player(table, target):
         return _err('The plaza is crowded — try again.', 409)
+    cds[target_id] = (datetime.utcnow() + timedelta(minutes=data.POKE_COOLDOWN_MIN)).isoformat(timespec='seconds')
+    doc['pokeCooldowns'] = cds
+    _put_player(table, doc)
     _event(table, sid, 'poke',
            f"{doc['username']} poked {target['username']}'s {_creature_label(target)}"
            + (f' (+{granted} roll!)' if granted else ''),

@@ -23,9 +23,8 @@ import { QueueService } from '../../services/queue.service';
 import { QueueEntry } from '../../services/queue-models';
 import { PublicPlayer, isShielded } from '../services/undercity-models';
 import { BoardCanvas, BoardMap, BoardNode } from '../engine/board-canvas';
-import { preloadAll, getRecoloredDataUrl } from '../engine/sprite-engine';
+import { preloadAll, getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
 import { formSprite } from '../data/species';
-import { HAT_MAP } from '../data/cosmetics';
 import { GEAR } from '../data/items';
 import { Scene, SpectatorDirector, SpectatorMapInfo } from './spectator-director';
 
@@ -81,8 +80,6 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly leaderboard = computed(() =>
     [...this.store.players()].sort((a, b) => b.renown - a.renown),
   );
-
-  protected readonly hatMap = HAT_MAP;
 
   constructor() {
     // Build the board + director the moment the canvas, map, and sprite atlas
@@ -155,6 +152,7 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
         paint: p.paint ?? {},
         position: p.position,
         shielded: isShielded(p),
+        hat: p.hat,
       })),
     );
     this.board.setSnares(snares);
@@ -335,18 +333,13 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly portraitCache = new Map<string, string | null>();
 
   protected portrait(p: PublicPlayer): string | null {
-    const key = `${p.form}|${JSON.stringify(p.paint ?? {})}`;
+    const key = `${p.form}|${JSON.stringify(p.paint ?? {})}|${p.hat ?? ''}`;
     const hit = this.portraitCache.get(key);
     if (hit !== undefined) return hit;
     const spr = formSprite(p.form);
-    const url = getRecoloredDataUrl(spr.sprite, p.paint ?? {}, spr.regions);
+    const url = getRecoloredWithHatDataUrl(spr.sprite, p.paint ?? {}, spr.regions, p.hat);
     this.portraitCache.set(key, url);
     return url;
-  }
-
-  protected hatUrl(p: Pick<PublicPlayer, 'hat'>): string | null {
-    if (!p.hat || !HAT_MAP[p.hat]) return null;
-    return `undercity/hats/${HAT_MAP[p.hat].file}`;
   }
 
   protected creatureTitle(p: PublicPlayer): string {

@@ -429,18 +429,31 @@ def test_evolution_gates_and_bonuses(table):
 
 
 def test_poke_grants_rolls_capped(table):
-    act(table, 'join', starter='pest')
     act(table, 'join', user='user-sam', name='Sam', starter='zombie')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-sam')
     doc['rolls'] = 0
     db._put_player(table, doc)
+    # Four DIFFERENT pokers each poke Sam once (per-target cooldown blocks
+    # repeat pokes from the same person). Only the first 3 grant a roll.
     for i in range(4):
-        status, resp = act(table, 'poke', targetUserId='user-sam')
+        act(table, 'join', user=f'user-p{i}', name=f'P{i}', starter='pest')
+        status, resp = act(table, 'poke', user=f'user-p{i}', targetUserId='user-sam')
         assert status == 200
     sam = db._get_player(table, sid, 'user-sam')
     assert sam['rolls'] == 3  # only first 3 pokes grant rolls
     assert sam['pokesReceived'] == 4
+
+
+def test_poke_same_target_on_cooldown(table):
+    act(table, 'join', starter='pest')
+    act(table, 'join', user='user-sam', name='Sam', starter='zombie')
+    status, _ = act(table, 'poke', targetUserId='user-sam')
+    assert status == 200
+    # Immediate re-poke of the same creature is blocked by the cooldown.
+    status, resp = act(table, 'poke', targetUserId='user-sam')
+    assert status == 429
+    assert 'min left' in resp['error']
 
 
 def test_snare_plant_and_trigger(table):

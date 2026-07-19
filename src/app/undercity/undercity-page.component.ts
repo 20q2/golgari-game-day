@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { firstValueFrom } from 'rxjs';
 import { UserService } from '../services/user.service';
 import { UndercityStateService } from './services/undercity-state.service';
-import { preloadAll, getRecoloredDataUrl } from './engine/sprite-engine';
+import { preloadAll, getRecoloredWithHatDataUrl } from './engine/sprite-engine';
 import { BoardMap } from './engine/board-canvas';
 import { formSprite } from './data/species';
 import { xpToNext, formName } from './data/forms';
@@ -88,7 +88,7 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     const you = this.store.you();
     if (!you) return null;
     const spr = formSprite(you.form);
-    return getRecoloredDataUrl(spr.sprite, you.paint ?? {}, spr.regions);
+    return getRecoloredWithHatDataUrl(spr.sprite, you.paint ?? {}, spr.regions, you.hat);
   });
 
   /** True while a battle is in progress — the server tracks this independently

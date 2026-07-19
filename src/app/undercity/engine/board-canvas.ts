@@ -9,7 +9,7 @@
  * "disturbed ground" tells, pulsing move-choice highlights, and y-sorted
  * player tokens (recolored mini sprites) with ground shadows.
  */
-import { getRecolored, getRawImage } from './sprite-engine';
+import { getRecolored, getRawImage, hatPlacement } from './sprite-engine';
 import { formSprite } from '../data/species';
 import {
   BARRIER_GUARDIANS,
@@ -114,6 +114,8 @@ export interface BoardPlayer {
   paint: Record<string, number>;
   position: string;
   shielded: boolean;
+  /** Equipped hat id, if any — drawn on the head via the sprite's hat guide. */
+  hat?: string | null;
 }
 
 /** In-world popover anchored above a node — what the space does. */
@@ -1379,6 +1381,20 @@ export class BoardCanvas {
       ctx.save();
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(sprite, x - spriteW / 2, top, spriteW, drawH);
+      // Hat, placed in sprite-pixel space then scaled to the token's draw box
+      // (scaleY carries the breath stretch so the hat rides with the head).
+      const rect = hatPlacement(spr.sprite, p.hat);
+      if (rect) {
+        const sx = spriteW / sprite.width;
+        const sy = drawH / sprite.height;
+        ctx.drawImage(
+          rect.img,
+          x - spriteW / 2 + rect.sx * sx,
+          top + rect.sy * sy,
+          rect.sw * sx,
+          rect.sh * sy,
+        );
+      }
       ctx.imageSmoothingEnabled = true;
       ctx.restore();
     } else {

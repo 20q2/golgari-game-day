@@ -56,7 +56,7 @@ import {
 import { DUNGEONS, dungeonBiome } from '../data/dungeons';
 import { formName } from '../data/forms';
 import { formSprite } from '../data/species';
-import { getRecoloredDataUrl } from '../engine/sprite-engine';
+import { getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
 import { BattlePlaybackComponent, BattleSide, BattleRewards } from './battle-playback.component';
 import { InteractiveBattleComponent, BattleItem, CombatStats } from './interactive-battle.component';
 import { DiceRollComponent } from './dice-roll.component';
@@ -819,6 +819,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           paint: p.paint ?? {},
           position,
           shielded: isShielded(p),
+          hat: p.hat,
         };
       }),
     );
@@ -943,7 +944,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         defender: {
           name: `${target.username}'s ${target.creatureName || target.formName}`,
           spriteUrl: targetPublic
-            ? this.spriteUrl(targetPublic.form, targetPublic.paint)
+            ? this.spriteUrl(targetPublic.form, targetPublic.paint, targetPublic.hat)
             : null,
           icon: 'pets',
           startHp: targetPublic?.hp ?? 30,
@@ -1128,12 +1129,16 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   protected youSpriteUrl(): string | null {
     const you = this.store.you();
-    return you ? this.spriteUrl(you.form, you.paint) : null;
+    return you ? this.spriteUrl(you.form, you.paint, you.hat) : null;
   }
 
-  protected spriteUrl(form: string, paint: Record<string, number>): string | null {
+  protected spriteUrl(
+    form: string,
+    paint: Record<string, number>,
+    hat?: string | null,
+  ): string | null {
     const spr = formSprite(form);
-    return getRecoloredDataUrl(spr.sprite, paint ?? {}, spr.regions);
+    return getRecoloredWithHatDataUrl(spr.sprite, paint ?? {}, spr.regions, hat);
   }
 
   private youBattleName(): string {

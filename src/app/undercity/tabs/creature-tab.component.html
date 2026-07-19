@@ -99,6 +99,9 @@
                       } @else {
                         <span class="stat-tile-val">{{ $any(you)[stat] }}</span>
                       }
+                      @if (gearMods()[stat] > 0) {
+                        <span class="stat-tile-mod" title="from equipped gear">+{{ gearMods()[stat] }}</span>
+                      }
                       <span class="stat-tile-name">{{ stat.toUpperCase() }}</span>
                       @if (you.statPoints > 0) {
                         <span
@@ -124,6 +127,13 @@
                       {{ statInfo[s].label }}
                     </div>
                     <p>{{ statInfo[s].desc }}</p>
+                    @if (gearMods()[s] > 0) {
+                      <p class="stat-breakdown">
+                        <span class="base">{{ $any(you)[s] }} base</span>
+                        <span class="plus">+ {{ gearMods()[s] }} gear</span>
+                        <span class="total">= {{ $any(you)[s] + gearMods()[s] }}</span>
+                      </p>
+                    }
                   </aside>
                 }
               </div>

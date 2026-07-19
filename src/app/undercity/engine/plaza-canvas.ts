@@ -8,7 +8,7 @@
  * WebSocket events → poll-delta driven (updatePartners diffing), owner photos
  * and play-together removed, Compost-Shield bubbles and evolution glow added.
  */
-import { getRecolored, getPlazaBackground, getHatImage, getHatAnchor } from './sprite-engine';
+import { getRecolored, getPlazaBackground, hatPlacement } from './sprite-engine';
 import { formSprite } from '../data/species';
 
 export interface PlazaCreature {
@@ -787,25 +787,26 @@ export class PlazaCanvas {
     // Hat
     if (d.partner.hat) {
       const spr = formSprite(d.partner.form);
-      const hatInfo = getHatImage(d.partner.hat);
-      const anchor = getHatAnchor(spr.sprite);
-      if (hatInfo?.loaded) {
-        const hatW = hatInfo.img.naturalWidth * drawScale;
-        const hatH = hatInfo.img.naturalHeight * drawScale;
-        const anchorDrawX = anchor.x * drawScale;
-        const anchorDrawY = (anchor.y + hatInfo.offsetY) * drawScale;
+      // Placement is in sprite-pixel space; drawScale maps it to screen exactly
+      // like the sprite body above (native origin sits at -halfW/-halfH).
+      const rect = hatPlacement(spr.sprite, d.partner.hat);
+      if (rect) {
+        const hatW = rect.sw * drawScale;
+        const hatH = rect.sh * drawScale;
+        const hatX = rect.sx * drawScale;
+        const hatY = rect.sy * drawScale;
         ctx.save();
         ctx.globalAlpha = dinoAlpha;
         ctx.imageSmoothingEnabled = false;
         if (!d.facingLeft) {
           ctx.translate(x, y + hopY + dropOffsetY);
           ctx.scale(-1, 1);
-          ctx.drawImage(hatInfo.img, -halfW + anchorDrawX - hatW / 2, -halfH + anchorDrawY - hatH, hatW, hatH);
+          ctx.drawImage(rect.img, -halfW + hatX, -halfH + hatY, hatW, hatH);
         } else {
           ctx.drawImage(
-            hatInfo.img,
-            x - halfW + anchorDrawX - hatW / 2,
-            y - halfH + hopY + dropOffsetY + anchorDrawY - hatH,
+            rect.img,
+            x - halfW + hatX,
+            y - halfH + hopY + dropOffsetY + hatY,
             hatW,
             hatH,
           );

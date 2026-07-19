@@ -311,6 +311,26 @@
     color: #c3d3c3;
   }
 
+  // Base + gear = total, shown only when equipped gear touches this stat.
+  .stat-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 8px;
+    font-weight: 700;
+
+    .base {
+      color: #c3d3c3;
+    }
+    .plus {
+      color: #9ac79a;
+    }
+    .total {
+      color: #eafff0;
+    }
+  }
+
   @media (max-width: 520px) {
     width: auto;
   }
@@ -437,6 +457,20 @@
     font-size: 0.68rem;
     letter-spacing: 0.08em;
     color: #8a978a;
+  }
+
+  // Green "+N" chip showing what equipped gear adds on top of the base stat.
+  .stat-tile-mod {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    padding: 0 5px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #d8f5c8;
+    background: rgba(74, 124, 89, 0.35);
+    border: 1px solid rgba(154, 199, 154, 0.5);
   }
 
   .plus-btn {

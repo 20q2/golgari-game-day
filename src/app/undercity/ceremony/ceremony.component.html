@@ -8,9 +8,6 @@
       @if (spriteUrl(champ); as url) {
         <div class="champ-sprite-wrap">
           <img class="champ-sprite" [src]="url" [alt]="champ.formName" />
-          @if (hatUrl(champ); as hat) {
-            <img class="champ-hat" [src]="hat" alt="" />
-          }
         </div>
       }
       <h1>{{ champ.username }}</h1>
