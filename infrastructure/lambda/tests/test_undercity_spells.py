@@ -437,7 +437,7 @@ def test_boss_strike_chips_lair_pool(table):
     status, resp = act(table, 'cast', spellId='queens_bane', source='grimoire',
                        target=lair)
     assert status == 200
-    hp, slain = db._lair_state(table, _sid(table), lair)
+    hp, slain, _ = db._lair_state(table, _sid(table), lair)
     assert hp == full - 15 and slain is False
     you = resp['you']
     assert you.get('bossDamage', 0) == 0        # renown pool is Savra-only
@@ -544,3 +544,22 @@ def test_guardian_debuff_applies_flat_penalty():
     npc2 = {'atk': 2, 'def': 6, 'spd': 3}
     db._apply_guardian_debuffs(npc2, [{'kind': 'weaken_hex'}, {'kind': 'nonsense'}])
     assert npc2['atk'] == 1          # max(1, 2 - 3)
+
+
+def test_lair_curse_applies_and_is_consumed(table):
+    sid, _ = db._active_season(table)
+    node = 'city_lair'
+    db._set_lair_state(table, sid, node, data.LAIR_BOSSES[node]['hp'], False,
+                       [{'kind': 'weaken_hex'}])
+    # Round-trips with buffs.
+    hp, slain, buffs = db._lair_state(table, sid, node)
+    assert buffs == [{'kind': 'weaken_hex'}] and slain is False
+    # Starting the fight applies -3 ATK to the NPC and clears the stored curse.
+    act(table, 'join', starter='pest', home='city')
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = node
+    db._put_player(table, doc)
+    db._lair(table, sid, doc, node)   # mutates doc in place (caller persists it)
+    rec = db._get(table, db._season_pk(sid), f'LAIR#{node}')
+    assert not (rec or {}).get('buffs')      # consumed at battle start
+    assert doc['battle']['npc']['atk'] == data.LAIR_BOSSES[node]['atk'] - 3

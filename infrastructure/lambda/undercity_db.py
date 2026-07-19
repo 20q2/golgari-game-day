@@ -359,9 +359,11 @@ def _telegraph_next(rec):
 
 
 def _frenzy_from(kind):
-    """Round the Collapse begins for this battle kind, or None when the foe's
-    pool must linger on a timeout (boss/lair). See the combat-collapse spec."""
-    return data.FRENZY_START if kind in ('wild', 'elite', 'barrier') else None
+    """Round the Collapse begins for this battle kind. On for EVERY kind so no
+    fight can stalemate (sudden death) — persistent-pool foes (lair/boss) just
+    linger at their chipped HP when the player is the one who dies. See the
+    combat-collapse spec."""
+    return data.FRENZY_START
 
 
 def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
@@ -1756,15 +1758,21 @@ def _set_barrier_state(table, sid, node, hp, buffs=None):
 
 
 def _lair_state(table, sid, node):
-    """Season-shared lair pool: current HP + whether the true boss has fallen."""
+    """Season-shared lair pool: current HP, whether the true boss has fallen,
+    and any persisted curse buffs."""
     rec = _get(table, _season_pk(sid), f'LAIR#{node}') or {}
     full = data.LAIR_BOSSES[node]['hp']
-    return int(rec.get('hp', full)), bool(rec.get('slain', False))
+    return int(rec.get('hp', full)), bool(rec.get('slain', False)), list(rec.get('buffs') or [])
 
 
-def _set_lair_state(table, sid, node, hp, slain):
-    table.put_item(Item={'pk': _season_pk(sid), 'sk': f'LAIR#{node}',
-                         'hp': hp, 'slain': slain})
+def _set_lair_state(table, sid, node, hp, slain, buffs=None):
+    """buffs=None preserves stored curses; pass [] to clear."""
+    if buffs is None:
+        buffs = (_get(table, _season_pk(sid), f'LAIR#{node}') or {}).get('buffs') or []
+    item = {'pk': _season_pk(sid), 'sk': f'LAIR#{node}', 'hp': int(hp), 'slain': bool(slain)}
+    if buffs:
+        item['buffs'] = buffs
+    table.put_item(Item=item)
 
 
 def _lair(table, sid, doc, node):
@@ -1776,11 +1784,14 @@ def _lair(table, sid, doc, node):
     per-player — a Vestige kill still claims yours.
     """
     b = data.LAIR_BOSSES[node]
-    hp_pool, slain = _lair_state(table, sid, node)
+    hp_pool, slain, buffs = _lair_state(table, sid, node)
     vest_max = b['hp'] // 2
     display = f"Vestige of {b['name']}" if slain else b['name']
     npc = dict(b, hp=hp_pool, name=display, maxHp=(vest_max if slain else b['hp']),
                personality=b.get('personality', 'balanced'), bluff=b.get('bluff', 0.20))
+    _apply_guardian_debuffs(npc, buffs)
+    if buffs:
+        _set_lair_state(table, sid, node, hp_pool, slain, [])   # consumed on engagement
     return _start_battle(table, sid, doc, 'lair', npc, node=node,
                          ctx={'slain': slain, 'vestMax': vest_max})
 
@@ -1794,8 +1805,18 @@ def _boss_hp(table, sid):
     return int((item or {}).get('hp', data.ROT_SOVEREIGN['hp']))
 
 
-def _set_boss_hp(table, sid, hp):
-    table.put_item(Item={'pk': _season_pk(sid), 'sk': 'BOSS', 'hp': hp})
+def _boss_buffs(table, sid):
+    return list((_get(table, _season_pk(sid), 'BOSS') or {}).get('buffs') or [])
+
+
+def _set_boss_hp(table, sid, hp, buffs=None):
+    """buffs=None preserves stored curses; pass [] to clear."""
+    if buffs is None:
+        buffs = (_get(table, _season_pk(sid), 'BOSS') or {}).get('buffs') or []
+    item = {'pk': _season_pk(sid), 'sk': 'BOSS', 'hp': int(hp)}
+    if buffs:
+        item['buffs'] = buffs
+    table.put_item(Item=item)
 
 
 # ── Interactive combat state machine (Plan 2) ────────────────────────────────
@@ -1857,7 +1878,7 @@ def _combat_round(table, sid, doc, payload):
     _bt_store(player_c, rec['player'])
     _bt_store(npc_c, rec['npc'])
 
-    over = player_c.hp <= 0 or npc_c.hp <= 0 or rnd >= data.MAX_ROUNDS_COMBAT
+    over = player_c.hp <= 0 or npc_c.hp <= 0 or rnd >= data.COMBAT_HARD_CAP
     if over:
         if npc_c.hp <= 0 and player_c.hp <= 0:
             outcome = 'attacker' if player_c.hp >= npc_c.hp else 'defender'
@@ -1866,9 +1887,10 @@ def _combat_round(table, sid, doc, payload):
         elif player_c.hp <= 0:
             outcome = 'defender'
         else:
-            # Both survive the round cap: a neutral timeout. This is load-bearing
-            # for persistent-pool foes (lair/boss) — a non-kill must NOT award a
-            # slay/sigil; the foe lingers at its current HP (see _finish_*).
+            # Unreachable safety: the Collapse forces a death by ~round 6, long
+            # before COMBAT_HARD_CAP. If both somehow survive to the cap we resolve
+            # it as a non-kill timeout — a persistent-pool foe (lair/boss) then
+            # lingers at its current HP rather than awarding a slay/sigil.
             outcome = 'timeout'
         for c in (player_c, npc_c):  # Regrowth on survivors
             if c.hp > 0 and c.has('regrowth'):
@@ -2177,7 +2199,11 @@ def _boss(table, sid, doc, node, prev):
 
     boss = data.ROT_SOVEREIGN
     hp_before = _boss_hp(table, sid)
+    buffs = _boss_buffs(table, sid)
     npc = dict(boss, hp=hp_before, maxHp=boss['hp'])
+    _apply_guardian_debuffs(npc, buffs)
+    if buffs:
+        _set_boss_hp(table, sid, hp_before, [])   # consumed on engagement
     return _start_battle(table, sid, doc, 'boss', npc, node=node,
                          ctx={'hpBefore': hp_before})
 
@@ -2542,7 +2568,7 @@ def _cast_boss_strike(table, sid, doc, spell, target):
             text = 'The Queen is already at the brink — finish her in person.'
         return {'dmg': dealt, 'targetName': name, 'text': text}
     if target in data.LAIR_BOSSES:
-        hp, slain = _lair_state(table, sid, target)
+        hp, slain, _ = _lair_state(table, sid, target)
         new_hp = max(1, hp - spell['power'])
         dealt = hp - new_hp
         _set_lair_state(table, sid, target, new_hp, slain)
