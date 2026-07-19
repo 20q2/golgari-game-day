@@ -63,7 +63,7 @@ import { BattlePlaybackComponent, BattleSide, BattleRewards } from './battle-pla
 import { InteractiveBattleComponent, BattleItem, CombatStats } from './interactive-battle.component';
 import { DiceRollComponent } from './dice-roll.component';
 import { ExcavationModalComponent } from './excavation.component';
-import { CrystalVeinModalComponent } from './crystal-vein.component';
+import { CrystalVeinModalComponent, VeinEffect } from './crystal-vein.component';
 import { GuildvaultModalComponent } from './guildvault.component';
 import { MysteryReelComponent } from './mystery-reel.component';
 
@@ -155,6 +155,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly showVein = signal(false);
   protected readonly veinDepth = signal(0);
   protected readonly veinLog = signal<string | null>(null);
+  /** Latest vein animation cue for the 3D wall; seq bumps so repeats retrigger. */
+  protected readonly veinEffect = signal<VeinEffect | null>(null);
   protected readonly showVault = signal(false);
   protected readonly vaultView = signal<VaultView | null>(null);
   protected readonly reelSymbol = signal<string | null>(null);
@@ -1076,6 +1078,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Open the shaft, seeding depth from the landing event or polled state. */
   openVein(ev?: SpaceEvent): void {
+    this.veinEffect.set(null); // clear any stale cue so it can't replay on reopen
     const pos = this.store.you()?.position ?? '';
     const region = this.map?.nodes.find((n) => n.id === pos)?.region ?? '';
     this.veinDepth.set(ev?.depth ?? this.store.veins()[region]?.depth ?? 0);
@@ -1090,6 +1093,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       const resp = await this.store.action('strike');
       if (resp.depth !== undefined) this.veinDepth.set(resp.depth);
       this.veinLog.set(resp.text ?? null);
+      const kind: VeinEffect['kind'] = resp.collapsed
+        ? 'cave-in'
+        : resp.heartstone
+          ? 'heartstone'
+          : 'strike';
+      this.veinEffect.set({ kind, seq: (this.veinEffect()?.seq ?? 0) + 1 });
       if (resp.collapsed || resp.heartstone) this.showToast(resp.text ?? '');
     });
   }
