@@ -653,6 +653,7 @@ def handle_state(table, query_params):
         'vaults': vaults,
         'barriersOpen': sorted(_open_barriers(table, sid)),
         'boss': {'hp': _boss_hp(table, sid), 'maxHp': data.ROT_SOVEREIGN['hp']},
+        'guardians': _guardian_pools(table, sid),
         'events': [{k: v for k, v in e.items() if k not in ('pk', 'sk')} for e in events],
         'result': result if config.get('status') == 'ended' else None,
         'battle': battle_resume,
@@ -1755,6 +1756,26 @@ def _set_barrier_state(table, sid, node, hp, buffs=None):
     if buffs:
         item['buffs'] = buffs
     table.put_item(Item=item)
+
+
+def _guardian_pools(table, sid):
+    """Live HP + curse state for every rooted target a field spell can reach:
+    unbroken barrier guardians and lair bosses. Savra stays under `boss`."""
+    open_bars = _open_barriers(table, sid)
+    out = {}
+    for node, g in data.BARRIER_GUARDIANS.items():
+        if node in open_bars:
+            continue
+        hp, buffs = _barrier_state(table, sid, node)
+        out[node] = {'kind': 'barrier', 'name': g['name'], 'npcId': g['id'],
+                     'hp': hp, 'maxHp': g['hp'], 'buffs': [b['kind'] for b in buffs]}
+    for node, b in data.LAIR_BOSSES.items():
+        hp, slain, buffs = _lair_state(table, sid, node)
+        out[node] = {'kind': 'lair', 'npcId': b['id'],
+                     'name': f"Vestige of {b['name']}" if slain else b['name'],
+                     'hp': hp, 'maxHp': (b['hp'] // 2) if slain else b['hp'],
+                     'buffs': [x['kind'] for x in buffs]}
+    return out
 
 
 def _lair_state(table, sid, node):

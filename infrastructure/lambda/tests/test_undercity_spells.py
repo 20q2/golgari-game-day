@@ -613,3 +613,14 @@ def test_field_spell_guardian_out_of_range_no_cooldown(table):
     assert status == 409 and resp['code'] == 'out_of_range'
     alex = db._get_player(table, sid, 'user-alex')
     assert 'scrap_toss' not in (alex.get('spellCooldowns') or {})
+
+
+def test_state_exposes_guardian_pools(table):
+    act(table, 'join', starter='pest', home='city')
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200
+    guardians = state['guardians']
+    assert 'bar_e' in guardians
+    assert guardians['bar_e']['npcId'] == 'golgari_grave_troll'
+    assert guardians['bar_e']['hp'] == data.BARRIER_GUARDIANS['bar_e']['hp']
+    assert 'city_lair' in guardians and guardians['city_lair']['kind'] == 'lair'
