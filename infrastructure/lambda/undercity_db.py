@@ -1728,9 +1728,31 @@ def _barrier(table, sid, doc, node):
         return {'type': 'barrier_open',
                 'text': 'The shattered barricade lies in rubble. The way stands open.'}
     g = data.BARRIER_GUARDIANS[node]
-    npc = dict(g, personality=g.get('personality', 'turtle'),
-               bluff=g.get('bluff', 0.15))
+    hp_pool, buffs = _barrier_state(table, sid, node)
+    npc = dict(g, hp=hp_pool, maxHp=g['hp'],
+               personality=g.get('personality', 'turtle'), bluff=g.get('bluff', 0.15))
+    _apply_guardian_debuffs(npc, buffs)
+    if buffs:
+        _set_barrier_state(table, sid, node, hp_pool, [])   # consumed on engagement
     return _start_battle(table, sid, doc, 'barrier', npc, node=node)
+
+
+def _barrier_state(table, sid, node):
+    """Barrier guardian's lingering pool: current HP + persisted curse buffs."""
+    rec = _get(table, _season_pk(sid), f'BARRIER#{node}') or {}
+    full = data.BARRIER_GUARDIANS[node]['hp']
+    return int(rec.get('hp', full)), list(rec.get('buffs') or [])
+
+
+def _set_barrier_state(table, sid, node, hp, buffs=None):
+    """Write the pool. buffs=None preserves whatever curses are already stored
+    (so a post-battle HP write never clobbers a fresh curse); pass [] to clear."""
+    if buffs is None:
+        buffs = (_get(table, _season_pk(sid), f'BARRIER#{node}') or {}).get('buffs') or []
+    item = {'pk': _season_pk(sid), 'sk': f'BARRIER#{node}', 'hp': int(hp)}
+    if buffs:
+        item['buffs'] = buffs
+    table.put_item(Item=item)
 
 
 def _lair_state(table, sid, node):
@@ -2011,11 +2033,13 @@ def _finish_barrier(table, sid, doc, rec, result):
                f"{doc['username']} shattered the {g['name']} — a new route is open to all!",
                actor=doc['userId'])
     elif result['outcome'] == 'defender':
+        _set_barrier_state(table, sid, node, max(1, result['defenderHp']))
         _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
         _compost(table, sid, doc,
                  f"{doc['username']} was crushed by the {g['name']}. The barrier holds.")
         out['text'] = f"The {g['name']} hurls you back. The barrier holds…"
     else:
+        _set_barrier_state(table, sid, node, max(1, result['defenderHp']))
         _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
         out['text'] = f"You trade blows with the {g['name']}, but the barrier holds."
     return out

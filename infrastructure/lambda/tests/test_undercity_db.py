@@ -1905,3 +1905,16 @@ def test_battle_start_reports_frenzy_from(table):
     doc = db._get_player(table, sid, 'user-alex')
     ev = db._wild_battle(table, sid, doc)
     assert ev['frenzyFrom'] == data.FRENZY_START
+
+
+# ── Guardian pools (specs/2026-07-19-undercity-guardian-targeting-design.md) ────
+
+def test_barrier_pool_lingers_and_reads_back(table):
+    sid, _ = db._active_season(table)
+    # No record yet -> full HP, no buffs.
+    hp, buffs = db._barrier_state(table, sid, 'bar_e')
+    assert hp == data.BARRIER_GUARDIANS['bar_e']['hp'] and buffs == []
+    # A wounded pool + a stored curse round-trip.
+    db._set_barrier_state(table, sid, 'bar_e', 20, [{'kind': 'bone_chill'}])
+    hp, buffs = db._barrier_state(table, sid, 'bar_e')
+    assert hp == 20 and buffs == [{'kind': 'bone_chill'}]
