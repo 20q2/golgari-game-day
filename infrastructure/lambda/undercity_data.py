@@ -227,6 +227,9 @@ STANCE_GUARD_MITIGATE = 0.4   # aggressor's hit when Guard wins (G>A)
 STANCE_GUARD_COUNTER  = 0.6   # guard's counter hit when Guard wins (G>A)
 STANCE_CLASH_MULT     = 1.0   # both sides on A-vs-A
 STANCE_STALL_MULT     = 0.15  # both sides on G-vs-G
+STANCE_STAT_WEIGHT    = 0.5   # each stance's swing += this × its signature stat
+                              # (Aggress↔ATK, Guard↔DEF, Feint↔SPD); ATK is the
+                              # universal base so it boosts every attack.
 # F-vs-F is a whiff: no damage either way.
 
 ROT_PER_STACK   = 2   # damage per rot stack, ticked at end of each round

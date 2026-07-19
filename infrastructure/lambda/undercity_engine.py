@@ -105,10 +105,24 @@ def telegraph(actual: str, bluff: float, rng) -> str:
     return actual
 
 
-def _base_hit(striker: Combatant, target: Combatant, rng, pierce: int = 0) -> int:
-    """The raw ATK-vs-DEF hit before stance multipliers. Floors at 1. A pending
-    dmg_penalty (from a Serrated feint) is spent here on the striker's next hit."""
-    swing = round(striker.atk * rng.uniform(0.85, 1.15))
+# Each stance's swing scales off a signature stat (spec 2026-07-19):
+# Aggress↔ATK, Guard↔DEF, Feint↔SPD. ATK (strength) is the universal base on
+# every swing, so Aggress double-dips on it.
+_STANCE_STAT = {'aggress': 'atk', 'guard': 'dfn', 'feint': 'spd'}
+
+
+def _swing_base(striker: 'Combatant', stance: str) -> float:
+    sig = getattr(striker, _STANCE_STAT.get(stance, 'atk'))
+    return striker.atk + data.STANCE_STAT_WEIGHT * sig
+
+
+def _base_hit(striker: Combatant, target: Combatant, rng, pierce: int = 0,
+              *, stance: str) -> int:
+    """The raw stance-scaled hit before stance multipliers. The swing base is
+    striker.atk (universal) plus STANCE_STAT_WEIGHT × the stance's signature
+    stat (Aggress↔ATK, Guard↔DEF, Feint↔SPD). Floors at 1. A pending dmg_penalty
+    (from a Serrated feint) is spent here on the striker's next hit."""
+    swing = round(_swing_base(striker, stance) * rng.uniform(0.85, 1.15))
     hit = max(1, swing - max(0, target.dfn - pierce))
     if striker.dmg_penalty:
         hit = max(1, hit - striker.dmg_penalty)
@@ -177,13 +191,13 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                             'miss': True, 'winner': win_side})
         elif win_stance == 'guard':
             # Guard beats Aggress: aggressor's hit is mitigated, guard counters.
-            raw_agg = _base_hit(losr, winr, rng)
+            raw_agg = _base_hit(losr, winr, rng, stance='aggress')
             _deal(losr, winr, lose_side, rnd, raw_agg,
                   data.STANCE_GUARD_MITIGATE, entries, tag='mitigated')
             ctr_mult = data.STANCE_GUARD_COUNTER * (1.5 if winr.has_rider('spiked') else 1.0)
             if double_win_for == win_side:
                 ctr_mult *= 2
-            raw_ctr = _base_hit(winr, losr, rng)
+            raw_ctr = _base_hit(winr, losr, rng, stance='guard')
             _deal(winr, losr, win_side, rnd, raw_ctr, ctr_mult, entries, tag='counter')
             if winr.has_buff('harden_shell'):
                 heal = min(winr.max_hp - winr.hp, 3)
@@ -195,7 +209,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             lose_stance = d_stance if winner == 'attacker' else a_stance
             pierce = (data.DEATHTOUCH_PIERCE
                       if win_stance == 'aggress' and winr.has('deathtouch_stomp') else 0)
-            raw = _base_hit(winr, losr, rng, pierce)
+            raw = _base_hit(winr, losr, rng, pierce, stance=win_stance)
             mult = data.STANCE_WIN_MULT
             if winr.has_rider('deep_biter'):
                 mult += 0.5
@@ -228,7 +242,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             # Feint into an Aggress still lands a poke: the caught feinter takes
             # the big hit but chips the aggressor back.
             if lose_stance == 'feint' and losr.hp > 0:
-                chip_raw = _base_hit(losr, winr, rng)
+                chip_raw = _base_hit(losr, winr, rng, stance='feint')
                 _deal(losr, winr, lose_side, rnd, chip_raw, data.STANCE_STALL_MULT,
                       entries, tag='chip')
             _scavenge(losr, winr, lose_side, rnd, entries)
@@ -247,7 +261,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                     else (defender, attacker))
             if s.hp <= 0:
                 continue
-            raw = _base_hit(s, t, rng)
+            raw = _base_hit(s, t, rng, stance='aggress')
             _deal(s, t, side, rnd, raw, data.STANCE_CLASH_MULT, entries)
     elif winner == 'stall':
         # G-vs-G: both fully block — NO damage, unless a Thick carapace chips
@@ -255,20 +269,21 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
         for side, (s, t) in (('attacker', (attacker, defender)),
                              ('defender', (defender, attacker))):
             if s.has_rider('thick'):
-                raw = _base_hit(s, t, rng)
+                raw = _base_hit(s, t, rng, stance='guard')
                 _deal(s, t, side, rnd, raw, data.STANCE_STALL_MULT, entries, tag='chip')
     elif winner == 'whiff':
         # F-vs-F: two tricks cancel, but both still poke — each takes chip.
         for side, (s, t) in (('attacker', (attacker, defender)),
                              ('defender', (defender, attacker))):
-            raw = _base_hit(s, t, rng)
+            raw = _base_hit(s, t, rng, stance='feint')
             _deal(s, t, side, rnd, raw, data.STANCE_STALL_MULT, entries, tag='chip')
 
     # Swarm: one extra chip hit per round regardless of stance (min 1).
     for side, (s, t) in (('attacker', (attacker, defender)),
                          ('defender', (defender, attacker))):
         if s.has('swarm') and s.hp > 0 and t.hp > 0:
-            chip = max(1, round(_base_hit(s, t, rng) * data.SWARM_CHIP_MULT))
+            st = a_stance if side == 'attacker' else d_stance
+            chip = max(1, round(_base_hit(s, t, rng, stance=st) * data.SWARM_CHIP_MULT))
             t.hp -= chip
             entry = {'round': rnd, 'by': side, 'dmg': chip, 'swarm': True}
             if s.has('drain_life'):
