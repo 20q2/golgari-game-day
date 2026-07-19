@@ -74,8 +74,12 @@ def test_wild_win_can_drop_gear(table, monkeypatch):
 def test_loot_tile_can_drop_gear(table, monkeypatch):
     node = next(n for n, nd in data.MAP_NODES.items() if nd['type'] == 'loot')
     sid, doc = _player_at(table, node, spores=0)
+    # Loot is now gated by a Flow puzzle: landing defers, the reward (incl. gear)
+    # rolls in _award_loot when the puzzle is solved.
+    gate = db._resolve_space(table, sid, doc, node, None)
+    assert gate['type'] == 'loot_puzzle'
     _force_fang_drop(monkeypatch)
-    out = db._resolve_space(table, sid, doc, node, None)
+    out = db._award_loot(doc)
     assert out['type'] == 'loot'
     assert out['gear']['slot'] == 'fang'
 

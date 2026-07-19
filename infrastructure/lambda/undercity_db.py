@@ -752,6 +752,8 @@ def handle_action(table, body):
         'vault-guess': _vault_guess, 'respawn': _respawn,
         'cast': _cast,
         'equip-grimoire': _equip_grimoire, 'ack-events': _ack_events,
+        'solve-loot-puzzle': _solve_loot_puzzle,
+        'cancel-loot-puzzle': _cancel_loot_puzzle,
     }
     handler = handlers.get(atype)
     if not handler:
@@ -1410,6 +1412,39 @@ def _occupants(table, sid, node, except_user):
     return out
 
 
+def _flow_puzzle_view(pid):
+    """Masked puzzle for the client — layout only, never the solution path."""
+    p = data.flow_puzzle(pid)
+    return {'id': p['id'], 'w': p['w'], 'h': p['h'],
+            'start': p['start'], 'end': p['end'], 'rocks': p['rocks']}
+
+
+def _award_loot(doc):
+    """Roll and apply a loot-space reward, returning the {type:'loot',...} event.
+    Relocated from the old _resolve_space loot branch — rolls at claim time now,
+    once the player solves the Flow puzzle gating the loot."""
+    chance, tiers = data.GEAR_DROP['loot']
+    if _rng.random() < chance:
+        drop = _roll_gear_drop(doc, tiers)
+        if drop:
+            verb = 'equip' if drop['outcome'] == 'equipped' else 'salvage'
+            return {'type': 'loot',
+                    'text': f'You unearth a piece of gear and {verb} it!',
+                    'gear': drop}
+    if _rng.random() < 0.10:
+        item = _give_consumable(doc)
+        if item:
+            return {'type': 'loot', 'text': f'You unearth a {data.CONSUMABLES[item]["name"]}!',
+                    'item': item}
+    amount = _rng.choice([8, 8, 9, 9, 10, 10, 11, 12, 13, 15])
+    if 'scrounger' in _passives(doc):
+        amount += 2
+    if doc.get('homeBiome') == 'garden':
+        amount += 2  # Composter hatch perk
+    doc['spores'] = doc.get('spores', 0) + amount
+    return {'type': 'loot', 'text': f'You forage {amount} Spores from the rot.', 'spores': amount}
+
+
 def _resolve_space(table, sid, doc, node, prev):
     """Apply the landing event for `node`, mutating doc. Returns event dict."""
     ntype = data.MAP_NODES[node]['type']
@@ -1433,26 +1468,12 @@ def _resolve_space(table, sid, doc, node, prev):
         return {'type': 'pile', 'text': f'You scoop up {pile} spilled Spores!', 'spores': pile}
 
     if ntype == 'loot':
-        chance, tiers = data.GEAR_DROP['loot']
-        if _rng.random() < chance:
-            drop = _roll_gear_drop(doc, tiers)
-            if drop:
-                verb = 'equip' if drop['outcome'] == 'equipped' else 'salvage'
-                return {'type': 'loot',
-                        'text': f'You unearth a piece of gear and {verb} it!',
-                        'gear': drop}
-        if _rng.random() < 0.10:
-            item = _give_consumable(doc)
-            if item:
-                return {'type': 'loot', 'text': f'You unearth a {data.CONSUMABLES[item]["name"]}!',
-                        'item': item}
-        amount = _rng.choice([8, 8, 9, 9, 10, 10, 11, 12, 13, 15])
-        if 'scrounger' in _passives(doc):
-            amount += 2
-        if doc.get('homeBiome') == 'garden':
-            amount += 2  # Composter hatch perk
-        doc['spores'] = doc.get('spores', 0) + amount
-        return {'type': 'loot', 'text': f'You forage {amount} Spores from the rot.', 'spores': amount}
+        # Gate the reward behind a Flow puzzle: stash the pick + masked view on
+        # the doc (survives a refresh) and defer the roll to _solve_loot_puzzle.
+        pid = _rng.choice([p['id'] for p in data.FLOW_PUZZLES])
+        doc['pendingLoot'] = {'puzzleId': pid, 'view': _flow_puzzle_view(pid)}
+        return {'type': 'loot_puzzle', 'node': node,
+                'puzzle': doc['pendingLoot']['view']}
 
     if ntype == 'wild':
         return _wild_battle(table, sid, doc)
@@ -3115,6 +3136,39 @@ def _dig(table, sid, doc, payload):
     return _ok(doc, node=node, grid=_dig_view(site), digsLeft=doc['excavationDigsLeft'],
                found=found, cleared=cleared, bonus=(bonus if cleared else None),
                text=_dig_text(found, cleared, bonus))
+
+
+# ── Flow loot puzzle ──────────────────────────────────────────────────────────
+
+def _solve_loot_puzzle(table, sid, doc, payload):
+    """Validate the drawn Flow path; on success award the deferred loot reward."""
+    pending = doc.get('pendingLoot')
+    if not pending:
+        return _err('No loot puzzle to solve.', 409)
+    puzzle = data.flow_puzzle(pending.get('puzzleId'))
+    if not puzzle:
+        doc.pop('pendingLoot', None)  # pack changed under us — drop the stale gate
+        _save_or_conflict(table, doc)
+        return _err('That puzzle is no longer available.', 409)
+    path = payload.get('path') or []
+    if not engine.validate_flow_solution(puzzle, path):
+        return _err("That path isn't a full solution.", 409)
+    doc.pop('pendingLoot', None)
+    event = _award_loot(doc)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, spaceEvent=event)
+
+
+def _cancel_loot_puzzle(table, sid, doc, payload):
+    """Give up on a loot puzzle — forfeit the reward, no penalty."""
+    if doc.pop('pendingLoot', None) is None:
+        return _ok(doc)  # nothing to cancel; idempotent
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc)
 
 
 # ── Crystal Veins ─────────────────────────────────────────────────────────────

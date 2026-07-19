@@ -1915,3 +1915,69 @@ def test_barrier_pool_lingers_and_reads_back(table):
     db._set_barrier_state(table, sid, 'bar_e', 20, [{'kind': 'bone_chill'}])
     hp, buffs = db._barrier_state(table, sid, 'bar_e')
     assert hp == 20 and buffs == [{'kind': 'bone_chill'}]
+
+
+# ── Flow loot puzzle ─────────────────────────────────────────────────────────
+
+def _first_loot_node():
+    return next(n for n, d in data.MAP_NODES.items() if d['type'] == 'loot')
+
+
+def test_landing_on_loot_offers_puzzle_and_defers_reward(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    node = _first_loot_node()
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = node
+    doc['spores'] = 100
+    before = doc['spores']
+    ev = db._resolve_space(table, sid, doc, node, node)
+    assert ev['type'] == 'loot_puzzle'
+    assert ev['puzzle']['id'] == doc['pendingLoot']['puzzleId']
+    assert 'solution' not in ev['puzzle']       # never leak the answer
+    assert doc['spores'] == before              # reward NOT applied yet
+
+
+def test_solve_loot_puzzle_awards_and_clears(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    node = _first_loot_node()
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = node
+    db._resolve_space(table, sid, doc, node, node)  # sets pendingLoot
+    db._put_player(table, doc)
+    pid = doc['pendingLoot']['puzzleId']
+    sol = data.flow_puzzle(pid)['solution']
+    status, resp = act(table, 'solve-loot-puzzle', path=sol)
+    assert status == 200, resp
+    assert resp['spaceEvent']['type'] == 'loot'
+    assert not resp['you'].get('pendingLoot')
+
+
+def test_solve_loot_puzzle_rejects_bad_path(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    node = _first_loot_node()
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = node
+    db._resolve_space(table, sid, doc, node, node)
+    db._put_player(table, doc)
+    status, resp = act(table, 'solve-loot-puzzle', path=[[0, 0]])
+    assert status == 409
+    doc2 = db._get_player(table, sid, 'user-alex')
+    assert doc2.get('pendingLoot')              # still pending, can retry
+
+
+def test_cancel_loot_puzzle_forfeits(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    node = _first_loot_node()
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = node
+    doc['spores'] = 0
+    db._resolve_space(table, sid, doc, node, node)
+    db._put_player(table, doc)
+    status, resp = act(table, 'cancel-loot-puzzle')
+    assert status == 200
+    assert not resp['you'].get('pendingLoot')
+    assert resp['you']['spores'] == 0           # nothing awarded
