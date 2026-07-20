@@ -1557,10 +1557,10 @@ def _resolve_space(table, sid, doc, node, prev):
                 'puzzle': doc['pendingLoot']['view']}
 
     if ntype == 'wild':
-        return _wild_battle(table, sid, doc)
+        return _wild_battle(table, sid, doc, region=region)
 
     if ntype == 'elite':
-        return _wild_battle(table, sid, doc, elite=True)
+        return _wild_battle(table, sid, doc, elite=True, region=region)
 
     if ntype == 'mystery':
         return _mystery(table, sid, doc)
@@ -1831,11 +1831,15 @@ def _dungeon_hazard(table, sid, doc, node, biome, mire):
 
 # ── Battles ──────────────────────────────────────────────────────────────────
 
-def _wild_battle(table, sid, doc, elite=False):
-    """Landing on a wild/elite space STARTS an interactive battle (Plan 2)."""
+def _wild_battle(table, sid, doc, elite=False, region=None):
+    """Landing on a wild/elite space STARTS an interactive battle (Plan 2).
+    In the 'wilderness' region both wild AND elite spaces pull from the tougher
+    T2+ wilderness pools."""
     biome = data.dungeon_biome(doc.get('position', ''))
     if biome:
         spec = data.DUNGEON_NPCS[biome]          # dungeon fauna, themed per pocket
+    elif region == 'wilderness':
+        spec = _rng.choice(data.WILDERNESS_ELITE_NPCS if elite else data.WILDERNESS_NPCS)
     else:
         spec = _rng.choice(data.ELITE_NPCS if elite else data.NPCS)
     npc = engine.npc_from_spec(spec)

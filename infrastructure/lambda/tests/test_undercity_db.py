@@ -184,6 +184,40 @@ def test_elite_space_resolves_to_elite_battle(table, monkeypatch):
     assert ev['npc']['id'] in {'fetid_imp', 'rot_shambler'}
 
 
+def test_wilderness_wild_space_uses_wilderness_pool(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    ids = {n['id'] for n in data.WILDERNESS_NPCS}
+    ev = db._wild_battle(table, sid, doc, elite=False, region='wilderness')
+    assert ev['type'] == 'battle_start'
+    assert ev['npc']['id'] in ids
+
+
+def test_wilderness_elite_space_uses_wilderness_elite_pool(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    ids = {n['id'] for n in data.WILDERNESS_ELITE_NPCS}
+    ev = db._wild_battle(table, sid, doc, elite=True, region='wilderness')
+    assert ev['npc']['id'] in ids
+
+
+def test_non_wilderness_battle_still_uses_base_pools(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'cavern_r2'  # a surface, non-dungeon, non-wilderness node
+    ev = db._wild_battle(table, sid, doc, elite=False, region='cavern')
+    assert ev['npc']['id'] in {n['id'] for n in data.NPCS}
+
+
+def test_wilderness_monsters_are_tougher_than_base_elites(table):
+    base_max_hp = max(n['hp'] for n in data.ELITE_NPCS)
+    assert min(n['hp'] for n in data.WILDERNESS_NPCS) > max(n['hp'] for n in data.NPCS)
+    assert min(n['hp'] for n in data.WILDERNESS_ELITE_NPCS) >= base_max_hp
+
+
 def test_tunnel_landing_has_no_mechanical_effect(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)

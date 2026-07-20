@@ -526,6 +526,37 @@ ELITE_NPCS = [
      'itemChance': 0.30, 'personality': 'brute', 'bluff': 0.10},
 ]
 
+# Wilderness fauna — the T2+ frontier. Every wild AND elite space in the
+# 'wilderness' region draws from these (via _wild_battle region=), so evolved
+# units forced onto the travel layer always face tier-appropriate danger.
+# See specs/2026-07-20-undercity-wilderness-expansion-design.md.
+WILDERNESS_NPCS = [
+    {'id': 'ashen_stalker', 'name': 'Ashen Stalker',
+     'hp': 48, 'atk': 14, 'def': 6, 'spd': 9, 'bounty': 30, 'xp': 35,
+     'itemChance': 0.15, 'personality': 'trickster', 'bluff': 0.15},
+    {'id': 'bramble_horror', 'name': 'Bramble Horror',
+     'hp': 58, 'atk': 13, 'def': 8, 'spd': 4, 'bounty': 32, 'xp': 38,
+     'itemChance': 0.15, 'personality': 'turtle', 'bluff': 0.10},
+    {'id': 'cinder_wolf', 'name': 'Cinder Wolf',
+     'hp': 46, 'atk': 16, 'def': 5, 'spd': 10, 'bounty': 30, 'xp': 35,
+     'itemChance': 0.15, 'personality': 'brute', 'bluff': 0.10},
+    {'id': 'wastes_marauder', 'name': 'Wastes Marauder',
+     'hp': 52, 'atk': 15, 'def': 6, 'spd': 7, 'bounty': 33, 'xp': 38,
+     'itemChance': 0.20, 'personality': 'balanced', 'bluff': 0.15},
+]
+
+WILDERNESS_ELITE_NPCS = [
+    {'id': 'embermaw_alpha', 'name': 'Embermaw Alpha',
+     'hp': 64, 'atk': 17, 'def': 8, 'spd': 10, 'bounty': 42, 'xp': 50,
+     'itemChance': 0.35, 'personality': 'brute', 'bluff': 0.15},
+    {'id': 'thornclad_revenant', 'name': 'Thornclad Revenant',
+     'hp': 70, 'atk': 16, 'def': 10, 'spd': 6, 'bounty': 45, 'xp': 50,
+     'itemChance': 0.35, 'personality': 'turtle', 'bluff': 0.15},
+    {'id': 'ashfiend_matriarch', 'name': 'Ashfiend Matriarch',
+     'hp': 60, 'atk': 18, 'def': 7, 'spd': 12, 'bounty': 45, 'xp': 52,
+     'itemChance': 0.40, 'personality': 'trickster', 'bluff': 0.25},
+]
+
 
 # ── Cosmetics ────────────────────────────────────────────────────────────────
 
