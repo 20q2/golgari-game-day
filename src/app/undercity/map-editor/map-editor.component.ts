@@ -708,6 +708,25 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     const step = e.shiftKey ? 20 : 2;
     const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
     const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+    if (!dx && !dy) return;
+
+    // Multi mode with a group: shift every selected space together.
+    if (this.mode() === 'multi' && this.selNodes().size) {
+      e.preventDefault();
+      const now = Date.now();
+      if (now - this.lastNudgeAt > 800) this.snapshot();
+      this.lastNudgeAt = now;
+      const sel = this.selNodes();
+      for (const n of this.d().nodes) {
+        if (sel.has(n.id)) {
+          n.x += dx;
+          n.y += dy;
+        }
+      }
+      this.afterDocChange();
+      return;
+    }
+
     const target: { x: number; y: number } | undefined | null = this.selNode()
       ? this.d().nodes.find((n) => n.id === this.selNode())
       : this.selDecal() !== null
@@ -715,7 +734,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
         : this.selLabel() !== null
           ? this.d().labels?.[this.selLabel()!]
           : null;
-    if (!target || (!dx && !dy)) return;
+    if (!target) return;
     e.preventDefault();
     const now = Date.now();
     if (now - this.lastNudgeAt > 800) this.snapshot();
