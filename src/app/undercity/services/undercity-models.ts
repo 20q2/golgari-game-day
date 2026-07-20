@@ -336,10 +336,19 @@ export interface BazaarView {
   refreshesAt: string;
 }
 
-/** Masked view of a shared excavation dig site. */
+/** A buried find in a shared excavation dig site — footprint + loot are visible
+ * so players can see what's down there and where to spend their digs. */
 export interface DigItemView {
   idx: number;
   shape: string;
+  /** Footprint cells [row, col] this find occupies. */
+  cells: [number, number][];
+  /** 'spores' | 'item' — what the find pays out. */
+  kind: 'spores' | 'item' | null;
+  /** Consumable id when kind === 'item'. */
+  item: string | null;
+  /** Spore amount when kind === 'spores'. */
+  spores: number | null;
   collected: boolean;
   by: string | null;
 }

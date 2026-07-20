@@ -456,7 +456,7 @@ TRADING_POST_SIZE = len(TRADING_POST_SEED)
 # collects it for whoever dug it; clearing the final item resets the grid and
 # pays the finder a Spore bonus. Loot scales with footprint (see _roll_dig_loot
 # in undercity_db). Partial reveals persist for the next player.
-EXCAVATION_DIGS_PER_VISIT = 3
+EXCAVATION_DIGS_PER_VISIT = 4
 EXCAVATION_GRID = (5, 5)                     # (width, height)
 EXCAVATION_ITEMS = ['1x1', '1x1', '1x2', '2x2']  # shapes buried per site
 EXCAVATION_CLEAR_BONUS = 25                  # Spores for clearing the last item

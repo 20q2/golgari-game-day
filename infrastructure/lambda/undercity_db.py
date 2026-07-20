@@ -3164,16 +3164,20 @@ def _shape_cells(shape, w, h):
 
 
 def _roll_dig_loot(shape):
-    """Loot scales with footprint — bigger digs are worth more."""
+    """Loot scales with footprint — bigger digs are worth more, and every find
+    lands something useful (finds are visible now, so a dud would just feel bad)."""
     if shape == '1x1':
-        if _rng.random() < 0.7:
-            return {'kind': 'spores', 'spores': _rng.randint(8, 15)}
-        return {'kind': 'item', 'item': _rng.choice(['healing_moss', 'snare'])}
+        if _rng.random() < 0.55:
+            return {'kind': 'spores', 'spores': _rng.randint(15, 25)}
+        return {'kind': 'item', 'item': _rng.choice(['healing_moss', 'snare', 'smoke_spore'])}
     if shape == '1x2':
         return {'kind': 'item', 'item': _rng.choice(list(data.CONSUMABLES))}
-    if _rng.random() < 0.5:  # 2x2
-        return {'kind': 'item', 'item': _rng.choice(['loaded_die', 'smoke_spore'])}
-    return {'kind': 'spores', 'spores': _rng.randint(30, 50)}
+    # 2x2 marquee — always strong: a rare combat item or a big Spore cache.
+    if _rng.random() < 0.55:
+        return {'kind': 'item',
+                'item': _rng.choice(['loaded_die', 'scrying_spore', 'rot_bomb',
+                                     'chitin_ward', 'ambush_musk'])}
+    return {'kind': 'spores', 'spores': _rng.randint(50, 80)}
 
 
 def _gen_dig_grid():
@@ -3210,7 +3214,9 @@ def _save_dig_site(table, sid, node, site):
 
 
 def _dig_view(rec):
-    """Masked view for the client: covered cells never leak item positions."""
+    """View for the client: the dirt still hides which cells are dug, but the
+    buried finds show through (footprint + loot) so players can see what's down
+    there and where to spend their digs."""
     w, h = data.EXCAVATION_GRID
     if not rec or not rec.get('items'):
         return {'w': w, 'h': h, 'cells': [[_DIG_COVERED] * w for _ in range(h)],
@@ -3228,8 +3234,14 @@ def _dig_view(rec):
             row.append(cell_item.get((r, c), _DIG_EMPTY) if f'{r},{c}' in revealed
                        else _DIG_COVERED)
         cells.append(row)
-    items = [{'idx': idx, 'shape': it['shape'], 'collected': it['collected'], 'by': it['by']}
-             for idx, it in enumerate(rec['items'])]
+    items = []
+    for idx, it in enumerate(rec['items']):
+        loot = it.get('loot') or {}
+        items.append({'idx': idx, 'shape': it['shape'],
+                      'cells': [[r, c] for r, c in it['cells']],
+                      'kind': loot.get('kind'), 'item': loot.get('item'),
+                      'spores': loot.get('spores'),
+                      'collected': it['collected'], 'by': it['by']})
     return {'w': w, 'h': h, 'cells': cells, 'items': items,
             'remaining': sum(1 for it in rec['items'] if not it['collected'])}
 
