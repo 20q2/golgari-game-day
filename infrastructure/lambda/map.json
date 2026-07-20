@@ -878,7 +878,9 @@
    "region": "isle",
    "neighbors": [
     "isl_trade",
-    "boss"
+    "boss",
+    "isl_bg1",
+    "isl_bg2"
    ]
   },
   {
@@ -888,7 +890,119 @@
    "y": 1212,
    "region": "isle",
    "neighbors": [
-    "isl_ossuary"
+    "isl_ossuary",
+    "isl_bg1",
+    "isl_bg2"
+   ]
+  },
+  {
+   "id": "cavern_lg1",
+   "type": "wild",
+   "x": 300,
+   "y": 1400,
+   "region": "depths",
+   "neighbors": [
+    "cavern_s6",
+    "cavern_lair"
+   ]
+  },
+  {
+   "id": "cavern_lg2",
+   "type": "wild",
+   "x": 520,
+   "y": 1400,
+   "region": "depths",
+   "neighbors": [
+    "cavern_s6",
+    "cavern_lair"
+   ]
+  },
+  {
+   "id": "bog_lg1",
+   "type": "wild",
+   "x": 3190,
+   "y": 700,
+   "region": "depths",
+   "neighbors": [
+    "bog_m21",
+    "bog_lair"
+   ]
+  },
+  {
+   "id": "bog_lg2",
+   "type": "wild",
+   "x": 3190,
+   "y": 880,
+   "region": "depths",
+   "neighbors": [
+    "bog_m21",
+    "bog_lair"
+   ]
+  },
+  {
+   "id": "city_lg1",
+   "type": "wild",
+   "x": 1490,
+   "y": 2700,
+   "region": "depths",
+   "neighbors": [
+    "city_d13",
+    "city_lair"
+   ]
+  },
+  {
+   "id": "city_lg2",
+   "type": "wild",
+   "x": 1710,
+   "y": 2700,
+   "region": "depths",
+   "neighbors": [
+    "city_d13",
+    "city_lair"
+   ]
+  },
+  {
+   "id": "garden_lg1",
+   "type": "wild",
+   "x": 3000,
+   "y": 2320,
+   "region": "depths",
+   "neighbors": [
+    "garden_m11",
+    "garden_lair"
+   ]
+  },
+  {
+   "id": "garden_lg2",
+   "type": "wild",
+   "x": 3220,
+   "y": 2320,
+   "region": "depths",
+   "neighbors": [
+    "garden_m11",
+    "garden_lair"
+   ]
+  },
+  {
+   "id": "isl_bg1",
+   "type": "wild",
+   "x": 1841,
+   "y": 1200,
+   "region": "isle",
+   "neighbors": [
+    "isl_ossuary",
+    "boss"
+   ]
+  },
+  {
+   "id": "isl_bg2",
+   "type": "wild",
+   "x": 1971,
+   "y": 1076,
+   "region": "isle",
+   "neighbors": [
+    "isl_ossuary",
+    "boss"
    ]
   },
   {
@@ -1304,7 +1418,9 @@
    "region": "depths",
    "neighbors": [
     "city_d12",
-    "city_lair"
+    "city_lair",
+    "city_lg1",
+    "city_lg2"
    ]
   },
   {
@@ -1314,7 +1430,9 @@
    "y": 2795,
    "region": "depths",
    "neighbors": [
-    "city_d13"
+    "city_d13",
+    "city_lg1",
+    "city_lg2"
    ]
   },
   {
@@ -1662,7 +1780,9 @@
    "region": "depths",
    "neighbors": [
     "cavern_lair",
-    "cavern_s5"
+    "cavern_s5",
+    "cavern_lg1",
+    "cavern_lg2"
    ]
   },
   {
@@ -1672,7 +1792,9 @@
    "y": 1480,
    "region": "depths",
    "neighbors": [
-    "cavern_s6"
+    "cavern_s6",
+    "cavern_lg1",
+    "cavern_lg2"
    ]
   },
   {
@@ -1948,7 +2070,9 @@
    "region": "depths",
    "neighbors": [
     "bog_lair",
-    "bog_m20"
+    "bog_m20",
+    "bog_lg1",
+    "bog_lg2"
    ]
   },
   {
@@ -1958,7 +2082,9 @@
    "y": 790,
    "region": "depths",
    "neighbors": [
-    "bog_m21"
+    "bog_m21",
+    "bog_lg1",
+    "bog_lg2"
    ]
   },
   {
@@ -2408,7 +2534,9 @@
     "garden_k10",
     "garden_k9",
     "garden_lair",
-    "garden_m10"
+    "garden_m10",
+    "garden_lg1",
+    "garden_lg2"
    ]
   },
   {
@@ -2418,7 +2546,9 @@
    "y": 2400,
    "region": "depths",
    "neighbors": [
-    "garden_m11"
+    "garden_m11",
+    "garden_lg1",
+    "garden_lg2"
    ]
   },
   {

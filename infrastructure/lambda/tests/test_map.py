@@ -26,7 +26,11 @@ def test_node_count():
     # specs/2026-07-20-undercity-tunnels-wilderness-design.md.
     # v11 (2026-07-20 wilderness expansion): +18 nodes (12 enrichment + a 6-node
     # isle causeway). See specs/2026-07-20-undercity-wilderness-expansion-design.md.
-    assert len(MAP_NODES) == 257
+    # v12 (2026-07-20 boss approach loops): +10 wild guardian nodes — a 2-node
+    # ring around each dead-end lair (cavern/bog/city/garden) and the island boss
+    # so exact-count movement can land on them. See
+    # specs/2026-07-20-undercity-boss-approach-loops-design.md.
+    assert len(MAP_NODES) == 267
 
 
 def test_space_type_distribution():
@@ -39,9 +43,13 @@ def test_space_type_distribution():
     # the central hub. See specs/2026-07-20-undercity-tunnels-wilderness-design.md.
     # v11 (2026-07-20 wilderness expansion): +6 elite, +8 wild, +4 hazard from
     # the 18 new wilderness/causeway nodes.
+    # v12 (2026-07-20 boss approach loops): +10 wild guardian nodes ringing the
+    # four biome lairs and the island boss. Also realigned elite/warp/hazard/loot
+    # to the committed map (a prior editor pass reshuffled types +3/-1/-1/+2
+    # without updating this table — total node count was unchanged so it slipped).
     assert counts == {
-        'gate': 5, 'loot': 41, 'wild': 61, 'elite': 25, 'shop': 5, 'mystery': 10,
-        'hazard': 46, 'warp': 6, 'shrine': 1, 'ladder': 10, 'lair': 6,
+        'gate': 5, 'loot': 43, 'wild': 68, 'elite': 28, 'shop': 5, 'mystery': 10,
+        'hazard': 45, 'warp': 5, 'shrine': 1, 'ladder': 10, 'lair': 6,
         'ossuary': 1, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
         'excavation': 4, 'cache': 6, 'crystal_vein': 4, 'vault_lock': 1,
         'rest': 5, 'trove': 5, 'tunnel': 10,

@@ -92,14 +92,15 @@ def test_fork_gives_multiple_choices():
     assert dests == {'city_r4', 'city_r6', 'city_lt'}
 
 
-def test_dead_end_paths_die_out():
+def test_boss_approach_loop_lands_on_multiple_rolls():
     # Island chain: warp -> trade -> ossuary -> boss (3 steps to the boss).
-    # Since the wilderness expansion, isl_warp also opens onto the causeway
-    # (cw5), so a 3-roll can land on boss OR walk down the causeway to cw3, and
-    # a 4-roll continues to cw2. See
-    # specs/2026-07-20-undercity-wilderness-expansion-design.md.
-    assert legal_destinations(data.MAP_NODES, 'isl_warp', 3) == {'boss', 'cw3'}
-    assert legal_destinations(data.MAP_NODES, 'isl_warp', 4) == {'cw2'}
+    # The boss now sits inside a guardian ring (isl_bg1/isl_bg2 flank it), so
+    # both a 3-roll and a 4-roll can land on the boss instead of only an exact
+    # count — the whole point of the approach loops. The causeway branch off
+    # isl_warp (cw5...) still contributes cw3 at 3 and cw2 at 4. See
+    # specs/2026-07-20-undercity-boss-approach-loops-design.md.
+    assert legal_destinations(data.MAP_NODES, 'isl_warp', 3) == {'boss', 'isl_bg1', 'isl_bg2', 'cw3'}
+    assert legal_destinations(data.MAP_NODES, 'isl_warp', 4) == {'boss', 'isl_bg1', 'isl_bg2', 'cw2'}
 
 
 def test_can_circle_back_to_start_on_a_loop():
