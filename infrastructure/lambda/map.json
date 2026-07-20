@@ -736,7 +736,7 @@
   },
   {
    "id": "t_cavern_bog0",
-   "type": "loot",
+   "type": "tunnel",
    "x": 1500,
    "y": 520,
    "region": "cavern",
@@ -747,7 +747,7 @@
   },
   {
    "id": "t_cavern_bog1",
-   "type": "hazard",
+   "type": "tunnel",
    "x": 2100,
    "y": 520,
    "region": "bog",
@@ -758,7 +758,7 @@
   },
   {
    "id": "t_bog_garden0",
-   "type": "elite",
+   "type": "tunnel",
    "x": 2853,
    "y": 961,
    "region": "bog",
@@ -769,7 +769,7 @@
   },
   {
    "id": "t_bog_garden1",
-   "type": "loot",
+   "type": "tunnel",
    "x": 2900,
    "y": 1273,
    "region": "garden",
@@ -780,7 +780,7 @@
   },
   {
    "id": "t_garden_city0",
-   "type": "loot",
+   "type": "tunnel",
    "x": 2544,
    "y": 1793,
    "region": "garden",
@@ -791,7 +791,7 @@
   },
   {
    "id": "t_garden_city1",
-   "type": "wild",
+   "type": "tunnel",
    "x": 2200,
    "y": 1917,
    "region": "city",
@@ -802,7 +802,7 @@
   },
   {
    "id": "t_city_bone0",
-   "type": "mystery",
+   "type": "tunnel",
    "x": 1348,
    "y": 1879,
    "region": "city",
@@ -813,7 +813,7 @@
   },
   {
    "id": "t_city_bone1",
-   "type": "hazard",
+   "type": "tunnel",
    "x": 1000,
    "y": 1750,
    "region": "bone",
@@ -824,7 +824,7 @@
   },
   {
    "id": "t_bone_cavern0",
-   "type": "elite",
+   "type": "tunnel",
    "x": 715,
    "y": 1207,
    "region": "bone",
@@ -835,7 +835,7 @@
   },
   {
    "id": "t_bone_cavern1",
-   "type": "loot",
+   "type": "tunnel",
    "x": 745,
    "y": 978,
    "region": "cavern",

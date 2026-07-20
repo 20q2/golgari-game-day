@@ -27,12 +27,15 @@ def test_space_type_distribution():
     counts = Counter(n['type'] for n in MAP_NODES.values())
     # v9 deep dungeons: five distinct mazes add wild/hazard/loot/elite spaces
     # plus one 'rest' and one 'trove' room each (counts vary by maze shape).
+    # v10 (2026-07-20 tunnels): the ten biome-boundary spur nodes retyped from
+    # their old loot/hazard/elite/wild/mystery types to safe-passage 'tunnel'
+    # spaces. See specs/2026-07-20-undercity-tunnels-wilderness-design.md.
     assert counts == {
-        'gate': 5, 'loot': 42, 'wild': 51, 'elite': 18, 'shop': 5, 'mystery': 11,
-        'hazard': 40, 'warp': 6, 'shrine': 1, 'ladder': 10, 'lair': 6,
+        'gate': 5, 'loot': 38, 'wild': 50, 'elite': 16, 'shop': 5, 'mystery': 10,
+        'hazard': 38, 'warp': 6, 'shrine': 1, 'ladder': 10, 'lair': 6,
         'ossuary': 1, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
         'excavation': 4, 'cache': 5, 'crystal_vein': 4, 'vault_lock': 1,
-        'rest': 5, 'trove': 5,
+        'rest': 5, 'trove': 5, 'tunnel': 10,
     }
 
 

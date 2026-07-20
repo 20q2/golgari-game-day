@@ -183,6 +183,21 @@ def test_elite_space_resolves_to_elite_battle(table, monkeypatch):
     assert ev['npc']['id'] in {'fetid_imp', 'rot_shambler'}
 
 
+def test_tunnel_landing_has_no_mechanical_effect(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    assert data.MAP_NODES['t_cavern_bog0']['type'] == 'tunnel'
+    doc['position'] = 't_cavern_bog0'
+    doc['spores'] = 50
+    before_hp = doc['hp']
+    ev = db._resolve_space(table, sid, doc, 't_cavern_bog0', 'cavern_r1')
+    assert ev['type'] == 'tunnel'
+    assert doc['spores'] == 50          # no loot/hazard change
+    assert doc['hp'] == before_hp       # no battle
+    assert doc.get('pendingLoot') is None
+
+
 def test_roll_picks_exact_face_in_debug(table, monkeypatch):
     monkeypatch.setattr(data, 'DEBUG', True)
     act(table, 'join', starter='saproling', home='cavern')

@@ -1643,6 +1643,12 @@ def _resolve_space(table, sid, doc, node, prev):
                 'text': f'A rusted ladder bolted into the rock leads {where}. '
                         'Your next roll can carry you through.'}
 
+    if ntype == 'tunnel':
+        # Safe passage: a Tier-1-only shortcut between biomes. No combat, loot,
+        # or hazard — the mobility itself is the reward. (Evolved units are kept
+        # off tunnels entirely by the movement gate, so only Tier-1s land here.)
+        return {'type': 'tunnel', 'text': 'You slip through the narrow tunnel.'}
+
     return {'type': ntype, 'text': '…'}
 
 
