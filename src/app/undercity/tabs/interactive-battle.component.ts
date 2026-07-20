@@ -155,8 +155,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     return PERSONALITY_TELL[this.personality] ?? 'watching you';
   }
 
-  /** Whether the cavern is caving in this round ('active'), about to next round
-   *  ('imminent'), or not a factor (null). */
+  /** Whether the escalation ramp is live this round ('active'), starts next
+   *  round ('imminent'), or is not a factor (null). */
   protected collapseState(): 'active' | 'imminent' | null {
     if (this.frenzyFrom == null) return null;
     const r = this.round();
@@ -376,9 +376,9 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
       case 'fled':
         return 'ESCAPED';
       default:
-        // No fight can draw anymore — the Collapse forces a kill. This only
-        // surfaces via the unreachable COMBAT_HARD_CAP safety bound.
-        return 'THE CAVERN CLAIMS YOU BOTH';
+        // The escalation ramp forces a kill long before this; only reachable
+        // via the (in practice unreachable) COMBAT_HARD_CAP safety bound.
+        return 'THE FIGHT ENDS IN EXHAUSTION';
     }
   }
 

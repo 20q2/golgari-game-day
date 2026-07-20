@@ -255,8 +255,9 @@ export interface CombatEntry {
   swarm?: boolean;
   retaliation?: boolean;
   rotApplied?: number;
-  /** Environmental "collapse" damage (spec 2026-07-19). `by` is the side TAKING
-   *  it (like `rot`), not the dealer. */
+  /** Legacy environmental "collapse" damage — no longer emitted by the engine
+   *  (combat now escalates via each creature's own swings). Kept for playback of
+   *  old battle records; `by` is the side TAKING it (like `rot`). */
   frenzy?: boolean;
 }
 
@@ -265,7 +266,7 @@ export interface CombatRound {
   entries: CombatEntry[];
   /** The foe's predicted stance — null when no read procced this round. */
   telegraph: Stance | null;
-  /** Round the collapse begins for this fight, or null for boss/lair. */
+  /** Round the escalation ramp begins for this fight, or null for boss/lair. */
   frenzyFrom?: number | null;
   playerHp: number;
   npcHp: number;

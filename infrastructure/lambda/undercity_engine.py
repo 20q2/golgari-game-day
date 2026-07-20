@@ -126,12 +126,14 @@ def _swing_base(striker: 'Combatant', stance: str) -> float:
 
 
 def _base_hit(striker: Combatant, target: Combatant, rng, pierce: int = 0,
-              *, stance: str) -> int:
+              *, stance: str, ramp: float = 1.0) -> int:
     """The raw stance-scaled hit before stance multipliers. The swing base is
     striker.atk (universal) plus STANCE_STAT_WEIGHT × the stance's signature
-    stat (Aggress↔ATK, Guard↔DEF, Feint↔SPD). Floors at 1. A pending dmg_penalty
+    stat (Aggress↔ATK, Guard↔DEF, Feint↔SPD). `ramp` is the escalation factor
+    (>1 once a fight drags past FRENZY_START) that grows every creature's own
+    swings so a slow fight still resolves. Floors at 1. A pending dmg_penalty
     (from a Serrated feint) is spent here on the striker's next hit."""
-    swing = round(_swing_base(striker, stance) * rng.uniform(0.85, 1.15))
+    swing = round(_swing_base(striker, stance) * ramp * rng.uniform(0.85, 1.15))
     hit = max(1, swing - max(0, target.dfn - pierce))
     if striker.dmg_penalty:
         hit = max(1, hit - striker.dmg_penalty)
@@ -162,8 +164,8 @@ def _other(side):
 
 def _bramble(struck, striker, struck_side, rnd, entries):
     """A struck Bramble carapace reflects a flat amount back onto the striker.
-    Called at every strike site (not on rot/frenzy/scavenge — environmental or
-    already-retaliatory damage does not trigger thorns)."""
+    Called at every strike site (not on rot/scavenge — DoT or already-retaliatory
+    damage does not trigger thorns)."""
     if struck.has_rider('bramble') and striker.hp > 0:
         striker.hp -= data.BRAMBLE_REFLECT
         entries.append({'round': rnd, 'by': struck_side,
@@ -190,8 +192,16 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
       force_winner    'attacker'|'defender' — override the triangle result.
       double_win_for  side — double that side's damage if it wins the exchange.
       negate_loss_for side — cancel the punish that side takes if it loses.
+
+    Escalation (replaces the old environmental Collapse): once rnd >= frenzy_from
+    every creature's OWN swing is scaled by `ramp` (grows +FRENZY_RAMP per tier),
+    so a dragging fight builds to a real kill. The arena itself never deals
+    damage. frenzy_from=None (boss/lair) disables the ramp entirely.
     """
     entries = []
+    ramp = 1.0
+    if frenzy_from is not None and rnd >= frenzy_from:
+        ramp = 1 + data.FRENZY_RAMP * (rnd - frenzy_from + 1)
     winner = exchange_winner(a_stance, d_stance)
     if force_winner in ('attacker', 'defender'):
         winner = force_winner
@@ -220,13 +230,13 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                             'miss': True, 'winner': win_side})
         elif win_stance == 'guard':
             # Guard beats Aggress: aggressor's hit is mitigated, guard counters.
-            raw_agg = _base_hit(losr, winr, rng, stance='aggress')
+            raw_agg = _base_hit(losr, winr, rng, stance='aggress', ramp=ramp)
             _deal(losr, winr, lose_side, rnd, raw_agg,
                   data.STANCE_GUARD_MITIGATE, entries, tag='mitigated')
             ctr_mult = data.STANCE_GUARD_COUNTER * (1.5 if winr.has_rider('spiked') else 1.0)
             if double_win_for == win_side:
                 ctr_mult *= 2
-            raw_ctr = _base_hit(winr, losr, rng, stance='guard')
+            raw_ctr = _base_hit(winr, losr, rng, stance='guard', ramp=ramp)
             _deal(winr, losr, win_side, rnd, raw_ctr, ctr_mult, entries, tag='counter')
             if winr.has_buff('harden_shell'):
                 heal = min(winr.max_hp - winr.hp, 3)
@@ -238,7 +248,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             lose_stance = d_stance if winner == 'attacker' else a_stance
             pierce = (data.DEATHTOUCH_PIERCE
                       if win_stance == 'aggress' and winr.has('deathtouch_stomp') else 0)
-            raw = _base_hit(winr, losr, rng, pierce, stance=win_stance)
+            raw = _base_hit(winr, losr, rng, pierce, stance=win_stance, ramp=ramp)
             mult = data.STANCE_WIN_MULT
             if winr.has_rider('deep_biter'):
                 mult += 0.5
@@ -286,7 +296,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             # Feint into an Aggress still lands a poke: the caught feinter takes
             # the big hit but chips the aggressor back.
             if lose_stance == 'feint' and losr.hp > 0:
-                chip_raw = _base_hit(losr, winr, rng, stance='feint')
+                chip_raw = _base_hit(losr, winr, rng, stance='feint', ramp=ramp)
                 _deal(losr, winr, lose_side, rnd, chip_raw, data.STANCE_STALL_MULT,
                       entries, tag='chip')
             _scavenge(losr, winr, lose_side, rnd, entries)
@@ -305,21 +315,23 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                     else (defender, attacker))
             if s.hp <= 0:
                 continue
-            raw = _base_hit(s, t, rng, stance='aggress')
+            raw = _base_hit(s, t, rng, stance='aggress', ramp=ramp)
             _deal(s, t, side, rnd, raw, data.STANCE_CLASH_MULT, entries)
     elif winner == 'stall':
-        # G-vs-G: both fully block — NO damage, unless a Thick carapace chips
-        # through (its whole identity: "Guard chips even in a stall").
+        # G-vs-G: both fully block — normally NO damage. A Thick carapace always
+        # chips through (its whole identity: "Guard chips even in a stall"); and
+        # once the fight escalates (ramp > 1) the grinding wears both down so even
+        # a mutual-guard lock reaches a real kill instead of a dead timeout.
         for side, (s, t) in (('attacker', (attacker, defender)),
                              ('defender', (defender, attacker))):
-            if s.has_rider('thick'):
-                raw = _base_hit(s, t, rng, stance='guard')
+            if s.has_rider('thick') or ramp > 1.0:
+                raw = _base_hit(s, t, rng, stance='guard', ramp=ramp)
                 _deal(s, t, side, rnd, raw, data.STANCE_STALL_MULT, entries, tag='chip')
     elif winner == 'whiff':
         # F-vs-F: two tricks cancel, but both still poke — each takes chip.
         for side, (s, t) in (('attacker', (attacker, defender)),
                              ('defender', (defender, attacker))):
-            raw = _base_hit(s, t, rng, stance='feint')
+            raw = _base_hit(s, t, rng, stance='feint', ramp=ramp)
             _deal(s, t, side, rnd, raw, data.STANCE_STALL_MULT, entries, tag='chip')
 
     # Swarm: one extra chip hit per round regardless of stance (min 1).
@@ -327,7 +339,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                          ('defender', (defender, attacker))):
         if s.has('swarm') and s.hp > 0 and t.hp > 0:
             st = a_stance if side == 'attacker' else d_stance
-            chip = max(1, round(_base_hit(s, t, rng, stance=st) * data.SWARM_CHIP_MULT))
+            chip = max(1, round(_base_hit(s, t, rng, stance=st, ramp=ramp) * data.SWARM_CHIP_MULT))
             t.hp -= chip
             entry = {'round': rnd, 'by': side, 'dmg': chip, 'swarm': True}
             if s.has('drain_life'):
@@ -365,21 +377,6 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             c.hp += heal
             entries.append({'round': rnd, 'by': side, 'heal': heal})
 
-    # The Collapse (spec 2026-07-19): past frenzy_from the unstable cavern caves
-    # in on both fighters — unavoidable, ramping end-of-round damage that forces
-    # a slayable fight to a real kill by the round cap. Applied AFTER rot so a
-    # combatant the rot just killed isn't double-hit. drain_life does NOT heal
-    # off it (environmental, not a strike). Enabled per-battle by the db layer.
-    if frenzy_from is not None and rnd >= frenzy_from:
-        tier = rnd - frenzy_from + 1
-        for side, c in (('attacker', attacker), ('defender', defender)):
-            if c.hp > 0:
-                dmg = round(c.max_hp * data.FRENZY_PCT * tier)
-                if dmg > 0:
-                    c.hp -= dmg
-                    entries.append({'round': rnd, 'by': side, 'dmg': dmg,
-                                    'frenzy': True})
-
     return entries
 
 
@@ -387,8 +384,9 @@ def resolve_battle_rounds(attacker, defender, rng, pick_a, pick_d,
                           frenzy_from=data.FRENZY_START) -> dict:
     """
     Drive resolve_round to the death (sudden death — autobattles to completion).
-    pick_a/pick_d are callables (me, foe, rnd, rng) -> stance. The Collapse
-    (frenzy_from, on by default) guarantees a real kill well before the
+    pick_a/pick_d are callables (me, foe, rnd, rng) -> stance. The per-creature
+    escalation ramp (frenzy_from, on by default) grows both fighters' swings each
+    round so a dragging fight builds to a real kill well before the
     COMBAT_HARD_CAP safety bound. Applies Regrowth to survivors. The higher-HP%
     tiebreak only fires in the (unreachable-in-practice) case that both survive
     the hard cap. Combatants are mutated/consumed.

@@ -116,9 +116,9 @@ export class BattlePlaybackComponent implements OnInit, OnDestroy {
       case 'fled':
         return 'ESCAPED';
       default:
-        // No fight can draw anymore — the Collapse forces a kill. This only
-        // surfaces via the unreachable COMBAT_HARD_CAP safety bound.
-        return 'THE CAVERN CLAIMS YOU BOTH';
+        // The escalation ramp forces a kill long before this; only reachable
+        // via the (in practice unreachable) COMBAT_HARD_CAP safety bound.
+        return 'THE FIGHT ENDS IN EXHAUSTION';
     }
   }
 

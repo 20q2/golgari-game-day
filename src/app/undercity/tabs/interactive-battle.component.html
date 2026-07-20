@@ -138,14 +138,14 @@
       </div>
     }
 
-    <!-- The Collapse: warn before/while the cavern caves in -->
+    <!-- Escalation: warn before/while the fight starts hitting harder -->
     @if (!done() && !resolving() && introDone() && collapseState(); as cs) {
       <div class="collapse-warn" [class.active]="cs === 'active'">
         <mat-icon class="mi">warning</mat-icon>
         @if (cs === 'active') {
-          <span>The cavern is caving in — nobody walks away now.</span>
+          <span>The fight is turning desperate — every blow lands harder now.</span>
         } @else {
-          <span>The cavern groans — it collapses next round.</span>
+          <span>Tempers fray — blows start hitting harder next round.</span>
         }
       </div>
     }

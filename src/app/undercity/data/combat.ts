@@ -43,10 +43,11 @@ export const TELEGRAPH_TEXT: Record<Stance, string> = {
   feint: 'weaves a trick',
 };
 
-/** The Collapse: from FRENZY_START the arena caves in on both fighters
- *  (mirrors undercity_data.py FRENZY_START/FRENZY_PCT — display only). */
+/** Combat escalation: from FRENZY_START each creature's OWN swings ramp up
+ *  (the arena never deals damage) so a dragging fight resolves to a real kill.
+ *  Mirrors undercity_data.py FRENZY_START/FRENZY_RAMP — display only. */
 export const FRENZY_START = 4;
-export const FRENZY_PCT = 0.18;
+export const FRENZY_RAMP = 0.2;
 
 // ── Stance augments ──────────────────────────────────────────────────────────
 // Equipped gear riders and stance-specific creature passives change what a stance

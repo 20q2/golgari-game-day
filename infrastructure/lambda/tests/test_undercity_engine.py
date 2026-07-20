@@ -837,20 +837,38 @@ def test_resolve_battle_flee_stance_routes_to_flee_attempt():
     assert res['outcome'] == 'fled'
 
 
-# ── The Collapse (specs/2026-07-19-undercity-combat-collapse-design.md) ───────
+# ── Combat escalation ramp (no more environmental collapse) ──────────────────
+# From FRENZY_START each creature's OWN swings ramp up (+FRENZY_RAMP per tier) so
+# a dragging fight resolves — but the arena never deals its own damage: there are
+# no `frenzy` entries and nobody loses a flat % of max HP to the environment.
 
-def test_frenzy_kicks_in_at_threshold():
-    # Guard-vs-guard is a stall (no stance damage), isolating the collapse.
+def test_no_environmental_collapse_damage():
+    # Guard-vs-guard past the threshold: the only damage is a small ramping chip
+    # from the creatures grinding — NOT an 18%-of-max-HP cave-in, and nothing is
+    # tagged `frenzy` (the arena no longer hits anyone).
     a = fighter(hp=30, max_hp=30)
     d = fighter(hp=30, max_hp=30)
     entries = resolve_round(a, d, 'guard', 'guard', data.FRENZY_START,
                             FakeRng(uniform=1.0), frenzy_from=data.FRENZY_START)
-    tier1 = round(30 * data.FRENZY_PCT * 1)
-    assert a.hp == 30 - tier1 and d.hp == 30 - tier1
-    assert sum(1 for e in entries if e.get('frenzy')) == 2
+    assert not any(e.get('frenzy') for e in entries)
+    # gentle chip, nowhere near the old 18% (~5 HP) environmental hit.
+    assert 0 < (30 - a.hp) <= 2 and 0 < (30 - d.hp) <= 2
 
 
-def test_no_frenzy_before_threshold():
+def test_ramp_escalates_own_swings_over_rounds():
+    # The same decisive exchange (Aggress beats Feint) hits harder later in the
+    # fight because the winner's OWN swing is ramped.
+    def punish(rnd):
+        a = fighter(hp=99, max_hp=99)
+        d = fighter(hp=99, max_hp=99)
+        resolve_round(a, d, 'aggress', 'feint', rnd, FakeRng(uniform=1.0),
+                      frenzy_from=data.FRENZY_START)
+        return 99 - d.hp
+    assert punish(data.FRENZY_START + 2) > punish(data.FRENZY_START)
+
+
+def test_no_ramp_before_threshold():
+    # Before the ramp window a mutual guard is a true stall — zero damage.
     a = fighter(hp=30, max_hp=30)
     d = fighter(hp=30, max_hp=30)
     entries = resolve_round(a, d, 'guard', 'guard', data.FRENZY_START - 1,
@@ -859,32 +877,34 @@ def test_no_frenzy_before_threshold():
     assert not any(e.get('frenzy') for e in entries)
 
 
-def test_frenzy_disabled_when_no_frenzy_from():
-    # boss/lair path: default frenzy_from=None means the collapse never fires.
+def test_ramp_disabled_when_no_frenzy_from():
+    # boss/lair path: frenzy_from=None means no escalation at all.
     a = fighter(hp=30, max_hp=30)
     d = fighter(hp=30, max_hp=30)
     resolve_round(a, d, 'guard', 'guard', data.FRENZY_START, FakeRng(uniform=1.0))
     assert a.hp == 30 and d.hp == 30
 
 
-def test_frenzy_guarantees_a_kill_by_the_cap():
-    # Two turtles that only ever guard would stall forever without the collapse.
+def test_stall_still_reaches_a_real_kill():
+    # Two turtles that only ever guard would stall forever with no escalation.
+    # The ramping grind must still land a real kill before the hard cap.
     a = fighter(hp=30, max_hp=30)
     d = fighter(hp=30, max_hp=30)
     rng = FakeRng(uniform=1.0)
-    for rnd in range(data.FRENZY_START, data.MAX_ROUNDS_COMBAT + 1):
+    for rnd in range(data.FRENZY_START, data.COMBAT_HARD_CAP + 1):
         resolve_round(a, d, 'guard', 'guard', rnd, rng, frenzy_from=data.FRENZY_START)
+        if a.hp <= 0 or d.hp <= 0:
+            break
     assert a.hp <= 0 or d.hp <= 0
 
 
-def test_the_collapse_lets_the_healthier_fighter_win():
-    # Same max HP, but the tank enters the collapse at full while the foe is
-    # already chipped — the collapse drops the foe first.
+def test_stall_grind_lets_the_healthier_fighter_win():
+    # Equal chip to both each round, so the fighter who entered ahead survives.
     a = fighter(hp=30, max_hp=30)   # tank: untouched
     d = fighter(hp=15, max_hp=30)   # foe: half HP
     rng = FakeRng(uniform=1.0)
     dead_round = None
-    for rnd in range(data.FRENZY_START, data.MAX_ROUNDS_COMBAT + 1):
+    for rnd in range(data.FRENZY_START, data.COMBAT_HARD_CAP + 1):
         resolve_round(a, d, 'guard', 'guard', rnd, rng, frenzy_from=data.FRENZY_START)
         if d.hp <= 0:
             dead_round = rnd
