@@ -35,6 +35,8 @@ class Combatant:
     dmg_penalty: int = field(default=0, repr=False)   # -damage on NEXT round (serrated)
     reveal_next: bool = field(default=False, repr=False)  # glint set a reveal
     struck_yet: bool = field(default=False, repr=False)
+    aggress_ramp: int = field(default=0, repr=False)   # rabid: +dmg to Aggress, stacks
+    feint_won: bool = field(default=False, repr=False)  # cutpurse: landed a winning Feint
 
     def has(self, passive):
         return passive in self.passives
@@ -114,8 +116,8 @@ _STANCE_STAT = {'aggress': 'atk', 'guard': 'dfn', 'feint': 'spd'}
 def _swing_base(striker: 'Combatant', stance: str) -> float:
     if stance == 'aggress':
         # Aggress double-dips on ATK (str is the aggressor's whole identity):
-        # swing = atk + STANCE_STAT_WEIGHT × atk.
-        return striker.atk * (1 + data.STANCE_STAT_WEIGHT)
+        # swing = atk + STANCE_STAT_WEIGHT × atk. Rabid adds a flat, stacking ramp.
+        return striker.atk * (1 + data.STANCE_STAT_WEIGHT) + striker.aggress_ramp
     # Guard/Feint lean on their OWN signature stat (DEF / SPD) and take only a
     # partial ATK base, so a pure-ATK build can't also swing hard while guarding
     # or feinting, and a dedicated DEF/SPD build's stance hits for real.
@@ -146,11 +148,26 @@ def _deal(striker, target, side, rnd, raw, mult, entries, tag=None):
     entry = {'round': rnd, 'by': side, 'dmg': dmg}
     if tag:
         entry[tag] = True
+    _bramble(target, striker, _other(side), rnd, entries)
     if striker.has('drain_life'):
         heal = round(dmg * 0.5)
         striker.hp = min(striker.max_hp, striker.hp + heal)
         entry['heal'] = heal
     entries.append(entry)
+
+
+def _other(side):
+    return 'defender' if side == 'attacker' else 'attacker'
+
+
+def _bramble(struck, striker, struck_side, rnd, entries):
+    """A struck Bramble carapace reflects a flat amount back onto the striker.
+    Called at every strike site (not on rot/frenzy/scavenge — environmental or
+    already-retaliatory damage does not trigger thorns)."""
+    if struck.has_rider('bramble') and striker.hp > 0:
+        striker.hp -= data.BRAMBLE_REFLECT
+        entries.append({'round': rnd, 'by': struck_side,
+                        'dmg': data.BRAMBLE_REFLECT, 'retaliation': True})
 
 
 def _scavenge(loser, winner, loser_side, rnd, entries):
@@ -220,6 +237,9 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             mult = data.STANCE_WIN_MULT
             if winr.has_rider('deep_biter'):
                 mult += 0.5
+            if (win_stance == 'aggress' and winr.has_rider('gutcleaver')
+                    and losr.max_hp and losr.hp / losr.max_hp < 0.30):
+                mult += 0.5   # execute a low-HP foe
             bonus = 0
             if not winr.first_win_used:
                 if winr.has('rot_breath'):
@@ -239,13 +259,25 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                 if winr.has('drain_life'):
                     heal = round(dmg * 0.5)
                     winr.hp = min(winr.max_hp, winr.hp + heal); entry['heal'] = heal
+                elif win_stance == 'aggress' and winr.has_rider('bloodfang'):
+                    heal = round(dmg * 0.4)
+                    winr.hp = min(winr.max_hp, winr.hp + heal); entry['heal'] = heal
                 entries.append(entry)
-            # A winning Feint: serrated debuffs enemy next round; glint reveals.
+                _bramble(losr, winr, lose_side, rnd, entries)
+            # Rabid: each Aggress win ramps future Aggress hits (applies next win).
+            if win_stance == 'aggress' and winr.has_rider('rabid'):
+                winr.aggress_ramp += 2
+            # A winning Feint: serrated debuffs enemy next round; glint reveals;
+            # venomtrick poisons; cutpurse's flag is armed for the post-fight payout.
             if win_stance == 'feint':
+                winr.feint_won = True
                 if winr.has_rider('serrated'):
                     losr.dmg_penalty += 2
                 if winr.has_rider('glint') or winr.has_buff('glowveil'):
                     winr.reveal_next = True
+                if winr.has_rider('venomtrick') and losr.hp > 0:
+                    losr.rot_stacks += 1
+                    entries.append({'round': rnd, 'by': win_side, 'rotApplied': 1})
             # Feint into an Aggress still lands a poke: the caught feinter takes
             # the big hit but chips the aggressor back.
             if lose_stance == 'feint' and losr.hp > 0:
@@ -297,6 +329,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                 heal = round(chip * 0.5)
                 s.hp = min(s.max_hp, s.hp + heal); entry['heal'] = heal
             entries.append(entry)
+            _bramble(t, s, _other(side), rnd, entries)
 
     # Rot DoT ticks at end of round (stacks present at round start).
     for side, c in (('attacker', attacker), ('defender', defender)):
@@ -313,6 +346,19 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
         if st == 'aggress' and (s.has_rider('barbed') or s.has_buff('rot_surge')) and t.hp > 0:
             t.rot_stacks += 1
             entries.append({'round': rnd, 'by': side, 'rotApplied': 1})
+
+    # Bulwark / Mossback: ending a round in Guard fortifies DEF / knits flesh
+    # for the rest of the fight.
+    for side, c, st in (('attacker', attacker, a_stance),
+                        ('defender', defender, d_stance)):
+        if st != 'guard' or c.hp <= 0:
+            continue
+        if c.has_rider('bulwark'):
+            c.dfn += 1
+        if c.has_rider('mossback') and c.hp < c.max_hp:
+            heal = min(3, c.max_hp - c.hp)
+            c.hp += heal
+            entries.append({'round': rnd, 'by': side, 'heal': heal})
 
     # The Collapse (spec 2026-07-19): past frenzy_from the unstable cavern caves
     # in on both fighters — unavoidable, ramping end-of-round damage that forces

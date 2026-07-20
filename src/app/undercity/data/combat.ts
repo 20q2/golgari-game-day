@@ -1,5 +1,6 @@
 /** Client display copy for the stance-triangle combat (mirrors undercity_data.py). */
 import { Stance } from '../services/undercity-models';
+import { GEAR_MAP } from './items';
 
 export interface StanceInfo {
   id: Stance;
@@ -46,3 +47,65 @@ export const TELEGRAPH_TEXT: Record<Stance, string> = {
  *  (mirrors undercity_data.py FRENZY_START/FRENZY_PCT — display only). */
 export const FRENZY_START = 4;
 export const FRENZY_PCT = 0.18;
+
+// ── Stance augments ──────────────────────────────────────────────────────────
+// Equipped gear riders and stance-specific creature passives change what a stance
+// does; these tables let the combat UI surface them on the matching stance button.
+
+/** An equipped effect that augments one stance's outcome. */
+export interface StanceAugment {
+  stance: Stance;
+  /** Short tag shown on the button, e.g. "Barbed". */
+  label: string;
+  /** Full effect, shown in the button tooltip. */
+  blurb: string;
+  source: 'gear' | 'passive';
+}
+
+/** Gear rider id → the stance it augments (mirrors GEAR_RIDERS in undercity_data.py). */
+export const RIDER_AUGMENTS: Record<string, Omit<StanceAugment, 'source'>> = {
+  barbed: { stance: 'aggress', label: 'Barbed', blurb: 'Aggress applies rot even on a clash or loss.' },
+  deep_biter: { stance: 'aggress', label: 'Deep-biter', blurb: 'Winning exchanges hit harder.' },
+  thick: { stance: 'guard', label: 'Thick', blurb: 'Guard chips in a stall; softer when wrong.' },
+  spiked: { stance: 'guard', label: 'Spiked', blurb: 'Guard counter reflects part of the blocked hit.' },
+  trickster: { stance: 'feint', label: 'Trickster', blurb: "A lost Feint isn't fully punished." },
+  serrated: { stance: 'feint', label: 'Serrated', blurb: "Feint break lowers the enemy's next-round damage." },
+  glint: { stance: 'feint', label: 'Glint', blurb: 'Winning a Feint reveals the true next intent; +read rate.' },
+  seer: { stance: 'feint', label: 'Seer', blurb: "Sharply raises how often you read the enemy's intent." },
+  // Gear expansion (2026-07-20)
+  bloodfang: { stance: 'aggress', label: 'Bloodfang', blurb: 'Heal 40% of your winning Aggress damage.' },
+  rabid: { stance: 'aggress', label: 'Rabid', blurb: 'Each Aggress win, your Aggress hits gain +2 for the fight.' },
+  gutcleaver: { stance: 'aggress', label: 'Gutcleaver', blurb: 'Winning Aggress vs a foe below 30% HP deals +50%.' },
+  bramble: { stance: 'guard', label: 'Bramble', blurb: 'Reflect 2 damage whenever you are struck.' },
+  bulwark: { stance: 'guard', label: 'Bulwark', blurb: 'Each round you Guard, +1 DEF for the fight.' },
+  mossback: { stance: 'guard', label: 'Mossback', blurb: 'Heal 3 each round you end in Guard.' },
+  venomtrick: { stance: 'feint', label: 'Venomtrick', blurb: 'Winning a Feint applies 1 rot.' },
+  cutpurse: { stance: 'feint', label: 'Cutpurse', blurb: 'Land a winning Feint for +6 Spores after a win.' },
+};
+
+/** Creature passive id → the stance it augments. Only passives that clearly boost
+ *  a single stance are listed; stance-agnostic passives (flyby, scavenge, swarm…)
+ *  are deliberately omitted so the buttons stay honest. */
+export const PASSIVE_AUGMENTS: Record<string, Omit<StanceAugment, 'source'>> = {
+  venom_barb: { stance: 'aggress', label: 'Venom Barb', blurb: 'Your first strike each battle deals +3.' },
+  deathtouch_stomp: { stance: 'aggress', label: 'Deathtouch Stomp', blurb: "Your strikes ignore 3 of the enemy's DEF." },
+  rot_breath: { stance: 'aggress', label: 'Rot Breath', blurb: 'Your round-1 strike hits for double.' },
+};
+
+/** Build the stance-augment list from the player's equipped gear + passives. */
+export function computeStanceAugments(
+  gear: Record<string, string> | undefined,
+  passives: string[] | undefined,
+): StanceAugment[] {
+  const out: StanceAugment[] = [];
+  for (const id of Object.values(gear ?? {})) {
+    const rider = GEAR_MAP[id]?.rider;
+    const aug = rider ? RIDER_AUGMENTS[rider] : undefined;
+    if (aug) out.push({ ...aug, source: 'gear' });
+  }
+  for (const p of passives ?? []) {
+    const aug = PASSIVE_AUGMENTS[p];
+    if (aug) out.push({ ...aug, source: 'passive' });
+  }
+  return out;
+}

@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { BattleSide, BattleRewards } from './battle-playback.component';
 import { CombatEntry, Stance } from '../services/undercity-models';
-import { STANCES, STANCE_MAP, PERSONALITY_TELL } from '../data/combat';
+import { STANCES, STANCE_MAP, PERSONALITY_TELL, StanceAugment } from '../data/combat';
 
 /** A held combat consumable the player may fire this round. */
 export interface BattleItem {
@@ -64,6 +64,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   @Input() hasScry = false;
   @Input() attackerStats: CombatStats | null = null;
   @Input() defenderStats: CombatStats | null = null;
+  /** Equipped riders + stance passives that augment the player's stances. */
+  @Input() augments: StanceAugment[] = [];
   /** Reopening a fight after a reload — skip the entrance, restore any scry. */
   @Input() resume = false;
   @Input() resumeRevealed: Stance | null = null;
@@ -164,6 +166,18 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   }
   protected stanceOf(side: Side): Stance | undefined {
     return this.stanceAnim()[side];
+  }
+
+  /** Equipped augments (gear riders + stance passives) that boost this stance. */
+  protected augmentsFor(stance: Stance): StanceAugment[] {
+    return this.augments.filter((a) => a.stance === stance);
+  }
+
+  /** Button tooltip: the stance blurb plus a line per active augment. */
+  protected buttonTitle(s: (typeof STANCES)[number]): string {
+    const augs = this.augmentsFor(s.id);
+    if (!augs.length) return s.blurb;
+    return [s.blurb, ...augs.map((a) => `+ ${a.label}: ${a.blurb}`)].join('\n');
   }
 
   // ── Player actions ─────────────────────────────────────────────────────────

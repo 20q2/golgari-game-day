@@ -32,7 +32,13 @@ GRIMOIRE_SWAP_COOLDOWN_MIN = 30  # opening a different grimoire is gated for N m
                              # mirror in src/app/undercity/data/spells.ts
 
 # ── HP / death / PvP ─────────────────────────────────────────────────────────
-HP_REGEN_PCT = 0.10          # of max HP
+# Passive time-based HP regen is DISABLED (0). HP is restored ONLY by: a spell
+# (e.g. Mend Flesh), a level-up / evolution, stopping at a gate (full heal), or
+# an ability such as the Saproling's Regrowth. Players reported "randomly
+# healing" — that was this passive regen ticking on every action. Set > 0 to
+# re-enable "the swamp heals its own"; the regen plumbing (regen_hp) stays wired
+# and simply heals nothing at 0.
+HP_REGEN_PCT = 0.0           # of max HP per interval (0 = passive regen off)
 HP_REGEN_INTERVAL_MIN = 10
 COMPOST_SHIELD_MIN = 15
 COMPOST_RESPAWN_PCT = 0.5
@@ -40,7 +46,11 @@ PVP_SPORE_STEAL = 0.25
 PVP_SPORE_STEAL_DEFEND = 0.10
 DEATHRITE_STEAL_MULT = 1.5
 
-# ── Movement ─────────────────────────────────────────────────────────────────────
+# Gear rider knobs (combat riders in undercity_engine.resolve_round).
+CUTPURSE_SPORES = 6   # flat Spores after a won fight in which you landed a Feint
+BRAMBLE_REFLECT = 2   # flat damage a Bramble carapace reflects when struck
+
+# ── Movement ─────────────────────────────────────────────────────────────────
 # Units whose tier is <= this may enter `tunnel` spaces (the biome-boundary
 # shortcuts). Evolved units (tier 2/3) are barred and routed through the
 # Wilderness instead. See specs/2026-07-20-undercity-tunnels-wilderness-design.md.

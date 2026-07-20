@@ -322,6 +322,7 @@ def _bt_snapshot(c):
         'has_smoke_spore': bool(c.has_smoke_spore),
         'rot_stacks': int(c.rot_stacks), 'first_win_used': bool(c.first_win_used),
         'dmg_penalty': int(c.dmg_penalty), 'reveal_next': bool(c.reveal_next),
+        'aggress_ramp': int(c.aggress_ramp), 'feint_won': bool(c.feint_won),
     }
 
 
@@ -338,6 +339,8 @@ def _bt_to_combatant(s):
     c.first_win_used = bool(s.get('first_win_used', False))
     c.dmg_penalty = int(s.get('dmg_penalty', 0))
     c.reveal_next = bool(s.get('reveal_next', False))
+    c.aggress_ramp = int(s.get('aggress_ramp', 0))
+    c.feint_won = bool(s.get('feint_won', False))
     return c
 
 
@@ -348,6 +351,9 @@ def _bt_store(c, rec_side):
     rec_side['dmg_penalty'] = int(c.dmg_penalty)
     rec_side['first_win_used'] = bool(c.first_win_used)
     rec_side['reveal_next'] = bool(c.reveal_next)
+    rec_side['dfn'] = int(c.dfn)
+    rec_side['aggress_ramp'] = int(c.aggress_ramp)
+    rec_side['feint_won'] = bool(c.feint_won)
 
 
 def _npc_combatant(npc):
@@ -537,6 +543,16 @@ def _roll_gear_drop(doc, tier_weights):
     doc['spores'] = doc.get('spores', 0) + salvage
     return {'id': gid, 'slot': slot, 'outcome': 'salvaged',
             'soldSpores': salvage, 'displaced': None}
+
+
+def cutpurse_bonus(doc, feint_won, won):
+    """Flat Spores a Cutpurse charm pays after a won fight in which the player
+    landed a winning Feint. Static — does not scale with the number of Feints."""
+    if not (won and feint_won):
+        return 0
+    if 'cutpurse' not in _riders(doc):
+        return 0
+    return data.CUTPURSE_SPORES
 
 
 def _grant_grimoire(doc, gid):
@@ -2112,6 +2128,12 @@ def _finish_battle(table, sid, doc, rec, result):
         out = _finish_lair(table, sid, doc, rec, result)
     else:
         out = _finish_boss(table, sid, doc, rec, result)
+    bonus = cutpurse_bonus(doc, rec['player'].get('feint_won', False),
+                           result['outcome'] == 'attacker')
+    if bonus:
+        doc['spores'] = doc.get('spores', 0) + bonus
+        out['spores'] = out.get('spores', 0) + bonus
+        out['cutpurse'] = bonus
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict

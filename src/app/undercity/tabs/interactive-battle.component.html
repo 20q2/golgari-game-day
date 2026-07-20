@@ -177,7 +177,7 @@
             [class.pos-feint]="s.id === 'feint'"
             [disabled]="busy()"
             (click)="play(s.id)"
-            [title]="s.blurb"
+            [title]="buttonTitle(s)"
           >
             @if (s.icon.startsWith('uc-')) {
               <mat-icon class="mi" [svgIcon]="s.icon"></mat-icon>
@@ -185,6 +185,17 @@
               <mat-icon class="mi">{{ s.icon }}</mat-icon>
             }
             <span class="stance-label">{{ s.label }}</span>
+            @if (augmentsFor(s.id); as augs) {
+              @if (augs.length) {
+                <span class="stance-augments">
+                  @for (a of augs; track a.label) {
+                    <span class="augment-tag" [class.passive]="a.source === 'passive'">
+                      <mat-icon class="mi">auto_awesome</mat-icon>{{ a.label }}
+                    </span>
+                  }
+                </span>
+              }
+            }
           </button>
         }
         <!-- Inventory: sits in the middle of the triangle; opens the item tray -->

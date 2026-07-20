@@ -156,16 +156,26 @@ ALL_FORMS = {**{k: dict(v, tier=1) for k, v in STARTERS.items()},
 GEAR = {
     # Fang — Aggress riders
     'rusted_fang':  {'name': 'Rusted Fang',  'slot': 'fang', 'tier': 1, 'cost': 20, 'atk': 2, 'rider': 'barbed'},
+    'bloodfang':    {'name': 'Bloodfang',    'slot': 'fang', 'tier': 1, 'cost': 25, 'atk': 2, 'rider': 'bloodfang'},
     'kraul_barb':   {'name': 'Kraul Barb',   'slot': 'fang', 'tier': 2, 'cost': 45, 'atk': 4, 'rider': 'deep_biter'},
+    'rabid_fang':   {'name': 'Rabid Fang',   'slot': 'fang', 'tier': 2, 'cost': 48, 'atk': 3, 'spd': 1, 'rider': 'rabid'},
+    'gutcleaver':   {'name': 'Gutcleaver',   'slot': 'fang', 'tier': 2, 'cost': 50, 'atk': 4, 'rider': 'gutcleaver'},
     'wurm_tooth':   {'name': 'Wurm Tooth',   'slot': 'fang', 'tier': 3, 'cost': 80, 'atk': 6, 'spd': 1, 'rider': 'deep_biter'},
+    'ravening_maw': {'name': 'Ravening Maw', 'slot': 'fang', 'tier': 3, 'cost': 85, 'atk': 5, 'spd': 1, 'rider': 'rabid'},
     # Carapace — Guard riders
     'chitin_scrap': {'name': 'Chitin Scrap', 'slot': 'carapace', 'tier': 1, 'cost': 20, 'def': 2, 'rider': 'thick'},
+    'bramble_hide': {'name': 'Bramble Hide', 'slot': 'carapace', 'tier': 1, 'cost': 25, 'def': 2, 'rider': 'bramble'},
     'bark_hide':    {'name': 'Bark Hide',    'slot': 'carapace', 'tier': 2, 'cost': 45, 'def': 4, 'rider': 'spiked'},
+    'bulwark_plate': {'name': 'Bulwark Plate', 'slot': 'carapace', 'tier': 2, 'cost': 48, 'def': 3, 'maxHp': 3, 'rider': 'bulwark'},
+    'mossback':     {'name': 'Mossback',     'slot': 'carapace', 'tier': 2, 'cost': 50, 'def': 3, 'rider': 'mossback'},
     'troll_hide':   {'name': 'Troll Hide',   'slot': 'carapace', 'tier': 3, 'cost': 80, 'def': 5, 'maxHp': 6, 'rider': 'spiked'},
+    'ironshell_bulwark': {'name': 'Ironshell Bulwark', 'slot': 'carapace', 'tier': 3, 'cost': 85, 'def': 5, 'maxHp': 6, 'rider': 'bulwark'},
     # Charm — Feint riders (new slot; light on raw stats, value is the rider)
     'quartz_charm':   {'name': 'Quartz Charm',   'slot': 'charm', 'tier': 1, 'cost': 20, 'spd': 1, 'rider': 'trickster'},
+    'venom_charm':    {'name': 'Venom Charm',    'slot': 'charm', 'tier': 1, 'cost': 25, 'spd': 1, 'rider': 'venomtrick'},
     'serrated_charm': {'name': 'Serrated Charm', 'slot': 'charm', 'tier': 2, 'cost': 45, 'spd': 1, 'rider': 'serrated'},
     'seer_charm':     {'name': 'Seer Charm',     'slot': 'charm', 'tier': 2, 'cost': 50, 'spd': 1, 'rider': 'seer', 'readBonus': 0.30},
+    'cutpurse_charm': {'name': 'Cutpurse Charm', 'slot': 'charm', 'tier': 2, 'cost': 48, 'spd': 1, 'rider': 'cutpurse'},
     'glint_charm':    {'name': 'Glint Charm',    'slot': 'charm', 'tier': 3, 'cost': 80, 'spd': 2, 'rider': 'glint', 'readBonus': 0.15},
 }
 
@@ -179,6 +189,17 @@ GEAR_RIDERS = {
     'serrated':  {'stance': 'feint',   'blurb': 'Your Feint break lowers the enemy next-round damage.'},
     'glint':     {'stance': 'feint',   'blurb': 'Winning a Feint reveals the enemy true next intent; +read rate.'},
     'seer':      {'stance': 'feint',   'blurb': 'Sharply raises how often you read the enemy intent.'},
+    # Aggress (fang) — new
+    'bloodfang':  {'stance': 'aggress', 'blurb': 'Heal 40% of the damage your winning Aggress deals.'},
+    'rabid':      {'stance': 'aggress', 'blurb': 'Each Aggress you win, your Aggress hits gain +2 for the rest of the fight.'},
+    'gutcleaver': {'stance': 'aggress', 'blurb': 'A winning Aggress against a foe below 30% HP deals +50%.'},
+    # Guard (carapace) — new
+    'bramble':    {'stance': 'guard',   'blurb': 'Reflect 2 damage whenever you are struck.'},
+    'bulwark':    {'stance': 'guard',   'blurb': 'Each round you end in Guard, gain +1 DEF for the rest of the fight.'},
+    'mossback':   {'stance': 'guard',   'blurb': 'Heal 3 each round you end in Guard.'},
+    # Feint (charm) — new
+    'venomtrick': {'stance': 'feint',   'blurb': 'Winning a Feint applies 1 rot to the foe.'},
+    'cutpurse':   {'stance': 'feint',   'blurb': 'Land a winning Feint and pocket +6 Spores after a won fight.'},
 }
 
 CONSUMABLES = {

@@ -5,6 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import undercity_data as data
+import undercity_db as db
 from undercity_engine import (
     Combatant, resolve_battle, legal_destinations, board_distance, roll_mystery,
     apply_level_ups, spend_stat, effective_stats, regen_hp, regen_rolls, pick_npc,
@@ -230,17 +231,15 @@ def test_pvp_spore_steal():
 
 # ── Regen ────────────────────────────────────────────────────────────────────
 
-def test_regen_ten_percent_per_ten_minutes():
+def test_no_passive_hp_regen():
+    # Passive time-based regen is OFF by design (HP_REGEN_PCT=0): elapsed real
+    # time never heals. HP is restored only by a spell, level-up/evolution, a
+    # gate stop, or an ability like Regrowth. The clock still advances so the
+    # mechanic stays clean if ever re-enabled.
     p = {'hp': 10, 'maxHp': 50, 'hpUpdatedAt': '2026-07-06T20:00:00'}
-    regen_hp(p, '2026-07-06T20:25:00')
-    assert p['hp'] == 20  # two full intervals × 5 HP
-    assert p['hpUpdatedAt'] == '2026-07-06T20:20:00'
-
-
-def test_regen_caps_at_max():
-    p = {'hp': 49, 'maxHp': 50, 'hpUpdatedAt': '2026-07-06T20:00:00'}
     regen_hp(p, '2026-07-06T23:00:00')
-    assert p['hp'] == 50
+    assert p['hp'] == 10
+    assert p['hpUpdatedAt'] == '2026-07-06T23:00:00'
 
 
 def test_roll_regen_batch_per_interval_keeps_partial_progress():
@@ -944,6 +943,134 @@ def test_validate_flow_rejects_entering_rock():
 def test_flow_puzzles_all_solvable():
     for p in data.FLOW_PUZZLES:
         assert _eng_flow.validate_flow_solution(p, p['solution']) is True, p['id']
+
+
+# ── Gear expansion (2026-07-20) ──────────────────────────────────────────────
+
+def test_every_gear_rider_is_defined_and_stanced():
+    valid = {'aggress', 'guard', 'feint'}
+    for gid, g in data.GEAR.items():
+        rider = g.get('rider')
+        if rider is None:
+            continue
+        assert rider in data.GEAR_RIDERS, f"{gid} rider {rider} missing from GEAR_RIDERS"
+        assert data.GEAR_RIDERS[rider]['stance'] in valid
+
+
+def test_gear_roster_doubled():
+    assert len(data.GEAR) == 20
+    slots = {}
+    for g in data.GEAR.values():
+        slots[g['slot']] = slots.get(g['slot'], 0) + 1
+    assert slots == {'fang': 7, 'carapace': 7, 'charm': 6}
+
+
+def test_battle_serde_persists_new_fields():
+    c = fighter(atk=6, dfn=5)
+    c.aggress_ramp = 4
+    c.feint_won = True
+    c.dfn = 9  # bulwark bumped it mid-fight
+    snap = db._bt_snapshot(c)
+    back = db._bt_to_combatant(snap)
+    assert back.aggress_ramp == 4
+    assert back.feint_won is True
+    # _bt_store writes the live dfn back into the snapshot each round
+    c2 = db._bt_to_combatant(snap)
+    c2.dfn = 12
+    db._bt_store(c2, snap)
+    assert snap['dfn'] == 12
+
+
+def test_bloodfang_heals_on_aggress_win():
+    a = fighter(atk=10, dfn=5, hp=20, max_hp=40, riders=frozenset({'bloodfang'}))
+    d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))  # a's Aggress wins
+    assert a.hp > 20  # healed off the winning hit
+
+
+def test_rabid_ramps_aggress_damage_each_win():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, riders=frozenset({'rabid'}))
+    d = fighter(atk=10, dfn=4, hp=200, max_hp=200)
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))  # win 1
+    hp_after_1 = d.hp
+    dmg1 = 200 - hp_after_1
+    assert a.aggress_ramp == 2  # one stack gained
+    resolve_round(a, d, 'aggress', 'feint', 2, FakeRng(uniform=1.0))  # win 2
+    dmg2 = hp_after_1 - d.hp
+    assert dmg2 > dmg1  # the ramp made the second win hit harder
+    assert a.aggress_ramp == 4
+
+
+def test_gutcleaver_executes_low_hp_foe():
+    # Baseline: full-HP target takes the normal winning hit.
+    a1 = fighter(atk=10, dfn=5, riders=frozenset({'gutcleaver'}))
+    d_full = fighter(atk=10, dfn=4, hp=100, max_hp=100)
+    resolve_round(a1, d_full, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    base_dmg = 100 - d_full.hp
+    # Low-HP target (<30%) takes +50%.
+    a2 = fighter(atk=10, dfn=5, riders=frozenset({'gutcleaver'}))
+    d_low = fighter(atk=10, dfn=4, hp=20, max_hp=100)  # 20% HP
+    resolve_round(a2, d_low, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    exec_dmg = 20 - d_low.hp
+    assert exec_dmg > base_dmg
+
+
+def test_bramble_reflects_when_struck():
+    # Same exchange with vs without a bramble carapace on the struck side —
+    # isolates the reflect from any other chip in the matchup.
+    a1 = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d1 = fighter(atk=10, dfn=5, hp=40, max_hp=40)
+    resolve_round(a1, d1, 'aggress', 'feint', 1, FakeRng(uniform=1.0))  # a strikes d
+    loss_without = 30 - a1.hp
+    a2 = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d2 = fighter(atk=10, dfn=5, hp=40, max_hp=40, riders=frozenset({'bramble'}))
+    resolve_round(a2, d2, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    loss_with = 30 - a2.hp
+    assert loss_with == loss_without + data.BRAMBLE_REFLECT
+
+
+def test_bulwark_fortifies_each_guard_round():
+    a = fighter(atk=8, dfn=5, hp=40, max_hp=40, riders=frozenset({'bulwark'}))
+    d = fighter(atk=8, dfn=5, hp=40, max_hp=40)
+    resolve_round(a, d, 'guard', 'guard', 1, FakeRng(uniform=1.0))  # a ends in Guard
+    assert a.dfn == 6   # +1 DEF
+    resolve_round(a, d, 'guard', 'feint', 2, FakeRng(uniform=1.0))  # a ends in Guard again
+    assert a.dfn == 7
+    resolve_round(a, d, 'aggress', 'guard', 3, FakeRng(uniform=1.0))  # a NOT in Guard
+    assert a.dfn == 7   # no change
+
+
+def test_mossback_heals_each_guard_round():
+    a = fighter(atk=8, dfn=6, hp=20, max_hp=40, riders=frozenset({'mossback'}))
+    d = fighter(atk=8, dfn=6, hp=40, max_hp=40)
+    resolve_round(a, d, 'guard', 'guard', 1, FakeRng(uniform=1.0))  # stall, no dmg; a Guards
+    assert a.hp == 23   # +3 regen
+    a.hp = 39
+    resolve_round(a, d, 'guard', 'guard', 2, FakeRng(uniform=1.0))
+    assert a.hp == 40   # does not overheal past max
+
+
+def test_venomtrick_applies_rot_on_feint_win():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, riders=frozenset({'venomtrick'}))
+    d = fighter(atk=10, dfn=5, hp=60, max_hp=60)
+    resolve_round(a, d, 'feint', 'guard', 1, FakeRng(uniform=1.0))  # a's Feint wins
+    assert d.rot_stacks == 1
+
+
+def test_feint_win_sets_feint_won_flag():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d = fighter(atk=10, dfn=5, hp=60, max_hp=60)
+    resolve_round(a, d, 'feint', 'guard', 1, FakeRng(uniform=1.0))  # a's Feint wins
+    assert a.feint_won is True
+    assert d.feint_won is False
+
+
+def test_cutpurse_bonus_only_on_feint_win_and_victory():
+    doc = {'gear': {'charm': 'cutpurse_charm'}}
+    assert db.cutpurse_bonus(doc, feint_won=True, won=True) == data.CUTPURSE_SPORES
+    assert db.cutpurse_bonus(doc, feint_won=False, won=True) == 0   # never landed a Feint
+    assert db.cutpurse_bonus(doc, feint_won=True, won=False) == 0   # lost the fight
+    assert db.cutpurse_bonus({'gear': {}}, feint_won=True, won=True) == 0  # no charm
 
 
 # ── Tier-gated movement (tunnels) ─────────────────────────────────────────────
