@@ -683,7 +683,7 @@ export function renderTerrain(
   floors?: FloorTextures,
   landmarkArt?: LandmarkTextures,
   layer?: LayerSpec,
-  opts?: { cleared?: boolean; omitEdgesOf?: string; omitLabels?: boolean },
+  opts?: { cleared?: boolean; omitEdgesOf?: string | ReadonlySet<string>; omitLabels?: boolean },
 ): TerrainArt {
   const cleared = opts?.cleared ?? false;
   // A layer restricts what we draw to a node subset within a world-space
@@ -706,11 +706,18 @@ export function renderTerrain(
   ctx.translate(TERRAIN_MARGIN - bx, TERRAIN_MARGIN - by);
   const glowSpots: GlowSpot[] = [];
   const allCurves = edgeCurves(map);
-  // omitEdgesOf: the map editor bakes terrain without a mid-drag node's
-  // ribbons and draws live lines instead, so paths never detach from discs.
+  // omitEdgesOf: the map editor bakes terrain without a mid-drag node's (or a
+  // dragged group's) ribbons and draws live lines instead, so paths never
+  // detach from discs. Accepts a single id or a set of ids.
   const omit = opts?.omitEdgesOf;
+  const omitted =
+    typeof omit === 'string'
+      ? (id: string) => id === omit
+      : omit
+        ? (id: string) => omit.has(id)
+        : () => false;
   const curves = allCurves.filter(
-    (c) => inLayer(c.a) && inLayer(c.b) && c.a.id !== omit && c.b.id !== omit,
+    (c) => inLayer(c.a) && inLayer(c.b) && !omitted(c.a.id) && !omitted(c.b.id),
   );
   let river: Pt[] = [];
   const rand = mulberry32(hashStr('undercity-terrain'));
