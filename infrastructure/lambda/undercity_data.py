@@ -689,6 +689,16 @@ def dungeon_biome(node_id):
         return None
     return node_id.split('_')[0]
 
+
+def dungeon_entrance(biome):
+    """The depths-side ladder mouth of a dungeon — the respawn point for a death
+    in that biome's dark. Exactly one ladder node per depths pocket (map-linted)."""
+    for nid, n in MAP_NODES.items():
+        if n.get('region') == 'depths' and n['type'] == 'ladder' \
+                and nid.split('_')[0] == biome:
+            return nid
+    return None
+
 # Every entry in a player's poiClaims list ('bar_e', 'lair_titan', 'vault',
 # ...) feeds renown via compute_renown below.
 

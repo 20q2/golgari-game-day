@@ -86,3 +86,25 @@ def test_trove_pays_once_with_guaranteed_gear(table, monkeypatch):
     ev2 = db._trove(table, _sid(table), doc, 'city_trove')
     assert doc['spores'] == 0
     assert 'gear' not in ev2
+
+
+def test_compost_in_depths_respawns_at_entrance(table):
+    doc = _join(table, home='city')
+    entrance = data.dungeon_entrance('city')
+    assert entrance and data.MAP_NODES[entrance]['region'] == 'depths'
+    # Pretend the player died deep in the city dungeon.
+    deep = next(n for n, spec in data.MAP_NODES.items()
+                if data.dungeon_biome(n) == 'city' and n != entrance)
+    doc['position'] = deep
+    doc['hp'] = 1
+    db._compost(table, _sid(table), doc, 'test death')
+    assert doc['position'] == entrance
+    assert 'pendingRespawn' not in doc          # no choice for a depths death
+
+
+def test_compost_on_surface_unchanged(table):
+    doc = _join(table, home='city')
+    home_gate = data.HOME_GATES['city']
+    doc['position'] = home_gate
+    db._compost(table, _sid(table), doc, 'test death')
+    assert doc['position'] == home_gate

@@ -556,6 +556,8 @@ def _compost(table, sid, doc, cause_text):
                    f"{doc['username']}'s {_creature_label(doc)} refuses to die! (Undying)",
                    actor=doc['userId'])
             return False
+    died_at = doc.get('position')
+    died_biome = data.dungeon_biome(died_at)
     home_biome = doc.get('homeBiome')
     home_gate = data.HOME_GATES.get(home_biome, data.GATE_NODE)
     doc['position'] = home_gate  # provisional; a respawn choice may relocate
@@ -564,16 +566,23 @@ def _compost(table, sid, doc, cause_text):
     doc['composts'] = doc.get('composts', 0) + 1
     doc['pendingMove'] = None
 
-    # Offer a respawn choice when the last biome you stood in differs from home,
-    # else just wake at the home gate. Options carry friendly labels for the UI.
-    last_biome = doc.get('lastBiome')
-    if last_biome and last_biome != home_biome and last_biome in data.HOME_GATES:
-        doc['pendingRespawn'] = {'options': [
-            {'gate': home_gate, 'label': f"{data.BIOMES[home_biome]['name']} (home)"},
-            {'gate': data.HOME_GATES[last_biome], 'label': data.BIOMES[last_biome]['name']},
-        ]}
-    else:
+    if died_biome:
+        # Died in the dark: crawl back to the dungeon mouth, no gate choice.
+        entrance = data.dungeon_entrance(died_biome)
+        if entrance:
+            doc['position'] = entrance
         doc.pop('pendingRespawn', None)
+    else:
+        # Offer a respawn choice when the last biome you stood in differs from
+        # home, else just wake at the home gate. Labels for the UI.
+        last_biome = doc.get('lastBiome')
+        if last_biome and last_biome != home_biome and last_biome in data.HOME_GATES:
+            doc['pendingRespawn'] = {'options': [
+                {'gate': home_gate, 'label': f"{data.BIOMES[home_biome]['name']} (home)"},
+                {'gate': data.HOME_GATES[last_biome], 'label': data.BIOMES[last_biome]['name']},
+            ]}
+        else:
+            doc.pop('pendingRespawn', None)
 
     _event(table, sid, 'compost', cause_text, actor=doc['userId'])
     return True
