@@ -252,7 +252,7 @@ export const SPACE_BLURBS: Record<string, string> = {
   mystery: 'Roll the d12 mystery table — fortune, junk, or misfortune.',
   shop: 'Buy gear and consumables for Spores.',
   trading_post: 'Swap one of your consumables for one left here by another player.',
-  excavation: 'A dig site — reveal grid cells to unearth buried items. 3 digs per visit.',
+  excavation: 'A dig site — buried finds show through the dirt; dig out each one to claim it. 4 digs per visit.',
   crystal_vein:
     'A shared mineshaft — every strike digs the whole region deeper. Loot and cave-in risk climb together. First swing is mandatory; 3 per visit.',
   vault_lock:
