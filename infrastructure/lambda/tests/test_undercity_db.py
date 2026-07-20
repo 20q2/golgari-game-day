@@ -853,7 +853,7 @@ def _player_at(table, node, **fields):
 
 
 def test_dungeon_wild_is_the_biome_fauna(table, monkeypatch):
-    sid, doc = _player_at(table, 'city_d0')  # a Broodwarrens wild space
+    sid, doc = _player_at(table, 'city_d1')  # a Broodwarrens wild space
     ev = db._wild_battle(table, sid, doc)
     assert ev['type'] == 'battle_start' and ev['npc']['id'] == 'broodling'
     se = _finish_started_battle(table, monkeypatch, doc, 'attacker')

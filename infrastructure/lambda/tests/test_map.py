@@ -16,26 +16,41 @@ def test_node_count():
     # relocated city gate + loot), -2 garden inner spaces.
     # v8 (2026-07 editor pass): +2 nodes overall — more hazards/mystery/elites
     # and crystal veins, fewer shrines and vault-locks.
-    assert len(MAP_NODES) == 131
+    # v9 (deep dungeons): the city sigil pocket regrown from 7 -> 26 nodes as a
+    # large dark maze with hidden rest/trove rooms (+19). See
+    # specs/2026-07-19-undercity-deep-dungeons-design.md.
+    assert len(MAP_NODES) == 150
 
 
 def test_space_type_distribution():
     counts = Counter(n['type'] for n in MAP_NODES.values())
+    # v9 deep dungeons: the city maze adds wild/hazard/loot/elite spaces plus the
+    # new 'rest' and 'trove' room types.
     assert counts == {
-        'gate': 5, 'loot': 20, 'wild': 24, 'elite': 8, 'shop': 5, 'mystery': 11,
-        'hazard': 15, 'warp': 6, 'shrine': 1, 'ladder': 10, 'lair': 6,
+        'gate': 5, 'loot': 24, 'wild': 30, 'elite': 10, 'shop': 5, 'mystery': 11,
+        'hazard': 20, 'warp': 6, 'shrine': 1, 'ladder': 10, 'lair': 6,
         'ossuary': 1, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
         'excavation': 4, 'cache': 5, 'crystal_vein': 4, 'vault_lock': 1,
+        'rest': 1, 'trove': 1,
     }
 
 
 def test_dungeon_pockets_shapes():
-    """Each pocket: door + lair + cache present, all degree >= 2, planar edges."""
+    """Each pocket: door + lair + cache present, all degree >= 2, planar edges.
+
+    The redesigned 'city' maze (deep dungeons) is exempt from the degree/planarity
+    guards — it deliberately has dead-end branches (hidden rest/trove rooms) and
+    is validated instead by tests/test_deep_dungeons.py. Dead-ends never strand a
+    player: exact-count movement starts each turn with no `prev`, so the first
+    step out is always legal (see engine.legal_destinations)."""
     from undercity_data import BIOMES
+    REDESIGNED = {'city'}  # covered by test_deep_dungeons.py
     for b in BIOMES:
         pocket = {nid: n for nid, n in MAP_NODES.items()
                   if n.get('region') == 'depths' and nid.startswith(b + '_')}
         assert b + '_lb' in pocket and b + '_lair' in pocket and b + '_cache' in pocket
+        if b in REDESIGNED:
+            continue
         for nid, n in pocket.items():
             depths_deg = sum(1 for nb in n['neighbors']
                              if MAP_NODES[nb].get('region') == 'depths')
@@ -125,7 +140,7 @@ def test_dungeon_tables_cover_all_biomes():
 
 def test_dungeon_biome_helper():
     from undercity_data import dungeon_biome
-    assert dungeon_biome('city_d0') == 'city'
+    assert dungeon_biome('city_d1') == 'city'
     assert dungeon_biome('bog_lair') == 'bog'
     assert dungeon_biome('cavern_r3') is None      # not a depths node
     assert dungeon_biome('boss') is None

@@ -108,3 +108,63 @@ def test_compost_on_surface_unchanged(table):
     doc['position'] = home_gate
     db._compost(table, _sid(table), doc, 'test death')
     assert doc['position'] == home_gate
+
+
+# ── The city maze (vertical slice) ───────────────────────────────────────────
+import collections
+
+
+def _city_depths():
+    return {n for n, spec in data.MAP_NODES.items()
+            if spec.get('region') == 'depths' and n.split('_')[0] == 'city'}
+
+
+def _bfs_hops(start, goal):
+    seen = {start}
+    q = collections.deque([(start, 0)])
+    while q:
+        cur, d = q.popleft()
+        if cur == goal:
+            return d
+        for nb in data.MAP_NODES[cur]['neighbors']:
+            if nb not in seen:
+                seen.add(nb)
+                q.append((nb, d + 1))
+    return None
+
+
+def test_city_maze_is_large_dark_and_complete():
+    nodes = _city_depths()
+    assert len(nodes) >= 24, 'city dungeon should be a real maze, not a pocket'
+    types = collections.Counter(data.MAP_NODES[n]['type'] for n in nodes)
+    assert types['trove'] == 1
+    assert types['rest'] == 1
+    assert types['lair'] == 1
+    assert types['ladder'] >= 1
+    # Every depths node reachable from the entrance mouth.
+    entrance = data.dungeon_entrance('city')
+    for n in nodes:
+        assert _bfs_hops(entrance, n) is not None, f'{n} is stranded'
+    # The lair sits a real journey from the mouth (>= 6 hops of shortest path;
+    # actual travel is longer once exact-count movement is applied).
+    lair = next(n for n in nodes if data.MAP_NODES[n]['type'] == 'lair')
+    assert _bfs_hops(entrance, lair) >= 6
+
+
+def test_city_maze_edges_are_symmetric():
+    nodes = _city_depths()
+    for n in nodes:
+        for nb in data.MAP_NODES[n]['neighbors']:
+            assert n in data.MAP_NODES[nb]['neighbors'], f'{n}->{nb} not mutual'
+
+
+def test_city_maze_trove_and_rest_are_dead_ends():
+    # Hidden rooms hang off branch tips so a dark beeline misses them.
+    for t in ('trove', 'rest'):
+        node = next(n for n in _city_depths() if data.MAP_NODES[n]['type'] == t)
+        assert len(data.MAP_NODES[node]['neighbors']) == 1, f'{t} should be a dead end'
+
+
+def test_city_lair_still_grants_the_sigil():
+    lair = next(n for n in _city_depths() if data.MAP_NODES[n]['type'] == 'lair')
+    assert lair in data.SIGIL_LAIRS and data.SIGIL_LAIRS[lair] == 'city'

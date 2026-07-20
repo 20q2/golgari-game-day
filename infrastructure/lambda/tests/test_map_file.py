@@ -17,7 +17,7 @@ def test_map_file_exists_with_v2_sections():
     doc = _load(LAMBDA_DIR / 'map.json')
     assert {'worldW', 'worldH', 'gate', 'boss', 'nodes', 'regions', 'decals',
             'labels'} <= set(doc)
-    assert len(doc['nodes']) == 131
+    assert len(doc['nodes']) == 150
     assert isinstance(doc['decals'], list)
     for n in doc['nodes']:
         assert n['region'] in doc['regions'], n['id']
