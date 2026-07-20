@@ -672,6 +672,10 @@ DUNGEON_HAZARDS = {
 # (~half a vault; renown flows automatically via per_poi).
 CACHE_REWARD = {'spores': 40, 'xp': 10}
 
+# Rest room: a hidden alcove that mends you fully, once per descent. Clears the
+# lingering hazard debuffs (vines / bone_chill / cursed_idol) too.
+REST_CURES = ('vines', 'bone_chill', 'cursed_idol')
+
 
 def dungeon_biome(node_id):
     """Biome key for a depths node ('city_d0' -> 'city'), else None."""

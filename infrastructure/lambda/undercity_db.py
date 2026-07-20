@@ -1497,6 +1497,10 @@ def _resolve_space(table, sid, doc, node, prev):
     if region in data.BIOMES:
         doc['lastBiome'] = region
 
+    # Per-descent rest tracking resets the moment you stand on the surface.
+    if region != 'depths' and doc.get('restsUsed'):
+        doc['restsUsed'] = []
+
     # Snare check first — a triggered snare skips the space event.
     space = _get(table, _season_pk(sid), f'SPACE#{node}')
     if space and space.get('ownerId') and space['ownerId'] != doc['userId']:
@@ -1611,6 +1615,12 @@ def _resolve_space(table, sid, doc, node, prev):
 
     if ntype == 'cache':
         return _cache(table, sid, doc, node)
+
+    if ntype == 'rest':
+        return _rest(table, sid, doc, node)
+
+    if ntype == 'trove':
+        return _trove(table, sid, doc, node)
 
     if ntype == 'ladder':
         biome = data.dungeon_biome(node)
@@ -2311,6 +2321,23 @@ def _vault(table, sid, doc):
            'text': f"The hoard of the Erstwhile! +{r['spores']} Spores."}
     _append_treasure_gear(doc, out)
     return out
+
+
+def _rest(table, sid, doc, node):
+    """Hidden rest alcove: full heal + clear hazard debuffs, once per descent.
+    Per-descent tracking lives in doc['restsUsed'], cleared on the surface."""
+    used = doc.setdefault('restsUsed', [])
+    if node in used:
+        return {'type': 'rest',
+                'text': 'The embers here are cold — you already rested this descent.'}
+    used.append(node)
+    doc['hp'] = engine.effective_stats(doc)['maxHp']
+    doc['hpUpdatedAt'] = _now()
+    doc['buffs'] = [b for b in (doc.get('buffs') or [])
+                    if b.get('kind') not in data.REST_CURES]
+    return {'type': 'rest',
+            'text': 'A dry alcove, warm with old spores. You rest — wounds close, '
+                    'curses lift.'}
 
 
 def _cache(table, sid, doc, node):
