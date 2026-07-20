@@ -49,6 +49,8 @@ export interface EditorOverlay {
   showIds?: boolean;
   /** Draw a snap grid of this spacing (0/undefined = off). */
   grid?: number;
+  /** Multi-select marquee rectangle (world-space), drawn while dragging. */
+  marquee?: { x: number; y: number; w: number; h: number } | null;
   /** Small cursor-anchored info chip. */
   tooltip?: { x: number; y: number; lines: string[] } | null;
 }
@@ -69,7 +71,7 @@ export class EditorCanvas {
   private landmarkTex: LandmarkTextures = {};
   private layerId = OVERWORLD;
   private raf = 0;
-  private dragNode: string | null = null;
+  private dragNodes: ReadonlySet<string> = new Set();
 
   camX = 0;
   camY = 0;
@@ -121,7 +123,7 @@ export class EditorCanvas {
   /** Doc changed: rebuild the layer partition + every layer's terrain. */
   invalidate(): void {
     if (!this.doc) return;
-    this.dragNode = null;
+    this.dragNodes = new Set();
     // New image decals may have appeared since the last preload sweep.
     preloadDecalImages(this.doc, () => this.invalidate());
     this.layers = computeLayers(this.doc);
@@ -143,12 +145,17 @@ export class EditorCanvas {
    * invalidate() (called on drop via the component) restores full ribbons.
    */
   beginNodeDrag(id: string): void {
-    this.dragNode = id;
+    this.beginGroupDrag(new Set([id]));
+  }
+
+  /** Same as beginNodeDrag, but for a whole moving group of nodes. */
+  beginGroupDrag(ids: ReadonlySet<string>): void {
+    this.dragNodes = ids;
     const layer = this.activeLayer();
     this.terrain.set(
       layer.id,
       renderTerrain(this.doc, this.floorTex, this.landmarkTex, layer, {
-        omitEdgesOf: id,
+        omitEdgesOf: ids,
         omitLabels: true,
       }),
     );
@@ -275,6 +282,21 @@ export class EditorCanvas {
     return !!best && layer.nodeIds.has(best.id);
   }
 
+  /** Active-layer node ids whose center falls inside a world-space rectangle. */
+  nodesInRect(r: { x: number; y: number; w: number; h: number }): string[] {
+    const layer = this.activeLayer();
+    return this.doc.nodes
+      .filter(
+        (n) =>
+          layer.nodeIds.has(n.id) &&
+          n.x >= r.x &&
+          n.x <= r.x + r.w &&
+          n.y >= r.y &&
+          n.y <= r.y + r.h,
+      )
+      .map((n) => n.id);
+  }
+
   /** Nearest node disc first, then topmost label, then topmost decal. */
   pick(worldX: number, worldY: number): EditorPick {
     const layer = this.activeLayer();
@@ -369,12 +391,13 @@ export class EditorCanvas {
     // moving one updates instantly without a terrain rebake.
     drawMapLabels(ctx, this.doc, layer);
 
-    // Live path lines for a mid-drag node (its baked ribbons are omitted).
-    if (this.dragNode) {
-      const n = this.doc.nodes.find((x) => x.id === this.dragNode);
-      if (n) {
-        ctx.save();
-        ctx.lineCap = 'round';
+    // Live path lines for mid-drag nodes (their baked ribbons are omitted).
+    if (this.dragNodes.size) {
+      ctx.save();
+      ctx.lineCap = 'round';
+      for (const id of this.dragNodes) {
+        const n = this.doc.nodes.find((x) => x.id === id);
+        if (!n) continue;
         for (const nb of n.neighbors) {
           const other = this.doc.nodes.find((x) => x.id === nb);
           if (!other) continue;
@@ -393,8 +416,8 @@ export class EditorCanvas {
           ctx.stroke();
           ctx.setLineDash([]);
         }
-        ctx.restore();
       }
+      ctx.restore();
     }
 
     // Hover ring first (under the discs' own selection ring).
@@ -525,6 +548,20 @@ export class EditorCanvas {
         ctx.fillStyle = i === 0 ? '#d8f3dc' : '#8a978a';
         ctx.fillText(line, 8, 6 + i * 17);
       });
+      ctx.restore();
+    }
+
+    // Multi-select marquee.
+    if (o.marquee) {
+      const m = o.marquee;
+      ctx.save();
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.10)';
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+      ctx.lineWidth = 1.5 / this.zoom;
+      ctx.setLineDash([6 / this.zoom, 4 / this.zoom]);
+      ctx.fillRect(m.x, m.y, m.w, m.h);
+      ctx.strokeRect(m.x, m.y, m.w, m.h);
+      ctx.setLineDash([]);
       ctx.restore();
     }
   }
