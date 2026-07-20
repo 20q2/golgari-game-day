@@ -1614,9 +1614,11 @@ def _resolve_space(table, sid, doc, node, prev):
 
     if ntype == 'excavation':
         doc['excavationDigsLeft'] = data.EXCAVATION_DIGS_PER_VISIT
-        rec = _get(table, _season_pk(sid), f'SITE#{node}')
+        # Materialize the shared site on arrival so the buried finds show through
+        # the dirt right away — no blind first dig.
+        rec = _dig_site(table, sid, node)
         return {'type': 'excavation', 'node': node,
-                'text': 'A patch of disturbed earth, thick with buried finds. Start digging.',
+                'text': 'A patch of disturbed earth — you can make out finds buried in the grid. Dig them out.',
                 'grid': _dig_view(rec), 'digsLeft': data.EXCAVATION_DIGS_PER_VISIT}
 
     if ntype == 'crystal_vein':
