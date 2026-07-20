@@ -201,6 +201,13 @@ GEAR_SELL_BACK = 0.5  # replacing gear auto-sells old piece for 50% of cost
 
 GEAR_SLOTS = ('fang', 'carapace', 'charm')
 
+# The Swamp Torch: a toggleable light for the dark dungeons. Lit, it widens your
+# fog-of-war radius (client-side, `lightHops`) but saps combat power — light OR
+# fight, never both. Penalties are negative deltas applied in
+# engine.effective_stats; both floor at 1 there. Tunable knobs; see
+# specs/2026-07-19-undercity-deep-dungeons-design.md.
+TORCH = {'atk': -3, 'def': -2, 'lightHops': 2}
+
 # Gear drops from loot sources. Each entry: (chance, {tier: weight}).
 # Common sources sit at ~0.10; one-time/hard POIs are elevated so a "treasure"
 # actually feels like one. Chances/weights are the tuning surface.
