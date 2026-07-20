@@ -153,73 +153,6 @@
    ]
   },
   {
-   "id": "cavern_lb",
-   "type": "ladder",
-   "x": 167,
-   "y": 160,
-   "region": "depths",
-   "neighbors": [
-    "cavern_d0",
-    "cavern_cache",
-    "cavern_lt"
-   ]
-  },
-  {
-   "id": "cavern_d0",
-   "type": "wild",
-   "x": 487,
-   "y": 150,
-   "region": "depths",
-   "neighbors": [
-    "cavern_lb",
-    "cavern_d1"
-   ]
-  },
-  {
-   "id": "cavern_d1",
-   "type": "hazard",
-   "x": 557,
-   "y": 360,
-   "region": "depths",
-   "neighbors": [
-    "cavern_d0",
-    "cavern_d2"
-   ]
-  },
-  {
-   "id": "cavern_d2",
-   "type": "loot",
-   "x": 327,
-   "y": 470,
-   "region": "depths",
-   "neighbors": [
-    "cavern_d1",
-    "cavern_lair"
-   ]
-  },
-  {
-   "id": "cavern_lair",
-   "type": "lair",
-   "x": 217,
-   "y": 340,
-   "region": "depths",
-   "neighbors": [
-    "cavern_d2",
-    "cavern_cache"
-   ]
-  },
-  {
-   "id": "cavern_cache",
-   "type": "cache",
-   "x": 347,
-   "y": 260,
-   "region": "depths",
-   "neighbors": [
-    "cavern_lair",
-    "cavern_lb"
-   ]
-  },
-  {
    "id": "bog_r0",
    "type": "mystery",
    "x": 2800,
@@ -356,86 +289,6 @@
    ]
   },
   {
-   "id": "bog_lb",
-   "type": "ladder",
-   "x": 3260,
-   "y": 120,
-   "region": "depths",
-   "neighbors": [
-    "bog_d0",
-    "bog_cache",
-    "bog_lt"
-   ]
-  },
-  {
-   "id": "bog_d0",
-   "type": "wild",
-   "x": 3440,
-   "y": 220,
-   "region": "depths",
-   "neighbors": [
-    "bog_lb",
-    "bog_d1",
-    "bog_lair"
-   ]
-  },
-  {
-   "id": "bog_d1",
-   "type": "hazard",
-   "x": 3460,
-   "y": 400,
-   "region": "depths",
-   "neighbors": [
-    "bog_d0",
-    "bog_d2"
-   ]
-  },
-  {
-   "id": "bog_d2",
-   "type": "loot",
-   "x": 3260,
-   "y": 490,
-   "region": "depths",
-   "neighbors": [
-    "bog_d1",
-    "bog_d3"
-   ]
-  },
-  {
-   "id": "bog_d3",
-   "type": "wild",
-   "x": 3060,
-   "y": 400,
-   "region": "depths",
-   "neighbors": [
-    "bog_d2",
-    "bog_cache",
-    "bog_lair"
-   ]
-  },
-  {
-   "id": "bog_cache",
-   "type": "cache",
-   "x": 3080,
-   "y": 220,
-   "region": "depths",
-   "neighbors": [
-    "bog_d3",
-    "bog_lb"
-   ]
-  },
-  {
-   "id": "bog_lair",
-   "type": "lair",
-   "x": 3260,
-   "y": 300,
-   "region": "depths",
-   "neighbors": [
-    "bog_d0",
-    "bog_d3"
-   ]
-  },
-  {
    "id": "garden_r0",
    "type": "loot",
    "x": 2683,
@@ -566,86 +419,6 @@
    "neighbors": [
     "garden_r5",
     "garden_lb"
-   ]
-  },
-  {
-   "id": "garden_lb",
-   "type": "ladder",
-   "x": 3260,
-   "y": 1705,
-   "region": "depths",
-   "neighbors": [
-    "garden_d0",
-    "garden_d1",
-    "garden_lt"
-   ]
-  },
-  {
-   "id": "garden_d0",
-   "type": "wild",
-   "x": 3420,
-   "y": 1805,
-   "region": "depths",
-   "neighbors": [
-    "garden_lb",
-    "garden_d2"
-   ]
-  },
-  {
-   "id": "garden_d2",
-   "type": "hazard",
-   "x": 3260,
-   "y": 1905,
-   "region": "depths",
-   "neighbors": [
-    "garden_d0",
-    "garden_d1",
-    "garden_lair",
-    "garden_d3"
-   ]
-  },
-  {
-   "id": "garden_d1",
-   "type": "loot",
-   "x": 3100,
-   "y": 1805,
-   "region": "depths",
-   "neighbors": [
-    "garden_d2",
-    "garden_lb"
-   ]
-  },
-  {
-   "id": "garden_lair",
-   "type": "lair",
-   "x": 3410,
-   "y": 2015,
-   "region": "depths",
-   "neighbors": [
-    "garden_d2",
-    "garden_cache"
-   ]
-  },
-  {
-   "id": "garden_cache",
-   "type": "cache",
-   "x": 3260,
-   "y": 2095,
-   "region": "depths",
-   "neighbors": [
-    "garden_lair",
-    "garden_d3"
-   ]
-  },
-  {
-   "id": "garden_d3",
-   "type": "wild",
-   "x": 3110,
-   "y": 2015,
-   "region": "depths",
-   "neighbors": [
-    "garden_cache",
-    "garden_d2"
    ]
   },
   {
@@ -958,75 +731,6 @@
    "region": "bone",
    "neighbors": [
     "bone_r5",
-    "bone_lb"
-   ]
-  },
-  {
-   "id": "bone_lb",
-   "type": "ladder",
-   "x": 170,
-   "y": 1741,
-   "region": "depths",
-   "neighbors": [
-    "bone_d0",
-    "bone_d2",
-    "bone_lt"
-   ]
-  },
-  {
-   "id": "bone_d0",
-   "type": "wild",
-   "x": 340,
-   "y": 1741,
-   "region": "depths",
-   "neighbors": [
-    "bone_lb",
-    "bone_d1",
-    "bone_cache"
-   ]
-  },
-  {
-   "id": "bone_d1",
-   "type": "hazard",
-   "x": 510,
-   "y": 1741,
-   "region": "depths",
-   "neighbors": [
-    "bone_d0",
-    "bone_lair"
-   ]
-  },
-  {
-   "id": "bone_lair",
-   "type": "lair",
-   "x": 510,
-   "y": 1921,
-   "region": "depths",
-   "neighbors": [
-    "bone_d1",
-    "bone_cache"
-   ]
-  },
-  {
-   "id": "bone_cache",
-   "type": "cache",
-   "x": 340,
-   "y": 1921,
-   "region": "depths",
-   "neighbors": [
-    "bone_lair",
-    "bone_d2",
-    "bone_d0"
-   ]
-  },
-  {
-   "id": "bone_d2",
-   "type": "loot",
-   "x": 170,
-   "y": 1921,
-   "region": "depths",
-   "neighbors": [
-    "bone_cache",
     "bone_lb"
    ]
   },
@@ -1721,6 +1425,1146 @@
    "region": "depths",
    "neighbors": [
     "city_d20"
+   ]
+  },
+  {
+   "id": "cavern_lb",
+   "type": "ladder",
+   "x": 600,
+   "y": 150,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d1",
+    "cavern_lt"
+   ]
+  },
+  {
+   "id": "cavern_d1",
+   "type": "wild",
+   "x": 600,
+   "y": 335,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d2",
+    "cavern_lb"
+   ]
+  },
+  {
+   "id": "cavern_d2",
+   "type": "hazard",
+   "x": 400,
+   "y": 335,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d1",
+    "cavern_d14",
+    "cavern_d3"
+   ]
+  },
+  {
+   "id": "cavern_d3",
+   "type": "loot",
+   "x": 200,
+   "y": 520,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d17",
+    "cavern_d2",
+    "cavern_d4"
+   ]
+  },
+  {
+   "id": "cavern_d4",
+   "type": "wild",
+   "x": 200,
+   "y": 705,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d3",
+    "cavern_d5"
+   ]
+  },
+  {
+   "id": "cavern_d5",
+   "type": "hazard",
+   "x": 400,
+   "y": 705,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d15",
+    "cavern_d4",
+    "cavern_d6"
+   ]
+  },
+  {
+   "id": "cavern_d6",
+   "type": "loot",
+   "x": 600,
+   "y": 705,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d5",
+    "cavern_d7"
+   ]
+  },
+  {
+   "id": "cavern_d7",
+   "type": "elite",
+   "x": 600,
+   "y": 890,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d6",
+    "cavern_d8"
+   ]
+  },
+  {
+   "id": "cavern_d8",
+   "type": "wild",
+   "x": 800,
+   "y": 890,
+   "region": "depths",
+   "neighbors": [
+    "cavern_cache",
+    "cavern_d7",
+    "cavern_d9"
+   ]
+  },
+  {
+   "id": "cavern_d9",
+   "type": "hazard",
+   "x": 1000,
+   "y": 890,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d10",
+    "cavern_d20",
+    "cavern_d8"
+   ]
+  },
+  {
+   "id": "cavern_d10",
+   "type": "loot",
+   "x": 1000,
+   "y": 1075,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d11",
+    "cavern_d18",
+    "cavern_d9"
+   ]
+  },
+  {
+   "id": "cavern_d11",
+   "type": "wild",
+   "x": 800,
+   "y": 1075,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d10",
+    "cavern_d12"
+   ]
+  },
+  {
+   "id": "cavern_d12",
+   "type": "elite",
+   "x": 600,
+   "y": 1075,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d11",
+    "cavern_d13"
+   ]
+  },
+  {
+   "id": "cavern_d13",
+   "type": "hazard",
+   "x": 600,
+   "y": 1260,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d12",
+    "cavern_lair"
+   ]
+  },
+  {
+   "id": "cavern_lair",
+   "type": "lair",
+   "x": 600,
+   "y": 1445,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d13"
+   ]
+  },
+  {
+   "id": "cavern_d14",
+   "type": "wild",
+   "x": 200,
+   "y": 335,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d2",
+    "cavern_rest"
+   ]
+  },
+  {
+   "id": "cavern_rest",
+   "type": "rest",
+   "x": 200,
+   "y": 150,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d14"
+   ]
+  },
+  {
+   "id": "cavern_d15",
+   "type": "hazard",
+   "x": 400,
+   "y": 890,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d16",
+    "cavern_d5"
+   ]
+  },
+  {
+   "id": "cavern_d16",
+   "type": "wild",
+   "x": 200,
+   "y": 890,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d15",
+    "cavern_trove"
+   ]
+  },
+  {
+   "id": "cavern_trove",
+   "type": "trove",
+   "x": 200,
+   "y": 1075,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d16"
+   ]
+  },
+  {
+   "id": "cavern_d17",
+   "type": "wild",
+   "x": 0,
+   "y": 520,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d3"
+   ]
+  },
+  {
+   "id": "cavern_cache",
+   "type": "cache",
+   "x": 800,
+   "y": 705,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d8"
+   ]
+  },
+  {
+   "id": "cavern_d18",
+   "type": "wild",
+   "x": 1200,
+   "y": 1075,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d10",
+    "cavern_d19"
+   ]
+  },
+  {
+   "id": "cavern_d19",
+   "type": "loot",
+   "x": 1200,
+   "y": 1260,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d18"
+   ]
+  },
+  {
+   "id": "cavern_d20",
+   "type": "hazard",
+   "x": 1200,
+   "y": 890,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d21",
+    "cavern_d9"
+   ]
+  },
+  {
+   "id": "cavern_d21",
+   "type": "loot",
+   "x": 1200,
+   "y": 705,
+   "region": "depths",
+   "neighbors": [
+    "cavern_d20"
+   ]
+  },
+  {
+   "id": "bog_lb",
+   "type": "ladder",
+   "x": 3400,
+   "y": 150,
+   "region": "depths",
+   "neighbors": [
+    "bog_d1",
+    "bog_lt"
+   ]
+  },
+  {
+   "id": "bog_d1",
+   "type": "wild",
+   "x": 3400,
+   "y": 335,
+   "region": "depths",
+   "neighbors": [
+    "bog_d2",
+    "bog_lb"
+   ]
+  },
+  {
+   "id": "bog_d2",
+   "type": "hazard",
+   "x": 3200,
+   "y": 335,
+   "region": "depths",
+   "neighbors": [
+    "bog_d1",
+    "bog_d14",
+    "bog_d3"
+   ]
+  },
+  {
+   "id": "bog_d3",
+   "type": "loot",
+   "x": 3000,
+   "y": 520,
+   "region": "depths",
+   "neighbors": [
+    "bog_d17",
+    "bog_d2",
+    "bog_d4"
+   ]
+  },
+  {
+   "id": "bog_d4",
+   "type": "wild",
+   "x": 3000,
+   "y": 705,
+   "region": "depths",
+   "neighbors": [
+    "bog_d3",
+    "bog_d5"
+   ]
+  },
+  {
+   "id": "bog_d5",
+   "type": "hazard",
+   "x": 3200,
+   "y": 705,
+   "region": "depths",
+   "neighbors": [
+    "bog_d15",
+    "bog_d4",
+    "bog_d6"
+   ]
+  },
+  {
+   "id": "bog_d6",
+   "type": "loot",
+   "x": 3400,
+   "y": 705,
+   "region": "depths",
+   "neighbors": [
+    "bog_d5",
+    "bog_d7"
+   ]
+  },
+  {
+   "id": "bog_d7",
+   "type": "elite",
+   "x": 3400,
+   "y": 890,
+   "region": "depths",
+   "neighbors": [
+    "bog_d6",
+    "bog_d8"
+   ]
+  },
+  {
+   "id": "bog_d8",
+   "type": "wild",
+   "x": 3600,
+   "y": 890,
+   "region": "depths",
+   "neighbors": [
+    "bog_cache",
+    "bog_d7",
+    "bog_d9"
+   ]
+  },
+  {
+   "id": "bog_d9",
+   "type": "hazard",
+   "x": 3800,
+   "y": 890,
+   "region": "depths",
+   "neighbors": [
+    "bog_d10",
+    "bog_d20",
+    "bog_d8"
+   ]
+  },
+  {
+   "id": "bog_d10",
+   "type": "loot",
+   "x": 3800,
+   "y": 1075,
+   "region": "depths",
+   "neighbors": [
+    "bog_d11",
+    "bog_d18",
+    "bog_d9"
+   ]
+  },
+  {
+   "id": "bog_d11",
+   "type": "wild",
+   "x": 3600,
+   "y": 1075,
+   "region": "depths",
+   "neighbors": [
+    "bog_d10",
+    "bog_d12"
+   ]
+  },
+  {
+   "id": "bog_d12",
+   "type": "elite",
+   "x": 3400,
+   "y": 1075,
+   "region": "depths",
+   "neighbors": [
+    "bog_d11",
+    "bog_d13"
+   ]
+  },
+  {
+   "id": "bog_d13",
+   "type": "hazard",
+   "x": 3400,
+   "y": 1260,
+   "region": "depths",
+   "neighbors": [
+    "bog_d12",
+    "bog_lair"
+   ]
+  },
+  {
+   "id": "bog_lair",
+   "type": "lair",
+   "x": 3400,
+   "y": 1445,
+   "region": "depths",
+   "neighbors": [
+    "bog_d13"
+   ]
+  },
+  {
+   "id": "bog_d14",
+   "type": "wild",
+   "x": 3000,
+   "y": 335,
+   "region": "depths",
+   "neighbors": [
+    "bog_d2",
+    "bog_rest"
+   ]
+  },
+  {
+   "id": "bog_rest",
+   "type": "rest",
+   "x": 3000,
+   "y": 150,
+   "region": "depths",
+   "neighbors": [
+    "bog_d14"
+   ]
+  },
+  {
+   "id": "bog_d15",
+   "type": "hazard",
+   "x": 3200,
+   "y": 890,
+   "region": "depths",
+   "neighbors": [
+    "bog_d16",
+    "bog_d5"
+   ]
+  },
+  {
+   "id": "bog_d16",
+   "type": "wild",
+   "x": 3000,
+   "y": 890,
+   "region": "depths",
+   "neighbors": [
+    "bog_d15",
+    "bog_trove"
+   ]
+  },
+  {
+   "id": "bog_trove",
+   "type": "trove",
+   "x": 3000,
+   "y": 1075,
+   "region": "depths",
+   "neighbors": [
+    "bog_d16"
+   ]
+  },
+  {
+   "id": "bog_d17",
+   "type": "wild",
+   "x": 2800,
+   "y": 520,
+   "region": "depths",
+   "neighbors": [
+    "bog_d3"
+   ]
+  },
+  {
+   "id": "bog_cache",
+   "type": "cache",
+   "x": 3600,
+   "y": 705,
+   "region": "depths",
+   "neighbors": [
+    "bog_d8"
+   ]
+  },
+  {
+   "id": "bog_d18",
+   "type": "wild",
+   "x": 4000,
+   "y": 1075,
+   "region": "depths",
+   "neighbors": [
+    "bog_d10",
+    "bog_d19"
+   ]
+  },
+  {
+   "id": "bog_d19",
+   "type": "loot",
+   "x": 4000,
+   "y": 1260,
+   "region": "depths",
+   "neighbors": [
+    "bog_d18"
+   ]
+  },
+  {
+   "id": "bog_d20",
+   "type": "hazard",
+   "x": 4000,
+   "y": 890,
+   "region": "depths",
+   "neighbors": [
+    "bog_d21",
+    "bog_d9"
+   ]
+  },
+  {
+   "id": "bog_d21",
+   "type": "loot",
+   "x": 4000,
+   "y": 705,
+   "region": "depths",
+   "neighbors": [
+    "bog_d20"
+   ]
+  },
+  {
+   "id": "bone_lb",
+   "type": "ladder",
+   "x": 600,
+   "y": 1600,
+   "region": "depths",
+   "neighbors": [
+    "bone_d1",
+    "bone_lt"
+   ]
+  },
+  {
+   "id": "bone_d1",
+   "type": "wild",
+   "x": 600,
+   "y": 1785,
+   "region": "depths",
+   "neighbors": [
+    "bone_d2",
+    "bone_lb"
+   ]
+  },
+  {
+   "id": "bone_d2",
+   "type": "hazard",
+   "x": 400,
+   "y": 1785,
+   "region": "depths",
+   "neighbors": [
+    "bone_d1",
+    "bone_d14",
+    "bone_d3"
+   ]
+  },
+  {
+   "id": "bone_d3",
+   "type": "loot",
+   "x": 200,
+   "y": 1970,
+   "region": "depths",
+   "neighbors": [
+    "bone_d17",
+    "bone_d2",
+    "bone_d4"
+   ]
+  },
+  {
+   "id": "bone_d4",
+   "type": "wild",
+   "x": 200,
+   "y": 2155,
+   "region": "depths",
+   "neighbors": [
+    "bone_d3",
+    "bone_d5"
+   ]
+  },
+  {
+   "id": "bone_d5",
+   "type": "hazard",
+   "x": 400,
+   "y": 2155,
+   "region": "depths",
+   "neighbors": [
+    "bone_d15",
+    "bone_d4",
+    "bone_d6"
+   ]
+  },
+  {
+   "id": "bone_d6",
+   "type": "loot",
+   "x": 600,
+   "y": 2155,
+   "region": "depths",
+   "neighbors": [
+    "bone_d5",
+    "bone_d7"
+   ]
+  },
+  {
+   "id": "bone_d7",
+   "type": "elite",
+   "x": 600,
+   "y": 2340,
+   "region": "depths",
+   "neighbors": [
+    "bone_d6",
+    "bone_d8"
+   ]
+  },
+  {
+   "id": "bone_d8",
+   "type": "wild",
+   "x": 800,
+   "y": 2340,
+   "region": "depths",
+   "neighbors": [
+    "bone_cache",
+    "bone_d7",
+    "bone_d9"
+   ]
+  },
+  {
+   "id": "bone_d9",
+   "type": "hazard",
+   "x": 1000,
+   "y": 2340,
+   "region": "depths",
+   "neighbors": [
+    "bone_d10",
+    "bone_d20",
+    "bone_d8"
+   ]
+  },
+  {
+   "id": "bone_d10",
+   "type": "loot",
+   "x": 1000,
+   "y": 2525,
+   "region": "depths",
+   "neighbors": [
+    "bone_d11",
+    "bone_d18",
+    "bone_d9"
+   ]
+  },
+  {
+   "id": "bone_d11",
+   "type": "wild",
+   "x": 800,
+   "y": 2525,
+   "region": "depths",
+   "neighbors": [
+    "bone_d10",
+    "bone_d12"
+   ]
+  },
+  {
+   "id": "bone_d12",
+   "type": "elite",
+   "x": 600,
+   "y": 2525,
+   "region": "depths",
+   "neighbors": [
+    "bone_d11",
+    "bone_d13"
+   ]
+  },
+  {
+   "id": "bone_d13",
+   "type": "hazard",
+   "x": 600,
+   "y": 2710,
+   "region": "depths",
+   "neighbors": [
+    "bone_d12",
+    "bone_lair"
+   ]
+  },
+  {
+   "id": "bone_lair",
+   "type": "lair",
+   "x": 600,
+   "y": 2895,
+   "region": "depths",
+   "neighbors": [
+    "bone_d13"
+   ]
+  },
+  {
+   "id": "bone_d14",
+   "type": "wild",
+   "x": 200,
+   "y": 1785,
+   "region": "depths",
+   "neighbors": [
+    "bone_d2",
+    "bone_rest"
+   ]
+  },
+  {
+   "id": "bone_rest",
+   "type": "rest",
+   "x": 200,
+   "y": 1600,
+   "region": "depths",
+   "neighbors": [
+    "bone_d14"
+   ]
+  },
+  {
+   "id": "bone_d15",
+   "type": "hazard",
+   "x": 400,
+   "y": 2340,
+   "region": "depths",
+   "neighbors": [
+    "bone_d16",
+    "bone_d5"
+   ]
+  },
+  {
+   "id": "bone_d16",
+   "type": "wild",
+   "x": 200,
+   "y": 2340,
+   "region": "depths",
+   "neighbors": [
+    "bone_d15",
+    "bone_trove"
+   ]
+  },
+  {
+   "id": "bone_trove",
+   "type": "trove",
+   "x": 200,
+   "y": 2525,
+   "region": "depths",
+   "neighbors": [
+    "bone_d16"
+   ]
+  },
+  {
+   "id": "bone_d17",
+   "type": "wild",
+   "x": 0,
+   "y": 1970,
+   "region": "depths",
+   "neighbors": [
+    "bone_d3"
+   ]
+  },
+  {
+   "id": "bone_cache",
+   "type": "cache",
+   "x": 800,
+   "y": 2155,
+   "region": "depths",
+   "neighbors": [
+    "bone_d8"
+   ]
+  },
+  {
+   "id": "bone_d18",
+   "type": "wild",
+   "x": 1200,
+   "y": 2525,
+   "region": "depths",
+   "neighbors": [
+    "bone_d10",
+    "bone_d19"
+   ]
+  },
+  {
+   "id": "bone_d19",
+   "type": "loot",
+   "x": 1200,
+   "y": 2710,
+   "region": "depths",
+   "neighbors": [
+    "bone_d18"
+   ]
+  },
+  {
+   "id": "bone_d20",
+   "type": "hazard",
+   "x": 1200,
+   "y": 2340,
+   "region": "depths",
+   "neighbors": [
+    "bone_d21",
+    "bone_d9"
+   ]
+  },
+  {
+   "id": "bone_d21",
+   "type": "loot",
+   "x": 1200,
+   "y": 2155,
+   "region": "depths",
+   "neighbors": [
+    "bone_d20"
+   ]
+  },
+  {
+   "id": "garden_lb",
+   "type": "ladder",
+   "x": 3400,
+   "y": 1600,
+   "region": "depths",
+   "neighbors": [
+    "garden_d1",
+    "garden_lt"
+   ]
+  },
+  {
+   "id": "garden_d1",
+   "type": "wild",
+   "x": 3400,
+   "y": 1785,
+   "region": "depths",
+   "neighbors": [
+    "garden_d2",
+    "garden_lb"
+   ]
+  },
+  {
+   "id": "garden_d2",
+   "type": "hazard",
+   "x": 3200,
+   "y": 1785,
+   "region": "depths",
+   "neighbors": [
+    "garden_d1",
+    "garden_d14",
+    "garden_d3"
+   ]
+  },
+  {
+   "id": "garden_d3",
+   "type": "loot",
+   "x": 3000,
+   "y": 1970,
+   "region": "depths",
+   "neighbors": [
+    "garden_d17",
+    "garden_d2",
+    "garden_d4"
+   ]
+  },
+  {
+   "id": "garden_d4",
+   "type": "wild",
+   "x": 3000,
+   "y": 2155,
+   "region": "depths",
+   "neighbors": [
+    "garden_d3",
+    "garden_d5"
+   ]
+  },
+  {
+   "id": "garden_d5",
+   "type": "hazard",
+   "x": 3200,
+   "y": 2155,
+   "region": "depths",
+   "neighbors": [
+    "garden_d15",
+    "garden_d4",
+    "garden_d6"
+   ]
+  },
+  {
+   "id": "garden_d6",
+   "type": "loot",
+   "x": 3400,
+   "y": 2155,
+   "region": "depths",
+   "neighbors": [
+    "garden_d5",
+    "garden_d7"
+   ]
+  },
+  {
+   "id": "garden_d7",
+   "type": "elite",
+   "x": 3400,
+   "y": 2340,
+   "region": "depths",
+   "neighbors": [
+    "garden_d6",
+    "garden_d8"
+   ]
+  },
+  {
+   "id": "garden_d8",
+   "type": "wild",
+   "x": 3600,
+   "y": 2340,
+   "region": "depths",
+   "neighbors": [
+    "garden_cache",
+    "garden_d7",
+    "garden_d9"
+   ]
+  },
+  {
+   "id": "garden_d9",
+   "type": "hazard",
+   "x": 3800,
+   "y": 2340,
+   "region": "depths",
+   "neighbors": [
+    "garden_d10",
+    "garden_d20",
+    "garden_d8"
+   ]
+  },
+  {
+   "id": "garden_d10",
+   "type": "loot",
+   "x": 3800,
+   "y": 2525,
+   "region": "depths",
+   "neighbors": [
+    "garden_d11",
+    "garden_d18",
+    "garden_d9"
+   ]
+  },
+  {
+   "id": "garden_d11",
+   "type": "wild",
+   "x": 3600,
+   "y": 2525,
+   "region": "depths",
+   "neighbors": [
+    "garden_d10",
+    "garden_d12"
+   ]
+  },
+  {
+   "id": "garden_d12",
+   "type": "elite",
+   "x": 3400,
+   "y": 2525,
+   "region": "depths",
+   "neighbors": [
+    "garden_d11",
+    "garden_d13"
+   ]
+  },
+  {
+   "id": "garden_d13",
+   "type": "hazard",
+   "x": 3400,
+   "y": 2710,
+   "region": "depths",
+   "neighbors": [
+    "garden_d12",
+    "garden_lair"
+   ]
+  },
+  {
+   "id": "garden_lair",
+   "type": "lair",
+   "x": 3400,
+   "y": 2895,
+   "region": "depths",
+   "neighbors": [
+    "garden_d13"
+   ]
+  },
+  {
+   "id": "garden_d14",
+   "type": "wild",
+   "x": 3000,
+   "y": 1785,
+   "region": "depths",
+   "neighbors": [
+    "garden_d2",
+    "garden_rest"
+   ]
+  },
+  {
+   "id": "garden_rest",
+   "type": "rest",
+   "x": 3000,
+   "y": 1600,
+   "region": "depths",
+   "neighbors": [
+    "garden_d14"
+   ]
+  },
+  {
+   "id": "garden_d15",
+   "type": "hazard",
+   "x": 3200,
+   "y": 2340,
+   "region": "depths",
+   "neighbors": [
+    "garden_d16",
+    "garden_d5"
+   ]
+  },
+  {
+   "id": "garden_d16",
+   "type": "wild",
+   "x": 3000,
+   "y": 2340,
+   "region": "depths",
+   "neighbors": [
+    "garden_d15",
+    "garden_trove"
+   ]
+  },
+  {
+   "id": "garden_trove",
+   "type": "trove",
+   "x": 3000,
+   "y": 2525,
+   "region": "depths",
+   "neighbors": [
+    "garden_d16"
+   ]
+  },
+  {
+   "id": "garden_d17",
+   "type": "wild",
+   "x": 2800,
+   "y": 1970,
+   "region": "depths",
+   "neighbors": [
+    "garden_d3"
+   ]
+  },
+  {
+   "id": "garden_cache",
+   "type": "cache",
+   "x": 3600,
+   "y": 2155,
+   "region": "depths",
+   "neighbors": [
+    "garden_d8"
+   ]
+  },
+  {
+   "id": "garden_d18",
+   "type": "wild",
+   "x": 4000,
+   "y": 2525,
+   "region": "depths",
+   "neighbors": [
+    "garden_d10",
+    "garden_d19"
+   ]
+  },
+  {
+   "id": "garden_d19",
+   "type": "loot",
+   "x": 4000,
+   "y": 2710,
+   "region": "depths",
+   "neighbors": [
+    "garden_d18"
+   ]
+  },
+  {
+   "id": "garden_d20",
+   "type": "hazard",
+   "x": 4000,
+   "y": 2340,
+   "region": "depths",
+   "neighbors": [
+    "garden_d21",
+    "garden_d9"
+   ]
+  },
+  {
+   "id": "garden_d21",
+   "type": "loot",
+   "x": 4000,
+   "y": 2155,
+   "region": "depths",
+   "neighbors": [
+    "garden_d20"
    ]
   }
  ],

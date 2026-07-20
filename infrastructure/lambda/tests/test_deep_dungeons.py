@@ -110,13 +110,14 @@ def test_compost_on_surface_unchanged(table):
     assert doc['position'] == home_gate
 
 
-# ── The city maze (vertical slice) ───────────────────────────────────────────
+# ── The deep-dungeon mazes (all five biomes) ─────────────────────────────────
 import collections
+import pytest
 
 
-def _city_depths():
+def _depths(biome):
     return {n for n, spec in data.MAP_NODES.items()
-            if spec.get('region') == 'depths' and n.split('_')[0] == 'city'}
+            if spec.get('region') == 'depths' and n.split('_')[0] == biome}
 
 
 def _bfs_hops(start, goal):
@@ -133,16 +134,17 @@ def _bfs_hops(start, goal):
     return None
 
 
-def test_city_maze_is_large_dark_and_complete():
-    nodes = _city_depths()
-    assert len(nodes) >= 24, 'city dungeon should be a real maze, not a pocket'
+@pytest.mark.parametrize('biome', sorted(data.BIOMES))
+def test_maze_is_large_dark_and_complete(biome):
+    nodes = _depths(biome)
+    assert len(nodes) >= 24, f'{biome} dungeon should be a real maze, not a pocket'
     types = collections.Counter(data.MAP_NODES[n]['type'] for n in nodes)
     assert types['trove'] == 1
     assert types['rest'] == 1
     assert types['lair'] == 1
     assert types['ladder'] >= 1
     # Every depths node reachable from the entrance mouth.
-    entrance = data.dungeon_entrance('city')
+    entrance = data.dungeon_entrance(biome)
     for n in nodes:
         assert _bfs_hops(entrance, n) is not None, f'{n} is stranded'
     # The lair sits a real journey from the mouth (>= 6 hops of shortest path;
@@ -151,20 +153,22 @@ def test_city_maze_is_large_dark_and_complete():
     assert _bfs_hops(entrance, lair) >= 6
 
 
-def test_city_maze_edges_are_symmetric():
-    nodes = _city_depths()
-    for n in nodes:
+@pytest.mark.parametrize('biome', sorted(data.BIOMES))
+def test_maze_edges_are_symmetric(biome):
+    for n in _depths(biome):
         for nb in data.MAP_NODES[n]['neighbors']:
             assert n in data.MAP_NODES[nb]['neighbors'], f'{n}->{nb} not mutual'
 
 
-def test_city_maze_trove_and_rest_are_dead_ends():
+@pytest.mark.parametrize('biome', sorted(data.BIOMES))
+def test_maze_trove_and_rest_are_dead_ends(biome):
     # Hidden rooms hang off branch tips so a dark beeline misses them.
     for t in ('trove', 'rest'):
-        node = next(n for n in _city_depths() if data.MAP_NODES[n]['type'] == t)
-        assert len(data.MAP_NODES[node]['neighbors']) == 1, f'{t} should be a dead end'
+        node = next(n for n in _depths(biome) if data.MAP_NODES[n]['type'] == t)
+        assert len(data.MAP_NODES[node]['neighbors']) == 1, f'{biome} {t} not a dead end'
 
 
-def test_city_lair_still_grants_the_sigil():
-    lair = next(n for n in _city_depths() if data.MAP_NODES[n]['type'] == 'lair')
-    assert lair in data.SIGIL_LAIRS and data.SIGIL_LAIRS[lair] == 'city'
+@pytest.mark.parametrize('biome', sorted(data.BIOMES))
+def test_lair_still_grants_the_sigil(biome):
+    lair = next(n for n in _depths(biome) if data.MAP_NODES[n]['type'] == 'lair')
+    assert lair in data.SIGIL_LAIRS and data.SIGIL_LAIRS[lair] == biome

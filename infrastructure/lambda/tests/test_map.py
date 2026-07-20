@@ -16,35 +16,35 @@ def test_node_count():
     # relocated city gate + loot), -2 garden inner spaces.
     # v8 (2026-07 editor pass): +2 nodes overall — more hazards/mystery/elites
     # and crystal veins, fewer shrines and vault-locks.
-    # v9 (deep dungeons): the city sigil pocket regrown from 7 -> 26 nodes as a
-    # large dark maze with hidden rest/trove rooms (+19). See
+    # v9 (deep dungeons): all five sigil pockets regrown into 26-node dark mazes
+    # with hidden rest/trove rooms. See
     # specs/2026-07-19-undercity-deep-dungeons-design.md.
-    assert len(MAP_NODES) == 150
+    assert len(MAP_NODES) == 228
 
 
 def test_space_type_distribution():
     counts = Counter(n['type'] for n in MAP_NODES.values())
-    # v9 deep dungeons: the city maze adds wild/hazard/loot/elite spaces plus the
-    # new 'rest' and 'trove' room types.
+    # v9 deep dungeons: all five 26-node mazes add wild/hazard/loot/elite spaces
+    # plus one 'rest' and one 'trove' room each.
     assert counts == {
-        'gate': 5, 'loot': 24, 'wild': 30, 'elite': 10, 'shop': 5, 'mystery': 11,
-        'hazard': 20, 'warp': 6, 'shrine': 1, 'ladder': 10, 'lair': 6,
+        'gate': 5, 'loot': 40, 'wild': 56, 'elite': 18, 'shop': 5, 'mystery': 11,
+        'hazard': 40, 'warp': 6, 'shrine': 1, 'ladder': 10, 'lair': 6,
         'ossuary': 1, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
         'excavation': 4, 'cache': 5, 'crystal_vein': 4, 'vault_lock': 1,
-        'rest': 1, 'trove': 1,
+        'rest': 5, 'trove': 5,
     }
 
 
 def test_dungeon_pockets_shapes():
     """Each pocket: door + lair + cache present, all degree >= 2, planar edges.
 
-    The redesigned 'city' maze (deep dungeons) is exempt from the degree/planarity
-    guards — it deliberately has dead-end branches (hidden rest/trove rooms) and
-    is validated instead by tests/test_deep_dungeons.py. Dead-ends never strand a
+    The redesigned deep-dungeon mazes are exempt from the degree/planarity guards
+    — they deliberately have dead-end branches (hidden rest/trove rooms) and are
+    validated instead by tests/test_deep_dungeons.py. Dead-ends never strand a
     player: exact-count movement starts each turn with no `prev`, so the first
     step out is always legal (see engine.legal_destinations)."""
     from undercity_data import BIOMES
-    REDESIGNED = {'city'}  # covered by test_deep_dungeons.py
+    REDESIGNED = set(BIOMES)  # all five mazes covered by test_deep_dungeons.py
     for b in BIOMES:
         pocket = {nid: n for nid, n in MAP_NODES.items()
                   if n.get('region') == 'depths' and nid.startswith(b + '_')}
