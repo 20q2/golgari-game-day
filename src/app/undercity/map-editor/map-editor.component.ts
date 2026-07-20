@@ -32,7 +32,7 @@ import {
   serializeMap,
 } from './file-io';
 
-type Mode = 'select' | 'add' | 'connect' | 'decal' | 'label' | 'region';
+type Mode = 'select' | 'add' | 'connect' | 'decal' | 'label' | 'region' | 'multi';
 
 const MODE_KEYS: Record<string, Mode> = {
   v: 'select',
@@ -41,6 +41,7 @@ const MODE_KEYS: Record<string, Mode> = {
   d: 'decal',
   l: 'label',
   r: 'region',
+  m: 'multi',
 };
 
 const MODE_HINTS: Record<Mode, string> = {
@@ -50,6 +51,7 @@ const MODE_HINTS: Record<Mode, string> = {
   decal: 'pick from the palette, then click to place · click a decal to edit',
   label: 'click empty ground to place a ghost title · drag to move',
   region: 'click spaces to gather them, then assign a region',
+  multi: 'drag a box to grab spaces · click a space to toggle · drag a picked space to move the group',
 };
 
 const SNAP = 25;
@@ -152,7 +154,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
 
   private canvas!: EditorCanvas;
   private drag: {
-    kind: 'node' | 'decal' | 'label' | 'pan';
+    kind: 'node' | 'decal' | 'label' | 'pan' | 'group' | 'marquee';
     id?: string;
     index?: number;
     lastX: number;
@@ -160,6 +162,14 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     moved: boolean;
     /** Middle-mouse pan: exclusively camera — never deselects on release. */
     camera?: boolean;
+    /** group: was the pressed node already selected? (click toggles it off) */
+    wasSelected?: boolean;
+    /** group/marquee: Shift held — union instead of replace. */
+    additive?: boolean;
+    /** group: world-space anchor + per-node origin, for drift-free moves. */
+    startWX?: number;
+    startWY?: number;
+    origin?: Map<string, { x: number; y: number }>;
   } | null = null;
 
   protected readonly cursorStyle = signal('grab');
@@ -373,6 +383,34 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       this.syncOverlay();
       return;
     }
+    if (mode === 'multi') {
+      if (pick?.kind === 'node') {
+        this.snapshot(); // gesture may become a group move; dropped if a click
+        this.drag = {
+          kind: 'group',
+          id: pick.id,
+          wasSelected: this.selNodes().has(pick.id),
+          additive: e.shiftKey,
+          startWX: w.x,
+          startWY: w.y,
+          lastX: e.clientX,
+          lastY: e.clientY,
+          moved: false,
+        };
+        return;
+      }
+      // Empty ground: start a marquee (Shift = add to the current set).
+      this.drag = {
+        kind: 'marquee',
+        additive: e.shiftKey,
+        startWX: w.x,
+        startWY: w.y,
+        lastX: e.clientX,
+        lastY: e.clientY,
+        moved: false,
+      };
+      return;
+    }
     // Empty ground (any mode): pan.
     this.drag = { kind: 'pan', lastX: e.clientX, lastY: e.clientY, moved: false };
   }
@@ -408,6 +446,47 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     const firstMove = !this.drag.moved;
     this.drag.moved = true;
 
+    if (this.drag.kind === 'marquee') {
+      const x0 = this.drag.startWX!;
+      const y0 = this.drag.startWY!;
+      this.canvas.overlay.marquee = {
+        x: Math.min(x0, w.x),
+        y: Math.min(y0, w.y),
+        w: Math.abs(w.x - x0),
+        h: Math.abs(w.y - y0),
+      };
+      return;
+    }
+    if (this.drag.kind === 'group') {
+      if (firstMove) {
+        // First movement locks in the moving set. Grabbing an unpicked node
+        // replaces the selection (or adds it with Shift); grabbing a picked
+        // one keeps the whole current group.
+        if (!this.drag.wasSelected) {
+          const set = this.drag.additive ? new Set(this.selNodes()) : new Set<string>();
+          set.add(this.drag.id!);
+          this.selNodes.set(set);
+        }
+        this.selNode.set(null);
+        const origin = new Map<string, { x: number; y: number }>();
+        for (const n of this.d().nodes) {
+          if (this.selNodes().has(n.id)) origin.set(n.id, { x: n.x, y: n.y });
+        }
+        this.drag.origin = origin;
+        this.canvas.beginGroupDrag(this.selNodes());
+        this.syncOverlay();
+      }
+      const totalDx = w.x - this.drag.startWX!;
+      const totalDy = w.y - this.drag.startWY!;
+      for (const n of this.d().nodes) {
+        const o = this.drag.origin!.get(n.id);
+        if (!o) continue;
+        n.x = this.applySnap(o.x + totalDx);
+        n.y = this.applySnap(o.y + totalDy);
+      }
+      return;
+    }
+
     if (this.drag.kind === 'pan') {
       // Grab-the-map: the world follows the cursor.
       this.canvas.panByScreen(dx, dy);
@@ -435,6 +514,42 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
 
   onPointerUp(): void {
     if (!this.drag) return;
+    if (this.drag.kind === 'marquee') {
+      const moved = this.drag.moved;
+      const additive = this.drag.additive === true;
+      const box = this.canvas.overlay.marquee;
+      this.drag = null;
+      this.canvas.overlay.marquee = null;
+      if (moved && box) {
+        const set = additive ? new Set(this.selNodes()) : new Set<string>();
+        for (const id of this.canvas.nodesInRect(box)) set.add(id);
+        this.selNodes.set(set);
+        this.selNode.set(null);
+      } else {
+        // A plain click on empty ground clears the multi-selection.
+        this.selNodes.set(new Set());
+      }
+      this.syncOverlay();
+      return;
+    }
+    if (this.drag.kind === 'group') {
+      const moved = this.drag.moved;
+      const id = this.drag.id!;
+      const wasSelected = this.drag.wasSelected === true;
+      this.drag = null;
+      if (moved) {
+        this.afterDocChange(); // re-drape ribbons for the whole group
+      } else {
+        this.undoStack.pop(); // gesture was a click — drop the snapshot
+        const set = new Set(this.selNodes());
+        if (wasSelected) set.delete(id);
+        else set.add(id);
+        this.selNodes.set(set);
+        this.selNode.set(null);
+        this.syncOverlay();
+      }
+      return;
+    }
     const wasEdit = this.drag.kind !== 'pan';
     const moved = this.drag.moved;
     const cameraOnly = this.drag.camera === true;
@@ -500,6 +615,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       return 'crosshair';
     }
     if (mode === 'label' && !pick) return 'crosshair';
+    if (mode === 'multi') return pick?.kind === 'node' ? 'move' : 'crosshair';
     if (pick) return mode === 'connect' && pick.kind !== 'node' ? 'grab' : 'pointer';
     return 'grab';
   }
