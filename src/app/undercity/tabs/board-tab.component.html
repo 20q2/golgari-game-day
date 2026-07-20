@@ -38,6 +38,20 @@
       </button>
     }
 
+    <!-- Swamp Torch: only in the dark dungeons. Lit = wider sight, −ATK/−DEF. -->
+    @if (!rolling() && inDungeon()) {
+      <button
+        class="uc-btn torch-btn"
+        [class.lit]="torchLit()"
+        [disabled]="busy()"
+        (click)="toggleTorch()"
+        [title]="torchLit() ? 'Douse to fight at full strength' : 'See further, but −3 ATK / −2 DEF'"
+      >
+        <mat-icon class="mi">{{ torchLit() ? 'local_fire_department' : 'flashlight_off' }}</mat-icon>
+        {{ torchLit() ? 'Douse' : 'Light torch' }}
+      </button>
+    }
+
     <!-- Contextual facility buttons while parked on a special node -->
     @if (!rolling() && !store.you()?.pendingMove) {
       @switch (nodeType()) {
@@ -566,6 +580,7 @@
       [hasScry]="lb.hasScry"
       [attackerStats]="lb.attackerStats"
       [defenderStats]="lb.defenderStats"
+      [augments]="lb.augments"
       [resume]="lb.resume"
       [resumeRevealed]="lb.resumeRevealed"
       [startRound]="lb.startRound"

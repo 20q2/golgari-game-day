@@ -127,6 +127,8 @@ export interface YouDoc {
   wildWins: number;
   composts: number;
   bossDamage: number;
+  /** Swamp Torch lit: widens the dungeon light radius, saps combat (−ATK/−DEF). */
+  torchLit?: boolean;
   /** Barriers broken / lair first-kills / vault finds already claimed. */
   poiClaims?: string[];
   paint: Record<string, number>;

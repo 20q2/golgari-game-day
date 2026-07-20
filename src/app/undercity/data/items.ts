@@ -119,6 +119,8 @@ export const SPACE_ICONS: Record<string, string> = {
   vault: 'vpn_key',
   cache: 'inventory_2',
   ladder: 'stairs',
+  rest: 'hotel',
+  trove: 'auto_awesome',
   // Event-only types (never drawn on the board)
   wild_warp: 'cyclone',
   boss_sealed: 'visibility_off',
@@ -154,6 +156,8 @@ export const SPACE_TINTS: Record<string, string> = {
   vault: '#c8a53e',
   cache: '#c8a53e',
   ladder: '#527a8a',
+  rest: '#c0703a',
+  trove: '#d8b24a',
 };
 
 /** Material Icons ligature per wild NPC. */

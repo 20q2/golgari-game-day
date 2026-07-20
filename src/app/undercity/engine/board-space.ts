@@ -30,6 +30,8 @@ export const TYPE_COLORS: Record<string, string> = {
   vault: '#c8a53e',
   cache: '#b08a2e',
   ladder: '#527a8a',
+  rest: '#c0703a',
+  trove: '#d8b24a',
 };
 
 function scaleHex(hex: string, f: number): string {

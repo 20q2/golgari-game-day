@@ -117,7 +117,13 @@ export interface BoardPlayer {
   shielded: boolean;
   /** Equipped hat id, if any — drawn on the head via the sprite's hat guide. */
   hat?: string | null;
+  /** Own token only: a lit Swamp Torch widens the dungeon light radius. */
+  torchLit?: boolean;
 }
+
+/** Fog-of-war light radius (graph hops) when the Swamp Torch is lit; 1 without.
+ *  Mirrors undercity_data.TORCH.lightHops. */
+const TORCH_LIGHT_HOPS = 2;
 
 /** In-world popover anchored above a node — what the space does. */
 export interface NodeInfo {
@@ -342,6 +348,9 @@ export class BoardCanvas {
   private interactive = true;
   private revealAll = false;
 
+  /** Own torch state: widens the dungeon light radius when lit. */
+  private ownTorchLit = false;
+
   private boundResize = () => this.resize();
   private pointerHandlers: {
     onDown: (e: PointerEvent) => void;
@@ -434,6 +443,7 @@ export class BoardCanvas {
     this.players = players;
     const own = players.find((p) => p.userId === this.ownUserId);
     this.ownPosition = own?.position ?? null;
+    this.ownTorchLit = !!own?.torchLit;
     // Spectator (no own token) drives layers itself via showLayerOf(); skip the
     // auto-follow so a repeated poll can't yank the view back to the overworld.
     if (!this.ownUserId) return;
@@ -473,14 +483,36 @@ export class BoardCanvas {
     }
   }
 
-  /** A dungeon node is lit if explored or adjacent to your current position. */
+  /** A dungeon node is lit if explored or within your light radius (1 hop, or
+   *  TORCH_LIGHT_HOPS with a lit Swamp Torch). */
   private isLit(nodeId: string): boolean {
     if (this.activeLayerId === OVERWORLD) return true;
     if (this.revealAll) return true; // broadcast: no fog-of-war on the TV
     if (this.explored.get(this.activeLayerId)?.has(nodeId)) return true;
     if (!this.ownPosition) return false;
-    if (nodeId === this.ownPosition) return true;
-    return this.nodeMap.get(this.ownPosition)?.neighbors.includes(nodeId) ?? false;
+    const hops = this.ownTorchLit ? TORCH_LIGHT_HOPS : 1;
+    return this.hopsWithin(this.ownPosition, nodeId, hops);
+  }
+
+  /** True if `goal` is within `maxHops` graph steps of `start`. */
+  private hopsWithin(start: string, goal: string, maxHops: number): boolean {
+    if (start === goal) return true;
+    const seen = new Set([start]);
+    let frontier = [start];
+    for (let d = 0; d < maxHops; d++) {
+      const next: string[] = [];
+      for (const id of frontier) {
+        for (const nb of this.nodeMap.get(id)?.neighbors ?? []) {
+          if (nb === goal) return true;
+          if (!seen.has(nb)) {
+            seen.add(nb);
+            next.push(nb);
+          }
+        }
+      }
+      frontier = next;
+    }
+    return false;
   }
 
   setSnares(nodeIds: string[]): void {

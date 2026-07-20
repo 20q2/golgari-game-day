@@ -62,6 +62,7 @@ import { formSprite } from '../data/species';
 import { getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
 import { BattlePlaybackComponent, BattleSide, BattleRewards } from './battle-playback.component';
 import { InteractiveBattleComponent, BattleItem, CombatStats } from './interactive-battle.component';
+import { computeStanceAugments, StanceAugment } from '../data/combat';
 import { DiceRollComponent } from './dice-roll.component';
 import { ExcavationModalComponent } from './excavation.component';
 import { FlowPuzzleModalComponent } from './flow-puzzle.component';
@@ -87,6 +88,7 @@ interface LiveBattle {
   hasScry: boolean;
   attackerStats: CombatStats | null;
   defenderStats: CombatStats | null;
+  augments: StanceAugment[];
   resume: boolean;
   resumeRevealed: Stance | null;
   startRound: number;
@@ -548,6 +550,15 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return this.map?.nodes.find((n) => n.id === pos)?.type ?? null;
   });
 
+  /** In a dark dungeon pocket — where the Swamp Torch is worth lighting. */
+  protected readonly inDungeon = computed(() => {
+    const pos = this.store.you()?.position;
+    return this.map?.nodes.find((n) => n.id === pos)?.region === 'depths';
+  });
+
+  /** Whether the player's Swamp Torch is currently lit. */
+  protected readonly torchLit = computed(() => !!this.store.you()?.torchLit);
+
   /** Ossuary gambles remaining this visit (defaults to a full set of 3). */
   protected readonly ossuaryRollsLeft = computed(() => this.store.you()?.ossuaryRollsLeft ?? 3);
 
@@ -878,6 +889,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           position,
           shielded: isShielded(p),
           hat: p.hat,
+          torchLit: p.userId === ownId ? !!you?.torchLit : false,
         };
       }),
     );
@@ -1200,6 +1212,14 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     });
   }
 
+  /** Light or douse the Swamp Torch — trades a wider dungeon light radius for a
+   *  combat penalty (−ATK/−DEF while lit). */
+  async toggleTorch(): Promise<void> {
+    await this.run(async () => {
+      await this.store.action('toggle-torch');
+    });
+  }
+
   async gamble(call: 'high' | 'low'): Promise<void> {
     if (this.busy()) return;
     this.gambleResult.set(null);
@@ -1321,6 +1341,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         ev.npc!.atk != null && ev.npc!.def != null && ev.npc!.spd != null
           ? { atk: ev.npc!.atk, def: ev.npc!.def, spd: ev.npc!.spd }
           : null,
+      augments: computeStanceAugments(you?.gear, you?.passives),
       resume: false,
       resumeRevealed: null,
       startRound: 1,
@@ -1361,6 +1382,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         pb.npc.atk != null && pb.npc.def != null && pb.npc.spd != null
           ? { atk: pb.npc.atk, def: pb.npc.def, spd: pb.npc.spd }
           : null,
+      augments: computeStanceAugments(you?.gear, you?.passives),
       resume: true,
       resumeRevealed: pb.revealed ?? null,
       startRound: pb.round ?? 1,
