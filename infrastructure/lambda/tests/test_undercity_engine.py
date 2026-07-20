@@ -78,9 +78,11 @@ def test_spend_stat_stacks_freely_until_out_of_points():
 # ── Movement ─────────────────────────────────────────────────────────────────
 
 def test_exact_count_no_backtrack_on_loop():
-    # From city_r0, two steps forward each way round the ring.
+    # From city_r0, two steps forward each way round the ring — plus wild_cit1,
+    # the Wilderness spoke hanging off city_r9 (a gate-adjacent node) since the
+    # tunnels+wilderness pass. See specs/2026-07-20-undercity-tunnels-wilderness-design.md.
     dests = legal_destinations(data.MAP_NODES, 'city_r0', 2)
-    assert dests == {'city_r2', 'city_r8'}
+    assert dests == {'city_r2', 'city_r8', 'wild_cit1'}
 
 
 def test_fork_gives_multiple_choices():

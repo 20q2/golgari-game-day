@@ -5,7 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from undercity_data import MAP_NODES, GATE_NODE, BOSS_NODE, WARP_NODES
+from undercity_data import MAP_NODES, GATE_NODE, BOSS_NODE, WARP_NODES, TUNNEL_NODES, BIOMES
+from undercity_engine import board_distance
 
 
 def test_node_count():
@@ -20,7 +21,10 @@ def test_node_count():
     # (city serpentine, cavern radial hub, bog long corridor, bone lattice,
     # garden tangle) with hidden rest/trove rooms. See
     # specs/2026-07-19-undercity-deep-dungeons-design.md.
-    assert len(MAP_NODES) == 225
+    # v10 (2026-07-20 tunnels + wilderness): +14 wilderness nodes (a central
+    # hub-and-spoke crossroads reconnecting the biomes for evolved units). See
+    # specs/2026-07-20-undercity-tunnels-wilderness-design.md.
+    assert len(MAP_NODES) == 239
 
 
 def test_space_type_distribution():
@@ -29,14 +33,36 @@ def test_space_type_distribution():
     # plus one 'rest' and one 'trove' room each (counts vary by maze shape).
     # v10 (2026-07-20 tunnels): the ten biome-boundary spur nodes retyped from
     # their old loot/hazard/elite/wild/mystery types to safe-passage 'tunnel'
-    # spaces. See specs/2026-07-20-undercity-tunnels-wilderness-design.md.
+    # spaces. Plus 14 wilderness nodes (cache/elite/hazard/loot/wild) forming
+    # the central hub. See specs/2026-07-20-undercity-tunnels-wilderness-design.md.
     assert counts == {
-        'gate': 5, 'loot': 38, 'wild': 50, 'elite': 16, 'shop': 5, 'mystery': 10,
-        'hazard': 38, 'warp': 6, 'shrine': 1, 'ladder': 10, 'lair': 6,
+        'gate': 5, 'loot': 41, 'wild': 53, 'elite': 19, 'shop': 5, 'mystery': 10,
+        'hazard': 42, 'warp': 6, 'shrine': 1, 'ladder': 10, 'lair': 6,
         'ossuary': 1, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
-        'excavation': 4, 'cache': 5, 'crystal_vein': 4, 'vault_lock': 1,
+        'excavation': 4, 'cache': 6, 'crystal_vein': 4, 'vault_lock': 1,
         'rest': 5, 'trove': 5, 'tunnel': 10,
     }
+
+
+def test_evolved_units_can_reach_every_biome_via_wilderness():
+    # With tunnels blocked (tier 2+), the Wilderness must keep all five biomes
+    # mutually reachable — no unit is ever stranded in its home biome.
+    gates = {'cavern': 'cavern_r0', 'bog': 'bog_r6', 'garden': 'garden_r0',
+             'city': 'city_r9', 'bone': 'bone_r1'}
+    for a in gates:
+        for b in gates:
+            if a == b:
+                continue
+            d = board_distance(MAP_NODES, gates[a], gates[b], 60,
+                               blocked=TUNNEL_NODES)
+            assert d is not None, f'{a}->{b} unreachable for evolved units'
+
+
+def test_wilderness_is_not_a_home_biome():
+    # It has no gate and is deliberately absent from BIOMES (no respawn/home perk).
+    assert 'wilderness' not in BIOMES
+    assert not any(n['type'] == 'gate' and n.get('region') == 'wilderness'
+                   for n in MAP_NODES.values())
 
 
 def test_dungeon_pockets_shapes():

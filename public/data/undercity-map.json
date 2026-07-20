@@ -12,7 +12,8 @@
    "region": "cavern",
    "neighbors": [
     "cavern_r1",
-    "cavern_r9"
+    "cavern_r9",
+    "wild_cav1"
    ]
   },
   {
@@ -226,7 +227,8 @@
    "y": 865,
    "region": "bog",
    "neighbors": [
-    "bog_r8"
+    "bog_r8",
+    "wild_bog1"
    ]
   },
   {
@@ -296,7 +298,8 @@
    "region": "garden",
    "neighbors": [
     "garden_r9",
-    "n132"
+    "n132",
+    "wild_gar1"
    ]
   },
   {
@@ -540,7 +543,8 @@
    "region": "city",
    "neighbors": [
     "city_r8",
-    "city_r0"
+    "city_r0",
+    "wild_cit1"
    ]
   },
   {
@@ -598,7 +602,8 @@
    "neighbors": [
     "bone_r0",
     "bone_r2",
-    "t_city_bone1"
+    "t_city_bone1",
+    "wild_bon1"
    ]
   },
   {
@@ -2545,6 +2550,165 @@
    "neighbors": [
     "garden_m6"
    ]
+  },
+  {
+   "id": "wild_core_n",
+   "type": "cache",
+   "x": 1800,
+   "y": 1300,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_core_e",
+    "wild_core_w"
+   ]
+  },
+  {
+   "id": "wild_core_e",
+   "type": "elite",
+   "x": 1980,
+   "y": 1400,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_core_n",
+    "wild_core_s",
+    "wild_bog0",
+    "wild_gar0"
+   ]
+  },
+  {
+   "id": "wild_core_s",
+   "type": "hazard",
+   "x": 1800,
+   "y": 1500,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_core_e",
+    "wild_core_w",
+    "wild_cit0"
+   ]
+  },
+  {
+   "id": "wild_core_w",
+   "type": "wild",
+   "x": 1620,
+   "y": 1400,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_core_n",
+    "wild_core_s",
+    "wild_cav0",
+    "wild_bon0"
+   ]
+  },
+  {
+   "id": "wild_cav0",
+   "type": "wild",
+   "x": 1450,
+   "y": 1150,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_core_w",
+    "wild_cav1"
+   ]
+  },
+  {
+   "id": "wild_cav1",
+   "type": "hazard",
+   "x": 1320,
+   "y": 930,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_cav0",
+    "cavern_r0"
+   ]
+  },
+  {
+   "id": "wild_bog0",
+   "type": "loot",
+   "x": 2150,
+   "y": 1150,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_core_e",
+    "wild_bog1"
+   ]
+  },
+  {
+   "id": "wild_bog1",
+   "type": "elite",
+   "x": 2330,
+   "y": 980,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_bog0",
+    "bog_r6"
+   ]
+  },
+  {
+   "id": "wild_gar0",
+   "type": "hazard",
+   "x": 2180,
+   "y": 1520,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_core_e",
+    "wild_gar1"
+   ]
+  },
+  {
+   "id": "wild_gar1",
+   "type": "loot",
+   "x": 2430,
+   "y": 1560,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_gar0",
+    "garden_r0"
+   ]
+  },
+  {
+   "id": "wild_cit0",
+   "type": "wild",
+   "x": 1700,
+   "y": 1560,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_core_s",
+    "wild_cit1"
+   ]
+  },
+  {
+   "id": "wild_cit1",
+   "type": "elite",
+   "x": 1620,
+   "y": 1610,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_cit0",
+    "city_r9"
+   ]
+  },
+  {
+   "id": "wild_bon0",
+   "type": "loot",
+   "x": 1400,
+   "y": 1520,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_core_w",
+    "wild_bon1"
+   ]
+  },
+  {
+   "id": "wild_bon1",
+   "type": "hazard",
+   "x": 1120,
+   "y": 1620,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_bon0",
+    "bone_r1"
+   ]
   }
  ],
  "regions": {
@@ -2593,6 +2757,12 @@
   "ruin": {
    "label": "The Ruinways",
    "background": "undercity/palace_background.png",
+   "scatter": true,
+   "dark": false
+  },
+  "wilderness": {
+   "label": "The Wilds",
+   "background": "undercity/swamp_background.png",
    "scatter": true,
    "dark": false
   }
