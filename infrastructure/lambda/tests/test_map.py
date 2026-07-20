@@ -16,18 +16,19 @@ def test_node_count():
     # relocated city gate + loot), -2 garden inner spaces.
     # v8 (2026-07 editor pass): +2 nodes overall — more hazards/mystery/elites
     # and crystal veins, fewer shrines and vault-locks.
-    # v9 (deep dungeons): all five sigil pockets regrown into 26-node dark mazes
-    # with hidden rest/trove rooms. See
+    # v9 (deep dungeons): all five sigil pockets regrown into distinct dark mazes
+    # (city serpentine, cavern radial hub, bog long corridor, bone lattice,
+    # garden tangle) with hidden rest/trove rooms. See
     # specs/2026-07-19-undercity-deep-dungeons-design.md.
-    assert len(MAP_NODES) == 228
+    assert len(MAP_NODES) == 225
 
 
 def test_space_type_distribution():
     counts = Counter(n['type'] for n in MAP_NODES.values())
-    # v9 deep dungeons: all five 26-node mazes add wild/hazard/loot/elite spaces
-    # plus one 'rest' and one 'trove' room each.
+    # v9 deep dungeons: five distinct mazes add wild/hazard/loot/elite spaces
+    # plus one 'rest' and one 'trove' room each (counts vary by maze shape).
     assert counts == {
-        'gate': 5, 'loot': 40, 'wild': 56, 'elite': 18, 'shop': 5, 'mystery': 11,
+        'gate': 5, 'loot': 42, 'wild': 51, 'elite': 18, 'shop': 5, 'mystery': 11,
         'hazard': 40, 'warp': 6, 'shrine': 1, 'ladder': 10, 'lair': 6,
         'ossuary': 1, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
         'excavation': 4, 'cache': 5, 'crystal_vein': 4, 'vault_lock': 1,
