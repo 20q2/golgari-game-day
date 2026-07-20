@@ -21,6 +21,9 @@
       <button [class.on]="mode() === 'region'" (click)="setMode('region')" matTooltip="Group spaces into regions / dungeon pockets">
         <mat-icon>category</mat-icon><span>Regions</span><kbd>R</kbd>
       </button>
+      <button [class.on]="mode() === 'multi'" (click)="setMode('multi')" matTooltip="Marquee-select spaces and move them as a group">
+        <mat-icon>select_all</mat-icon><span>Multi</span><kbd>M</kbd>
+      </button>
     </div>
 
     <label class="layer-label">
@@ -446,6 +449,21 @@
               </label>
             </details>
           </ng-template>
+        </section>
+      }
+
+      <!-- ── Multi-select tool ── -->
+      @if (mode() === 'multi') {
+        <section>
+          <h3><mat-icon class="mi">select_all</mat-icon> Multi-select</h3>
+          <p class="hint">
+            Drag a box to grab spaces (Shift-drag adds). Click a space to toggle it.
+            Drag a selected space — or use the arrow keys — to move the whole group.
+          </p>
+          <p class="hint center"><b>{{ selNodes().size }}</b> space(s) selected</p>
+          <button (click)="clearSelection()" [disabled]="!selNodes().size">
+            <mat-icon class="mi">deselect</mat-icon> Clear selection
+          </button>
         </section>
       }
 
