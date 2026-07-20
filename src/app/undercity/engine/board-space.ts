@@ -32,6 +32,7 @@ export const TYPE_COLORS: Record<string, string> = {
   ladder: '#527a8a',
   rest: '#c0703a',
   trove: '#d8b24a',
+  tunnel: '#8a6f4a',
 };
 
 function scaleHex(hex: string, f: number): string {

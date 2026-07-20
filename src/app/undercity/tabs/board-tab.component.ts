@@ -890,6 +890,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           shielded: isShielded(p),
           hat: p.hat,
           torchLit: p.userId === ownId ? !!you?.torchLit : false,
+          tier: p.userId === ownId ? (you?.tier ?? p.tier) : p.tier,
         };
       }),
     );

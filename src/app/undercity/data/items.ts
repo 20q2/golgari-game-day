@@ -121,6 +121,7 @@ export const SPACE_ICONS: Record<string, string> = {
   ladder: 'stairs',
   rest: 'hotel',
   trove: 'auto_awesome',
+  tunnel: 'route',
   // Event-only types (never drawn on the board)
   wild_warp: 'cyclone',
   boss_sealed: 'visibility_off',
@@ -158,6 +159,7 @@ export const SPACE_TINTS: Record<string, string> = {
   ladder: '#527a8a',
   rest: '#c0703a',
   trove: '#d8b24a',
+  tunnel: '#6b5836',
 };
 
 /** Material Icons ligature per wild NPC. */
@@ -246,6 +248,7 @@ export const SPACE_BLURBS: Record<string, string> = {
   vault: 'A treasure hoard, deep behind a barrier. First visit pays big — once.',
   cache: 'A stashed treasure — a rich first-visit payout for every explorer.',
   ladder: 'A rusted ladder between the surface and the dungeon below.',
+  tunnel: 'A narrow tunnel between biomes — safe passage, but only Tier-1 (un-evolved) units fit through.',
 };
 
 export const SPACE_NAMES: Record<string, string> = {
@@ -274,4 +277,5 @@ export const SPACE_NAMES: Record<string, string> = {
   vault: 'The Sunken Vault',
   cache: 'Hidden Trove',
   ladder: 'Rusted Ladder',
+  tunnel: 'Tunnel',
 };

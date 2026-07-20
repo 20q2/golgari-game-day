@@ -119,6 +119,8 @@ export interface BoardPlayer {
   hat?: string | null;
   /** Own token only: a lit Swamp Torch widens the dungeon light radius. */
   torchLit?: boolean;
+  /** Evolution tier (1/2/3). Own token's tier greys out Tier-1-only tunnels. */
+  tier?: number;
 }
 
 /** Fog-of-war light radius (graph hops) when the Swamp Torch is lit; 1 without.
@@ -268,8 +270,11 @@ export class BoardCanvas {
   private snares = new Set<string>();
   private barriersOpen = new Set<string>();
   private diceMarkers = new Set<string>();
-  /** Nodes sealed behind an unbroken barrier — rendered greyed. */
+  /** Nodes sealed behind an unbroken barrier (or tunnels, for evolved units) —
+   *  rendered greyed. */
   private lockedIds = new Set<string>();
+  /** Own token's evolution tier; > 1 greys out the Tier-1-only tunnels. */
+  private ownTier = 1;
   // Real transparent guardian art, lazily loaded from undercity/guardians/<id>.png.
   // Missing files (the folder is a placeholder for now) fall back to a token sprite.
   private guardianTex = new Map<string, HTMLImageElement>();
@@ -444,6 +449,11 @@ export class BoardCanvas {
     const own = players.find((p) => p.userId === this.ownUserId);
     this.ownPosition = own?.position ?? null;
     this.ownTorchLit = !!own?.torchLit;
+    const tier = own?.tier ?? 1;
+    if (tier !== this.ownTier) {
+      this.ownTier = tier;
+      this.recomputeLocked(); // tunnels grey in/out as you evolve
+    }
     // Spectator (no own token) drives layers itself via showLayerOf(); skip the
     // auto-follow so a repeated poll can't yank the view back to the overworld.
     if (!this.ownUserId) return;
@@ -563,9 +573,16 @@ export class BoardCanvas {
         }
       }
     }
-    this.lockedIds = new Set(
+    const locked = new Set(
       this.map.nodes.filter((n) => !reached.has(n.id)).map((n) => n.id),
     );
+    // Evolved units (tier > 1) can't enter tunnels — grey them so it's legible.
+    if (this.ownTier > 1) {
+      for (const n of this.map.nodes) {
+        if (n.type === 'tunnel') locked.add(n.id);
+      }
+    }
+    this.lockedIds = locked;
   }
 
   setChoices(nodeIds: string[] | null): void {
