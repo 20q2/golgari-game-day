@@ -68,3 +68,21 @@ def test_leaving_depths_resets_rest(table):
                    if spec.get('region') == 'city' and spec['type'] == 'loot')
     db._resolve_space(table, _sid(table), doc, surface, None)
     assert doc.get('restsUsed', []) == []
+
+
+def test_trove_pays_once_with_guaranteed_gear(table, monkeypatch):
+    doc = _join(table)
+    before = doc.get('spores', 0)
+    # Force the gear roll to a known upgrade so the guarantee is observable.
+    monkeypatch.setattr(db, '_roll_gear_drop',
+                        lambda d, tiers: {'outcome': 'equipped', 'id': 'wurm_tooth'})
+    ev = db._trove(table, _sid(table), doc, 'city_trove')
+    assert ev['type'] == 'trove'
+    assert doc['spores'] == before + data.TROVE_REWARD['spores']
+    assert ev['gear']['id'] == 'wurm_tooth'
+    assert 'trove:city_trove' in doc['poiClaims']
+    # Second visit: looted bare, no double pay.
+    doc['spores'] = 0
+    ev2 = db._trove(table, _sid(table), doc, 'city_trove')
+    assert doc['spores'] == 0
+    assert 'gear' not in ev2

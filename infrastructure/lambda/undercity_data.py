@@ -616,6 +616,11 @@ GUARDIAN_DEBUFF = {
 # dressing.
 VAULT_REWARD = {'spores': 80, 'xp': 20}
 
+# Trove: a hidden dungeon strongroom. Fatter than a cache/vault and a GUARANTEED
+# high-tier gear drop — the payoff for exploring the dark instead of beelining.
+TROVE_REWARD = {'spores': 110, 'xp': 30}
+TROVE_GEAR_TIERS = {2: 0.5, 3: 0.5}
+
 # ── Unique dungeons (v6) ─────────────────────────────────────────────────────
 # Each biome's ladder-down pocket is a distinct place: its own name, shape
 # (laid out in _build_map), signature hazard, themed wild, and one first-visit

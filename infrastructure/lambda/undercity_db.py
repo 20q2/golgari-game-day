@@ -2323,6 +2323,31 @@ def _vault(table, sid, doc):
     return out
 
 
+def _trove(table, sid, doc, node):
+    """Hidden dungeon strongroom: fat spores + XP + a guaranteed gear drop,
+    first visit per player (poiClaims 'trove:<node>')."""
+    claims = doc.setdefault('poiClaims', [])
+    key = f'trove:{node}'
+    if key in claims:
+        return {'type': 'trove',
+                'text': 'The strongroom hangs open and empty — your work, last time.'}
+    claims.append(key)
+    r = data.TROVE_REWARD
+    doc['spores'] = doc.get('spores', 0) + r['spores']
+    _grant_xp(table, sid, doc, r['xp'])
+    out = {'type': 'trove', 'spores': r['spores'],
+           'text': f"A sealed strongroom cracks open — +{r['spores']} Spores!"}
+    drop = _roll_gear_drop(doc, data.TROVE_GEAR_TIERS)
+    if drop:
+        out['gear'] = drop
+        verb = 'equip it' if drop['outcome'] == 'equipped' else 'salvage it'
+        out['text'] += f" A glimmering relic within — you {verb}!"
+    _event(table, sid, 'trove',
+           f"{doc['username']} cracked a hidden trove in the deep dark!",
+           actor=doc['userId'])
+    return out
+
+
 def _rest(table, sid, doc, node):
     """Hidden rest alcove: full heal + clear hazard debuffs, once per descent.
     Per-descent tracking lives in doc['restsUsed'], cleared on the surface."""
