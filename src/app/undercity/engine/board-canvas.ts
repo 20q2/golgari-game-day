@@ -28,6 +28,7 @@ import {
   LandmarkTextures,
   TerrainArt,
   TERRAIN_MARGIN,
+  TERRAIN_RES,
 } from './board-terrain';
 import { computeLayers, layerIndex, OVERWORLD, LayerSpec } from './board-layers';
 
@@ -313,19 +314,45 @@ export class BoardCanvas {
     return this.layers.get(this.activeLayerId) ?? this.layers.get(OVERWORLD)!;
   }
 
-  /** Re-render every layer's terrain with the current art + cleared flags. */
-  private rebuildLayers(): void {
+  /**
+   * Re-render layer terrain with the current art + cleared flags. Rebuilds
+   * every layer by default; pass `onlyLayerIds` to refresh just those (e.g. the
+   * one pocket whose cleared flag toggled) and leave the rest — notably the
+   * ~59 MB overworld — untouched. The outgoing canvas's backing store is freed
+   * immediately (width/height → 0) because iOS WebKit reclaims large canvases
+   * lazily, and a pile of orphaned ones is what tips the tab over its memory
+   * ceiling.
+   */
+  private rebuildLayers(onlyLayerIds?: ReadonlySet<string>): void {
     for (const spec of this.layerSpecs) {
+      if (onlyLayerIds && !onlyLayerIds.has(spec.id)) continue;
       const biome = spec.id.startsWith('pocket:')
         ? (this.map.nodes.find((n) => spec.nodeIds.has(n.id))?.id.split('_')[0] ?? null)
         : null;
+      const old = this.layers.get(spec.id);
       this.layers.set(spec.id, {
         spec,
         terrain: renderTerrain(this.map, this.floorTex, this.landmarkTex, spec, {
           cleared: !!biome && this.clearedDungeons.has(biome),
+          resolution: TERRAIN_RES,
         }),
       });
+      if (old) {
+        old.terrain.canvas.width = 0;
+        old.terrain.canvas.height = 0;
+      }
     }
+  }
+
+  /** Coalesce the burst of startup art-load rebuilds (9 floors + 4 landmarks +
+   *  decals each used to trigger a full rebuild) into one per frame. */
+  private rebuildRaf: number | null = null;
+  private scheduleRebuild(): void {
+    if (this.rebuildRaf !== null) return;
+    this.rebuildRaf = requestAnimationFrame(() => {
+      this.rebuildRaf = null;
+      this.rebuildLayers();
+    });
   }
 
   /** Dungeons YOU hold the sigil for render as 'cleared' (banner, calm glow). */
@@ -337,8 +364,23 @@ export class BoardCanvas {
     ) {
       return; // no change — don't rebuild terrain
     }
+    // Only the pocket layers for biomes whose cleared flag toggled need
+    // re-baking — the overworld terrain is independent of cleared state, so
+    // never reallocate its ~59 MB canvas here.
+    const changed = new Set<string>();
+    for (const b of next) if (!this.clearedDungeons.has(b)) changed.add(b);
+    for (const b of this.clearedDungeons) if (!next.has(b)) changed.add(b);
     this.clearedDungeons = next;
-    this.rebuildLayers();
+    const affected = new Set(
+      this.layerSpecs
+        .filter((spec) => {
+          if (!spec.id.startsWith('pocket:')) return false;
+          const biome = this.map.nodes.find((n) => spec.nodeIds.has(n.id))?.id.split('_')[0];
+          return !!biome && changed.has(biome);
+        })
+        .map((spec) => spec.id),
+    );
+    if (affected.size) this.rebuildLayers(affected);
   }
 
   /** Fires once per layer-swap into a dungeon (component shows the rite card). */
@@ -385,7 +427,10 @@ export class BoardCanvas {
     this.layerSpecs = computeLayers(map);
     this.layerOf = layerIndex(this.layerSpecs);
     for (const spec of this.layerSpecs) {
-      this.layers.set(spec.id, { spec, terrain: renderTerrain(map, undefined, undefined, spec) });
+      this.layers.set(spec.id, {
+        spec,
+        terrain: renderTerrain(map, undefined, undefined, spec, { resolution: TERRAIN_RES }),
+      });
     }
     // Dungeon fog-of-war: nodes you've stood on stay lit across sessions.
     try {
@@ -425,7 +470,7 @@ export class BoardCanvas {
       const img = new Image();
       img.onload = () => {
         this.floorTex[region] = img;
-        this.rebuildLayers();
+        this.scheduleRebuild();
       };
       img.src = src;
     }
@@ -433,12 +478,12 @@ export class BoardCanvas {
       const img = new Image();
       img.onload = () => {
         this.landmarkTex[type] = img;
-        this.rebuildLayers();
+        this.scheduleRebuild();
       };
       img.src = src;
     }
     // Image decals paint into the prerendered terrain; re-render as each lands.
-    preloadDecalImages(map, () => this.rebuildLayers());
+    preloadDecalImages(map, () => this.scheduleRebuild());
     this.resize();
     if (this.interactive) this.initInput();
     window.addEventListener('resize', this.boundResize);
@@ -857,6 +902,10 @@ export class BoardCanvas {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
+    if (this.rebuildRaf !== null) {
+      cancelAnimationFrame(this.rebuildRaf);
+      this.rebuildRaf = null;
+    }
     window.removeEventListener('resize', this.boundResize);
     if (this.pointerHandlers) {
       this.canvas.removeEventListener('pointerdown', this.pointerHandlers.onDown);
@@ -899,10 +948,14 @@ export class BoardCanvas {
     // Static world (terrain, paths, landmarks) + its animated glow accents.
     // Blit the active layer's terrain at its world origin.
     const L = this.active;
+    // Terrain is baked at L.terrain.resolution (< 1 on the game board to keep
+    // the offscreen backing store small); scale the blit back up to world size.
     ctx.drawImage(
       L.terrain.canvas,
       L.spec.bounds.x - TERRAIN_MARGIN,
       L.spec.bounds.y - TERRAIN_MARGIN,
+      L.terrain.canvas.width / L.terrain.resolution,
+      L.terrain.canvas.height / L.terrain.resolution,
     );
     this.drawGlows(elapsed);
 

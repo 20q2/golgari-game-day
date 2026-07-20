@@ -19,6 +19,18 @@ import { DUNGEONS, dungeonBiome } from '../data/dungeons';
 export const TERRAIN_MARGIN = 200;
 
 /**
+ * Fraction of world resolution the game board bakes its static terrain at.
+ * A full-res overworld backing store is ~4600×3200×4 ≈ 59 MB on its own, and
+ * with every dungeon-pocket layer resident that alone can blow iOS WebKit's
+ * per-tab memory ceiling and get the board tab killed ("Cannot open this page").
+ * At 0.6 each terrain canvas drops to ~36% of that. draw() scales it back up on
+ * blit; the terrain is ghosted background scenery, so the softening is
+ * imperceptible at the usual zoom and acceptable when zoomed in. The map editor
+ * passes no resolution (renders full-res) so editing stays pixel-crisp.
+ */
+export const TERRAIN_RES = 0.6;
+
+/**
  * Space types that draw an auto landmark sprite above their disc (building art
  * or procedural set-piece, plus its ambient glow). A node's `hideSprite` flag
  * suppresses it. Exported so the map editor can offer the toggle only where it
@@ -46,6 +58,9 @@ export interface TerrainArt {
   canvas: HTMLCanvasElement;
   /** River shimmer + flora/window/portal glows, animated by BoardCanvas. */
   glowSpots: GlowSpot[];
+  /** World-px per canvas-px the backing store was baked at (1 = full res). The
+   *  renderer must scale the blit up by 1/resolution to cover the world. */
+  resolution: number;
 }
 
 /** Floor paintings keyed by region, ghosted onto the cave floor per chamber. */
@@ -683,9 +698,16 @@ export function renderTerrain(
   floors?: FloorTextures,
   landmarkArt?: LandmarkTextures,
   layer?: LayerSpec,
-  opts?: { cleared?: boolean; omitEdgesOf?: string | ReadonlySet<string>; omitLabels?: boolean },
+  opts?: {
+    cleared?: boolean;
+    omitEdgesOf?: string | ReadonlySet<string>;
+    omitLabels?: boolean;
+    /** Bake at this fraction of world resolution (default 1 = full res). */
+    resolution?: number;
+  },
 ): TerrainArt {
   const cleared = opts?.cleared ?? false;
+  const resolution = opts?.resolution ?? 1;
   // A layer restricts what we draw to a node subset within a world-space
   // bounding box; default (no layer) draws the whole world (legacy behaviour).
   const bx = layer ? layer.bounds.x : 0;
@@ -699,9 +721,12 @@ export function renderTerrain(
   const w = bw + TERRAIN_MARGIN * 2;
   const h = bh + TERRAIN_MARGIN * 2;
   const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
+  // Backing store is shrunk by `resolution`; the ctx scale below keeps every
+  // downstream draw call in world coordinates, so only the canvas gets smaller.
+  canvas.width = Math.max(1, Math.round(w * resolution));
+  canvas.height = Math.max(1, Math.round(h * resolution));
   const ctx = canvas.getContext('2d')!;
+  ctx.scale(resolution, resolution);
   // Translate so world coordinates land correctly inside this cropped canvas.
   ctx.translate(TERRAIN_MARGIN - bx, TERRAIN_MARGIN - by);
   const glowSpots: GlowSpot[] = [];
@@ -1132,7 +1157,7 @@ export function renderTerrain(
   // dynamic layer (tokens, discs, highlights).
   drawDecals(ctx, map, 'under', layer, glowSpots);
 
-  return { canvas, glowSpots };
+  return { canvas, glowSpots, resolution };
 }
 
 interface TerrainBlob {

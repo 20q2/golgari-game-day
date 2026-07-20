@@ -1551,7 +1551,9 @@ def _resolve_space(table, sid, doc, node, prev):
     if ntype == 'loot':
         # Gate the reward behind a Flow puzzle: stash the pick + masked view on
         # the doc (survives a refresh) and defer the roll to _solve_loot_puzzle.
-        pid = _rng.choice([p['id'] for p in data.FLOW_PUZZLES])
+        # Only pick puzzles with at least one rock — a clear (rockless) board
+        # traces trivially and feels like an empty reward.
+        pid = _rng.choice([p['id'] for p in data.FLOW_PUZZLES if p['rocks']])
         doc['pendingLoot'] = {'puzzleId': pid, 'view': _flow_puzzle_view(pid)}
         return {'type': 'loot_puzzle', 'node': node,
                 'puzzle': doc['pendingLoot']['view']}
