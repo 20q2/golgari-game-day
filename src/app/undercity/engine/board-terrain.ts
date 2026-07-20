@@ -1228,7 +1228,9 @@ function drawWalls(
   rand: () => number,
 ): void {
   const M = TERRAIN_MARGIN;
-  ctx.fillStyle = '#0a0908';
+  // Pure black so the world's border reads as the off-map void (matches the
+  // canvas edge, especially while spectating with the whole world in frame).
+  ctx.fillStyle = '#000000';
   // Solid margin bands first, then a jagged stalagmite edge biting inward.
   ctx.fillRect(bx - M, by - M, bw + 2 * M, M);
   ctx.fillRect(bx - M, by + bh, bw + 2 * M, M);

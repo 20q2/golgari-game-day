@@ -887,7 +887,9 @@ export class BoardCanvas {
       if (t >= 1) this.camGlide = null;
     }
 
-    ctx.fillStyle = '#0a0908';
+    // Pure black outside the world so the off-map area matches the canvas edge
+    // (notably while spectating, where the whole world sits framed in view).
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     ctx.save();
