@@ -416,7 +416,8 @@ def pvp_spore_steal(loser_spores: int, loser_stance: str, winner_passives: froze
 # ── Movement ─────────────────────────────────────────────────────────────────
 
 def legal_destinations(nodes: dict, start: str, steps: int,
-                       closed: frozenset = frozenset()) -> set:
+                       closed: frozenset = frozenset(),
+                       blocked: frozenset = frozenset()) -> set:
     """
     Dokapon exact-count movement: every node reachable in exactly `steps`
     edges without immediately reversing the previous edge. Dead-end branches
@@ -424,6 +425,9 @@ def legal_destinations(nodes: dict, start: str, steps: int,
     barrier nodes: a walk that reaches one STOPS at it (spending the rest of
     the roll) so you can always march up to a barrier to challenge its
     guardian — but it never walks THROUGH it into the sealed area beyond.
+    `blocked` holds nodes you may never step ONTO (e.g. tunnels for evolved
+    units) — never a destination, never a corridor. The start node is never
+    treated as blocked, so you can always walk off one you already stand on.
     """
     results = set()
     stack = [(start, None, steps)]
@@ -447,6 +451,8 @@ def legal_destinations(nodes: dict, start: str, steps: int,
         for nb in nodes[node]['neighbors']:
             if nb == prev:
                 continue
+            if nb in blocked:
+                continue
             stack.append((nb, node, remaining - 1))
     # Note: we do NOT discard `start`. The no-backtrack rule above already
     # forbids a trivial there-and-back, so any walk that returns to `start`
@@ -456,11 +462,13 @@ def legal_destinations(nodes: dict, start: str, steps: int,
 
 
 def board_distance(nodes: dict, start: str, goal: str, max_steps: int,
-                   closed: frozenset = frozenset()) -> int | None:
+                   closed: frozenset = frozenset(),
+                   blocked: frozenset = frozenset()) -> int | None:
     """
     Shortest hop count from start to goal, or None past max_steps. Plain BFS —
     unlike movement there is no exact-count or no-backtrack rule. `closed`
-    (sealed barriers) blocks passage but may be the goal itself.
+    (sealed barriers) blocks passage but may be the goal itself. `blocked`
+    holds nodes you may never step onto (never a corridor, never a goal).
     """
     if start == goal:
         return 0
@@ -472,7 +480,7 @@ def board_distance(nodes: dict, start: str, goal: str, max_steps: int,
             if node != start and node in closed:
                 continue  # sealed: never a corridor
             for nb in nodes[node]['neighbors']:
-                if nb in seen:
+                if nb in seen or nb in blocked:
                     continue
                 if nb == goal:
                     return dist

@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import undercity_data as data
 from undercity_engine import (
-    Combatant, resolve_battle, legal_destinations, roll_mystery,
+    Combatant, resolve_battle, legal_destinations, board_distance, roll_mystery,
     apply_level_ups, spend_stat, effective_stats, regen_hp, regen_rolls, pick_npc,
     pvp_spore_steal,
 )
@@ -942,3 +942,39 @@ def test_validate_flow_rejects_entering_rock():
 def test_flow_puzzles_all_solvable():
     for p in data.FLOW_PUZZLES:
         assert _eng_flow.validate_flow_solution(p, p['solution']) is True, p['id']
+
+
+# ── Tier-gated movement (tunnels) ─────────────────────────────────────────────
+
+def test_blocked_node_is_never_a_destination_or_pass_through():
+    # A---B---C linear; blocking B removes both B and everything beyond it.
+    nodes = {
+        'A': {'neighbors': ['B']},
+        'B': {'neighbors': ['A', 'C']},
+        'C': {'neighbors': ['B']},
+    }
+    assert legal_destinations(nodes, 'A', 1, blocked=frozenset({'B'})) == set()
+    assert legal_destinations(nodes, 'A', 2, blocked=frozenset({'B'})) == set()
+    # Without the block, B is reachable in 1 and C in 2.
+    assert legal_destinations(nodes, 'A', 1) == {'B'}
+    assert legal_destinations(nodes, 'A', 2) == {'C'}
+
+
+def test_blocked_does_not_stop_you_leaving_a_blocked_start():
+    # Standing ON a blocked node, you can still walk off it.
+    nodes = {
+        'A': {'neighbors': ['B']},
+        'B': {'neighbors': ['A', 'C']},
+        'C': {'neighbors': ['B']},
+    }
+    assert legal_destinations(nodes, 'B', 1, blocked=frozenset({'B'})) == {'A', 'C'}
+
+
+def test_board_distance_respects_blocked():
+    nodes = {
+        'A': {'neighbors': ['B']},
+        'B': {'neighbors': ['A', 'C']},
+        'C': {'neighbors': ['B']},
+    }
+    assert board_distance(nodes, 'A', 'C', 5) == 2
+    assert board_distance(nodes, 'A', 'C', 5, blocked=frozenset({'B'})) is None
