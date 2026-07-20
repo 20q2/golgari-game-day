@@ -978,3 +978,13 @@ def test_board_distance_respects_blocked():
     }
     assert board_distance(nodes, 'A', 'C', 5) == 2
     assert board_distance(nodes, 'A', 'C', 5, blocked=frozenset({'B'})) is None
+
+
+def test_tunnel_nodes_are_the_ten_boundary_spurs():
+    assert len(data.TUNNEL_NODES) == 10
+    assert all(nid.startswith('t_') for nid in data.TUNNEL_NODES)
+    assert all(data.MAP_NODES[nid]['type'] == 'tunnel' for nid in data.TUNNEL_NODES)
+
+
+def test_tunnel_tier_max_is_one():
+    assert data.TUNNEL_TIER_MAX == 1

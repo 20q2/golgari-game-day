@@ -781,6 +781,7 @@ GATE_NODE = HOME_GATES[DEFAULT_BIOME]  # legacy alias; respawns use homeBiome
 
 MAP_NODES = {n['id']: n for n in _MAP_DOC['nodes']}
 WARP_NODES = [nid for nid, n in MAP_NODES.items() if n['type'] == 'warp']
+TUNNEL_NODES = frozenset(nid for nid, n in MAP_NODES.items() if n['type'] == 'tunnel')
 
 # Guild Sigils: first-clear of a biome dungeon's lair grants that sigil.
 SIGIL_LAIRS = {b + '_lair': b for b in BIOMES}

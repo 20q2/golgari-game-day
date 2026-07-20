@@ -40,6 +40,12 @@ PVP_SPORE_STEAL = 0.25
 PVP_SPORE_STEAL_DEFEND = 0.10
 DEATHRITE_STEAL_MULT = 1.5
 
+# ── Movement ─────────────────────────────────────────────────────────────────────
+# Units whose tier is <= this may enter `tunnel` spaces (the biome-boundary
+# shortcuts). Evolved units (tier 2/3) are barred and routed through the
+# Wilderness instead. See specs/2026-07-20-undercity-tunnels-wilderness-design.md.
+TUNNEL_TIER_MAX = 1
+
 # ── Facilities ───────────────────────────────────────────────────────────────
 SHOP_REFRESH_MIN = 30        # bazaar restock window (minutes); the client's
                              # vendor rotation mirrors this — see BAZAAR_KEEPERS
