@@ -118,6 +118,16 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     tint: 'rgba(96, 58, 126, 0.16)',
     path: { rim: '#171218', edge: '#6f558a', fill: '#413748', stud: 'rgba(196, 176, 216, 0.5)' },
   },
+  // The Ashen Wilds — charcoal wastes lit by ember-orange rot-fire, the T2+
+  // frontier. Deliberately warm/dark to contrast the cool biomes.
+  wilderness: {
+    top: '#2e2b28',
+    cliff: '#141210',
+    cliffH: 14,
+    mottle: 'rgba(224, 117, 46, 0.12)',
+    tint: 'rgba(150, 70, 30, 0.20)',
+    path: { rim: '#1a1614', edge: '#e0752e', fill: '#4a423c', stud: 'rgba(240, 190, 140, 0.55)' },
+  },
   // Gated ruins (Titan's Rest, the Sunken Vaults) — dead grey-gold stonework,
   // clearly "older" than the living chambers. Masonry silhouette like the city.
   ruin: {
