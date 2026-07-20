@@ -269,6 +269,14 @@ def _passives(doc):
     return frozenset(doc.get('passives') or [])
 
 
+def _blocked_nodes(doc):
+    """Nodes this unit may not step onto. Evolved units (tier > TUNNEL_TIER_MAX)
+    are barred from tunnels; Tier-1 units are barred from nothing."""
+    if doc.get('tier', 1) > data.TUNNEL_TIER_MAX:
+        return data.TUNNEL_NODES
+    return frozenset()
+
+
 def _riders(doc):
     """Gear rider tags across all equipped slots (fang/carapace/charm)."""
     out = set()
@@ -1084,9 +1092,11 @@ def _admin_bot_step(table, sid, payload):
     if not doc.get('isBot'):
         return _err('bot-step moves bots only.')
     closed = _closed_barriers(table, sid)
+    blocked = _blocked_nodes(doc)
     dests = set()
     for steps in range(random.randint(1, 4), 0, -1):
-        dests = engine.legal_destinations(data.MAP_NODES, doc['position'], steps, closed)
+        dests = engine.legal_destinations(data.MAP_NODES, doc['position'], steps,
+                                          closed, blocked)
         if dests:
             break
     if not dests:
@@ -1384,7 +1394,8 @@ def _roll(table, sid, doc, payload):
         doc['buffs'] = [b for b in doc['buffs'] if b.get('kind') != 'vines']
 
     dests = engine.legal_destinations(data.MAP_NODES, doc['position'], value,
-                                      _closed_barriers(table, sid))
+                                      _closed_barriers(table, sid),
+                                      _blocked_nodes(doc))
     if not dests:
         # Dead-end corner case: refund the roll, let them try again.
         return _err('The tunnels shift — no path fits that roll. Try again.', 409)
@@ -2756,8 +2767,13 @@ def _cast_teleport(table, sid, doc, spell, to):
     (cast-result, extra-response-fields) or an error tuple."""
     if to not in data.MAP_NODES or to == doc['position']:
         return _spell_err('No such tunnel to blink to.', 'invalid_target', 400)
+    blocked = _blocked_nodes(doc)
+    if to in blocked:
+        return _spell_err('Evolved units cannot squeeze into a tunnel.',
+                          'invalid_target')
     dist = engine.board_distance(data.MAP_NODES, doc['position'], to,
-                                 spell['range'], _closed_barriers(table, sid))
+                                 spell['range'], _closed_barriers(table, sid),
+                                 blocked)
     if dist is None:
         return _spell_err(f'Too far — {spell["name"]} reaches '
                           f'{spell["range"]} spaces.', 'out_of_range')

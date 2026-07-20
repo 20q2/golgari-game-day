@@ -11,6 +11,7 @@ from botocore.exceptions import ClientError
 
 import undercity_data as data
 import undercity_db as db
+import undercity_engine as engine
 
 
 def _ddb_copy(obj, reject_float=False):
@@ -196,6 +197,47 @@ def test_tunnel_landing_has_no_mechanical_effect(table):
     assert doc['spores'] == 50          # no loot/hazard change
     assert doc['hp'] == before_hp       # no battle
     assert doc.get('pendingLoot') is None
+
+
+def test_tier1_can_cross_a_tunnel(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['tier'] = 1
+    doc['position'] = 'cavern_r2'
+    dests = engine.legal_destinations(
+        data.MAP_NODES, doc['position'], 1,
+        db._closed_barriers(table, sid), db._blocked_nodes(doc))
+    assert 't_bone_cavern1' in dests
+
+
+def test_tier2_cannot_enter_a_tunnel(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['tier'] = 2
+    doc['position'] = 'cavern_r2'
+    dests = engine.legal_destinations(
+        data.MAP_NODES, doc['position'], 1,
+        db._closed_barriers(table, sid), db._blocked_nodes(doc))
+    assert 't_bone_cavern1' not in dests
+    # ...and cannot route THROUGH it to the far side in two hops.
+    dests2 = engine.legal_destinations(
+        data.MAP_NODES, doc['position'], 2,
+        db._closed_barriers(table, sid), db._blocked_nodes(doc))
+    assert 't_bone_cavern0' not in dests2
+
+
+def test_tier2_standing_on_a_tunnel_can_still_leave(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['tier'] = 2
+    doc['position'] = 't_bone_cavern1'   # evolved while mid-tunnel
+    dests = engine.legal_destinations(
+        data.MAP_NODES, doc['position'], 1,
+        db._closed_barriers(table, sid), db._blocked_nodes(doc))
+    assert 'cavern_r2' in dests
 
 
 def test_roll_picks_exact_face_in_debug(table, monkeypatch):
