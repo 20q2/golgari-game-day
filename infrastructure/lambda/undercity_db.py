@@ -1218,7 +1218,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'rollRegenAt': _now(),
         'position': data.HOME_GATES[home],
         'homeBiome': home,
-        'rolls': data.JOIN_ROLLS + min(seals_before, data.SEAL_BONUS_CAP),
+        'rolls': data.JOIN_ROLLS,
         'spores': 15 if home == 'city' else 0,  # City Rat hatch perk
         'bag': [], 'gear': {}, 'stance': 'fight',
         'pendingMove': None, 'buffs': [],

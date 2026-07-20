@@ -16,7 +16,6 @@ DEBUG = False
 # ── Roll economy ─────────────────────────────────────────────────────────────
 ROLL_CAP = 6
 JOIN_ROLLS = 3
-SEAL_BONUS_CAP = 3
 ROLL_REGEN_MINUTES = 30      # regen tick length in minutes, up to ROLL_CAP
 ROLLS_PER_REGEN = 3          # rolls banked each tick (3 rolls every 30 minutes)
 CLAIM_FINISHED_ROLLS = 2

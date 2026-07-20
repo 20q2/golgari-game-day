@@ -18,12 +18,6 @@
         }
       </div>
     }
-    @if (sealBonus() > 0) {
-      <p class="seal-note">
-        <mat-icon class="mi">military_tech</mat-icon>
-        Veteran of {{ store.wardrobe()?.nights }} nights — +{{ sealBonus() }} starting rolls
-      </p>
-    }
     <button
       class="egg"
       [class.crack1]="taps() === 1"

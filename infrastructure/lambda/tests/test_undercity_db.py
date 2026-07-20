@@ -292,18 +292,29 @@ def test_roll_pick_ignored_when_debug_off(table, monkeypatch):
     assert resp['roll']['value'] == 2
 
 
-def test_join_is_idempotent_and_seal_rolls(table):
+def test_join_is_idempotent_and_veteran_egg_color(table):
     act(table, 'join', starter='pest')
     status, resp = act(table, 'join', starter='kraul')
     assert status == 200
     assert resp['you']['species'] == 'pest'  # second join ignored
 
-    # A veteran with 2 seals starts with +2 rolls.
+    # Everyone starts with the same JOIN_ROLLS — seals no longer grant rolls.
+    assert resp['you']['rolls'] == data.JOIN_ROLLS
+
+    # A non-veteran's egg-color pick is ignored (default body hue).
+    status, resp = act(table, 'join', user='user-rookie', name='Rookie',
+                       starter='zombie', eggHue=270)
+    assert resp['you']['rolls'] == data.JOIN_ROLLS
+    assert resp['you']['paint']['body'] == 130
+
+    # A veteran (1+ seals) may pick their egg's shell color at the start.
     perm = db._get_perm(table, 'user-vet')
     perm['seals'] = 2
     table.put_item(Item=perm)
-    status, resp = act(table, 'join', user='user-vet', name='Vet', starter='zombie')
-    assert resp['you']['rolls'] == 5
+    status, resp = act(table, 'join', user='user-vet', name='Vet',
+                       starter='zombie', eggHue=270)
+    assert resp['you']['rolls'] == data.JOIN_ROLLS
+    assert resp['you']['paint']['body'] == 270
 
 
 def test_move_requires_matching_pending(table):
@@ -1796,7 +1807,7 @@ def test_roll_regen_grants_via_action_path(table, monkeypatch):
 
 def test_state_reports_debug_and_next_roll(table, monkeypatch):
     monkeypatch.setattr(data, 'DEBUG', False)
-    act(table, 'join', starter='pest')              # 3+1 seal rolls < cap of 6
+    act(table, 'join', starter='pest')              # JOIN_ROLLS (3) < cap of 6
     status, state = db.handle_state(table, {'userId': 'user-alex'})
     assert status == 200
     assert state['you']['debug'] is False

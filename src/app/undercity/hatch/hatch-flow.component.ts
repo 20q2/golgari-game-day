@@ -111,7 +111,6 @@ export class HatchFlowComponent {
   ];
 
   protected readonly canPickShell = computed(() => (this.store.wardrobe()?.seals ?? 0) >= 1);
-  protected readonly sealBonus = computed(() => Math.min(this.store.wardrobe()?.seals ?? 0, 3));
 
   tapEgg(): void {
     if (!this.hatched()) this.taps.set(this.taps() + 1);

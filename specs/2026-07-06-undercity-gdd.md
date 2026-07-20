@@ -37,7 +37,6 @@ Minted automatically the first time a player joins a season. Grants at season jo
 | Seals held | Perk |
 |---|---|
 | 1+ | Choose your egg's shell color (cosmetic) |
-| Each seal | +1 starting roll (cap +3) |
 | 3 | Exclusive hat: **Veteran's Cowl** |
 | 5 | Exclusive hat: **Crown of the Swarm** |
 | Any | Full wardrobe available from minute one of every season |

@@ -26,7 +26,7 @@ Undercity balance numbers live in two Python files, and some are **mirrored** in
 
 | Want to change | File | Symbol |
 |---|---|---|
-| Roll cap / starting rolls | config | `ROLL_CAP`, `JOIN_ROLLS`, `SEAL_BONUS_CAP` |
+| Roll cap / starting rolls | config | `ROLL_CAP`, `JOIN_ROLLS` |
 | Roll regen rate | config | `ROLL_REGEN_MINUTES`, `ROLLS_PER_REGEN` |
 | HP regen / respawn | config | `HP_REGEN_PCT`, `HP_REGEN_INTERVAL_MIN`, `COMPOST_*` |
 | PvP steal | config | `PVP_SPORE_STEAL*`, `DEATHRITE_STEAL_MULT` |
