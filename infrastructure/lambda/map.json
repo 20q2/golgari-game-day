@@ -1,6 +1,6 @@
 {
- "worldW": 3600,
- "worldH": 2400,
+ "worldW": 4200,
+ "worldH": 2800,
  "gate": "city_r0",
  "boss": "boss",
  "nodes": [
@@ -856,7 +856,8 @@
    "y": 1085,
    "region": "isle",
    "neighbors": [
-    "isl_trade"
+    "isl_trade",
+    "cw5"
    ]
   },
   {
@@ -2559,7 +2560,8 @@
    "region": "wilderness",
    "neighbors": [
     "wild_core_e",
-    "wild_core_w"
+    "wild_core_w",
+    "w_m1"
    ]
   },
   {
@@ -2572,7 +2574,9 @@
     "wild_core_n",
     "wild_core_s",
     "wild_bog0",
-    "wild_gar0"
+    "wild_gar0",
+    "w_m0",
+    "w_u0"
    ]
   },
   {
@@ -2597,7 +2601,9 @@
     "wild_core_n",
     "wild_core_s",
     "wild_cav0",
-    "wild_bon0"
+    "wild_bon0",
+    "w_m1",
+    "w_u1"
    ]
   },
   {
@@ -2608,7 +2614,9 @@
    "region": "wilderness",
    "neighbors": [
     "wild_core_w",
-    "wild_cav1"
+    "wild_cav1",
+    "w_u1",
+    "w_l0"
    ]
   },
   {
@@ -2630,7 +2638,9 @@
    "region": "wilderness",
    "neighbors": [
     "wild_core_e",
-    "wild_bog1"
+    "wild_bog1",
+    "w_u0",
+    "w_r0"
    ]
   },
   {
@@ -2652,7 +2662,10 @@
    "region": "wilderness",
    "neighbors": [
     "wild_core_e",
-    "wild_gar1"
+    "wild_gar1",
+    "w_r1",
+    "w_r2",
+    "w_b1"
    ]
   },
   {
@@ -2696,7 +2709,8 @@
    "region": "wilderness",
    "neighbors": [
     "wild_core_w",
-    "wild_bon1"
+    "wild_bon1",
+    "w_l2"
    ]
   },
   {
@@ -2708,6 +2722,208 @@
    "neighbors": [
     "wild_bon0",
     "bone_r1"
+   ]
+  },
+  {
+   "id": "w_m1",
+   "type": "elite",
+   "x": 1710,
+   "y": 1430,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_core_w",
+    "wild_core_n"
+   ]
+  },
+  {
+   "id": "w_m0",
+   "type": "wild",
+   "x": 1900,
+   "y": 1450,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_core_e",
+    "w_b0",
+    "w_b1"
+   ]
+  },
+  {
+   "id": "w_u0",
+   "type": "wild",
+   "x": 2060,
+   "y": 1250,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_bog0",
+    "wild_core_e"
+   ]
+  },
+  {
+   "id": "w_u1",
+   "type": "hazard",
+   "x": 1480,
+   "y": 1330,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_cav0",
+    "wild_core_w",
+    "cw0"
+   ]
+  },
+  {
+   "id": "w_r0",
+   "type": "wild",
+   "x": 2280,
+   "y": 1250,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_bog0",
+    "w_r1"
+   ]
+  },
+  {
+   "id": "w_r1",
+   "type": "elite",
+   "x": 2370,
+   "y": 1400,
+   "region": "wilderness",
+   "neighbors": [
+    "w_r0",
+    "wild_gar0",
+    "w_r2",
+    "w_b0"
+   ]
+  },
+  {
+   "id": "w_r2",
+   "type": "hazard",
+   "x": 2290,
+   "y": 1530,
+   "region": "wilderness",
+   "neighbors": [
+    "w_r1",
+    "wild_gar0"
+   ]
+  },
+  {
+   "id": "w_l0",
+   "type": "wild",
+   "x": 1300,
+   "y": 1270,
+   "region": "wilderness",
+   "neighbors": [
+    "wild_cav0",
+    "w_l1"
+   ]
+  },
+  {
+   "id": "w_l1",
+   "type": "hazard",
+   "x": 1250,
+   "y": 1430,
+   "region": "wilderness",
+   "neighbors": [
+    "w_l0",
+    "w_l2"
+   ]
+  },
+  {
+   "id": "w_l2",
+   "type": "elite",
+   "x": 1260,
+   "y": 1570,
+   "region": "wilderness",
+   "neighbors": [
+    "w_l1",
+    "wild_bon0"
+   ]
+  },
+  {
+   "id": "w_b0",
+   "type": "wild",
+   "x": 2150,
+   "y": 1400,
+   "region": "wilderness",
+   "neighbors": [
+    "w_m0",
+    "w_r1"
+   ]
+  },
+  {
+   "id": "w_b1",
+   "type": "elite",
+   "x": 1950,
+   "y": 1560,
+   "region": "wilderness",
+   "neighbors": [
+    "w_m0",
+    "wild_gar0"
+   ]
+  },
+  {
+   "id": "cw0",
+   "type": "wild",
+   "x": 1540,
+   "y": 1250,
+   "region": "wilderness",
+   "neighbors": [
+    "w_u1",
+    "cw1"
+   ]
+  },
+  {
+   "id": "cw1",
+   "type": "elite",
+   "x": 1560,
+   "y": 1160,
+   "region": "wilderness",
+   "neighbors": [
+    "cw0",
+    "cw2"
+   ]
+  },
+  {
+   "id": "cw2",
+   "type": "hazard",
+   "x": 1550,
+   "y": 1000,
+   "region": "wilderness",
+   "neighbors": [
+    "cw1",
+    "cw3"
+   ]
+  },
+  {
+   "id": "cw3",
+   "type": "wild",
+   "x": 1600,
+   "y": 890,
+   "region": "wilderness",
+   "neighbors": [
+    "cw2",
+    "cw4"
+   ]
+  },
+  {
+   "id": "cw4",
+   "type": "elite",
+   "x": 1690,
+   "y": 890,
+   "region": "wilderness",
+   "neighbors": [
+    "cw3",
+    "cw5"
+   ]
+  },
+  {
+   "id": "cw5",
+   "type": "wild",
+   "x": 1665,
+   "y": 995,
+   "region": "wilderness",
+   "neighbors": [
+    "cw4",
+    "isl_warp"
    ]
   }
  ],
@@ -2761,8 +2977,8 @@
    "dark": false
   },
   "wilderness": {
-   "label": "The Wilds",
-   "background": "undercity/swamp_background.png",
+   "label": "The Ashen Wilds",
+   "background": "undercity/arena_background.png",
    "scatter": true,
    "dark": false
   }

@@ -24,7 +24,9 @@ def test_node_count():
     # v10 (2026-07-20 tunnels + wilderness): +14 wilderness nodes (a central
     # hub-and-spoke crossroads reconnecting the biomes for evolved units). See
     # specs/2026-07-20-undercity-tunnels-wilderness-design.md.
-    assert len(MAP_NODES) == 239
+    # v11 (2026-07-20 wilderness expansion): +18 nodes (12 enrichment + a 6-node
+    # isle causeway). See specs/2026-07-20-undercity-wilderness-expansion-design.md.
+    assert len(MAP_NODES) == 257
 
 
 def test_space_type_distribution():
@@ -35,9 +37,11 @@ def test_space_type_distribution():
     # their old loot/hazard/elite/wild/mystery types to safe-passage 'tunnel'
     # spaces. Plus 14 wilderness nodes (cache/elite/hazard/loot/wild) forming
     # the central hub. See specs/2026-07-20-undercity-tunnels-wilderness-design.md.
+    # v11 (2026-07-20 wilderness expansion): +6 elite, +8 wild, +4 hazard from
+    # the 18 new wilderness/causeway nodes.
     assert counts == {
-        'gate': 5, 'loot': 41, 'wild': 53, 'elite': 19, 'shop': 5, 'mystery': 10,
-        'hazard': 42, 'warp': 6, 'shrine': 1, 'ladder': 10, 'lair': 6,
+        'gate': 5, 'loot': 41, 'wild': 61, 'elite': 25, 'shop': 5, 'mystery': 10,
+        'hazard': 46, 'warp': 6, 'shrine': 1, 'ladder': 10, 'lair': 6,
         'ossuary': 1, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
         'excavation': 4, 'cache': 6, 'crystal_vein': 4, 'vault_lock': 1,
         'rest': 5, 'trove': 5, 'tunnel': 10,
@@ -56,6 +60,16 @@ def test_evolved_units_can_reach_every_biome_via_wilderness():
             d = board_distance(MAP_NODES, gates[a], gates[b], 60,
                                blocked=TUNNEL_NODES)
             assert d is not None, f'{a}->{b} unreachable for evolved units'
+
+
+def test_isle_is_a_journey_via_the_wilderness():
+    # Evolved units (tunnels blocked) can walk to the floating isle, but it is a
+    # real trek — every biome is >= 8 hops from isl_warp through the wilderness.
+    gates = {'cavern': 'cavern_r0', 'bog': 'bog_r6', 'garden': 'garden_r0',
+             'city': 'city_r9', 'bone': 'bone_r1'}
+    for g in gates.values():
+        d = board_distance(MAP_NODES, g, 'isl_warp', 80, blocked=TUNNEL_NODES)
+        assert d is not None and d >= 8, f'{g}->isl_warp too short/none: {d}'
 
 
 def test_wilderness_is_not_a_home_biome():
