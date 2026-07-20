@@ -118,15 +118,11 @@ export interface BoardPlayer {
   shielded: boolean;
   /** Equipped hat id, if any — drawn on the head via the sprite's hat guide. */
   hat?: string | null;
-  /** Own token only: a lit Swamp Torch widens the dungeon light radius. */
-  torchLit?: boolean;
+  /** Own token only: illuminating gear equipped — reveals the whole dungeon. */
+  illuminated?: boolean;
   /** Evolution tier (1/2/3). Own token's tier greys out Tier-1-only tunnels. */
   tier?: number;
 }
-
-/** Fog-of-war light radius (graph hops) when the Swamp Torch is lit; 1 without.
- *  Mirrors undercity_data.TORCH.lightHops. */
-const TORCH_LIGHT_HOPS = 2;
 
 /** In-world popover anchored above a node — what the space does. */
 export interface NodeInfo {
@@ -395,8 +391,8 @@ export class BoardCanvas {
   private interactive = true;
   private revealAll = false;
 
-  /** Own torch state: widens the dungeon light radius when lit. */
-  private ownTorchLit = false;
+  /** Own illumination state: illuminating gear reveals the whole dungeon. */
+  private ownIlluminated = false;
 
   private boundResize = () => this.resize();
   private pointerHandlers: {
@@ -493,7 +489,7 @@ export class BoardCanvas {
     this.players = players;
     const own = players.find((p) => p.userId === this.ownUserId);
     this.ownPosition = own?.position ?? null;
-    this.ownTorchLit = !!own?.torchLit;
+    this.ownIlluminated = !!own?.illuminated;
     const tier = own?.tier ?? 1;
     if (tier !== this.ownTier) {
       this.ownTier = tier;
@@ -538,15 +534,15 @@ export class BoardCanvas {
     }
   }
 
-  /** A dungeon node is lit if explored or within your light radius (1 hop, or
-   *  TORCH_LIGHT_HOPS with a lit Swamp Torch). */
+  /** A dungeon node is lit if explored or within your light radius (1 hop).
+   *  Illuminating gear reveals the whole dungeon layer — power for information. */
   private isLit(nodeId: string): boolean {
     if (this.activeLayerId === OVERWORLD) return true;
     if (this.revealAll) return true; // broadcast: no fog-of-war on the TV
+    if (this.ownIlluminated) return true; // illuminating gear: whole dungeon lit
     if (this.explored.get(this.activeLayerId)?.has(nodeId)) return true;
     if (!this.ownPosition) return false;
-    const hops = this.ownTorchLit ? TORCH_LIGHT_HOPS : 1;
-    return this.hopsWithin(this.ownPosition, nodeId, hops);
+    return this.hopsWithin(this.ownPosition, nodeId, 1);
   }
 
   /** True if `goal` is within `maxHops` graph steps of `start`. */

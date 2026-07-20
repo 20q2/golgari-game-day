@@ -9,6 +9,9 @@ export interface GearInfo {
   desc: string;
   /** Stance-rider tag (mirrors GEAR_RIDERS); undefined for plain stat gear. */
   rider?: string;
+  /** Illuminating gear: 'full' reveals the whole dungeon while equipped
+   * (mirrors GEAR[*].light). The fog reveal is derived client-side. */
+  light?: 'full';
   /** Flat stat modifiers granted while equipped (mirror GEAR[*] in
    * undercity_data.py — the backend's effective_stats() sums these). */
   atk?: number;
@@ -58,6 +61,12 @@ export const GEAR: GearInfo[] = [
     desc: '+1 SPD · Cutpurse: land a winning Feint for +6 Spores after a win.' },
   { id: 'glint_charm', name: 'Glint Charm', slot: 'charm', tier: 3, cost: 80, rider: 'glint', spd: 2,
     desc: '+2 SPD · Glint: winning a Feint reveals the true next intent; +read rate.' },
+  // Illuminating gear — light OR power. Reveals the whole dungeon while equipped,
+  // but carries almost no combat: a gear slot spent on total information.
+  { id: 'torchfang', name: 'Torchfang', slot: 'fang', tier: 1, cost: 30, atk: 1, light: 'full',
+    desc: '+1 ATK · Illuminated: reveals the entire dungeon while equipped.' },
+  { id: 'glowspore_charm', name: 'Glowspore Charm', slot: 'charm', tier: 1, cost: 30, light: 'full',
+    desc: 'Bioluminescent: reveals the entire dungeon while equipped.' },
 ];
 
 export interface ConsumableInfo {

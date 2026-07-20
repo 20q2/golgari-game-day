@@ -813,7 +813,6 @@ def handle_action(table, body):
         'drop-item': _drop_item,
         'attack-boss': _attack_boss, 'trade': _trade, 'dig': _dig, 'strike': _strike,
         'vault-guess': _vault_guess, 'respawn': _respawn,
-        'toggle-torch': _toggle_torch,
         'cast': _cast,
         'equip-grimoire': _equip_grimoire, 'ack-events': _ack_events,
         'solve-loot-puzzle': _solve_loot_puzzle,
@@ -1467,16 +1466,6 @@ def _respawn(table, sid, doc, payload):
     if conflict:
         return conflict
     return _ok(doc, text='You crawl up from the compost, whole again.')
-
-
-def _toggle_torch(table, sid, doc, payload):
-    """Light or douse the Swamp Torch: widens dungeon sight, saps combat."""
-    doc['torchLit'] = not doc.get('torchLit', False)
-    conflict = _save_or_conflict(table, doc)
-    if conflict:
-        return conflict
-    verb = 'flares to life' if doc['torchLit'] else 'gutters out'
-    return _ok(doc, text=f'Your torch {verb}.')
 
 
 def _occupants(table, sid, node, except_user):

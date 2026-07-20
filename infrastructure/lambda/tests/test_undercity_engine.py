@@ -992,11 +992,12 @@ def test_every_gear_rider_is_defined_and_stanced():
 
 
 def test_gear_roster_doubled():
-    assert len(data.GEAR) == 20
+    # 20 combat pieces + 2 illuminating pieces (Torchfang fang, Glowspore charm).
+    assert len(data.GEAR) == 22
     slots = {}
     for g in data.GEAR.values():
         slots[g['slot']] = slots.get(g['slot'], 0) + 1
-    assert slots == {'fang': 7, 'carapace': 7, 'charm': 6}
+    assert slots == {'fang': 8, 'carapace': 7, 'charm': 7}
 
 
 def test_battle_serde_persists_new_fields():

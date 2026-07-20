@@ -1,4 +1,4 @@
-"""Deep sigil dungeon feature: torch, rest, trove, depths respawn."""
+"""Deep sigil dungeon feature: illuminating gear, rest, trove, depths respawn."""
 import sys
 from pathlib import Path
 
@@ -16,30 +16,34 @@ def _join(t, **kw):
     return db._get_player(t, _sid(t), 'user-alex')
 
 
-def test_torch_toggle_applies_combat_penalty(table):
+# ── Illuminating gear (replaced the universal Swamp Torch) ───────────────────
+# Light is now a property of specific gear: equip an illuminating piece and the
+# whole dungeon reveals (client-side fog). No universal toggle, no combat penalty.
+
+def test_illuminating_gear_exists():
+    lights = {gid: g for gid, g in data.GEAR.items() if g.get('light') == 'full'}
+    # Two dedicated light items, in two different slots (fang + charm).
+    assert set(lights) == {'torchfang', 'glowspore_charm'}
+    assert {g['slot'] for g in lights.values()} == {'fang', 'charm'}
+
+
+def test_illuminating_gear_has_no_combat_penalty(table):
     doc = _join(table)
     base = engine.effective_stats(doc)
-    status, resp = act(table, 'toggle-torch')
-    assert status == 200
-    assert resp['you']['torchLit'] is True
-    lit = engine.effective_stats(db._get_player(table, _sid(table), 'user-alex'))
-    assert lit['atk'] == base['atk'] + data.TORCH['atk']   # atk is negative
-    assert lit['def'] == base['def'] + data.TORCH['def']
-    # Toggling again douses it, restoring stats.
-    status, resp = act(table, 'toggle-torch')
-    assert resp['you']['torchLit'] is False
-    restored = engine.effective_stats(db._get_player(table, _sid(table), 'user-alex'))
-    assert restored['atk'] == base['atk']
+    # Equipping the Torchfang adds only its declared stats — no hidden penalty
+    # for carrying a light (the old torch cost −3 ATK / −2 DEF while lit).
+    doc['gear'] = {'fang': 'torchfang'}
+    lit = engine.effective_stats(doc)
+    tf = data.GEAR['torchfang']
+    assert lit['atk'] == base['atk'] + tf.get('atk', 0)
+    assert lit['def'] == base['def'] + tf.get('def', 0)
 
 
-def test_torch_penalty_floors_at_one(table):
-    doc = _join(table)
-    doc['atk'] = 1
-    doc['def'] = 1
-    db._put_player(table, doc)
-    act(table, 'toggle-torch')
-    lit = engine.effective_stats(db._get_player(table, _sid(table), 'user-alex'))
-    assert lit['atk'] >= 1 and lit['def'] >= 1
+def test_toggle_torch_action_removed(table):
+    _join(table)
+    status, resp = act(table, 'toggle-torch')
+    assert status == 400
+    assert 'Unknown action' in resp['error']
 
 
 def test_rest_heals_once_per_descent(table):

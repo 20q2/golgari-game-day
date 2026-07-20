@@ -550,14 +550,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return this.map?.nodes.find((n) => n.id === pos)?.type ?? null;
   });
 
-  /** In a dark dungeon pocket — where the Swamp Torch is worth lighting. */
-  protected readonly inDungeon = computed(() => {
-    const pos = this.store.you()?.position;
-    return this.map?.nodes.find((n) => n.id === pos)?.region === 'depths';
-  });
-
-  /** Whether the player's Swamp Torch is currently lit. */
-  protected readonly torchLit = computed(() => !!this.store.you()?.torchLit);
+  /** Illuminated: any equipped gear carries the 'full' light property, which
+   *  reveals the whole dungeon (client-side fog). Power traded for information. */
+  protected readonly illuminated = computed(() =>
+    Object.values(this.store.you()?.gear ?? {}).some((id) => GEAR_MAP[id]?.light === 'full'),
+  );
 
   /** Ossuary gambles remaining this visit (defaults to a full set of 3). */
   protected readonly ossuaryRollsLeft = computed(() => this.store.you()?.ossuaryRollsLeft ?? 3);
@@ -903,7 +900,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           position,
           shielded: isShielded(p),
           hat: p.hat,
-          torchLit: p.userId === ownId ? !!you?.torchLit : false,
+          illuminated: p.userId === ownId ? this.illuminated() : false,
           tier: p.userId === ownId ? (you?.tier ?? p.tier) : p.tier,
         };
       }),
@@ -1230,14 +1227,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     await this.run(async () => {
       const resp = await this.store.action('respawn', { gate });
       if (resp.you) this.board?.centerOn(resp.you.position);
-    });
-  }
-
-  /** Light or douse the Swamp Torch — trades a wider dungeon light radius for a
-   *  combat penalty (−ATK/−DEF while lit). */
-  async toggleTorch(): Promise<void> {
-    await this.run(async () => {
-      await this.store.action('toggle-torch');
     });
   }
 

@@ -880,17 +880,6 @@
   margin-right: 0.2rem;
 }
 
-.torch-btn .mi {
-  margin-right: 0.2rem;
-}
-
-// Lit torch reads warm/active so the tradeoff state is obvious at a glance.
-.torch-btn.lit {
-  background: linear-gradient(180deg, #e8863a, #c05a1e);
-  border-color: #f2a24a;
-  color: #fff6e8;
-}
-
 .teleport-strip {
   position: absolute;
   bottom: 4.5rem;

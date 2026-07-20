@@ -591,9 +591,6 @@ def effective_stats(player: dict) -> dict:
             continue
         for stat in ('atk', 'def', 'spd', 'maxHp'):
             eff[stat] += g.get(stat, 0)
-    if player.get('torchLit'):
-        eff['atk'] = max(1, eff['atk'] + data.TORCH['atk'])
-        eff['def'] = max(1, eff['def'] + data.TORCH['def'])
     for buff in (player.get('buffs') or []):
         if buff.get('kind') == 'rot_surge':
             eff['atk'] += 3

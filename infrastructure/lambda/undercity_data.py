@@ -182,6 +182,11 @@ GEAR = {
     'seer_charm':     {'name': 'Seer Charm',     'slot': 'charm', 'tier': 2, 'cost': 50, 'spd': 1, 'rider': 'seer', 'readBonus': 0.30},
     'cutpurse_charm': {'name': 'Cutpurse Charm', 'slot': 'charm', 'tier': 2, 'cost': 48, 'spd': 1, 'rider': 'cutpurse'},
     'glint_charm':    {'name': 'Glint Charm',    'slot': 'charm', 'tier': 3, 'cost': 80, 'spd': 2, 'rider': 'glint', 'readBonus': 0.15},
+    # Illuminating gear — light OR power. `light: 'full'` reveals the whole
+    # dungeon (client-side fog). Deliberately weak on combat: the cost is a gear
+    # slot + near-zero stats, in exchange for total information.
+    'torchfang':       {'name': 'Torchfang',       'slot': 'fang',  'tier': 1, 'cost': 30, 'atk': 1, 'light': 'full'},
+    'glowspore_charm': {'name': 'Glowspore Charm', 'slot': 'charm', 'tier': 1, 'cost': 30, 'light': 'full'},
 }
 
 # Rider → the stance it modifies + a human blurb (client reads this in Plan 3).
@@ -226,13 +231,6 @@ BAG_SIZE = 3
 GEAR_SELL_BACK = 0.5  # replacing gear auto-sells old piece for 50% of cost
 
 GEAR_SLOTS = ('fang', 'carapace', 'charm')
-
-# The Swamp Torch: a toggleable light for the dark dungeons. Lit, it widens your
-# fog-of-war radius (client-side, `lightHops`) but saps combat power — light OR
-# fight, never both. Penalties are negative deltas applied in
-# engine.effective_stats; both floor at 1 there. Tunable knobs; see
-# specs/2026-07-19-undercity-deep-dungeons-design.md.
-TORCH = {'atk': -3, 'def': -2, 'lightHops': 2}
 
 # Gear drops from loot sources. Each entry: (chance, {tier: weight}).
 # Common sources sit at ~0.10; one-time/hard POIs are elevated so a "treasure"
