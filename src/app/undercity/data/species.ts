@@ -34,16 +34,19 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   brackish_trudge: { sprite: 'brackish_trudge', regions: [], scale: 1.0 },
   stinkweed_imp: { sprite: 'stinkweed_imp', regions: [], scale: 0.9 },
   kraul_warrior: { sprite: 'spino', regions: DINO_REGIONS, scale: 1.0 },
-  kraul_forager: { sprite: 'spino', regions: DINO_REGIONS, scale: 0.95 },
+  golgari_longlegs: { sprite: 'golgari_longlegs', regions: [], scale: 1.0 },
   slitherhead: { sprite: 'slitherhead', regions: [], scale: 1.0 },
-  woodwraith_strangler: { sprite: 'woodwraith_strangler', regions: [], scale: 1.05 },
+  // woodwraith_strangler id now displays as Myconid Sporetender — real art.
+  woodwraith_strangler: { sprite: 'myconid_sporetender', regions: [], scale: 1.05 },
   shambling_shell: { sprite: 'shambling_shell', regions: [], scale: 1.0 },
   corpsejack_menace: { sprite: 'corpsejack_menace', regions: [], scale: 0.95 },
-  // Apexes (still Dino Party placeholders)
-  grave_titan: { sprite: 'godzilla', regions: ['body', 'spines', 'spines_dark'], scale: 1.25 },
-  golgari_lich_lord: { sprite: 'pachy', regions: DINO_REGIONS, scale: 1.3 },
-  swamp_dragon: { sprite: 'parasaur', regions: DINO_REGIONS, scale: 1.3 },
-  izoni: { sprite: 'diplo', regions: DINO_REGIONS, scale: 1.3 },
+  // Deathrite Shaman has no dedicated art yet — reuse the zombie pawn as placeholder.
+  deathrite_shaman: { sprite: 'zombie', regions: PLAYER_REGIONS, scale: 1.0 },
+  // Apexes — real Golgari art (regions: [] disables recolor markers)
+  grave_titan: { sprite: 'grave_titan', regions: [], scale: 1.25 },
+  golgari_lich_lord: { sprite: 'golgari_lich_lord', regions: [], scale: 1.3 },
+  swamp_dragon: { sprite: 'swamp_dragon', regions: [], scale: 1.3 },
+  izoni: { sprite: 'diplo', regions: DINO_REGIONS, scale: 1.3 }, // still Dino Party placeholder
 };
 
 export const ALL_SPRITES = [...new Set(Object.values(FORM_SPRITES).map((s) => s.sprite))];

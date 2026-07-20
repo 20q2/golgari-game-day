@@ -662,6 +662,17 @@ def test_flyby_dodges_the_punish():
     assert d.hp == 30   # punish dodged
 
 
+def test_reach_negates_round1_punish_only():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'reach'}))
+    # Round 1: reach keeps the skirmisher out of range — punish finds only air.
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    assert d.hp == 30
+    # Round 2: no protection — the punish lands.
+    resolve_round(a, d, 'aggress', 'feint', 2, FakeRng(uniform=1.0))
+    assert d.hp < 30
+
+
 def test_deathtouch_aggress_pierces_def():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'deathtouch_stomp'}))
     d = fighter(atk=10, dfn=8, hp=60, max_hp=60)

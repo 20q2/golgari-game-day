@@ -209,6 +209,11 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             # loser cancels the decisive punish (rot/swarm tail still applies).
             entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
                             'negated': True, 'winner': win_side})
+        elif losr.has('reach') and rnd == 1:
+            # Reach: in round 1 the skirmisher stays out of range — the decisive
+            # blow finds only air (a guaranteed one-round negate).
+            entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
+                            'miss': True, 'winner': win_side})
         elif losr.has('flyby') and rng.random() < data.FLYBY_DODGE:
             # loser evades the whole punish.
             entries.append({'round': rnd, 'by': win_side, 'dmg': 0,

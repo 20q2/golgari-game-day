@@ -82,18 +82,19 @@ TIER2 = {
         'passive': 'venom_barb',
         'blurb': 'Striker. Venom Barb: your first strike each battle deals +3.',
     },
-    'kraul_forager': {
-        'name': 'Kraul Forager', 'line': 'kraul', 'bonus': {'def': 4},
-        'passive': 'deathrite',
-        'blurb': 'Raider. Deathrite: +50% Spores stolen on PvP wins.',
+    'golgari_longlegs': {
+        'name': 'Golgari Longlegs', 'line': 'kraul', 'bonus': {'spd': 4},
+        'passive': 'reach',
+        'blurb': 'Skirmisher. Reach: in round 1 the enemy’s decisive blow finds only air — you strike from outside its range.',
     },
     'slitherhead': {
         'name': 'Slitherhead', 'line': 'saproling', 'bonus': {'atk': 2, 'maxHp': 6},
         'passive': 'scavenge',
         'blurb': 'Counterpuncher. Scavenge: retaliate for 2 damage whenever struck.',
     },
+    # id kept as 'woodwraith_strangler' for save-compat; displays as Myconid Sporetender.
     'woodwraith_strangler': {
-        'name': 'Woodwraith Strangler', 'line': 'saproling', 'bonus': {'def': 2, 'maxHp': 6},
+        'name': 'Myconid Sporetender', 'line': 'saproling', 'bonus': {'def': 2, 'maxHp': 6},
         'passive': 'rootwall',
         'blurb': 'Fortress. Rootwall: Regrowth improves to 35%.',
     },
@@ -103,9 +104,14 @@ TIER2 = {
         'blurb': 'Durable trickster. Dredge: reclaim your snare after it triggers.',
     },
     'corpsejack_menace': {
-        'name': 'Corpsejack Menace', 'line': 'zombie', 'bonus': {'atk': 4},
+        'name': 'Corpsejack Menace', 'line': 'saproling', 'bonus': {'atk': 4},
         'passive': 'doubling_rot',
         'blurb': 'Fungal tycoon. Doubling Rot: mystery-event Spore payouts doubled.',
+    },
+    'deathrite_shaman': {
+        'name': 'Deathrite Shaman', 'line': 'zombie', 'bonus': {'maxHp': 6, 'def': 2},
+        'passive': 'soul_harvest',
+        'blurb': 'Ritualist. Soul Harvest: +50% Spores from wild & elite battle wins.',
     },
 }
 
@@ -114,25 +120,25 @@ APEX = {
     'grave_titan': {
         'name': 'Grave Titan', 'bonus': {'maxHp': 6, 'def': 2},
         'passive': 'deathtouch_stomp',
-        'from': ['brackish_trudge', 'kraul_forager', 'woodwraith_strangler', 'shambling_shell'],
+        'from': ['brackish_trudge', 'woodwraith_strangler', 'shambling_shell', 'deathrite_shaman'],
         'blurb': 'Deathtouch Stomp: your strikes ignore 3 of the enemy’s DEF.',
     },
     'golgari_lich_lord': {
         'name': 'Golgari Lich Lord', 'bonus': {'atk': 2, 'maxHp': 6},
         'passive': 'drain_life',
-        'from': ['kraul_forager', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace'],
+        'from': ['slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'deathrite_shaman'],
         'blurb': 'Drain Life: heal for 50% of damage you deal.',
     },
     'swamp_dragon': {
         'name': 'Swamp Dragon', 'bonus': {'atk': 2, 'spd': 2},
         'passive': 'rot_breath',
-        'from': ['brackish_trudge', 'stinkweed_imp', 'kraul_warrior'],
+        'from': ['brackish_trudge', 'stinkweed_imp', 'kraul_warrior', 'golgari_longlegs'],
         'blurb': 'Rot Breath: round-1 strike hits for double.',
     },
     'izoni': {
         'name': 'Izoni, Thousand-Eyed', 'bonus': {'spd': 4},
         'passive': 'swarm',
-        'from': ['stinkweed_imp', 'kraul_warrior', 'slitherhead', 'shambling_shell', 'corpsejack_menace'],
+        'from': ['stinkweed_imp', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'shambling_shell', 'corpsejack_menace'],
         'blurb': 'Swarm: one extra strike every battle round.',
     },
 }

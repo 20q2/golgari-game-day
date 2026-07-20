@@ -1471,9 +1471,11 @@ export class BoardCanvas {
    * spectator board (no own token) everyone is bumped up a little so creatures
    * stay legible on a TV even when the camera is pulled back.
    */
-  private tokenHeight(isOwn: boolean): number {
-    if (isOwn) return 72;
-    return this.interactive ? 56 : 68;
+  private tokenHeight(isOwn: boolean, tier = 1): number {
+    const base = isOwn ? 72 : this.interactive ? 56 : 68;
+    // Evolved units (Tier 2+) loom 50% larger on the board so their upgrade
+    // reads at a glance.
+    return tier >= 2 ? base * 1.5 : base;
   }
 
   private drawToken(
@@ -1487,7 +1489,7 @@ export class BoardCanvas {
     const spr = formSprite(p.form);
     const sprite = getRecolored(spr.sprite, p.paint || {}, spr.regions);
     const isOwn = p.userId === this.ownUserId;
-    const targetH = this.tokenHeight(isOwn) * spr.scale;
+    const targetH = this.tokenHeight(isOwn, p.tier) * spr.scale;
     // Feet stay planted (breathing stretches upward from here); hopY lifts the
     // whole body off the ground.
     const footAnchor = y + targetH / 2;
@@ -1571,7 +1573,7 @@ export class BoardCanvas {
     const ctx = this.ctx;
     const spr = formSprite(p.form);
     const isOwn = p.userId === this.ownUserId;
-    const targetH = this.tokenHeight(isOwn) * spr.scale;
+    const targetH = this.tokenHeight(isOwn, p.tier) * spr.scale;
     ctx.save();
     // Dokapon-style name banner: bigger type, bordered plate. Planted below the
     // feet so it stays steady while the creature breathes and hops.

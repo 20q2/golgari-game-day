@@ -2148,6 +2148,8 @@ def _finish_wild(table, sid, doc, rec, result):
            'battle': result}
     if result['outcome'] == 'attacker':
         bounty = npc['bounty'] + (2 if 'scrounger' in _passives(doc) else 0)
+        if 'soul_harvest' in _passives(doc):
+            bounty = round(bounty * data.SOUL_HARVEST_MULT)
         doc['spores'] = doc.get('spores', 0) + bounty
         doc['wildWins'] = doc.get('wildWins', 0) + 1
         levels = _grant_xp(table, sid, doc, npc['xp'])
