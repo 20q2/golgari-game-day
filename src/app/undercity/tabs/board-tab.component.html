@@ -60,11 +60,6 @@
             <mat-icon class="mi">storefront</mat-icon> Bazaar
           </button>
         }
-        @case ('shrine') {
-          <button class="uc-btn" (click)="showShrine.set(true)">
-            <mat-icon class="mi">local_fire_department</mat-icon> Shrine
-          </button>
-        }
         @case ('ossuary') {
           <button class="uc-btn" (click)="showOssuary.set(true)">
             <mat-icon class="mi">casino</mat-icon> Ossuary
@@ -325,18 +320,41 @@
       >
         <img class="modal-art" src="undercity/icons/shrine.png" alt="" />
         <h3><mat-icon class="mi">local_fire_department</mat-icon> Shrine of the Swarm</h3>
-        <p class="modal-sub">
-          A blessing costs 15 <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> — or tithe your own blood.
-        </p>
-        <div class="choice-grid">
-          <button class="uc-btn" [disabled]="busy()" (click)="shrine('atk')">+1 ATK</button>
-          <button class="uc-btn" [disabled]="busy()" (click)="shrine('def')">+1 DEF</button>
-          <button class="uc-btn" [disabled]="busy()" (click)="shrine('spd')">+1 SPD</button>
-          <button class="uc-btn" [disabled]="busy()" (click)="shrine('heal')">Full heal</button>
-          <button class="uc-btn uc-btn-danger tithe-btn" [disabled]="busy()" (click)="shrine('tithe')">
-            <mat-icon class="mi">water_drop</mat-icon> Tithe blood: −25% HP → +8 XP
+        <p class="modal-sub">Offer spores to the swarm for a lasting blessing.</p>
+
+        <div class="shrine-wallet" [class.short]="!canBless()">
+          <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+          <span>{{ store.you()?.spores ?? 0 }}</span>
+          <em>spores · {{ SHRINE_COST }} each</em>
+        </div>
+
+        <div class="shrine-grid">
+          <button class="shrine-card atk" [disabled]="busy() || !canBless()" (click)="shrine('atk')">
+            <mat-icon class="mi shrine-card-icon">sports_martial_arts</mat-icon>
+            <span class="shrine-card-name">+1 ATK</span>
+            <span class="shrine-card-desc">Hit harder all night</span>
+          </button>
+          <button class="shrine-card def" [disabled]="busy() || !canBless()" (click)="shrine('def')">
+            <mat-icon class="mi shrine-card-icon">shield</mat-icon>
+            <span class="shrine-card-name">+1 DEF</span>
+            <span class="shrine-card-desc">Shrug off the swarm</span>
+          </button>
+          <button class="shrine-card spd" [disabled]="busy() || !canBless()" (click)="shrine('spd')">
+            <mat-icon class="mi shrine-card-icon">bolt</mat-icon>
+            <span class="shrine-card-name">+1 SPD</span>
+            <span class="shrine-card-desc">Strike first, dodge more</span>
+          </button>
+          <button class="shrine-card heal" [disabled]="busy() || !canBless()" (click)="shrine('heal')">
+            <mat-icon class="mi shrine-card-icon">healing</mat-icon>
+            <span class="shrine-card-name">Full Heal</span>
+            <span class="shrine-card-desc">Restore all your HP</span>
           </button>
         </div>
+
+        @if (!canBless()) {
+          <p class="shrine-note">You need {{ SHRINE_COST }} spores to receive a blessing.</p>
+        }
+
         <button class="uc-btn close-btn" (click)="closeFacilities()">Leave</button>
       </div>
     </div>

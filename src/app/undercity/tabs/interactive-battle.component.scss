@@ -350,6 +350,55 @@
   &:hover:not(:disabled) { background: rgba(74, 124, 89, 0.3); transform: translateY(-1px); }
   &:active:not(:disabled) { transform: translateY(1px) scale(0.97); }
   &:disabled { opacity: 0.45; cursor: default; }
+
+  // Recommended counter to the foe's shown intent. A plain (bluffable) read is a
+  // tentative amber hint; a scry is a guaranteed-true, solid mint call-out.
+  &.recommended {
+    border-color: rgba(253, 230, 138, 0.75);
+    border-style: dashed;
+    background: rgba(253, 230, 138, 0.1);
+    box-shadow: 0 0 10px rgba(253, 230, 138, 0.22);
+
+    &.certain {
+      border-color: rgba(110, 231, 168, 0.9);
+      border-style: solid;
+      background: rgba(110, 231, 168, 0.14);
+      box-shadow: 0 0 14px rgba(110, 231, 168, 0.4);
+      animation: uc-best-pulse 1.6s ease-in-out infinite;
+    }
+  }
+
+  // Corner badge naming the pick: "likely" (read) or a solid "BEST" (scry).
+  .best-badge {
+    position: absolute;
+    top: -9px;
+    right: -6px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 7px 1px 4px;
+    border-radius: 999px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #fde68a;
+    background: rgba(40, 34, 12, 0.92);
+    border: 1px solid rgba(253, 230, 138, 0.75);
+
+    .mi { font-size: 0.72rem; width: 0.72rem; height: 0.72rem; color: inherit; }
+  }
+  &.certain .best-badge {
+    color: #05140c;
+    background: #6ee7a8;
+    border-color: #6ee7a8;
+  }
+}
+
+@keyframes uc-best-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(110, 231, 168, 0.32); }
+  50% { box-shadow: 0 0 18px rgba(110, 231, 168, 0.55); }
 }
 
 // Help pinned to the bottom-left corner, Flee to the bottom-right; any Scry /

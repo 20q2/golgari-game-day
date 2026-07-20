@@ -539,10 +539,135 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
 
-  .tithe-btn {
-    grid-column: 1 / -1;
+// ── Shrine ───────────────────────────────────────────────────────────────────
+
+// Spore purse: current balance + per-blessing price, warm gold to read as
+// "currency" against the green modal chrome.
+.shrine-wallet {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(250, 220, 90, 0.1);
+  border: 1px solid rgba(250, 220, 90, 0.3);
+  color: #fde68a;
+  font-weight: 700;
+  font-size: 1.05rem;
+
+  .rot-coin {
+    height: 1.15em;
+    width: 1.15em;
+    object-fit: contain;
+    image-rendering: pixelated;
   }
+
+  em {
+    font-style: normal;
+    font-weight: 500;
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+
+  // Can't afford one — dim the purse so the note below carries the message.
+  &.short {
+    background: rgba(200, 80, 80, 0.12);
+    border-color: rgba(200, 80, 80, 0.35);
+    color: #f0b8b8;
+  }
+}
+
+.shrine-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+// One blessing as a tappable altar tile: icon, name, one-line effect. The
+// left accent bar + tinted icon give each stat its own identity.
+.shrine-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 12px 12px 16px;
+  text-align: left;
+  font-family: inherit;
+  color: #e6f2e6;
+  background: rgba(74, 124, 89, 0.14);
+  border: 1px solid rgba(74, 124, 89, 0.4);
+  border-radius: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
+
+  // Accent spine — recolored per stat below.
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--shrine-accent, #6bbf8a);
+  }
+
+  .shrine-card-icon {
+    font-size: 1.5rem;
+    height: 1.5rem;
+    width: 1.5rem;
+    color: var(--shrine-accent, #6bbf8a);
+  }
+
+  .shrine-card-name {
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 0.01em;
+  }
+
+  .shrine-card-desc {
+    font-size: 0.72rem;
+    line-height: 1.25;
+    color: #9fb39f;
+  }
+
+  &:hover:not(:disabled) {
+    background: rgba(74, 124, 89, 0.28);
+    border-color: var(--shrine-accent, #6bbf8a);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  &.atk {
+    --shrine-accent: #f0846b;
+  }
+  &.def {
+    --shrine-accent: #6ba8f0;
+  }
+  &.spd {
+    --shrine-accent: #f0d16b;
+  }
+  &.heal {
+    --shrine-accent: #6bbf8a;
+  }
+}
+
+.shrine-note {
+  font-size: 0.8rem;
+  color: #f0b8b8;
 }
 
 .shop-modal,

@@ -1323,6 +1323,11 @@ def _join(table, sid, user_id, username, payload):
         seals_before=seals_before, egg_hue=payload.get('eggHue'),
         creature_name=creature_name,
     )
+    # Bravery: the player let fate pick their creature, so they spawn with a
+    # bonus roll for their nerve (capped, like every other roll grant).
+    bravery = bool(payload.get('bravery'))
+    if bravery:
+        doc['rolls'] = min(data.ROLL_CAP, doc['rolls'] + data.BRAVERY_BONUS_ROLLS)
     # Spend banked Renown at the pre-spawn shop before we write anything: on any
     # validation failure this returns an error and no doc/perm is persisted.
     err = _apply_shop_purchases(perm, doc, payload)
@@ -1338,9 +1343,11 @@ def _join(table, sid, user_id, username, payload):
         return conflict
     biome = data.BIOMES[home]
     named = f" named {doc['creatureName']}" if doc['creatureName'] != s['name'] else ''
+    brave = f" Bravery earns +{data.BRAVERY_BONUS_ROLLS} roll!" if bravery else ''
     _event(table, sid, 'hatch',
            f"{doc['username']}'s egg cracks open in {biome['name']} — "
-           f"a {s['name']}{named} skitters out! ({biome['perkName']}: {biome['perkBlurb']})",
+           f"a {s['name']}{named} skitters out! ({biome['perkName']}: {biome['perkBlurb']})"
+           f"{brave}",
            actor=user_id)
     return _ok(doc)
 
@@ -3590,12 +3597,7 @@ def _shrine(table, sid, doc, payload):
         return _err('You are not at a shrine.', 409)
     choice = payload.get('choice')
     eff = engine.effective_stats(doc)
-    if choice == 'tithe':
-        cost_hp = round(doc['hp'] * data.SHRINE_TITHE_HP_PCT)
-        doc['hp'] = max(1, doc['hp'] - cost_hp)
-        _grant_xp(table, sid, doc, data.XP_REWARDS['shrine_tithe'])
-        text = f'You tithe {cost_hp} HP of blood. The shrine grants +8 XP.'
-    elif choice in ('atk', 'def', 'spd', 'heal'):
+    if choice in ('atk', 'def', 'spd', 'heal'):
         if doc.get('spores', 0) < data.SHRINE_BLESSING_COST:
             return _err('The shrine demands 15 Spores.', 409)
         doc['spores'] -= data.SHRINE_BLESSING_COST
@@ -3606,7 +3608,7 @@ def _shrine(table, sid, doc, payload):
             doc[choice] += 1
             text = f'The swarm blesses you: +1 {choice.upper()} for the night.'
     else:
-        return _err('Choose a blessing: atk, def, spd, heal, or tithe.')
+        return _err('Choose a blessing: atk, def, spd, or heal.')
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict

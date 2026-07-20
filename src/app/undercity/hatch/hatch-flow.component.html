@@ -146,6 +146,12 @@
   } @else if (chosenStarter()) {
     @if (chosenStarter(); as chosen) {
       <h1>Where does {{ chosen.name }} call home?</h1>
+      @if (bravery()) {
+        <p class="bravery-note">
+          <mat-icon class="mi">casino</mat-icon>
+          Fate dealt you a {{ chosen.name }} — and a bonus roll for your nerve.
+        </p>
+      }
       <p class="choose-hint">Your home biome grants a permanent perk — it's where you start and respawn.</p>
       @if (error(); as err) {
         <p class="error-text">{{ err }}</p>
@@ -186,6 +192,14 @@
           <span class="starter-evo">Evolves toward: {{ evolutionPreview(starter) }}</span>
         </button>
       }
+      <button class="starter-card bravery-card" (click)="chooseBravery()" [disabled]="joining()">
+        <mat-icon class="bravery-icon">casino</mat-icon>
+        <span class="starter-name">Bravery</span>
+        <span class="starter-blurb">Let fate crack the egg — you don't get to choose what climbs out.</span>
+        <span class="starter-passive">
+          <strong>Reward:</strong> a random creature and +1 roll the moment you spawn.
+        </span>
+      </button>
     </div>
   }
 </div>

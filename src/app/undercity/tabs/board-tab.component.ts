@@ -834,6 +834,20 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         body = `The den of ${d.lairName}. First kill claims the ${d.name} Guild Sigil. Come at Level 5+.`;
       }
     }
+    // The Ashen Wilds (wilderness region) draw from the tougher T2+ enemy pools,
+    // so the generic "Level 1+/3+" blurbs understate the danger. Override them
+    // with a frontier warning to steer new players back to their home biome.
+    if (node.region === 'wilderness') {
+      if (node.type === 'wild') {
+        body =
+          'An evolved predator prowls the Ashen Wilds — far deadlier than surface fauna. ' +
+          'Rich XP and a fat Spore bounty, but bring an evolved unit. Recommended Level 5+.';
+      } else if (node.type === 'elite') {
+        body =
+          'An apex terror of the Ashen Wilds claims this ground. Brutal even for evolved units, ' +
+          'and a death sentence for fresh hatchlings. Recommended Level 8+.';
+      }
+    }
     if (this.store.snares().includes(nodeId)) {
       body += ' The ground here looks disturbed…';
     }
@@ -1038,6 +1052,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       this.showToast(resp.text ?? 'Purchased.');
     });
   }
+
+  /** Spore price of a single shrine blessing (mirrors SHRINE_BLESSING_COST). */
+  protected readonly SHRINE_COST = 15;
+
+  /** Whether the player can afford a blessing — gates the shrine cards. */
+  protected readonly canBless = computed(() => (this.store.you()?.spores ?? 0) >= this.SHRINE_COST);
 
   async shrine(choice: string): Promise<void> {
     await this.run(async () => {

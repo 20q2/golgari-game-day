@@ -317,6 +317,19 @@ def test_join_is_idempotent_and_veteran_egg_color(table):
     assert resp['you']['paint']['body'] == 270
 
 
+def test_join_bravery_grants_bonus_roll(table):
+    # Bravery join grants JOIN_ROLLS + BRAVERY_BONUS_ROLLS (capped at ROLL_CAP).
+    status, resp = act(table, 'join', starter='kraul', bravery=True)
+    assert status == 200
+    expected = min(data.ROLL_CAP, data.JOIN_ROLLS + data.BRAVERY_BONUS_ROLLS)
+    assert resp['you']['rolls'] == expected
+
+    # A normal join still gets exactly JOIN_ROLLS — no bonus leaks in.
+    status, resp = act(table, 'join', user='user-normal', name='Normal',
+                       starter='pest')
+    assert resp['you']['rolls'] == data.JOIN_ROLLS
+
+
 def test_move_requires_matching_pending(table):
     act(table, 'join', starter='pest')
     status, resp = act(table, 'move', to='n3')

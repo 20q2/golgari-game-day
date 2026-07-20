@@ -257,7 +257,7 @@ export const SPACE_BLURBS: Record<string, string> = {
     'A shared mineshaft — every strike digs the whole region deeper. Loot and cave-in risk climb together. First swing is mandatory; 3 per visit.',
   vault_lock:
     'The Guildvault: crack the hidden 3-sigil combination. Every failed pick is public intel on the wall — and fattens the pot. 3 picks per visit.',
-  shrine: 'Pay 15 Spores for a blessing — or tithe your own blood for XP.',
+  shrine: 'Spend 15 Spores for a lasting blessing: +1 ATK, DEF, or SPD, or a full heal.',
   hazard: 'Swamp gas, grasping vines, or choking spore clouds. It will cost you.',
   warp: 'A warp mushroom — step through to another cap, if it behaves.',
   gate: 'The Gate of the Swarm. Entering mends you fully.',

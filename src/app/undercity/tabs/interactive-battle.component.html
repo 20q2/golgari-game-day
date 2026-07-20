@@ -175,10 +175,17 @@
             [class.pos-aggress]="s.id === 'aggress'"
             [class.pos-guard]="s.id === 'guard'"
             [class.pos-feint]="s.id === 'feint'"
+            [class.recommended]="!resolving() && s.id === counterStance()"
+            [class.certain]="!resolving() && s.id === counterStance() && readCertain()"
             [disabled]="busy()"
             (click)="play(s.id)"
             [title]="buttonTitle(s)"
           >
+            @if (!resolving() && s.id === counterStance()) {
+              <span class="best-badge">
+                <mat-icon class="mi">check_circle</mat-icon>{{ readCertain() ? 'BEST' : 'likely' }}
+              </span>
+            }
             @if (s.icon.startsWith('uc-')) {
               <mat-icon class="mi" [svgIcon]="s.icon"></mat-icon>
             } @else {

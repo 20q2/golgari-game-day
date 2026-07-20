@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { BattleSide, BattleRewards } from './battle-playback.component';
 import { CombatEntry, Stance } from '../services/undercity-models';
-import { STANCES, STANCE_MAP, PERSONALITY_TELL, StanceAugment } from '../data/combat';
+import { STANCES, STANCE_MAP, PERSONALITY_TELL, StanceAugment, COUNTER } from '../data/combat';
 
 /** A held combat consumable the player may fire this round. */
 export interface BattleItem {
@@ -166,6 +166,25 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   }
   protected stanceOf(side: Side): Stance | undefined {
     return this.stanceAnim()[side];
+  }
+
+  /** The foe's shown next stance this round — a scry (certain) takes precedence
+   *  over a bluffable read. Null when its intent is hidden. */
+  protected foeIntent(): Stance | null {
+    return this.revealed() ?? this.telegraph;
+  }
+
+  /** The stance that beats the foe's shown intent — the option we recommend the
+   *  player pick. Null when we have no read on the foe. */
+  protected counterStance(): Stance | null {
+    const foe = this.foeIntent();
+    return foe ? COUNTER[foe] : null;
+  }
+
+  /** A scry is guaranteed true (solid hint); a plain read can be a bluff, so its
+   *  recommendation is only tentative. */
+  protected readCertain(): boolean {
+    return this.revealed() != null;
   }
 
   /** Equipped augments (gear riders + stance passives) that boost this stance. */

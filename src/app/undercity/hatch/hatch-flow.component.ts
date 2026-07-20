@@ -32,6 +32,9 @@ export class HatchFlowComponent {
   /** Chosen creature, held while the player then picks a home biome. */
   protected readonly chosenStarter = signal<FormInfo | null>(null);
 
+  /** True when the creature was rolled by Bravery — grants a bonus starting roll. */
+  protected readonly bravery = signal(false);
+
   /** Chosen home biome, held while the player names the creature. */
   protected readonly chosenBiome = signal<string | null>(null);
 
@@ -141,7 +144,19 @@ export class HatchFlowComponent {
 
   /** Step 1: pick the creature, then advance to the home-biome choice. */
   chooseStarter(starter: FormInfo): void {
+    this.bravery.set(false);
     this.chosenStarter.set(starter);
+  }
+
+  /**
+   * Step 1 (Bravery): let fate choose the creature and bank a bonus starting
+   * roll for the nerve. The pick is revealed so naming/biome/shop proceed as
+   * normal; the bonus roll is granted server-side from the `bravery` flag.
+   */
+  chooseBravery(): void {
+    const pick = this.starters[Math.floor(Math.random() * this.starters.length)];
+    this.bravery.set(true);
+    this.chosenStarter.set(pick);
   }
 
   /** Step 2: pick a home biome, then advance to naming. */
@@ -223,6 +238,7 @@ export class HatchFlowComponent {
         buyItems: this.cartItems(),
         equipHat: this.equipHat(),
         equipPaint: this.equipPaint(),
+        bravery: this.bravery(),
       });
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Could not hatch');

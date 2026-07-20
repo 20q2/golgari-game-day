@@ -16,6 +16,7 @@ DEBUG = False
 # ── Roll economy ─────────────────────────────────────────────────────────────
 ROLL_CAP = 6
 JOIN_ROLLS = 3
+BRAVERY_BONUS_ROLLS = 1      # extra starting rolls for hatching a random creature
 ROLL_REGEN_MINUTES = 30      # regen tick length in minutes, up to ROLL_CAP
 ROLLS_PER_REGEN = 3          # rolls banked each tick (3 rolls every 30 minutes)
 CLAIM_FINISHED_ROLLS = 2
@@ -66,7 +67,6 @@ SHOP_GRIMOIRE_SLOTS = 2      # tier-1 grimoires per refresh (never deplete)
 SHOP_GEAR_QTY = 2            # units per stocked gear line
 SHOP_CONSUMABLE_QTY = 2      # units per stocked consumable line
 SHRINE_BLESSING_COST = 15
-SHRINE_TITHE_HP_PCT = 0.25
 OSSUARY_MAX_BET = 20
 OSSUARY_ROLLS_PER_VISIT = 3  # gambles allowed per landing; refills when you land again
 SNARE_SPILL_PCT = 0.20

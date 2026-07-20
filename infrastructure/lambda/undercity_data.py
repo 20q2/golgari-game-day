@@ -27,7 +27,6 @@ XP_REWARDS = {
     'pvp_win': 20,
     'pvp_loss': 8,
     'timeout': 5,          # consolation for both sides on a 6-round draw
-    'shrine_tithe': 8,
     'taught_claim': 5,
 }
 
