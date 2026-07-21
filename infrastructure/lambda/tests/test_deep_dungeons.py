@@ -176,3 +176,24 @@ def test_maze_trove_and_rest_are_dead_ends(biome):
 def test_lair_still_grants_the_sigil(biome):
     lair = next(n for n in _depths(biome) if data.MAP_NODES[n]['type'] == 'lair')
     assert lair in data.SIGIL_LAIRS and data.SIGIL_LAIRS[lair] == biome
+
+
+# ── Post-boss escape ladder (specs/2026-07-20-undercity-escape-ladder-*) ──────
+# A rusty escape ladder appears beside each sigil lair once you personally clear
+# it, teleporting you one-way up to the surface mouth.
+
+@pytest.mark.parametrize('biome', sorted(data.BIOMES))
+def test_escape_ladder_adjacent_to_each_sigil_lair(biome):
+    esc, lair = biome + '_esc', biome + '_lair'
+    assert data.ESCAPE_LADDERS[esc] == lair
+    node = data.MAP_NODES[esc]
+    assert node['type'] == 'ladder'
+    assert node['region'] == 'depths'
+    assert node['neighbors'] == [lair]                # degree-1 spur, only the lair
+    assert esc in data.MAP_NODES[lair]['neighbors']   # reciprocal edge
+
+
+@pytest.mark.parametrize('biome', sorted(data.BIOMES))
+def test_dungeon_entrance_ignores_escape_ladder(biome):
+    # The mouth (respawn point) is <biome>_lb, never the escape spur.
+    assert data.dungeon_entrance(biome) == biome + '_lb'

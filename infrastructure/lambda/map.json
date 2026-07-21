@@ -35,20 +35,20 @@
    "region": "cavern",
    "neighbors": [
     "cavern_r1",
-    "cavern_r3",
     "cavern_i0",
-    "t_bone_cavern1"
+    "t_bone_cavern1",
+    "n266"
    ]
   },
   {
    "id": "cavern_r3",
    "type": "crystal_vein",
-   "x": 346,
-   "y": 479,
+   "x": 111,
+   "y": 401,
    "region": "cavern",
    "neighbors": [
-    "cavern_r2",
-    "cavern_r4"
+    "cavern_r4",
+    "n266"
    ]
   },
   {
@@ -59,7 +59,8 @@
    "region": "cavern",
    "neighbors": [
     "cavern_r3",
-    "cavern_r5"
+    "cavern_r5",
+    "n266"
    ]
   },
   {
@@ -77,23 +78,24 @@
   {
    "id": "cavern_r6",
    "type": "crystal_vein",
-   "x": 677,
-   "y": 95,
+   "x": 627,
+   "y": 92,
    "region": "cavern",
    "neighbors": [
     "cavern_r5",
-    "cavern_r7"
+    "cavern_r7",
+    "n267"
    ]
   },
   {
    "id": "cavern_r7",
    "type": "crystal_vein",
-   "x": 849,
-   "y": 171,
+   "x": 811,
+   "y": -36,
    "region": "cavern",
    "neighbors": [
     "cavern_r6",
-    "cavern_r8"
+    "n267"
    ]
   },
   {
@@ -103,9 +105,9 @@
    "y": 250,
    "region": "cavern",
    "neighbors": [
-    "cavern_r7",
     "cavern_r9",
-    "cavern_i1"
+    "cavern_i1",
+    "n267"
    ]
   },
   {
@@ -985,7 +987,7 @@
   },
   {
    "id": "isl_bg1",
-   "type": "wild",
+   "type": "mystery",
    "x": 1841,
    "y": 1200,
    "region": "isle",
@@ -996,7 +998,7 @@
   },
   {
    "id": "isl_bg2",
-   "type": "wild",
+   "type": "mystery",
    "x": 1971,
    "y": 1076,
    "region": "isle",
@@ -1432,7 +1434,8 @@
    "neighbors": [
     "city_d13",
     "city_lg1",
-    "city_lg2"
+    "city_lg2",
+    "city_esc"
    ]
   },
   {
@@ -1794,7 +1797,8 @@
    "neighbors": [
     "cavern_s6",
     "cavern_lg1",
-    "cavern_lg2"
+    "cavern_lg2",
+    "cavern_esc"
    ]
   },
   {
@@ -2084,7 +2088,8 @@
    "neighbors": [
     "bog_m21",
     "bog_lg1",
-    "bog_lg2"
+    "bog_lg2",
+    "bog_esc"
    ]
   },
   {
@@ -2349,7 +2354,8 @@
    "region": "depths",
    "neighbors": [
     "bone_g24",
-    "bone_g33"
+    "bone_g33",
+    "bone_esc"
    ]
   },
   {
@@ -2531,7 +2537,6 @@
    "y": 2240,
    "region": "depths",
    "neighbors": [
-    "garden_k10",
     "garden_k9",
     "garden_lair",
     "garden_m10",
@@ -2548,7 +2553,8 @@
    "neighbors": [
     "garden_m11",
     "garden_lg1",
-    "garden_lg2"
+    "garden_lg2",
+    "garden_esc"
    ]
   },
   {
@@ -2642,20 +2648,10 @@
    ]
   },
   {
-   "id": "garden_k10",
-   "type": "loot",
-   "x": 2950,
-   "y": 2400,
-   "region": "depths",
-   "neighbors": [
-    "garden_m11"
-   ]
-  },
-  {
    "id": "garden_rest",
    "type": "rest",
-   "x": 3590,
-   "y": 1600,
+   "x": 3342,
+   "y": 1835,
    "region": "depths",
    "neighbors": [
     "garden_m4"
@@ -2664,8 +2660,8 @@
   {
    "id": "garden_trove",
    "type": "trove",
-   "x": 3590,
-   "y": 2400,
+   "x": 3510,
+   "y": 2000,
    "region": "depths",
    "neighbors": [
     "garden_m8"
@@ -3052,6 +3048,80 @@
     "bog_r7",
     "bog_r8",
     "n124"
+   ]
+  },
+  {
+   "id": "n266",
+   "type": "loot",
+   "x": 341,
+   "y": 493,
+   "region": "cavern",
+   "neighbors": [
+    "cavern_r3",
+    "cavern_r2",
+    "cavern_r4"
+   ]
+  },
+  {
+   "id": "n267",
+   "type": "loot",
+   "x": 870,
+   "y": 149,
+   "region": "cavern",
+   "neighbors": [
+    "cavern_r8",
+    "cavern_r6",
+    "cavern_r7"
+   ]
+  },
+  {
+   "id": "city_esc",
+   "type": "ladder",
+   "x": 1720,
+   "y": 2660,
+   "region": "depths",
+   "neighbors": [
+    "city_lair"
+   ]
+  },
+  {
+   "id": "cavern_esc",
+   "type": "ladder",
+   "x": 540,
+   "y": 1400,
+   "region": "depths",
+   "neighbors": [
+    "cavern_lair"
+   ]
+  },
+  {
+   "id": "bog_esc",
+   "type": "ladder",
+   "x": 3390,
+   "y": 700,
+   "region": "depths",
+   "neighbors": [
+    "bog_lair"
+   ]
+  },
+  {
+   "id": "bone_esc",
+   "type": "ladder",
+   "x": 850,
+   "y": 2200,
+   "region": "depths",
+   "neighbors": [
+    "bone_lair"
+   ]
+  },
+  {
+   "id": "garden_esc",
+   "type": "ladder",
+   "x": 3230,
+   "y": 2310,
+   "region": "depths",
+   "neighbors": [
+    "garden_lair"
    ]
   }
  ],

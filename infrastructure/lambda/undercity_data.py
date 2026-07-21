@@ -745,13 +745,12 @@ def dungeon_biome(node_id):
 
 
 def dungeon_entrance(biome):
-    """The depths-side ladder mouth of a dungeon — the respawn point for a death
-    in that biome's dark. Exactly one ladder node per depths pocket (map-linted)."""
-    for nid, n in MAP_NODES.items():
-        if n.get('region') == 'depths' and n['type'] == 'ladder' \
-                and nid.split('_')[0] == biome:
-            return nid
-    return None
+    """The depths-side ladder MOUTH of a dungeon (`<biome>_lb`) — the respawn
+    point for a death in that biome's dark. The post-boss escape ladder
+    (`<biome>_esc`) is also a depths ladder, so match the mouth by name rather
+    than by type."""
+    mouth = biome + '_lb'
+    return mouth if mouth in MAP_NODES else None
 
 # Every entry in a player's poiClaims list ('bar_e', 'lair_titan', 'vault',
 # ...) feeds renown via compute_renown below.
@@ -852,6 +851,14 @@ TUNNEL_EXITS = {nid: _tunnel_exit(nid) for nid in TUNNEL_NODES}
 # Guild Sigils: first-clear of a biome dungeon's lair grants that sigil.
 SIGIL_LAIRS = {b + '_lair': b for b in BIOMES}
 SIGILS_REQUIRED = 3
+
+# Post-boss escape ladders: one dead-end 'ladder' spur off each sigil lair,
+# revealed per-player once you hold that lair's claim (its node in poiClaims).
+# Maps escape-node id -> its lair-node id. Landing on one teleports you one-way
+# up to the biome's surface mouth (<biome>_lt); there is no edge back down, so it
+# can never be used to skip into the lair. See
+# specs/2026-07-20-undercity-escape-ladder-design.md.
+ESCAPE_LADDERS = {b + '_esc': b + '_lair' for b in BIOMES}
 
 # The island boss: one persistent HP pool per season. Anyone with enough
 # sigils can chip at it; whoever lands the killing blow takes the kill, then

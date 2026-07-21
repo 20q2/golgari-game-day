@@ -30,7 +30,11 @@ def test_node_count():
     # ring around each dead-end lair (cavern/bog/city/garden) and the island boss
     # so exact-count movement can land on them. See
     # specs/2026-07-20-undercity-boss-approach-loops-design.md.
-    assert len(MAP_NODES) == 267
+    # v13 (2026-07-20 escape ladders): +5 post-boss escape spurs, one dead-end
+    # 'ladder' node off each sigil lair; also picks up an in-flight editor pass
+    # (+1 node, mystery/loot/wild retype). See
+    # specs/2026-07-20-undercity-escape-ladder-design.md.
+    assert len(MAP_NODES) == 273
 
 
 def test_space_type_distribution():
@@ -47,9 +51,12 @@ def test_space_type_distribution():
     # four biome lairs and the island boss. Also realigned elite/warp/hazard/loot
     # to the committed map (a prior editor pass reshuffled types +3/-1/-1/+2
     # without updating this table — total node count was unchanged so it slipped).
+    # v13 (2026-07-20 escape ladders): +5 'ladder' (10->15), one post-boss escape
+    # spur off each sigil lair. Also reflects an in-flight editor pass that
+    # retyped a few spaces (loot 43->44, wild 68->66, mystery 10->12).
     assert counts == {
-        'gate': 5, 'loot': 43, 'wild': 68, 'elite': 28, 'shop': 5, 'mystery': 10,
-        'hazard': 45, 'warp': 5, 'shrine': 1, 'ladder': 10, 'lair': 6,
+        'gate': 5, 'loot': 44, 'wild': 66, 'elite': 28, 'shop': 5, 'mystery': 12,
+        'hazard': 45, 'warp': 5, 'shrine': 1, 'ladder': 15, 'lair': 6,
         'ossuary': 1, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
         'excavation': 4, 'cache': 6, 'crystal_vein': 4, 'vault_lock': 1,
         'rest': 5, 'trove': 5, 'tunnel': 10,
