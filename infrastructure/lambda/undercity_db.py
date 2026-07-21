@@ -457,6 +457,9 @@ def _telegraph_next(rec):
     guarantees a true read. Returns the intent to show (None if no read)."""
     personality = rec['npc'].get('personality', data.NPC_DEFAULT_PERSONALITY)
     bluff = float(rec['npc'].get('bluff', data.NPC_DEFAULT_BLUFF))
+    # Menace (ATK-10 perk): the foe bluffs you less often.
+    if 'menace' in (rec.get('player', {}).get('perks') or []):
+        bluff *= data.MENACE_FACTOR
     rec['npcActual'] = engine.pick_stance(personality, _rng)
     rec['npcShown'] = engine.telegraph(rec['npcActual'], bluff, _rng)
     if rec['player'].get('reveal_next'):

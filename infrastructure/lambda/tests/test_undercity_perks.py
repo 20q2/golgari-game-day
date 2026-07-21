@@ -110,3 +110,22 @@ def test_deathdrive_noop_without_perk():
     low = engine.Combatant(name='l', hp=10, max_hp=40, atk=10, dfn=5, spd=5)
     high = engine.Combatant(name='h', hp=40, max_hp=40, atk=10, dfn=5, spd=5)
     assert engine._swing_base(low, 'aggress') == engine._swing_base(high, 'aggress')
+
+
+# ── Task 7: Menace ───────────────────────────────────────────────────────────
+
+def _telegraph_truthful(perks):
+    rec = {'round': 1,
+           'player': {'perks': perks, 'reveal_next': False},
+           'npc': {'personality': 'balanced', 'bluff': 1.0},  # always bluffs
+           'readChance': 0.0}
+    db._telegraph_next(rec)
+    return rec['npcShown'] == rec['npcActual']
+
+
+def test_menace_lowers_effective_bluff():
+    db._rng.seed(0)
+    truth_plain = sum(_telegraph_truthful([]) for _ in range(400))
+    db._rng.seed(0)
+    truth_menace = sum(_telegraph_truthful(['menace']) for _ in range(400))
+    assert truth_menace > truth_plain
