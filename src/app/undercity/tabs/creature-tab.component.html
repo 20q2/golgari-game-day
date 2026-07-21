@@ -181,7 +181,7 @@
               <h3>Equipment</h3>
               <div class="gear-tiles">
                 <div class="gear-tile" [class.empty]="!you.gear['fang']" [attr.data-rarity]="rarityKey(you.gear['fang'])">
-                  <mat-icon class="mi slot-mi">hardware</mat-icon>
+                  <mat-icon class="mi slot-mi" svgIcon="uc-fang"></mat-icon>
                   <div class="gear-tile-body">
                     <span class="gear-tile-slot">Fang</span>
                     @if (you.gear['fang']; as g) {
@@ -195,7 +195,7 @@
                   </div>
                 </div>
                 <div class="gear-tile" [class.empty]="!you.gear['carapace']" [attr.data-rarity]="rarityKey(you.gear['carapace'])">
-                  <mat-icon class="mi slot-mi">shield</mat-icon>
+                  <mat-icon class="mi slot-mi" svgIcon="uc-carapace"></mat-icon>
                   <div class="gear-tile-body">
                     <span class="gear-tile-slot">Carapace</span>
                     @if (you.gear['carapace']; as g) {
@@ -209,7 +209,7 @@
                   </div>
                 </div>
                 <div class="gear-tile" [class.empty]="!you.gear['charm']" [attr.data-rarity]="rarityKey(you.gear['charm'])">
-                  <mat-icon class="mi slot-mi">auto_awesome</mat-icon>
+                  <mat-icon class="mi slot-mi" svgIcon="uc-charm"></mat-icon>
                   <div class="gear-tile-body">
                     <span class="gear-tile-slot">Charm</span>
                     @if (you.gear['charm']; as g) {
