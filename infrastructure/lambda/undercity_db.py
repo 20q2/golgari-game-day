@@ -1675,6 +1675,15 @@ def _resolve_space(table, sid, doc, node, prev):
         return _trove(table, sid, doc, node)
 
     if ntype == 'ladder':
+        if node in data.ESCAPE_LADDERS:
+            # Post-boss shortcut: haul up to the surface mouth, one-way. No edge
+            # back down exists, so this can never be used to skip into the lair.
+            biome = data.dungeon_biome(node)
+            doc['position'] = biome + '_lt'
+            doc['restsUsed'] = []            # you're on the surface now
+            return {'type': 'ladder',
+                    'text': 'You haul yourself up the rusty escape ladder and '
+                            'out of the depths, back to the surface.'}
         biome = data.dungeon_biome(node)
         if biome:
             where = 'back up to the surface'

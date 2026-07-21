@@ -219,3 +219,22 @@ def test_escape_ladder_reachable_once_claimed(table):
     assert 'city_esc' in dests               # one hop off the lair
     # A lair you have NOT claimed stays barred even for a claimed player.
     assert 'bog_esc' in db._blocked_nodes(doc)
+
+
+def test_landing_escape_ladder_exits_to_surface_mouth(table):
+    doc = _join(table)
+    doc['poiClaims'] = ['city_lair']
+    doc['position'] = 'city_esc'
+    doc['restsUsed'] = ['some_rest']         # left over from the descent
+    ev = db._resolve_space(table, _sid(table), doc, 'city_esc', 'city_lair')
+    assert ev['type'] == 'ladder'
+    assert doc['position'] == 'city_lt'      # teleported up to the surface mouth
+    assert doc['restsUsed'] == []            # leaving the depths resets rest
+
+
+def test_landing_normal_entrance_ladder_does_not_teleport(table):
+    doc = _join(table)
+    doc['position'] = 'city_lb'              # the maze mouth, a normal ladder
+    ev = db._resolve_space(table, _sid(table), doc, 'city_lb', None)
+    assert ev['type'] == 'ladder'
+    assert doc['position'] == 'city_lb'      # normal ladders don't relocate
