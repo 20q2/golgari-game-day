@@ -678,6 +678,18 @@ def _compost(table, sid, doc, cause_text):
 
 # ── GET /game/state ──────────────────────────────────────────────────────────
 
+def handle_map(table, query_params):
+    """GET /game/map — the night's board: fixed surface + this season's depths,
+    in the BoardMap shape the client renders. Falls back to the committed board
+    when no season is active."""
+    doc = dict(data._MAP_DOC)     # worldW/H, gate, boss, regions, decals, labels
+    sid, config = _active_season(table)
+    # _season_map handles a None sid (no active season) by returning the
+    # committed board, so no direct read of the global is needed here.
+    doc['nodes'] = list(_season_map(table, sid).values())
+    return 200, doc
+
+
 def handle_state(table, query_params):
     user_id = (query_params or {}).get('userId') or ''
     sid, config = _active_season(table)

@@ -79,3 +79,23 @@ def test_movement_follows_generated_depths_when_on(table, monkeypatch):
         db._season_map(table, sid), 'cavern_lb', 1,
         db._closed_barriers(table, sid), db._blocked_nodes(doc))
     assert 'cavern_x9' in dests
+
+
+def test_handle_map_returns_boardmap_shape(table):
+    status, doc = db.handle_map(table, {})
+    assert status == 200
+    assert {'worldW', 'worldH', 'gate', 'boss', 'nodes', 'regions'} <= set(doc)
+    ids = {n['id'] for n in doc['nodes']}
+    assert 'cavern_r0' in ids and 'city_lair' in ids   # surface + depths both present
+
+
+def test_handle_map_serves_generated_depths_when_on(table, monkeypatch):
+    monkeypatch.setattr(data, 'PROCEDURAL_DUNGEONS', True)
+    db._season_map_cache.clear()
+    sid = _sid(table)
+    stub = [{'id': 'city_lb', 'type': 'ladder', 'x': 5, 'y': 5,
+             'region': 'depths', 'neighbors': []}]
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': 'MAP', 'depths': stub})
+    status, doc = db.handle_map(table, {})
+    ids = {n['id'] for n in doc['nodes']}
+    assert 'city_lb' in ids and 'garden_lair' not in ids   # night's depths, not committed

@@ -214,6 +214,9 @@ def handle_game(method: str, path_parts: List[str], body: str, query_params: Dic
     if sub == 'state' and method == 'GET':
         status, payload = undercity_db.handle_state(table, query_params)
         return create_response(status, payload)
+    if sub == 'map' and method == 'GET':
+        status, payload = undercity_db.handle_map(table, query_params)
+        return create_response(status, payload)
     if sub == 'action' and method == 'POST':
         status, payload = undercity_db.handle_action(table, body)
         return create_response(status, payload)
