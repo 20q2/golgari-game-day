@@ -136,6 +136,29 @@
     </div>
   }
 
+  <!-- First-entry warning for the Ashen Wilds (wilderness frontier). No
+       backdrop-click dismissal: this is a decision, so a button must be tapped. -->
+  @if (wildsPrompt()) {
+    <div class="uc-modal-backdrop">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">warning</mat-icon> The Ashen Wilds</h3>
+        <p class="modal-sub">
+          Beyond this border the ash-choked frontier crawls with evolved
+          predators &mdash; far deadlier than surface fauna. It's recommended you
+          reach Level&nbsp;5 before venturing in. Press on anyway?
+        </p>
+        <div class="choice-grid">
+          <button class="uc-btn" (click)="turnBackWilds()">
+            <mat-icon class="mi">undo</mat-icon> Turn back
+          </button>
+          <button class="uc-btn uc-btn-primary" (click)="pressOnWilds()">
+            <mat-icon class="mi">local_fire_department</mat-icon> Press on
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- Rolling die overlay -->
   @if (rolling()) {
     <div class="dice-overlay">
