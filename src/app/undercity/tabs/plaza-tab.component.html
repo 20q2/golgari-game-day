@@ -19,6 +19,83 @@
     </div>
   }
 
+  <!-- Forge services (Salvage Yard · Blacksmith) — Plaza "town" layer. -->
+  <div class="forge-bar">
+    <button class="uc-btn forge-btn" (click)="openBuilding('salvage')">
+      <mat-icon class="mi">recycling</mat-icon> Salvage Yard
+      @if (stashRows().length) { <span class="forge-count">{{ stashRows().length }}</span> }
+    </button>
+    <button class="uc-btn forge-btn" (click)="openBuilding('blacksmith')">
+      <mat-icon class="mi">hardware</mat-icon> Blacksmith
+      @if (upgradeRows().length) { <span class="forge-count">{{ upgradeRows().length }}</span> }
+    </button>
+    <span class="mat-chip mtl" title="Moltings"><mat-icon class="mi">grass</mat-icon> {{ materials().moltings }}</span>
+    <span class="mat-chip ich" title="Chrysalis Ichor"><mat-icon class="mi">science</mat-icon> {{ materials().ichor }}</span>
+  </div>
+
+  @if (building(); as b) {
+    <div class="uc-modal-backdrop" (click)="closeBuilding()">
+      <div class="forge-modal" (click)="$event.stopPropagation()">
+        <header class="forge-head">
+          <h3>
+            @if (b === 'salvage') {
+              <mat-icon class="mi">recycling</mat-icon> Salvage Yard
+            } @else {
+              <mat-icon class="mi">hardware</mat-icon> Blacksmith
+            }
+          </h3>
+          <span class="forge-mats">
+            <span class="mat-chip mtl" title="Moltings"><mat-icon class="mi">grass</mat-icon> {{ materials().moltings }}</span>
+            <span class="mat-chip ich" title="Chrysalis Ichor"><mat-icon class="mi">science</mat-icon> {{ materials().ichor }}</span>
+            @if (b === 'blacksmith') {
+              <span class="mat-chip spore"><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ store.you()?.spores ?? 0 }}</span>
+            }
+          </span>
+          <button class="uc-btn forge-close" (click)="closeBuilding()"><mat-icon class="mi">close</mat-icon></button>
+        </header>
+
+        @if (b === 'salvage') {
+          <p class="forge-hint">Grind finds into materials, or sell for Spores. Stash {{ stashRows().length }}/6.</p>
+          @for (row of stashRows(); track row.index) {
+            <div class="forge-row" [attr.data-rarity]="tierRarity(row.info.tier).key">
+              <span class="forge-name">{{ row.info.name }}
+                <span class="rarity-badge {{ tierRarity(row.info.tier).key }}">{{ tierRarity(row.info.tier).label }}</span>
+                <em>{{ row.info.desc }}</em>
+              </span>
+              <span class="forge-actions">
+                <button class="uc-btn" [disabled]="busy()" (click)="equip(row.index)">Equip</button>
+                <button class="uc-btn" [disabled]="busy()" (click)="salvage(row.index, 'grind')">
+                  Grind +{{ salvageYield(row.info.tier).moltings }}<mat-icon class="mi tiny">grass</mat-icon>@if (salvageYield(row.info.tier).ichor) {&nbsp;+{{ salvageYield(row.info.tier).ichor }}<mat-icon class="mi tiny">science</mat-icon>}
+                </button>
+                <button class="uc-btn" [disabled]="busy()" (click)="salvage(row.index, 'sell')">Sell +{{ sellSpores(row.info) }}</button>
+              </span>
+            </div>
+          } @empty {
+            <div class="forge-empty">Your stash is empty. Gear you find in the dark lands here.</div>
+          }
+        } @else {
+          <p class="forge-hint">Spend materials to climb a piece up its rarity ladder.</p>
+          @for (row of upgradeRows(); track $index) {
+            <div class="forge-row" [attr.data-rarity]="tierRarity(row.to.tier).key">
+              <span class="forge-name">
+                {{ row.from.name }} <mat-icon class="mi tiny">arrow_forward</mat-icon> {{ row.to.name }}
+                <span class="rarity-badge {{ tierRarity(row.to.tier).key }}">{{ tierRarity(row.to.tier).label }}</span>
+                @if (row.where === 'stash') { <span class="forge-tag">stash</span> }
+                <em>{{ row.to.desc }}</em>
+              </span>
+              <button class="uc-btn forge-upgrade" [disabled]="busy() || !canAfford(row.cost)" (click)="upgrade(row)">
+                {{ row.cost.spores }}<img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+                · {{ row.cost.moltings }}<mat-icon class="mi tiny">grass</mat-icon>@if (row.cost.ichor) {&nbsp;· {{ row.cost.ichor }}<mat-icon class="mi tiny">science</mat-icon>}
+              </button>
+            </div>
+          } @empty {
+            <div class="forge-empty">Nothing to upgrade yet — find or stash gear that has a rarer rung.</div>
+          }
+        }
+      </div>
+    </div>
+  }
+
   @if (toast(); as t) {
     <div class="plaza-toast">{{ t }}</div>
   }

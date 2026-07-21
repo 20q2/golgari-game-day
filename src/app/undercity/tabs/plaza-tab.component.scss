@@ -69,3 +69,191 @@
   font-size: 0.9rem;
   z-index: 6;
 }
+
+// ── Forge services (Salvage Yard · Blacksmith) ───────────────────────────────
+.forge-bar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  z-index: 5;
+}
+
+.forge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.forge-count {
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #4a7c59;
+  color: #eafff0;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.mat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(20, 18, 14, 0.9);
+  border: 1px solid rgba(74, 124, 89, 0.45);
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #d8f3dc;
+
+  &.mtl { color: #9fd6a6; }
+  &.ich { color: #b98cf0; }
+  &.spore { color: #f4d58d; }
+}
+
+.mi.tiny {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+}
+
+.rot-coin {
+  width: 13px;
+  height: 13px;
+  vertical-align: middle;
+}
+
+.forge-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 460px);
+  max-height: 80vh;
+  overflow-y: auto;
+  background: rgba(18, 20, 16, 0.98);
+  border: 1px solid rgba(74, 124, 89, 0.5);
+  border-radius: 14px;
+  padding: 14px 16px 18px;
+  z-index: 7;
+  animation: uc-rise 0.2s ease;
+
+  .forge-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+
+    h3 {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0;
+      font-size: 1.05rem;
+      color: #eafff0;
+    }
+    .forge-mats {
+      display: inline-flex;
+      gap: 6px;
+      margin-left: auto;
+    }
+    .forge-close {
+      padding: 2px 6px;
+    }
+  }
+
+  .forge-hint {
+    margin: 0 0 10px;
+    font-size: 0.78rem;
+    color: #9aa79a;
+  }
+}
+
+.forge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 6px 7px 8px;
+  border-bottom: 1px solid rgba(74, 124, 89, 0.15);
+  border-left: 3px solid transparent;
+
+  &[data-rarity='common'] { border-left-color: #9aa7a0; }
+  &[data-rarity='rare'] { border-left-color: #5fd18a; }
+  &[data-rarity='legendary'] { border-left-color: #fbbf24; }
+
+  .forge-name {
+    font-size: 0.85rem;
+    color: #d8f3dc;
+    min-width: 0;
+
+    em {
+      display: block;
+      color: #9aa79a;
+      font-style: normal;
+      font-size: 0.72rem;
+      margin-top: 2px;
+    }
+  }
+
+  .forge-actions {
+    display: inline-flex;
+    gap: 4px;
+    flex-shrink: 0;
+
+    .uc-btn {
+      font-size: 0.72rem;
+      padding: 3px 7px;
+      display: inline-flex;
+      align-items: center;
+      gap: 1px;
+    }
+  }
+
+  .forge-upgrade {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+  }
+}
+
+.rarity-badge {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  padding: 1px 5px;
+  background: rgba(0, 0, 0, 0.35);
+  vertical-align: middle;
+
+  &.common { color: #9aa7a0; }
+  &.rare { color: #5fd18a; }
+  &.legendary { color: #fbbf24; }
+}
+
+.forge-tag {
+  margin-left: 4px;
+  font-size: 0.6rem;
+  color: #9aa79a;
+  border: 1px solid rgba(154, 167, 154, 0.4);
+  border-radius: 6px;
+  padding: 0 4px;
+  text-transform: uppercase;
+}
+
+.forge-empty {
+  padding: 16px 8px;
+  text-align: center;
+  color: #9aa79a;
+  font-size: 0.82rem;
+}

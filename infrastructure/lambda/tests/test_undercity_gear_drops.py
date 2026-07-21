@@ -200,6 +200,33 @@ def test_upgrade_stash_piece(table):
     assert doc['gearStash'][0] == data.GEAR_FAMILY['bramble'][2]
 
 
+def test_equip_from_stash_into_empty_slot(table):
+    sid, doc = _player_at(table, 'city_r0')
+    doc['gear'] = {}
+    doc['gearStash'] = ['bramble_hide']
+    status, _ = db._equip_gear(table, sid, doc, {'index': 0})
+    assert status == 200
+    assert doc['gear']['carapace'] == 'bramble_hide'
+    assert doc['gearStash'] == []                       # consumed the slot
+
+
+def test_equip_from_stash_swaps_worn_piece_back(table):
+    sid, doc = _player_at(table, 'city_r0')
+    doc['gear'] = {'carapace': 'chitin_scrap'}
+    doc['gearStash'] = ['bramble_hide']
+    status, _ = db._equip_gear(table, sid, doc, {'index': 0})
+    assert status == 200
+    assert doc['gear']['carapace'] == 'bramble_hide'
+    assert doc['gearStash'] == ['chitin_scrap']          # worn piece returned to stash
+
+
+def test_equip_bad_index_errors(table):
+    sid, doc = _player_at(table, 'city_r0')
+    doc['gearStash'] = []
+    status, _ = db._equip_gear(table, sid, doc, {'index': 0})
+    assert status == 409
+
+
 def test_upgrade_insufficient_spores_errors(table):
     sid, doc = _player_at(table, 'city_r0', spores=0)
     doc['gear'] = {'carapace': 'bramble_hide'}

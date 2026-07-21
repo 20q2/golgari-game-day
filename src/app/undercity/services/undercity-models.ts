@@ -104,6 +104,10 @@ export interface YouDoc {
   pendingLoot?: { puzzleId: string; view: FlowPuzzleView } | null;
   bag: string[];
   gear: Record<string, string>;
+  /** Forge economy: capped hold for found gear you aren't wearing. */
+  gearStash?: string[];
+  /** Forge economy: crafting-material counters. */
+  materials?: { moltings: number; ichor: number };
   stance: string;
   shieldUntil?: string | null;
   pendingMove?: PendingMove | null;

@@ -668,6 +668,35 @@ def _salvage_gear(table, sid, doc, payload):
     return _ok(doc, text=text, salvage=result)
 
 
+def _equip_gear(table, sid, doc, payload):
+    """Equip a stashed gear piece into its slot; the displaced piece (if any)
+    swaps back into the stash so build experiments are non-destructive."""
+    stash = doc.get('gearStash') or []
+    try:
+        index = int(payload.get('index'))
+    except (TypeError, ValueError):
+        return _err('Pick a stash piece to equip.')
+    if index < 0 or index >= len(stash):
+        return _err('That stash slot is empty.', 409)
+    gid = stash[index]
+    g = data.GEAR.get(gid)
+    if not g:
+        return _err('Unknown gear.', 409)
+    slot = g['slot']
+    gear = doc.setdefault('gear', {})
+    old = gear.get(slot)
+    gear[slot] = gid
+    if old:
+        stash[index] = old      # worn piece returns to the freed stash slot
+    else:
+        stash.pop(index)
+    doc['gearStash'] = stash
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text=f"Equipped {g['name']}.")
+
+
 def _upgrade_gear(table, sid, doc, payload):
     """Blacksmith: upgrade an owned piece (equipped slot or stash index) to the
     next rung of its rarity family, spending Spores + materials. Plaza service."""
@@ -1008,6 +1037,7 @@ def handle_action(table, body):
         'equip-grimoire': _equip_grimoire, 'ack-events': _ack_events,
         'solve-loot-puzzle': _solve_loot_puzzle,
         'cancel-loot-puzzle': _cancel_loot_puzzle,
+        'equip-gear': _equip_gear,
         'salvage-gear': _salvage_gear, 'upgrade-gear': _upgrade_gear,
     }
     handler = handlers.get(atype)

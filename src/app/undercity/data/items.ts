@@ -147,6 +147,37 @@ export function tierRarity(tier: number): RarityInfo {
   return RARITY_BY_TIER[tier] ?? RARITY_BY_TIER[1];
 }
 
+// ── Forge economy mirrors (undercity_data.GEAR_FAMILY + undercity_config knobs) ──
+
+/** Effect-family rungs: rider -> { tier: gearId }. Mirrors GEAR_FAMILY. */
+export const GEAR_FAMILY: Record<string, Record<number, string>> = (() => {
+  const fam: Record<string, Record<number, string>> = {};
+  for (const g of GEAR) {
+    if (g.rider) (fam[g.rider] ??= {})[g.tier] = g.id;
+  }
+  return fam;
+})();
+
+/** The next rarity rung up for a gear id, or null if Legendary / unupgradeable. */
+export function nextRung(id: string): string | null {
+  const g = GEAR.find((x) => x.id === id);
+  if (!g || !g.rider) return null;
+  return GEAR_FAMILY[g.rider]?.[g.tier + 1] ?? null;
+}
+
+/** Blacksmith upgrade cost to reach a tier (mirrors UPGRADE_SPORES/MOLTINGS/ICHOR). */
+export const UPGRADE_COST: Record<number, { spores: number; moltings: number; ichor: number }> = {
+  2: { spores: 40, moltings: 3, ichor: 0 },
+  3: { spores: 80, moltings: 6, ichor: 1 },
+};
+
+/** Salvage Yard grind yield by rarity (mirrors SALVAGE_MOLTINGS / SALVAGE_ICHOR). */
+export const SALVAGE_YIELD: Record<number, { moltings: number; ichor: number }> = {
+  1: { moltings: 1, ichor: 0 },
+  2: { moltings: 2, ichor: 0 },
+  3: { moltings: 4, ichor: 1 },
+};
+
 export interface ConsumableInfo {
   id: string;
   name: string;
