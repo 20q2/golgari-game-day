@@ -233,3 +233,32 @@ def test_no_pathfinder_single_value(table, monkeypatch):
     monkeypatch.setattr(db._rng, 'randint', lambda a, b: 3)
     status, resp = act(table, 'roll')
     assert 'values' not in resp['roll'] and resp['roll']['value'] == 3
+
+
+# ── Task 12: Fleetfoot ───────────────────────────────────────────────────────
+
+def test_fleetfoot_offers_optional_reroll_of_a_one(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 5  # fleetfoot, no pathfinder
+    db._put_player(table, doc)
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: 1)
+    status, resp = act(table, 'roll')
+    assert resp['roll']['value'] == 1 and resp['roll'].get('canReroll') is True
+    rolls_after_first = db._get_player(table, sid, 'user-alex')['rolls']
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: 4)
+    status, resp = act(table, 'roll', reroll=True)
+    assert status == 200 and resp['roll']['value'] == 4
+    # a reroll does not spend another banked roll
+    assert db._get_player(table, sid, 'user-alex')['rolls'] == rolls_after_first
+    assert not resp['roll'].get('canReroll')   # only one reroll offered
+
+
+def test_fleetfoot_no_reroll_without_perk(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 1  # no fleetfoot
+    db._put_player(table, doc)
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: 1)
+    status, resp = act(table, 'roll')
+    assert resp['roll']['value'] == 1 and not resp['roll'].get('canReroll')

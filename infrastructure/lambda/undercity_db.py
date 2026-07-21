@@ -1645,7 +1645,17 @@ def _claim(table, sid, doc, payload):
 
 def _roll(table, sid, doc, payload):
     nodes = _season_map(table, sid)
-    if not data.DEBUG and doc.get('rolls', 0) < 1:
+    # Fleetfoot (SPD-5 perk): the player MAY reroll a die that came up 1. A reroll
+    # discards the pending 1 and rolls fresh WITHOUT spending another banked roll,
+    # and is offered only once (the fresh face stands).
+    reroll = bool(payload.get('reroll')) if payload else False
+    _pm = doc.get('pendingMove')
+    is_reroll = False
+    if (reroll and _pm and _pm.get('value') == 1 and not _pm.get('rerolled')
+            and 'fleetfoot' in engine.attribute_perks(doc)):
+        doc['pendingMove'] = None
+        is_reroll = True
+    if not data.DEBUG and not is_reroll and doc.get('rolls', 0) < 1:
         return _err('No rolls banked. Finish a board game to earn more!', 409)
     if doc.get('pendingMove'):
         return _err('You already rolled — pick a destination.', 409)
@@ -1701,11 +1711,13 @@ def _roll(table, sid, doc, payload):
     if not dests:
         # Dead-end corner case: refund the roll, let them try again.
         return _err('The tunnels shift — no path fits that roll. Try again.', 409)
-    if not data.DEBUG:
+    if not data.DEBUG and not is_reroll:
         doc['rolls'] -= 1
     pm = {'value': value, 'dests': dests}
     if values:
         pm['values'] = values
+    if is_reroll:
+        pm['rerolled'] = True    # Fleetfoot spent — the fresh face stands
     doc['pendingMove'] = pm
     conflict = _save_or_conflict(table, doc)
     if conflict:
@@ -1715,6 +1727,9 @@ def _roll(table, sid, doc, payload):
         roll['values'] = values
     if used_blink:
         roll['blink'] = True
+    # Offer a one-time Fleetfoot reroll on a fresh (non-pathfinder) 1.
+    if value == 1 and not values and not is_reroll and 'fleetfoot' in perks:
+        roll['canReroll'] = True
     return _ok(doc, roll=roll)
 
 
