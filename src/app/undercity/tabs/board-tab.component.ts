@@ -907,6 +907,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     );
     this.board.setSnares(this.store.snares());
     this.board.setBarriersOpen(this.store.barriersOpen());
+    this.board.setGuardianPools(this.store.guardians());
     const here = step ? stepPos(step) : null;
     const choices = step ? this.stepChoices(step) : [];
     const tele = this.castTeleport();

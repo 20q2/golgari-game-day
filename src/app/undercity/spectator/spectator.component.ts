@@ -118,7 +118,8 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
       const players = this.store.players();
       const snares = this.store.snares();
       const barriers = this.store.barriersOpen();
-      this.syncRoster(players, snares, barriers);
+      const guardians = this.store.guardians();
+      this.syncRoster(players, snares, barriers, guardians);
     });
 
     // Badge the board tokens of anyone seated at an active board-game table.
@@ -141,7 +142,12 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     return [...ids];
   });
 
-  private syncRoster(players: PublicPlayer[], snares: string[], barriers: string[]): void {
+  private syncRoster(
+    players: PublicPlayer[],
+    snares: string[],
+    barriers: string[],
+    guardians: Record<string, { hp: number; maxHp: number }>,
+  ): void {
     if (!this.board) return;
     this.board.setPlayers(
       players.map((p) => ({
@@ -157,6 +163,7 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     );
     this.board.setSnares(snares);
     this.board.setBarriersOpen(barriers);
+    this.board.setGuardianPools(guardians);
   }
 
   ngOnInit(): void {
@@ -209,7 +216,12 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.zone.runOutsideAngular(() => this.board!.start());
     // Populate tokens immediately — the roster effect won't re-fire just because
     // the board went non-null (it isn't a signal), so seed it here.
-    this.syncRoster(this.store.players(), this.store.snares(), this.store.barriersOpen());
+    this.syncRoster(
+      this.store.players(),
+      this.store.snares(),
+      this.store.barriersOpen(),
+      this.store.guardians(),
+    );
     this.board.setDiceMarkers(this.activeGameUserIds());
     this.director = new SpectatorDirector(this.toMapInfo(map));
     this.director.update({
