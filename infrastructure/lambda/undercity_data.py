@@ -428,7 +428,7 @@ SPELLS = {
     'spore_bolt':  {'name': 'Spore Bolt', 'category': 'field', 'tier': 1, 'cooldownMin': 20,
                     'effect': 'field_damage', 'power': 12, 'range': 6,
                     'blurb': 'A puff of caustic spores: 12 damage at range.'},
-    'mend_flesh':  {'name': 'Mend Flesh', 'category': 'buff', 'tier': 1, 'cooldownMin': 15,
+    'mend_flesh':  {'name': 'Mend Flesh', 'category': 'buff', 'tier': 1, 'cooldownMin': 20,
                     'effect': 'self_heal', 'power': 12,
                     'blurb': 'Knit your wounds: restore 12 HP.'},
     'harden_shell': {'name': 'Harden Shell', 'category': 'buff', 'tier': 1, 'cooldownMin': 20,

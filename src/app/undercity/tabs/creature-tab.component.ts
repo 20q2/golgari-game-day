@@ -123,6 +123,40 @@ export class CreatureTabComponent {
     return mods;
   });
 
+  /** The three combat stats as {base, gear, total} rows — powers the compact
+   *  preview at the top of the Gear tab so equipping/swapping shows its effect. */
+  protected readonly statPreview = computed(() => {
+    const you = this.store.you();
+    const mods = this.gearMods();
+    if (!you) return [];
+    return (['atk', 'def', 'spd'] as const).map((key) => ({
+      key,
+      label: key.toUpperCase(),
+      icon: this.statInfo[key].icon,
+      base: you[key],
+      mod: mods[key] ?? 0,
+    }));
+  });
+
+  /** Max held stash pieces (mirrors GEAR_STASH_SIZE in undercity_data.py). */
+  protected readonly stashCap = 6;
+
+  /** Unequipped gear you're carrying, keyed by its stash index for equip-gear. */
+  protected readonly stashRows = computed(() =>
+    (this.store.you()?.gearStash ?? [])
+      .map((id, index) => ({ index, info: GEAR_MAP[id] }))
+      .filter((r) => !!r.info),
+  );
+
+  /** Equip a stash piece into its slot; the worn piece swaps back to the stash.
+   *  Same server action the Salvage Yard uses — index-based, server picks slot. */
+  async equipFromStash(index: number): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('equip-gear', { index });
+      this.showToast(resp.text ?? 'Equipped.');
+    });
+  }
+
   protected readonly passiveBlurbs = PASSIVE_BLURBS;
 
   passiveName(p: string): string {

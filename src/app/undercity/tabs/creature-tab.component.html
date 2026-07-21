@@ -179,6 +179,26 @@
             <!-- Equipment -->
             <section class="card">
               <h3>Equipment</h3>
+
+              <!-- Live stat preview: base + what equipped gear adds, so swapping
+                   below shows its effect without leaving the tab. -->
+              <div class="gear-preview">
+                @for (s of statPreview(); track s.key) {
+                  <div class="gear-preview-stat" [class.buffed]="s.mod > 0">
+                    @if (s.icon.startsWith('uc-')) {
+                      <mat-icon class="mi" [svgIcon]="s.icon"></mat-icon>
+                    } @else {
+                      <mat-icon class="mi">{{ s.icon }}</mat-icon>
+                    }
+                    <span class="gear-preview-total">{{ s.base + s.mod }}</span>
+                    @if (s.mod > 0) {
+                      <span class="gear-preview-mod">{{ s.base }} +{{ s.mod }}</span>
+                    }
+                    <span class="gear-preview-name">{{ s.label }}</span>
+                  </div>
+                }
+              </div>
+
               <div class="gear-tiles">
                 <div class="gear-tile" [class.empty]="!you.gear['fang']" [attr.data-rarity]="rarityKey(you.gear['fang'])">
                   <mat-icon class="mi slot-mi" svgIcon="uc-fang"></mat-icon>
@@ -222,6 +242,36 @@
                     }
                   </div>
                 </div>
+              </div>
+            </section>
+
+            <!-- Stash: unequipped gear you're carrying. Equip here without a
+                 trip to the Salvage Yard — the worn piece swaps back in. -->
+            <section class="card">
+              <h3>Stash <span class="muted">({{ stashRows().length }}/{{ stashCap }})</span></h3>
+              @if (!stashRows().length) {
+                <p class="muted bag-empty">Empty. Gear you find on the board waits here.</p>
+              }
+              <div class="gear-tiles">
+                @for (row of stashRows(); track row.index) {
+                  <div class="gear-tile" [attr.data-rarity]="tierRarity(row.info.tier).key">
+                    <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + row.info.slot"></mat-icon>
+                    <div class="gear-tile-body">
+                      <span class="gear-tile-slot">{{ row.info.slot }}</span>
+                      <span class="gear-tile-name">{{ row.info.name }}
+                        <span class="rarity-badge {{ tierRarity(row.info.tier).key }}">{{ tierRarity(row.info.tier).label }}</span>
+                      </span>
+                      <span class="gear-tile-desc">{{ row.info.desc }}</span>
+                    </div>
+                    <button
+                      class="uc-btn use-btn stash-equip"
+                      [disabled]="busy()"
+                      (click)="equipFromStash(row.index)"
+                    >
+                      Equip
+                    </button>
+                  </div>
+                }
               </div>
             </section>
 

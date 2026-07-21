@@ -263,7 +263,8 @@ def _close(table, sid, user_id, payload):
     if not _put_entry(table, entry):
         return _ok(closed=True, alreadyClosed=True)
 
-    summary = undercity_db.grant_board_game_rewards(table, sid, participant_ids, winner_ids)
+    summary = undercity_db.grant_board_game_rewards(
+        table, sid, participant_ids, winner_ids, entry['gameTitle'])
     winner_names = [names.get(w, w) for w in winner_ids]
     undercity_db.post_event(table, sid, 'claim',
                             _close_event_text(entry['gameTitle'], had_winner,

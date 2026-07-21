@@ -846,7 +846,7 @@ def _market_buy(table, sid, doc, payload):
     if conflict:
         return conflict
     _credit_market_seller(table, sid, listing['sellerId'], price, {
-        'type': 'market-sold',
+        'kind': 'market', 'at': _now(),
         'text': f"{doc.get('username', 'Someone')} bought your "
                 f"{data.GEAR[gid]['name']} for {price} Spores."})
     return _ok(doc, text=f"Bought {data.GEAR[gid]['name']} for {price} Spores.")
@@ -1247,24 +1247,30 @@ def _reward_sk(user_id):
     return f'USER#{user_id}'
 
 
-def _grant_to_player(table, sid, user_id, is_winner):
+def _grant_to_player(table, sid, user_id, is_winner, game_name=None):
     """Apply a board-game reward to a live player doc, retrying on the optimistic
     version guard (the player might be mid-action). Best-effort: returns True if
-    applied, False if the doc vanished or every retry lost the race."""
+    applied, False if the doc vanished or every retry lost the race. Leaves a
+    welcome-back note so a returning player learns what the game earned them."""
+    rolls = data.CLAIM_FINISHED_ROLLS + (data.CLAIM_WON_BONUS_ROLLS if is_winner else 0)
     for _ in range(4):
         doc = _get_player(table, sid, user_id)
         if not doc:
             return False
         _add_rolls(doc, data.CLAIM_FINISHED_ROLLS)
+        items = 0
         if is_winner:
             _add_rolls(doc, data.CLAIM_WON_BONUS_ROLLS)
-            _give_consumable(doc)
+            if _give_consumable(doc):
+                items = 1
+        _push_away_event(doc, {'kind': 'reward', 'game': game_name,
+                               'rolls': rolls, 'items': items, 'at': _now()})
         if _put_player(table, doc):
             return True
     return False
 
 
-def _bank_reward(table, sid, user_id, is_winner):
+def _bank_reward(table, sid, user_id, is_winner, game_name=None):
     """Store a reward for a user who has no creature yet; merged on repeats."""
     rec = _get(table, _reward_pk(sid), _reward_sk(user_id)) or {
         'pk': _reward_pk(sid), 'sk': _reward_sk(user_id),
@@ -1274,10 +1280,12 @@ def _bank_reward(table, sid, user_id, is_winner):
         data.CLAIM_WON_BONUS_ROLLS if is_winner else 0)
     if is_winner:
         rec.setdefault('items', []).append(_rng.choice(list(data.CONSUMABLES.keys())))
+    if game_name:
+        rec['game'] = game_name   # names the most recent game if several bank
     table.put_item(Item=rec)
 
 
-def grant_board_game_rewards(table, sid, participant_ids, winner_ids):
+def grant_board_game_rewards(table, sid, participant_ids, winner_ids, game_name=None):
     """Public entry point for queue_db. Grants participation rolls to every
     participant and a bonus roll + item to each winner; banks the reward for
     anyone who hasn't hatched a creature this night. Returns a summary."""
@@ -1285,10 +1293,10 @@ def grant_board_game_rewards(table, sid, participant_ids, winner_ids):
     granted, banked = [], []
     for uid in participant_ids:
         is_winner = uid in winners
-        if _grant_to_player(table, sid, uid, is_winner):
+        if _grant_to_player(table, sid, uid, is_winner, game_name):
             granted.append(uid)
         else:
-            _bank_reward(table, sid, uid, is_winner)
+            _bank_reward(table, sid, uid, is_winner, game_name)
             banked.append(uid)
     return {'granted': granted, 'banked': banked}
 
@@ -1309,6 +1317,8 @@ def apply_banked_rewards(table, sid, user_id, doc):
         else:
             doc.setdefault('bag', []).append(item)
     table.delete_item(Key={'pk': _reward_pk(sid), 'sk': _reward_sk(user_id)})
+    _push_away_event(doc, {'kind': 'reward', 'game': rec.get('game'),
+                           'rolls': rolls, 'items': len(items), 'at': _now()})
     extra = f", {len(items)} item(s)" if items else ''
     _event(table, sid, 'claim',
            f"{doc['username']} collected banked rewards from tonight's games "
@@ -2718,6 +2728,8 @@ def _finish_barrier(table, sid, doc, rec, result):
         _event(table, sid, 'barrier',
                f"{doc['username']} shattered the {g['name']} — a new route is open to all!",
                actor=doc['userId'])
+        _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
+                                     'name': g['name'], 'at': _now()}, doc['userId'])
     elif result['outcome'] == 'defender':
         _set_barrier_state(table, sid, node, max(1, result['defenderHp']))
         _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
@@ -2770,6 +2782,8 @@ def _finish_lair(table, sid, doc, rec, result):
                    f"{doc['username']} cleared the {biome_name} dungeon and claimed "
                    f"its Guild Sigil ({have}/{data.SIGILS_REQUIRED})!",
                    actor=doc['userId'])
+            _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
+                                         'name': display, 'at': _now()}, doc['userId'])
         else:
             out['text'] = (f"The {display} falls! +{reward['spores']} Spores."
                            + ('' if slain else ' A legendary first kill!'))
@@ -2777,6 +2791,8 @@ def _finish_lair(table, sid, doc, rec, result):
                 _event(table, sid, 'lair',
                        f"{doc['username']} slew the {b['name']} — "
                        'its Vestige stirs in the lair!', actor=doc['userId'])
+                _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
+                                             'name': b['name'], 'at': _now()}, doc['userId'])
     elif result['outcome'] == 'defender':
         _set_lair_state(table, sid, node, max(1, result['defenderHp']), slain)
         _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
@@ -2823,6 +2839,8 @@ def _finish_boss(table, sid, doc, rec, result):
         _event(table, sid, 'boss',
                f"{doc['username']} struck down SAVRA, QUEEN OF THE GOLGARI! "
                'The island trembles as she reforms.', actor=doc['userId'])
+        _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
+                                     'name': boss['name'], 'at': _now()}, doc['userId'])
     elif result['outcome'] == 'defender':
         _set_boss_hp(table, sid, result['defenderHp'])
         _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
@@ -3036,6 +3054,15 @@ def _battle(table, sid, doc, payload):
                        if winner is doc else
                        f"{target['username']} composts you and shakes {stolen} Spores loose…")
 
+    # Notify the victim: any PvP initiated on them shows on their next return.
+    victim_outcome = {'attacker': 'composted', 'defender': 'defended',
+                      'fled': 'fled', 'timeout': 'timeout'}[result['outcome']]
+    away = {'kind': 'pvp', 'from': doc.get('username', '?'),
+            'outcome': victim_outcome, 'at': _now()}
+    if victim_outcome == 'composted':
+        away['spores'] = stolen
+    _push_away_event(target, away)
+
     if not _put_player(table, target):
         return _err('They moved mid-fight — try again.', 409)
     conflict = _save_or_conflict(table, doc)
@@ -3093,6 +3120,31 @@ def _push_away_event(target, entry):
     events.append(entry)
     if len(events) > data.AWAY_EVENTS_CAP:
         del events[:len(events) - data.AWAY_EVENTS_CAP]
+
+
+def _season_players(table, sid):
+    """Every creature doc in the running season."""
+    resp = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': _season_pk(sid), ':sk': 'PLAYER#'})
+    return [_clean(i) for i in resp['Items']]
+
+
+def _broadcast_away(table, sid, entry, exclude_user_id=None):
+    """Fan a news away-event out to every season player except the actor, so a
+    returning player learns what fell while they were gone. Best-effort: a lost
+    optimistic-lock race just drops that one player's line."""
+    for p in _season_players(table, sid):
+        uid = p.get('userId')
+        if not uid or uid == exclude_user_id:
+            continue
+        for _ in range(3):
+            _push_away_event(p, dict(entry))
+            if _put_player(table, p):
+                break
+            p = _get_player(table, sid, uid)
+            if not p:
+                break
 
 
 def _cast(table, sid, doc, payload):

@@ -506,6 +506,32 @@ def test_pvp_battle_and_compost(table):
     assert status == 409
 
 
+def test_pvp_notifies_the_victim(table):
+    """The loser gets a welcome-back note naming the attacker and the loot."""
+    act(table, 'join', starter='kraul', home='cavern')
+    act(table, 'join', user='user-sam', name='Sam', starter='saproling', home='cavern')
+    alex = db._get_player(table, _sid(table), 'user-alex')
+    sam = db._get_player(table, _sid(table), 'user-sam')
+    alex['position'] = sam['position'] = 'city_r2'
+    alex['atk'] = 50
+    sam['hp'] = 5
+    sam['spores'] = 100
+    db._put_player(table, alex)
+    db._put_player(table, sam)
+
+    act(table, 'battle', targetUserId='user-sam')
+
+    sam = db._get_player(table, _sid(table), 'user-sam')
+    note = sam['awayEvents'][-1]
+    assert note['kind'] == 'pvp'
+    assert note['outcome'] == 'composted'
+    assert note['from'] == 'Alex'
+    assert note['spores'] == 25
+    # The attacker isn't spammed with a note about their own assault.
+    alex = db._get_player(table, _sid(table), 'user-alex')
+    assert not any(e.get('kind') == 'pvp' for e in (alex.get('awayEvents') or []))
+
+
 def test_shop_shrine_gamble_guards(table):
     act(table, 'join', starter='pest')
     status, resp = act(table, 'buy', itemId='rusted_fang')
@@ -2015,6 +2041,51 @@ def test_grant_board_game_rewards_applies_rolls_and_item(monkeypatch):
     assert sam['rolls'] == data.CLAIM_FINISHED_ROLLS + data.CLAIM_WON_BONUS_ROLLS
     assert len(sam['bag']) == 1                                  # winner got an item
     assert alex['bag'] == []
+
+
+def test_board_game_reward_notifies_with_game_name(monkeypatch):
+    """A live player who closed out a game gets a welcome-back note naming it."""
+    t = FakeTable()
+    act(t, 'season-start', hostKey='swampking')
+    act(t, 'join', user='user-alex', name='Alex', starter='pest')
+
+    db.grant_board_game_rewards(
+        t, _sid(t), ['user-alex'], ['user-alex'], game_name='Wingspan')
+
+    alex = db._get_player(t, _sid(t), 'user-alex')
+    note = next(e for e in alex['awayEvents'] if e['kind'] == 'reward')
+    assert note['game'] == 'Wingspan'
+    assert note['rolls'] == data.CLAIM_FINISHED_ROLLS + data.CLAIM_WON_BONUS_ROLLS
+    assert note['items'] == 1
+
+
+def test_banked_reward_notifies_on_hatch():
+    """A player who hadn't hatched yet learns of the game reward when they join."""
+    t = FakeTable()
+    act(t, 'season-start', hostKey='swampking')
+    db.grant_board_game_rewards(t, _sid(t), ['user-late'], [], game_name='Catan')
+
+    _, resp = act(t, 'join', user='user-late', name='Late', starter='pest')
+    note = next(e for e in resp['you']['awayEvents'] if e['kind'] == 'reward')
+    assert note['game'] == 'Catan'
+    assert note['rolls'] == data.CLAIM_FINISHED_ROLLS
+
+
+def test_broadcast_away_reaches_others_not_actor(table):
+    """A slain-boss news line fans out to every player but the slayer."""
+    act(table, 'join', user='user-alex', name='Alex', starter='pest')
+    act(table, 'join', user='user-sam', name='Sam', starter='pest')
+
+    db._broadcast_away(table, _sid(table),
+                       {'kind': 'boss', 'by': 'Alex', 'name': 'The Bog Warden',
+                        'at': db._now()}, exclude_user_id='user-alex')
+
+    sam = db._get_player(table, _sid(table), 'user-sam')
+    assert sam['awayEvents'][-1] == {
+        'kind': 'boss', 'by': 'Alex', 'name': 'The Bog Warden',
+        'at': sam['awayEvents'][-1]['at']}
+    alex = db._get_player(table, _sid(table), 'user-alex')
+    assert not any(e.get('kind') == 'boss' for e in (alex.get('awayEvents') or []))
 
 
 def test_grant_board_game_rewards_banks_for_absent_player():

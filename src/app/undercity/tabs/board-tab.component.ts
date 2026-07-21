@@ -640,12 +640,72 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     });
   }
 
+  /** One-line prose for a welcome-back note, per kind. */
   protected awayText(e: AwayEvent): string {
-    const spell = SPELL_MAP[e.spell]?.name ?? e.spell;
-    return e.kind === 'spell_hit'
-      ? `${e.from}'s ${spell} hit you for ${e.dmg ?? 0}!`
-      : `You dodged ${e.from}'s ${spell}!`;
+    switch (e.kind) {
+      case 'spell_hit':
+        return `${e.from}'s ${SPELL_MAP[e.spell]?.name ?? e.spell} hit you for ${e.dmg ?? 0}!`;
+      case 'spell_dodged':
+        return `You dodged ${e.from}'s ${SPELL_MAP[e.spell]?.name ?? e.spell}!`;
+      case 'pvp':
+        switch (e.outcome) {
+          case 'composted':
+            return `${e.from} composted your creature and looted ${e.spores ?? 0} Spores.`;
+          case 'defended':
+            return `${e.from} jumped you — and you composted them!`;
+          case 'fled':
+            return `${e.from} tried to jump you, but slipped away in the dark.`;
+          default:
+            return `${e.from} brawled you to a standstill.`;
+        }
+      case 'reward': {
+        const bits = [`+${e.rolls} roll${e.rolls === 1 ? '' : 's'}`];
+        if (e.items) bits.push(`${e.items} item${e.items === 1 ? '' : 's'}`);
+        return `${bits.join(' and ')} for playing ${e.game || "tonight's games"}.`;
+      }
+      case 'boss':
+        return `${e.name} was felled by ${e.by}.`;
+      case 'market':
+        return e.text;
+    }
   }
+
+  /** Material icon + severity class for a note's row. */
+  protected awayIcon(e: AwayEvent): string {
+    switch (e.kind) {
+      case 'spell_hit':
+        return 'flash_on';
+      case 'spell_dodged':
+        return 'shield';
+      case 'pvp':
+        return e.outcome === 'defended' ? 'military_tech' : 'sports_kabaddi';
+      case 'reward':
+        return 'casino';
+      case 'boss':
+        return 'whatshot';
+      case 'market':
+        return 'storefront';
+    }
+  }
+
+  /** True for notes that cost you something — rendered with the alert accent. */
+  protected awayIsHit(e: AwayEvent): boolean {
+    return e.kind === 'spell_hit' || (e.kind === 'pvp' && e.outcome === 'composted');
+  }
+
+  /** The modal's notes split into labelled sections (empty groups dropped). */
+  protected readonly awayGroups = computed(() => {
+    const events = this.awayModal();
+    if (!events) return [];
+    const of = (...kinds: AwayEvent['kind'][]) =>
+      events.filter((e) => kinds.includes(e.kind));
+    return [
+      { label: 'Attacks', rows: of('pvp', 'spell_hit', 'spell_dodged') },
+      { label: 'Rewards', rows: of('reward') },
+      { label: 'News', rows: of('boss') },
+      { label: 'Market', rows: of('market') },
+    ].filter((g) => g.rows.length);
+  });
 
   async dismissAway(): Promise<void> {
     this.awayModal.set(null);

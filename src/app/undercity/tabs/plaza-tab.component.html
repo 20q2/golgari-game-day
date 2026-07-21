@@ -89,7 +89,7 @@
                 {{ row.from.name }} <mat-icon class="mi tiny">arrow_forward</mat-icon> {{ row.to.name }}
                 <span class="rarity-badge {{ tierRarity(row.to.tier).key }}">{{ tierRarity(row.to.tier).label }}</span>
                 @if (row.where === 'stash') { <span class="forge-tag">stash</span> }
-                <em>{{ row.to.desc }}</em>
+                <em class="forge-diff">@for (seg of row.diff; track $index) {@if (seg.same !== undefined) {<span>{{ seg.same }}</span>} @else {<span class="diff-chg">@if (seg.from) {<s class="diff-old">{{ seg.from }}</s> }<span class="diff-new">{{ seg.to }}</span></span>}{{ ' ' }}}</em>
               </span>
               <button class="uc-btn forge-upgrade" [disabled]="busy() || !canAfford(row.cost)" (click)="upgrade(row)">
                 {{ row.cost.spores }}<img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />

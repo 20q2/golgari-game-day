@@ -251,6 +251,24 @@
   text-transform: uppercase;
 }
 
+// Blacksmith upgrade preview: what the description gains at the next rung.
+.forge-diff {
+  .diff-old {
+    color: #7c8a7c;
+    text-decoration: line-through;
+    opacity: 0.75;
+  }
+
+  .diff-chg {
+    white-space: nowrap;
+  }
+
+  .diff-new {
+    color: #fbbf24;
+    font-weight: 700;
+  }
+}
+
 .forge-empty {
   padding: 16px 8px;
   text-align: center;

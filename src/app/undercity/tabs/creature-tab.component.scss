@@ -649,10 +649,71 @@
 
 // ── Equipment ────────────────────────────────────────────────────────────────
 
+// Compact effective-stat strip at the top of the Gear tab — base stat, plus
+// whatever equipped gear adds, so swapping gear shows its effect in place.
+.gear-preview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.gear-preview-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 4px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(74, 124, 89, 0.25);
+
+  &.buffed {
+    border-color: rgba(154, 199, 154, 0.5);
+    background: rgba(74, 124, 89, 0.16);
+  }
+
+  .mi {
+    color: #9ac79a;
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .gear-preview-total {
+    font-weight: 800;
+    font-size: 1.25rem;
+    line-height: 1.1;
+    color: #eafff0;
+  }
+
+  // Shows the "N base +M gear" split only when gear is contributing.
+  .gear-preview-mod {
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: #9ac79a;
+  }
+
+  .gear-preview-name {
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    color: #8a978a;
+  }
+}
+
 .gear-tiles {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+// Equip button on stash rows sits flush right, past the gear details.
+.stash-equip {
+  margin-left: auto;
+  align-self: center;
+  padding: 4px 14px;
+  font-size: 0.8rem;
+  flex-shrink: 0;
 }
 
 .gear-tile {

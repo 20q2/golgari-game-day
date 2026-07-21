@@ -48,13 +48,20 @@ export interface PendingMove {
 }
 
 /** Something that hit you (or missed) while your phone was down. */
-export interface AwayEvent {
-  kind: 'spell_hit' | 'spell_dodged';
-  from: string;
-  spell: string;
-  dmg?: number;
-  at: string;
-}
+/** A single "while you were away" note. Discriminated on `kind`; the server
+ * mirror is undercity_db._push_away_event entries. */
+export type AwayEvent =
+  | { kind: 'spell_hit' | 'spell_dodged'; from: string; spell: string; dmg?: number; at: string }
+  | {
+      kind: 'pvp';
+      from: string;
+      outcome: 'composted' | 'defended' | 'fled' | 'timeout';
+      spores?: number;
+      at: string;
+    }
+  | { kind: 'reward'; game?: string | null; rolls: number; items: number; at: string }
+  | { kind: 'boss'; by: string; name: string; at: string }
+  | { kind: 'market'; text: string; at: string };
 
 /** Result payload of a `cast` action (mirrors undercity_db._cast). */
 export interface CastResult {

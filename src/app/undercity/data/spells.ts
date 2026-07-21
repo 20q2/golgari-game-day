@@ -32,7 +32,7 @@ export const SPELLS: SpellInfo[] = [
   { id: 'scrap_toss', name: 'Scrap Toss', category: 'field', tier: 1, cooldownMin: 30, effect: 'field_damage', range: 5, desc: 'Hurl city scrap at a rival for 8 damage.', icon: 'construction' },
   // Tier I
   { id: 'spore_bolt', name: 'Spore Bolt', category: 'field', tier: 1, cooldownMin: 20, effect: 'field_damage', range: 6, desc: 'A puff of caustic spores: 12 damage at range.', icon: 'flash_on' },
-  { id: 'mend_flesh', name: 'Mend Flesh', category: 'buff', tier: 1, cooldownMin: 15, effect: 'self_heal', desc: 'Knit your wounds: restore 12 HP.', icon: 'healing' },
+  { id: 'mend_flesh', name: 'Mend Flesh', category: 'buff', tier: 1, cooldownMin: 20, effect: 'self_heal', desc: 'Knit your wounds: restore 12 HP.', icon: 'healing' },
   { id: 'harden_shell', name: 'Harden Shell', category: 'buff', tier: 1, cooldownMin: 20, effect: 'self_buff', desc: '+2 DEF in your next battle.', icon: 'shield' },
   { id: 'skitter_step', name: 'Skitter Step', category: 'traversal', tier: 1, cooldownMin: 25, effect: 'teleport', range: 3, desc: 'Blink to any space within 3 steps.', icon: 'directions_run' },
   // Tier II

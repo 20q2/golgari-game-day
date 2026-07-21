@@ -33,7 +33,7 @@ def test_market_list_and_buy_flow(table):
 
     seller_after = db._get_player(table, sid, 'user-alex')
     assert seller_after['spores'] == 45            # credited (started at 0)
-    assert any(e.get('type') == 'market-sold' for e in (seller_after.get('awayEvents') or []))
+    assert any(e.get('kind') == 'market' for e in (seller_after.get('awayEvents') or []))
     assert _listing_gone(table, sid, lid)
 
 
