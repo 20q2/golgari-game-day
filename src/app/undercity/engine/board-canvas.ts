@@ -314,6 +314,16 @@ export class BoardCanvas {
   }
 
   /**
+   * A post-boss escape ladder (`<biome>_esc`) stays hidden until you hold that
+   * dungeon's sigil — this is the "appears once you beat the boss" moment. The
+   * server independently withholds it from move choices while unclaimed.
+   */
+  private isHiddenEscape(nodeId: string): boolean {
+    if (!nodeId.endsWith('_esc')) return false;
+    return !this.clearedDungeons.has(nodeId.split('_')[0]);
+  }
+
+  /**
    * Re-render layer terrain with the current art + cleared flags. Rebuilds
    * every layer by default; pass `onlyLayerIds` to refresh just those (e.g. the
    * one pocket whose cleared flag toggled) and leave the rest — notably the
@@ -868,7 +878,7 @@ export class BoardCanvas {
     let best: BoardNode | null = null;
     let bestDist = Infinity;
     for (const n of this.map.nodes) {
-      if (!this.inActive(n.id)) continue; // hidden-layer nodes aren't tappable
+      if (!this.inActive(n.id) || this.isHiddenEscape(n.id)) continue; // hidden-layer / unclaimed-escape nodes aren't tappable
       const dist = Math.hypot(n.x - wx, n.y - wy);
       if (dist < NODE_R * 1.6 && dist < bestDist) {
         best = n;
@@ -965,7 +975,7 @@ export class BoardCanvas {
     if (this.activeLayerId !== OVERWORLD) this.drawGloomVeil();
 
     for (const n of this.map.nodes) {
-      if (!this.inActive(n.id) || !this.isLit(n.id)) continue;
+      if (!this.inActive(n.id) || !this.isLit(n.id) || this.isHiddenEscape(n.id)) continue;
       this.drawSpace(n, elapsed);
     }
 
@@ -1087,7 +1097,7 @@ export class BoardCanvas {
     vc.fillRect(0, 0, v.width, v.height);
     vc.globalCompositeOperation = 'destination-out';
     for (const n of this.map.nodes) {
-      if (!this.inActive(n.id) || !this.isLit(n.id)) continue;
+      if (!this.inActive(n.id) || !this.isLit(n.id) || this.isHiddenEscape(n.id)) continue;
       const own = n.id === this.ownPosition;
       const r = (own ? 230 : 150) * this.zoom;
       const sx = (n.x - this.camX) * this.zoom;
