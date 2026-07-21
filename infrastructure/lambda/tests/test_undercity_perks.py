@@ -52,3 +52,25 @@ def test_combatant_carries_perks_and_survives_serde():
     snap = db._bt_snapshot(c)
     c2 = db._bt_to_combatant(snap)
     assert c2.has_perk('rend') and c2.has_perk('deathdrive')
+
+
+# ── Task 3: Carapace Grind (Guard/DEF fix) ───────────────────────────────────
+
+def test_carapace_grind_chips_on_lost_guard_only_for_holders():
+    import random
+    tank = engine.Combatant(name='t', hp=60, max_hp=60, atk=5, dfn=25, spd=5,
+                            perks=frozenset({'carapace_grind'}))
+    foe = engine.Combatant(name='f', hp=200, max_hp=200, atk=6, dfn=6, spd=6)
+    # tank Guards, foe Feints -> foe wins the exchange; grind still chips the foe.
+    before = foe.hp
+    entries = engine.resolve_round(tank, foe, 'guard', 'feint', 1, random.Random(1))
+    assert foe.hp < before
+    assert any(e.get('guardChip') for e in entries)
+
+
+def test_carapace_grind_absent_without_perk():
+    import random
+    plain = engine.Combatant(name='p', hp=60, max_hp=60, atk=5, dfn=25, spd=5)
+    foe = engine.Combatant(name='f', hp=200, max_hp=200, atk=6, dfn=6, spd=6)
+    entries = engine.resolve_round(plain, foe, 'guard', 'feint', 1, random.Random(1))
+    assert not any(e.get('guardChip') for e in entries)

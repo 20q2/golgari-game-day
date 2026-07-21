@@ -51,6 +51,17 @@ SOUL_HARVEST_MULT = 1.5   # Deathrite Shaman: ×Spores from wild & elite battle 
 CUTPURSE_SPORES = 6   # flat Spores after a won fight in which you landed a Feint
 BRAMBLE_REFLECT = 2   # flat damage a Bramble carapace reflects when struck
 
+# ── Attribute perks (design 2026-07-21) ──────────────────────────────────────
+# Carapace Grind (DEF-10 perk): a Guard holder deals a DEF-scaled chip each round
+# it does NOT win the exchange, converting DEF to offense independent of the
+# stance triangle. Gated on the perk so NPCs never do it. Sim-validated at 0.5
+# (pure-DEF/Guard co-equal with ATK/Aggress vs the boss: 142 -> ~330 dmg; 0.7
+# stronger, 1.0 overshoots). See infrastructure/lambda/sim/proto_fix.py.
+GUARD_CHIP_COEFF = 0.5
+DEATHDRIVE_MULT = 0.5  # ATK-15: Aggress swing multiplier while below half HP
+MENACE_FACTOR = 0.5    # ATK-10: multiplies the enemy's telegraph bluff chance
+THICK_HIDE_MULT = 0.5  # DEF-5: fraction of hazard/mystery HP loss actually taken
+
 # ── Forge economy (gear stash · Salvage Yard · Blacksmith) ───────────────────
 # See specs/2026-07-20-undercity-forge-economy-design.md. Found gear lands in a
 # capped stash instead of auto-mulching; the Salvage Yard grinds stash pieces

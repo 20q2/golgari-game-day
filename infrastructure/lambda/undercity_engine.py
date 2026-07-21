@@ -392,6 +392,18 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             c.hp += heal
             entries.append({'round': rnd, 'by': side, 'heal': heal})
 
+    # Carapace Grind (DEF perk): a Guard holder that did NOT win the exchange
+    # still grinds the foe for a DEF-scaled chip — converts DEF to offense every
+    # round independent of the triangle. Gated on the perk, so NPCs never do it.
+    grind_winner = exchange_winner(a_stance, d_stance)
+    for side, s, t, st in (('attacker', attacker, defender, a_stance),
+                           ('defender', defender, attacker, d_stance)):
+        if (st == 'guard' and s.has_perk('carapace_grind')
+                and s.hp > 0 and t.hp > 0 and grind_winner != side):
+            chip = max(1, round(_swing_base(s, 'guard') * ramp * data.GUARD_CHIP_COEFF))
+            t.hp -= chip
+            entries.append({'round': rnd, 'by': side, 'dmg': chip, 'guardChip': True})
+
     return entries
 
 
