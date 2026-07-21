@@ -34,10 +34,24 @@ class FakeRng:
         return seq[0]
 
 
+def _default_rider_mag(riders):
+    """Reproduce each rider's live magnitude — RIDER_SCALE at the lowest gear tier
+    that carries it — so rider tests read the same values as before rarity scaling.
+    (Rider effects now come from Combatant.rider_mag, not flat constants.)"""
+    out = {}
+    for rider in riders:
+        tiers = [g['tier'] for g in data.GEAR.values() if g.get('rider') == rider]
+        if tiers and rider in data.RIDER_SCALE:
+            out[rider] = data.RIDER_SCALE[rider][min(tiers)]
+    return out
+
+
 def fighter(**kw):
     base = dict(name='X', hp=30, max_hp=30, atk=6, dfn=5, spd=5,
                 passives=frozenset(), stance='fight', level=1)
     base.update(kw)
+    if base.get('riders') and 'rider_mag' not in kw:
+        base['rider_mag'] = _default_rider_mag(base['riders'])
     return Combatant(**base)
 
 
