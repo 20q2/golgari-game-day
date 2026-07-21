@@ -38,3 +38,20 @@ def test_battle_snapshot_roundtrips_rider_mag():
                          riders=frozenset({'spiked'}), rider_mag={'spiked': 1.5})
     restored = db._bt_to_combatant(db._bt_snapshot(c))
     assert restored.mag('spiked', 1.0) == 1.5
+
+
+def _duel(rider, mag, my_stance, foe_stance, seed=1):
+    """One deterministic round; return total damage dealt to the foe."""
+    import undercity_engine as engine, random
+    me = engine.Combatant(name='me', hp=100, max_hp=100, atk=10, dfn=5, spd=5,
+                          riders=frozenset({rider}), rider_mag={rider: mag})
+    foe = engine.Combatant(name='foe', hp=100, max_hp=100, atk=10, dfn=5, spd=5)
+    engine.resolve_round(me, foe, my_stance, foe_stance, 1, random.Random(seed))
+    return 100 - foe.hp
+
+
+def test_spiked_counter_scales_with_mag():
+    # Guard (me) beats Aggress (foe): my counter is STANCE_GUARD_COUNTER * mag.
+    low = _duel('spiked', 1.3, 'guard', 'aggress')
+    high = _duel('spiked', 1.8, 'guard', 'aggress')
+    assert high > low

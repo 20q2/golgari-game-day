@@ -238,7 +238,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             raw_agg = _base_hit(losr, winr, rng, stance='aggress', ramp=ramp)
             _deal(losr, winr, lose_side, rnd, raw_agg,
                   data.STANCE_GUARD_MITIGATE, entries, tag='mitigated')
-            ctr_mult = data.STANCE_GUARD_COUNTER * (1.5 if winr.has_rider('spiked') else 1.0)
+            ctr_mult = data.STANCE_GUARD_COUNTER * winr.mag('spiked', 1.0)
             if double_win_for == win_side:
                 ctr_mult *= 2
             raw_ctr = _base_hit(winr, losr, rng, stance='guard', ramp=ramp)
@@ -255,11 +255,10 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                       if win_stance == 'aggress' and winr.has('deathtouch_stomp') else 0)
             raw = _base_hit(winr, losr, rng, pierce, stance=win_stance, ramp=ramp)
             mult = data.STANCE_WIN_MULT
-            if winr.has_rider('deep_biter'):
-                mult += 0.5
-            if (win_stance == 'aggress' and winr.has_rider('gutcleaver')
+            mult += winr.mag('deep_biter', 0.0)
+            if (win_stance == 'aggress'
                     and losr.max_hp and losr.hp / losr.max_hp < 0.30):
-                mult += 0.5   # execute a low-HP foe
+                mult += winr.mag('gutcleaver', 0.0)   # execute a low-HP foe
             bonus = 0
             if not winr.first_win_used:
                 if winr.has('rot_breath'):
@@ -272,7 +271,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                 dmg *= 2
             # trickster: a lost Feint is not fully punished.
             if lose_stance == 'feint' and losr.has_rider('trickster'):
-                dmg = round(dmg / 2)
+                dmg = round(dmg * (1 - losr.mag('trickster', 0.0)))
             if dmg > 0:
                 losr.hp -= dmg
                 entry = {'round': rnd, 'by': win_side, 'dmg': dmg, 'winner': win_side}
@@ -280,7 +279,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                     heal = round(dmg * 0.5)
                     winr.hp = min(winr.max_hp, winr.hp + heal); entry['heal'] = heal
                 elif win_stance == 'aggress' and winr.has_rider('bloodfang'):
-                    heal = round(dmg * 0.4)
+                    heal = round(dmg * winr.mag('bloodfang', 0.0))
                     winr.hp = min(winr.max_hp, winr.hp + heal); entry['heal'] = heal
                 entries.append(entry)
                 _bramble(losr, winr, lose_side, rnd, entries)
@@ -376,9 +375,9 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
         if st != 'guard' or c.hp <= 0:
             continue
         if c.has_rider('bulwark'):
-            c.dfn += 1
+            c.dfn += c.mag('bulwark', 0)
         if c.has_rider('mossback') and c.hp < c.max_hp:
-            heal = min(3, c.max_hp - c.hp)
+            heal = min(c.mag('mossback', 0), c.max_hp - c.hp)
             c.hp += heal
             entries.append({'round': rnd, 'by': side, 'heal': heal})
 
