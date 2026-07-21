@@ -96,3 +96,24 @@ def test_generated_pocket_satisfies_every_contract(biome, salt):
 def test_generation_is_deterministic(biome):
     seed = gen._seed_int('same-night', biome)
     assert gen.generate_depths(seed, biome) == gen.generate_depths(seed, biome)
+
+
+def test_generate_all_depths_covers_every_biome_with_unique_ids():
+    nodes = gen.generate_all_depths('night-42')
+    ids = [n['id'] for n in nodes]
+    assert len(ids) == len(set(ids))                       # no duplicate ids
+    for biome in BIOMES:
+        assert f'{biome}_lair' in ids and f'{biome}_lb' in ids and f'{biome}_esc' in ids
+    # every node is a depths node belonging to some biome
+    assert all(n['region'] == 'depths' for n in nodes)
+    assert all(n['id'].split('_')[0] in BIOMES for n in nodes)
+
+
+def test_different_nights_differ():
+    a = gen.generate_all_depths('night-A')
+    b = gen.generate_all_depths('night-B')
+    assert a != b                                          # fresh maze each night
+
+
+def test_same_night_is_reproducible():
+    assert gen.generate_all_depths('night-A') == gen.generate_all_depths('night-A')

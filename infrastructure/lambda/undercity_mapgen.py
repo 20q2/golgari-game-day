@@ -223,3 +223,12 @@ def generate_depths(seed, biome):
         if nodes and _valid(nodes, biome):
             return nodes
     raise RuntimeError(f'mapgen: no valid layout for {biome} after {MAX_ATTEMPTS} tries')
+
+
+def generate_all_depths(season_id):
+    """All five biome pockets for a season, as one flat node list — the shape the
+    SEASON#<sid>/MAP record stores (Phase C writes it at season-start)."""
+    out = []
+    for biome in BIOMES:
+        out.extend(generate_depths(_seed_int(season_id, biome), biome))
+    return out
