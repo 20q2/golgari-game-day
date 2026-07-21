@@ -2,6 +2,7 @@
   <nav class="tools">
     <span class="brand"><mat-icon class="mi">map</mat-icon> Map Editor</span>
 
+    @if (!previewSeed()) {
     <div class="modes">
       <button [class.on]="mode() === 'select'" (click)="setMode('select')" matTooltip="Select / move — drag spaces, decals, labels">
         <mat-icon>near_me</mat-icon><span>Select</span><kbd>V</kbd>
@@ -24,6 +25,20 @@
       <button [class.on]="mode() === 'multi'" (click)="setMode('multi')" matTooltip="Marquee-select spaces and move them as a group">
         <mat-icon>select_all</mat-icon><span>Multi</span><kbd>M</kbd>
       </button>
+    </div>
+    }
+
+    <div class="mini-row" role="group" aria-label="Dungeon preview">
+      <button [class.on]="previewSeed()" (click)="togglePreview()"
+              matTooltip="Preview procedurally-generated dungeons (read-only)">
+        <mat-icon>casino</mat-icon><span>Preview dungeons</span>
+      </button>
+      @if (previewSeed()) {
+        <button (click)="loadSample()" matTooltip="Roll another generated sample">
+          <mat-icon>refresh</mat-icon><span>Roll another</span>
+        </button>
+        <span class="zoom-num">{{ previewSeed() }}</span>
+      }
     </div>
 
     <label class="layer-label">
@@ -55,6 +70,7 @@
 
     <span class="spacer"></span>
 
+    @if (!previewSeed()) {
     @if (canWriteInPlace && !rootPicked()) {
       <button class="save" (click)="grantRepo()" matTooltip="Pick the repo folder so Save can overwrite the board map in place">
         <mat-icon>folder_open</mat-icon><span>Grant repo</span>
@@ -91,6 +107,7 @@
         <span class="err-chip">{{ errorCount() }}</span>
       }
     </button>
+    }
   </nav>
 
   <div class="body">

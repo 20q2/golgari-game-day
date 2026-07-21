@@ -21,6 +21,7 @@ import { SPACE_ICONS, SPACE_NAMES } from '../data/items';
 import { DUNGEONS, dungeonBiome } from '../data/dungeons';
 import { EditorCanvas, EditorPick } from './editor-canvas';
 import { OVERWORLD } from '../engine/board-layers';
+import { UndercityApiService } from '../services/undercity-api.service';
 import { bossNode, defaultGate, lintMap, LintIssue } from './map-lint';
 import {
   downloadMap,
@@ -99,6 +100,10 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   protected readonly modeHints = MODE_HINTS;
   protected readonly layerId = signal('overworld');
   protected readonly layerIds = signal<string[]>(['overworld']);
+  protected readonly previewSeed = signal<string | null>(null);
+  private readonly api = inject(UndercityApiService);
+  private savedDoc: BoardMap | null = null;
+  private previewCounter = 0;
   protected readonly showIds = signal(false);
   protected readonly snap = signal(false);
   protected readonly autoLink = signal(true);
@@ -317,6 +322,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       this.drag = { kind: 'pan', lastX: e.clientX, lastY: e.clientY, moved: false, camera: true };
       return;
     }
+    if (this.previewSeed()) return;   // read-only preview: middle-mouse pan only, no edits
     const w = this.canvas.toWorld(e.clientX, e.clientY);
     const pick = this.canvas.pick(w.x, w.y);
     const mode = this.mode();
@@ -662,6 +668,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   private onKey(e: KeyboardEvent): void {
+    if (this.previewSeed()) return;   // no keyboard edits while previewing samples
     const tag = (e.target as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
 
@@ -1298,6 +1305,49 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   /** Ctrl+S: overwrite the repo copies when granted, else fall back to download. */
+  /** Toggle read-only preview of generator output. On: stash the editable doc
+   *  and load a sample. Off: restore the editable doc. */
+  protected async togglePreview(): Promise<void> {
+    if (this.previewSeed()) {
+      this.previewSeed.set(null);
+      const restore = this.savedDoc;
+      this.savedDoc = null;
+      if (restore) {
+        this.doc.set(restore);
+        this.canvas.setDoc(restore);
+        this.canvas.setLayer('overworld');
+        this.zoomPct.set(this.canvas.zoomPct());
+        this.afterDocChange(false);
+      }
+      return;
+    }
+    this.savedDoc = this.d();
+    await this.loadSample();
+  }
+
+  /** Fetch a fresh generated sample and show its first pocket read-only. */
+  protected async loadSample(): Promise<void> {
+    const seed = `preview-${++this.previewCounter}`;
+    try {
+      const board = await this.api.getMap(seed);
+      board.regions ??= {};
+      board.decals ??= [];
+      board.labels ??= [];
+      this.previewSeed.set(seed);
+      this.doc.set(board);
+      this.canvas.setDoc(board);
+      const pocket = this.canvas.layerIds().find((id) => id !== 'overworld');
+      this.canvas.setLayer(pocket ?? 'overworld');
+      this.zoomPct.set(this.canvas.zoomPct());
+      this.layerId.set(this.canvas.activeLayer().id);
+      this.layerIds.set(this.canvas.layerIds());
+    } catch {
+      this.toast('Could not load a sample — deploy the /game/map endpoint first.');
+      this.previewSeed.set(null);
+      this.savedDoc = null;
+    }
+  }
+
   protected async save(): Promise<void> {
     if (this.repoRoot) await this.saveToRepo();
     else this.download();
