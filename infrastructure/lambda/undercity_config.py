@@ -51,6 +51,29 @@ SOUL_HARVEST_MULT = 1.5   # Deathrite Shaman: ×Spores from wild & elite battle 
 CUTPURSE_SPORES = 6   # flat Spores after a won fight in which you landed a Feint
 BRAMBLE_REFLECT = 2   # flat damage a Bramble carapace reflects when struck
 
+# Per-rarity rider magnitude ladder (see gear-rarity Phase 1 plan). Each value is
+# anchored to the rider's current live magnitude at the tier it occupies today, so
+# no existing piece is nerfed; the only intended change is the modest T3 buff to
+# riders that today share their T2 value (deep_biter/spiked/rabid/bulwark) so the
+# ladder is monotonic. seer/glint are NOT here — read-rate scales via gear readBonus.
+RIDER_SCALE = {
+    # rider          {1: common, 2: rare, 3: legendary}   # unit / anchor to today's value
+    'barbed':        {1: 1,    2: 2,    3: 3},     # rot stacks on Aggress (T1 today=1)
+    'bloodfang':     {1: 0.40, 2: 0.50, 3: 0.60},  # heal frac of Aggress-win dmg (T1 today=0.40)
+    'deep_biter':    {1: 0.35, 2: 0.50, 3: 0.70},  # +win MULTIPLIER (T2 today=0.50; T3 buffed)
+    'rabid':         {1: 1,    2: 2,    3: 3},      # +ATK ramp per Aggress win (T2 today=2; T3 buffed)
+    'gutcleaver':    {1: 0.35, 2: 0.50, 3: 0.70},  # +win multiplier vs <30% HP (T2 today=0.50)
+    'thick':         {1: 0.15, 2: 0.20, 3: 0.25},  # stall chip-through mult (T1 today=0.15)
+    'spiked':        {1: 1.3,  2: 1.5,  3: 1.8},    # guard-counter reflect mult (T2 today=1.5; T3 buffed)
+    'bramble':       {1: 2,    2: 3,    3: 4},      # flat reflect when struck (T1 today=2)
+    'bulwark':       {1: 1,    2: 1,    3: 2},      # +DEF per Guard round (T2 today=1; T3 buffed)
+    'mossback':      {1: 2,    2: 3,    3: 4},      # heal per Guard round (T2 today=3)
+    'trickster':     {1: 0.50, 2: 0.60, 3: 0.70},  # frac of lost-Feint punish negated (T1 today=0.50)
+    'serrated':      {1: 1,    2: 2,    3: 3},      # flat cut to foe next-round dmg (T2 today=2)
+    'venomtrick':    {1: 1,    2: 2,    3: 3},      # rot on a winning Feint (T1 today=1)
+    'cutpurse':      {1: 4,    2: 6,    3: 9},      # Spores after a won fight w/ Feint (T2 today=6)
+}
+
 # ── Movement ─────────────────────────────────────────────────────────────────
 # Units whose tier is <= this may enter `tunnel` spaces (the biome-boundary
 # shortcuts). Evolved units (tier 2/3) are barred and routed through the
