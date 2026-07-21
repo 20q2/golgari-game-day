@@ -103,3 +103,123 @@ def _bfs(adj, start):
                 dist[nb] = dist[cur] + 1
                 q.append(nb)
     return dist
+
+
+def _assign_and_build(rng, biome):
+    """One attempt: carve, place specials, type fillers, emit node dicts. Returns
+    the node list, or None if the layout misses a placement precondition (caller
+    retries with a fresh rng)."""
+    rows, cols = GRID[biome]
+    cells, adj = _carve(rng, rows, cols)
+    _add_loops(rng, adj, rows, cols, EXTRA_LOOPS[biome])
+
+    mouth = (0, 0)
+    dist = _bfs(adj, mouth)
+    lair = max(cells, key=lambda cel: (dist[cel], cel))        # deepest cell
+    if dist[lair] < LAIR_MIN_HOPS:
+        return None
+    leaves = sorted((c for c in cells if len(adj[c]) == 1 and c not in (mouth, lair)),
+                    key=lambda cel: (-dist[cel], cel))          # dead-end tips, far first
+    if len(leaves) < 2:
+        return None
+    trove, rest = leaves[0], leaves[1]
+    taken = {mouth, lair, trove, rest}
+    remaining = [c for c in cells if c not in taken]
+    cache = remaining[len(remaining) // 2]
+    taken.add(cache)
+
+    fillers = [c for c in cells if c not in taken]
+    rng.shuffle(fillers)
+    ftype = {}
+    for c in fillers[:FILLER_ELITE]:
+        ftype[c] = 'elite'
+    rest_cells = fillers[FILLER_ELITE:]
+    n_haz = round(len(rest_cells) * FILLER_HAZARD_FRAC)
+    for c in rest_cells[:n_haz]:
+        ftype[c] = 'hazard'
+    tail = rest_cells[n_haz:]
+    n_wild = round(len(tail) * FILLER_WILD_FRAC)
+    for i, c in enumerate(tail):
+        ftype[c] = 'wild' if i < n_wild else 'loot'
+
+    special = {mouth: 'lb', lair: 'lair', trove: 'trove', rest: 'rest', cache: 'cache'}
+    special_type = {'lb': 'ladder', 'lair': 'lair', 'trove': 'trove',
+                    'rest': 'rest', 'cache': 'cache'}
+    ox, oy = POCKET_ORIGIN[biome]
+
+    def nid(cell):
+        suf = special.get(cell)
+        return f'{biome}_{suf}' if suf else f'{biome}_g{cell[0]}_{cell[1]}'
+
+    nodes = {}
+    for cell in cells:
+        r, c = cell
+        suf = special.get(cell)
+        nodes[nid(cell)] = {
+            'id': nid(cell),
+            'type': special_type[suf] if suf else ftype[cell],
+            'x': ox + c * SPACING, 'y': oy + r * SPACING,
+            'region': 'depths',
+            'neighbors': sorted(nid(nb) for nb in adj[cell]),
+        }
+    # Mouth reciprocates the fixed surface bridge (<biome>_lt ↔ <biome>_lb).
+    lb = nodes[f'{biome}_lb']
+    lb['neighbors'] = sorted(lb['neighbors'] + [f'{biome}_lt'])
+    # Escape spur off the lair (degree-1 'ladder'), just past it.
+    lr, lc = lair
+    nodes[f'{biome}_esc'] = {
+        'id': f'{biome}_esc', 'type': 'ladder',
+        'x': ox + lc * SPACING + 70, 'y': oy + lr * SPACING + 70,
+        'region': 'depths', 'neighbors': [f'{biome}_lair'],
+    }
+    lair_node = nodes[f'{biome}_lair']
+    lair_node['neighbors'] = sorted(lair_node['neighbors'] + [f'{biome}_esc'])
+    return list(nodes.values())
+
+
+def _valid(nodes, biome):
+    """True iff `nodes` satisfies every board contract for this biome's pocket."""
+    by = {n['id']: n for n in nodes}
+    ids = set(by)
+    if len(nodes) < MIN_NODES:
+        return False
+    if any(n['type'] not in _DEPTHS_PALETTE for n in nodes):
+        return False
+    for suf in ('lb', 'lair', 'cache', 'trove', 'rest', 'esc'):
+        if f'{biome}_{suf}' not in by:
+            return False
+    for suf in ('trove', 'rest'):
+        if len([x for x in by[f'{biome}_{suf}']['neighbors'] if x in ids]) != 1:
+            return False
+    if by[f'{biome}_esc']['neighbors'] != [f'{biome}_lair']:
+        return False
+    if f'{biome}_esc' not in by[f'{biome}_lair']['neighbors']:
+        return False
+    if f'{biome}_lt' not in by[f'{biome}_lb']['neighbors']:
+        return False
+    for n in nodes:                                    # symmetric within pocket
+        for nb in n['neighbors']:
+            if nb in ids and n['id'] not in by[nb]['neighbors']:
+                return False
+    dist = {f'{biome}_lb': 0}                           # reachable + lair depth
+    q, i = [f'{biome}_lb'], 0
+    while i < len(q):
+        cur = q[i]; i += 1
+        for nb in by[cur]['neighbors']:
+            if nb in ids and nb not in dist:
+                dist[nb] = dist[cur] + 1; q.append(nb)
+    if set(dist) != ids:
+        return False
+    return dist[f'{biome}_lair'] >= LAIR_MIN_HOPS
+
+
+def generate_depths(seed, biome):
+    """A biome's depths pocket for the night: a grid-carved maze with canonical
+    ids (<biome>_lb mouth, _lair, _cache, _trove, _rest, _esc). Deterministic in
+    `seed`; retries layouts until every contract holds."""
+    for attempt in range(MAX_ATTEMPTS):
+        rng = random.Random(seed + attempt)
+        nodes = _assign_and_build(rng, biome)
+        if nodes and _valid(nodes, biome):
+            return nodes
+    raise RuntimeError(f'mapgen: no valid layout for {biome} after {MAX_ATTEMPTS} tries')
