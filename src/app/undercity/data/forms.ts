@@ -80,7 +80,7 @@ export const STARTERS: FormInfo[] = [
 export const TIER2: FormInfo[] = [
   { id: 'brackish_trudge', name: 'Brackish Trudge', tier: 2, line: 'pest', passive: 'undying', passiveName: 'Undying', bonus: { maxHp: 6, atk: 2 }, blurb: 'Bruiser (+HP/+ATK).' },
   { id: 'stinkweed_imp', name: 'Stinkweed Imp', tier: 2, line: 'pest', passive: 'flyby', passiveName: 'Flyby', bonus: { spd: 2, atk: 2 }, blurb: 'Speedster (+SPD/+ATK).' },
-  { id: 'kraul_warrior', name: 'Kraul Warrior', tier: 2, line: 'kraul', passive: 'venom_barb', passiveName: 'Venom Barb', bonus: { atk: 4 }, blurb: 'Striker (+ATK).' },
+  { id: 'kraul_warrior', name: 'Grave Scarab', tier: 2, line: 'kraul', passive: 'venom_barb', passiveName: 'Venom Barb', bonus: { atk: 4 }, blurb: 'Striker (+ATK).' },
   { id: 'golgari_longlegs', name: 'Golgari Longlegs', tier: 2, line: 'kraul', passive: 'reach', passiveName: 'Reach', bonus: { spd: 4 }, blurb: 'Skirmisher (+SPD).' },
   { id: 'slitherhead', name: 'Slitherhead', tier: 2, line: 'saproling', passive: 'scavenge', passiveName: 'Scavenge', bonus: { atk: 2, maxHp: 6 }, blurb: 'Counterpuncher (+ATK/+HP).' },
   { id: 'woodwraith_strangler', name: 'Myconid Sporetender', tier: 2, line: 'saproling', passive: 'rootwall', passiveName: 'Rootwall', bonus: { def: 2, maxHp: 6 }, blurb: 'Fortress (+DEF/+HP).' },
