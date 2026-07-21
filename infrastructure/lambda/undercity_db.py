@@ -27,6 +27,7 @@ from botocore.exceptions import ClientError
 
 import undercity_data as data
 import undercity_engine as engine
+import undercity_mapgen as mapgen
 
 _rng = random.Random()
 
@@ -581,11 +582,38 @@ def _give_consumable(doc):
     return item
 
 
+def _materials(doc):
+    """The player's crafting-material counters, defaulted + backfilled in place."""
+    m = doc.setdefault('materials', {})
+    m.setdefault('moltings', 0)
+    m.setdefault('ichor', 0)
+    return m
+
+
+def _grind_materials(doc, gid):
+    """Grind a gear piece into crafting materials by its rarity (tier). Mutates
+    the player's material counters; returns the amounts gained."""
+    tier = data.GEAR[gid]['tier']
+    gained = {'moltings': data.SALVAGE_MOLTINGS.get(tier, 1),
+              'ichor': data.SALVAGE_ICHOR if tier >= 3 else 0}
+    m = _materials(doc)
+    m['moltings'] += gained['moltings']
+    m['ichor'] += gained['ichor']
+    return gained
+
+
+def _drop_phrase(drop):
+    """Past-tense phrase for how a fresh gear drop was disposed of."""
+    return 'stashed' if drop['outcome'] == 'stashed' else 'ground into materials'
+
+
 def _roll_gear_drop(doc, tier_weights):
-    """Drop a gear piece per the tier profile. A strict upgrade auto-equips
-    (displaced piece sells for GEAR_SELL_BACK of its cost); equal/worse tier
-    salvages into spores and leaves the equipped slot alone.
-    Returns {'id','slot','outcome','soldSpores','displaced'} or None."""
+    """Roll a gear piece per the tier profile and route it to the gear stash —
+    found gear is decided later at the Plaza (equip / salvage), no auto-equip or
+    auto-mulch. If the stash is full the piece is auto-ground into materials so
+    the find is never lost.
+    Returns {'id','slot','tier','outcome',...} or None. outcome is 'stashed' or
+    'stash-full' (the latter carries the 'materials' it was ground into)."""
     slot = _rng.choice(data.GEAR_SLOTS)
     tiers = list(tier_weights)
     tier = _rng.choices(tiers, weights=[tier_weights[t] for t in tiers])[0]
@@ -594,20 +622,106 @@ def _roll_gear_drop(doc, tier_weights):
     if not pool:
         return None
     gid = _rng.choice(pool)
+    stash = doc.setdefault('gearStash', [])
+    if len(stash) < data.GEAR_STASH_SIZE:
+        stash.append(gid)
+        return {'id': gid, 'slot': slot, 'tier': tier, 'outcome': 'stashed'}
+    gained = _grind_materials(doc, gid)
+    return {'id': gid, 'slot': slot, 'tier': tier,
+            'outcome': 'stash-full', 'materials': gained}
+
+
+def _salvage_gear(table, sid, doc, payload):
+    """Salvage Yard: convert a stashed gear piece into materials (mode 'grind')
+    or sell it for Spores (mode 'sell' — the 50% sell-back). Plaza service; not
+    gated on board position."""
+    stash = doc.get('gearStash') or []
+    try:
+        index = int(payload.get('index'))
+    except (TypeError, ValueError):
+        return _err('Pick a stash slot to salvage.')
+    if index < 0 or index >= len(stash):
+        return _err('That stash slot is empty.', 409)
+    mode = payload.get('mode', 'grind')
+    if mode not in ('grind', 'sell'):
+        return _err('Unknown salvage mode.')
+    gid = stash.pop(index)
+    doc['gearStash'] = stash
     g = data.GEAR[gid]
-    cur = (doc.get('gear') or {}).get(slot)
-    cur_tier = data.GEAR[cur]['tier'] if cur else 0
-    if g['tier'] > cur_tier:
-        sold = int(data.GEAR[cur]['cost'] * data.GEAR_SELL_BACK) if cur else 0
-        if sold:
-            doc['spores'] = doc.get('spores', 0) + sold
-        doc.setdefault('gear', {})[slot] = gid
-        return {'id': gid, 'slot': slot, 'outcome': 'equipped',
-                'soldSpores': sold, 'displaced': cur}
-    salvage = int(g['cost'] * data.GEAR_SELL_BACK)
-    doc['spores'] = doc.get('spores', 0) + salvage
-    return {'id': gid, 'slot': slot, 'outcome': 'salvaged',
-            'soldSpores': salvage, 'displaced': None}
+    if mode == 'sell':
+        spores = int(g['cost'] * data.GEAR_SELL_BACK)
+        doc['spores'] = doc.get('spores', 0) + spores
+        text = f"Sold {g['name']} for {spores} Spores."
+        result = {'id': gid, 'mode': 'sell', 'soldSpores': spores}
+    else:
+        gained = _grind_materials(doc, gid)
+        parts = []
+        if gained['moltings']:
+            parts.append(f"{gained['moltings']} Moltings")
+        if gained['ichor']:
+            parts.append(f"{gained['ichor']} Chrysalis Ichor")
+        text = f"Ground {g['name']} into " + ' + '.join(parts) + '.'
+        result = {'id': gid, 'mode': 'grind', 'materials': gained}
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text=text, salvage=result)
+
+
+def _upgrade_gear(table, sid, doc, payload):
+    """Blacksmith: upgrade an owned piece (equipped slot or stash index) to the
+    next rung of its rarity family, spending Spores + materials. Plaza service."""
+    target = payload.get('target') or {}
+    where = target.get('where')
+    if where == 'equipped':
+        slot = target.get('slot')
+        gid = (doc.get('gear') or {}).get(slot)
+        if not gid:
+            return _err('No gear in that slot.', 409)
+    elif where == 'stash':
+        try:
+            index = int(target.get('index'))
+        except (TypeError, ValueError):
+            return _err('Pick a stash piece to upgrade.')
+        stash = doc.get('gearStash') or []
+        if index < 0 or index >= len(stash):
+            return _err('That stash slot is empty.', 409)
+        gid = stash[index]
+    else:
+        return _err('Pick a piece to upgrade.')
+
+    g = data.GEAR.get(gid)
+    rider = g.get('rider') if g else None
+    if not rider or rider not in data.GEAR_FAMILY:
+        return _err('That piece cannot be upgraded.', 409)
+    next_tier = g['tier'] + 1
+    next_gid = data.GEAR_FAMILY[rider].get(next_tier)
+    if not next_gid:
+        return _err('That piece is already Legendary.', 409)
+
+    spores_cost = data.UPGRADE_SPORES.get(next_tier, 0)
+    moltings_cost = data.UPGRADE_MOLTINGS.get(next_tier, 0)
+    ichor_cost = data.UPGRADE_ICHOR.get(next_tier, 0)
+    m = _materials(doc)
+    if doc.get('spores', 0) < spores_cost:
+        return _err('Not enough Spores.', 409)
+    if m['moltings'] < moltings_cost:
+        return _err('Not enough Moltings.', 409)
+    if m['ichor'] < ichor_cost:
+        return _err('Not enough Chrysalis Ichor.', 409)
+    doc['spores'] = doc.get('spores', 0) - spores_cost
+    m['moltings'] -= moltings_cost
+    m['ichor'] -= ichor_cost
+    if where == 'equipped':
+        doc['gear'][slot] = next_gid
+    else:
+        doc['gearStash'][index] = next_gid
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc,
+               text=f"Forged {g['name']} into {data.GEAR[next_gid]['name']}!",
+               upgrade={'from': gid, 'to': next_gid})
 
 
 def cutpurse_bonus(doc, feint_won, won):
@@ -894,6 +1008,7 @@ def handle_action(table, body):
         'equip-grimoire': _equip_grimoire, 'ack-events': _ack_events,
         'solve-loot-puzzle': _solve_loot_puzzle,
         'cancel-loot-puzzle': _cancel_loot_puzzle,
+        'salvage-gear': _salvage_gear, 'upgrade-gear': _upgrade_gear,
     }
     handler = handlers.get(atype)
     if not handler:
@@ -1035,6 +1150,10 @@ def _season_start(table, payload):
                          'status': 'active', 'hostKey': host_key,
                          'startedAt': _now(), 'bossPhase': False})
     table.put_item(Item={'pk': META_PK, 'sk': 'CURRENT', 'seasonId': sid})
+    if data.PROCEDURAL_DUNGEONS:
+        # Fresh mazes for the night; _season_map reads this record all night.
+        table.put_item(Item={'pk': _season_pk(sid), 'sk': 'MAP',
+                             'depths': mapgen.generate_all_depths(sid)})
     _event(table, sid, 'season',
            'A new night falls on the Undercity. The swarm stirs…')
     return 200, {'ok': True, 'seasonId': sid}
@@ -1298,7 +1417,8 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'homeBiome': home,
         'rolls': data.JOIN_ROLLS,
         'spores': 15 if home == 'city' else 0,  # City Rat hatch perk
-        'bag': [], 'gear': {}, 'stance': 'fight',
+        'bag': [], 'gear': {}, 'gearStash': [], 'materials': {'moltings': 0, 'ichor': 0},
+        'stance': 'fight',
         'pendingMove': None, 'buffs': [],
         'grimoires': [], 'equippedGrimoire': None,
         'spellCooldowns': {}, 'pokeCooldowns': {}, 'awayEvents': [],
@@ -1582,9 +1702,8 @@ def _award_loot(doc):
     if _rng.random() < chance:
         drop = _roll_gear_drop(doc, tiers)
         if drop:
-            verb = 'equip' if drop['outcome'] == 'equipped' else 'salvage'
             return {'type': 'loot',
-                    'text': f'You unearth a piece of gear and {verb} it!',
+                    'text': f'You unearth a piece of gear — {_drop_phrase(drop)}!',
                     'gear': drop}
     if _rng.random() < 0.10:
         item = _give_consumable(doc)
@@ -1840,8 +1959,7 @@ def _mystery(table, sid, doc):
         drop = _roll_gear_drop(doc, tiers) if _rng.random() < chance else None
         if drop:
             out['gear'] = drop
-            verb = 'equip it' if drop['outcome'] == 'equipped' else 'salvage it'
-            out['text'] += f" It's a piece of gear — you {verb}!"
+            out['text'] += f" It's a piece of gear — {_drop_phrase(drop)}!"
         else:
             unowned = [g for g, spec in data.GRIMOIRES.items()
                        if spec['tier'] == 1 and g not in (doc.get('grimoires') or [])]
@@ -2502,8 +2620,7 @@ def _trove(table, sid, doc, node):
     drop = _roll_gear_drop(doc, data.TROVE_GEAR_TIERS)
     if drop:
         out['gear'] = drop
-        verb = 'equip it' if drop['outcome'] == 'equipped' else 'salvage it'
-        out['text'] += f" A glimmering relic within — you {verb}!"
+        out['text'] += f" A glimmering relic within — {_drop_phrase(drop)}!"
     _event(table, sid, 'trove',
            f"{doc['username']} cracked a hidden trove in the deep dark!",
            actor=doc['userId'])
@@ -2555,7 +2672,7 @@ def _append_treasure_gear(doc, out):
         if drop:
             out['gear'] = drop
             out['text'] += (' A piece of gear gleams among the hoard — '
-                            + ('equipped!' if drop['outcome'] == 'equipped' else 'salvaged.'))
+                            + _drop_phrase(drop) + '.')
 
 
 def _battle(table, sid, doc, payload):

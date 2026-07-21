@@ -220,6 +220,16 @@ GEAR = {
     'glowspore_charm': {'name': 'Glowspore Charm', 'slot': 'charm', 'tier': 1, 'cost': 30, 'light': 'full'},
 }
 
+# Effect-family index: rider tag -> {tier: gear_id}. After the rarity ladders
+# (gear-rarity Phase 2) each (rider, tier) is a single piece, so this resolves a
+# family's rungs for the drop "is-it-an-upgrade?" check and the Blacksmith's
+# next-rung lookup. Light gear (no rider) is excluded.
+GEAR_FAMILY = {}
+for _gid, _g in GEAR.items():
+    _rider = _g.get('rider')
+    if _rider:
+        GEAR_FAMILY.setdefault(_rider, {})[_g['tier']] = _gid
+
 # Rider → the stance it modifies + a human blurb (client reads this in Plan 3).
 GEAR_RIDERS = {
     'barbed':    {'stance': 'aggress', 'blurb': 'Your Aggress applies rot even on a clash or loss.'},

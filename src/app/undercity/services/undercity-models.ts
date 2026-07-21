@@ -413,13 +413,15 @@ export interface SpaceEvent {
   text: string;
   spores?: number;
   item?: string;
-  /** A gear drop from a loot source (mirrors undercity_db._roll_gear_drop). */
+  /** A gear drop from a loot source (mirrors undercity_db._roll_gear_drop).
+   * Found gear routes to the stash; if the stash was full it is auto-ground
+   * into materials ('stash-full'). */
   gear?: {
     id: string;
     slot: string;
-    outcome: 'equipped' | 'salvaged';
-    soldSpores: number;
-    displaced?: string | null;
+    tier: number;
+    outcome: 'stashed' | 'stash-full';
+    materials?: { moltings: number; ichor: number };
   };
   xp?: number;
   levels?: number;

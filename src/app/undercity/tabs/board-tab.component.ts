@@ -1314,8 +1314,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       const g = GEAR_MAP[src.gear.id];
       rewards.gearName = g?.name ?? src.gear.id;
       rewards.gearIcon = this.SLOT_ICONS[src.gear.slot] ?? 'hardware';
-      rewards.gearEquipped = src.gear.outcome === 'equipped';
-      rewards.gearSpores = src.gear.soldSpores;
+      rewards.gearStashed = src.gear.outcome === 'stashed';
     }
     return rewards;
   }

@@ -51,6 +51,20 @@ SOUL_HARVEST_MULT = 1.5   # Deathrite Shaman: ×Spores from wild & elite battle 
 CUTPURSE_SPORES = 6   # flat Spores after a won fight in which you landed a Feint
 BRAMBLE_REFLECT = 2   # flat damage a Bramble carapace reflects when struck
 
+# ── Forge economy (gear stash · Salvage Yard · Blacksmith) ───────────────────
+# See specs/2026-07-20-undercity-forge-economy-design.md. Found gear lands in a
+# capped stash instead of auto-mulching; the Salvage Yard grinds stash pieces
+# into materials (or sells for Spores); the Blacksmith spends materials to climb
+# a piece up its rarity ladder.
+GEAR_STASH_SIZE = 6           # capped hold for gear you aren't wearing
+# Moltings (common material) yielded by grinding a piece of the given rarity.
+SALVAGE_MOLTINGS = {1: 1, 2: 2, 3: 4}
+SALVAGE_ICHOR = 1             # Chrysalis Ichor (rare material) from grinding a Legendary
+# Blacksmith upgrade cost to reach the given tier (from the tier below).
+UPGRADE_SPORES = {2: 40, 3: 80}
+UPGRADE_MOLTINGS = {2: 3, 3: 6}
+UPGRADE_ICHOR = {2: 0, 3: 1}  # Rare->Legendary needs 1 Ichor (deep-content gate)
+
 # Per-rarity rider magnitude ladder (see gear-rarity Phase 1 plan). Each value is
 # anchored to the rider's current live magnitude at the tier it occupies today, so
 # no existing piece is nerfed; the only intended change is the modest T3 buff to

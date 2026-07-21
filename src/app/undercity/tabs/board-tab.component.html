@@ -187,7 +187,7 @@
                 {{ g.name }}
                 <span class="rarity-badge {{ tierRarity(g.tier).key }}">{{ tierRarity(g.tier).label }}</span>
                 —
-                {{ ev.gear.outcome === 'equipped' ? 'equipped!' : 'salvaged (+' + ev.gear.soldSpores + ')' }}
+                {{ ev.gear.outcome === 'stashed' ? 'to stash' : 'stash full → materials' }}
               </span>
             }
             @if (ev.paint) {

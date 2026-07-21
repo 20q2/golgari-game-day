@@ -10,6 +10,7 @@
  */
 import { getRecolored, getPlazaBackground, hatPlacement } from './sprite-engine';
 import { formSprite } from '../data/species';
+import { ALL_FORMS } from '../data/forms';
 
 export interface PlazaCreature {
   userId: string;
@@ -28,6 +29,15 @@ const BASE_SPRITE_SCALE = 1.25;
 const SCALE_MIN = 0.7;
 const SCALE_MAX = 1.6;
 const MAX_LEVEL = 12;
+
+// Source art ranges from 64px to 1024px, so raw pixel dimensions — not creature
+// tier — used to dictate on-screen size. Normalize every sprite's native height
+// to this baseline first (the native height cancels against the pixel dims used
+// at draw time, so a 1024px dragon and a 64px imp render at one height), then let
+// tier set the real hierarchy. 90px keeps a T1 starter at its previous size.
+const NORMALIZED_SPRITE_PX = 90;
+// Intended size hierarchy: each tier is 50% larger than the one below.
+const TIER_SCALE: Record<number, number> = { 1: 1, 2: 1.5, 3: 2.25 };
 
 const WORLD_W = 1800;
 const WORLD_H = 1200;
@@ -159,10 +169,13 @@ export class PlazaCanvas {
   private buildDinoData(partner: PlazaCreature, reuse: Dino | null): Dino {
     const level = partner.level || 1;
     const spr = formSprite(partner.form);
-    const scale =
-      (SCALE_MIN + ((Math.min(level, MAX_LEVEL) - 1) / (MAX_LEVEL - 1)) * (SCALE_MAX - SCALE_MIN)) *
-      spr.scale;
     const spriteCanvas = getRecolored(spr.sprite, partner.paint || {}, spr.regions);
+    const levelScale =
+      SCALE_MIN + ((Math.min(level, MAX_LEVEL) - 1) / (MAX_LEVEL - 1)) * (SCALE_MAX - SCALE_MIN);
+    const tier = ALL_FORMS[partner.form]?.tier ?? 1;
+    // Fit native height to the shared baseline, then scale by tier and level.
+    const nativeH = spriteCanvas?.height || NORMALIZED_SPRITE_PX;
+    const scale = (NORMALIZED_SPRITE_PX / nativeH) * (TIER_SCALE[tier] ?? 1) * levelScale;
 
     const anim: Dino = reuse ?? {
       partner,

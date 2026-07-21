@@ -30,8 +30,8 @@ export interface BattleRewards {
   itemIcon?: string;
   gearName?: string;
   gearIcon?: string;
-  gearEquipped?: boolean;
-  gearSpores?: number;
+  /** true = sent to the stash; false = stash was full, auto-ground for materials. */
+  gearStashed?: boolean;
 }
 
 /** One rendered strike in the battle log. */

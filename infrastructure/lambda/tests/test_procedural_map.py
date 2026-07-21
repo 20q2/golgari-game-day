@@ -102,3 +102,44 @@ def test_handle_map_serves_generated_depths_when_on(table, monkeypatch):
     status, doc = db.handle_map(table, {})
     ids = {n['id'] for n in doc['nodes']}
     assert 'city_lb' in ids and 'garden_lair' not in ids   # night's depths, not committed
+
+
+def test_season_start_stores_generated_depths(table, monkeypatch):
+    monkeypatch.setattr(data, 'PROCEDURAL_DUNGEONS', True)
+    db._season_map_cache.clear()
+    status, resp = act(table, 'season-start', hostKey='swampking')   # fresh night, flag on
+    assert status == 200
+    sid = _sid(table)
+    rec = db._get(table, db._season_pk(sid), 'MAP')
+    assert rec and rec.get('depths')
+    ids = {n['id'] for n in rec['depths']}
+    for biome in data.BIOMES:
+        assert f'{biome}_lair' in ids and f'{biome}_lb' in ids and f'{biome}_esc' in ids
+    # It is the generator's output, not the committed fallback.
+    depths = db._load_season_depths(table, sid)
+    assert depths != data.COMMITTED_DEPTHS
+
+
+def test_season_start_skips_generation_when_flag_off(table, monkeypatch):
+    monkeypatch.setattr(data, 'PROCEDURAL_DUNGEONS', False)
+    status, _ = act(table, 'season-start', hostKey='swampking')
+    assert status == 200
+    sid = _sid(table)
+    assert db._get(table, db._season_pk(sid), 'MAP') is None   # no MAP record written
+
+
+def test_generated_dungeon_is_navigable_end_to_end(table, monkeypatch):
+    monkeypatch.setattr(data, 'PROCEDURAL_DUNGEONS', True)
+    db._season_map_cache.clear()
+    act(table, 'season-start', hostKey='swampking')
+    act(table, 'join', starter='pest', home='city')
+    sid = _sid(table)
+    nodes = db._season_map(table, sid)
+    # Stand at the generated mouth; a roll of 1 must reach a real generated node.
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'city_lb'
+    dests = engine.legal_destinations(nodes, 'city_lb', 1,
+                                      db._closed_barriers(table, sid), db._blocked_nodes(doc))
+    assert dests and all(d in nodes for d in dests)
+    # The generated lair is present and still grants the city sigil.
+    assert 'city_lair' in nodes and 'city_lair' in data.SIGIL_LAIRS
