@@ -56,8 +56,11 @@ class FakeTable:
         item = self.items.get(self._key(Key))
         return {'Item': _ddb_copy(item)} if item else {}
 
-    def delete_item(self, Key):
-        self.items.pop(self._key(Key), None)
+    def delete_item(self, Key, ConditionExpression=None):
+        key = self._key(Key)
+        if ConditionExpression == 'attribute_exists(sk)' and key not in self.items:
+            raise ClientError({'Error': {'Code': 'ConditionalCheckFailedException'}}, 'DeleteItem')
+        self.items.pop(key, None)
         return {}
 
     def query(self, KeyConditionExpression, ExpressionAttributeValues,

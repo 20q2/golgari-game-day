@@ -1,0 +1,95 @@
+import undercity_db as db
+
+from tests.test_undercity_db import (  # noqa: F401
+    table, act, _sid, _player_at)
+
+
+def _two_players(table):
+    """Alex (seller, via _player_at) + Bob (buyer, joined + persisted)."""
+    sid, seller = _player_at(table, 'city_r0', spores=0)
+    act(table, 'join', user='user-bob', name='Bob', starter='pest')
+    buyer = db._get_player(table, sid, 'user-bob')
+    return sid, seller, buyer
+
+
+def _listing_gone(table, sid, lid):
+    return db._get(table, db._season_pk(sid), f'MARKET#{lid}') is None
+
+
+def test_market_list_and_buy_flow(table):
+    sid, seller, buyer = _two_players(table)
+    seller['gearStash'] = ['bark_hide']            # tier-2 carapace, cost 45
+    status, body = db._market_list(table, sid, seller, {'index': 0, 'price': 45})
+    assert status == 200
+    lid = body['listingId']
+    assert seller['gearStash'] == []
+
+    buyer['spores'] = 100
+    buyer['gearStash'] = []
+    status, _ = db._market_buy(table, sid, buyer, {'listingId': lid})
+    assert status == 200
+    assert buyer['spores'] == 55                   # 100 - 45
+    assert buyer['gearStash'] == ['bark_hide']
+
+    seller_after = db._get_player(table, sid, 'user-alex')
+    assert seller_after['spores'] == 45            # credited (started at 0)
+    assert any(e.get('type') == 'market-sold' for e in (seller_after.get('awayEvents') or []))
+    assert _listing_gone(table, sid, lid)
+
+
+def test_market_list_rejects_out_of_band_price(table):
+    sid, seller = _player_at(table, 'city_r0')
+    seller['gearStash'] = ['bark_hide']            # band 22..90
+    assert db._market_list(table, sid, seller, {'index': 0, 'price': 5})[0] == 409
+    assert db._market_list(table, sid, seller, {'index': 0, 'price': 999})[0] == 409
+    assert seller['gearStash'] == ['bark_hide']    # unchanged on reject
+
+
+def test_market_cannot_buy_own_listing(table):
+    sid, seller = _player_at(table, 'city_r0', spores=100)
+    seller['gearStash'] = ['bark_hide']
+    _, body = db._market_list(table, sid, seller, {'index': 0, 'price': 45})
+    assert db._market_buy(table, sid, seller, {'listingId': body['listingId']})[0] == 409
+
+
+def test_market_cancel_returns_gear(table):
+    sid, seller = _player_at(table, 'city_r0')
+    seller['gearStash'] = ['bark_hide']
+    _, body = db._market_list(table, sid, seller, {'index': 0, 'price': 45})
+    lid = body['listingId']
+    assert seller['gearStash'] == []
+    # A real action re-fetches the doc (fresh optimistic-lock version).
+    seller = db._get_player(table, sid, 'user-alex')
+    status, _ = db._market_cancel(table, sid, seller, {'listingId': lid})
+    assert status == 200
+    assert seller['gearStash'] == ['bark_hide']
+    assert _listing_gone(table, sid, lid)
+
+
+def test_market_listing_sold_only_once(table):
+    sid, seller, buyer = _two_players(table)
+    seller['gearStash'] = ['bark_hide']
+    _, body = db._market_list(table, sid, seller, {'index': 0, 'price': 45})
+    lid = body['listingId']
+    buyer['spores'] = 100
+    assert db._market_buy(table, sid, buyer, {'listingId': lid})[0] == 200
+    buyer2 = db._get_player(table, sid, 'user-bob')
+    buyer2['spores'] = 100
+    assert db._market_buy(table, sid, buyer2, {'listingId': lid})[0] == 409   # already claimed
+
+
+def test_market_buy_requires_spores(table):
+    sid, seller, buyer = _two_players(table)
+    seller['gearStash'] = ['bark_hide']
+    _, body = db._market_list(table, sid, seller, {'index': 0, 'price': 45})
+    buyer['spores'] = 10
+    assert db._market_buy(table, sid, buyer, {'listingId': body['listingId']})[0] == 409
+
+
+def test_market_listing_appears_in_state(table):
+    sid, seller = _player_at(table, 'city_r0')
+    seller['gearStash'] = ['bark_hide']
+    db._market_list(table, sid, seller, {'index': 0, 'price': 45})
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200
+    assert any(l['gearId'] == 'bark_hide' and l['price'] == 45 for l in state['market'])

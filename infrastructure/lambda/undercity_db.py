@@ -759,6 +759,124 @@ def _upgrade_gear(table, sid, doc, payload):
                upgrade={'from': gid, 'to': next_gid})
 
 
+# ── Player Market (Plaza, priced) ────────────────────────────────────────────
+
+def _market_price_band(gid):
+    """(min, max) Spore price allowed for a gear id, bounded around base cost."""
+    cost = data.GEAR[gid]['cost']
+    lo = max(1, int(cost * data.MARKET_PRICE_MIN_PCT))
+    hi = max(lo, int(cost * data.MARKET_PRICE_MAX_PCT))
+    return lo, hi
+
+
+def _credit_market_seller(table, sid, seller_id, amount, entry):
+    """Add sale proceeds to a (possibly offline) seller's doc + notify them,
+    retrying past the optimistic-lock conflict. Returns True if credited."""
+    for _ in range(5):
+        seller = _get_player(table, sid, seller_id)
+        if not seller:
+            return False
+        seller['spores'] = seller.get('spores', 0) + amount
+        _push_away_event(seller, entry)
+        if _put_player(table, seller):
+            return True
+    return False
+
+
+def _market_list(table, sid, doc, payload):
+    """List a stashed gear piece on the Player Market at a bounded Spore price."""
+    stash = doc.get('gearStash') or []
+    try:
+        index = int(payload.get('index'))
+        price = int(payload.get('price'))
+    except (TypeError, ValueError):
+        return _err('Pick a stash piece and a price.')
+    if index < 0 or index >= len(stash):
+        return _err('That stash slot is empty.', 409)
+    gid = stash[index]
+    lo, hi = _market_price_band(gid)
+    if price < lo or price > hi:
+        return _err(f'Price must be {lo}–{hi} Spores for that piece.', 409)
+    pk = _season_pk(sid)
+    active = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': pk, ':sk': 'MARKET#'})['Items']
+    if sum(1 for m in active if m.get('sellerId') == doc['userId']) >= data.MARKET_MAX_LISTINGS:
+        return _err(f'You already have {data.MARKET_MAX_LISTINGS} listings — cancel one first.', 409)
+    listing_id = '%08x' % _rng.getrandbits(32)
+    stash.pop(index)
+    doc['gearStash'] = stash
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    table.put_item(Item={
+        'pk': pk, 'sk': f'MARKET#{listing_id}', 'id': listing_id,
+        'sellerId': doc['userId'], 'sellerName': doc.get('username', '?'),
+        'gearId': gid, 'price': price, 'createdAt': _now()})
+    return _ok(doc, text=f"Listed {data.GEAR[gid]['name']} for {price} Spores.",
+               listingId=listing_id)
+
+
+def _market_buy(table, sid, doc, payload):
+    """Buy a listing: claim it (conditional delete so two buyers can't both take
+    it), pay the seller, and receive the gear into your stash."""
+    listing_id = payload.get('listingId')
+    pk = _season_pk(sid)
+    listing = _get(table, pk, f'MARKET#{listing_id}')
+    if not listing:
+        return _err('That listing is gone.', 409)
+    if listing['sellerId'] == doc['userId']:
+        return _err('That is your own listing — cancel it instead.', 409)
+    price = int(listing['price'])
+    gid = listing['gearId']
+    if doc.get('spores', 0) < price:
+        return _err('Not enough Spores.', 409)
+    if len(doc.get('gearStash') or []) >= data.GEAR_STASH_SIZE:
+        return _err('Your stash is full — make room first.', 409)
+    try:
+        table.delete_item(Key={'pk': pk, 'sk': f'MARKET#{listing_id}'},
+                          ConditionExpression='attribute_exists(sk)')
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            return _err('That listing just sold.', 409)
+        raise
+    doc['spores'] = doc.get('spores', 0) - price
+    doc.setdefault('gearStash', []).append(gid)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    _credit_market_seller(table, sid, listing['sellerId'], price, {
+        'type': 'market-sold',
+        'text': f"{doc.get('username', 'Someone')} bought your "
+                f"{data.GEAR[gid]['name']} for {price} Spores."})
+    return _ok(doc, text=f"Bought {data.GEAR[gid]['name']} for {price} Spores.")
+
+
+def _market_cancel(table, sid, doc, payload):
+    """Reclaim your own listing back into your stash."""
+    listing_id = payload.get('listingId')
+    pk = _season_pk(sid)
+    listing = _get(table, pk, f'MARKET#{listing_id}')
+    if not listing:
+        return _err('That listing is gone.', 409)
+    if listing['sellerId'] != doc['userId']:
+        return _err('That is not your listing.', 409)
+    if len(doc.get('gearStash') or []) >= data.GEAR_STASH_SIZE:
+        return _err('Your stash is full — make room first.', 409)
+    try:
+        table.delete_item(Key={'pk': pk, 'sk': f'MARKET#{listing_id}'},
+                          ConditionExpression='attribute_exists(sk)')
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            return _err('That listing just sold.', 409)
+        raise
+    doc.setdefault('gearStash', []).append(listing['gearId'])
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text=f"Reclaimed {data.GEAR[listing['gearId']]['name']}.")
+
+
 def cutpurse_bonus(doc, feint_won, won):
     """Flat Spores a Cutpurse charm pays after a won fight in which the player
     landed a winning Feint. Static per fight (does not stack with the number of
@@ -880,6 +998,14 @@ def handle_state(table, query_params):
         ScanIndexForward=False, Limit=150)
     events = [_clean(i) for i in ev['Items']]
 
+    mk = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': pk, ':sk': 'MARKET#'})
+    market = [{'id': m['id'], 'sellerId': m['sellerId'],
+               'sellerName': m.get('sellerName', ''),
+               'gearId': m['gearId'], 'price': int(m['price'])}
+              for m in (_clean(i) for i in mk['Items'])]
+
     players, you, snares, result, posts, sites = [], None, [], None, {}, {}
     veins, vaults, shops = {}, {}, {}
     now = _now()
@@ -958,6 +1084,7 @@ def handle_state(table, query_params):
         'snares': snares,
         'tradingPosts': posts,
         'bazaars': bazaars,
+        'market': market,
         'excavations': excavations,
         'veins': veins,
         'vaults': vaults,
@@ -1067,6 +1194,8 @@ def handle_action(table, body):
         'cancel-loot-puzzle': _cancel_loot_puzzle,
         'equip-gear': _equip_gear,
         'salvage-gear': _salvage_gear, 'upgrade-gear': _upgrade_gear,
+        'market-list': _market_list, 'market-buy': _market_buy,
+        'market-cancel': _market_cancel,
     }
     handler = handlers.get(atype)
     if not handler:

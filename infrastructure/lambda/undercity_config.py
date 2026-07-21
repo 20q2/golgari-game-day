@@ -76,6 +76,14 @@ UPGRADE_SPORES = {2: 40, 3: 80}
 UPGRADE_MOLTINGS = {2: 3, 3: 6}
 UPGRADE_ICHOR = {2: 0, 3: 1}  # Rare->Legendary needs 1 Ichor (deep-content gate)
 
+# ── Player Market (Plaza, priced) ────────────────────────────────────────────
+# List stashed gear at a Spore price bounded to a band around its base cost so
+# nobody posts a 9999-Spore troll listing. Distinct from the board barter
+# Trading Post (which stays). See specs/2026-07-20-undercity-forge-economy-design.md.
+MARKET_PRICE_MIN_PCT = 0.5    # floor = ceil(base cost * this)
+MARKET_PRICE_MAX_PCT = 2.0    # ceiling = floor(base cost * this)
+MARKET_MAX_LISTINGS = 5       # active listings per seller
+
 # Per-rarity rider magnitude ladder (see gear-rarity Phase 1 plan). Each value is
 # anchored to the rider's current live magnitude at the tier it occupies today, so
 # no existing piece is nerfed; the only intended change is the modest T3 buff to
