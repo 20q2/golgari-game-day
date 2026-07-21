@@ -303,6 +303,19 @@ def _riders(doc):
     return frozenset(out)
 
 
+def _rider_mags(doc):
+    """Map each equipped gear rider -> its magnitude at that piece's tier."""
+    out = {}
+    for gid in (doc.get('gear') or {}).values():
+        g = data.GEAR.get(gid)
+        if not g:
+            continue
+        rider = g.get('rider')
+        if rider and rider in data.RIDER_SCALE:
+            out[rider] = data.RIDER_SCALE[rider][g['tier']]
+    return out
+
+
 def _active_buff_kinds(doc):
     return frozenset(b.get('kind') for b in (doc.get('buffs') or []) if b.get('kind'))
 
@@ -319,7 +332,7 @@ def _combatant(doc):
         atk=eff['atk'], dfn=eff['def'], spd=eff['spd'],
         passives=_passives(doc), stance=doc.get('stance', 'fight'),
         level=doc.get('level', 1),
-        riders=_riders(doc), buffs=_active_buff_kinds(doc),
+        riders=_riders(doc), rider_mag=_rider_mags(doc), buffs=_active_buff_kinds(doc),
         has_smoke_spore='smoke_spore' in (doc.get('bag') or []),
         flee_bonus=(10 if doc.get('homeBiome') == 'cavern' else 0)
                    + (15 if any(b.get('kind') == 'glowveil'
@@ -334,6 +347,7 @@ def _bt_snapshot(c):
         'name': c.name, 'hp': int(c.hp), 'maxHp': int(c.max_hp),
         'atk': int(c.atk), 'dfn': int(c.dfn), 'spd': int(c.spd),
         'passives': sorted(c.passives), 'riders': sorted(c.riders),
+        'rider_mag': dict(c.rider_mag),
         'buffs': sorted(c.buffs), 'flee_bonus': int(c.flee_bonus),
         'has_smoke_spore': bool(c.has_smoke_spore),
         'rot_stacks': int(c.rot_stacks), 'first_win_used': bool(c.first_win_used),
@@ -348,6 +362,7 @@ def _bt_to_combatant(s):
         atk=int(s['atk']), dfn=int(s['dfn']), spd=int(s['spd']),
         passives=frozenset(s.get('passives') or []),
         riders=frozenset(s.get('riders') or []),
+        rider_mag={k: float(v) for k, v in (s.get('rider_mag') or {}).items()},
         buffs=frozenset(s.get('buffs') or []),
         flee_bonus=int(s.get('flee_bonus', 0)),
         has_smoke_spore=bool(s.get('has_smoke_spore', False)))

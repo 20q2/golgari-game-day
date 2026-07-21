@@ -22,3 +22,19 @@ def test_combatant_mag_reads_rider_mag_with_default():
     assert c.mag('bramble') == 3          # equipped -> scaled value
     assert c.mag('spiked', 1.0) == 1.0    # not equipped -> caller's default
     assert c.mag('spiked') == 0           # not equipped -> default 0
+
+
+def test_combatant_from_doc_has_scaled_rider_mag():
+    import undercity_db as db
+    # bark_hide = tier-2 'spiked' carapace; RIDER_SCALE['spiked'][2] == 1.5
+    doc = {'username': 'p', 'hp': 40, 'level': 1, 'gear': {'carapace': 'bark_hide'}}
+    c = db._combatant(doc)
+    assert c.mag('spiked', 1.0) == 1.5
+
+
+def test_battle_snapshot_roundtrips_rider_mag():
+    import undercity_db as db, undercity_engine as engine
+    c = engine.Combatant(name='p', hp=40, max_hp=40, atk=8, dfn=4, spd=5,
+                         riders=frozenset({'spiked'}), rider_mag={'spiked': 1.5})
+    restored = db._bt_to_combatant(db._bt_snapshot(c))
+    assert restored.mag('spiked', 1.0) == 1.5
