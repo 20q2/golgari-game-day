@@ -372,6 +372,13 @@ def _bt_store(c, rec_side):
     rec_side['feint_won'] = bool(c.feint_won)
 
 
+def _battle_status(side):
+    """Client-facing standing status for one combatant snapshot: the rot stack
+    count (drives the DoT) and the list of active buff/debuff effect kinds."""
+    return {'rot': int(side.get('rot_stacks', 0)),
+            'buffs': list(side.get('buffs') or [])}
+
+
 def _npc_combatant(npc):
     return engine.Combatant(
         name=npc['name'], hp=npc['hp'], max_hp=npc.get('maxHp', npc['hp']),
@@ -454,6 +461,8 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
                     'spd': npc_snap['spd']},
             'telegraph': shown, 'round': 1,
             'frenzyFrom': _frenzy_from(kind),
+            'playerStatus': _battle_status(rec['player']),
+            'npcStatus': _battle_status(rec['npc']),
             'text': f'A {npc["name"]} bars your path!'}
 
 
@@ -2091,6 +2100,8 @@ def _combat_round(table, sid, doc, payload):
                             'frenzyFrom': frenzy_from,
                             'playerHp': rec['player']['hp'],
                             'npcHp': rec['npc']['hp'],
+                            'playerStatus': _battle_status(rec['player']),
+                            'npcStatus': _battle_status(rec['npc']),
                             'revealNext': rec['player']['reveal_next']})
 
 
@@ -2138,6 +2149,8 @@ def _battle_resume(rec, player_hp):
         'telegraph': _shown_telegraph(rec),
         'frenzyFrom': _frenzy_from(rec.get('kind')),
         'playerHp': player_hp,
+        'playerStatus': _battle_status(rec.get('player', {})),
+        'npcStatus': _battle_status(rec.get('npc', {})),
         'revealed': rec.get('npcActual') if peeked else None,
         'npc': {
             'id': (rec.get('npcMeta') or {}).get('id'),

@@ -1516,6 +1516,41 @@ def _begin(table, sid, kind='wild', npc=None, ctx=None, user='user-alex'):
     return ev
 
 
+def test_battle_status_reads_rot_and_buffs():
+    side = {'rot_stacks': 3, 'buffs': ['harden_shell', 'weaken_hex']}
+    assert db._battle_status(side) == {'rot': 3, 'buffs': ['harden_shell', 'weaken_hex']}
+
+
+def test_battle_status_defaults_empty():
+    assert db._battle_status({}) == {'rot': 0, 'buffs': []}
+
+
+def test_start_battle_includes_status(table, monkeypatch):
+    monkeypatch.setattr(db, '_rng', _ZeroRng())
+    act(table, 'join', starter='kraul')
+    sid = _sid(table)
+    ev = _begin(table, sid)
+    assert ev['playerStatus'] == {'rot': 0, 'buffs': []}
+    assert ev['npcStatus'] == {'rot': 0, 'buffs': []}
+
+
+def test_combat_round_reports_status(table, monkeypatch):
+    monkeypatch.setattr(db, '_rng', _ZeroRng())
+    act(table, 'join', starter='kraul')
+    sid = _sid(table)
+    _begin(table, sid)
+    # Seed a standing status on each side, then resolve a no-op round.
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['battle']['npc']['rot_stacks'] = 3
+    doc['battle']['player']['buffs'] = ['harden_shell']
+    db._put_player(table, doc)
+    monkeypatch.setattr(db.engine, 'resolve_round', lambda *a, **k: [])
+    status, resp = act(table, 'combat-round', stance='aggress')
+    assert status == 200
+    assert resp['combat']['npcStatus']['rot'] == 3
+    assert resp['combat']['playerStatus']['buffs'] == ['harden_shell']
+
+
 def test_wild_battle_start_then_round_continues(table, monkeypatch):
     monkeypatch.setattr(db, '_rng', _ZeroRng())   # force reads so telegraph shows
     act(table, 'join', starter='kraul')
