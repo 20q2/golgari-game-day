@@ -292,6 +292,10 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             # Rabid: each Aggress win ramps future Aggress hits (applies next win).
             if win_stance == 'aggress' and winr.has_rider('rabid'):
                 winr.aggress_ramp += winr.mag('rabid', 0)
+            # Rend (ATK-5 perk): a winning Aggress always applies 1 rot stack.
+            if win_stance == 'aggress' and winr.has_perk('rend') and losr.hp > 0:
+                losr.rot_stacks += 1
+                entries.append({'round': rnd, 'by': win_side, 'rotApplied': 1})
             # A winning Feint: serrated debuffs enemy next round; glint reveals;
             # venomtrick poisons; cutpurse's flag is armed for the post-fight payout.
             if win_stance == 'feint':

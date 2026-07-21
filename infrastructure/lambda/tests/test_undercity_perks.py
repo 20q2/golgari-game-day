@@ -74,3 +74,22 @@ def test_carapace_grind_absent_without_perk():
     foe = engine.Combatant(name='f', hp=200, max_hp=200, atk=6, dfn=6, spd=6)
     entries = engine.resolve_round(plain, foe, 'guard', 'feint', 1, random.Random(1))
     assert not any(e.get('guardChip') for e in entries)
+
+
+# ── Task 5: Rend ─────────────────────────────────────────────────────────────
+
+def test_rend_applies_rot_on_winning_aggress():
+    import random
+    me = engine.Combatant(name='m', hp=40, max_hp=40, atk=12, dfn=5, spd=6,
+                          perks=frozenset({'rend'}))
+    foe = engine.Combatant(name='f', hp=60, max_hp=60, atk=5, dfn=3, spd=3)
+    engine.resolve_round(me, foe, 'aggress', 'feint', 1, random.Random(3))  # aggress>feint
+    assert foe.rot_stacks >= 1
+
+
+def test_rend_no_rot_without_perk():
+    import random
+    me = engine.Combatant(name='m', hp=40, max_hp=40, atk=12, dfn=5, spd=6)
+    foe = engine.Combatant(name='f', hp=60, max_hp=60, atk=5, dfn=3, spd=3)
+    engine.resolve_round(me, foe, 'aggress', 'feint', 1, random.Random(3))
+    assert foe.rot_stacks == 0
