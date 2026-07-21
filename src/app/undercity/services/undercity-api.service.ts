@@ -34,9 +34,11 @@ export class UndercityApiService {
   }
 
   /** The night's board: fixed surface + this season's (possibly generated)
-   *  depths. Falls back to the committed board server-side when no season. */
-  async getMap(): Promise<BoardMap> {
-    const response = await fetch(`${this.API_BASE_URL}/game/map`, {
+   *  depths. With `sample`, returns a preview of the generator for that seed
+   *  (surface + freshly generated depths), ignoring flag/season. */
+  async getMap(sample?: string): Promise<BoardMap> {
+    const qs = sample ? `?sample=${encodeURIComponent(sample)}` : '';
+    const response = await fetch(`${this.API_BASE_URL}/game/map${qs}`, {
       method: 'GET',
       mode: 'cors',
       headers: { 'Content-Type': 'application/json' },
