@@ -376,6 +376,81 @@ def test_move_requires_matching_pending(table):
     assert status == 409
 
 
+# ── Gate pass-by heal (50%) vs landing (100%) ────────────────────────────────
+
+def _prime_move(table, position, value, dests, hp=None):
+    """Put user-alex at `position` with a hand-made pendingMove so a specific
+    walk can be exercised deterministically."""
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = position
+    doc['pendingMove'] = {'value': value, 'dests': list(dests)}
+    if hp is not None:
+        doc['hp'] = hp
+    db._put_player(table, doc)
+    return doc
+
+
+def test_pass_through_gate_heals_half(table):
+    act(table, 'join', starter='saproling', home='cavern')
+    doc = _prime_move(table, 'city_r1', 2, ['city_r9'], hp=1)
+    max_hp = engine.effective_stats(doc)['maxHp']
+    status, resp = act(table, 'move', to='city_r9',
+                       path=['city_r1', 'city_r0', 'city_r9'])
+    assert status == 200, resp
+    assert resp['heal'] == {'amount': round(0.5 * max_hp), 'hp': 1 + round(0.5 * max_hp),
+                            'kind': 'gate_pass'}
+    assert resp['you']['hp'] == 1 + round(0.5 * max_hp)
+
+
+def test_pass_through_gate_caps_at_max(table):
+    act(table, 'join', starter='saproling', home='cavern')
+    doc = _prime_move(table, 'city_r1', 2, ['city_r9'])  # hp already full
+    max_hp = engine.effective_stats(doc)['maxHp']
+    status, resp = act(table, 'move', to='city_r9',
+                       path=['city_r1', 'city_r0', 'city_r9'])
+    assert status == 200, resp
+    assert resp['heal'] is None            # already full → no heal, no number
+    assert resp['you']['hp'] == max_hp
+
+
+def test_landing_on_gate_heals_full(table):
+    act(table, 'join', starter='saproling', home='cavern')
+    doc = _prime_move(table, 'city_r1', 1, ['city_r0'], hp=1)
+    max_hp = engine.effective_stats(doc)['maxHp']
+    status, resp = act(table, 'move', to='city_r0', path=['city_r1', 'city_r0'])
+    assert status == 200, resp
+    assert resp['heal'] == {'amount': max_hp - 1, 'hp': max_hp, 'kind': 'gate_land'}
+    assert resp['you']['hp'] == max_hp
+
+
+def test_start_on_gate_does_not_heal(table):
+    act(table, 'join', starter='saproling', home='cavern')
+    _prime_move(table, 'city_r0', 1, ['city_r1'], hp=5)
+    status, resp = act(table, 'move', to='city_r1', path=['city_r0', 'city_r1'])
+    assert status == 200, resp
+    assert resp['heal'] is None
+    assert resp['you']['hp'] == 5
+
+
+def test_illegal_path_rejected(table):
+    act(table, 'join', starter='saproling', home='cavern')
+    _prime_move(table, 'city_r1', 2, ['city_r9'], hp=1)
+    # Non-adjacent jump city_r1 -> city_r9.
+    status, resp = act(table, 'move', to='city_r9', path=['city_r1', 'city_r9'])
+    assert status == 409, resp
+
+
+def test_move_without_path_still_works(table):
+    # Stale client that never sends `path`: destination-only behavior, no heal.
+    act(table, 'join', starter='saproling', home='cavern')
+    _prime_move(table, 'city_r1', 2, ['city_r9'], hp=1)
+    status, resp = act(table, 'move', to='city_r9')
+    assert status == 200, resp
+    assert resp.get('heal') is None
+    assert resp['you']['hp'] == 1        # no pass-heal without a path
+
+
 def test_claims_and_cooldowns(table):
     act(table, 'join', starter='pest', home='cavern')
     status, resp = act(table, 'claim', kind='finished_won')
@@ -1983,7 +2058,7 @@ def test_banked_rewards_applied_on_join():
     status, resp = act(t, 'join', user='user-late', name='Late', starter='pest')
     assert status == 200
     you = resp['you']
-    # JOIN_ROLLS=3 + banked (2 participation + 1 winner) = 6, capped at ROLL_CAP=6.
+    # JOIN_ROLLS=3 + banked (2 participation + 1 winner) = 6, capped at ROLL_CAP.
     assert you['rolls'] == min(data.ROLL_CAP,
                                data.JOIN_ROLLS + data.CLAIM_FINISHED_ROLLS + data.CLAIM_WON_BONUS_ROLLS)
     assert len(you['bag']) == 1                       # banked item delivered

@@ -1874,11 +1874,43 @@ def _move(table, sid, doc, payload):
         return _err('Roll first.', 409)
     if to not in pm['dests']:
         return _err('That space is not reachable with this roll.', 409)
-    doc['pendingMove'] = None
+
     prev = doc['position']
+    nodes = _season_map(table, sid)
+    heal = None
+
+    # Server-authoritative route: the client walks node-by-node and sends the
+    # path it took. Validate it, then heal for passing THROUGH a gate (landing
+    # on one still full-heals in _resolve_space below). A stale client that
+    # omits `path` keeps the old destination-only behavior — no pass-heal.
+    path = payload.get('path')
+    if path is not None:
+        allowed = set(pm.get('values') or [pm['value']])
+        closed = _closed_barriers(table, sid)
+        blocked = _blocked_nodes(doc)
+        if (not path or path[0] != prev or path[-1] != to
+                or not engine.validate_walk(nodes, path, allowed, closed, blocked)):
+            return _err('That route is not a legal walk.', 409)
+        passed_gate = any(nodes[n]['type'] == 'gate' for n in path[1:-1])
+        if passed_gate and nodes[to]['type'] != 'gate':
+            max_hp = engine.effective_stats(doc)['maxHp']
+            amount = min(round(data.GATE_PASS_HEAL_FRACTION * max_hp),
+                         max_hp - int(doc['hp']))
+            if amount > 0:
+                doc['hp'] = int(doc['hp']) + amount
+                doc['hpUpdatedAt'] = _now()
+                heal = {'amount': amount, 'hp': doc['hp'], 'kind': 'gate_pass'}
+
+    doc['pendingMove'] = None
     doc['position'] = to
 
     space_event = _resolve_space(table, sid, doc, to, prev)
+
+    # Landing on a gate full-heals inside _resolve_space; surface the amount so
+    # the client floats heal numbers for it too (supersedes any pass-heal).
+    if space_event.get('type') == 'gate':
+        healed = space_event.get('healed', 0)
+        heal = {'amount': healed, 'hp': doc['hp'], 'kind': 'gate_land'} if healed else None
 
     conflict = _save_or_conflict(table, doc)
     if conflict:
@@ -1887,7 +1919,7 @@ def _move(table, sid, doc, payload):
     # _resolve_space may relocate the unit (tunnel crossing, wild warp) — report
     # occupants of where it actually ended up, not the pre-resolution target.
     occupants = _occupants(table, sid, doc['position'], doc['userId'])
-    return _ok(doc, spaceEvent=space_event, occupants=occupants)
+    return _ok(doc, spaceEvent=space_event, occupants=occupants, heal=heal)
 
 
 def _respawn(table, sid, doc, payload):
@@ -2028,9 +2060,12 @@ def _resolve_space(table, sid, doc, node, prev):
                 'options': options}
 
     if ntype == 'gate':
-        doc['hp'] = engine.effective_stats(doc)['maxHp']
+        max_hp = engine.effective_stats(doc)['maxHp']
+        healed = max(0, max_hp - int(doc['hp']))
+        doc['hp'] = max_hp
         doc['hpUpdatedAt'] = _now()
-        return {'type': 'gate', 'text': 'The Gate of the Swarm mends you fully.'}
+        return {'type': 'gate', 'text': 'The Gate of the Swarm mends you fully.',
+                'healed': healed}
 
     if ntype == 'boss':
         return _boss(table, sid, doc, node, prev)

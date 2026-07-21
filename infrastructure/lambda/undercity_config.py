@@ -14,7 +14,7 @@ events, NPC pools) stay in undercity_data.py — this file is scalars only.
 DEBUG = False
 
 # ── Roll economy ─────────────────────────────────────────────────────────────
-ROLL_CAP = 6
+ROLL_CAP = 15
 JOIN_ROLLS = 3
 BRAVERY_BONUS_ROLLS = 1      # extra starting rolls for hatching a random creature
 ROLL_REGEN_MINUTES = 30      # regen tick length in minutes, up to ROLL_CAP
@@ -40,6 +40,7 @@ GRIMOIRE_SWAP_COOLDOWN_MIN = 30  # opening a different grimoire is gated for N m
 # and simply heals nothing at 0.
 HP_REGEN_PCT = 0.0           # of max HP per interval (0 = passive regen off)
 HP_REGEN_INTERVAL_MIN = 10
+GATE_PASS_HEAL_FRACTION = 0.5  # fraction of max HP restored for passing THROUGH a gate (landing still full-heals)
 COMPOST_SHIELD_MIN = 15
 COMPOST_RESPAWN_PCT = 0.5
 PVP_SPORE_STEAL = 0.25
