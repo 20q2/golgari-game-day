@@ -218,19 +218,35 @@ def test_wilderness_monsters_are_tougher_than_base_elites(table):
     assert min(n['hp'] for n in data.WILDERNESS_ELITE_NPCS) >= base_max_hp
 
 
-def test_tunnel_landing_has_no_mechanical_effect(table):
+def test_tier1_tunnel_landing_hops_across_for_free(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    assert data.MAP_NODES['t_cavern_bog0']['type'] == 'tunnel'
+    doc['tier'] = 1
     doc['position'] = 't_cavern_bog0'
     doc['spores'] = 50
     before_hp = doc['hp']
-    ev = db._resolve_space(table, sid, doc, 't_cavern_bog0', 'cavern_r1')
+    ev = db._resolve_space(table, sid, doc, 't_cavern_bog0', 'cavern_r9')
     assert ev['type'] == 'tunnel'
-    assert doc['spores'] == 50          # no loot/hazard change
-    assert doc['hp'] == before_hp       # no battle
+    assert ev['to'] == data.TUNNEL_EXITS['t_cavern_bog0']  # 'bog_r1'
+    assert doc['position'] == data.TUNNEL_EXITS['t_cavern_bog0']
+    assert doc['spores'] == 50           # T1 pays no toll
+    assert doc['hp'] == before_hp        # consequence-free: no battle
     assert doc.get('pendingLoot') is None
+
+
+def test_tier2_tunnel_landing_charges_the_toll(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['tier'] = 2
+    doc['position'] = 't_cavern_bog0'
+    doc['spores'] = 50
+    ev = db._resolve_space(table, sid, doc, 't_cavern_bog0', 'cavern_r9')
+    assert ev['type'] == 'tunnel'
+    assert ev['toll'] == data.TUNNEL_TOLL[2]
+    assert doc['spores'] == 50 - data.TUNNEL_TOLL[2]
+    assert doc['position'] == data.TUNNEL_EXITS['t_cavern_bog0']
 
 
 def test_tier1_can_cross_a_tunnel(table):

@@ -1453,7 +1453,9 @@ def _move(table, sid, doc, payload):
     if conflict:
         return conflict
 
-    occupants = _occupants(table, sid, to, doc['userId'])
+    # _resolve_space may relocate the unit (tunnel crossing, wild warp) — report
+    # occupants of where it actually ended up, not the pre-resolution target.
+    occupants = _occupants(table, sid, doc['position'], doc['userId'])
     return _ok(doc, spaceEvent=space_event, occupants=occupants)
 
 
@@ -1677,10 +1679,19 @@ def _resolve_space(table, sid, doc, node, prev):
                         'Your next roll can carry you through.'}
 
     if ntype == 'tunnel':
-        # Safe passage: a Tier-1-only shortcut between biomes. No combat, loot,
-        # or hazard — the mobility itself is the reward. (Evolved units are kept
-        # off tunnels entirely by the movement gate, so only Tier-1s land here.)
-        return {'type': 'tunnel', 'text': 'You slip through the narrow tunnel.'}
+        # Fast path between biomes. Tier-1 crosses free; evolved units pay a
+        # tier toll (the movement gate already guaranteed they can afford it).
+        # Landing carries you fully across to the far biome node for FREE and
+        # is CONSEQUENCE-FREE — the far node's landing effect does not resolve.
+        exit_node = data.TUNNEL_EXITS[node]
+        tier = doc.get('tier', 1)
+        toll = 0
+        if tier > data.TUNNEL_TIER_MAX:
+            toll = data.TUNNEL_TOLL.get(tier, 0)
+            doc['spores'] = doc.get('spores', 0) - toll
+        doc['position'] = exit_node
+        return {'type': 'tunnel', 'to': exit_node, 'toll': toll,
+                'text': 'You slip through the tunnel and out the far side.'}
 
     return {'type': ntype, 'text': '…'}
 
