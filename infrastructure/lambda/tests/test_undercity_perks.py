@@ -93,3 +93,20 @@ def test_rend_no_rot_without_perk():
     foe = engine.Combatant(name='f', hp=60, max_hp=60, atk=5, dfn=3, spd=3)
     engine.resolve_round(me, foe, 'aggress', 'feint', 1, random.Random(3))
     assert foe.rot_stacks == 0
+
+
+# ── Task 6: Deathdrive ───────────────────────────────────────────────────────
+
+def test_deathdrive_boosts_aggress_only_when_low():
+    low = engine.Combatant(name='l', hp=10, max_hp=40, atk=10, dfn=5, spd=5,
+                           perks=frozenset({'deathdrive'}))
+    high = engine.Combatant(name='h', hp=40, max_hp=40, atk=10, dfn=5, spd=5,
+                            perks=frozenset({'deathdrive'}))
+    assert engine._swing_base(low, 'aggress') > engine._swing_base(high, 'aggress')
+    assert engine._swing_base(low, 'guard') == engine._swing_base(high, 'guard')
+
+
+def test_deathdrive_noop_without_perk():
+    low = engine.Combatant(name='l', hp=10, max_hp=40, atk=10, dfn=5, spd=5)
+    high = engine.Combatant(name='h', hp=40, max_hp=40, atk=10, dfn=5, spd=5)
+    assert engine._swing_base(low, 'aggress') == engine._swing_base(high, 'aggress')

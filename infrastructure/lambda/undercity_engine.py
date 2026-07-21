@@ -126,7 +126,12 @@ def _swing_base(striker: 'Combatant', stance: str) -> float:
     if stance == 'aggress':
         # Aggress double-dips on ATK (str is the aggressor's whole identity):
         # swing = atk + STANCE_STAT_WEIGHT × atk. Rabid adds a flat, stacking ramp.
-        return striker.atk * (1 + data.STANCE_STAT_WEIGHT) + striker.aggress_ramp
+        base = striker.atk * (1 + data.STANCE_STAT_WEIGHT) + striker.aggress_ramp
+        # Deathdrive (ATK-15 perk): berserker — swing harder while below half HP.
+        if (striker.has_perk('deathdrive') and striker.max_hp
+                and striker.hp < 0.5 * striker.max_hp):
+            base *= (1 + data.DEATHDRIVE_MULT)
+        return base
     # Guard/Feint lean on their OWN signature stat (DEF / SPD) and take only a
     # partial ATK base, so a pure-ATK build can't also swing hard while guarding
     # or feinting, and a dedicated DEF/SPD build's stance hits for real.
