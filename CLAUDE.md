@@ -59,6 +59,7 @@ A phone-first board sub-game at `/undercity` (lazy-loaded standalone feature in 
 - **Balance numbers**: scalar tunables (roll economy, `DEBUG` flag, facility knobs) live in `infrastructure/lambda/undercity_config.py`; weighted tables (loot, shop stock, evolution) stay in `undercity_data.py`. Display mirrors are duplicated in `src/app/undercity/data/*.ts` — if you tune server numbers, update those mirrors.
 - **Spells:** full reference (player rules, effect-kind vocabulary, action contracts, add-a-spell checklist, invariants) in [specs/undercity-spells.md](specs/undercity-spells.md).
 - **Combat:** interactive stance-triangle model + add-an-enemy / add-equipment / add-an-effect checklists in [specs/undercity-combat.md](specs/undercity-combat.md).
+- **Attribute perks:** ATK/DEF/SPD threshold perks (nodes at 5/10/15, derived from the invested base stat) in [specs/2026-07-21-undercity-attribute-perks-design.md](specs/2026-07-21-undercity-attribute-perks-design.md). Defs live in `undercity_data.PERKS`/`PERK_TRACKS` (scalars in `undercity_config.py`), engine hooks via `engine.attribute_perks()` + `Combatant.perks`; client mirror `src/app/undercity/data/perks.ts`. The Guard/DEF fix is the DEF-10 perk *Carapace Grind*. Balance simulator + findings: `infrastructure/lambda/sim/`.
 - Revenge buffs, achievements, and seal-milestone hats are deliberately stubbed (GDD §14 deferred list). The boss finale is in: Savra's persistent HP pool plus the host-only "Awaken the Queen" trigger (`boss-awaken`) that drops the sigil gate for everyone.
 
 ## Adding a board game

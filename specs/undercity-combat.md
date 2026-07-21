@@ -174,3 +174,29 @@ Combat consumables map to three general one-round modifiers on `resolve_round`:
 `NPC_DEFAULT_PERSONALITY`, `NPC_DEFAULT_BLUFF`. Read-rate knobs: `READ_BASE`,
 `READ_MAX`, `READ_SPD_COEFF`, `READ_PASSIVE_BONUS`, and per-gear `readBonus`. The
 `test_balance_good_play_beats_fodder` invariant guards changes to these.
+
+## Attribute perks (design 2026-07-21)
+
+Investing in an attribute unlocks threshold perks (nodes at **5 / 10 / 15**),
+derived from the **invested base stat** (`doc['atk'/'def'/'spd']` = species base
++ level spends + evolution bonuses — **gear/buffs never light a perk**). Base
+stats can already light a tier-1 node (a kraul hatches with *Rend*). The set is
+computed by `engine.attribute_perks(doc)` and rides on `Combatant.perks`; it is
+surfaced in state as `you.perks` / `player.perks`.
+
+- **ATK** — *Rend* (5: winning Aggress applies rot), *Menace* (10: enemies bluff
+  less, via `_telegraph_next`), *Deathdrive* (15: Aggress swing bonus below half
+  HP, in `_swing_base`).
+- **DEF** — *Thick Hide* (5: halve hazard/mystery HP loss, `_apply_hp_loss`),
+  **Carapace Grind** (10: the Guard/DEF fix — a Guard holder that doesn't win the
+  exchange still deals a DEF-scaled chip; end of `resolve_round`, coeff
+  `GUARD_CHIP_COEFF`), *Last Stand* (15: survive one lethal blow per descent at 1
+  HP, in `_finish_battle`; resets on surfacing).
+- **SPD** — *Fleetfoot* (5: optional reroll of a 1), *Pathfinder* (10: roll two,
+  keep either — union destinations), *Blink* (15: choose the die value); all in
+  `_roll`.
+
+Scalars in `undercity_config.py` (`GUARD_CHIP_COEFF`, `DEATHDRIVE_MULT`,
+`MENACE_FACTOR`, `THICK_HIDE_MULT`); defs in `undercity_data.PERKS`/`PERK_TRACKS`;
+client mirror `src/app/undercity/data/perks.ts`. Tests: `tests/test_undercity_perks.py`.
+Balance validated headless in `infrastructure/lambda/sim/` (see `proto_fix.verify_real`).
