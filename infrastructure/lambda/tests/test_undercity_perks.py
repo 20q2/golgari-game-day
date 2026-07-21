@@ -13,6 +13,14 @@ import undercity_engine as engine  # noqa: E402
 from tests.test_undercity_db import act, _sid, FakeTable, _finish_started_battle  # noqa: E402,F401
 
 
+@pytest.fixture
+def table():
+    t = FakeTable()
+    status, resp = act(t, 'season-start', hostKey='swampking')
+    assert status == 200
+    return t
+
+
 def _doc(atk=1, dfn=1, spd=1):
     return {'atk': atk, 'def': dfn, 'spd': spd}
 
@@ -149,3 +157,31 @@ def test_hp_loss_floors_at_one():
     doc = {'atk': 1, 'def': 1, 'spd': 1, 'hp': 5, 'maxHp': 30}
     db._apply_hp_loss(doc, 100)
     assert doc['hp'] == 1   # hazards never compost
+
+
+# ── Task 9: Last Stand ───────────────────────────────────────────────────────
+
+def test_last_stand_survives_once_per_descent(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['def'] = 15   # unlock last_stand
+    doc['hp'] = 20
+    db._put_player(table, doc)
+    doc = db._get_player(table, sid, 'user-alex')
+    db._wild_battle(table, sid, doc)
+    _finish_started_battle(table, monkeypatch, doc, outcome='defender', defender_hp=5)
+    you = db._get_player(table, sid, 'user-alex')
+    assert you['hp'] == 1               # survived the lethal blow
+    assert you.get('lastStandUsed') is True
+    assert not you.get('battle')        # fight is over, not composted mid-fight
+
+
+def test_last_stand_not_triggered_without_perk(table, monkeypatch):
+    act(table, 'join', starter='pest')  # base def 5, no last_stand
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    db._wild_battle(table, sid, doc)
+    _finish_started_battle(table, monkeypatch, doc, outcome='defender', defender_hp=5)
+    you = db._get_player(table, sid, 'user-alex')
+    assert not you.get('lastStandUsed')

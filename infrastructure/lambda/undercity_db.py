@@ -1790,6 +1790,9 @@ def _resolve_space(table, sid, doc, node, prev):
     # Per-descent rest tracking resets the moment you stand on the surface.
     if region != 'depths' and doc.get('restsUsed'):
         doc['restsUsed'] = []
+    # Last Stand recharges on surfacing (once-per-descent).
+    if region != 'depths' and doc.get('lastStandUsed'):
+        doc.pop('lastStandUsed', None)
 
     # Snare check first — a triggered snare skips the space event.
     space = _get(table, _season_pk(sid), f'SPACE#{node}')
@@ -2402,6 +2405,16 @@ def _battle_resume(rec, player_hp):
 def _finish_battle(table, sid, doc, rec, result):
     """Apply final HP, consume buffs, dispatch to the per-kind reward finisher,
     persist, and return the space-event response."""
+    # Last Stand (DEF-15 perk): once per descent, survive an otherwise-lethal
+    # blow at 1 HP. It doesn't turn a loss into a win — the outcome drops to a
+    # 'timeout' (no compost, no reward; a persistent-pool foe lingers).
+    if (result['attackerHp'] <= 0 and not doc.get('lastStandUsed')
+            and 'last_stand' in engine.attribute_perks(doc)):
+        doc['lastStandUsed'] = True
+        result['attackerHp'] = 1
+        if result['outcome'] == 'defender':
+            result['outcome'] = 'timeout'
+        result['lastStand'] = True
     doc['hp'] = result['attackerHp']
     doc['hpUpdatedAt'] = _now()
     _consume_one_battle_buffs(doc)
