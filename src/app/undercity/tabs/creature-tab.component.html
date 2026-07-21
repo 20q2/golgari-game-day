@@ -144,6 +144,35 @@
                   </div>
                 }
               </div>
+
+              <!-- Attribute perk tracks: nodes light as invested atk/def/spd
+                   cross 5 / 10 / 15. Gear/buffs never light a node. -->
+              <div class="perk-tracks">
+                <h4 class="perk-tracks-title">Attribute perks</h4>
+                @for (track of perkTrackOrder; track track) {
+                  <div class="perk-track">
+                    <div class="perk-track-head">
+                      <span class="perk-track-name">{{ track.toUpperCase() }}</span>
+                      <span class="perk-track-val">{{ trackValue(track) }}</span>
+                    </div>
+                    <div class="perk-nodes">
+                      @for (node of trackNodes(track); track node.perk.id) {
+                        <div
+                          class="perk-node"
+                          [class.lit]="node.lit"
+                          [title]="node.perk.name + ' — ' + node.perk.blurb"
+                        >
+                          <span class="perk-node-thr">{{ node.threshold }}</span>
+                          <span class="perk-node-body">
+                            <span class="perk-node-name">{{ node.perk.name }}</span>
+                            <span class="perk-node-blurb">{{ node.perk.blurb }}</span>
+                          </span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
             </section>
           }
           @case ('gear') {

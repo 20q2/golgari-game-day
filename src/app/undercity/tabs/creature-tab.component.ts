@@ -22,6 +22,7 @@ import {
   grimoireSwapLeftMin,
 } from '../data/spells';
 import { HATS, PAINTS, HatInfo, PaintInfo } from '../data/cosmetics';
+import { PERKS, PERK_TRACKS, PerkTrack } from '../data/perks';
 import { formSprite } from '../data/species';
 import { getRecoloredDataUrl, getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
 import { isShielded } from '../services/undercity-models';
@@ -126,6 +127,29 @@ export class CreatureTabComponent {
 
   passiveName(p: string): string {
     return PASSIVE_NAMES[p] ?? p;
+  }
+
+  // ── Attribute perk tracks ──────────────────────────────────────────────────
+  protected readonly perkMap = PERKS;
+  protected readonly perkTracks = PERK_TRACKS;
+  /** The three stat tracks, in display order. */
+  protected readonly perkTrackOrder: PerkTrack[] = ['atk', 'def', 'spd'];
+
+  /** Nodes for a track, each tagged with whether the current creature has it. */
+  protected trackNodes(track: PerkTrack) {
+    const you = this.store.you();
+    const unlocked = new Set(you?.perks ?? []);
+    return this.perkTracks[track].map((n) => ({
+      perk: this.perkMap[n.id],
+      threshold: n.threshold,
+      lit: unlocked.has(n.id),
+    }));
+  }
+
+  /** Invested value on a track (base stat, gear excluded) — drives the "next at N". */
+  protected trackValue(track: PerkTrack): number {
+    const you = this.store.you();
+    return you ? you[track] : 0;
   }
   protected readonly gearMap = GEAR_MAP;
   protected readonly tierRarity = tierRarity;

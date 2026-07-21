@@ -37,6 +37,8 @@ export interface PublicPlayer {
   paint: Record<string, number>;
   hat: string | null;
   renown: number;
+  /** Attribute-threshold perks (server-derived); public for the spectator card. */
+  perks?: string[];
   isBot?: boolean;
 }
 
@@ -83,6 +85,8 @@ export interface YouDoc {
   atk: number;
   def: number;
   spd: number;
+  /** Attribute-threshold perks unlocked by invested atk/def/spd (server-derived). */
+  perks?: string[];
   position: string;
   rolls: number;
   /** Server DEBUG flag — when true the client shows dev tools (pick-your-roll, ∞ rolls). */
