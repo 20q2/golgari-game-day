@@ -492,7 +492,16 @@ export interface ActionResponse {
   ok?: boolean;
   error?: string;
   you?: YouDoc;
-  roll?: { value: number; destinations: string[] };
+  roll?: {
+    value: number;
+    destinations: string[];
+    /** Pathfinder (SPD-10): the two rolled faces; destinations are their union. */
+    values?: number[];
+    /** Blink (SPD-15): the value was chosen, not rolled. */
+    blink?: boolean;
+    /** Fleetfoot (SPD-5): this rolled 1 may be rerolled once. */
+    canReroll?: boolean;
+  };
   spaceEvent?: SpaceEvent;
   occupants?: Occupant[];
   battle?: BattleResult;

@@ -15,14 +15,14 @@
         <img class="die-icon" src="undercity/icons/die.png" alt="" />
         Roll ({{ debugMode() ? '∞' : rollsBanked() }})
       </button>
-      @if (pickAllowed()) {
+      @if (canPickFace()) {
         <button class="uc-btn pick-btn" [disabled]="busy()" (click)="showRollPicker.set(!showRollPicker())">
-          <mat-icon class="mi">casino</mat-icon> Pick
+          <mat-icon class="mi">casino</mat-icon> {{ blinkAllowed() ? 'Blink' : 'Pick' }}
         </button>
         @if (showRollPicker()) {
           <div class="roll-picker">
             @for (n of [1, 2, 3, 4, 5, 6]; track n) {
-              <button class="uc-btn pick-face" [disabled]="busy()" (click)="roll(n)">{{ n }}</button>
+              <button class="uc-btn pick-face" [disabled]="busy()" (click)="pickRoll(n)">{{ n }}</button>
             }
           </div>
         }
@@ -30,6 +30,14 @@
       @if (nextRollLabel(); as nrl) {
         <span class="next-roll-hint">next roll in {{ nrl }}</span>
       }
+    }
+
+    <!-- Fleetfoot: after a rolled 1, offer a single optional reroll. Keeping the
+         1 is just declining — tap a destination to move as normal. -->
+    @if (!rolling() && store.you()?.pendingMove && canReroll()) {
+      <button class="uc-btn reroll-btn" [disabled]="busy()" (click)="reroll()">
+        <mat-icon class="mi">refresh</mat-icon> Reroll the 1
+      </button>
     }
 
     @if (!rolling() && !store.you()?.pendingMove && castableSpells().length) {

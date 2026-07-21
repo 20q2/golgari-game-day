@@ -189,6 +189,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly gambleResult = signal<string | null>(null);
   protected readonly rolling = signal(false);
   protected readonly rolledValue = signal<number | null>(null);
+  /** Fleetfoot (SPD-5): the last roll came up 1 and may be rerolled once. */
+  protected readonly canReroll = signal(false);
   protected readonly gambleRolling = signal(false);
   protected readonly gambleDie = signal<number | null>(null);
   protected readonly gambleWon = signal<boolean | null>(null);
@@ -727,6 +729,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Pick-a-face needs server DEBUG *and* a local dev build — the deployed
    * GitHub Pages site never shows it, even while DEBUG is still on. */
   protected readonly pickAllowed = computed(() => this.debugMode() && isDevMode());
+  /** Blink (SPD-15): choose your die value — a real perk, live in production. */
+  protected readonly blinkAllowed = computed(() =>
+    (this.store.you()?.perks ?? []).includes('blink'),
+  );
+  /** Either dev-pick or the Blink perk opens the value picker. */
+  protected readonly canPickFace = computed(() => this.pickAllowed() || this.blinkAllowed());
   protected readonly rollsBanked = computed(() => this.store.you()?.rolls ?? 0);
 
   /** Minute-granularity countdown to the next timed roll (null at cap / in debug).
@@ -738,17 +746,33 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return min <= 1 ? 'under a minute' : `${min} min`;
   }
 
-  async roll(picked?: number): Promise<void> {
+  async roll(picked?: number, opts?: { blink?: boolean; reroll?: boolean }): Promise<void> {
     if (this.busy()) return;
     this.showRollPicker.set(false);
+    this.canReroll.set(false);
     this.rolledValue.set(null);
     this.rolling.set(true);
     await this.run(async () => {
-      const resp = await this.store.action('roll', picked ? { value: picked } : {});
+      const payload: Record<string, unknown> = {};
+      if (picked) payload['value'] = picked;
+      if (opts?.blink) payload['blink'] = true;   // Blink: choose the value (production)
+      if (opts?.reroll) payload['reroll'] = true; // Fleetfoot: discard a rolled 1
+      const resp = await this.store.action('roll', payload);
       this.rolledValue.set(resp.roll?.value ?? resp.you?.pendingMove?.value ?? null);
+      this.canReroll.set(!!resp.roll?.canReroll);
     });
     // Errored (or no value came back) — drop the die, the toast explains why.
     if (this.rolledValue() === null) this.rolling.set(false);
+  }
+
+  /** A value-picker face: routes through Blink in production, or the dev pick. */
+  pickRoll(n: number): void {
+    void this.roll(n, this.blinkAllowed() ? { blink: true } : undefined);
+  }
+
+  /** Fleetfoot: discard the rolled 1 and roll fresh (no banked roll spent). */
+  reroll(): void {
+    void this.roll(undefined, { reroll: true });
   }
 
   onDiceSettled(): void {
