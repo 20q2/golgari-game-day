@@ -181,11 +181,13 @@ def _closed_barriers(table, sid):
 
 
 def _wild_warp_dest(node):
-    """A random legal node to be flung to — never into a POI or past a barrier."""
+    """A random legal node to be flung to — never into a POI, past a barrier, or
+    onto a post-boss escape ladder (those are earned, per-player exits)."""
     no_go = {'boss', 'barrier', 'lair', 'vault'}
     options = [n for n, nd in data.MAP_NODES.items()
                if n != node and nd['type'] not in no_go
-               and nd.get('region') != 'ruin']
+               and nd.get('region') != 'ruin'
+               and n not in data.ESCAPE_LADDERS]
     return _rng.choice(options)
 
 

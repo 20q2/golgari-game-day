@@ -238,3 +238,16 @@ def test_landing_normal_entrance_ladder_does_not_teleport(table):
     ev = db._resolve_space(table, _sid(table), doc, 'city_lb', None)
     assert ev['type'] == 'ladder'
     assert doc['position'] == 'city_lb'      # normal ladders don't relocate
+
+
+def test_wild_warp_never_targets_escape_ladder(monkeypatch):
+    captured = {}
+
+    class _Stub:
+        def choice(self, seq):
+            captured['opts'] = list(seq)
+            return captured['opts'][0]
+
+    monkeypatch.setattr(db, '_rng', _Stub())
+    db._wild_warp_dest('cavern_r0')
+    assert not (set(captured['opts']) & set(data.ESCAPE_LADDERS))
