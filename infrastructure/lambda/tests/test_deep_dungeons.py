@@ -249,5 +249,5 @@ def test_wild_warp_never_targets_escape_ladder(monkeypatch):
             return captured['opts'][0]
 
     monkeypatch.setattr(db, '_rng', _Stub())
-    db._wild_warp_dest('cavern_r0')
+    db._wild_warp_dest(data.MAP_NODES, 'cavern_r0')
     assert not (set(captured['opts']) & set(data.ESCAPE_LADDERS))

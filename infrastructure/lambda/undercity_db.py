@@ -205,11 +205,11 @@ def _closed_barriers(table, sid):
     return frozenset(set(data.BARRIER_GUARDIANS) - _open_barriers(table, sid))
 
 
-def _wild_warp_dest(node):
+def _wild_warp_dest(nodes, node):
     """A random legal node to be flung to — never into a POI, past a barrier, or
     onto a post-boss escape ladder (those are earned, per-player exits)."""
     no_go = {'boss', 'barrier', 'lair', 'vault'}
-    options = [n for n, nd in data.MAP_NODES.items()
+    options = [n for n, nd in nodes.items()
                if n != node and nd['type'] not in no_go
                and nd.get('region') != 'ruin'
                and n not in data.ESCAPE_LADDERS]
@@ -686,6 +686,7 @@ def handle_state(table, query_params):
         return 200, {'season': None, 'you': None, 'players': [], 'snares': [],
                      'events': [], 'result': None, 'hallOfFame': _hall_of_fame(table)}
 
+    nodes = _season_map(table, sid)
     pk = _season_pk(sid)
     resp = table.query(
         KeyConditionExpression='pk = :pk AND sk >= :sk',
@@ -737,17 +738,17 @@ def handle_state(table, query_params):
 
     # Show a display-seeded stock for any post nobody has traded at yet, so the
     # exchange renders from turn one without a write on read.
-    for nid, n in data.MAP_NODES.items():
+    for nid, n in nodes.items():
         if n['type'] == 'trading_post' and nid not in posts:
             posts[nid] = _seed_stock()
 
     # Masked dig-site views for every excavation node (empty/covered until dug).
     excavations = {nid: _dig_view(sites.get(nid))
-                   for nid, n in data.MAP_NODES.items() if n['type'] == 'excavation'}
+                   for nid, n in nodes.items() if n['type'] == 'excavation'}
 
     # Display-seed untouched veins/vaults so the map renders their facilities
     # from turn one without a write on read.
-    for n in data.MAP_NODES.values():
+    for n in nodes.values():
         if n['type'] == 'crystal_vein':
             veins.setdefault(n['region'], {'depth': 0})
         elif n['type'] == 'vault_lock':
@@ -758,7 +759,7 @@ def handle_state(table, query_params):
     shop_win = _shop_window()
     refreshes_at = _shop_window_end(shop_win)
     bazaars = {}
-    for nid, n in data.MAP_NODES.items():
+    for nid, n in nodes.items():
         if n['type'] != 'shop':
             continue
         rec = shops.get(nid)
@@ -1146,11 +1147,12 @@ def _admin_heal(table, sid, payload):
 
 
 def _admin_teleport(table, sid, payload):
+    nodes = _season_map(table, sid)
     doc, err = _admin_target(table, sid, payload)
     if err:
         return err
     node = payload.get('node')
-    if node not in data.MAP_NODES:
+    if node not in nodes:
         return _err('Unknown node: ' + str(node))
     doc['position'] = node
     doc['pendingMove'] = None
@@ -1165,6 +1167,7 @@ def _admin_bot_step(table, sid, payload):
     rules, respecting sealed barriers) with NO landing effects. Bots are
     non-combat puppets, so we can't run roll→move (a wild landing would trap the
     bot in a battle nothing drives); this just shifts them off their gate."""
+    nodes = _season_map(table, sid)
     doc, err = _admin_target(table, sid, payload)
     if err:
         return err
@@ -1174,7 +1177,7 @@ def _admin_bot_step(table, sid, payload):
     blocked = _blocked_nodes(doc)
     dests = set()
     for steps in range(random.randint(1, 4), 0, -1):
-        dests = engine.legal_destinations(data.MAP_NODES, doc['position'], steps,
+        dests = engine.legal_destinations(nodes, doc['position'], steps,
                                           closed, blocked)
         if dests:
             break
@@ -1453,6 +1456,7 @@ def _claim(table, sid, doc, payload):
 # ── Roll & move ──────────────────────────────────────────────────────────────
 
 def _roll(table, sid, doc, payload):
+    nodes = _season_map(table, sid)
     if not data.DEBUG and doc.get('rolls', 0) < 1:
         return _err('No rolls banked. Finish a board game to earn more!', 409)
     if doc.get('pendingMove'):
@@ -1479,7 +1483,7 @@ def _roll(table, sid, doc, payload):
         value = (value + 1) // 2
         doc['buffs'] = [b for b in doc['buffs'] if b.get('kind') != 'vines']
 
-    dests = engine.legal_destinations(data.MAP_NODES, doc['position'], value,
+    dests = engine.legal_destinations(nodes, doc['position'], value,
                                       _closed_barriers(table, sid),
                                       _blocked_nodes(doc))
     if not dests:
@@ -1586,12 +1590,13 @@ def _award_loot(doc):
 
 def _resolve_space(table, sid, doc, node, prev):
     """Apply the landing event for `node`, mutating doc. Returns event dict."""
-    ntype = data.MAP_NODES[node]['type']
+    nodes = _season_map(table, sid)
+    ntype = nodes[node]['type']
 
     # Remember the last home-biome you stood in — a death here (or later, on the
     # isle/in the depths) offers this biome's gate as a respawn option. Set
     # before any battle/compost resolves so it reflects where you actually died.
-    region = data.MAP_NODES[node].get('region')
+    region = nodes[node].get('region')
     if region in data.BIOMES:
         doc['lastBiome'] = region
 
@@ -1635,7 +1640,7 @@ def _resolve_space(table, sid, doc, node, prev):
     if ntype == 'warp':
         # One roaming warp is always wild: no picker, always a random fling.
         if node == _wild_warp_node(table, sid):
-            dest = _wild_warp_dest(node)
+            dest = _wild_warp_dest(nodes, node)
             doc['position'] = dest
             _rotate_wild_warp(table, sid, node)   # move the wildness elsewhere
             return {'type': 'wild_warp',
@@ -1643,7 +1648,7 @@ def _resolve_space(table, sid, doc, node, prev):
                             'misfire and hurl you across the Undercity.',
                     'to': dest}
         if _rng.random() < 0.20:
-            dest = _wild_warp_dest(node)
+            dest = _wild_warp_dest(nodes, node)
             doc['position'] = dest
             return {'type': 'wild_warp', 'text': 'The mushroom convulses — a WILD warp!',
                     'to': dest}
@@ -1680,7 +1685,7 @@ def _resolve_space(table, sid, doc, node, prev):
         # Landing just opens the shaft — every swing is a deliberate Strike so
         # the player keeps full agency (no auto-swing, no arrival cave-in).
         doc['veinStrikesLeft'] = data.VEIN_STRIKES_PER_VISIT
-        region = data.MAP_NODES[node]['region']
+        region = nodes[node]['region']
         depth = _vein_rec(table, sid, region)['depth']
         return {'type': 'crystal_vein', 'node': node,
                 'strikesLeft': data.VEIN_STRIKES_PER_VISIT, 'depth': depth,
@@ -1688,7 +1693,7 @@ def _resolve_space(table, sid, doc, node, prev):
 
     if ntype == 'vault_lock':
         doc['vaultPicksLeft'] = data.VAULT_PICKS_PER_VISIT
-        region = data.MAP_NODES[node]['region']
+        region = nodes[node]['region']
         rec = _get(table, _season_pk(sid), f'VAULT#{region}')
         return {'type': 'vault_lock', 'node': node,
                 'text': 'The Guildvault: six sigils, three tumblers, one fat '
@@ -1791,7 +1796,8 @@ def _trigger_snare(table, sid, doc, node, space):
 
 
 def _mystery(table, sid, doc):
-    biome = data.MAP_NODES.get(doc['position'], {}).get('region')
+    nodes = _season_map(table, sid)
+    biome = nodes.get(doc['position'], {}).get('region')
     if biome not in data.BIOMES:
         biome = None
     res = engine.roll_mystery(_rng, 'drift' in _passives(doc),
@@ -1813,7 +1819,7 @@ def _mystery(table, sid, doc):
         until = (datetime.utcnow() + timedelta(minutes=20)).isoformat(timespec='seconds')
         doc.setdefault('buffs', []).append({'kind': 'cursed_idol', 'until': until})
     if res['teleport']:
-        dest = _rng.choice([n for n in data.MAP_NODES if n != data.BOSS_NODE])
+        dest = _rng.choice([n for n in nodes if n != data.BOSS_NODE])
         doc['position'] = dest
         res['to'] = dest
     out = {'type': 'mystery', 'roll': res['roll'], 'text': res['text']}
@@ -1882,13 +1888,14 @@ def _hazard(table, sid, doc, node):
 
 def _dungeon_hazard(table, sid, doc, node, biome, mire):
     """v6 signature hazards — one per dungeon, themed to its pocket."""
+    nodes = _season_map(table, sid)
     h = data.DUNGEON_HAZARDS[biome]
     out = {'type': 'hazard', 'hazardId': h['id'], 'text': h['text']}
     if h['id'] == 'webbing':
         # Reuses the vines mechanic: _roll halves and consumes it.
         doc.setdefault('buffs', []).append({'kind': 'vines'})
     elif h['id'] == 'spore_cloud':
-        pocket = [nid for nid, n in data.MAP_NODES.items()
+        pocket = [nid for nid, n in nodes.items()
                   if n.get('region') == 'depths' and nid.startswith(biome + '_')
                   and nid != node and n['type'] not in ('lair',)]
         dest = _rng.choice(pocket)
@@ -2427,10 +2434,11 @@ def _boss(table, sid, doc, node, prev):
     fights; whoever lands the killing blow takes the kill, then the Queen
     reforms at full strength.
     """
+    nodes = _season_map(table, sid)
     sigils = _sigil_count(doc)
     config = _get(table, _season_pk(sid), 'CONFIG') or {}
     if sigils < data.SIGILS_REQUIRED and not config.get('bossPhase'):
-        doc['position'] = prev if prev in data.MAP_NODES[node]['neighbors'] else 'isl_ossuary'
+        doc['position'] = prev if prev in nodes[node]['neighbors'] else 'isl_ossuary'
         missing = data.SIGILS_REQUIRED - sigils
         return {'type': 'boss_sealed',
                 'text': f'The rot-wards hurl you back. The Queen demands tribute: '
@@ -2752,6 +2760,7 @@ def _cast_at_guardian(table, sid, doc, spell, target_id):
     persistent pool (floored at 1 — no remote kill/open) or persists a curse
     read at its next battle. No dodge, no bounty. An error tuple leaves the
     caster's cooldown unstarted."""
+    nodes = _season_map(table, sid)
     if target_id == 'boss':
         node = data.BOSS_NODE
         name = data.ROT_SOVEREIGN['name']
@@ -2781,7 +2790,7 @@ def _cast_at_guardian(table, sid, doc, spell, target_id):
         def save(new_hp, new_buffs):
             _set_lair_state(table, sid, target_id, new_hp, slain, new_buffs)
 
-    dist = engine.board_distance(data.MAP_NODES, doc['position'], node,
+    dist = engine.board_distance(nodes, doc['position'], node,
                                  spell['range'], _closed_barriers(table, sid))
     if dist is None:
         return _spell_err(f"It is beyond the spell's reach ({spell['range']} spaces).",
@@ -2813,6 +2822,7 @@ def _cast_at_guardian(table, sid, doc, spell, target_id):
 def _cast_at_player(table, sid, doc, spell_id, spell, target_id):
     """Field damage/curse at a rival. Returns a cast-result dict, or an error
     tuple (in which case the caster's cooldown never starts)."""
+    nodes = _season_map(table, sid)
     if not target_id or target_id == doc['userId']:
         return _spell_err('Pick a target.', 'invalid_target', 400)
     target = _get_player(table, sid, target_id)
@@ -2820,7 +2830,7 @@ def _cast_at_player(table, sid, doc, spell_id, spell, target_id):
         return _spell_err('Target not found.', 'invalid_target', 404)
     if _shielded(target):
         return _spell_err('They are protected by a Compost Shield.', 'target_shielded')
-    dist = engine.board_distance(data.MAP_NODES, doc['position'],
+    dist = engine.board_distance(nodes, doc['position'],
                                  target['position'], spell['range'],
                                  _closed_barriers(table, sid))
     if dist is None:
@@ -2881,13 +2891,14 @@ def _cast_at_player(table, sid, doc, spell_id, spell, target_id):
 def _cast_teleport(table, sid, doc, spell, to):
     """Blink to a nearby node and resolve it like a normal landing. Returns
     (cast-result, extra-response-fields) or an error tuple."""
-    if to not in data.MAP_NODES or to == doc['position']:
+    nodes = _season_map(table, sid)
+    if to not in nodes or to == doc['position']:
         return _spell_err('No such tunnel to blink to.', 'invalid_target', 400)
     blocked = _blocked_nodes(doc)
     if to in blocked:
         return _spell_err('Evolved units cannot squeeze into a tunnel.',
                           'invalid_target')
-    dist = engine.board_distance(data.MAP_NODES, doc['position'], to,
+    dist = engine.board_distance(nodes, doc['position'], to,
                                  spell['range'], _closed_barriers(table, sid),
                                  blocked)
     if dist is None:
@@ -3036,8 +3047,9 @@ def _evolve(table, sid, doc, payload):
 # ── Economy ──────────────────────────────────────────────────────────────────
 
 def _buy(table, sid, doc, payload):
+    nodes = _season_map(table, sid)
     node = doc.get('position')
-    if data.MAP_NODES.get(node, {}).get('type') != 'shop':
+    if nodes.get(node, {}).get('type') != 'shop':
         return _err('You are not at a shop.', 409)
     item_id = payload.get('itemId')
     stock = _shop_stock(table, sid, node)
@@ -3146,8 +3158,9 @@ def _trade(table, sid, doc, payload):
     """Swap one owned item (consumable, equipped gear, or an owned grimoire)
     for one of the post's 3 stock items. The item you leave becomes the next
     visitor's stock, tagged with your name."""
+    nodes = _season_map(table, sid)
     node = doc.get('position')
-    if data.MAP_NODES.get(node, {}).get('type') != 'trading_post':
+    if nodes.get(node, {}).get('type') != 'trading_post':
         return _err('You are not at a trading post.', 409)
     give = payload.get('give')
     take_index = payload.get('takeIndex')
@@ -3354,8 +3367,9 @@ def _dig_text(found, cleared, bonus):
 
 def _dig(table, sid, doc, payload):
     """Reveal one cell of the shared dig site; collect any item it completes."""
+    nodes = _season_map(table, sid)
     node = doc.get('position')
-    if data.MAP_NODES.get(node, {}).get('type') != 'excavation':
+    if nodes.get(node, {}).get('type') != 'excavation':
         return _err('You are not at a dig site.', 409)
     if doc.get('excavationDigsLeft', 0) < 1:
         return _err('Out of digs — come back next time you land here.', 409)
@@ -3473,7 +3487,8 @@ def _vein_strike_once(table, sid, doc):
     """One swing at the region's shared vein. Mutates doc; persists the shared
     VEIN# record and any feed event (last-writer-wins, like POST# stock). The
     caller persists the player doc."""
-    region = data.MAP_NODES[doc['position']]['region']
+    nodes = _season_map(table, sid)
+    region = nodes[doc['position']]['region']
     level = _vein_rec(table, sid, region)['depth'] + 1     # the level being entered
     doc['veinStrikesLeft'] = doc.get('veinStrikesLeft', 0) - 1
 
@@ -3550,8 +3565,9 @@ def _vault_view(rec):
 def _strike(table, sid, doc, payload):
     """A deliberate swing at the vein. All strikes this visit are optional —
     landing no longer auto-swings."""
+    nodes = _season_map(table, sid)
     node = doc.get('position')
-    if data.MAP_NODES.get(node, {}).get('type') != 'crystal_vein':
+    if nodes.get(node, {}).get('type') != 'crystal_vein':
         return _err('You are not at a crystal vein.', 409)
     if doc.get('veinStrikesLeft', 0) < 1:
         return _err('Out of strikes — come back next time you land here.', 409)
@@ -3563,8 +3579,9 @@ def _strike(table, sid, doc, payload):
 
 
 def _vault_guess(table, sid, doc, payload):
+    nodes = _season_map(table, sid)
     node = doc.get('position')
-    if data.MAP_NODES.get(node, {}).get('type') != 'vault_lock':
+    if nodes.get(node, {}).get('type') != 'vault_lock':
         return _err('You are not at the Guildvault.', 409)
     left = doc.get('vaultPicksLeft')
     if left is None:
@@ -3578,7 +3595,7 @@ def _vault_guess(table, sid, doc, payload):
             or any(s not in data.VAULT_SIGILS for s in guess)):
         return _err(f'Pick {data.VAULT_SLOTS} different sigils.')
 
-    region = data.MAP_NODES[node]['region']
+    region = nodes[node]['region']
     rec = _vault_lock_rec(table, sid, region)
     combo = rec['combo']
     exact = sum(1 for g, c in zip(guess, combo) if g == c)
@@ -3622,6 +3639,7 @@ def _vault_guess(table, sid, doc, payload):
 
 
 def _use_item(table, sid, doc, payload):
+    nodes = _season_map(table, sid)
     item = payload.get('item')
     bag = doc.get('bag') or []
     if item not in bag:
@@ -3643,7 +3661,7 @@ def _use_item(table, sid, doc, payload):
         text = f'You palm the loaded die. Your next roll will be a {value}.'
     elif item == 'snare':
         node = doc['position']
-        if data.MAP_NODES[node]['type'] in ('gate', 'boss'):
+        if nodes[node]['type'] in ('gate', 'boss'):
             return _err('You cannot snare this hallowed ground.', 409)
         existing = _get(table, _season_pk(sid), f'SPACE#{node}')
         if existing and existing.get('ownerId'):
@@ -3684,7 +3702,8 @@ def _drop_item(table, sid, doc, payload):
 
 
 def _shrine(table, sid, doc, payload):
-    if data.MAP_NODES.get(doc.get('position'), {}).get('type') != 'shrine':
+    nodes = _season_map(table, sid)
+    if nodes.get(doc.get('position'), {}).get('type') != 'shrine':
         return _err('You are not at a shrine.', 409)
     choice = payload.get('choice')
     eff = engine.effective_stats(doc)
@@ -3707,8 +3726,9 @@ def _shrine(table, sid, doc, payload):
 
 
 def _warp(table, sid, doc, payload):
+    nodes = _season_map(table, sid)
     node = doc.get('position')
-    if data.MAP_NODES.get(node, {}).get('type') != 'warp':
+    if nodes.get(node, {}).get('type') != 'warp':
         return _err('You are not on a warp mushroom.', 409)
     to = payload.get('to')
     if to not in data.WARP_NODES or to == node:
@@ -3721,7 +3741,8 @@ def _warp(table, sid, doc, payload):
 
 
 def _gamble(table, sid, doc, payload):
-    if data.MAP_NODES.get(doc.get('position'), {}).get('type') != 'ossuary':
+    nodes = _season_map(table, sid)
+    if nodes.get(doc.get('position'), {}).get('type') != 'ossuary':
         return _err('You are not at the Ossuary.', 409)
     bet = payload.get('bet')
     call = payload.get('call')

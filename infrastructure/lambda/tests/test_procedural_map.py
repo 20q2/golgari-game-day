@@ -50,3 +50,32 @@ def test_season_map_on_falls_back_when_no_record(table, monkeypatch):
     sid = _sid(table)
     nodes = db._season_map(table, sid)
     assert 'city_lair' in nodes                # committed depths fallback
+
+
+def test_only_season_map_reads_the_global():
+    # The sole allowed reference to the raw global is _season_map's flag-off
+    # return; every other read must route through _season_map(table, sid).
+    src = (Path(__file__).resolve().parents[1] / 'undercity_db.py').read_text(encoding='utf-8')
+    assert src.count('data.MAP_NODES') == 1, \
+        'route every map read (except _season_map itself) through _season_map(table, sid)'
+
+
+def test_movement_follows_generated_depths_when_on(table, monkeypatch):
+    monkeypatch.setattr(data, 'PROCEDURAL_DUNGEONS', True)
+    db._season_map_cache.clear()
+    act(table, 'join', starter='pest', home='cavern')
+    sid = _sid(table)
+    # Alternate depths: cavern_lb gains a neighbor the committed map never had.
+    stub = [
+        {'id': 'cavern_lb', 'type': 'ladder', 'x': 100, 'y': 100,
+         'region': 'depths', 'neighbors': ['cavern_x9']},
+        {'id': 'cavern_x9', 'type': 'loot', 'x': 160, 'y': 100,
+         'region': 'depths', 'neighbors': ['cavern_lb']},
+    ]
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': 'MAP', 'depths': stub})
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'cavern_lb'
+    dests = engine.legal_destinations(
+        db._season_map(table, sid), 'cavern_lb', 1,
+        db._closed_barriers(table, sid), db._blocked_nodes(doc))
+    assert 'cavern_x9' in dests
