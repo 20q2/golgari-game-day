@@ -277,7 +277,7 @@ export const SPACE_BLURBS: Record<string, string> = {
   vault: 'A treasure hoard, deep behind a barrier. First visit pays big — once.',
   cache: 'A stashed treasure — a rich first-visit payout for every explorer.',
   ladder: 'A rusted ladder between the surface and the dungeon below.',
-  tunnel: 'A narrow tunnel between biomes — safe passage, but only Tier-1 (un-evolved) units fit through.',
+  tunnel: 'A shortcut between biomes. Tier-1 units cross free; evolved units pay Spores to use it. Land on it to be carried across to the far side for free.',
 };
 
 export const SPACE_NAMES: Record<string, string> = {

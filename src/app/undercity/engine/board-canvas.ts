@@ -267,6 +267,9 @@ export class BoardCanvas {
   private snares = new Set<string>();
   private barriersOpen = new Set<string>();
   private diceMarkers = new Set<string>();
+  /** Barrier/lair node id -> its shared guardian HP pool, so the overworld can
+   *  draw a boss-style health bar above each guardian as players chip it down. */
+  private guardianPools: Record<string, { hp: number; maxHp: number }> = {};
   /** Nodes sealed behind an unbroken barrier (or tunnels, for evolved units) —
    *  rendered greyed. */
   private lockedIds = new Set<string>();
@@ -584,6 +587,12 @@ export class BoardCanvas {
     this.recomputeLocked();
   }
 
+  /** Live guardian HP pools (barrier + lair), keyed by node id, for the
+   *  overworld health bars drawn above each guardian/sigil boss. */
+  setGuardianPools(pools: Record<string, { hp: number; maxHp: number }>): void {
+    this.guardianPools = pools;
+  }
+
   /**
    * Nodes sealed behind a still-closed barrier: reachable from the gate only
    * by passing through a barrier that hasn't been broken yet. They render
@@ -617,12 +626,9 @@ export class BoardCanvas {
     const locked = new Set(
       this.map.nodes.filter((n) => !reached.has(n.id)).map((n) => n.id),
     );
-    // Evolved units (tier > 1) can't enter tunnels — grey them so it's legible.
-    if (this.ownTier > 1) {
-      for (const n of this.map.nodes) {
-        if (n.type === 'tunnel') locked.add(n.id);
-      }
-    }
+    // Tunnels are usable by every tier now (evolved units pay a Spore toll on
+    // landing) — no tier-based greying. The server omits tunnels a unit can't
+    // afford from its move options, so unreachable ones already grey out above.
     this.lockedIds = locked;
   }
 
@@ -1223,6 +1229,62 @@ export class BoardCanvas {
       ctx.imageSmoothingEnabled = true;
     }
 
+    // Boss-style health bar above its head so its remaining HP reads at a glance.
+    const pool = this.guardianPools[n.id];
+    if (pool) {
+      const headTop = footAnchor - GUARDIAN_H * breath + hopY;
+      this.drawGuardianHp(cx, headTop - 5, pool.hp, pool.maxHp, 42);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * A compact health bar centred at `cx` with its base at `bottomY`, mirroring
+   * the battle screen's green/amber/red thresholds so a guardian's remaining HP
+   * reads the same on the overworld as it does mid-fight.
+   */
+  private drawGuardianHp(
+    cx: number,
+    bottomY: number,
+    hp: number,
+    maxHp: number,
+    width: number,
+  ): void {
+    if (maxHp <= 0) return;
+    const ctx = this.ctx;
+    const frac = Math.max(0, Math.min(1, hp / maxHp));
+    const h = 6;
+    const x = cx - width / 2;
+    const y = bottomY - h;
+
+    ctx.save();
+    // Track
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, h, 3);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Fill — same palette as interactive-battle's HP plate.
+    const fw = (width - 2) * frac;
+    if (fw > 0.5) {
+      const [c0, c1] =
+        frac <= 0.25
+          ? ['#a34040', '#d86060']
+          : frac <= 0.5
+            ? ['#b9903a', '#e0b34e']
+            : ['#6cae75', '#99d98c'];
+      const grad = ctx.createLinearGradient(x + 1, 0, x + 1 + fw, 0);
+      grad.addColorStop(0, c0);
+      grad.addColorStop(1, c1);
+      ctx.beginPath();
+      ctx.roundRect(x + 1, y + 1, fw, h - 2, 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -1261,6 +1323,13 @@ export class BoardCanvas {
     ctx.imageSmoothingEnabled = !art.pixelArt;
     ctx.drawImage(art.img, cx - w / 2, top, w, drawH);
     ctx.imageSmoothingEnabled = true;
+
+    // Boss-style health bar above the living sigil boss (a beaten vestige has
+    // no fight left in it, so it wears none).
+    const pool = this.guardianPools[n.id];
+    if (pool && !vestige) {
+      this.drawGuardianHp(cx, top - 6, pool.hp, pool.maxHp, 56);
+    }
     ctx.restore();
   }
 
