@@ -57,6 +57,12 @@ BRAMBLE_REFLECT = 2   # flat damage a Bramble carapace reflects when struck
 # Wilderness instead. See specs/2026-07-20-undercity-tunnels-wilderness-design.md.
 TUNNEL_TIER_MAX = 1
 
+# Spore toll an evolved unit pays to USE a tunnel (tier -> cost). Tiers <=
+# TUNNEL_TIER_MAX travel free; a unit that cannot afford its toll is blocked
+# from tunnels entirely (see _blocked_nodes in undercity_db.py). The client
+# tunnel blurb mirrors this rule in prose only — no number is duplicated.
+TUNNEL_TOLL = {2: 8, 3: 16}
+
 # ── Facilities ───────────────────────────────────────────────────────────────
 SHOP_REFRESH_MIN = 30        # bazaar restock window (minutes); the client's
                              # vendor rotation mirrors this — see BAZAAR_KEEPERS

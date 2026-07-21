@@ -1153,3 +1153,20 @@ def test_tunnel_nodes_are_the_ten_boundary_spurs():
 
 def test_tunnel_tier_max_is_one():
     assert data.TUNNEL_TIER_MAX == 1
+
+
+def test_tunnel_toll_table():
+    assert data.TUNNEL_TOLL == {2: 8, 3: 16}
+
+
+def test_tunnel_exits_cover_every_tunnel_with_a_biome_node():
+    # Every tunnel node maps to a non-tunnel neighbour of its paired tunnel node.
+    assert set(data.TUNNEL_EXITS) == set(data.TUNNEL_NODES)
+    for nid, exit_node in data.TUNNEL_EXITS.items():
+        assert data.MAP_NODES[exit_node]['type'] != 'tunnel'
+        pair = next(x for x in data.MAP_NODES[nid]['neighbors']
+                    if data.MAP_NODES[x]['type'] == 'tunnel')
+        assert exit_node in data.MAP_NODES[pair]['neighbors']
+    # Spot-check one known pair.
+    assert data.TUNNEL_EXITS['t_cavern_bog0'] == 'bog_r1'
+    assert data.TUNNEL_EXITS['t_cavern_bog1'] == 'cavern_r9'

@@ -837,6 +837,18 @@ MAP_NODES = {n['id']: n for n in _MAP_DOC['nodes']}
 WARP_NODES = [nid for nid, n in MAP_NODES.items() if n['type'] == 'warp']
 TUNNEL_NODES = frozenset(nid for nid, n in MAP_NODES.items() if n['type'] == 'tunnel')
 
+
+def _tunnel_exit(nid):
+    """The far-biome node a unit lands on when it crosses this tunnel: the
+    non-tunnel neighbour of this node's paired tunnel node."""
+    pair = next(x for x in MAP_NODES[nid]['neighbors']
+                if MAP_NODES[x]['type'] == 'tunnel')
+    return next(x for x in MAP_NODES[pair]['neighbors']
+                if MAP_NODES[x]['type'] != 'tunnel')
+
+
+TUNNEL_EXITS = {nid: _tunnel_exit(nid) for nid in TUNNEL_NODES}
+
 # Guild Sigils: first-clear of a biome dungeon's lair grants that sigil.
 SIGIL_LAIRS = {b + '_lair': b for b in BIOMES}
 SIGILS_REQUIRED = 3
