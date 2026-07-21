@@ -141,22 +141,22 @@ measured is preserved by construction.
 
 ## Server ⇄ client mirror points
 
-Per CLAUDE.md: scalar tunables (mitigation %, shield size, Deathdrive bonus,
-Menace factor) live in `undercity_config.py`; perk definitions live in
+Per CLAUDE.md: scalar tunables (`GUARD_CHIP_COEFF`, Deathdrive bonus, Menace
+factor, Thick-Hide fraction) live in `undercity_config.py`; perk definitions live in
 `undercity_data.py` (or a new `undercity_perks.py`) and are mirrored in
 `src/app/undercity/data/perks.ts`. `handle_state`'s `you` view should surface the
 unlocked perk set so the client renders without recomputing rules.
 
 ## Testing & validation
 
-- **Sim first:** prototype the Part-2 numbers in `infrastructure/lambda/sim`;
-  extend `sweep.py` to report the stat-spread × stance matrix before/after, and
-  confirm DEF/Guard becomes a viable boss path *without* ATK/Aggress regressing.
-  This gates the tuning values.
+- **Sim (done):** `sim/proto_fix.py` validated the Guard/DEF fix as a player-only
+  DEF perk at `GUARD_CHIP_COEFF ≈ 0.5` — DEF/Guard becomes a viable boss path
+  (142→330 dmg) with ATK/SPD and normal content unchanged. Re-run after wiring
+  the real perk to confirm parity with the prototype.
 - **pytest:** unit tests for `attribute_perks` thresholds (incl. base-stat
   lighting), each perk's engine hook (Rend rot, Menace bluff, Deathdrive bonus,
-  Thick Hide halving, Entrench shield, Last Stand survival), and the Guard/DEF
-  fix (a DEF build now chips a trickster). Keep the suite green.
+  Thick Hide halving, Carapace Grind chip present for creatures / absent for NPCs,
+  Last Stand survival). Keep the suite green.
 
 ## Scope guards / deferred
 

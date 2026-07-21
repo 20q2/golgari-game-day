@@ -33,7 +33,7 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   // Tier 2 — same line sprite, grown up
   brackish_trudge: { sprite: 'brackish_trudge', regions: [], scale: 1.0 },
   stinkweed_imp: { sprite: 'stinkweed_imp', regions: [], scale: 0.9 },
-  kraul_warrior: { sprite: 'spino', regions: DINO_REGIONS, scale: 1.0 },
+  kraul_warrior: { sprite: 'grave_shell_scarab', regions: [], scale: 1.0 },
   golgari_longlegs: { sprite: 'golgari_longlegs', regions: [], scale: 1.0 },
   slitherhead: { sprite: 'slitherhead', regions: [], scale: 1.0 },
   // woodwraith_strangler id now displays as Myconid Sporetender — real art.
