@@ -77,7 +77,7 @@ TIER2 = {
         'blurb': 'Speedster. Flyby: 25% chance enemy strikes miss.',
     },
     'kraul_warrior': {
-        'name': 'Kraul Warrior', 'line': 'kraul', 'bonus': {'atk': 4},
+        'name': 'Grave Scarab', 'line': 'kraul', 'bonus': {'atk': 4},
         'passive': 'venom_barb',
         'blurb': 'Striker. Venom Barb: your first strike each battle deals +3.',
     },
@@ -154,6 +154,39 @@ def apex_options(tier2_form: str):
 ALL_FORMS = {**{k: dict(v, tier=1) for k, v in STARTERS.items()},
              **{k: dict(v, tier=2) for k, v in TIER2.items()},
              **{k: dict(v, tier=3) for k, v in APEX.items()}}
+
+
+# ── Attribute perk tracks (design 2026-07-21) ────────────────────────────────
+# A perk unlocks when the INVESTED base stat (species base + level spends +
+# evolution bonuses; NOT gear/buffs) reaches its threshold. Nodes at 5/10/15;
+# base stats can already light the tier-1 node (kraul atk 8 -> Rend). Client
+# mirror: src/app/undercity/data/perks.ts
+PERK_TRACKS = {
+    'atk': [(5, 'rend'), (10, 'menace'), (15, 'deathdrive')],
+    'def': [(5, 'thick_hide'), (10, 'carapace_grind'), (15, 'last_stand')],
+    'spd': [(5, 'fleetfoot'), (10, 'pathfinder'), (15, 'blink')],
+}
+
+PERKS = {
+    'rend':           {'name': 'Rend', 'track': 'atk', 'threshold': 5,
+                       'blurb': 'A winning Aggress always applies 1 rot.'},
+    'menace':         {'name': 'Menace', 'track': 'atk', 'threshold': 10,
+                       'blurb': 'Enemies bluff you less often.'},
+    'deathdrive':     {'name': 'Deathdrive', 'track': 'atk', 'threshold': 15,
+                       'blurb': 'Below half HP, your Aggress swings hit harder.'},
+    'thick_hide':     {'name': 'Thick Hide', 'track': 'def', 'threshold': 5,
+                       'blurb': 'Halve HP lost to hazards and bad mystery rolls.'},
+    'carapace_grind': {'name': 'Carapace Grind', 'track': 'def', 'threshold': 10,
+                       'blurb': 'Holding Guard grinds the foe down even when you don’t win the exchange.'},
+    'last_stand':     {'name': 'Last Stand', 'track': 'def', 'threshold': 15,
+                       'blurb': 'Survive one lethal blow per descent at 1 HP.'},
+    'fleetfoot':      {'name': 'Fleetfoot', 'track': 'spd', 'threshold': 5,
+                       'blurb': 'You may reroll a die that shows 1.'},
+    'pathfinder':     {'name': 'Pathfinder', 'track': 'spd', 'threshold': 10,
+                       'blurb': 'Roll with advantage — roll two dice, keep either.'},
+    'blink':          {'name': 'Blink', 'track': 'spd', 'threshold': 15,
+                       'blurb': 'Once per turn, choose your die value.'},
+}
 
 
 # ── Equipment & consumables ──────────────────────────────────────────────────

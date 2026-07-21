@@ -618,6 +618,21 @@ def effective_stats(player: dict) -> dict:
     return eff
 
 
+# ── Attribute perks (design 2026-07-21) ──────────────────────────────────────
+
+def attribute_perks(player: dict) -> frozenset:
+    """Perks unlocked by INVESTED attributes (base + spends + evolution bonuses).
+    Reads doc['atk'/'def'/'spd'] directly — gear/buffs never light a perk, so the
+    set is stable across gear swaps and needs no persistence."""
+    out = set()
+    for stat, tiers in data.PERK_TRACKS.items():
+        val = player.get(stat, 0)
+        for threshold, pid in tiers:
+            if val >= threshold:
+                out.add(pid)
+    return frozenset(out)
+
+
 # ── HP regen (the swamp heals its own) ───────────────────────────────────────
 
 _ISO = '%Y-%m-%dT%H:%M:%S'
