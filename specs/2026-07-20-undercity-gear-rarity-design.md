@@ -1,70 +1,58 @@
-# Undercity — Gear Rarity & Upgrade Progression
+# Undercity — Gear Rarity & Scaling
 
 **Date:** 2026-07-20
 **Status:** Draft, pending user review
+**Part of:** [Plaza Economy umbrella](2026-07-20-undercity-plaza-economy-umbrella.md)
+**Sibling spec:** [Forge Economy](2026-07-20-undercity-forge-economy-design.md) (owns upgrading/materials — the *climb*; this spec owns the *ladder*).
 **Builds on / extends:** [2026-07-20-undercity-gear-expansion-design.md](2026-07-20-undercity-gear-expansion-design.md),
 [2026-07-18-undercity-gear-drops-design.md](2026-07-18-undercity-gear-drops-design.md),
-[2026-07-19-undercity-deep-dungeons-design.md](2026-07-19-undercity-deep-dungeons-design.md),
 [2026-07-14-undercity-combat-redesign-design.md](2026-07-14-undercity-combat-redesign-design.md).
 
 ## Problem
 
-Two coupled problems, one root cause.
+Gear already carries a `tier` (1/2/3) on server ([undercity_data.py](../infrastructure/lambda/undercity_data.py)
+`GEAR`) and client ([items.ts](../src/app/undercity/data/items.ts)), wired into cost
+bands and drop weights — but **the tier is never shown** (equip tiles
+[creature-tab.component.html](../src/app/undercity/tabs/creature-tab.component.html#L149)
+show only a name + rider blurb), so a player can't tell a starter piece from a
+top-tier one.
 
-1. **Gear is illegible.** Every piece already carries a `tier` (1/2/3) on server
-   ([undercity_data.py](../infrastructure/lambda/undercity_data.py) `GEAR`) and
-   client ([items.ts](../src/app/undercity/data/items.ts)), wired into cost bands
-   and drop weights — but the tier is **never shown**. The equip tiles
-   ([creature-tab.component.html](../src/app/undercity/tabs/creature-tab.component.html#L149))
-   show only a name + rider blurb, so a player can't tell if they're holding a
-   starter or a top-tier piece.
-
-2. **Progression dies after one good find.** Once a player finds a piece they like,
-   there is nothing to strive toward — and a single find is a big enough power step
-   that they "clap all combats." The chase evaporates. Rider effects are fixed-
-   strength binary flags (`has_rider('bramble')` → flat `BRAMBLE_REFLECT`); only
-   flat stats and cost scale by tier. So the same `spiked` on a T2 Bark Hide and a
-   T3 Troll Hide reflects the *same* amount — a rarer piece is a bigger stat-stick,
-   not a stronger effect. There's no ladder to climb and no way to invest in the
-   piece you already love.
-
-The game *does* already have a difficulty ramp to strive against — overworld fodder
-(~22–34 HP), elites (~30 HP), the **wilderness frontier** (~46–70 HP, 13–18 ATK),
-deep sigil dungeons, then Savra. The deep-dungeons doc notes players reach Savra
-"faster than intended" — the mid-game is thin. So the content exists; what's
-missing is a **legible, gated gear progression that maps onto it** and a reason to
-keep gearing after the first find.
+Worse, rarity carries no *promise of a stronger effect*. Rider effects are fixed-
+strength binary flags (`has_rider('bramble')` → flat `BRAMBLE_REFLECT`); only flat
+stats and cost scale by tier. The same `spiked` on a T2 Bark Hide and a T3 Troll
+Hide reflects the **same** amount — a rarer piece is a bigger stat-stick, not a
+stronger effect. So "if I found a Common Thorns, a better Thorns must exist" — the
+player's natural intuition — is false today.
 
 ## Goal
 
-Make gear a satisfying long-term chase, on four pillars:
+Make rarity legible and meaningful, on three pillars:
 
 1. **Legible rarity** — Common (grey) / Rare (green) / Legendary (gold), shown
    everywhere gear appears.
 2. **Effects scale with rarity** — a rarer piece is a *stronger version of the same
-   effect* (Common Thorns reflects 1, Legendary reflects 3), so the ladder is real.
-3. **Upgrade the piece you love** — invest resources to advance an owned piece up
-   its family's rungs (Common→Rare→Legendary). A good find is a *starting point*.
-4. **Zone-gated, small steps** — each rung is matched to a content zone, and the
-   final rung is gated behind deep/boss content, so no single find trivializes the
-   game and combat stays tested as you climb.
+   effect* (Common Thorns reflects 1, Legendary reflects 3).
+3. **Full effect-family ladders** — every rider exists at all three rarities, so the
+   "a better one exists" promise is literally true.
 
-Non-goals: no new riders, no new combat mechanics, no random-roll/affix system, no
-enemy-scaling/NG+ treadmill (the fixed zone ramp does the difficulty work).
+*Climbing* the ladder (upgrading a piece you own) and the *materials* that gate it
+are specified in the **Forge Economy** spec; this spec provides the rungs and the
+`GEAR_FAMILY` index it needs.
+
+Non-goals: no new riders, no new combat mechanics, no random-roll/affix system.
 
 ## Relationship to the "purely horizontal" invariant
 
-The gear-expansion doc kept the roster deliberately **horizontal** ("new archetypes
-at existing tiers, no stat-ceiling inflation"). This design **intentionally adds a
-vertical axis** on top — but with minimal disruption:
+The gear-expansion doc kept the roster **horizontal** ("no stat-ceiling inflation").
+This design adds a **vertical** axis with minimal disruption:
 
 - **No existing piece changes.** All 20 current pieces keep name/tier/stats/cost/
-  rider; each *becomes* the rung it already occupies in its family's ladder.
+  rider; each *becomes* the rung it already occupies.
 - We only **fill missing rungs** (~28 new pieces) so every family spans all three
   rarities.
-- **The stat ceiling does not rise.** New Legendaries reuse the existing T3 stat
-  band. What newly scales is *rider magnitude*, in gentle steps — so the per-find
-  power step stays small and enemies need no rebalance beyond re-running the tests.
+- **The stat ceiling does not rise.** New Legendaries reuse the T3 stat band. What
+  newly scales is *rider magnitude*, in gentle steps → small per-find power delta,
+  no enemy rebalance needed beyond re-running the tests.
 
 ## Rarity model
 
@@ -124,18 +112,23 @@ checks (glint's reveal); `mag` gives the scaled number.
 ### 3. Engine reads magnitude instead of constants
 
 Each rider branch in `resolve_round` (+ helpers `_bramble`, `cutpurse_bonus`, and
-`_read_chance`) swaps its flat constant for `s.mag('<rider>')`. E.g.
+`_read_chance`) swaps its flat constant for `s.mag('<rider>')` — e.g.
 `-= data.BRAMBLE_REFLECT` → `-= struck.mag('bramble')`; `* 1.5` (spiked) →
 `* winr.mag('spiked')`; deep_biter/rabid/bulwark/mossback/bloodfang/gutcleaver/
 venomtrick/barbed/serrated/trickster/thick likewise; `readBonus` folds into
-`mag('seer'|'glint')`. The old scalar constants are removed or become the
-Rare-rung value the table references.
+`mag('seer'|'glint')`. The old scalar constants are removed or become the Rare-rung
+value the table references.
+
+### 4. `GEAR_FAMILY` index (shared with the Forge spec)
+
+A derived index `GEAR_FAMILY[rider] = {tier: gear_id}` built once from `GEAR`. It
+powers the drop "is this an upgrade?" check *and* the Blacksmith's next-rung lookup.
 
 ## The full ladder — filling missing rungs
 
 All 20 current pieces unchanged (their rung noted). **New** in bold. Stats follow
-existing bands; charms stay light. New names follow family flavor (hybrid
-convention) with a rarity badge; existing names are **not** reworked.
+existing bands; charms stay light. New names follow family flavor with a rarity
+badge; existing names are **not** reworked.
 
 ### Fangs — Aggress
 | Family | Common (t1) | Rare (t2) | Legendary (t3) |
@@ -168,117 +161,56 @@ convention) with a rarity badge; existing names are **not** reworked.
 ~28 new `GEAR` entries; per-piece stat/cost lines are mechanical (copy the tier
 band) and enumerated in the plan.
 
-## Upgrade system — climb the ladder of the piece you love
-
-The load-bearing new mechanic. An owned gear piece can be **upgraded to the next
-rung of its own family**, transforming it into that named higher-rarity piece (new
-stats + scaled rider). Two paths to any rung — **find it** (luck, from drops/shop)
-or **upgrade into it** (deterministic investment).
-
-- **Where:** an "Upgrade" affordance on the piece in the **Gear tab** (no new board
-  space). It shows the next rung, its scaled effect ("Reflect 2 → 3"), and the cost.
-- **Common → Rare:** **Spores** only (≈ the Rare piece's shop cost). A pure
-  Spore sink — reachable through normal mid-game play.
-- **Rare → Legendary:** Spores **+ 1 deep material** (working name **Chrysalis
-  Ichor**) that drops only from **wilderness elites / lairs / boss / dungeon
-  troves**. This gates the top rung behind endgame engagement (pillar 4) while
-  staying deterministic — you upgrade *your* piece rather than praying for a
-  specific legendary drop. Chasing "one more Ichor for my Legendary" is the
-  concrete mid/late-game carrot.
-- **Server action:** new `POST /game/action` kind `gear-upgrade` (slot). The
-  engine/db validates ownership + resources + material, swaps the equipped id to
-  the family's next rung, debits Spores/material, returns the new piece.
-- **Family lookup:** derive family = the piece's `rider` (+ slot); the next rung =
-  the GEAR entry in that family at `tier+1`. A small `GEAR_FAMILY` index (rider →
-  {tier: id}) built once from `GEAR` makes this O(1) and also powers the drop/upgrade
-  "is this an upgrade?" checks.
-
-## Sourcing & zone-gating
+## Sourcing & zone-gating (find side)
 
 - **Common + Rare:** bazaar rotation (`_gen_shop_stock` already picks random gear
-  per slot per window — the wider catalog just deepens rotation, no UI change) and
-  normal drops. Weight shop/drops so Legendaries never appear here.
-- **Legendary:** **drop-only** from rich sources (treasure/lair/boss — existing
-  `GEAR_DROP` weights already favor t3), OR reached by upgrading with Chrysalis
-  Ichor. Both require deep-content engagement.
-- `_roll_gear_drop` already auto-equips a strictly-higher-tier drop and salvages the
-  rest; the rarity badge on the drop-reveal toast makes the upgrade legible.
-- **Chrysalis Ichor** is a new inventory material (not a gear/consumable): drops
-  from the deep sources above at a modest rate; displayed in the player's resource
-  header beside Spores.
+  per slot per window — a wider catalog just deepens rotation, no UI change) and
+  normal drops.
+- **Legendary: drop-only** from rich sources (treasure/lair/boss — existing
+  `GEAR_DROP` weights already favor t3). (Legendaries are *also* reachable by
+  upgrading — that path lives in the Forge spec.)
+- `_roll_gear_drop`'s auto-equip/auto-salvage is **replaced** by the Forge spec's
+  stash + loot-choice; the rarity badge on the drop-reveal makes tier legible.
 
 ## Presentation (client)
 
 - `tierRarity(tier)` helper + a rarity pill (colored dot + word) / colored border,
-  applied to **equip tiles, shop rows, drop-reveal toast, and the bag**.
+  applied to **equip tiles, shop rows, drop-reveal, and the bag/stash**.
 - Blurbs show the **scaled** number ("Reflect **3** damage" at Legendary vs
-  "Reflect **1**" at Common), sourced from the client `RIDER_SCALE` mirror.
-- Gear tab gains the **Upgrade** control (next-rung preview + cost + a disabled/CTA
-  state when you lack Spores or Ichor) and a Chrysalis Ichor counter in the resource
-  header.
+  "Reflect **1**" at Common), from the client `RIDER_SCALE` mirror.
 
 ## Files to touch
 
-**Backend ([infrastructure/lambda/](../infrastructure/lambda/)):**
-- `undercity_data.py` — `RIDER_SCALE`; ~28 new `GEAR` entries; `GEAR_FAMILY` index;
-  Chrysalis Ichor item + its drop hooks; add pieces to bazaar/`GEAR_DROP`; retire
-  flat rider constants; upgrade cost knobs (into `undercity_config.py`).
-- `undercity_engine.py` — `Combatant.rider_mag` + `mag()`; swap rider branches to
-  `mag(...)`; `_read_chance` uses `mag`.
-- `undercity_db.py` — `gear-upgrade` action (validate/swap/debit); Ichor drop
-  granting on the deep sources; `cutpurse_bonus` reads `mag`.
-- `lambda_function.py` — route the `gear-upgrade` action (existing dispatcher).
-- `tests/` — `test_rider_scale_monotonic`; per-rider magnitude tests; upgrade-flow
-  tests (happy path, insufficient resources, no-next-rung at Legendary); keep
-  `test_balance_good_play_beats_fodder` + full suite green.
-
-**Client mirrors ([src/app/undercity/data/](../src/app/undercity/data/)):**
-- `items.ts` — ~28 new `GEAR` entries; `RIDER_SCALE` mirror; `tierRarity`;
-  scaled-magnitude blurbs.
-- Gear tab + shop + drop-toast — rarity badge/border; Upgrade control; Ichor counter.
-- Whatever service issues `POST /game/action` — a `gear-upgrade` call.
-
-**Docs:**
-- Update [specs/undercity-combat.md](undercity-combat.md) §4 (add-equipment) & §7
-  (tuning knobs): `RIDER_SCALE` and upgrade-cost knobs are the new tuning surface;
-  adding a piece now means placing it in a family rung.
+**Backend:** `undercity_data.py` — `RIDER_SCALE`, `GEAR_FAMILY`, ~28 new `GEAR`
+entries, add to bazaar/`GEAR_DROP`, retire flat rider constants. `undercity_engine.py`
+— `Combatant.rider_mag` + `mag()`; swap rider branches; `_read_chance` uses `mag`.
+`undercity_db.py` — `cutpurse_bonus` reads `mag`.
+**Client:** `items.ts` — ~28 new entries, `RIDER_SCALE` mirror, `tierRarity`,
+scaled-magnitude blurbs. Gear/shop/drop components — rarity badge/border.
+**Docs:** [specs/undercity-combat.md](undercity-combat.md) §4 & §7 — `RIDER_SCALE`
+is the new tuning surface; adding a piece = placing it in a family rung.
+**Tests:** `test_rider_scale_monotonic` (ladders non-decreasing); per-rider
+magnitude tests (Legendary > Common); keep `test_balance_good_play_beats_fodder` +
+suite green.
 
 ## Balance & invariants
 
-- Stat ceiling unchanged; only rider magnitude scales, in gentle steps → small
-  per-find power delta.
+- Stat ceiling unchanged; only rider magnitude scales, in gentle steps.
 - `RIDER_SCALE` anchored so **Rare ≈ today's live value**; net drift mild.
 - Every ladder **monotonic non-decreasing** (enforced by test).
-- Balance numbers stay mirrored between `undercity_data.py` and `data/*.ts` (combat
-  spec §6), including `RIDER_SCALE`.
-- `test_balance_good_play_beats_fodder` stays green.
+- Balance numbers mirrored between `undercity_data.py` and `data/*.ts` (combat spec
+  §6), incl. `RIDER_SCALE`.
 
-## Testing
-
-- `cd infrastructure/lambda && python -m pytest tests -q` — green, incl. new
-  monotonicity, per-rider magnitude, and upgrade-flow tests.
-- `npm run build` — client compiles (repo lint is known-broken; verify via build).
-- Manual: equip Common vs Legendary of a family (badge + scaled blurb + harder
-  effect in battle); upgrade Common→Rare with Spores; fail Rare→Legendary without
-  Ichor, then succeed with it.
-
-## Phasing (this is two coupled features — the plan may split it)
+## Phasing
 
 1. **Scaling core** — `RIDER_SCALE` + engine magnitude refactor with existing 20
    pieces re-anchored. Independently shippable; no new content.
 2. **Ladder fill** — the ~28 new pieces + drop/shop reach.
 3. **Legibility** — client rarity badges + scaled blurbs.
-4. **Upgrade system** — Chrysalis Ichor material, `gear-upgrade` action, Gear-tab
-   Upgrade UI. The biggest slice; depends on 1–3.
+
+(Upgrading, materials, stash, and the Plaza buildings are the Forge Economy spec.)
 
 ## Coordination note
 
 `undercity_data.py`, `undercity_db.py`, and the engine/tests have frequent in-flight
-working-tree edits. Implementation should layer onto whatever is current, not the
-committed snapshot.
-
-## Open / deferred
-
-- Chrysalis Ichor naming/art and exact drop rate — tuning.
-- Whether Legendary should *also* be buyable late (currently no — drop/upgrade only).
-- Exact per-piece stat/cost lines and upgrade Spore costs — enumerated in the plan.
+working-tree edits. Layer onto whatever is current, not the committed snapshot.
