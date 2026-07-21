@@ -1,12 +1,11 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
-import { firstValueFrom } from 'rxjs';
 import { UserService } from '../services/user.service';
 import { UndercityStateService } from './services/undercity-state.service';
 import { preloadAll, getRecoloredWithHatDataUrl } from './engine/sprite-engine';
 import { BoardMap } from './engine/board-canvas';
+import { UndercityApiService } from './services/undercity-api.service';
 import { formSprite } from './data/species';
 import { xpToNext, formName } from './data/forms';
 import { HatchFlowComponent } from './hatch/hatch-flow.component';
@@ -39,7 +38,7 @@ type Tab = 'board' | 'creature' | 'plaza' | 'log';
 export class UndercityPageComponent implements OnInit, OnDestroy {
   protected readonly userService = inject(UserService);
   protected readonly store = inject(UndercityStateService);
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(UndercityApiService);
 
   protected readonly tab = signal<Tab>('board');
   protected readonly assetsReady = signal(false);
@@ -101,9 +100,7 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     // that otherwise leaves scrollable dead space below the app on mobile.
     document.body.classList.add('undercity-page');
     void preloadAll().then(() => this.assetsReady.set(true));
-    void firstValueFrom(this.http.get<BoardMap>('data/undercity-map.json')).then((m) =>
-      this.map.set(m),
-    );
+    void this.api.getMap().then((m) => this.map.set(m));
     if (this.userService.isSignedIn()) {
       this.store.startPolling();
     }

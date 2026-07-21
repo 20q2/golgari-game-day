@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { UserService } from '../../services/user.service';
 import { ActionResponse, GameState } from './undercity-models';
+import type { BoardMap } from '../engine/board-canvas';
 
 /** Raised for non-2xx action responses so callers can show the server's text. */
 export class UndercityApiError extends Error {
@@ -28,6 +29,20 @@ export class UndercityApiService {
     );
     if (!response.ok) {
       throw new UndercityApiError(`Failed to load game state (${response.status})`, response.status);
+    }
+    return response.json();
+  }
+
+  /** The night's board: fixed surface + this season's (possibly generated)
+   *  depths. Falls back to the committed board server-side when no season. */
+  async getMap(): Promise<BoardMap> {
+    const response = await fetch(`${this.API_BASE_URL}/game/map`, {
+      method: 'GET',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      throw new UndercityApiError(`Failed to load board map (${response.status})`, response.status);
     }
     return response.json();
   }
