@@ -222,6 +222,23 @@ def _valid(nodes, biome):
         return False
     if f'{biome}_lt' not in by[f'{biome}_lb']['neighbors']:
         return False
+    # Boss antechamber: two 'wild' gates, each bridging exactly the same
+    # junction J and the lair (odd-cycle -> mixed-parity landings).
+    lair_id = f'{biome}_lair'
+    junctions = set()
+    for suf in ('lg1', 'lg2'):
+        gid = f'{biome}_{suf}'
+        if gid not in by or by[gid]['type'] != 'wild':
+            return False
+        gnbrs = {x for x in by[gid]['neighbors'] if x in ids}
+        if len(gnbrs) != 2 or lair_id not in gnbrs:
+            return False
+        (j,) = gnbrs - {lair_id}
+        if j not in by[lair_id]['neighbors']:      # J must border the lair directly
+            return False
+        junctions.add(j)
+    if len(junctions) != 1:                        # both gates share one junction
+        return False
     for n in nodes:                                    # symmetric within pocket
         for nb in n['neighbors']:
             if nb in ids and n['id'] not in by[nb]['neighbors']:

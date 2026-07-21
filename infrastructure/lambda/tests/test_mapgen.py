@@ -122,6 +122,38 @@ def test_generated_pocket_satisfies_every_contract(biome, salt):
     assert dist[f'{biome}_lair'] >= gen.LAIR_MIN_HOPS
 
 
+def _pocket_dist(by, ids, start):
+    dist = {start: 0}
+    q, i = [start], 0
+    while i < len(q):
+        cur = q[i]; i += 1
+        for nb in by[cur]['neighbors']:
+            if nb in ids and nb not in dist:
+                dist[nb] = dist[cur] + 1; q.append(nb)
+    return dist
+
+
+@pytest.mark.parametrize('biome', sorted(BIOMES))
+@pytest.mark.parametrize('salt', range(8))
+def test_lair_landable_from_junction_both_parities(biome, salt):
+    """From the antechamber junction J the lair is reachable at two consecutive
+    distances (1 and 2) -> distances of different parity -> exact-count movement
+    can land for either roll parity."""
+    nodes = gen.generate_depths(gen._seed_int(f'land-{salt}', biome), biome)
+    ids = {n['id'] for n in nodes}
+    by = _by_id(nodes)
+    # J is the shared junction of the two gates
+    j = (set(_in_pocket_neighbors(by[f'{biome}_lg1'], ids)) - {f'{biome}_lair'}).pop()
+    d = _pocket_dist(by, ids, j)
+    # direct edge => distance 1; via a gate => distance 2
+    assert d[f'{biome}_lair'] == 1
+    # a length-2 route also exists (through a gate), proving the odd cycle:
+    # remove the direct edge conceptually by checking a gate path length
+    assert _pocket_dist(by, ids, f'{biome}_lg1')[f'{biome}_lair'] == 1
+    # consecutive-distance property: J->lair is 1 and J->gate->lair is 2
+    assert d[f'{biome}_lg1'] == 1 and d[f'{biome}_lg2'] == 1
+
+
 @pytest.mark.parametrize('biome', sorted(BIOMES))
 def test_generation_is_deterministic(biome):
     seed = gen._seed_int('same-night', biome)
