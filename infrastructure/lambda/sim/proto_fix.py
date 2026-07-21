@@ -122,5 +122,24 @@ def run():
             print(f'{label:9s} {stance:7s} | {bdmg:6.0f}  {bwin*100:4.0f}% | {twin*100:4.0f}% | {dwin*100:4.0f}%{mark}')
 
 
+def verify_real():
+    """Confirm the SHIPPED Carapace Grind perk reproduces the prototype: a
+    pure-DEF/Guard build becomes a viable boss path, ATK/SPD unchanged. Runs
+    against the real engine (no monkeypatch)."""
+    import undercity_engine as engine
+    from sim.arena import make_leveled_doc, winrate, enemy_registry
+    from sim.driver import Build
+    from sim.sweep import custom_policy
+    reg = enemy_registry()
+    for label, pri, stance in [('pure-DEF', ('def',), 'guard'),
+                               ('pure-ATK', ('atk',), 'aggress'),
+                               ('pure-SPD', ('spd',), 'feint')]:
+        pol = custom_policy(pref_stance=stance, stat_priority=pri, name='x')
+        doc = make_leveled_doc(Build('pest', 'city'), pol, 10, seed=1)
+        w = winrate(doc, reg['rot_sovereign'][1], pol, trials=300, base_seed=5, kind='boss')
+        perks = sorted(engine.attribute_perks(doc))
+        print(f'{label}/{stance}: Savra {w["mean_dmg"]:.0f} dmg, {w["winrate"]*100:.0f}%  perks={perks}')
+
+
 if __name__ == '__main__':
     run()
