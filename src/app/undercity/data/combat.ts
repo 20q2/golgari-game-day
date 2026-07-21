@@ -1,5 +1,5 @@
 /** Client display copy for the stance-triangle combat (mirrors undercity_data.py). */
-import { Stance } from '../services/undercity-models';
+import { Stance, BattleStatus } from '../services/undercity-models';
 import { GEAR_MAP } from './items';
 
 export interface StanceInfo {
@@ -109,4 +109,54 @@ export function computeStanceAugments(
     if (aug) out.push({ ...aug, source: 'passive' });
   }
   return out;
+}
+
+// ── In-battle status chips ────────────────────────────────────────────────────
+
+export interface StatusInfo {
+  label: string;
+  icon: string; // Material Icons ligature
+  tone: 'buff' | 'debuff';
+  blurb: string;
+}
+
+/** Effect kind -> chip display. `rot` is included alongside the buff kinds.
+ *  Icons mirror the ligatures used for these effects in spells.ts. Any kind not
+ *  listed here is skipped, so a new buff shows nothing until it gets an entry. */
+export const STATUS_INFO: Record<string, StatusInfo> = {
+  rot: { label: 'Rot', icon: 'coronavirus', tone: 'debuff',
+    blurb: 'Festering: takes damage at the end of each round. More stacks, more damage.' },
+  harden_shell: { label: 'Harden Shell', icon: 'shield', tone: 'buff',
+    blurb: '+2 DEF for this battle.' },
+  rot_surge: { label: 'Rot Surge', icon: 'local_fire_department', tone: 'buff',
+    blurb: '+3 ATK; Aggress applies rot to the foe.' },
+  glowveil: { label: 'Glowveil', icon: 'flare', tone: 'buff',
+    blurb: '+2 SPD and easier to flee this battle.' },
+  bone_chill: { label: 'Bone Chill', icon: 'ac_unit', tone: 'debuff',
+    blurb: 'Cursed: -2 ATK this battle.' },
+  weaken_hex: { label: 'Weaken Hex', icon: 'heart_broken', tone: 'debuff',
+    blurb: 'Cursed: -3 ATK this battle.' },
+  cursed_idol: { label: 'Cursed', icon: 'dangerous', tone: 'debuff',
+    blurb: 'A lingering curse saps this fighter.' },
+  vines: { label: 'Bog Snare', icon: 'grass', tone: 'debuff',
+    blurb: 'Snared by clinging vines.' },
+};
+
+export interface StatusChip {
+  kind: string;
+  count: number; // >1 shows a ×N badge (rot); buffs are always 1
+  info: StatusInfo;
+}
+
+/** Ordered chips for one side: rot first (most actionable), then buffs, then
+ *  debuffs. Unknown kinds are skipped. */
+export function statusChips(status: BattleStatus | null | undefined): StatusChip[] {
+  if (!status) return [];
+  const chips: StatusChip[] = [];
+  if (status.rot > 0) chips.push({ kind: 'rot', count: status.rot, info: STATUS_INFO['rot'] });
+  const mapped = (status.buffs ?? [])
+    .filter((k) => k !== 'rot' && STATUS_INFO[k])
+    .map((k) => ({ kind: k, count: 1, info: STATUS_INFO[k] }));
+  mapped.sort((a, b) => Number(a.info.tone === 'debuff') - Number(b.info.tone === 'debuff'));
+  return [...chips, ...mapped];
 }

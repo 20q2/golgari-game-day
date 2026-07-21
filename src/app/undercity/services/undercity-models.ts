@@ -259,6 +259,12 @@ export interface CombatEntry {
   frenzy?: boolean;
 }
 
+/** A fighter's standing conditions during a battle. */
+export interface BattleStatus {
+  rot: number; // rot stack count (0 = none); drives the DoT
+  buffs: string[]; // active buff/debuff effect kinds
+}
+
 export interface CombatRound {
   round: number;
   entries: CombatEntry[];
@@ -268,6 +274,8 @@ export interface CombatRound {
   frenzyFrom?: number | null;
   playerHp: number;
   npcHp: number;
+  playerStatus?: BattleStatus;
+  npcStatus?: BattleStatus;
   revealNext: boolean;
 }
 
@@ -290,6 +298,8 @@ export interface BattleResume {
   telegraph: Stance | null;
   frenzyFrom?: number | null;
   playerHp: number;
+  playerStatus?: BattleStatus;
+  npcStatus?: BattleStatus;
   revealed: Stance | null;
   npc: {
     id?: string;
@@ -454,6 +464,8 @@ export interface SpaceEvent {
   telegraph?: Stance;
   round?: number;
   frenzyFrom?: number | null;
+  playerStatus?: BattleStatus;
+  npcStatus?: BattleStatus;
 }
 
 export interface Occupant {
