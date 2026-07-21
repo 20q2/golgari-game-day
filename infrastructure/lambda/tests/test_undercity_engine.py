@@ -34,16 +34,22 @@ class FakeRng:
         return seq[0]
 
 
+# Tier whose RIDER_SCALE magnitude these engine tests were written against (the
+# pre-rarity live value). Fixed per rider so the tests stay independent of which
+# gear rungs exist in the roster.
+_TEST_RIDER_TIER = {
+    'barbed': 1, 'bloodfang': 1, 'deep_biter': 2, 'rabid': 2, 'gutcleaver': 2,
+    'thick': 1, 'spiked': 2, 'bramble': 1, 'bulwark': 2, 'mossback': 2,
+    'trickster': 1, 'serrated': 2, 'venomtrick': 1, 'cutpurse': 2,
+}
+
+
 def _default_rider_mag(riders):
-    """Reproduce each rider's live magnitude — RIDER_SCALE at the lowest gear tier
-    that carries it — so rider tests read the same values as before rarity scaling.
-    (Rider effects now come from Combatant.rider_mag, not flat constants.)"""
-    out = {}
-    for rider in riders:
-        tiers = [g['tier'] for g in data.GEAR.values() if g.get('rider') == rider]
-        if tiers and rider in data.RIDER_SCALE:
-            out[rider] = data.RIDER_SCALE[rider][min(tiers)]
-    return out
+    """Reproduce each rider's live magnitude (RIDER_SCALE at its canonical test
+    tier) so rider tests read the same values as before rarity scaling. Rider
+    effects now come from Combatant.rider_mag, not flat constants."""
+    return {r: data.RIDER_SCALE[r][_TEST_RIDER_TIER[r]]
+            for r in riders if r in _TEST_RIDER_TIER}
 
 
 def fighter(**kw):
@@ -1007,12 +1013,14 @@ def test_every_gear_rider_is_defined_and_stanced():
 
 
 def test_gear_roster_doubled():
-    # 20 combat pieces + 2 illuminating pieces (Torchfang fang, Glowspore charm).
-    assert len(data.GEAR) == 22
+    # Full rarity ladders (gear-rarity Phase 2): every effect family spans
+    # Common/Rare/Legendary. 48 combat pieces + 2 illuminating (Torchfang fang,
+    # Glowspore charm) = 50.
+    assert len(data.GEAR) == 50
     slots = {}
     for g in data.GEAR.values():
         slots[g['slot']] = slots.get(g['slot'], 0) + 1
-    assert slots == {'fang': 8, 'carapace': 7, 'charm': 7}
+    assert slots == {'fang': 16, 'carapace': 15, 'charm': 19}
 
 
 def test_battle_serde_persists_new_fields():

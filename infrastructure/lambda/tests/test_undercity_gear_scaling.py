@@ -87,3 +87,39 @@ def test_cutpurse_bonus_uses_scaled_mag():
     assert db.cutpurse_bonus(doc, feint_won=True, won=True) == 6
     assert db.cutpurse_bonus(doc, feint_won=False, won=True) == 0
     assert db.cutpurse_bonus({'gear': {}}, feint_won=True, won=True) == 0
+
+
+# ── Phase 2: full rarity ladders ─────────────────────────────────────────────
+
+def _tiers_by_rider():
+    from collections import defaultdict
+    out = defaultdict(set)
+    for g in data.GEAR.values():
+        if g.get('rider'):
+            out[g['rider']].add(g['tier'])
+    return out
+
+
+def test_every_combat_rider_family_spans_all_three_rarities():
+    """Each rider must have a Common (t1), Rare (t2) and Legendary (t3) piece."""
+    incomplete = {r: sorted(t) for r, t in _tiers_by_rider().items() if t != {1, 2, 3}}
+    assert not incomplete, f"rider families missing rungs: {incomplete}"
+
+
+def test_read_rate_gear_readbonus_is_monotonic_by_tier():
+    """seer/glint scale read-rate via per-piece readBonus (not RIDER_SCALE);
+    each spans all three tiers with a non-decreasing bonus."""
+    for rider in ('seer', 'glint'):
+        rungs = sorted((g['tier'], g.get('readBonus', 0))
+                       for g in data.GEAR.values() if g.get('rider') == rider)
+        assert [t for t, _ in rungs] == [1, 2, 3], f"{rider} missing a tier: {rungs}"
+        bonuses = [b for _, b in rungs]
+        assert bonuses == sorted(bonuses), f"{rider} readBonus not monotonic: {rungs}"
+
+
+def test_new_gear_entries_have_valid_shape():
+    for gid, g in data.GEAR.items():
+        assert g['slot'] in data.GEAR_SLOTS, f"{gid} bad slot"
+        assert g['tier'] in (1, 2, 3), f"{gid} bad tier"
+        assert g['cost'] > 0, f"{gid} bad cost"
+        assert g.get('rider') or g.get('light'), f"{gid} has neither rider nor light"
