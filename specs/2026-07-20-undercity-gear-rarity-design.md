@@ -46,8 +46,11 @@ Non-goals: no new riders, no new combat mechanics, no random-roll/affix system.
 The gear-expansion doc kept the roster **horizontal** ("no stat-ceiling inflation").
 This design adds a **vertical** axis with minimal disruption:
 
-- **No existing piece changes.** All 20 current pieces keep name/tier/stats/cost/
-  rider; each *becomes* the rung it already occupies.
+- **Existing pieces keep name/tier/stats/cost/rider.** Each *becomes* the rung it
+  already occupies. The one exception: riders that today sit on **both T2 and T3**
+  with identical magnitude (`deep_biter`/`spiked`/`rabid`/`bulwark`) get a modest
+  **T3 magnitude buff** so the ladder is monotonic — this is the intended point
+  (Legendary > Rare), not incidental.
 - We only **fill missing rungs** (~28 new pieces) so every family spans all three
   rarities.
 - **The stat ceiling does not rise.** New Legendaries reuse the T3 stat band. What
@@ -79,27 +82,30 @@ New table in [undercity_data.py](../infrastructure/lambda/undercity_data.py):
 # Anchored so the Rare (t2) rung ≈ today's live value; gentle steps keep the
 # per-find power delta small. Validated by test_balance_good_play_beats_fodder.
 RIDER_SCALE = {
-    # rider         {1: common, 2: rare, 3: legendary}   # unit
-    'barbed':       {1: 1, 2: 2, 3: 3},            # rot stacks on Aggress
-    'deep_biter':   {1: 2, 2: 3, 3: 4},            # bonus dmg on a winning exchange
-    'bloodfang':    {1: 0.30, 2: 0.40, 3: 0.50},   # heal frac of Aggress-win dmg
-    'rabid':        {1: 1, 2: 2, 3: 3},            # +ATK per Aggress win (ramp)
-    'gutcleaver':   {1: 0.35, 2: 0.50, 3: 0.70},   # +mult vs foe <30% HP
-    'thick':        {1: 0.10, 2: 0.15, 3: 0.22},   # stall chip-through mult
-    'spiked':       {1: 1.3, 2: 1.5, 3: 1.8},      # guard-counter reflect mult
-    'bramble':      {1: 1, 2: 2, 3: 3},            # flat reflect when struck
-    'bulwark':      {1: 1, 2: 1, 3: 2},            # +DEF per round ended in Guard
-    'mossback':     {1: 2, 2: 3, 3: 4},            # heal per round ended in Guard
-    'trickster':    {1: 0.30, 2: 0.50, 3: 0.70},   # frac of a lost-Feint punish negated
-    'serrated':     {1: 1, 2: 2, 3: 3},            # flat cut to foe's next-round dmg
-    'venomtrick':   {1: 1, 2: 2, 3: 3},            # rot on a winning Feint
-    'cutpurse':     {1: 4, 2: 6, 3: 9},            # Spores after a won fight w/ Feint win
-    'seer':         {1: 0.15, 2: 0.30, 3: 0.45},   # +read chance (was gear readBonus)
-    'glint':        {1: 0.08, 2: 0.12, 3: 0.18},   # +read chance (reveal stays binary)
+    # rider         {1: common, 2: rare, 3: legendary}   # unit / anchor to today's value
+    'barbed':       {1: 1,    2: 2,    3: 3},      # rot stacks on Aggress (T1 today=1)
+    'bloodfang':    {1: 0.40, 2: 0.50, 3: 0.60},   # heal frac of Aggress-win dmg (T1 today=0.40)
+    'deep_biter':   {1: 0.35, 2: 0.50, 3: 0.70},   # +win MULTIPLIER (T2 today=0.50; T3 buffed)
+    'rabid':        {1: 1,    2: 2,    3: 3},       # +ATK ramp per Aggress win (T2 today=2; T3 buffed)
+    'gutcleaver':   {1: 0.35, 2: 0.50, 3: 0.70},   # +win multiplier vs <30% HP (T2 today=0.50)
+    'thick':        {1: 0.15, 2: 0.20, 3: 0.25},   # stall chip-through mult (T1 today=0.15)
+    'spiked':       {1: 1.3,  2: 1.5,  3: 1.8},     # guard-counter reflect mult (T2 today=1.5; T3 buffed)
+    'bramble':      {1: 2,    2: 3,    3: 4},       # flat reflect when struck (T1 today=2)
+    'bulwark':      {1: 1,    2: 1,    3: 2},       # +DEF per Guard round (T2 today=1; T3 buffed)
+    'mossback':     {1: 2,    2: 3,    3: 4},       # heal per Guard round (T2 today=3)
+    'trickster':    {1: 0.50, 2: 0.60, 3: 0.70},   # frac of lost-Feint punish negated (T1 today=0.50)
+    'serrated':     {1: 1,    2: 2,    3: 3},       # flat cut to foe's next-round dmg (T2 today=2)
+    'venomtrick':   {1: 1,    2: 2,    3: 3},       # rot on a winning Feint (T1 today=1)
+    'cutpurse':     {1: 4,    2: 6,    3: 9},       # Spores after a won fight w/ Feint (T2 today=6)
 }
 ```
 
-Starting anchors; final numbers are a tuning pass gated by the balance test.
+**Anchoring rule:** each rider's magnitude equals its **current live value at the tier
+it occupies today**, so no existing piece is nerfed. `RIDER_SCALE` lives in
+`undercity_config.py` (re-exported into `undercity_data`), replacing the flat
+constants `BRAMBLE_REFLECT` / `CUTPURSE_SPORES` and the engine's hardcoded rider
+numbers. **`seer`/`glint` are not in this table** — read-rate already scales per-piece
+via the gear `readBonus` field, set on each rung in Phase 2.
 
 ### 2. `Combatant` carries per-rider magnitudes
 
