@@ -21,6 +21,7 @@ import {
   AwayEvent,
   BattleResult,
   BattleResume,
+  BattleStatus,
   BazaarView,
   CombatEntry,
   CombatFlee,
@@ -88,6 +89,8 @@ interface LiveBattle {
   hasScry: boolean;
   attackerStats: CombatStats | null;
   defenderStats: CombatStats | null;
+  attackerStatus: BattleStatus | null;
+  defenderStatus: BattleStatus | null;
   augments: StanceAugment[];
   resume: boolean;
   resumeRevealed: Stance | null;
@@ -1353,6 +1356,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           ? { atk: ev.npc!.atk, def: ev.npc!.def, spd: ev.npc!.spd }
           : null,
       augments: computeStanceAugments(you?.gear, you?.passives),
+      attackerStatus: ev.playerStatus ?? null,
+      defenderStatus: ev.npcStatus ?? null,
       resume: false,
       resumeRevealed: null,
       startRound: 1,
@@ -1394,6 +1399,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           ? { atk: pb.npc.atk, def: pb.npc.def, spd: pb.npc.spd }
           : null,
       augments: computeStanceAugments(you?.gear, you?.passives),
+      attackerStatus: pb.playerStatus ?? null,
+      defenderStatus: pb.npcStatus ?? null,
       resume: true,
       resumeRevealed: pb.revealed ?? null,
       startRound: pb.round ?? 1,
@@ -1425,7 +1432,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       }
       const c = resp.combat as CombatRound | undefined;
       if (c && 'entries' in c) {
-        this.liveB?.applyRound(c.entries, c.telegraph, c.playerHp, c.npcHp);
+        this.liveB?.applyRound(c.entries, c.telegraph, c.playerHp, c.npcHp, c.playerStatus ?? null, c.npcStatus ?? null);
       }
       this.refreshBagFlags();
     } catch {
