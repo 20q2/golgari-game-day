@@ -144,6 +144,31 @@ def _get(table, pk, sk):
     return _clean(resp.get('Item')) if resp.get('Item') else None
 
 
+_season_map_cache = {}   # sid -> merged node dict for the night (built once)
+
+
+def _load_season_depths(table, sid):
+    """This night's depths pockets. Reads the SEASON#<sid>/MAP record; falls back
+    to the committed depths when absent (a legacy season, or generation disabled)."""
+    rec = _get(table, _season_pk(sid), 'MAP')
+    if rec and rec.get('depths'):
+        return {n['id']: n for n in rec['depths']}
+    return data.COMMITTED_DEPTHS
+
+
+def _season_map(table, sid):
+    """The full node graph for the night: fixed surface + this season's depths,
+    cached per sid. With PROCEDURAL_DUNGEONS off, returns the committed board
+    unchanged (same object) so behaviour is exactly as before."""
+    if not data.PROCEDURAL_DUNGEONS:
+        return data.MAP_NODES
+    cached = _season_map_cache.get(sid)
+    if cached is None:
+        cached = data.merge_map(_load_season_depths(table, sid))
+        _season_map_cache[sid] = cached
+    return cached
+
+
 def _active_season(table):
     meta = _get(table, META_PK, 'CURRENT')
     if not meta:
