@@ -367,6 +367,35 @@ def test_join_bravery_grants_bonus_roll(table):
     assert resp['you']['rolls'] == data.JOIN_ROLLS
 
 
+def _rewind_night(table, minutes):
+    """Backdate the running season's start so `minutes` have elapsed."""
+    sid = _sid(table)
+    cfg = db._get(table, db._season_pk(sid), 'CONFIG')
+    cfg['startedAt'] = (datetime.utcnow()
+                        - timedelta(minutes=minutes)).strftime('%Y-%m-%dT%H:%M:%S')
+    table.put_item(Item=cfg)
+
+
+def test_join_grants_rolls_for_time_since_night_started(table):
+    # ~40 min into the night → one full regen tick on top of JOIN_ROLLS.
+    _rewind_night(table, 40)
+    _, resp = act(table, 'join', starter='pest')
+    assert resp['you']['rolls'] == data.JOIN_ROLLS + data.ROLLS_PER_REGEN
+
+
+def test_join_late_in_the_night_caps_at_roll_cap(table):
+    # Hours in → the natural bank fills to the cap, not beyond.
+    _rewind_night(table, 10 * 60)
+    _, resp = act(table, 'join', starter='pest')
+    assert resp['you']['rolls'] == data.ROLL_CAP
+
+
+def test_join_at_night_start_still_gets_join_rolls(table):
+    # No time elapsed → the baseline is unchanged.
+    _, resp = act(table, 'join', starter='pest')
+    assert resp['you']['rolls'] == data.JOIN_ROLLS
+
+
 def test_move_requires_matching_pending(table):
     act(table, 'join', starter='pest')
     status, resp = act(table, 'move', to='n3')

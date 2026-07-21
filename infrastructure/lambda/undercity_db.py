@@ -1630,6 +1630,19 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
     return doc
 
 
+def _seed_night_rolls(table, sid, doc):
+    """Anchor a first-time joiner's roll bank to the NIGHT, not the moment they
+    hatched: they start with what they'd have accrued had they been here since
+    the season began — JOIN_ROLLS plus regen from the season's startedAt, capped
+    at ROLL_CAP. So a latecomer isn't punished for showing up an hour in. No-op
+    (leaving the now-anchored JOIN_ROLLS) if the season has no recorded start."""
+    config = _get(table, _season_pk(sid), 'CONFIG') or {}
+    started = config.get('startedAt')
+    if started:
+        doc['rollRegenAt'] = started
+        engine.regen_rolls(doc, _now())
+
+
 def _apply_shop_purchases(perm, doc, payload):
     """Spend banked Renown at the pre-spawn shop, then equip chosen cosmetics.
     Validates the FULL cart before mutating anything, so a bad request leaves
@@ -1719,6 +1732,9 @@ def _join(table, sid, user_id, username, payload):
         seals_before=seals_before, egg_hue=payload.get('eggHue'),
         creature_name=creature_name,
     )
+    # Start their bank where the night is, not at zero-hour — a latecomer gets
+    # the rolls they'd have regenerated so far (capped), before any bonuses.
+    _seed_night_rolls(table, sid, doc)
     # Bravery: the player let fate pick their creature, so they spawn with a
     # bonus roll for their nerve (capped, like every other roll grant).
     bravery = bool(payload.get('bravery'))
