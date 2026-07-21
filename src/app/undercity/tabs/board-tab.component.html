@@ -32,12 +32,21 @@
       }
     }
 
-    <!-- Fleetfoot: after a rolled 1, offer a single optional reroll. Keeping the
-         1 is just declining — tap a destination to move as normal. -->
+    <!-- Fleetfoot: a rolled 1 pauses BEFORE the move — the board stays locked
+         until the player rerolls once or keeps the 1. -->
     @if (!rolling() && store.you()?.pendingMove && canReroll()) {
-      <button class="uc-btn reroll-btn" [disabled]="busy()" (click)="reroll()">
-        <mat-icon class="mi">refresh</mat-icon> Reroll the 1
-      </button>
+      <div class="reroll-prompt">
+        <div class="reroll-prompt-msg">
+          <img class="die-icon" src="undercity/icons/die.png" alt="" />
+          You rolled a <strong>1</strong>. <em>Fleetfoot</em> lets you reroll once.
+        </div>
+        <div class="reroll-prompt-actions">
+          <button class="uc-btn uc-btn-primary" [disabled]="busy()" (click)="reroll()">
+            <mat-icon class="mi">refresh</mat-icon> Reroll
+          </button>
+          <button class="uc-btn" [disabled]="busy()" (click)="keepRoll()">Keep the 1</button>
+        </div>
+      </div>
     }
 
     @if (!rolling() && !store.you()?.pendingMove && castableSpells().length) {

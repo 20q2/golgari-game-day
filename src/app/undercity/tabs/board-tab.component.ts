@@ -601,7 +601,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       const step = this.stepping();
       if (!pm && step) {
         this.stepping.set(null);
-      } else if (pm && !step && you) {
+      } else if (pm && !step && you && !this.canReroll()) {
+        // A pending Fleetfoot reroll decision locks the board: don't begin the
+        // walk until the player keeps the 1 or rerolls.
         this.stepping.set({ path: [you.position], left: pm.value });
       }
       this.syncBoard();
@@ -773,6 +775,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Fleetfoot: discard the rolled 1 and roll fresh (no banked roll spent). */
   reroll(): void {
     void this.roll(undefined, { reroll: true });
+  }
+
+  /** Fleetfoot: keep the rolled 1 — dismiss the prompt and begin the move. */
+  keepRoll(): void {
+    this.canReroll.set(false);
   }
 
   onDiceSettled(): void {

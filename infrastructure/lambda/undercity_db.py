@@ -1859,8 +1859,10 @@ def _roll(table, sid, doc, payload):
         roll['values'] = values
     if used_blink:
         roll['blink'] = True
-    # Offer a one-time Fleetfoot reroll on a fresh (non-pathfinder) 1.
-    if value == 1 and not values and not is_reroll and 'fleetfoot' in perks:
+    # Offer a one-time Fleetfoot reroll on a fresh, randomly-rolled (not chosen
+    # via Blink, not pathfinder) 1.
+    if (value == 1 and random_roll and not values and not is_reroll
+            and 'fleetfoot' in perks):
         roll['canReroll'] = True
     return _ok(doc, roll=roll)
 

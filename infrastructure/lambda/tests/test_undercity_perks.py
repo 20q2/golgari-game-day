@@ -254,6 +254,18 @@ def test_fleetfoot_offers_optional_reroll_of_a_one(table, monkeypatch):
     assert not resp['roll'].get('canReroll')   # only one reroll offered
 
 
+def test_blink_chosen_one_offers_no_reroll(table):
+    # A Blink user (SPD-15, also has Fleetfoot) who deliberately picks 1 must NOT
+    # be nagged to reroll it — the reroll is only for random 1s.
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 15
+    db._put_player(table, doc)
+    status, resp = act(table, 'roll', blink=True, value=1)
+    assert status == 200 and resp['roll']['value'] == 1
+    assert not resp['roll'].get('canReroll')
+
+
 def test_fleetfoot_no_reroll_without_perk(table, monkeypatch):
     act(table, 'join', starter='pest')
     sid = _sid(table)

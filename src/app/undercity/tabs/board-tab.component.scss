@@ -38,6 +38,47 @@
   gap: 6px;
 }
 
+// Fleetfoot reroll gate — a clear either/or card that holds the board until the
+// player decides, so it never reads as "already moving".
+.reroll-prompt {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(30, 26, 18, 0.96);
+  border: 1px solid rgba(250, 220, 90, 0.55);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+
+  .reroll-prompt-msg {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+
+    .die-icon {
+      width: 22px;
+      height: 22px;
+    }
+    strong {
+      color: #fadc5a;
+      font-size: 1.05rem;
+    }
+    em {
+      font-style: normal;
+      color: var(--accent-color, #9ac26e);
+      font-weight: 600;
+    }
+  }
+
+  .reroll-prompt-actions {
+    display: flex;
+    gap: 10px;
+  }
+}
+
 .pick-face {
   min-width: 40px;
   padding: 10px 0;
