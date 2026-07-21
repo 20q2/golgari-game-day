@@ -197,6 +197,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   private pendingGambleText: string | null = null;
   private pendingGambleWon: boolean | null = null;
   private readonly stepping = signal<StepState | null>(null);
+  /** Node id of the wilderness step held pending the danger notice, or null. */
+  protected readonly wildsPrompt = signal<string | null>(null);
   private readonly ritesShown = new Set<string>();
 
   protected readonly showSpells = signal(false);
@@ -898,6 +900,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         return;
       }
       if (step.left >= 1 && this.stepChoices(step).includes(nodeId)) {
+        // First walk across the Ashen Wilds border, under-leveled, this
+        // season: hold the step and warn before committing.
+        if (this.shouldWarnWilds(step, nodeId)) {
+          this.hideInfo();
+          this.wildsPrompt.set(nodeId);
+          return;
+        }
         this.commitStep(step, nodeId);
         return;
       }
@@ -919,6 +928,51 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       this.map.nodes.find((n) => n.id === nodeId)?.type === 'barrier' &&
       !this.store.barriersOpen().includes(nodeId);
     if (step.left === 1 || sealedStop) void this.move(nodeId);
+  }
+
+  // ── Ashen Wilds first-entry warning ─────────────────────────────────────────
+
+  private regionOf(nodeId: string | null): string | undefined {
+    return nodeId ? this.map.nodes.find((n) => n.id === nodeId)?.region : undefined;
+  }
+
+  /** localStorage flag key for "already warned this season", or null if the
+   *  season id isn't loaded yet. */
+  private wildsWarnKey(): string | null {
+    const seasonId = this.store.season()?.seasonId;
+    return seasonId ? `uc-wilds-warned:${seasonId}` : null;
+  }
+
+  private wildsWarned(): boolean {
+    const key = this.wildsWarnKey();
+    // No season id → fail open (show the notice); otherwise trust the flag.
+    return key ? localStorage.getItem(key) === '1' : false;
+  }
+
+  /** True when this step first crosses into the Ashen Wilds, the player is
+   *  under the recommended level, and they haven't been warned this season. */
+  private shouldWarnWilds(step: StepState, nodeId: string): boolean {
+    return (
+      this.regionOf(nodeId) === 'wilderness' &&
+      this.regionOf(stepPos(step)) !== 'wilderness' &&
+      (this.store.you()?.level ?? 0) < 5 &&
+      !this.wildsWarned()
+    );
+  }
+
+  /** "Press on" — remember the warning for this season and take the held step. */
+  protected pressOnWilds(): void {
+    const nodeId = this.wildsPrompt();
+    const step = this.stepping();
+    this.wildsPrompt.set(null);
+    const key = this.wildsWarnKey();
+    if (key) localStorage.setItem(key, '1');
+    if (nodeId && step) this.commitStep(step, nodeId);
+  }
+
+  /** "Turn back" — dismiss; the walk is untouched so other routes stay open. */
+  protected turnBackWilds(): void {
+    this.wildsPrompt.set(null);
   }
 
   // ── Space info popover ───────────────────────────────────────────────────────
