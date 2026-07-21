@@ -587,12 +587,11 @@ def _roll_gear_drop(doc, tier_weights):
 
 def cutpurse_bonus(doc, feint_won, won):
     """Flat Spores a Cutpurse charm pays after a won fight in which the player
-    landed a winning Feint. Static — does not scale with the number of Feints."""
+    landed a winning Feint. Static per fight (does not stack with the number of
+    Feints); the amount scales with the charm's rarity via RIDER_SCALE."""
     if not (won and feint_won):
         return 0
-    if 'cutpurse' not in _riders(doc):
-        return 0
-    return data.CUTPURSE_SPORES
+    return _rider_mags(doc).get('cutpurse', 0)
 
 
 def _grant_grimoire(doc, gid):

@@ -78,3 +78,12 @@ def test_venomtrick_rot_scales_with_mag():
         engine.resolve_round(me, foe, 'feint', 'guard', 1, random.Random(1))  # my Feint beats Guard
         return foe.rot_stacks
     assert applied(3) > applied(1)
+
+
+def test_cutpurse_bonus_uses_scaled_mag():
+    import undercity_db as db
+    # cutpurse_charm = tier-2 -> RIDER_SCALE['cutpurse'][2] == 6
+    doc = {'gear': {'charm': 'cutpurse_charm'}}
+    assert db.cutpurse_bonus(doc, feint_won=True, won=True) == 6
+    assert db.cutpurse_bonus(doc, feint_won=False, won=True) == 0
+    assert db.cutpurse_bonus({'gear': {}}, feint_won=True, won=True) == 0
