@@ -129,3 +129,23 @@ def test_menace_lowers_effective_bluff():
     db._rng.seed(0)
     truth_menace = sum(_telegraph_truthful(['menace']) for _ in range(400))
     assert truth_menace > truth_plain
+
+
+# ── Task 8: Thick Hide ───────────────────────────────────────────────────────
+
+def test_thick_hide_halves_hp_loss():
+    doc = {'atk': 1, 'def': 7, 'spd': 1, 'hp': 30, 'maxHp': 30}   # def 7 -> thick_hide
+    assert db._apply_hp_loss(doc, 10) == 5
+    assert doc['hp'] == 25
+
+
+def test_hp_loss_full_without_perk():
+    doc = {'atk': 1, 'def': 1, 'spd': 1, 'hp': 30, 'maxHp': 30}
+    assert db._apply_hp_loss(doc, 10) == 10
+    assert doc['hp'] == 20
+
+
+def test_hp_loss_floors_at_one():
+    doc = {'atk': 1, 'def': 1, 'spd': 1, 'hp': 5, 'maxHp': 30}
+    db._apply_hp_loss(doc, 100)
+    assert doc['hp'] == 1   # hazards never compost

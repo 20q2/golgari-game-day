@@ -781,6 +781,18 @@ def _grant_grimoire(doc, gid):
     return True
 
 
+def _apply_hp_loss(doc, amount, floor=1):
+    """Apply an environmental HP loss (hazard / bad mystery), halved by the Thick
+    Hide perk (DEF-5). Floors at `floor` (hazards never compost, so 1). Returns
+    the amount actually deducted."""
+    if amount <= 0:
+        return 0
+    if 'thick_hide' in engine.attribute_perks(doc):
+        amount = max(1, round(amount * data.THICK_HIDE_MULT))
+    doc['hp'] = max(floor, doc.get('hp', 0) - amount)
+    return amount
+
+
 def _compost(table, sid, doc, cause_text):
     """Handle death: Undying check, else respawn at the gate with a shield."""
     now = datetime.utcnow()
@@ -1983,7 +1995,11 @@ def _mystery(table, sid, doc):
     if res['xp']:
         _grant_xp(table, sid, doc, res['xp'])
     if res['hpPct']:
-        doc['hp'] = max(1, doc['hp'] + round(doc['hp'] * res['hpPct']))
+        raw = round(doc['hp'] * res['hpPct'])
+        if raw < 0:
+            _apply_hp_loss(doc, -raw)      # Thick Hide halves bad-mystery HP loss
+        else:
+            doc['hp'] = max(1, doc['hp'] + raw)
     if res['heal']:
         doc['hp'] = eff['maxHp']
         doc['buffs'] = [b for b in (doc.get('buffs') or [])
@@ -2055,8 +2071,7 @@ def _hazard(table, sid, doc, node):
                     'text': 'Grasping vines slide off your mire-slick hide. (Mirefoot)'}
         doc.setdefault('buffs', []).append({'kind': 'vines'})
         return {'type': 'hazard', 'text': 'Grasping vines coil around you — your next roll is halved.'}
-    dmg = round(doc['hp'] * (0.075 if mire else 0.15))
-    doc['hp'] = max(1, doc['hp'] - dmg)
+    dmg = _apply_hp_loss(doc, round(doc['hp'] * (0.075 if mire else 0.15)))
     return {'type': 'hazard', 'text': f'A choking spore cloud! You lose {dmg} HP.', 'hp': -dmg}
 
 
@@ -2086,8 +2101,7 @@ def _dungeon_hazard(table, sid, doc, node, biome, mire):
     elif h['id'] == 'bone_chill':
         doc.setdefault('buffs', []).append({'kind': 'bone_chill'})
     elif h['id'] == 'rot_bloom':
-        dmg = 1 if mire else 3
-        doc['hp'] = max(1, doc['hp'] - dmg)
+        dmg = _apply_hp_loss(doc, 1 if mire else 3)
         doc['spores'] = doc.get('spores', 0) + 4
         out['hp'] = -dmg
         out['spores'] = 4

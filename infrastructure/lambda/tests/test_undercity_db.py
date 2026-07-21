@@ -1099,7 +1099,8 @@ def test_rot_bloom_trades_hp_for_spores(table):
     hp_before = doc['hp']
     out = db._hazard(table, sid, doc, 'garden_m2')
     assert out['hazardId'] == 'rot_bloom'
-    assert doc['hp'] == hp_before - 3
+    # pest base DEF 5 unlocks Thick Hide, which halves hazard HP loss (3 -> 2).
+    assert doc['hp'] == hp_before - 2
     assert doc['spores'] == 14
 
 
