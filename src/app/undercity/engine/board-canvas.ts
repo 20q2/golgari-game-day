@@ -226,6 +226,25 @@ interface DustMote {
   size: number;
 }
 
+/** Green twinkle around a token that's promised a gate heal (world space). */
+interface Sparkle {
+  x: number;
+  y: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+}
+
+/** Floating "+N" heal number that rises and fades off a token (world space). */
+interface HealNumber {
+  x: number;
+  y: number;
+  life: number;
+  maxLife: number;
+  text: string;
+}
+
 // Movement/idle animation of the creature tokens.
 const HOP_COUNT = 2; // footfalls per node-to-node move
 const HOP_HEIGHT = 10; // px the sprite lifts at the peak of a hop
@@ -294,6 +313,11 @@ export class BoardCanvas {
   private tokenAnims = new Map<string, TokenAnim>();
   private camGlide: CamGlide | null = null;
   private dust: DustMote[] = [];
+  private sparkles: Sparkle[] = [];
+  private heals: HealNumber[] = [];
+  private healPending = false;
+  private sparkleAccum = 0; // time since last sparkle emission
+  private pendingHealPops: { userId: string; amount: number }[] = [];
   private lastTs = performance.now();
   private rafId: number | null = null;
   private startTime = performance.now();
@@ -675,6 +699,17 @@ export class BoardCanvas {
     this.stepDie = n;
   }
 
+  /** Lit while the walk-so-far will heal at a gate — draws a green sparkle
+   *  aura on your own token until the move commits (or you retrace off it). */
+  setSelfHealPending(on: boolean): void {
+    this.healPending = on;
+  }
+
+  /** Pop a green "+amount" number off a token (fired when a gate heal lands). */
+  popHealNumber(userId: string, amount: number): void {
+    if (amount > 0) this.pendingHealPops.push({ userId, amount });
+  }
+
   centerOn(nodeId: string, animate = true): void {
     this.focusOn(nodeId, undefined, animate);
   }
@@ -936,6 +971,7 @@ export class BoardCanvas {
     const dt = Math.min(0.05, (ts - this.lastTs) / 1000);
     this.lastTs = ts;
     this.updateDust(dt);
+    this.updateHealFx(dt);
 
     if (this.camGlide) {
       const g = this.camGlide;
@@ -1031,13 +1067,24 @@ export class BoardCanvas {
         placed.push({ p, x: a.x, y: a.y, hopY, breath });
       });
     }
-    // Dust settles under the tokens.
+    // Dust settles under the tokens; the gate-heal sparkle rides just above it.
     this.drawDust();
+    this.drawSparkles();
     // Painter's algorithm: lower tokens draw over higher ones; labels last so
     // no sprite occludes a name.
     placed.sort((a, b) => a.y - b.y);
     for (const t of placed) this.drawToken(t.p, t.x, t.y, t.hopY, t.breath);
     for (const t of placed) this.drawLabel(t.p, t.x, t.y);
+    // Pop any queued heal numbers at their token's current position.
+    if (this.pendingHealPops.length) {
+      for (const t of placed) {
+        const idx = this.pendingHealPops.findIndex((h) => h.userId === t.p.userId);
+        if (idx < 0) continue;
+        const targetH = this.tokenHeight(t.p.userId === this.ownUserId) * formSprite(t.p.form).scale;
+        this.spawnHealNumber(t.x, t.y - targetH + t.hopY, this.pendingHealPops[idx].amount);
+        this.pendingHealPops.splice(idx, 1);
+      }
+    }
     // 🎲 badge over anyone seated at an active board-game table.
     if (this.diceMarkers.size) {
       for (const t of placed) {
@@ -1065,6 +1112,8 @@ export class BoardCanvas {
       x1: this.camX + this.canvas.width / this.zoom,
       y1: this.camY + this.canvas.height / this.zoom,
     });
+
+    this.drawHealNumbers();
 
     this.drawInfo();
 
@@ -1588,6 +1637,87 @@ export class BoardCanvas {
       ctx.beginPath();
       ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  private spawnSparkle(x: number, y: number): void {
+    const ttl = 0.5 + Math.random() * 0.4;
+    this.sparkles.push({
+      x: x + (Math.random() - 0.5) * 34,
+      y: y - Math.random() * 30,
+      vy: -10 - Math.random() * 12,
+      life: ttl,
+      maxLife: ttl,
+      size: 1.5 + Math.random() * 2,
+    });
+  }
+
+  private spawnHealNumber(x: number, y: number, amount: number): void {
+    this.heals.push({ x, y, life: 1.1, maxLife: 1.1, text: `+${amount}` });
+  }
+
+  private updateHealFx(dt: number): void {
+    // Emit sparkles around the own token while a heal is promised.
+    if (this.healPending) {
+      this.sparkleAccum += dt;
+      const own = this.ownUserId ? this.tokenAnims.get(this.ownUserId) : undefined;
+      while (this.sparkleAccum > 0.06) {
+        this.sparkleAccum -= 0.06;
+        if (own) this.spawnSparkle(own.x, own.y);
+      }
+    } else {
+      this.sparkleAccum = 0;
+    }
+    for (let i = this.sparkles.length - 1; i >= 0; i--) {
+      const s = this.sparkles[i];
+      s.life -= dt;
+      if (s.life <= 0) {
+        this.sparkles.splice(i, 1);
+        continue;
+      }
+      s.y += s.vy * dt;
+    }
+    for (let i = this.heals.length - 1; i >= 0; i--) {
+      const h = this.heals[i];
+      h.life -= dt;
+      if (h.life <= 0) {
+        this.heals.splice(i, 1);
+        continue;
+      }
+      h.y -= 34 * dt; // float upward
+    }
+  }
+
+  private drawSparkles(): void {
+    const ctx = this.ctx;
+    for (const s of this.sparkles) {
+      const a = s.life / s.maxLife;
+      ctx.save();
+      ctx.globalAlpha = Math.sin(a * Math.PI) * 0.9; // twinkle in and out
+      ctx.fillStyle = '#8fe6a0';
+      ctx.shadowColor = '#4fd08a';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  private drawHealNumbers(): void {
+    const ctx = this.ctx;
+    for (const h of this.heals) {
+      const a = Math.min(1, h.life / (h.maxLife * 0.5)); // hold, then fade
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.font = 'bold 20px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+      ctx.fillStyle = '#7fe6a0';
+      ctx.strokeText(h.text, h.x, h.y);
+      ctx.fillText(h.text, h.x, h.y);
       ctx.restore();
     }
   }
