@@ -898,20 +898,27 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         return;
       }
       if (step.left >= 1 && this.stepChoices(step).includes(nodeId)) {
-        this.hideInfo();
-        this.stepping.set({ path: [...step.path, nodeId], left: step.left - 1 });
-        this.board?.centerOn(nodeId);
-        // Bonk: a sealed barrier halts the walk immediately — you stop at the
-        // wall and spend the rest of the roll, matching the server's dests.
-        const sealedStop =
-          this.map.nodes.find((n) => n.id === nodeId)?.type === 'barrier' &&
-          !this.store.barriersOpen().includes(nodeId);
-        if (step.left === 1 || sealedStop) void this.move(nodeId);
+        this.commitStep(step, nodeId);
         return;
       }
     }
     // Not a walk step — peek at what this space does.
     this.toggleInfo(nodeId);
+  }
+
+  /** Advance the local walk onto `nodeId`, honoring the sealed-barrier bonk and
+   *  the last-step auto-commit. Shared by a direct tap and the Ashen Wilds
+   *  "Press on" confirmation so both paths behave identically. */
+  private commitStep(step: StepState, nodeId: string): void {
+    this.hideInfo();
+    this.stepping.set({ path: [...step.path, nodeId], left: step.left - 1 });
+    this.board?.centerOn(nodeId);
+    // Bonk: a sealed barrier halts the walk immediately — you stop at the
+    // wall and spend the rest of the roll, matching the server's dests.
+    const sealedStop =
+      this.map.nodes.find((n) => n.id === nodeId)?.type === 'barrier' &&
+      !this.store.barriersOpen().includes(nodeId);
+    if (step.left === 1 || sealedStop) void this.move(nodeId);
   }
 
   // ── Space info popover ───────────────────────────────────────────────────────
