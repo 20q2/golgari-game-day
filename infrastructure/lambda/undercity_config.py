@@ -102,3 +102,10 @@ SNARE_SPILL_PCT = 0.20
 
 # ── Renown shop (pre-spawn) ──────────────────────────────────────────────────
 SHOP_START_RENOWN = 50       # seed for a brand-new player: one common hat OR one plain color
+
+# ── Procedural dungeons ──────────────────────────────────────────────────────
+# When True, each night's five dungeon pockets are regenerated from a per-season
+# graph (built at season-start, stored on the SEASON#<sid>/MAP record) instead of
+# the committed depths in map.json. Off = the committed board, exactly as before.
+# See specs/2026-07-20-undercity-procedural-dungeons-design.md.
+PROCEDURAL_DUNGEONS = False

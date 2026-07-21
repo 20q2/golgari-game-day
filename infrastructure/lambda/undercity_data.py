@@ -836,6 +836,19 @@ MAP_NODES = {n['id']: n for n in _MAP_DOC['nodes']}
 WARP_NODES = [nid for nid, n in MAP_NODES.items() if n['type'] == 'warp']
 TUNNEL_NODES = frozenset(nid for nid, n in MAP_NODES.items() if n['type'] == 'tunnel')
 
+# The board splits into a fixed surface and regenerable dungeon pockets. The
+# depths (region == 'depths') are procedurally regenerated per night when
+# PROCEDURAL_DUNGEONS is on (see the procedural-dungeons design); everything else
+# is the fixed committed board.
+SURFACE_NODES = {nid: n for nid, n in MAP_NODES.items() if n.get('region') != 'depths'}
+COMMITTED_DEPTHS = {nid: n for nid, n in MAP_NODES.items() if n.get('region') == 'depths'}
+
+
+def merge_map(depths):
+    """Full node graph = fixed surface + a night's depths (dict of node dicts).
+    Pure; callers supply the depths (stored, generated, or COMMITTED_DEPTHS)."""
+    return {**SURFACE_NODES, **depths}
+
 
 def _tunnel_exit(nid):
     """The far-biome node a unit lands on when it crosses this tunnel: the
