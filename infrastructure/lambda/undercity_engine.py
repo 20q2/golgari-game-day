@@ -546,6 +546,44 @@ def legal_destinations(nodes: dict, start: str, steps: int,
     return results
 
 
+def validate_walk(nodes: dict, path, steps,
+                  closed: frozenset = frozenset(),
+                  blocked: frozenset = frozenset()) -> bool:
+    """
+    True if `path` (ordered node ids, start first, landing last) is a legal
+    exact-count walk for one of the allowed hop counts in `steps`.
+
+    Enforces the same rules as legal_destinations: adjacency, no immediate
+    backtrack, never step ONTO a `blocked` node, never walk THROUGH a sealed
+    `closed` node (a closed node may only be the final landing — the bonk stop).
+    A walk whose landing is a closed barrier may stop short of the roll (bonk);
+    otherwise the hop count must equal one of `steps` exactly. The start node is
+    never treated as blocked or closed, mirroring legal_destinations.
+    """
+    steps = set(steps)
+    if not steps or not path or len(path) < 2:
+        return False
+    if any(n not in nodes for n in path):
+        return False
+    hops = len(path) - 1
+    if path[-1] in closed:
+        if hops < 1 or hops > max(steps):   # bonk: stop at the wall, spend the rest
+            return False
+    elif hops not in steps:
+        return False
+    for i in range(1, len(path)):
+        cur, prev = path[i], path[i - 1]
+        if cur not in nodes[prev]['neighbors']:
+            return False                    # not adjacent
+        if i >= 2 and cur == path[i - 2]:
+            return False                    # immediate backtrack
+        if cur in blocked:
+            return False                    # never step onto a blocked node
+        if cur in closed and i != len(path) - 1:
+            return False                    # never a corridor through a seal
+    return True
+
+
 def board_distance(nodes: dict, start: str, goal: str, max_steps: int,
                    closed: frozenset = frozenset(),
                    blocked: frozenset = frozenset()) -> int | None:

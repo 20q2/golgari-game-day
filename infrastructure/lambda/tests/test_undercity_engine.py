@@ -7,9 +7,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import undercity_data as data
 import undercity_db as db
 from undercity_engine import (
-    Combatant, resolve_battle, legal_destinations, board_distance, roll_mystery,
-    apply_level_ups, spend_stat, effective_stats, regen_hp, regen_rolls, pick_npc,
-    pvp_spore_steal,
+    Combatant, resolve_battle, legal_destinations, validate_walk, board_distance,
+    roll_mystery, apply_level_ups, spend_stat, effective_stats, regen_hp,
+    regen_rolls, pick_npc, pvp_spore_steal,
 )
 
 
@@ -138,6 +138,53 @@ def test_can_circle_back_to_start_on_a_loop():
     assert 'a' in legal_destinations(ring, 'a', 6)      # all the way round → home
     assert legal_destinations(ring, 'a', 3) == {'d'}    # half way is the far node
     assert 'a' not in legal_destinations(ring, 'a', 2)  # no trivial reversal
+
+
+# ── Walk validation (server-authoritative route check) ───────────────────────
+
+def test_validate_walk_legal_pass_through():
+    # city_r1 -> city_r0 (gate) -> city_r9 is a legal 2-hop walk.
+    assert validate_walk(data.MAP_NODES, ['city_r1', 'city_r0', 'city_r9'], {2})
+
+
+def test_validate_walk_rejects_non_adjacent():
+    # city_r1's neighbors are city_r0/city_r2 — city_r9 is not adjacent.
+    assert not validate_walk(data.MAP_NODES, ['city_r1', 'city_r9'], {1})
+
+
+def test_validate_walk_rejects_immediate_backtrack():
+    assert not validate_walk(data.MAP_NODES, ['city_r1', 'city_r0', 'city_r1'], {2})
+
+
+def test_validate_walk_rejects_wrong_length():
+    assert not validate_walk(data.MAP_NODES, ['city_r1', 'city_r0', 'city_r9'], {3})
+
+
+def test_validate_walk_rejects_unknown_node():
+    assert not validate_walk(data.MAP_NODES, ['city_r1', 'nope'], {1})
+
+
+def test_validate_walk_bonk_stops_short_at_closed_landing():
+    # A synthetic line a-b-c-d where c is sealed: you may bonk and stop at c
+    # short of a roll of 3, but never walk THROUGH c to d.
+    nodes = {
+        'a': {'neighbors': ['b'], 'type': 'loot'},
+        'b': {'neighbors': ['a', 'c'], 'type': 'loot'},
+        'c': {'neighbors': ['b', 'd'], 'type': 'barrier'},
+        'd': {'neighbors': ['c'], 'type': 'loot'},
+    }
+    closed = frozenset({'c'})
+    assert validate_walk(nodes, ['a', 'b', 'c'], {3}, closed)          # bonk stop, hops < roll
+    assert not validate_walk(nodes, ['a', 'b', 'c', 'd'], {3}, closed)  # through a seal
+
+
+def test_validate_walk_rejects_stepping_onto_blocked():
+    nodes = {
+        'a': {'neighbors': ['b'], 'type': 'loot'},
+        'b': {'neighbors': ['a', 'c'], 'type': 'tunnel'},
+        'c': {'neighbors': ['b'], 'type': 'loot'},
+    }
+    assert not validate_walk(nodes, ['a', 'b', 'c'], {2}, frozenset(), frozenset({'b'}))
 
 
 # ── Barriers (v3) ────────────────────────────────────────────────────────────
