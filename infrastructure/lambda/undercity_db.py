@@ -270,10 +270,16 @@ def _passives(doc):
 
 
 def _blocked_nodes(doc):
-    """Nodes this unit may not step onto. Evolved units (tier > TUNNEL_TIER_MAX)
-    are barred from tunnels; Tier-1 units are barred from nothing."""
-    if doc.get('tier', 1) > data.TUNNEL_TIER_MAX:
-        return data.TUNNEL_NODES
+    """Nodes this unit may not step onto. Tier-1 units are barred from nothing.
+    Evolved units (tier > TUNNEL_TIER_MAX) may use tunnels only if they can
+    afford the tier toll (charged on landing in _resolve_space); a unit that
+    cannot afford it is barred from tunnels entirely — not a destination and
+    not a pass-through."""
+    tier = doc.get('tier', 1)
+    if tier > data.TUNNEL_TIER_MAX:
+        toll = data.TUNNEL_TOLL.get(tier, 0)
+        if doc.get('spores', 0) < toll:
+            return data.TUNNEL_NODES
     return frozenset()
 
 
