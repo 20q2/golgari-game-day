@@ -28,6 +28,7 @@ class Combatant:
     has_smoke_spore: bool = False
     flee_bonus: int = 0            # home-biome perk (Glowblessed: +10)
     riders: frozenset = frozenset()   # gear rider tags (barbed, spiked, glint, ...)
+    rider_mag: dict = field(default_factory=dict)  # rider tag -> magnitude at equipped tier
     buffs: frozenset = frozenset()    # active stance-modifier buff kinds
     # internal battle state (mutated during a battle)
     rot_stacks: int = field(default=0, repr=False)
@@ -43,6 +44,10 @@ class Combatant:
 
     def has_rider(self, rider):
         return rider in self.riders
+
+    def mag(self, rider, default=0):
+        """Scaled magnitude of an equipped rider (RIDER_SCALE at the gear's tier)."""
+        return self.rider_mag.get(rider, default)
 
     def has_buff(self, kind):
         return kind in self.buffs
