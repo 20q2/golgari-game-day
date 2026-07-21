@@ -10,8 +10,11 @@ import undercity_engine as engine
 from tests.test_undercity_db import act, table, _sid  # reuse harness + fixture
 
 
-def test_flag_defaults_off():
-    assert data.PROCEDURAL_DUNGEONS is False
+def test_procedural_dungeons_on_in_production():
+    # The conftest overrides data.PROCEDURAL_DUNGEONS for tests; the production
+    # default lives on the untouched config module.
+    import undercity_config
+    assert undercity_config.PROCEDURAL_DUNGEONS is True
 
 
 def test_surface_and_committed_depths_partition_the_map():

@@ -108,4 +108,4 @@ SHOP_START_RENOWN = 50       # seed for a brand-new player: one common hat OR on
 # graph (built at season-start, stored on the SEASON#<sid>/MAP record) instead of
 # the committed depths in map.json. Off = the committed board, exactly as before.
 # See specs/2026-07-20-undercity-procedural-dungeons-design.md.
-PROCEDURAL_DUNGEONS = False
+PROCEDURAL_DUNGEONS = True
