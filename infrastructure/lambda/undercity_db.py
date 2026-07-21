@@ -1665,6 +1665,7 @@ def _roll(table, sid, doc, payload):
     used_blink = False
 
     value = None
+    random_roll = False
     if data.DEBUG and picked is not None:
         value = picked
     elif blink and 'blink' in perks and picked is not None:
@@ -1674,25 +1675,44 @@ def _roll(table, sid, doc, payload):
         value = int(doc.pop('pendingLoadedDie'))
     else:
         value = _rng.randint(1, 6)
+        random_roll = True
 
     vines = [b for b in (doc.get('buffs') or []) if b.get('kind') == 'vines']
     if vines and picked is None:
         value = (value + 1) // 2
         doc['buffs'] = [b for b in doc['buffs'] if b.get('kind') != 'vines']
 
-    dests = engine.legal_destinations(nodes, doc['position'], value,
-                                      _closed_barriers(table, sid),
-                                      _blocked_nodes(doc))
+    def _legal(v):
+        return engine.legal_destinations(nodes, doc['position'], v,
+                                         _closed_barriers(table, sid),
+                                         _blocked_nodes(doc))
+
+    # Pathfinder (SPD-10 perk): roll a second die and keep either — destinations
+    # are the union of both faces. Only on an ordinary random roll (a chosen
+    # value via Blink/loaded die is already deliberate).
+    values = None
+    if random_roll and 'pathfinder' in perks:
+        value2 = _rng.randint(1, 6)
+        values = sorted([value, value2])
+        dests = sorted(set(_legal(value)) | set(_legal(value2)))
+    else:
+        dests = sorted(_legal(value))
+
     if not dests:
         # Dead-end corner case: refund the roll, let them try again.
         return _err('The tunnels shift — no path fits that roll. Try again.', 409)
     if not data.DEBUG:
         doc['rolls'] -= 1
-    doc['pendingMove'] = {'value': value, 'dests': sorted(dests)}
+    pm = {'value': value, 'dests': dests}
+    if values:
+        pm['values'] = values
+    doc['pendingMove'] = pm
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
-    roll = {'value': value, 'destinations': sorted(dests)}
+    roll = {'value': value, 'destinations': dests}
+    if values:
+        roll['values'] = values
     if used_blink:
         roll['blink'] = True
     return _ok(doc, roll=roll)

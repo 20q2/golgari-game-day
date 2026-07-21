@@ -205,3 +205,31 @@ def test_blink_ignored_without_perk(table):
     db._put_player(table, doc)
     status, resp = act(table, 'roll', blink=True, value=6)
     assert status == 200 and not resp['roll'].get('blink')
+
+
+# ── Task 11: Pathfinder ──────────────────────────────────────────────────────
+
+def test_pathfinder_rolls_two_and_unions_destinations(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 10  # pathfinder
+    db._put_player(table, doc)
+    vals = iter([2, 5])
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: next(vals))
+    status, resp = act(table, 'roll')
+    assert status == 200
+    assert sorted(resp['roll']['values']) == [2, 5]
+    pos = db._get_player(table, sid, 'user-alex')['position']
+    d2 = engine.legal_destinations(data.MAP_NODES, pos, 2, set(), set())
+    d5 = engine.legal_destinations(data.MAP_NODES, pos, 5, set(), set())
+    assert set(resp['roll']['destinations']) == set(d2) | set(d5)
+
+
+def test_no_pathfinder_single_value(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 1  # no pathfinder
+    db._put_player(table, doc)
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: 3)
+    status, resp = act(table, 'roll')
+    assert 'values' not in resp['roll'] and resp['roll']['value'] == 3
