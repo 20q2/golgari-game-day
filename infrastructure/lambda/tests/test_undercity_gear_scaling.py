@@ -55,3 +55,26 @@ def test_spiked_counter_scales_with_mag():
     low = _duel('spiked', 1.3, 'guard', 'aggress')
     high = _duel('spiked', 1.8, 'guard', 'aggress')
     assert high > low
+
+
+def test_bramble_reflect_scales_with_mag():
+    import undercity_engine as engine, random
+    def reflect(mag):
+        me = engine.Combatant(name='me', hp=100, max_hp=100, atk=10, dfn=5, spd=5,
+                              riders=frozenset({'bramble'}), rider_mag={'bramble': mag})
+        foe = engine.Combatant(name='foe', hp=100, max_hp=100, atk=30, dfn=0, spd=9)
+        # foe wins Aggress vs my Feint -> foe strikes me -> bramble reflects `mag`
+        engine.resolve_round(me, foe, 'feint', 'aggress', 1, random.Random(3))
+        return 100 - foe.hp
+    assert reflect(4) > reflect(2)
+
+
+def test_venomtrick_rot_scales_with_mag():
+    import undercity_engine as engine, random
+    def applied(mag):
+        me = engine.Combatant(name='me', hp=100, max_hp=100, atk=10, dfn=5, spd=9,
+                              riders=frozenset({'venomtrick'}), rider_mag={'venomtrick': mag})
+        foe = engine.Combatant(name='foe', hp=100, max_hp=100, atk=10, dfn=5, spd=1)
+        engine.resolve_round(me, foe, 'feint', 'guard', 1, random.Random(1))  # my Feint beats Guard
+        return foe.rot_stacks
+    assert applied(3) > applied(1)

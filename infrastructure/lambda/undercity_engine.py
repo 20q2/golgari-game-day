@@ -168,13 +168,15 @@ def _other(side):
 
 
 def _bramble(struck, striker, struck_side, rnd, entries):
-    """A struck Bramble carapace reflects a flat amount back onto the striker.
+    """A struck Bramble carapace reflects a scaled flat amount back onto the striker.
     Called at every strike site (not on rot/scavenge — DoT or already-retaliatory
-    damage does not trigger thorns)."""
-    if struck.has_rider('bramble') and striker.hp > 0:
-        striker.hp -= data.BRAMBLE_REFLECT
+    damage does not trigger thorns). The reflect amount scales with rarity via
+    the struck combatant's rider_mag."""
+    amt = struck.mag('bramble', 0)
+    if amt and striker.hp > 0:
+        striker.hp -= amt
         entries.append({'round': rnd, 'by': struck_side,
-                        'dmg': data.BRAMBLE_REFLECT, 'retaliation': True})
+                        'dmg': amt, 'retaliation': True})
 
 
 def _scavenge(loser, winner, loser_side, rnd, entries):
@@ -285,18 +287,19 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                 _bramble(losr, winr, lose_side, rnd, entries)
             # Rabid: each Aggress win ramps future Aggress hits (applies next win).
             if win_stance == 'aggress' and winr.has_rider('rabid'):
-                winr.aggress_ramp += 2
+                winr.aggress_ramp += winr.mag('rabid', 0)
             # A winning Feint: serrated debuffs enemy next round; glint reveals;
             # venomtrick poisons; cutpurse's flag is armed for the post-fight payout.
             if win_stance == 'feint':
                 winr.feint_won = True
                 if winr.has_rider('serrated'):
-                    losr.dmg_penalty += 2
+                    losr.dmg_penalty += winr.mag('serrated', 0)
                 if winr.has_rider('glint') or winr.has_buff('glowveil'):
                     winr.reveal_next = True
                 if winr.has_rider('venomtrick') and losr.hp > 0:
-                    losr.rot_stacks += 1
-                    entries.append({'round': rnd, 'by': win_side, 'rotApplied': 1})
+                    n = winr.mag('venomtrick', 0)
+                    losr.rot_stacks += n
+                    entries.append({'round': rnd, 'by': win_side, 'rotApplied': n})
             # Feint into an Aggress still lands a poke: the caught feinter takes
             # the big hit but chips the aggressor back.
             if lose_stance == 'feint' and losr.hp > 0:
@@ -328,7 +331,10 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
         # a mutual-guard lock reaches a real kill instead of a dead timeout.
         for side, (s, t) in (('attacker', (attacker, defender)),
                              ('defender', (defender, attacker))):
-            if s.has_rider('thick') or ramp > 1.0:
+            if s.has_rider('thick'):
+                raw = _base_hit(s, t, rng, stance='guard', ramp=ramp)
+                _deal(s, t, side, rnd, raw, s.mag('thick', 0), entries, tag='chip')
+            elif ramp > 1.0:
                 raw = _base_hit(s, t, rng, stance='guard', ramp=ramp)
                 _deal(s, t, side, rnd, raw, data.STANCE_STALL_MULT, entries, tag='chip')
     elif winner == 'whiff':
@@ -365,8 +371,9 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
     for side, (s, t), st in (('attacker', (attacker, defender), a_stance),
                              ('defender', (defender, attacker), d_stance)):
         if st == 'aggress' and (s.has_rider('barbed') or s.has_buff('rot_surge')) and t.hp > 0:
-            t.rot_stacks += 1
-            entries.append({'round': rnd, 'by': side, 'rotApplied': 1})
+            n = s.mag('barbed', 0) or 1   # buff-only source (no gear) still applies 1
+            t.rot_stacks += n
+            entries.append({'round': rnd, 'by': side, 'rotApplied': n})
 
     # Bulwark / Mossback: ending a round in Guard fortifies DEF / knits flesh
     # for the rest of the fight.
