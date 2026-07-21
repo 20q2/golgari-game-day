@@ -893,6 +893,7 @@ def handle_state(table, query_params):
             if item['userId'] == user_id:
                 you = {k: v for k, v in item.items() if k not in ('pk', 'sk')}
                 you.update(_roll_meta(item))
+                you['perks'] = sorted(engine.attribute_perks(item))
         elif item['sk'].startswith('SPACE#'):
             snares.append(item['sk'].replace('SPACE#', ''))
         elif item['sk'].startswith('POST#'):
@@ -998,6 +999,7 @@ def _public_player(p):
         'paint': p.get('paint'), 'hat': p.get('hat'),
         'isBot': p.get('isBot', False),
         'renown': data.compute_renown(p),
+        'perks': sorted(engine.attribute_perks(p)),
     }
 
 
@@ -1096,6 +1098,7 @@ def _roll_meta(doc):
 def _ok(doc, **extra):
     you = {k: v for k, v in doc.items() if k not in ('pk', 'sk')}
     you.update(_roll_meta(doc))
+    you['perks'] = sorted(engine.attribute_perks(doc))
     return 200, {'ok': True, 'you': you, **extra}
 
 

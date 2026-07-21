@@ -262,3 +262,12 @@ def test_fleetfoot_no_reroll_without_perk(table, monkeypatch):
     monkeypatch.setattr(db._rng, 'randint', lambda a, b: 1)
     status, resp = act(table, 'roll')
     assert resp['roll']['value'] == 1 and not resp['roll'].get('canReroll')
+
+
+# ── Task 13: state surfaces perks ────────────────────────────────────────────
+
+def test_state_surfaces_perks(table):
+    act(table, 'join', starter='saproling', home='cavern')  # def 7 -> thick_hide
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200
+    assert 'thick_hide' in state['you']['perks']
