@@ -30,6 +30,7 @@ class Combatant:
     riders: frozenset = frozenset()   # gear rider tags (barbed, spiked, glint, ...)
     rider_mag: dict = field(default_factory=dict)  # rider tag -> magnitude at equipped tier
     buffs: frozenset = frozenset()    # active stance-modifier buff kinds
+    perks: frozenset = frozenset()    # attribute-threshold perks (creatures only)
     # internal battle state (mutated during a battle)
     rot_stacks: int = field(default=0, repr=False)
     first_win_used: bool = field(default=False, repr=False)
@@ -41,6 +42,9 @@ class Combatant:
 
     def has(self, passive):
         return passive in self.passives
+
+    def has_perk(self, perk):
+        return perk in self.perks
 
     def has_rider(self, rider):
         return rider in self.riders

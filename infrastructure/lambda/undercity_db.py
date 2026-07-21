@@ -359,6 +359,7 @@ def _combatant(doc):
         passives=_passives(doc), stance=doc.get('stance', 'fight'),
         level=doc.get('level', 1),
         riders=_riders(doc), rider_mag=_rider_mags(doc), buffs=_active_buff_kinds(doc),
+        perks=engine.attribute_perks(doc),
         has_smoke_spore='smoke_spore' in (doc.get('bag') or []),
         flee_bonus=(10 if doc.get('homeBiome') == 'cavern' else 0)
                    + (15 if any(b.get('kind') == 'glowveil'
@@ -374,7 +375,8 @@ def _bt_snapshot(c):
         'atk': int(c.atk), 'dfn': int(c.dfn), 'spd': int(c.spd),
         'passives': sorted(c.passives), 'riders': sorted(c.riders),
         'rider_mag': dict(c.rider_mag),
-        'buffs': sorted(c.buffs), 'flee_bonus': int(c.flee_bonus),
+        'buffs': sorted(c.buffs), 'perks': sorted(c.perks),
+        'flee_bonus': int(c.flee_bonus),
         'has_smoke_spore': bool(c.has_smoke_spore),
         'rot_stacks': int(c.rot_stacks), 'first_win_used': bool(c.first_win_used),
         'dmg_penalty': int(c.dmg_penalty), 'reveal_next': bool(c.reveal_next),
@@ -390,6 +392,7 @@ def _bt_to_combatant(s):
         riders=frozenset(s.get('riders') or []),
         rider_mag={k: float(v) for k, v in (s.get('rider_mag') or {}).items()},
         buffs=frozenset(s.get('buffs') or []),
+        perks=frozenset(s.get('perks') or []),
         flee_bonus=int(s.get('flee_bonus', 0)),
         has_smoke_spore=bool(s.get('has_smoke_spore', False)))
     c.rot_stacks = int(s.get('rot_stacks', 0))

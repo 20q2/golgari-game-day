@@ -39,3 +39,16 @@ def test_all_three_tracks_independent():
     perks = engine.attribute_perks(_doc(atk=10, dfn=15, spd=5))
     assert perks == frozenset({'rend', 'menace', 'thick_hide', 'carapace_grind',
                                'last_stand', 'fleetfoot'})
+
+
+# ── Task 2: Combatant carries perks ──────────────────────────────────────────
+
+def test_combatant_carries_perks_and_survives_serde():
+    doc = {'username': 'x', 'hp': 30, 'maxHp': 30, 'atk': 15, 'def': 5, 'spd': 5,
+           'stance': 'fight'}
+    c = db._combatant(doc)
+    assert c.has_perk('rend') and c.has_perk('deathdrive')
+    assert not c.has_perk('carapace_grind')
+    snap = db._bt_snapshot(c)
+    c2 = db._bt_to_combatant(snap)
+    assert c2.has_perk('rend') and c2.has_perk('deathdrive')
