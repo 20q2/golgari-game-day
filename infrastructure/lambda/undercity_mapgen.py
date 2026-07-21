@@ -165,15 +165,40 @@ def _assign_and_build(rng, biome):
     # Mouth reciprocates the fixed surface bridge (<biome>_lt ↔ <biome>_lb).
     lb = nodes[f'{biome}_lb']
     lb['neighbors'] = sorted(lb['neighbors'] + [f'{biome}_lt'])
-    # Escape spur off the lair (degree-1 'ladder'), just past it.
+
+    # Boss antechamber: the lair is the deepest cell, so under exact-count
+    # movement a dead-end lair is only landable on one precise roll. Pick the
+    # lair's mouth-nearest maze neighbour J and append two off-grid gate nodes
+    # that each bridge J and the lair. Each gate forms a length-3 (odd) cycle
+    # J-lg-lair, so the lair is reachable at consecutive distances (1 direct,
+    # 2 via a gate) — both roll parities can land. Grid loops alone can't do
+    # this: the grid is bipartite, so every grid cycle is even-length.
+    lair_id = f'{biome}_lair'
+    j_cell = min((nb for nb in adj[lair]),
+                 key=lambda c: (dist[c], c))          # nearest to mouth, stable
+    j_id = nid(j_cell)
     lr, lc = lair
+    jr, jc = j_cell
+    midx = ox + (lc + jc) * SPACING / 2
+    midy = oy + (lr + jr) * SPACING / 2
+    for k, suf in enumerate(('lg1', 'lg2')):
+        gid = f'{biome}_{suf}'
+        off = 40 if k == 0 else -40
+        nodes[gid] = {
+            'id': gid, 'type': 'wild',
+            'x': round(midx + off), 'y': round(midy - off),
+            'region': 'depths', 'neighbors': sorted([j_id, lair_id]),
+        }
+        nodes[j_id]['neighbors'] = sorted(nodes[j_id]['neighbors'] + [gid])
+        nodes[lair_id]['neighbors'] = sorted(nodes[lair_id]['neighbors'] + [gid])
+
+    # Escape spur off the lair (degree-1 'ladder'), just past it.
     nodes[f'{biome}_esc'] = {
         'id': f'{biome}_esc', 'type': 'ladder',
         'x': ox + lc * SPACING + 70, 'y': oy + lr * SPACING + 70,
-        'region': 'depths', 'neighbors': [f'{biome}_lair'],
+        'region': 'depths', 'neighbors': [lair_id],
     }
-    lair_node = nodes[f'{biome}_lair']
-    lair_node['neighbors'] = sorted(lair_node['neighbors'] + [f'{biome}_esc'])
+    nodes[lair_id]['neighbors'] = sorted(nodes[lair_id]['neighbors'] + [f'{biome}_esc'])
     return list(nodes.values())
 
 

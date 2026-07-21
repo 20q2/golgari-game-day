@@ -50,6 +50,36 @@ def _in_pocket_neighbors(node, ids):
 
 
 @pytest.mark.parametrize('biome', sorted(BIOMES))
+@pytest.mark.parametrize('salt', range(8))
+def test_lair_has_antechamber_loop(biome, salt):
+    """Each lair sits in a two-gate antechamber (_lg1/_lg2), each gate linking
+    exactly the same junction J and the lair, forming length-3 odd cycles."""
+    nodes = gen.generate_depths(gen._seed_int(f'ante-{salt}', biome), biome)
+    ids = {n['id'] for n in nodes}
+    by = _by_id(nodes)
+
+    lair = by[f'{biome}_lair']
+    for suf in ('lg1', 'lg2'):
+        gid = f'{biome}_{suf}'
+        assert gid in by, f'missing gate {gid}'
+        assert by[gid]['type'] == 'wild'
+        gate_nbrs = set(_in_pocket_neighbors(by[gid], ids))
+        assert len(gate_nbrs) == 2, f'{gid} must bridge exactly two nodes'
+        assert f'{biome}_lair' in gate_nbrs
+        # the other neighbour is the shared junction J, and J touches the lair
+        (j,) = gate_nbrs - {f'{biome}_lair'}
+        assert j in by[f'{biome}_lair']['neighbors'], 'J must border the lair directly'
+        # symmetric wiring
+        assert gid in by[j]['neighbors']
+        assert gid in lair['neighbors']
+
+    # both gates share the same junction J -> genuine antechamber, not two spurs
+    j1 = (set(_in_pocket_neighbors(by[f'{biome}_lg1'], ids)) - {f'{biome}_lair'}).pop()
+    j2 = (set(_in_pocket_neighbors(by[f'{biome}_lg2'], ids)) - {f'{biome}_lair'}).pop()
+    assert j1 == j2
+
+
+@pytest.mark.parametrize('biome', sorted(BIOMES))
 @pytest.mark.parametrize('salt', range(8))     # 8 different layouts per biome
 def test_generated_pocket_satisfies_every_contract(biome, salt):
     nodes = gen.generate_depths(gen._seed_int(f'season-{salt}', biome), biome)
