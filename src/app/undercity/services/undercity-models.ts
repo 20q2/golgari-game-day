@@ -197,6 +197,15 @@ export interface GuardianPool {
   buffs: string[];
 }
 
+/** One priced gear listing on the Player Market. */
+export interface MarketListing {
+  id: string;
+  sellerId: string;
+  sellerName: string;
+  gearId: string;
+  price: number;
+}
+
 export interface GameState {
   season: Season | null;
   you: YouDoc | null;
@@ -206,6 +215,8 @@ export interface GameState {
   tradingPosts?: Record<string, TradeStockItem[]>;
   /** Shop node id -> its current shared stock and restock clock. */
   bazaars?: Record<string, BazaarView>;
+  /** Player Market — priced gear listings (mirrors undercity_db MARKET# records). */
+  market?: MarketListing[];
   /** Excavation node id -> its masked dig-site grid. */
   excavations?: Record<string, DigGrid>;
   /** Region -> shared crystal-vein depth. */

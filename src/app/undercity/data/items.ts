@@ -178,6 +178,16 @@ export const SALVAGE_YIELD: Record<number, { moltings: number; ichor: number }> 
   3: { moltings: 4, ichor: 1 },
 };
 
+/** Player Market price band for a gear id (mirrors MARKET_PRICE_MIN/MAX_PCT). */
+export const MARKET_PRICE_MIN_PCT = 0.5;
+export const MARKET_PRICE_MAX_PCT = 2.0;
+export function marketPriceBand(gid: string): { lo: number; hi: number } {
+  const cost = GEAR.find((x) => x.id === gid)?.cost ?? 0;
+  const lo = Math.max(1, Math.floor(cost * MARKET_PRICE_MIN_PCT));
+  const hi = Math.max(lo, Math.floor(cost * MARKET_PRICE_MAX_PCT));
+  return { lo, hi };
+}
+
 export interface ConsumableInfo {
   id: string;
   name: string;

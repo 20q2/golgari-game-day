@@ -257,3 +257,23 @@
   color: #9aa79a;
   font-size: 0.82rem;
 }
+
+.forge-subhead {
+  margin: 12px 0 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b7e4c7;
+}
+
+.price-input {
+  width: 58px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(74, 124, 89, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+  color: #eafff0;
+  font-size: 0.78rem;
+  font-family: inherit;
+  text-align: right;
+}

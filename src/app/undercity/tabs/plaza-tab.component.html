@@ -29,6 +29,10 @@
       <mat-icon class="mi">hardware</mat-icon> Blacksmith
       @if (upgradeRows().length) { <span class="forge-count">{{ upgradeRows().length }}</span> }
     </button>
+    <button class="uc-btn forge-btn" (click)="openBuilding('market')">
+      <mat-icon class="mi">storefront</mat-icon> Market
+      @if (marketRows().length) { <span class="forge-count">{{ marketRows().length }}</span> }
+    </button>
     <span class="mat-chip mtl" title="Moltings"><mat-icon class="mi">grass</mat-icon> {{ materials().moltings }}</span>
     <span class="mat-chip ich" title="Chrysalis Ichor"><mat-icon class="mi">science</mat-icon> {{ materials().ichor }}</span>
   </div>
@@ -40,14 +44,18 @@
           <h3>
             @if (b === 'salvage') {
               <mat-icon class="mi">recycling</mat-icon> Salvage Yard
-            } @else {
+            } @else if (b === 'blacksmith') {
               <mat-icon class="mi">hardware</mat-icon> Blacksmith
+            } @else {
+              <mat-icon class="mi">storefront</mat-icon> Market
             }
           </h3>
           <span class="forge-mats">
-            <span class="mat-chip mtl" title="Moltings"><mat-icon class="mi">grass</mat-icon> {{ materials().moltings }}</span>
-            <span class="mat-chip ich" title="Chrysalis Ichor"><mat-icon class="mi">science</mat-icon> {{ materials().ichor }}</span>
-            @if (b === 'blacksmith') {
+            @if (b !== 'market') {
+              <span class="mat-chip mtl" title="Moltings"><mat-icon class="mi">grass</mat-icon> {{ materials().moltings }}</span>
+              <span class="mat-chip ich" title="Chrysalis Ichor"><mat-icon class="mi">science</mat-icon> {{ materials().ichor }}</span>
+            }
+            @if (b === 'blacksmith' || b === 'market') {
               <span class="mat-chip spore"><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ store.you()?.spores ?? 0 }}</span>
             }
           </span>
@@ -73,7 +81,7 @@
           } @empty {
             <div class="forge-empty">Your stash is empty. Gear you find in the dark lands here.</div>
           }
-        } @else {
+        } @else if (b === 'blacksmith') {
           <p class="forge-hint">Spend materials to climb a piece up its rarity ladder.</p>
           @for (row of upgradeRows(); track $index) {
             <div class="forge-row" [attr.data-rarity]="tierRarity(row.to.tier).key">
@@ -90,6 +98,42 @@
             </div>
           } @empty {
             <div class="forge-empty">Nothing to upgrade yet — find or stash gear that has a rarer rung.</div>
+          }
+        } @else {
+          <p class="forge-hint">Buy gear other players listed, or list your own stash for Spores.</p>
+          <h4 class="forge-subhead">On the market</h4>
+          @for (l of marketRows(); track l.id) {
+            <div class="forge-row" [attr.data-rarity]="tierRarity(l.info.tier).key">
+              <span class="forge-name">{{ l.info.name }}
+                <span class="rarity-badge {{ tierRarity(l.info.tier).key }}">{{ tierRarity(l.info.tier).label }}</span>
+                <em>by {{ l.sellerName }} · {{ l.info.desc }}</em>
+              </span>
+              @if (l.own) {
+                <button class="uc-btn" [disabled]="busy()" (click)="marketCancel(l.id)">Cancel</button>
+              } @else {
+                <button class="uc-btn forge-upgrade" [disabled]="busy() || !canBuy(l)" (click)="marketBuy(l.id)">
+                  {{ l.price }}<img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+                </button>
+              }
+            </div>
+          } @empty {
+            <div class="forge-empty">No listings yet. Be the first to sell something.</div>
+          }
+          <h4 class="forge-subhead">Sell from your stash</h4>
+          @for (row of stashRows(); track row.index) {
+            <div class="forge-row" [attr.data-rarity]="tierRarity(row.info.tier).key">
+              <span class="forge-name">{{ row.info.name }}
+                <span class="rarity-badge {{ tierRarity(row.info.tier).key }}">{{ tierRarity(row.info.tier).label }}</span>
+                <em>{{ priceBand(row.info.id).lo }}–{{ priceBand(row.info.id).hi }} Spores</em>
+              </span>
+              <span class="forge-actions">
+                <input #price type="number" class="price-input" [value]="row.info.cost"
+                       [min]="priceBand(row.info.id).lo" [max]="priceBand(row.info.id).hi" />
+                <button class="uc-btn" [disabled]="busy()" (click)="marketList(row.index, price.valueAsNumber)">List</button>
+              </span>
+            </div>
+          } @empty {
+            <div class="forge-empty">Your stash is empty — nothing to sell.</div>
           }
         }
       </div>

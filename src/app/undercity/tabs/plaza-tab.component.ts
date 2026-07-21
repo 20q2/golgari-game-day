@@ -14,7 +14,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { PlazaCanvas, PlazaCreature } from '../engine/plaza-canvas';
 import { PublicPlayer, evolveGlowActive, isShielded } from '../services/undercity-models';
-import { GEAR_MAP, tierRarity, nextRung, UPGRADE_COST, SALVAGE_YIELD, GearInfo } from '../data/items';
+import {
+  GEAR_MAP,
+  tierRarity,
+  nextRung,
+  UPGRADE_COST,
+  SALVAGE_YIELD,
+  marketPriceBand,
+  GearInfo,
+} from '../data/items';
 
 interface UpgradeRow {
   where: 'equipped' | 'stash';
@@ -47,7 +55,8 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
   // ── Forge buildings (Salvage Yard · Blacksmith) ──────────────────────────
   protected readonly gearMap = GEAR_MAP;
   protected readonly tierRarity = tierRarity;
-  protected readonly building = signal<'salvage' | 'blacksmith' | null>(null);
+  protected readonly building = signal<'salvage' | 'blacksmith' | 'market' | null>(null);
+  protected readonly priceBand = marketPriceBand;
 
   protected readonly materials = computed(
     () => this.store.you()?.materials ?? { moltings: 0, ichor: 0 },
@@ -93,11 +102,65 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
     return !!you && you.spores >= cost.spores && m.moltings >= cost.moltings && m.ichor >= cost.ichor;
   }
 
-  protected openBuilding(b: 'salvage' | 'blacksmith'): void {
+  // Player Market listings, enriched with gear info + own-listing flag.
+  protected readonly marketRows = computed(() =>
+    this.store
+      .market()
+      .map((l) => ({ ...l, info: GEAR_MAP[l.gearId], own: l.sellerId === this.store.ownUserId }))
+      .filter((l) => !!l.info),
+  );
+
+  protected canBuy(l: { price: number; own: boolean }): boolean {
+    const you = this.store.you();
+    if (!you || l.own) return false;
+    const stashFull = (you.gearStash?.length ?? 0) >= 6;
+    return you.spores >= l.price && !stashFull;
+  }
+
+  protected openBuilding(b: 'salvage' | 'blacksmith' | 'market'): void {
     this.building.set(b);
   }
   protected closeBuilding(): void {
     this.building.set(null);
+  }
+
+  async marketBuy(listingId: string): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    try {
+      const resp = await this.store.action('market-buy', { listingId });
+      this.showToast(resp.text ?? 'Bought.');
+    } catch (e) {
+      this.showToast(e instanceof Error ? e.message : 'Purchase failed');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  async marketList(index: number, price: number): Promise<void> {
+    if (this.busy() || !Number.isFinite(price)) return;
+    this.busy.set(true);
+    try {
+      const resp = await this.store.action('market-list', { index, price: Math.round(price) });
+      this.showToast(resp.text ?? 'Listed.');
+    } catch (e) {
+      this.showToast(e instanceof Error ? e.message : 'Listing failed');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  async marketCancel(listingId: string): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    try {
+      const resp = await this.store.action('market-cancel', { listingId });
+      this.showToast(resp.text ?? 'Cancelled.');
+    } catch (e) {
+      this.showToast(e instanceof Error ? e.message : 'Cancel failed');
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   async salvage(index: number, mode: 'grind' | 'sell'): Promise<void> {
