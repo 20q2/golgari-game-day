@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
@@ -27,6 +27,23 @@ import { getRecoloredDataUrl, getRecoloredWithHatDataUrl } from '../engine/sprit
 import { isShielded } from '../services/undercity-models';
 import { DUNGEONS, SIGILS_REQUIRED } from '../data/dungeons';
 
+type CreatureSubTab = 'stats' | 'gear' | 'wardrobe' | 'sigils';
+
+/** localStorage key remembering the last-open creature sub-tab across tab
+ *  switches (the component is destroyed when you leave) and page reloads. */
+const SUBTAB_KEY = 'uc-creature-subtab';
+const SUBTABS: readonly CreatureSubTab[] = ['stats', 'gear', 'wardrobe', 'sigils'];
+
+function loadSubTab(): CreatureSubTab {
+  try {
+    const v = localStorage.getItem(SUBTAB_KEY) as CreatureSubTab | null;
+    if (v && SUBTABS.includes(v)) return v;
+  } catch {
+    /* storage blocked — fall back to the default */
+  }
+  return 'stats';
+}
+
 @Component({
   selector: 'app-undercity-creature-tab',
   standalone: true,
@@ -42,8 +59,20 @@ export class CreatureTabComponent {
   protected readonly showEvolve = signal(false);
   protected readonly loadedDiePick = signal(false);
 
-  /** Which sub-panel of the creature screen is showing below the pinned hero. */
-  protected readonly subTab = signal<'stats' | 'gear' | 'wardrobe' | 'sigils'>('stats');
+  /** Which sub-panel of the creature screen is showing below the pinned hero.
+   *  Seeded from and persisted to localStorage so it survives leaving the tab. */
+  protected readonly subTab = signal<CreatureSubTab>(loadSubTab());
+
+  constructor() {
+    effect(() => {
+      const tab = this.subTab();
+      try {
+        localStorage.setItem(SUBTAB_KEY, tab);
+      } catch {
+        /* storage full/blocked — stay session-only */
+      }
+    });
+  }
 
   /** Which stat's description panel is open ('atk' | 'def' | 'spd' | null). */
   protected readonly openStat = signal<string | null>(null);
