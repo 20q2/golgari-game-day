@@ -185,3 +185,23 @@ def test_last_stand_not_triggered_without_perk(table, monkeypatch):
     _finish_started_battle(table, monkeypatch, doc, outcome='defender', defender_hp=5)
     you = db._get_player(table, sid, 'user-alex')
     assert not you.get('lastStandUsed')
+
+
+# ── Task 10: Blink ───────────────────────────────────────────────────────────
+
+def test_blink_lets_spd15_choose_value(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 15
+    db._put_player(table, doc)
+    status, resp = act(table, 'roll', blink=True, value=6)
+    assert status == 200 and resp['roll']['value'] == 6 and resp['roll'].get('blink') is True
+
+
+def test_blink_ignored_without_perk(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 1
+    db._put_player(table, doc)
+    status, resp = act(table, 'roll', blink=True, value=6)
+    assert status == 200 and not resp['roll'].get('blink')

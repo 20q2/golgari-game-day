@@ -1658,9 +1658,18 @@ def _roll(table, sid, doc, payload):
     picked = payload.get('value') if payload else None
     picked = int(picked) if isinstance(picked, (int, float)) and 1 <= picked <= 6 else None
 
+    # Blink (SPD-15 perk): choose your die value. Works in production (unlike the
+    # DEBUG pick), gated on the perk.
+    perks = engine.attribute_perks(doc)
+    blink = bool(payload.get('blink')) if payload else False
+    used_blink = False
+
     value = None
     if data.DEBUG and picked is not None:
         value = picked
+    elif blink and 'blink' in perks and picked is not None:
+        value = picked
+        used_blink = True
     elif doc.get('pendingLoadedDie'):
         value = int(doc.pop('pendingLoadedDie'))
     else:
@@ -1683,7 +1692,10 @@ def _roll(table, sid, doc, payload):
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
-    return _ok(doc, roll={'value': value, 'destinations': sorted(dests)})
+    roll = {'value': value, 'destinations': sorted(dests)}
+    if used_blink:
+        roll['blink'] = True
+    return _ok(doc, roll=roll)
 
 
 def _move(table, sid, doc, payload):
