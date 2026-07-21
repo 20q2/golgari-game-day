@@ -221,6 +221,23 @@ def test_escape_ladder_reachable_once_claimed(table):
     assert 'bog_esc' in db._blocked_nodes(doc)
 
 
+@pytest.mark.parametrize('biome', sorted(data.BIOMES))
+@pytest.mark.parametrize('roll', [1, 2, 3, 4, 5, 6])
+def test_escape_ladder_reachable_on_any_roll_from_the_lair(table, biome, roll):
+    # The stairwell is a degree-1 dead-end spur, so an exact-count landing can
+    # only hit it on the rare roll whose walk terminates there. Like a sealed
+    # barrier, you should be able to march up to it and STOP (bonk) — so a
+    # claimed player standing on the lair can step onto it whatever they roll.
+    esc, lair = biome + '_esc', biome + '_lair'
+    doc = _join(table)
+    doc['poiClaims'] = [lair]
+    doc['position'] = lair
+    dests = engine.legal_destinations(
+        data.MAP_NODES, lair, roll,
+        db._closed_barriers(table, _sid(table)), db._blocked_nodes(doc))
+    assert esc in dests
+
+
 def test_landing_escape_ladder_exits_to_surface_mouth(table):
     doc = _join(table)
     doc['poiClaims'] = ['city_lair']

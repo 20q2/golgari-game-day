@@ -47,6 +47,10 @@ PVP_SPORE_STEAL = 0.25
 PVP_SPORE_STEAL_DEFEND = 0.10
 DEATHRITE_STEAL_MULT = 1.5
 SOUL_HARVEST_MULT = 1.5   # Deathrite Shaman: ×Spores from wild & elite battle wins
+SCROUNGER_MULT = 1.25     # Pest passive: ×Spores from all loot (forage/dig/mystery)
+                          # and combat bounties. A % (not a flat +2) so the pest
+                          # stays the economy specialist as bounties scale — client
+                          # blurb mirror in src/app/undercity/data/forms.ts
 
 # Gear rider knobs (combat riders in undercity_engine.resolve_round).
 CUTPURSE_SPORES = 6   # flat Spores after a won fight in which you landed a Feint

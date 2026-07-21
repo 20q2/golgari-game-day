@@ -187,7 +187,16 @@
   &[data-rarity='rare'] { border-left-color: #5fd18a; }
   &[data-rarity='legendary'] { border-left-color: #fbbf24; }
 
+  .slot-mi {
+    color: #9aa79a;
+    font-size: 1.3rem;
+    width: 1.3rem;
+    height: 1.3rem;
+    flex-shrink: 0;
+  }
+
   .forge-name {
+    flex: 1 1 auto;
     font-size: 0.85rem;
     color: #d8f3dc;
     min-width: 0;

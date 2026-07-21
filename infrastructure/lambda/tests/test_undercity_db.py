@@ -1262,6 +1262,16 @@ def test_cache_pays_once_per_player(table):
     assert doc['spores'] == data.CACHE_REWARD['spores']  # unchanged
 
 
+def test_scrounger_scales_loot_and_bounty_by_mult():
+    # The Pest's Scrounger passive is a % multiplier (not a flat +2) so it stays
+    # meaningful as bounties scale. Penalties are never amplified.
+    pest = {'passives': ['scrounger']}
+    plain = {'passives': []}
+    assert db._scrounge(pest, 20) == round(20 * data.SCROUNGER_MULT)
+    assert db._scrounge(pest, 20) > db._scrounge(plain, 20) == 20
+    assert db._scrounge(pest, -10) == -10
+
+
 def test_ladder_blurb_names_the_dungeon(table):
     sid, doc = _player_at(table, 'city_lt')
     out = db._resolve_space(table, sid, doc, 'city_lt', 'city_r5')

@@ -66,6 +66,7 @@
           <p class="forge-hint">Grind finds into materials, or sell for Spores. Stash {{ stashRows().length }}/6.</p>
           @for (row of stashRows(); track row.index) {
             <div class="forge-row" [attr.data-rarity]="tierRarity(row.info.tier).key">
+              <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + row.info.slot"></mat-icon>
               <span class="forge-name">{{ row.info.name }}
                 <span class="rarity-badge {{ tierRarity(row.info.tier).key }}">{{ tierRarity(row.info.tier).label }}</span>
                 <em>{{ row.info.desc }}</em>
@@ -85,6 +86,7 @@
           <p class="forge-hint">Spend materials to climb a piece up its rarity ladder.</p>
           @for (row of upgradeRows(); track $index) {
             <div class="forge-row" [attr.data-rarity]="tierRarity(row.to.tier).key">
+              <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + row.to.slot"></mat-icon>
               <span class="forge-name">
                 {{ row.from.name }} <mat-icon class="mi tiny">arrow_forward</mat-icon> {{ row.to.name }}
                 <span class="rarity-badge {{ tierRarity(row.to.tier).key }}">{{ tierRarity(row.to.tier).label }}</span>
@@ -104,6 +106,7 @@
           <h4 class="forge-subhead">On the market</h4>
           @for (l of marketRows(); track l.id) {
             <div class="forge-row" [attr.data-rarity]="tierRarity(l.info.tier).key">
+              <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + l.info.slot"></mat-icon>
               <span class="forge-name">{{ l.info.name }}
                 <span class="rarity-badge {{ tierRarity(l.info.tier).key }}">{{ tierRarity(l.info.tier).label }}</span>
                 <em>by {{ l.sellerName }} · {{ l.info.desc }}</em>
@@ -122,6 +125,7 @@
           <h4 class="forge-subhead">Sell from your stash</h4>
           @for (row of stashRows(); track row.index) {
             <div class="forge-row" [attr.data-rarity]="tierRarity(row.info.tier).key">
+              <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + row.info.slot"></mat-icon>
               <span class="forge-name">{{ row.info.name }}
                 <span class="rarity-badge {{ tierRarity(row.info.tier).key }}">{{ tierRarity(row.info.tier).label }}</span>
                 <em>{{ priceBand(row.info.id).lo }}–{{ priceBand(row.info.id).hi }} Spores</em>

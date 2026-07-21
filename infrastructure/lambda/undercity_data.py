@@ -43,7 +43,7 @@ STARTERS = {
     'pest': {
         'name': 'Pest', 'hp': 30, 'atk': 6, 'def': 5, 'spd': 5,
         'passive': 'scrounger',
-        'blurb': 'Balanced sewer rat. Scrounger: +2 Spores from every loot source.',
+        'blurb': 'Balanced sewer rat. Scrounger: +25% Spores from all loot and combat bounties.',
     },
     'kraul': {
         'name': 'Kraul Grub', 'hp': 24, 'atk': 8, 'def': 3, 'spd': 7,
@@ -589,10 +589,10 @@ NPCS = [
 # Elites live only at 'elite' board spaces — never a surprise on a wild space.
 ELITE_NPCS = [
     {'id': 'fetid_imp', 'name': 'Fetid Imp',
-     'hp': 30, 'atk': 10, 'def': 5, 'spd': 8, 'bounty': 20, 'xp': 25,
+     'hp': 30, 'atk': 10, 'def': 5, 'spd': 8, 'bounty': 16, 'xp': 25,
      'itemChance': 0.25, 'personality': 'trickster', 'bluff': 0.15},
     {'id': 'rot_shambler', 'name': 'Rot Shambler',
-     'hp': 32, 'atk': 11, 'def': 5, 'spd': 4, 'bounty': 25, 'xp': 25,
+     'hp': 32, 'atk': 11, 'def': 5, 'spd': 4, 'bounty': 20, 'xp': 25,
      'itemChance': 0.30, 'personality': 'brute', 'bluff': 0.10},
 ]
 
@@ -602,28 +602,28 @@ ELITE_NPCS = [
 # See specs/2026-07-20-undercity-wilderness-expansion-design.md.
 WILDERNESS_NPCS = [
     {'id': 'ashen_stalker', 'name': 'Ashen Stalker',
-     'hp': 48, 'atk': 14, 'def': 6, 'spd': 9, 'bounty': 30, 'xp': 35,
+     'hp': 48, 'atk': 14, 'def': 6, 'spd': 9, 'bounty': 22, 'xp': 35,
      'itemChance': 0.15, 'personality': 'trickster', 'bluff': 0.15},
     {'id': 'bramble_horror', 'name': 'Bramble Horror',
-     'hp': 58, 'atk': 13, 'def': 8, 'spd': 4, 'bounty': 32, 'xp': 38,
+     'hp': 58, 'atk': 13, 'def': 8, 'spd': 4, 'bounty': 24, 'xp': 38,
      'itemChance': 0.15, 'personality': 'turtle', 'bluff': 0.10},
     {'id': 'cinder_wolf', 'name': 'Cinder Wolf',
-     'hp': 46, 'atk': 16, 'def': 5, 'spd': 10, 'bounty': 30, 'xp': 35,
+     'hp': 46, 'atk': 16, 'def': 5, 'spd': 10, 'bounty': 22, 'xp': 35,
      'itemChance': 0.15, 'personality': 'brute', 'bluff': 0.10},
     {'id': 'wastes_marauder', 'name': 'Wastes Marauder',
-     'hp': 52, 'atk': 15, 'def': 6, 'spd': 7, 'bounty': 33, 'xp': 38,
+     'hp': 52, 'atk': 15, 'def': 6, 'spd': 7, 'bounty': 24, 'xp': 38,
      'itemChance': 0.20, 'personality': 'balanced', 'bluff': 0.15},
 ]
 
 WILDERNESS_ELITE_NPCS = [
     {'id': 'embermaw_alpha', 'name': 'Embermaw Alpha',
-     'hp': 64, 'atk': 17, 'def': 8, 'spd': 10, 'bounty': 42, 'xp': 50,
+     'hp': 64, 'atk': 17, 'def': 8, 'spd': 10, 'bounty': 30, 'xp': 50,
      'itemChance': 0.35, 'personality': 'brute', 'bluff': 0.15},
     {'id': 'thornclad_revenant', 'name': 'Thornclad Revenant',
-     'hp': 70, 'atk': 16, 'def': 10, 'spd': 6, 'bounty': 45, 'xp': 50,
+     'hp': 70, 'atk': 16, 'def': 10, 'spd': 6, 'bounty': 34, 'xp': 50,
      'itemChance': 0.35, 'personality': 'turtle', 'bluff': 0.15},
     {'id': 'ashfiend_matriarch', 'name': 'Ashfiend Matriarch',
-     'hp': 60, 'atk': 18, 'def': 7, 'spd': 12, 'bounty': 45, 'xp': 52,
+     'hp': 60, 'atk': 18, 'def': 7, 'spd': 12, 'bounty': 34, 'xp': 52,
      'itemChance': 0.40, 'personality': 'trickster', 'bluff': 0.25},
 ]
 

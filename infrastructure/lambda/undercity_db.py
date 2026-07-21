@@ -203,7 +203,15 @@ def _open_barriers(table, sid):
 
 
 def _closed_barriers(table, sid):
-    return frozenset(set(data.BARRIER_GUARDIANS) - _open_barriers(table, sid))
+    """The engine `closed` set: nodes you march up to and STOP on (bonk),
+    never corridor through. Sealed barrier guardians, plus the post-boss escape
+    ladders — degree-1 dead-end spurs off each sigil lair. Without the bonk rule
+    an escape spur is only reachable on the rare exact-count roll that lands on
+    it; treating it as closed lets a claimed player step onto the stairwell
+    whatever they roll. Unclaimed escape ladders are gated out separately by
+    `_blocked_nodes` (blocked wins over closed), so listing them all is safe."""
+    return frozenset((set(data.BARRIER_GUARDIANS) - _open_barriers(table, sid))
+                     | set(data.ESCAPE_LADDERS))
 
 
 def _wild_warp_dest(nodes, node):
@@ -1989,6 +1997,16 @@ def _flow_puzzle_view(pid):
             'start': p['start'], 'end': p['end'], 'rocks': p['rocks']}
 
 
+def _scrounge(doc, amount):
+    """Pest's Scrounger passive: scale a positive loot/bounty reward by
+    SCROUNGER_MULT (rounded). Non-positive amounts (penalties) pass through so
+    the pest is never punished harder. Applied at every repeatable Spore source
+    the pest 'gathers' — forage, digs, mystery finds, and combat bounties."""
+    if amount > 0 and 'scrounger' in _passives(doc):
+        return round(amount * data.SCROUNGER_MULT)
+    return amount
+
+
 def _award_loot(doc):
     """Roll and apply a loot-space reward, returning the {type:'loot',...} event.
     Relocated from the old _resolve_space loot branch — rolls at claim time now,
@@ -2005,9 +2023,7 @@ def _award_loot(doc):
         if item:
             return {'type': 'loot', 'text': f'You unearth a {data.CONSUMABLES[item]["name"]}!',
                     'item': item}
-    amount = _rng.choice([8, 8, 9, 9, 10, 10, 11, 12, 13, 15])
-    if 'scrounger' in _passives(doc):
-        amount += 2
+    amount = _scrounge(doc, _rng.choice([8, 8, 9, 9, 10, 10, 11, 12, 13, 15]))
     if doc.get('homeBiome') == 'garden':
         amount += 2  # Composter hatch perk
     doc['spores'] = doc.get('spores', 0) + amount
@@ -2236,7 +2252,7 @@ def _mystery(table, sid, doc):
                               'doubling_rot' in _passives(doc), biome)
     eff = engine.effective_stats(doc)
     if res['spores']:
-        doc['spores'] = max(0, doc.get('spores', 0) + res['spores'])
+        doc['spores'] = max(0, doc.get('spores', 0) + _scrounge(doc, res['spores']))
     if res['xp']:
         _grant_xp(table, sid, doc, res['xp'])
     if res['hpPct']:
@@ -2689,7 +2705,7 @@ def _finish_wild(table, sid, doc, rec, result):
            'npc': {'name': npc['name'], 'id': npc.get('id'), 'maxHp': npc['hp']},
            'battle': result}
     if result['outcome'] == 'attacker':
-        bounty = npc['bounty'] + (2 if 'scrounger' in _passives(doc) else 0)
+        bounty = _scrounge(doc, npc['bounty'])
         if 'soul_harvest' in _passives(doc):
             bounty = round(bounty * data.SOUL_HARVEST_MULT)
         doc['spores'] = doc.get('spores', 0) + bounty
@@ -3824,8 +3840,9 @@ def _dig_view(rec):
 
 def _award_dig_loot(doc, loot):
     if loot['kind'] == 'spores':
-        doc['spores'] = doc.get('spores', 0) + loot['spores']
-        return {'kind': 'spores', 'spores': loot['spores']}
+        amount = _scrounge(doc, loot['spores'])
+        doc['spores'] = doc.get('spores', 0) + amount
+        return {'kind': 'spores', 'spores': amount}
     item_id = loot['item']
     if len(doc.get('bag') or []) >= data.BAG_SIZE:
         doc['spores'] = doc.get('spores', 0) + 5  # bag full → salvage for Spores

@@ -246,7 +246,16 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   private closedBarrierIds(): string[] {
     return this.map.nodes
-      .filter((n) => n.type === 'barrier' && !this.store.barriersOpen().includes(n.id))
+      .filter(
+        (n) =>
+          (n.type === 'barrier' && !this.store.barriersOpen().includes(n.id)) ||
+          // Post-boss escape ladders are degree-1 dead-end spurs; like a sealed
+          // barrier you march up and STOP, so exact-count rolls aren't required
+          // to step onto the stairwell (mirrors the server's _closed_barriers).
+          // Unclaimed ones are already absent from the server's dests, so
+          // listing every one-neighbour ladder here is safe.
+          (n.type === 'ladder' && n.neighbors.length === 1),
+      )
       .map((n) => n.id);
   }
 
