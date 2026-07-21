@@ -8,6 +8,17 @@
           <div class="hp-fill" [class.low]="hpPct('attacker') <= 50" [class.crit]="hpPct('attacker') <= 25" [style.width.%]="hpPct('attacker')"></div>
         </div>
         <span class="hp-num">{{ attackerHp() }}/{{ attacker.maxHp }} HP</span>
+        <div class="status-row">
+          @for (chip of chipsFor('attacker'); track chip.kind) {
+            <button type="button" class="status-chip" [class.buff]="chip.info.tone === 'buff'" [class.debuff]="chip.info.tone === 'debuff'" (click)="toggleChip('attacker', chip.kind)">
+              <mat-icon class="mi">{{ chip.info.icon }}</mat-icon>
+              @if (chip.count > 1) { <span class="cnt">×{{ chip.count }}</span> }
+            </button>
+          }
+        </div>
+        @if (chipPopover('attacker'); as info) {
+          <div class="status-pop"><strong>{{ info.label }}</strong><span>{{ info.blurb }}</span></div>
+        }
       </div>
       <div class="plate right">
         <span class="side-name">{{ defender.name }}</span>
@@ -15,6 +26,17 @@
           <div class="hp-fill" [class.low]="hpPct('defender') <= 50" [class.crit]="hpPct('defender') <= 25" [style.width.%]="hpPct('defender')"></div>
         </div>
         <span class="hp-num">{{ defenderHp() }}/{{ defender.maxHp }} HP</span>
+        <div class="status-row">
+          @for (chip of chipsFor('defender'); track chip.kind) {
+            <button type="button" class="status-chip" [class.buff]="chip.info.tone === 'buff'" [class.debuff]="chip.info.tone === 'debuff'" (click)="toggleChip('defender', chip.kind)">
+              <mat-icon class="mi">{{ chip.info.icon }}</mat-icon>
+              @if (chip.count > 1) { <span class="cnt">×{{ chip.count }}</span> }
+            </button>
+          }
+        </div>
+        @if (chipPopover('defender'); as info) {
+          <div class="status-pop"><strong>{{ info.label }}</strong><span>{{ info.blurb }}</span></div>
+        }
       </div>
     </div>
 

@@ -206,6 +206,49 @@
     font-size: 0.72rem;
     color: #9aa79a;
   }
+
+  .status-row {
+    display: flex;
+    gap: 4px;
+    margin-top: 3px;
+    min-height: 18px; // reserve space so the arena doesn't jump when chips appear
+  }
+  &.right .status-row { flex-direction: row-reverse; }
+
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    padding: 1px 3px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    line-height: 1;
+
+    .mi { font-size: 14px; width: 14px; height: 14px; }
+    .cnt { font-size: 0.66rem; font-weight: 700; }
+
+    &.buff { color: #99d98c; border-color: rgba(153, 217, 140, 0.4); }
+    &.debuff { color: #d86060; border-color: rgba(216, 96, 96, 0.4); }
+  }
+
+  .status-pop {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 4px;
+    padding: 5px 7px;
+    max-width: 200px;
+    border-radius: 6px;
+    background: rgba(12, 10, 8, 0.92);
+    border: 1px solid rgba(190, 210, 190, 0.3);
+    font-size: 0.7rem;
+
+    strong { font-weight: 700; }
+    span { color: #9aa79a; }
+  }
+  &.right .status-pop { margin-left: auto; text-align: right; }
 }
 
 // ── Telegraph banner ─────────────────────────────────────────────────────────

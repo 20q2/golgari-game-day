@@ -10,8 +10,8 @@ import {
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { BattleSide, BattleRewards } from './battle-playback.component';
-import { CombatEntry, Stance } from '../services/undercity-models';
-import { STANCES, STANCE_MAP, PERSONALITY_TELL, StanceAugment, COUNTER } from '../data/combat';
+import { CombatEntry, Stance, BattleStatus } from '../services/undercity-models';
+import { STANCES, STANCE_MAP, PERSONALITY_TELL, StanceAugment, COUNTER, StatusChip, StatusInfo, STATUS_INFO, statusChips } from '../data/combat';
 
 /** A held combat consumable the player may fire this round. */
 export interface BattleItem {
@@ -64,6 +64,9 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   @Input() hasScry = false;
   @Input() attackerStats: CombatStats | null = null;
   @Input() defenderStats: CombatStats | null = null;
+  /** Standing conditions per side (rot stacks + active buff/debuff kinds). */
+  @Input() attackerStatus: BattleStatus | null = null;
+  @Input() defenderStatus: BattleStatus | null = null;
   /** Equipped riders + stance passives that augment the player's stances. */
   @Input() augments: StanceAugment[] = [];
   /** Reopening a fight after a reload — skip the entrance, restore any scry. */
@@ -84,6 +87,10 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
 
   protected readonly attackerHp = signal(0);
   protected readonly defenderHp = signal(0);
+  protected readonly aStatus = signal<BattleStatus | null>(null);
+  protected readonly dStatus = signal<BattleStatus | null>(null);
+  /** Which chip's popover is open, or null. */
+  protected readonly openChip = signal<{ side: Side; kind: string } | null>(null);
   protected readonly busy = signal(false);
   protected readonly revealed = signal<Stance | null>(null);
   protected readonly pendingItem = signal<string | null>(null);
@@ -125,6 +132,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.attackerHp.set(this.attacker.startHp);
     this.defenderHp.set(this.defender.startHp);
+    this.aStatus.set(this.attackerStatus);
+    this.dStatus.set(this.defenderStatus);
     this.round.set(this.startRound);
     this.hasActed.set(this.startRound > 1); // resumed mid-fight: already acted
     if (this.resume) {
@@ -192,6 +201,22 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     return this.augments.filter((a) => a.stance === stance);
   }
 
+  /** Active status chips (rot + buffs/debuffs) for one fighter. */
+  protected chipsFor(side: Side): StatusChip[] {
+    return statusChips(side === 'attacker' ? this.aStatus() : this.dStatus());
+  }
+
+  protected toggleChip(side: Side, kind: string): void {
+    const c = this.openChip();
+    this.openChip.set(c && c.side === side && c.kind === kind ? null : { side, kind });
+  }
+
+  /** The StatusInfo whose popover is open on this side, or null. */
+  protected chipPopover(side: Side): StatusInfo | null {
+    const c = this.openChip();
+    return c && c.side === side ? (STATUS_INFO[c.kind] ?? null) : null;
+  }
+
   /** Button tooltip: the stance blurb plus a line per active augment. */
   protected buttonTitle(s: (typeof STANCES)[number]): string {
     const augs = this.augmentsFor(s.id);
@@ -234,12 +259,22 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   // ── Parent-driven results ────────────────────────────────────────────────────
 
   /** Play one resolved round as an animated bout, then advance + unlock. */
-  applyRound(entries: CombatEntry[], telegraph: Stance | null, playerHp: number, npcHp: number): void {
+  applyRound(
+    entries: CombatEntry[],
+    telegraph: Stance | null,
+    playerHp: number,
+    npcHp: number,
+    playerStatus: BattleStatus | null = null,
+    npcStatus: BattleStatus | null = null,
+  ): void {
     this.hasActed.set(true); // a blow's been traded — fleeing is now allowed
     this.runSequence(entries, playerHp, npcHp, () => {
       this.telegraph = telegraph;
       this.round.update((r) => r + 1);
       this.revealed.set(null); // a scry only lasts its round
+      this.aStatus.set(playerStatus);
+      this.dStatus.set(npcStatus);
+      this.openChip.set(null); // stale popover shouldn't survive the round
       this.busy.set(false);
     });
   }
