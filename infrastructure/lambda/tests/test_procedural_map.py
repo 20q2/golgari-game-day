@@ -128,6 +128,32 @@ def test_season_start_skips_generation_when_flag_off(table, monkeypatch):
     assert db._get(table, db._season_pk(sid), 'MAP') is None   # no MAP record written
 
 
+def test_handle_map_sample_previews_generator_regardless_of_flag(table, monkeypatch):
+    monkeypatch.setattr(data, 'PROCEDURAL_DUNGEONS', False)   # flag off — sample still generates
+    status, doc = db.handle_map(table, {'sample': 'preview-1'})
+    assert status == 200
+    ids = {n['id'] for n in doc['nodes']}
+    assert 'cavern_r0' in ids                                # surface present
+    for biome in data.BIOMES:
+        assert f'{biome}_lair' in ids and f'{biome}_esc' in ids
+    depths = {n['id']: n for n in doc['nodes'] if n.get('region') == 'depths'}
+    assert depths != data.COMMITTED_DEPTHS                   # generated, not committed
+
+
+def test_handle_map_sample_is_deterministic_per_seed(table):
+    _, a = db.handle_map(table, {'sample': 'seed-x'})
+    _, b = db.handle_map(table, {'sample': 'seed-x'})
+    assert a == b
+    _, c = db.handle_map(table, {'sample': 'seed-y'})
+    assert c != a                                            # different seed → different night
+
+
+def test_handle_map_without_sample_still_works(table):
+    status, doc = db.handle_map(table, {})
+    assert status == 200
+    assert {'worldW', 'worldH', 'gate', 'boss', 'nodes', 'regions'} <= set(doc)
+
+
 def test_generated_dungeon_is_navigable_end_to_end(table, monkeypatch):
     monkeypatch.setattr(data, 'PROCEDURAL_DUNGEONS', True)
     db._season_map_cache.clear()
