@@ -577,6 +577,11 @@
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(74, 124, 89, 0.25);
+  // Rarity accent stripe — at-a-glance tier read.
+  border-left-width: 3px;
+  &[data-rarity='common'] { border-left-color: #9aa7a0; }
+  &[data-rarity='rare'] { border-left-color: #5fd18a; }
+  &[data-rarity='legendary'] { border-left-color: #fbbf24; }
 
   &.empty {
     opacity: 0.6;
@@ -608,6 +613,22 @@
     font-weight: 700;
     color: #d8f3dc;
     font-size: 0.9rem;
+  }
+
+  .rarity-badge {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-radius: 8px;
+    padding: 1px 6px;
+    background: rgba(0, 0, 0, 0.35);
+    vertical-align: middle;
+    &.common { color: #9aa7a0; }
+    &.rare { color: #5fd18a; }
+    &.legendary { color: #fbbf24; }
   }
 
   .gear-tile-desc {

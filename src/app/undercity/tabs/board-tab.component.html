@@ -184,7 +184,9 @@
             @if (ev.gear && gearInfo(ev.gear.id); as g) {
               <span class="chip item">
                 <mat-icon class="mi">{{ slotIcon(ev.gear.slot) }}</mat-icon>
-                {{ g.name }} —
+                {{ g.name }}
+                <span class="rarity-badge {{ tierRarity(g.tier).key }}">{{ tierRarity(g.tier).label }}</span>
+                —
                 {{ ev.gear.outcome === 'equipped' ? 'equipped!' : 'salvaged (+' + ev.gear.soldSpores + ')' }}
               </span>
             }
@@ -231,8 +233,10 @@
           @case ('gear') {
             <div class="shop-hint">Auto-equips; old piece trades in at 50%.</div>
             @for (r of shopGearRows(); track r.info.id) {
-              <div class="shop-row">
-                <span class="shop-name">{{ r.info.name }} <em>{{ r.info.desc }}</em></span>
+              <div class="shop-row" [attr.data-rarity]="tierRarity(r.info.tier).key">
+                <span class="shop-name">{{ r.info.name }}
+                  <span class="rarity-badge {{ tierRarity(r.info.tier).key }}">{{ tierRarity(r.info.tier).label }}</span>
+                  <em>{{ r.info.desc }}</em></span>
                 <button
                   class="uc-btn shop-buy"
                   [disabled]="busy() || r.qty <= 0 || store.you()?.gear?.[r.info.slot] === r.info.id"

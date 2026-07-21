@@ -128,6 +128,25 @@ export const GEAR: GearInfo[] = [
     desc: 'Bioluminescent: reveals the entire dungeon while equipped.' },
 ];
 
+/** Gear rarity, derived from tier (mirrors the server: tier IS the rarity). */
+export type Rarity = 'common' | 'rare' | 'legendary';
+
+export interface RarityInfo {
+  key: Rarity;
+  label: string;
+}
+
+const RARITY_BY_TIER: Record<number, RarityInfo> = {
+  1: { key: 'common', label: 'Common' },
+  2: { key: 'rare', label: 'Rare' },
+  3: { key: 'legendary', label: 'Legendary' },
+};
+
+/** Map a gear tier (1/2/3) to its rarity name/key. Defaults to Common. */
+export function tierRarity(tier: number): RarityInfo {
+  return RARITY_BY_TIER[tier] ?? RARITY_BY_TIER[1];
+}
+
 export interface ConsumableInfo {
   id: string;
   name: string;

@@ -10,7 +10,7 @@ import {
   formName,
   xpToNext,
 } from '../data/forms';
-import { GEAR_MAP, CONSUMABLE_MAP } from '../data/items';
+import { GEAR_MAP, CONSUMABLE_MAP, tierRarity } from '../data/items';
 import {
   BIOME_SPELLS,
   GRIMOIRE_MAP,
@@ -128,6 +128,12 @@ export class CreatureTabComponent {
     return PASSIVE_NAMES[p] ?? p;
   }
   protected readonly gearMap = GEAR_MAP;
+  protected readonly tierRarity = tierRarity;
+  /** Rarity key ('common'|'rare'|'legendary') for an equipped gear id, or null. */
+  protected rarityKey(id: string | undefined | null): string | null {
+    const g = id ? GEAR_MAP[id] : undefined;
+    return g ? tierRarity(g.tier).key : null;
+  }
   protected readonly consumableMap = CONSUMABLE_MAP;
   protected readonly hats = HATS;
   protected readonly paints = PAINTS;

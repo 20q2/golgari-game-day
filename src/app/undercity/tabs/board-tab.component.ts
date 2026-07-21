@@ -56,6 +56,7 @@ import {
   NPC_ICONS,
   GearInfo,
   ConsumableInfo,
+  tierRarity,
 } from '../data/items';
 import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome } from '../data/dungeons';
 import { formName } from '../data/forms';
@@ -409,6 +410,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       .map((s) => ({ info: GEAR_MAP[s.item], qty: s.qty }))
       .filter((r) => !!r.info);
   }
+
+  protected readonly tierRarity = tierRarity;
 
   protected shopConsumableRows(): { info: ConsumableInfo; qty: number }[] {
     return (this.currentBazaar()?.consumables ?? [])

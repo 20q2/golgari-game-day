@@ -151,36 +151,42 @@
             <section class="card">
               <h3>Equipment</h3>
               <div class="gear-tiles">
-                <div class="gear-tile" [class.empty]="!you.gear['fang']">
+                <div class="gear-tile" [class.empty]="!you.gear['fang']" [attr.data-rarity]="rarityKey(you.gear['fang'])">
                   <mat-icon class="mi slot-mi">hardware</mat-icon>
                   <div class="gear-tile-body">
                     <span class="gear-tile-slot">Fang</span>
                     @if (you.gear['fang']; as g) {
-                      <span class="gear-tile-name">{{ gearMap[g].name }}</span>
+                      <span class="gear-tile-name">{{ gearMap[g].name }}
+                        <span class="rarity-badge {{ tierRarity(gearMap[g].tier).key }}">{{ tierRarity(gearMap[g].tier).label }}</span>
+                      </span>
                       <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
                     } @else {
                       <span class="gear-tile-empty">empty</span>
                     }
                   </div>
                 </div>
-                <div class="gear-tile" [class.empty]="!you.gear['carapace']">
+                <div class="gear-tile" [class.empty]="!you.gear['carapace']" [attr.data-rarity]="rarityKey(you.gear['carapace'])">
                   <mat-icon class="mi slot-mi">shield</mat-icon>
                   <div class="gear-tile-body">
                     <span class="gear-tile-slot">Carapace</span>
                     @if (you.gear['carapace']; as g) {
-                      <span class="gear-tile-name">{{ gearMap[g].name }}</span>
+                      <span class="gear-tile-name">{{ gearMap[g].name }}
+                        <span class="rarity-badge {{ tierRarity(gearMap[g].tier).key }}">{{ tierRarity(gearMap[g].tier).label }}</span>
+                      </span>
                       <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
                     } @else {
                       <span class="gear-tile-empty">empty</span>
                     }
                   </div>
                 </div>
-                <div class="gear-tile" [class.empty]="!you.gear['charm']">
+                <div class="gear-tile" [class.empty]="!you.gear['charm']" [attr.data-rarity]="rarityKey(you.gear['charm'])">
                   <mat-icon class="mi slot-mi">auto_awesome</mat-icon>
                   <div class="gear-tile-body">
                     <span class="gear-tile-slot">Charm</span>
                     @if (you.gear['charm']; as g) {
-                      <span class="gear-tile-name">{{ gearMap[g].name }}</span>
+                      <span class="gear-tile-name">{{ gearMap[g].name }}
+                        <span class="rarity-badge {{ tierRarity(gearMap[g].tier).key }}">{{ tierRarity(gearMap[g].tier).label }}</span>
+                      </span>
                       <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
                     } @else {
                       <span class="gear-tile-empty">empty</span>

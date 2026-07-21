@@ -743,6 +743,24 @@
   padding: 12px 4px;
 }
 
+// Rarity pill — reused by gear shop rows and the gear drop-reveal chip.
+.rarity-badge {
+  display: inline-block;
+  margin: 0 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  padding: 1px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  vertical-align: middle;
+
+  &.common { color: #9aa7a0; }
+  &.rare { color: #5fd18a; }
+  &.legendary { color: #fbbf24; }
+}
+
 .shop-row {
   display: flex;
   align-items: center;
@@ -752,6 +770,15 @@
   &.locked {
     opacity: 0.5;
   }
+
+  // Rarity accent stripe on gear rows (data-rarity set only for gear).
+  &[data-rarity] {
+    padding-left: 8px;
+    border-left: 3px solid transparent;
+  }
+  &[data-rarity='common'] { border-left-color: #9aa7a0; }
+  &[data-rarity='rare'] { border-left-color: #5fd18a; }
+  &[data-rarity='legendary'] { border-left-color: #fbbf24; }
 
   .shop-name {
     font-size: 0.85rem;
