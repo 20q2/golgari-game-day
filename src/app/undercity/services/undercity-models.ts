@@ -515,6 +515,8 @@ export interface ActionResponse {
   };
   spaceEvent?: SpaceEvent;
   occupants?: Occupant[];
+  /** A gate heal from the last move: passing through (50%) or landing (100%). */
+  heal?: { amount: number; hp: number; kind: 'gate_pass' | 'gate_land' } | null;
   battle?: BattleResult;
   combat?: CombatRound | CombatFlee;
   peek?: CombatPeek;

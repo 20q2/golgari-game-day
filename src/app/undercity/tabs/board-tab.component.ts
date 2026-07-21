@@ -916,6 +916,15 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   private syncBoard(): void {
     if (!this.board) return;
     const step = this.stepping();
+    // Sparkle promise: lit whenever the route walked so far touches a gate
+    // (recomputed each step, so retracing off the gate clears it). The starting
+    // space (path[0]) doesn't count — only spaces stepped onto.
+    const willHeal =
+      !!step &&
+      step.path
+        .slice(1)
+        .some((id) => this.map.nodes.find((n) => n.id === id)?.type === 'gate');
+    this.board.setSelfHealPending(willHeal);
     const ownId = this.store.ownUserId;
     const you = this.store.you();
     this.board.setPlayers(
@@ -972,9 +981,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   private async move(to: string): Promise<void> {
     const preHp = this.store.you()?.hp ?? 0;
+    const path = this.stepping()?.path;
     await this.run(async () => {
-      const resp = await this.store.action('move', { to });
+      const resp = await this.store.action('move', { to, path });
       if (resp.you) this.board?.centerOn(resp.you.position);
+      const uid = this.store.ownUserId;
+      if (resp.heal && uid) this.board?.popHealNumber(uid, resp.heal.amount);
       const ev = resp.spaceEvent;
       this.occupants.set(resp.occupants ?? []);
       if (!ev) return;
