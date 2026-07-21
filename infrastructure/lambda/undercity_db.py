@@ -270,17 +270,25 @@ def _passives(doc):
 
 
 def _blocked_nodes(doc):
-    """Nodes this unit may not step onto. Tier-1 units are barred from nothing.
+    """Nodes this unit may not step onto. Tier-1 units are barred from no tunnels.
     Evolved units (tier > TUNNEL_TIER_MAX) may use tunnels only if they can
     afford the tier toll (charged on landing in _resolve_space); a unit that
     cannot afford it is barred from tunnels entirely — not a destination and
-    not a pass-through."""
+    not a pass-through. Post-boss escape ladders stay barred until you have
+    personally cleared the matching sigil lair (its node in poiClaims) — that
+    per-player gate is what makes the ladder 'appear' only for a player who beat
+    the boss."""
+    blocked = set()
     tier = doc.get('tier', 1)
     if tier > data.TUNNEL_TIER_MAX:
         toll = data.TUNNEL_TOLL.get(tier, 0)
         if doc.get('spores', 0) < toll:
-            return data.TUNNEL_NODES
-    return frozenset()
+            blocked |= data.TUNNEL_NODES
+    claims = doc.get('poiClaims') or []
+    for esc, lair in data.ESCAPE_LADDERS.items():
+        if lair not in claims:
+            blocked.add(esc)
+    return frozenset(blocked)
 
 
 def _riders(doc):

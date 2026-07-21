@@ -197,3 +197,25 @@ def test_escape_ladder_adjacent_to_each_sigil_lair(biome):
 def test_dungeon_entrance_ignores_escape_ladder(biome):
     # The mouth (respawn point) is <biome>_lb, never the escape spur.
     assert data.dungeon_entrance(biome) == biome + '_lb'
+
+
+def test_escape_ladder_blocked_until_claimed(table):
+    doc = _join(table)                       # fresh join: poiClaims empty
+    assert set(data.ESCAPE_LADDERS) <= db._blocked_nodes(doc)
+    doc['position'] = 'city_lair'
+    dests = engine.legal_destinations(
+        data.MAP_NODES, 'city_lair', 1,
+        db._closed_barriers(table, _sid(table)), db._blocked_nodes(doc))
+    assert 'city_esc' not in dests           # not reachable while unclaimed
+
+
+def test_escape_ladder_reachable_once_claimed(table):
+    doc = _join(table)
+    doc['poiClaims'] = ['city_lair']         # you personally cleared this lair
+    assert 'city_esc' not in db._blocked_nodes(doc)
+    dests = engine.legal_destinations(
+        data.MAP_NODES, 'city_lair', 1,
+        db._closed_barriers(table, _sid(table)), db._blocked_nodes(doc))
+    assert 'city_esc' in dests               # one hop off the lair
+    # A lair you have NOT claimed stays barred even for a claimed player.
+    assert 'bog_esc' in db._blocked_nodes(doc)

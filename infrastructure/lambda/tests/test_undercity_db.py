@@ -268,7 +268,8 @@ def test_broke_tier2_is_blocked_from_tunnels(table):
     doc['tier'] = 2
     doc['spores'] = data.TUNNEL_TOLL[2] - 1   # can't afford the toll
     doc['position'] = 'cavern_r2'
-    assert data.TUNNEL_NODES == db._blocked_nodes(doc)
+    # No sigils claimed yet, so the per-player escape ladders are blocked too.
+    assert db._blocked_nodes(doc) == data.TUNNEL_NODES | set(data.ESCAPE_LADDERS)
     dests = engine.legal_destinations(
         data.MAP_NODES, doc['position'], 1,
         db._closed_barriers(table, sid), db._blocked_nodes(doc))
@@ -287,7 +288,8 @@ def test_funded_tier2_may_enter_a_tunnel(table):
     doc['tier'] = 2
     doc['spores'] = data.TUNNEL_TOLL[2]       # exactly affordable
     doc['position'] = 'cavern_r2'
-    assert db._blocked_nodes(doc) == frozenset()
+    # Tunnels are open (toll paid); only the unclaimed escape ladders remain blocked.
+    assert db._blocked_nodes(doc) == frozenset(data.ESCAPE_LADDERS)
     dests = engine.legal_destinations(
         data.MAP_NODES, doc['position'], 1,
         db._closed_barriers(table, sid), db._blocked_nodes(doc))
