@@ -739,10 +739,10 @@ RENOWN_SHOP_ITEMS_MAP = {i['id']: i for i in RENOWN_SHOP_ITEMS}
 BARRIER_GUARDIANS = {
     'bar_e': {'id': 'golgari_grave_troll', 'name': 'Golgari Grave-Troll',
               'hp': 36, 'atk': 11, 'def': 6, 'spd': 3, 'bounty': 30, 'xp': 25,
-              'personality': 'turtle', 'bluff': 0.15},
+              'personality': 'turtle', 'bluff': 0.30},
     'bar_s': {'id': 'wight_of_the_reliquary', 'name': 'Wight of the Reliquary',
               'hp': 42, 'atk': 12, 'def': 6, 'spd': 5, 'bounty': 35, 'xp': 25,
-              'personality': 'turtle', 'bluff': 0.20},
+              'personality': 'turtle', 'bluff': 0.30},
 }
 
 # Mini-bosses at the lairs. First kill per player pays `first`; repeats pay
@@ -753,22 +753,22 @@ _LAIR_REWARD = {'first': {'spores': 60, 'xp': 35}, 'repeat': {'spores': 15, 'xp'
 LAIR_BOSSES = {
     'lair_titan': {'id': 'gravebound_colossus', 'name': 'Lord of Extinction',
                    'hp': 46, 'atk': 14, 'def': 7, 'spd': 4,
-                   'personality': 'brute', 'bluff': 0.20, **_LAIR_REWARD},
+                   'personality': 'brute', 'bluff': 0.35, **_LAIR_REWARD},
     'city_lair': {'id': 'ishkanah', 'name': 'Ishkanah, Grafwidow',
                   'hp': 42, 'atk': 14, 'def': 5, 'spd': 8,
-                  'personality': 'trickster', 'bluff': 0.20, **_LAIR_REWARD},
+                  'personality': 'trickster', 'bluff': 0.35, **_LAIR_REWARD},
     'cavern_lair': {'id': 'sarulf', 'name': 'Sarulf, Realm Eater',
                     'hp': 44, 'atk': 13, 'def': 6, 'spd': 7,
-                    'personality': 'balanced', 'bluff': 0.20, **_LAIR_REWARD},
+                    'personality': 'balanced', 'bluff': 0.35, **_LAIR_REWARD},
     'bog_lair': {'id': 'gitrog_monster', 'name': 'The Gitrog Monster',
                  'hp': 48, 'atk': 12, 'def': 7, 'spd': 5,
-                 'personality': 'turtle', 'bluff': 0.20, **_LAIR_REWARD},
+                 'personality': 'turtle', 'bluff': 0.35, **_LAIR_REWARD},
     'bone_lair': {'id': 'skullbriar', 'name': 'Skullbriar, the Walking Grave',
                   'hp': 40, 'atk': 15, 'def': 6, 'spd': 6,
-                  'personality': 'brute', 'bluff': 0.25, **_LAIR_REWARD},
+                  'personality': 'brute', 'bluff': 0.35, **_LAIR_REWARD},
     'garden_lair': {'id': 'slimefoot', 'name': 'Slimefoot, the Stowaway',
                     'hp': 46, 'atk': 13, 'def': 7, 'spd': 4,
-                    'personality': 'turtle', 'bluff': 0.20, **_LAIR_REWARD},
+                    'personality': 'turtle', 'bluff': 0.35, **_LAIR_REWARD},
 }
 
 # Field-curse buffs, when they land on a rooted guardian/boss, resolve to a

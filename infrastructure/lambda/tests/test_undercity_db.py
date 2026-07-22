@@ -1970,6 +1970,25 @@ def test_read_chance_rises_with_reader_passive_and_gear():
     assert db._read_chance(dict(base, gear={'charm': 'glint_charm'})) > plain
 
 
+def test_reads_no_longer_monopolised_by_spd():
+    # A high-SPD build reads better but nowhere near the old ~48% at SPD 15, and
+    # the cap holds below the old 0.90.
+    base = {'atk': 6, 'def': 6, 'spd': 15}
+    chance = db._read_chance(base)
+    assert chance == data.READ_BASE + data.READ_SPD_COEFF * 15      # 0.25 + 0.12 = 0.37
+    assert chance < 0.40
+    # Nothing can exceed the tightened cap.
+    assert db._read_chance({'atk': 0, 'def': 0, 'spd': 999}) == data.READ_MAX == 0.80
+
+
+def test_bosses_and_guardians_bluff_enough_to_resist_feint_spam():
+    # A telegraphing turtle can't be blindly hard-countered every round.
+    for spec in data.LAIR_BOSSES.values():
+        assert spec['bluff'] >= 0.35, spec['name']
+    for spec in data.BARRIER_GUARDIANS.values():
+        assert spec['bluff'] >= 0.30, spec['name']
+
+
 # ── Rot-Farm Bazaar: rotating limited stock ──────────────────────────────────
 
 def test_shop_window_math():
