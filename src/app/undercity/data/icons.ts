@@ -54,6 +54,33 @@ export const UC_BOLT_SVG =
   '<path d="M13.4 1.6 L4.8 13.4 H9.8 L8.4 22.4 L18.8 9.6 H13.4 L16.2 1.6 Z"/>' +
   '</svg>';
 
+/** Spore pod — the spores loot reward. A round cap on a short stalk. */
+export const UC_SPORE_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">' +
+  '<path d="M12 3 C6.8 3 3.4 6.4 3.4 10.2 C3.4 11.4 4.4 12 6 12 L18 12 ' +
+  'C19.6 12 20.6 11.4 20.6 10.2 C20.6 6.4 17.2 3 12 3 Z"/>' +
+  '<rect x="10.8" y="12" width="2.4" height="7.2" rx="1.1"/>' +
+  '<circle cx="8.2" cy="8.2" r="1.1"/><circle cx="12" cy="6.8" r="1.2"/>' +
+  '<circle cx="15.6" cy="8.6" r="1"/>' +
+  '</svg>';
+
+/** Pouch — the consumable-item loot reward. A drawstring bag. */
+export const UC_POUCH_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">' +
+  '<path d="M8 6 L16 6 L15 8.4 C18 9.8 20 12.6 20 15.6 C20 19 16.4 21.4 12 21.4 ' +
+  'C7.6 21.4 4 19 4 15.6 C4 12.6 6 9.8 9 8.4 Z"/>' +
+  '<path d="M8.4 4 L15.6 4 A0.9 0.9 0 0 1 15.6 6.4 L8.4 6.4 A0.9 0.9 0 0 1 8.4 4 Z"/>' +
+  '</svg>';
+
+/** Chest — the gear loot reward. A banded treasure chest with a latch. */
+export const UC_CHEST_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">' +
+  '<path d="M3.4 9 C3.4 6.4 6.6 4.4 12 4.4 C17.4 4.4 20.6 6.4 20.6 9 L20.6 10.4 ' +
+  'L3.4 10.4 Z"/>' +
+  '<path d="M3.4 12 L20.6 12 L20.6 18.2 A1.4 1.4 0 0 1 19.2 19.6 L4.8 19.6 ' +
+  'A1.4 1.4 0 0 1 3.4 18.2 Z M10.8 12 h2.4 v3.2 h-2.4 Z"/>' +
+  '</svg>';
+
 /** All Undercity SVG icons keyed by their `uc-…` registry name. */
 export const UC_SVG_ICONS: Record<string, string> = {
   'uc-sword': UC_SWORD_SVG,
@@ -62,4 +89,7 @@ export const UC_SVG_ICONS: Record<string, string> = {
   'uc-charm': UC_CHARM_SVG,
   'uc-shield': UC_SHIELD_SVG,
   'uc-bolt': UC_BOLT_SVG,
+  'uc-spore': UC_SPORE_SVG,
+  'uc-pouch': UC_POUCH_SVG,
+  'uc-chest': UC_CHEST_SVG,
 };
