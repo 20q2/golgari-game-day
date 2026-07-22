@@ -321,7 +321,7 @@
         [style.background-image]="regionWashBg()"
       >
         <img class="modal-art" [src]="bazaarKeeper().art" alt="" />
-        <h3><mat-icon class="mi">storefront</mat-icon> Rot-Farm Bazaar</h3>
+        <h3><mat-icon class="mi">storefront</mat-icon> {{ bazaarTitle() }}</h3>
         <p class="shop-quote">“{{ bazaarKeeper().quote }}”</p>
         <p class="modal-sub">
           You carry <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ store.you()?.spores }}
@@ -341,6 +341,9 @@
               <div class="shop-row" [attr.data-rarity]="tierRarity(r.info.tier).key">
                 <span class="shop-name">{{ r.info.name }}
                   <span class="rarity-badge {{ tierRarity(r.info.tier).key }}">{{ tierRarity(r.info.tier).label }}</span>
+                  @if (r.blackMarket) {
+                    <span class="black-market-tag">Black Market</span>
+                  }
                   <em>{{ r.info.desc }}</em></span>
                 <button
                   class="uc-btn shop-buy"

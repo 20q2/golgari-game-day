@@ -361,6 +361,8 @@ export interface TradeOffer {
 export interface ShopStockItem {
   item: string;
   qty: number;
+  /** True only for a biome bazaar's rare "black-market" T3 line. */
+  blackMarket?: boolean;
 }
 
 /** A bazaar node's current shared stock + when it restocks. */

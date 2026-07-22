@@ -427,14 +427,27 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   // ── Bazaar (rotating limited stock) ──────────────────────────────────────
+  /** Node ids whose bazaar is the central-island endgame vendor (mirror of
+   * undercity_data.ISLAND_BAZAAR_NODES). */
+  private readonly ISLAND_BAZAAR_NODES = new Set(['isl_bg1']);
+
   protected readonly currentBazaar = computed<BazaarView | null>(() => {
     const pos = this.store.you()?.position;
     return pos ? (this.store.bazaars()[pos] ?? null) : null;
   });
 
-  protected shopGearRows(): { info: GearInfo; qty: number }[] {
+  protected islandBazaar(): boolean {
+    const pos = this.store.you()?.position;
+    return !!pos && this.ISLAND_BAZAAR_NODES.has(pos);
+  }
+
+  protected bazaarTitle(): string {
+    return this.islandBazaar() ? "The Witch's Cauldron" : 'Rot-Farm Bazaar';
+  }
+
+  protected shopGearRows(): { info: GearInfo; qty: number; blackMarket: boolean }[] {
     return (this.currentBazaar()?.gear ?? [])
-      .map((s) => ({ info: GEAR_MAP[s.item], qty: s.qty }))
+      .map((s) => ({ info: GEAR_MAP[s.item], qty: s.qty, blackMarket: !!s.blackMarket }))
       .filter((r) => !!r.info);
   }
 
@@ -460,7 +473,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return min <= 1 ? 'under a minute' : `${min} min`;
   }
 
-  /** Bazaar vendors, in rotation order. Which one is "on shift" alternates
+  /** Biome bazaar vendors, in rotation order. Which one is "on shift" alternates
    * with the shared restock window (mirrors data.SHOP_REFRESH_MIN = 30
    * server-side) so every player sees the same vendor until the next restock. */
   private readonly BAZAAR_KEEPERS: { art: string; quote: string }[] = [
@@ -472,11 +485,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       art: 'undercity/map_events/shopkeeper2.png',
       quote: 'I hawked turnips at this very stall, once. One little bargain later… the stock improved, and so did the terms.',
     },
-    {
-      art: 'undercity/map_events/shopkeeper4.png',
-      quote: 'Come closer, morsel. Baba has cauldrons to fill and coin to make. Buy something, hmm?',
-    },
   ];
+
+  /** The island bazaar's fixed vendor — the Witch (keeper 4). */
+  private readonly islandKeeper = {
+    art: 'undercity/map_events/shopkeeper4.png',
+    quote: 'Come closer, morsel. Baba has cauldrons to fill and coin to make. Buy something, hmm?',
+  };
 
   /** Trading Post is tended by the collector ooze — one fixed vendor. */
   protected readonly tradingKeeper = {
@@ -485,6 +500,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   };
 
   protected bazaarKeeper(): { art: string; quote: string } {
+    if (this.islandBazaar()) return this.islandKeeper;
     const at = this.currentBazaar()?.refreshesAt;
     const windowEndMs = at ? new Date(at + 'Z').getTime() : Date.now();
     const windowIdx = Math.round(windowEndMs / (30 * 60_000));
