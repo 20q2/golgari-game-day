@@ -222,7 +222,11 @@
                 <span class="stance-augments">
                   @for (a of augs; track a.label) {
                     <span class="augment-tag" [class.passive]="a.source === 'passive'">
-                      <mat-icon class="mi">auto_awesome</mat-icon>{{ a.label }}
+                      @if (s.icon.startsWith('uc-')) {
+                        <mat-icon class="mi" [svgIcon]="s.icon"></mat-icon>
+                      } @else {
+                        <mat-icon class="mi">{{ s.icon }}</mat-icon>
+                      }{{ a.label }}
                     </span>
                   }
                 </span>
@@ -330,6 +334,7 @@
             <li><mat-icon class="mi" svgIcon="uc-shield"></mat-icon> <strong>Guard</strong> beats Aggress</li>
           </ul>
           <p>Win the read and you land the big hit; guess wrong and you eat one. Your <strong>ATK/DEF/SPD</strong> (beside each fighter) set how hard the blows land.</p>
+          <p>Little tags under a stance are <strong>perks</strong> — bonuses from your equipped gear and your creature's attribute perks that fire when you pick that stance (e.g. a winning Aggress applying rot, or Guard chipping the foe down).</p>
           <p><strong>Scry</strong> reveals the true intent (bosses bluff). <strong>Flee</strong> bails a losing fight. Combat items fire on your next stance.</p>
           <button class="uc-btn uc-btn-primary" (click)="showHelp.set(false)">Got it</button>
         </div>
