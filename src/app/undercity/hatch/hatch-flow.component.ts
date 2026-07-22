@@ -193,8 +193,8 @@ export class HatchFlowComponent {
   private static readonly ARCHETYPES: Record<string, string> = {
     pest: 'Balanced',
     kraul: 'Glass Cannon',
-    saproling: 'Tank',
-    zombie: 'Horde',
+    saproling: 'Horde',
+    zombie: 'Tank',
   };
   archetype(form: FormInfo): string {
     return HatchFlowComponent.ARCHETYPES[form.id] ?? 'Balanced';

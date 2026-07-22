@@ -20,7 +20,7 @@ interface Panel {
 const GUARDIAN_IDS = ['ishkanah', 'sarulf', 'gitrog_monster', 'skullbriar', 'slimefoot'];
 
 /** Auto-advance dwell per panel (ms). Kept in sync with the CSS `--dur` timer bar. */
-const PANEL_MS = 5500;
+const PANEL_MS = 11000;
 
 /**
  * One-time story intro shown to first-time players at the top of the hatch flow.
@@ -114,7 +114,7 @@ const PANEL_MS = 5500;
         z-index: 40;
         --ease: cubic-bezier(0.22, 1, 0.36, 1);
         --gold: #e0b445;
-        --dur: 5500ms;
+        --dur: 11000ms;
       }
       .cutscene {
         position: absolute;
