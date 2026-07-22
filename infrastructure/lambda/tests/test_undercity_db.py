@@ -1120,6 +1120,49 @@ def test_public_player_exposes_gear_and_effective_stats(table):
         assert pub[stat] == eff[stat]
 
 
+# ── Status bubble ────────────────────────────────────────────────────────────
+
+def test_set_status_persists_normalized(table):
+    act(table, 'join', starter='saproling', home='cavern')
+    status, resp = act(table, 'set-status', status='Farming spores')
+    assert status == 200
+    assert resp['you']['status'] == 'Farming spores'
+    # Survives a state read.
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert state['you']['status'] == 'Farming spores'
+
+
+def test_set_status_truncates_and_collapses_whitespace(table):
+    act(table, 'join', starter='saproling', home='cavern')
+    status, resp = act(table, 'set-status',
+                       status='  hello\n\tworld   this is way too long to fit  ')
+    assert status == 200
+    saved = resp['you']['status']
+    # Collapsed to single spaces + trimmed = "hello world this is way too long to fit",
+    # then capped at 24 chars -> "hello world this is way " (trailing space, len 24).
+    assert saved == 'hello world this is way '
+    assert len(saved) == 24
+    assert '\n' not in saved and '\t' not in saved
+
+
+def test_set_status_empty_clears(table):
+    act(table, 'join', starter='saproling', home='cavern')
+    act(table, 'set-status', status='temp')
+    status, resp = act(table, 'set-status', status='   ')
+    assert status == 200
+    assert resp['you']['status'] == ''
+
+
+def test_status_visible_in_peer_roster(table):
+    # Alex and Bea both join; Bea sees Alex's status in the players roster.
+    act(table, 'join', user='user-alex', name='Alex', starter='saproling', home='cavern')
+    act(table, 'join', user='user-bea', name='Bea', starter='pest', home='bone')
+    act(table, 'set-status', user='user-alex', name='Alex', status='Come fight me')
+    _, state = db.handle_state(table, {'userId': 'user-bea'})
+    alex = next(p for p in state['players'] if p['userId'] == 'user-alex')
+    assert alex['status'] == 'Come fight me'
+
+
 def _sid(table):
     return db._get(table, db.META_PK, 'CURRENT')['seasonId']
 

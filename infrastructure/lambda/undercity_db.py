@@ -1221,6 +1221,7 @@ def _public_player(p):
         'composts': p.get('composts', 0), 'sigils': _sigil_count(p),
         'paint': p.get('paint'), 'hat': p.get('hat'),
         'isBot': p.get('isBot', False),
+        'status': p.get('status', ''),
         'renown': data.compute_renown(p),
         'perks': sorted(engine.attribute_perks(p)),
     }
@@ -1281,6 +1282,7 @@ def handle_action(table, body):
         'set-stance': _set_stance, 'spend-stat': _spend_stat, 'evolve': _evolve,
         'buy': _buy, 'use-item': _use_item, 'shrine': _shrine, 'warp': _warp,
         'gamble': _gamble, 'poke': _poke, 'customize': _customize,
+        'set-status': _set_status,
         'drop-item': _drop_item,
         'attack-boss': _attack_boss, 'trade': _trade, 'dig': _dig, 'strike': _strike,
         'vault-guess': _vault_guess, 'respawn': _respawn,
@@ -1306,8 +1308,22 @@ def handle_action(table, body):
 # Actions permitted while a battle is in progress (combat + read-only/meta).
 _BATTLE_ALLOWED_ACTIONS = frozenset({
     'combat-round', 'combat-peek', 'combat-flee',
-    'set-stance', 'spend-stat', 'customize', 'ack-events',
+    'set-stance', 'spend-stat', 'customize', 'set-status', 'ack-events',
 })
+
+
+# Max length of a player's status-bubble text (mirror: STATUS_MAX in
+# src/app/undercity/tabs/*.component.ts). Trim + collapse whitespace, then cap.
+STATUS_MAX_LEN = 24
+
+
+def _normalize_status(raw):
+    """Coerce to a clean single-line status: trim, collapse any whitespace runs
+    (spaces/tabs/newlines) to single spaces, and cap at STATUS_MAX_LEN. Non-str
+    or empty input yields ''."""
+    if not isinstance(raw, str):
+        return ''
+    return ' '.join(raw.split())[:STATUS_MAX_LEN]
 
 
 def _roll_meta(doc):
@@ -4543,6 +4559,14 @@ def _customize(table, sid, doc, payload):
         doc['paint'] = {r: int(paint.get(r, doc['paint'].get(r, 130)))
                         for r in ('body', 'belly', 'stripes')}
     doc['hat'] = hat or None
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc)
+
+
+def _set_status(table, sid, doc, payload):
+    doc['status'] = _normalize_status(payload.get('status', ''))
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
