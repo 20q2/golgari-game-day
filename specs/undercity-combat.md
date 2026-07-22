@@ -22,11 +22,15 @@ three stances (`undercity_data.STANCES = ('aggress', 'guard', 'feint')`):
 result, or `'clash'` (A-v-A), `'stall'` (G-v-G), `'whiff'` (F-v-F) for mirrors.
 
 **Magnitude comes from stats.** A "hit" is
-`max(1, round((atk + STANCE_STAT_WEIGHT * signature) * uniform(0.85,1.15)) - effective_def)`
-(`engine._base_hit`), where the striker's stance picks the signature stat
-(Aggress↔ATK, Guard↔DEF, Feint↔SPD) and ATK is the universal base added to every
-swing — so ATK boosts all attacks and Aggress double-dips on it. That hit is then
-scaled by the matchup multiplier:
+`max(1, round(swing * uniform(0.85,1.15) * (1 - mitigation)))` (`engine._base_hit`),
+where `swing = _swing_base(striker, stance)` picks the signature stat by stance
+(Aggress↔ATK at `1 + STANCE_STAT_WEIGHT`; Guard↔DEF at `GUARD_SIG_WEIGHT`; Feint↔SPD
+at the *lighter* `FEINT_SIG_WEIGHT` — SPD is a tempo/read stat, not a heavy hitter),
+plus `STANCE_OFFHAND_ATK_WEIGHT × atk` as the partial base on Guard/Feint. **DEF is
+proportional mitigation**, not a flat subtraction: `mitigation = min(MITIGATION_CAP,
+def / (def + MITIGATION_K))` (`pierce` lowers effective DEF first). So armor scales
+gracefully at any level and nothing is invincible. That hit is then scaled by the
+matchup multiplier:
 
 - decisive win → `STANCE_WIN_MULT` (winner's big hit). The loser deals nothing —
   EXCEPT a caught **feint into an aggress** still pokes back for `STANCE_STALL_MULT`
@@ -166,14 +170,21 @@ Combat consumables map to three general one-round modifiers on `resolve_round`:
 ## 7. Tuning knobs (all in `undercity_data.py`)
 
 `STANCE_WIN_MULT`, `STANCE_GUARD_MITIGATE`, `STANCE_GUARD_COUNTER`,
-`STANCE_CLASH_MULT`, `STANCE_STALL_MULT`, `STANCE_STAT_WEIGHT`, `ROT_PER_STACK`, `SWARM_CHIP_MULT`,
+`STANCE_CLASH_MULT`, `STANCE_STALL_MULT`, `STANCE_STAT_WEIGHT`,
+`GUARD_SIG_WEIGHT`, `FEINT_SIG_WEIGHT` (per-stance signature weights — Feint is
+lighter so SPD isn't a heavy hitter), `MITIGATION_K`, `MITIGATION_CAP` (the
+proportional-DEF curve), `ROT_PER_STACK`, `SWARM_CHIP_MULT`,
 `SCAVENGE_RETALIATE`, `DEATHTOUCH_PIERCE`, `FLYBY_DODGE`, `VENOM_BARB_BONUS`,
 `FIRST_WIN_ROT_BREATH_MULT`, `MAX_ROUNDS_COMBAT`, `COMBAT_HARD_CAP`,
 `FRENZY_START`, `FRENZY_PCT`,
 `STANCE_PERSONALITIES`,
 `NPC_DEFAULT_PERSONALITY`, `NPC_DEFAULT_BLUFF`. Read-rate knobs: `READ_BASE`,
-`READ_MAX`, `READ_SPD_COEFF`, `READ_PASSIVE_BONUS`, and per-gear `readBonus`. The
-`test_balance_good_play_beats_fodder` invariant guards changes to these.
+`READ_MAX`, `READ_SPD_COEFF`, `READ_PASSIVE_BONUS`, and per-gear `readBonus`
+(tamed 2026-07-21 so SPD no longer monopolises reads). The
+`test_balance_good_play_beats_fodder` invariant plus the
+`test_spd_build_no_longer_trivialises_a_boss` / `test_def_measurably_reduces_damage_taken`
+regressions guard changes to these. See
+[2026-07-21-undercity-combat-rebalance-design.md](2026-07-21-undercity-combat-rebalance-design.md).
 
 ## Attribute perks (design 2026-07-21)
 
