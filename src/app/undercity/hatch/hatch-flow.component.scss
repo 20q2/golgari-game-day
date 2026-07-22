@@ -485,12 +485,70 @@
   .shop-desc { font-size: 0.68rem; opacity: 0.75; text-align: center; }
   .shop-cost { font-size: 0.78rem; font-weight: 700; color: var(--accent-color); }
   .shop-tag { font-size: 0.7rem; opacity: 0.8; }
+  .shop-tag.in-cart {
+    color: var(--accent-color, #e0b445);
+    font-weight: 700;
+    opacity: 1;
+  }
   .shop-item-icon { font-size: 1.4rem; height: 1.4rem; width: 1.4rem; }
   .shop-hat-sprite {
     width: 44px;
     height: 44px;
     object-fit: contain;
     image-rendering: pixelated;
+  }
+}
+
+// Recommended-kit / clear controls above the starter-items grid.
+.kit-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  width: min(560px, 92vw);
+  margin-bottom: 0.5rem;
+}
+
+.kit-btn,
+.clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+}
+
+.kit-btn {
+  border: 1px solid #fbbf24;
+  background: rgba(251, 191, 36, 0.16);
+  color: #fbbf24;
+
+  &:hover {
+    background: rgba(251, 191, 36, 0.28);
+  }
+
+  .mi {
+    font-size: 1.1rem;
+    height: 1.1rem;
+    width: 1.1rem;
+  }
+}
+
+.clear-btn {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: #cbd5c0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
   }
 }
 

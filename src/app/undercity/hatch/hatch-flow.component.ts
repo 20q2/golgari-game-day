@@ -218,6 +218,20 @@ export class HatchFlowComponent {
     }
   }
 
+  /** One-tap balanced starter: +2 ATK fang and +2 DEF carapace (25+25 = full 50). */
+  fillRecommendedKit(): void {
+    this.cartItems.set(['rusted_fang', 'chitin_scrap']);
+  }
+
+  /** Empty the whole cart (items + cosmetics) and any pending equips. */
+  clearCart(): void {
+    this.cartItems.set([]);
+    this.cartHats.set([]);
+    this.cartPaints.set([]);
+    this.equipHat.set(null);
+    this.equipPaint.set(null);
+  }
+
   toggleItem(item: RenownShopItem): void {
     const cart = this.cartItems();
     if (cart.includes(item.id)) {

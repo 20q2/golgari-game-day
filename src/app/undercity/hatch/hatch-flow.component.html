@@ -42,17 +42,48 @@
     <p class="tap-hint">Tap the egg… ({{ taps() }}/3)</p>
   } @else if (inShop()) {
     <h1>The Renown Shop</h1>
-    <p class="choose-hint">Spend banked Renown before you spawn. Hats &amp; colors are yours forever; items last one night.</p>
+    <p class="choose-hint">Spend banked Renown before you spawn. Items last one night; hats &amp; colors are yours forever.</p>
     <p class="renown-bal">
       <mat-icon class="mi">military_tech</mat-icon>
-      {{ remaining() }} Renown
-      @if (cartCost() > 0) { <span class="renown-spent">(−{{ cartCost() }})</span> }
+      @if (cartCost() > 0) {
+        Spending {{ cartCost() }} · {{ remaining() }} left
+      } @else {
+        {{ balance() }} Renown to spend
+      }
     </p>
     @if (error(); as err) {
       <p class="error-text">{{ err }}</p>
     }
 
-    <h2 class="shop-head">Colors <span class="shop-sub">permanent</span></h2>
+    <h2 class="shop-head">Starter items <span class="shop-sub">one night</span></h2>
+    <div class="kit-row">
+      <button class="uc-btn kit-btn" (click)="fillRecommendedKit()">
+        <mat-icon class="mi">auto_awesome</mat-icon> Recommended kit
+      </button>
+      @if (cartItems().length || cartHats().length || cartPaints().length) {
+        <button class="uc-btn clear-btn" (click)="clearCart()">Clear</button>
+      }
+    </div>
+    <div class="shop-grid">
+      @for (item of shopItems; track item.id) {
+        <button
+          class="shop-card"
+          [class.carted]="cartItems().includes(item.id)"
+          (click)="toggleItem(item)"
+        >
+          <mat-icon class="mi shop-item-icon">{{ item.icon }}</mat-icon>
+          <span class="shop-name">{{ item.name }}</span>
+          <span class="shop-desc">{{ item.desc }}</span>
+          @if (cartItems().includes(item.id)) {
+            <span class="shop-tag in-cart">In cart · tap to remove</span>
+          } @else {
+            <span class="shop-cost">{{ item.cost }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    <h2 class="shop-head">Looks <span class="shop-sub">optional</span></h2>
     <div class="shop-grid">
       @for (paint of paints; track paint.id) {
         <button
@@ -66,14 +97,14 @@
           <span class="shop-name">{{ paint.name }}</span>
           @if (ownsPaint(paint.id)) {
             <span class="shop-tag">{{ equipPaint() === paint.id ? 'wearing' : 'wear' }}</span>
+          } @else if (cartPaints().includes(paint.id)) {
+            <span class="shop-tag in-cart">In cart · tap to remove</span>
           } @else {
             <span class="shop-cost">{{ paintPrice }}</span>
           }
         </button>
       }
     </div>
-
-    <h2 class="shop-head">Hats <span class="shop-sub">permanent</span></h2>
     <div class="shop-grid">
       @for (hat of allHats; track hat.id) {
         <button
@@ -87,6 +118,8 @@
           <span class="shop-name">{{ hat.name }}</span>
           @if (ownsHat(hat.id)) {
             <span class="shop-tag">{{ equipHat() === hat.id ? 'wearing' : 'wear' }}</span>
+          } @else if (cartHats().includes(hat.id)) {
+            <span class="shop-tag in-cart">In cart · tap to remove</span>
           } @else {
             <span class="shop-cost">{{ hatPrices[hat.rarity] }}</span>
           }
@@ -94,24 +127,12 @@
       }
     </div>
 
-    <h2 class="shop-head">Starter items <span class="shop-sub">one night</span></h2>
-    <div class="shop-grid">
-      @for (item of shopItems; track item.id) {
-        <button
-          class="shop-card"
-          [class.carted]="cartItems().includes(item.id)"
-          (click)="toggleItem(item)"
-        >
-          <mat-icon class="mi shop-item-icon">{{ item.icon }}</mat-icon>
-          <span class="shop-name">{{ item.name }}</span>
-          <span class="shop-desc">{{ item.desc }}</span>
-          <span class="shop-cost">{{ item.cost }}</span>
-        </button>
-      }
-    </div>
-
     <button class="hatch-btn" (click)="hatch()" [disabled]="joining()">
-      Spawn into the world →
+      @if (cartCost() > 0) {
+        Spawn — spend {{ cartCost() }} Renown
+      } @else {
+        Spawn into the world →
+      }
     </button>
     <button class="biome-back" (click)="inShop.set(false)" [disabled]="joining()">
       ← back to naming
