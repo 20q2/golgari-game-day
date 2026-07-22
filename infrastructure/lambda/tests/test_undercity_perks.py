@@ -49,6 +49,15 @@ def test_all_three_tracks_independent():
                                'last_stand', 'fleetfoot'})
 
 
+def test_carapace_grind_grants_maxhp_via_effective_stats():
+    # DEF 12 lights carapace_grind, which adds a flat Max HP bump in
+    # effective_stats (derived, not persisted).
+    below = {'atk': 1, 'def': 11, 'spd': 1, 'maxHp': 30}
+    assert engine.effective_stats(below)['maxHp'] == 30
+    at = {'atk': 1, 'def': 12, 'spd': 1, 'maxHp': 30}
+    assert engine.effective_stats(at)['maxHp'] == 30 + data.CARAPACE_GRIND_MAXHP
+
+
 # ── Task 2: Combatant carries perks ──────────────────────────────────────────
 
 def test_combatant_carries_perks_and_survives_serde():
@@ -207,6 +216,38 @@ def test_blink_ignored_without_perk(table):
     assert status == 200 and not resp['roll'].get('blink')
 
 
+def test_blink_arms_cooldown(table):
+    # Using Blink owes BLINK_COOLDOWN_ROLLS ordinary rolls before the next one.
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 18; doc['rolls'] = 9
+    db._put_player(table, doc)
+    status, resp = act(table, 'roll', blink=True, value=6)
+    assert status == 200 and resp['roll'].get('blink') is True
+    assert resp['you']['blinkCooldown'] == data.BLINK_COOLDOWN_ROLLS
+
+
+def test_blink_rejected_while_recharging(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['spd'] = 18; doc['rolls'] = 9; doc['blinkCooldown'] = 1
+    db._put_player(table, doc)
+    status, resp = act(table, 'roll', blink=True, value=6)
+    assert status == 409 and 'recharg' in resp['error'].lower()
+
+
+def test_ordinary_roll_pays_down_blink_cooldown(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['spd'] = 18; doc['rolls'] = 9; doc['blinkCooldown'] = 1
+    db._put_player(table, doc)
+    status, resp = act(table, 'roll')   # ordinary roll — no blink flag
+    assert status == 200
+    assert resp['you']['blinkCooldown'] == 0
+
+
 # ── Task 11: Pathfinder ──────────────────────────────────────────────────────
 
 def test_pathfinder_rolls_two_and_unions_destinations(table, monkeypatch):
@@ -279,7 +320,7 @@ def test_fleetfoot_no_reroll_without_perk(table, monkeypatch):
 # ── Task 13: state surfaces perks ────────────────────────────────────────────
 
 def test_state_surfaces_perks(table):
-    act(table, 'join', starter='saproling', home='cavern')  # def 7 -> thick_hide
+    act(table, 'join', starter='zombie', home='cavern')  # def 6 -> thick_hide
     status, state = db.handle_state(table, {'userId': 'user-alex'})
     assert status == 200
     assert 'thick_hide' in state['you']['perks']

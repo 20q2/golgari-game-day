@@ -21,6 +21,9 @@ export interface BattleSide {
   maxHp: number;
   /** Derived power level shown beside a foe's name (NPCs only). */
   level?: number;
+  /** A beaten lair boss re-fought at half strength — rendered with the same
+   * drained/blurred vestige filter it wears in the overworld. */
+  vestige?: boolean;
 }
 
 /** Spoils shown in the victory popup after a won battle. */

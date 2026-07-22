@@ -241,13 +241,13 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             # loser cancels the decisive punish (rot/swarm tail still applies).
             entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
                             'negated': True, 'winner': win_side})
-        elif losr.has('reach') and rnd == 1:
-            # Reach: in round 1 the skirmisher stays out of range — the decisive
-            # blow finds only air (a guaranteed one-round negate).
+        elif (losr.has('reach') or losr.has('outpace')) and rnd == 1:
+            # Reach / Outpace: in round 1 the skirmisher stays out of range — the
+            # decisive blow finds only air (a guaranteed one-round negate).
             entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
                             'miss': True, 'winner': win_side})
-        elif losr.has('flyby') and rng.random() < data.FLYBY_DODGE:
-            # loser evades the whole punish.
+        elif (losr.has('flyby') or losr.has('skitter')) and rng.random() < data.FLYBY_DODGE:
+            # Flyby / Skitter: loser evades the whole punish.
             entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
                             'miss': True, 'winner': win_side})
         elif win_stance == 'guard':
@@ -363,10 +363,14 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             raw = _base_hit(s, t, rng, stance='feint', ramp=ramp)
             _deal(s, t, side, rnd, raw, data.STANCE_STALL_MULT, entries, tag='chip')
 
-    # Swarm: one extra chip hit per round regardless of stance (min 1).
+    # Swarm / Flurry: an extra chip hit per round regardless of stance (min 1).
     for side, (s, t) in (('attacker', (attacker, defender)),
                          ('defender', (defender, attacker))):
-        if s.has('swarm') and s.hp > 0 and t.hp > 0:
+        # Flurry (Vinelash Reaper): a weaker Swarm — only a per-round chance to
+        # land the bonus strike. Swarm always fires; both share the chip path.
+        fires = (s.has('swarm')
+                 or (s.has('flurry') and rng.random() < data.FLURRY_CHANCE))
+        if fires and s.hp > 0 and t.hp > 0:
             st = a_stance if side == 'attacker' else d_stance
             chip = max(1, round(_base_hit(s, t, rng, stance=st, ramp=ramp) * data.SWARM_CHIP_MULT))
             t.hp -= chip
@@ -684,6 +688,11 @@ def effective_stats(player: dict) -> dict:
             eff['def'] += 2
         elif buff.get('kind') == 'weaken_hex':
             eff['atk'] = max(1, eff['atk'] - 3)
+    # Carapace Grind (DEF-12 perk): a flat Max HP bump while the perk is held.
+    # Derived here (not persisted) so it appears in state and combat and vanishes
+    # cleanly if the perk ever stops applying — same layer as gear maxHp.
+    if 'carapace_grind' in attribute_perks(player):
+        eff['maxHp'] += data.CARAPACE_GRIND_MAXHP
     return eff
 
 

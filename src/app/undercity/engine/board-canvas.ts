@@ -424,6 +424,13 @@ export class BoardCanvas {
   private camX = 0;
   private camY = 0;
   private zoom = 0.8;
+  /** Logical (CSS-pixel) viewport size. The canvas backing store is this ×
+   *  `dpr`; all camera/viewport math stays in these logical units. */
+  private viewW = 0;
+  private viewH = 0;
+  /** Device-pixel ratio the backing store is rendered at, capped at 2 so a
+   *  DPR-3 phone pays ~4× fill for retina crispness instead of 9×. */
+  private dpr = 1;
   /** Read-only broadcast mode: no input wired, dungeons fully revealed. */
   private interactive = true;
   private revealAll = false;
@@ -735,8 +742,8 @@ export class BoardCanvas {
     if (!n) return;
     const toZoom =
       targetZoom != null ? Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, targetZoom)) : this.zoom;
-    const toX = n.x - this.canvas.width / toZoom / 2;
-    const toY = n.y - this.canvas.height / toZoom / 2;
+    const toX = n.x - this.viewW / toZoom / 2;
+    const toY = n.y - this.viewH / toZoom / 2;
     if (!animate) {
       this.camGlide = null;
       this.zoom = toZoom;
@@ -788,14 +795,19 @@ export class BoardCanvas {
     // moments after load — slides the camera off whatever it was framing
     // (your own creature on first entry). Skip on the very first sizing, when
     // there's no prior centre to keep.
-    const hadSize = this.canvas.width > 0 && this.canvas.height > 0;
-    const cx = this.camX + this.canvas.width / this.zoom / 2;
-    const cy = this.camY + this.canvas.height / this.zoom / 2;
-    this.canvas.width = parent.clientWidth || window.innerWidth;
-    this.canvas.height = parent.clientHeight || window.innerHeight;
+    const hadSize = this.viewW > 0 && this.viewH > 0;
+    const cx = this.camX + this.viewW / this.zoom / 2;
+    const cy = this.camY + this.viewH / this.zoom / 2;
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.viewW = parent.clientWidth || window.innerWidth;
+    this.viewH = parent.clientHeight || window.innerHeight;
+    // Backing store in device pixels so canvas-drawn text/sprites resolve at
+    // the panel's true resolution; the CSS box stays the logical size (100%).
+    this.canvas.width = Math.round(this.viewW * this.dpr);
+    this.canvas.height = Math.round(this.viewH * this.dpr);
     if (hadSize) {
-      this.camX = cx - this.canvas.width / this.zoom / 2;
-      this.camY = cy - this.canvas.height / this.zoom / 2;
+      this.camX = cx - this.viewW / this.zoom / 2;
+      this.camY = cy - this.viewH / this.zoom / 2;
     }
     this.clampCamera();
   }
@@ -807,8 +819,8 @@ export class BoardCanvas {
     const M = TERRAIN_MARGIN;
     const b = this.active.spec.bounds;
     const fit = Math.min(
-      this.canvas.width / (b.w + 2 * M),
-      this.canvas.height / (b.h + 2 * M),
+      this.viewW / (b.w + 2 * M),
+      this.viewH / (b.h + 2 * M),
     );
     const minZoom = Math.max(Math.min(fit, 1), MIN_ZOOM);
     this.zoom = Math.min(MAX_ZOOM, Math.max(minZoom, this.zoom));
@@ -817,8 +829,8 @@ export class BoardCanvas {
     // an invisible wall — that wall-stop is what made the camera "bounce".
     // The letterboxed void matches the wall colour, so it just reads as cave.
     if (!this.interactive) return;
-    const vw = this.canvas.width / this.zoom;
-    const vh = this.canvas.height / this.zoom;
+    const vw = this.viewW / this.zoom;
+    const vh = this.viewH / this.zoom;
     // Center any axis whose view is wider than the layer; clamp the rest.
     this.camX =
       vw >= b.w + 2 * M
@@ -1019,8 +1031,11 @@ export class BoardCanvas {
 
     // Pure black outside the world so the off-map area matches the canvas edge
     // (notably while spectating, where the whole world sits framed in view).
+    // Base transform: 1 logical unit = `dpr` device px, so every downstream
+    // draw works in logical coords while filling the device-pixel backing store.
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.fillRect(0, 0, this.viewW, this.viewH);
 
     ctx.save();
     ctx.scale(this.zoom, this.zoom);
@@ -1142,8 +1157,8 @@ export class BoardCanvas {
     this.ambient.drawAtmosphere(ctx, ts, {
       x0: this.camX,
       y0: this.camY,
-      x1: this.camX + this.canvas.width / this.zoom,
-      y1: this.camY + this.canvas.height / this.zoom,
+      x1: this.camX + this.viewW / this.zoom,
+      y1: this.camY + this.viewH / this.zoom,
     });
 
     this.drawHealNumbers();
@@ -1171,14 +1186,18 @@ export class BoardCanvas {
   private drawGloomVeil(): void {
     if (!this.veil) this.veil = document.createElement('canvas');
     const v = this.veil;
-    if (v.width !== this.canvas.width || v.height !== this.canvas.height) {
-      v.width = this.canvas.width;
-      v.height = this.canvas.height;
+    const dw = Math.round(this.viewW * this.dpr);
+    const dh = Math.round(this.viewH * this.dpr);
+    if (v.width !== dw || v.height !== dh) {
+      v.width = dw;
+      v.height = dh;
     }
     const vc = v.getContext('2d')!;
-    vc.clearRect(0, 0, v.width, v.height);
+    // Draw the veil in logical coords (the blit below is device-pixel 1:1).
+    vc.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    vc.clearRect(0, 0, this.viewW, this.viewH);
     vc.fillStyle = 'rgba(4, 3, 6, 0.82)';
-    vc.fillRect(0, 0, v.width, v.height);
+    vc.fillRect(0, 0, this.viewW, this.viewH);
     vc.globalCompositeOperation = 'destination-out';
     for (const n of this.map.nodes) {
       if (!this.inActive(n.id) || !this.isLit(n.id) || this.isHiddenEscape(n.id)) continue;
@@ -1186,7 +1205,7 @@ export class BoardCanvas {
       const r = (own ? 230 : 150) * this.zoom;
       const sx = (n.x - this.camX) * this.zoom;
       const sy = (n.y - this.camY) * this.zoom;
-      if (sx < -r || sx > v.width + r || sy < -r || sy > v.height + r) continue;
+      if (sx < -r || sx > this.viewW + r || sy < -r || sy > this.viewH + r) continue;
       const g = vc.createRadialGradient(sx, sy, 0, sx, sy, r);
       g.addColorStop(0, 'rgba(0,0,0,1)');
       g.addColorStop(0.6, 'rgba(0,0,0,0.85)');
@@ -1207,8 +1226,8 @@ export class BoardCanvas {
     const ctx = this.ctx;
     const vx0 = this.camX - 60;
     const vy0 = this.camY - 60;
-    const vx1 = this.camX + this.canvas.width / this.zoom + 60;
-    const vy1 = this.camY + this.canvas.height / this.zoom + 60;
+    const vx1 = this.camX + this.viewW / this.zoom + 60;
+    const vy1 = this.camY + this.viewH / this.zoom + 60;
     for (const s of this.active.terrain.glowSpots) {
       if (s.x < vx0 || s.x > vx1 || s.y < vy0 || s.y > vy1) continue;
       const a = 0.05 + 0.05 * (1 + Math.sin(elapsed * 1.6 + s.phase)) * 0.5;

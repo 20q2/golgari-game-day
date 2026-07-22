@@ -133,6 +133,12 @@ export class PlazaCanvas {
   private camX = 0;
   private camY = 0;
   private zoom = 1;
+  /** Logical (CSS-pixel) viewport size; the backing store is this × `dpr`. */
+  private viewW = 0;
+  private viewH = 0;
+  /** Device-pixel ratio the backing store is rendered at, capped at 2 so a
+   *  DPR-3 phone pays ~4× fill for retina crispness instead of 9×. */
+  private dpr = 1;
 
   private tremorActive = false;
   private tremorGapTimer = 0;
@@ -275,14 +281,19 @@ export class PlazaCanvas {
   private resize(): void {
     const parent = this.canvas.parentElement;
     if (!parent) return;
-    this.canvas.width = parent.clientWidth || window.innerWidth;
-    this.canvas.height = parent.clientHeight || window.innerHeight;
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.viewW = parent.clientWidth || window.innerWidth;
+    this.viewH = parent.clientHeight || window.innerHeight;
+    // Backing store in device pixels so canvas-drawn text/sprites resolve at
+    // the panel's true resolution; the CSS box stays the logical size (100%).
+    this.canvas.width = Math.round(this.viewW * this.dpr);
+    this.canvas.height = Math.round(this.viewH * this.dpr);
     this.clampCamera();
   }
 
   private centerCamera(): void {
-    const vw = this.canvas.width / this.zoom;
-    const vh = this.canvas.height / this.zoom;
+    const vw = this.viewW / this.zoom;
+    const vh = this.viewH / this.zoom;
     this.camX = (WORLD_W - vw) / 2;
     this.camY = (WORLD_H - vh) / 2;
     this.clampCamera();
@@ -290,13 +301,13 @@ export class PlazaCanvas {
 
   private clampCamera(): void {
     const dynamicMin = Math.max(
-      this.canvas.width / WORLD_W,
-      this.canvas.height / WORLD_H,
+      this.viewW / WORLD_W,
+      this.viewH / WORLD_H,
       MIN_ZOOM,
     );
     this.zoom = Math.min(MAX_ZOOM, Math.max(dynamicMin, this.zoom));
-    const vw = this.canvas.width / this.zoom;
-    const vh = this.canvas.height / this.zoom;
+    const vw = this.viewW / this.zoom;
+    const vh = this.viewH / this.zoom;
     this.camX = Math.max(0, Math.min(WORLD_W - vw, this.camX));
     this.camY = Math.max(0, Math.min(WORLD_H - vh, this.camY));
   }
@@ -655,7 +666,10 @@ export class PlazaCanvas {
     const dt = Math.min((ts - this.lastTs) / 1000, 0.1);
     this.lastTs = ts;
 
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // Base transform: 1 logical unit = `dpr` device px, so every downstream
+    // draw works in logical coords while filling the device-pixel backing store.
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.clearRect(0, 0, this.viewW, this.viewH);
 
     if (this.tremorActive) {
       if (this.tremorBurstTimer > 0) {

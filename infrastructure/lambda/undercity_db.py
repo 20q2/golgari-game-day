@@ -579,8 +579,6 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
     battle_start space event. Player buffs/stats freeze here; rewards resolve
     in _finish_battle when the fight ends."""
     player_c = _combatant(doc)
-    if kind in ('wild', 'elite') and doc.get('homeBiome') == 'bone':
-        player_c.dfn += 2  # Marrowborn hatch perk vs wilds (preserved)
     npc_snap = _bt_snapshot(_npc_combatant(npc))
     npc_snap['personality'] = npc.get('personality', data.NPC_DEFAULT_PERSONALITY)
     npc_snap['bluff'] = float(npc.get('bluff', data.NPC_DEFAULT_BLUFF))
@@ -1717,7 +1715,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'position': data.HOME_GATES[home],
         'homeBiome': home,
         'rolls': data.JOIN_ROLLS,
-        'spores': 15 if home == 'city' else 0,  # City Rat hatch perk
+        'spores': 0,
         'bag': [], 'gear': {}, 'gearStash': [], 'materials': {'moltings': 0, 'ichor': 0},
         'stance': 'fight',
         'pendingMove': None, 'buffs': [],
@@ -1728,6 +1726,17 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'paint': {'body': body_hue, 'belly': 50, 'stripes': body_hue},
         'hat': None, 'joinedAt': _now(), 'ver': 0,
     }
+    # ── Home-biome hatch perks ──────────────────────────────────────────────
+    if home == 'bone':
+        # Marrowborn: flat +Max HP, hatched at full so the bonus is felt at once.
+        doc['maxHp'] += data.MARROWBORN_MAXHP
+        doc['hp'] += data.MARROWBORN_MAXHP
+    elif home == 'city':
+        # City Rat: hatch with a random Tier-1 piece of gear, auto-equipped.
+        t1 = [gid for gid, g in data.GEAR.items() if g.get('tier') == 1]
+        if t1:
+            gid = random.choice(sorted(t1))
+            doc['gear'][data.GEAR[gid]['slot']] = gid
     if is_bot:
         doc['isBot'] = True
     return doc
@@ -1930,10 +1939,14 @@ def _roll(table, sid, doc, payload):
     picked = int(picked) if isinstance(picked, (int, float)) and 1 <= picked <= 6 else None
 
     # Blink (SPD-15 perk): choose your die value. Works in production (unlike the
-    # DEBUG pick), gated on the perk.
+    # DEBUG pick), gated on the perk. It paces itself — after a blink you owe
+    # data.BLINK_COOLDOWN_ROLLS ordinary rolls before you can blink again.
     perks = engine.attribute_perks(doc)
     blink = bool(payload.get('blink')) if payload else False
+    blink_cd = int(doc.get('blinkCooldown', 0) or 0)
     used_blink = False
+    if blink and 'blink' in perks and picked is not None and blink_cd > 0:
+        return _err('Blink is still recharging — take an ordinary roll first.', 409)
 
     value = None
     random_roll = False
@@ -1974,6 +1987,12 @@ def _roll(table, sid, doc, payload):
         return _err('The tunnels shift — no path fits that roll. Try again.', 409)
     if not data.DEBUG and not is_reroll:
         doc['rolls'] -= 1
+    # Advance the Blink cooldown: a blink arms it, an ordinary roll pays it down.
+    # Rerolls are the same turn's die, so they don't count as an ordinary roll.
+    if used_blink:
+        doc['blinkCooldown'] = data.BLINK_COOLDOWN_ROLLS
+    elif not is_reroll and blink_cd > 0:
+        doc['blinkCooldown'] = blink_cd - 1
     pm = {'value': value, 'dests': dests}
     if values:
         pm['values'] = values
@@ -2322,7 +2341,7 @@ def _resolve_space(table, sid, doc, node, prev):
         # Fresh landing refills the visit's dice — three rolls, then the
         # bouncer waves you off until you land here again.
         doc['ossuaryRollsLeft'] = data.OSSUARY_ROLLS_PER_VISIT
-        return {'type': 'ossuary', 'text': 'The Ossuary. Dice clatter in the dark.'}
+        return {'type': 'ossuary', 'text': 'The Casino. Dice clatter in the dark.'}
 
     if ntype == 'barrier':
         return _barrier(table, sid, doc, node)
@@ -4437,7 +4456,7 @@ def _warp(table, sid, doc, payload):
 def _gamble(table, sid, doc, payload):
     nodes = _season_map(table, sid)
     if nodes.get(doc.get('position'), {}).get('type') != 'ossuary':
-        return _err('You are not at the Ossuary.', 409)
+        return _err('You are not at the Casino.', 409)
     bet = payload.get('bet')
     call = payload.get('call')
     if not isinstance(bet, int) or bet < 1 or bet > data.OSSUARY_MAX_BET:
@@ -4453,7 +4472,7 @@ def _gamble(table, sid, doc, payload):
         left = data.OSSUARY_ROLLS_PER_VISIT
     if left <= 0:
         return _err("You've had your three rolls. The bouncer won't seat you "
-                    'again until you land at the Ossuary anew.', 409)
+                    'again until you land at the Casino anew.', 409)
     die = _rng.randint(1, 6)
     won = (die >= 4) == (call == 'high')
     doc['spores'] += bet if won else -bet
@@ -4462,7 +4481,7 @@ def _gamble(table, sid, doc, payload):
     tail = (f' {left} roll{"s" if left != 1 else ""} left.' if left > 0
             else ' That was your last roll — the table is closed.')
     text = (f'The die shows {die} — you win {bet} Spores!' if won
-            else f'The die shows {die} — the Ossuary keeps your {bet} Spores.') + tail
+            else f'The die shows {die} — the Casino keeps your {bet} Spores.') + tail
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict

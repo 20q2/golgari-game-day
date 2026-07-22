@@ -58,7 +58,7 @@ def test_bot_add_creates_public_player(table):
     assert bot['isBot'] is True
     assert bot['species'] == 'saproling'
     assert bot['userId'].startswith('BOT#')
-    assert bot['hp'] == 38 and bot['position'] == 'cavern_r0'
+    assert bot['hp'] == 30 and bot['position'] == 'cavern_r0'
 
     # It appears in the season roster like any player.
     _, state = db.handle_state(table, {'userId': 'user-host'})
@@ -95,7 +95,7 @@ def test_grant_rolls_spores_and_xp_levels_up(table):
     _, state = db.handle_state(table, {'userId': 'user-alex'})
     me = state['you']
     assert me['rolls'] == 3 + 5
-    assert me['spores'] == 15 + 10   # city start (15) + 10
+    assert me['spores'] == 10   # City Rat now grants gear, not spores; +10 granted
     assert me['level'] > 1           # 1000 xp forces level-ups
 
 

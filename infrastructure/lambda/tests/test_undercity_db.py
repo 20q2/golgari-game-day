@@ -102,9 +102,9 @@ def test_full_join_roll_move_flow(table, monkeypatch):
     status, resp = act(table, 'join', starter='saproling', home='cavern')
     assert status == 200
     you = resp['you']
-    assert you['hp'] == 38 and you['position'] == 'cavern_r0' and you['rolls'] == 3
+    assert you['hp'] == 30 and you['position'] == 'cavern_r0' and you['rolls'] == 3
     assert you['homeBiome'] == 'cavern'
-    assert you['passives'] == ['regrowth']
+    assert you['passives'] == ['drift']
 
     status, resp = act(table, 'roll')
     assert status == 200
@@ -125,6 +125,28 @@ def test_full_join_roll_move_flow(table, monkeypatch):
     assert state['you']['userId'] == 'user-alex'
     assert any(e['type'] == 'hatch' for e in state['events'])
     assert state['wardrobe']['seals'] == 1
+
+
+def test_marrowborn_home_grants_max_hp(table):
+    # Ossuary Fields (bone) home: Marrowborn hatches you with +MARROWBORN_MAXHP,
+    # at full HP.
+    status, resp = act(table, 'join', starter='pest', home='bone')
+    assert status == 200
+    you = resp['you']
+    assert you['maxHp'] == 30 + data.MARROWBORN_MAXHP
+    assert you['hp'] == you['maxHp']
+
+
+def test_city_rat_home_grants_random_t1_gear(table):
+    # The Undercity (city) home: City Rat hatches with a random T1 item equipped,
+    # and no longer grants starting Spores.
+    status, resp = act(table, 'join', starter='pest', home='city')
+    assert status == 200
+    you = resp['you']
+    assert you['spores'] == 0
+    assert len(you['gear']) == 1
+    gid = next(iter(you['gear'].values()))
+    assert data.GEAR[gid]['tier'] == 1
 
 
 # ── Interactive-battle test helpers (Plan 2) ─────────────────────────────────
@@ -734,15 +756,15 @@ def test_evolution_gates_and_bonuses(table):
     status, resp = act(table, 'evolve', form='slitherhead')
     assert status == 200
     you = resp['you']
-    assert you['tier'] == 2 and you['maxHp'] == 38 + 6 and you['atk'] == 5 + 2
+    assert you['tier'] == 2 and you['maxHp'] == 30 and you['spd'] == 6 + 4
     assert you['hp'] == you['maxHp']
-    assert 'scavenge' in you['passives'] and 'regrowth' in you['passives']
+    assert 'skitter' in you['passives'] and 'drift' in you['passives']
 
     doc = db._get_player(table, sid, 'user-alex')
     doc['level'] = 10
     db._put_player(table, doc)
-    status, resp = act(table, 'evolve', form='swamp_dragon')
-    assert status == 400  # slitherhead can't be a dragon
+    status, resp = act(table, 'evolve', form='grave_titan')
+    assert status == 400  # slitherhead (speed) can't be a tank titan
     status, resp = act(table, 'evolve', form='izoni')
     assert status == 200 and resp['you']['tier'] == 3
 
@@ -2367,7 +2389,7 @@ def test_join_grants_one_night_starter_items(table):
     you = resp['you']
     assert 'healing_moss' in you['bag']
     assert you['gear']['fang'] == 'rusted_fang'
-    assert you['spores'] == 15 + 15  # City Rat perk + spore pouch
+    assert you['spores'] == 15  # City Rat now grants gear, not spores; +15 from spore pouch
     perm = db._get_perm(table, 'user-alex')
     assert perm['renown'] == 100 - 20 - 25 - 15
 

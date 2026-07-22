@@ -68,9 +68,14 @@ BRAMBLE_REFLECT = 2   # flat damage a Bramble carapace reflects when struck
 # (pure-DEF/Guard co-equal with ATK/Aggress vs the boss: 142 -> ~330 dmg; 0.7
 # stronger, 1.0 overshoots). See infrastructure/lambda/sim/proto_fix.py.
 GUARD_CHIP_COEFF = 0.5
+CARAPACE_GRIND_MAXHP = 15  # DEF-12: bonus Max HP granted while the perk is held
 DEATHDRIVE_MULT = 0.5  # ATK-15: Aggress swing multiplier while below half HP
 MENACE_FACTOR = 0.5    # ATK-10: multiplies the enemy's telegraph bluff chance
 THICK_HIDE_MULT = 0.5  # DEF-5: fraction of hazard/mystery HP loss actually taken
+# Blink (SPD-15): choosing your die value is strong, so it paces itself — after a
+# blink you must take this many ordinary rolls before you can blink again. 1 =
+# "once every 2 rolls" (blink, roll, blink, ...). 0 disables the cooldown.
+BLINK_COOLDOWN_ROLLS = 1
 
 # ── Forge economy (gear stash · Salvage Yard · Blacksmith) ───────────────────
 # See specs/2026-07-20-undercity-forge-economy-design.md. Found gear lands in a
@@ -153,6 +158,9 @@ SHRINE_BLESSING_COST = 15
 OSSUARY_MAX_BET = 20
 OSSUARY_ROLLS_PER_VISIT = 3  # gambles allowed per landing; refills when you land again
 SNARE_SPILL_PCT = 0.20
+
+# ── Home-biome hatch perks ───────────────────────────────────────────────────
+MARROWBORN_MAXHP = 8   # Ossuary Fields (bone) home: flat +Max HP, applied at hatch
 
 # ── Renown shop (pre-spawn) ──────────────────────────────────────────────────
 SHOP_START_RENOWN = 50       # seed for a brand-new player: one common hat OR one plain color

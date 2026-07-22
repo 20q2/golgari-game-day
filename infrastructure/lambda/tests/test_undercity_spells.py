@@ -209,7 +209,7 @@ def test_cast_source_validation(table):
 
 
 def test_cast_grimoire_self_heal(table):
-    act(table, 'join', starter='saproling', home='garden')     # 38 max HP
+    act(table, 'join', starter='saproling', home='garden')     # 30 max HP
     give_book(table, 'user-alex', 'gardeners_primer')
     doc = db._get_player(table, _sid(table), 'user-alex')
     doc['hp'] = 10
@@ -248,7 +248,7 @@ def test_field_damage_hits_and_floors_at_1hp(table, monkeypatch):
     assert status == 200
     assert resp['cast']['dodged'] is False and resp['cast']['dmg'] == 8
     sam = db._get_player(table, _sid(table), 'user-sam')
-    assert sam['hp'] == 38 - 8
+    assert sam['hp'] == 30 - 8
     assert sam['awayEvents'][-1]['kind'] == 'spell_hit'
     assert sam['awayEvents'][-1]['dmg'] == 8
 
@@ -275,7 +275,7 @@ def test_field_spell_dodge_still_notifies_and_cools(table, monkeypatch):
     assert resp['cast']['dodged'] is True
     assert resp['you']['spellCooldowns']['scrap_toss'] > db._now()  # dodge still cools
     sam = db._get_player(table, _sid(table), 'user-sam')
-    assert sam['hp'] == 38
+    assert sam['hp'] == 30
     assert sam['awayEvents'][-1]['kind'] == 'spell_dodged'
 
 
@@ -343,7 +343,7 @@ def test_victim_write_conflict_retries_once(table, monkeypatch):
                        target='user-sam')
     assert status == 200
     sam = db._get_player(table, _sid(table), 'user-sam')
-    assert sam['hp'] == 38 - 8                                 # saproling took the bolt
+    assert sam['hp'] == 30 - 8                                 # saproling took the bolt
 
 
 # ── cast: traversal spells ───────────────────────────────────────────────────

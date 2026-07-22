@@ -41,25 +41,25 @@ def xp_to_next(level: int) -> int:
 # Starter lines (tier 1). Stats are the level-1 base.
 STARTERS = {
     'pest': {
-        'name': 'Pest', 'hp': 30, 'atk': 6, 'def': 5, 'spd': 5,
+        'name': 'Pest', 'hp': 30, 'atk': 5, 'def': 5, 'spd': 5,
         'passive': 'scrounger',
         'blurb': 'Balanced sewer rat. Scrounger: +25% Spores from all loot & bounties, '
                  'and scrounge Spores even from fights you lose or flee.',
     },
     'kraul': {
-        'name': 'Kraul Grub', 'hp': 24, 'atk': 8, 'def': 3, 'spd': 7,
+        'name': 'Kraul Grub', 'hp': 30, 'atk': 6, 'def': 3, 'spd': 5,
         'passive': 'first_bite',
         'blurb': 'Glass-cannon insect. First Bite: always strikes first in round 1.',
     },
     'saproling': {
-        'name': 'Saproling', 'hp': 38, 'atk': 5, 'def': 7, 'spd': 3,
-        'passive': 'regrowth',
-        'blurb': 'Tanky plant token. Regrowth: heal 20% max HP after any battle.',
+        'name': 'Saproling', 'hp': 30, 'atk': 5, 'def': 5, 'spd': 6,
+        'passive': 'drift',
+        'blurb': 'Quick, expendable plant token — the swarm made flesh. Endless Ranks: +15% flee chance; bad mystery events reroll once.',
     },
     'zombie': {
-        'name': 'Zombie', 'hp': 27, 'atk': 5, 'def': 5, 'spd': 6,
-        'passive': 'drift',
-        'blurb': 'Was somebody once. Now part of the swarm. Endless Ranks: +15% flee chance; bad mystery events reroll once.',
+        'name': 'Zombie', 'hp': 30, 'atk': 5, 'def': 6, 'spd': 3,
+        'passive': 'regrowth',
+        'blurb': 'Was somebody once; dead now, and it doesn\'t stay down. Regrowth: heal 20% max HP after any battle.',
     },
 }
 
@@ -88,30 +88,30 @@ TIER2 = {
         'blurb': 'Skirmisher. Reach: in round 1 the enemy’s decisive blow finds only air — you strike from outside its range.',
     },
     'slitherhead': {
-        'name': 'Slitherhead', 'line': 'saproling', 'bonus': {'atk': 2, 'maxHp': 6},
-        'passive': 'scavenge',
-        'blurb': 'Counterpuncher. Scavenge: retaliate for 2 damage whenever struck.',
+        'name': 'Slitherhead', 'line': 'saproling', 'bonus': {'spd': 4},
+        'passive': 'skitter',
+        'blurb': 'Darter. Skitter: 25% chance enemy strikes miss.',
     },
-    # id kept as 'woodwraith_strangler' for save-compat; displays as Myconid Sporetender.
+    # id kept as 'woodwraith_strangler' for save-compat; displays as Sporeback Skirmisher.
     'woodwraith_strangler': {
-        'name': 'Myconid Sporetender', 'line': 'saproling', 'bonus': {'def': 2, 'maxHp': 6},
-        'passive': 'rootwall',
-        'blurb': 'Fortress. Rootwall: Regrowth improves to 35%.',
+        'name': 'Sporeback Skirmisher', 'line': 'saproling', 'bonus': {'spd': 2, 'maxHp': 4},
+        'passive': 'outpace',
+        'blurb': 'Skirmisher. Outpace: in round 1 the enemy’s decisive blow finds only air — you strike from outside its range.',
     },
     'shambling_shell': {
         'name': 'Shambling Shell', 'line': 'zombie', 'bonus': {'maxHp': 6, 'def': 2},
-        'passive': 'dredge',
-        'blurb': 'Durable trickster. Dredge: reclaim your snare after it triggers.',
+        'passive': 'rootwall',
+        'blurb': 'Regrowing bulwark. Rootwall: Regrowth improves to 35%.',
     },
     'corpsejack_menace': {
-        'name': 'Corpsejack Menace', 'line': 'saproling', 'bonus': {'atk': 4},
-        'passive': 'doubling_rot',
-        'blurb': 'Fungal tycoon. Doubling Rot: mystery-event Spore payouts doubled.',
+        'name': 'Vinelash Reaper', 'line': 'saproling', 'bonus': {'spd': 2, 'atk': 2},
+        'passive': 'flurry',
+        'blurb': 'Whirlwind. Flurry: 25% chance for a bonus strike each round.',
     },
     'deathrite_shaman': {
         'name': 'Deathrite Shaman', 'line': 'zombie', 'bonus': {'maxHp': 6, 'def': 2},
         'passive': 'soul_harvest',
-        'blurb': 'Ritualist. Soul Harvest: +50% Spores from wild & elite battle wins.',
+        'blurb': 'Durable ritualist. Soul Harvest: +50% Spores from wild & elite battle wins.',
     },
 }
 
@@ -120,25 +120,25 @@ APEX = {
     'grave_titan': {
         'name': 'Grave Titan', 'bonus': {'maxHp': 6, 'def': 2},
         'passive': 'deathtouch_stomp',
-        'from': ['brackish_trudge', 'woodwraith_strangler', 'shambling_shell', 'deathrite_shaman'],
+        'from': ['brackish_trudge', 'shambling_shell', 'deathrite_shaman'],
         'blurb': 'Deathtouch Stomp: your strikes ignore 3 of the enemy’s DEF.',
     },
     'golgari_lich_lord': {
         'name': 'Golgari Lich Lord', 'bonus': {'atk': 2, 'maxHp': 6},
         'passive': 'drain_life',
-        'from': ['slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'deathrite_shaman'],
+        'from': ['brackish_trudge', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman'],
         'blurb': 'Drain Life: heal for 50% of damage you deal.',
     },
     'swamp_dragon': {
         'name': 'Swamp Dragon', 'bonus': {'atk': 2, 'spd': 2},
         'passive': 'rot_breath',
-        'from': ['brackish_trudge', 'stinkweed_imp', 'kraul_warrior', 'golgari_longlegs'],
+        'from': ['stinkweed_imp', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace'],
         'blurb': 'Rot Breath: round-1 strike hits for double.',
     },
     'izoni': {
         'name': 'Izoni, Thousand-Eyed', 'bonus': {'spd': 4},
         'passive': 'swarm',
-        'from': ['stinkweed_imp', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'shambling_shell', 'corpsejack_menace'],
+        'from': ['stinkweed_imp', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace'],
         'blurb': 'Swarm: one extra strike every battle round.',
     },
 }
@@ -178,7 +178,7 @@ PERKS = {
     'thick_hide':     {'name': 'Thick Hide', 'track': 'def', 'threshold': 6,
                        'blurb': 'Halve HP lost to hazards and bad mystery rolls.'},
     'carapace_grind': {'name': 'Carapace Grind', 'track': 'def', 'threshold': 12,
-                       'blurb': 'Holding Guard grinds the foe down even when you don’t win the exchange.'},
+                       'blurb': '+15 Max HP, and holding Guard grinds the foe down even when you don’t win the exchange.'},
     'last_stand':     {'name': 'Last Stand', 'track': 'def', 'threshold': 18,
                        'blurb': 'Survive one lethal blow per descent at 1 HP.'},
     'fleetfoot':      {'name': 'Fleetfoot', 'track': 'spd', 'threshold': 6,
@@ -186,7 +186,7 @@ PERKS = {
     'pathfinder':     {'name': 'Pathfinder', 'track': 'spd', 'threshold': 12,
                        'blurb': 'Roll with advantage — roll two dice, keep either.'},
     'blink':          {'name': 'Blink', 'track': 'spd', 'threshold': 18,
-                       'blurb': 'Once per turn, choose your die value.'},
+                       'blurb': 'Choose your die value — then recharges for one roll.'},
 }
 
 
@@ -227,6 +227,10 @@ GEAR = {
     'colossus_shell':    {'name': 'Colossus Shell',  'slot': 'carapace', 'tier': 3, 'cost': 82, 'def': 5, 'maxHp': 6, 'rider': 'thick'},
     'bramble_aegis':     {'name': 'Bramble Aegis',   'slot': 'carapace', 'tier': 3, 'cost': 83, 'def': 5, 'maxHp': 6, 'rider': 'bramble'},
     'overgrown_bulwark': {'name': 'Overgrown Bulwark', 'slot': 'carapace', 'tier': 3, 'cost': 84, 'def': 5, 'maxHp': 6, 'rider': 'mossback'},
+    # Carapace — Vital line (pure Max HP, no rider): trade DEF+rider for a big HP pool
+    'bloatsac_plate':    {'name': 'Bloatsac Plate',    'slot': 'carapace', 'tier': 1, 'cost': 22, 'maxHp': 6},
+    'engorged_carapace': {'name': 'Engorged Carapace', 'slot': 'carapace', 'tier': 2, 'cost': 46, 'maxHp': 12, 'def': 1},
+    'leviathan_hide':    {'name': 'Leviathan Hide',    'slot': 'carapace', 'tier': 3, 'cost': 82, 'maxHp': 20, 'def': 2},
     # Charm — Feint riders (new slot; light on raw stats, value is the rider)
     'quartz_charm':   {'name': 'Quartz Charm',   'slot': 'charm', 'tier': 1, 'cost': 20, 'spd': 1, 'rider': 'trickster'},
     'venom_charm':    {'name': 'Venom Charm',    'slot': 'charm', 'tier': 1, 'cost': 25, 'spd': 1, 'rider': 'venomtrick'},
@@ -355,6 +359,7 @@ MITIGATION_CAP = 0.75
 
 ROT_PER_STACK   = 2   # damage per rot stack, ticked at end of each round
 SWARM_CHIP_MULT = 0.5 # swarm: extra hit each round = hit * this (min 1)
+FLURRY_CHANCE   = 0.25 # flurry: per-round chance for a bonus strike (weaker swarm)
 SCAVENGE_RETALIATE = 2  # scavenge: damage dealt back when you LOSE an exchange
 DEATHTOUCH_PIERCE  = 3  # deathtouch_stomp: Aggress reduces target eff-DEF by this
 FLYBY_DODGE        = 0.25  # chance to dodge the punish when you LOSE an exchange
@@ -938,11 +943,11 @@ BIOMES = {
     # Sprawling rounded rectangle — a city block.
     'city': {'name': 'The Undercity', 'center': (1800, 2050),
              'rx': 410, 'ry': 235, 'sq': 4.4, 'perk': 'city_rat',
-             'perkName': 'City Rat', 'perkBlurb': '+15 starting Spores.'},
+             'perkName': 'City Rat', 'perkBlurb': 'Hatch with a random Tier-1 item, equipped.'},
     # Tall, narrow pit.
     'bone': {'name': 'Ossuary Fields', 'center': (600, 1600),
              'rx': 255, 'ry': 300, 'sq': 2.2, 'perk': 'marrowborn',
-             'perkName': 'Marrowborn', 'perkBlurb': '+2 DEF against wild creatures.'},
+             'perkName': 'Marrowborn', 'perkBlurb': '+8 Max HP.'},
 }
 
 

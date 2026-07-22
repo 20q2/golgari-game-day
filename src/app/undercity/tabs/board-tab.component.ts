@@ -99,6 +99,15 @@ interface LiveBattle {
   frenzyFrom: number | null;
 }
 
+/** A row in the top-right focus picker (a player, or Umori). */
+interface FocusTarget {
+  key: string;
+  label: string;
+  spriteUrl: string | null;
+  node: string;
+  isYou: boolean;
+}
+
 /** Local walk-in-progress: the spaces walked so far (start first) and steps left. */
 interface StepState {
   path: string[];
@@ -157,6 +166,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly showTradingPost = signal(false);
   protected readonly tradingStock = signal<TradeStockItem[]>([]);
   protected readonly giveItem = signal<string | null>(null);
+  /** Top-right focus picker: pick any player (or Umori) to center the camera on. */
+  protected readonly showFocusMenu = signal(false);
   protected readonly showExcavation = signal(false);
   protected readonly excavationGrid = signal<DigGrid | null>(null);
   protected readonly showFlowPuzzle = signal(false);
@@ -445,10 +456,40 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return this.islandBazaar() ? "The Witch's Cauldron" : 'Rot-Farm Bazaar';
   }
 
-  /** Center the board camera on Umori's current wandering node. */
-  protected findUmori(): void {
+  /** Rows for the top-right focus picker: every player on the board (you first,
+   * marked "(You)") plus Umori while it's wandering. Sprites reuse the recolor
+   * cache, so rebuilding this on each player diff is cheap. */
+  protected readonly focusTargets = computed<FocusTarget[]>(() => {
+    const youId = this.store.you()?.userId;
+    const rows: FocusTarget[] = this.store.players().map((p) => {
+      const spr = formSprite(p.form);
+      const isYou = p.userId === youId;
+      return {
+        key: p.userId,
+        label: (p.creatureName || p.formName) + (isYou ? ' (You)' : ''),
+        spriteUrl: getRecoloredWithHatDataUrl(spr.sprite, p.paint ?? {}, spr.regions, p.hat),
+        node: p.position,
+        isYou,
+      };
+    });
+    rows.sort((a, b) => (a.isYou === b.isYou ? 0 : a.isYou ? -1 : 1));
     const u = this.store.umori();
-    if (u) this.board?.centerOn(u.node);
+    if (u) {
+      rows.push({
+        key: 'umori',
+        label: 'Umori',
+        spriteUrl: 'undercity/map_events/shopkeeper3.png',
+        node: u.node,
+        isYou: false,
+      });
+    }
+    return rows;
+  });
+
+  /** Center the board camera on a focus-picker row, then close the menu. */
+  protected focusTarget(node: string): void {
+    this.board?.centerOn(node);
+    this.showFocusMenu.set(false);
   }
 
   protected shopGearRows(): { info: GearInfo; qty: number; blackMarket: boolean }[] {
@@ -838,12 +879,20 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Pick-a-face needs server DEBUG *and* a local dev build — the deployed
    * GitHub Pages site never shows it, even while DEBUG is still on. */
   protected readonly pickAllowed = computed(() => this.debugMode() && isDevMode());
-  /** Blink (SPD-15): choose your die value — a real perk, live in production. */
-  protected readonly blinkAllowed = computed(() =>
-    (this.store.you()?.perks ?? []).includes('blink'),
+  /** Owns the Blink perk (SPD-15), whether or not it's ready right now. */
+  protected readonly hasBlink = computed(() => (this.store.you()?.perks ?? []).includes('blink'));
+  /** Ordinary rolls still owed before Blink can be used again (0 = ready). */
+  protected readonly blinkCooldown = computed(() => this.store.you()?.blinkCooldown ?? 0);
+  /** Blink is paced: after a use it recharges for a roll before it's usable again. */
+  protected readonly blinkRecharging = computed(() => this.hasBlink() && this.blinkCooldown() > 0);
+  /** Blink (SPD-15): choose your die value — a real perk, live in production.
+   * Ready only when the perk is owned and not recharging. */
+  protected readonly blinkAllowed = computed(() => this.hasBlink() && !this.blinkRecharging());
+  /** Dev-pick, a ready Blink, or a recharging Blink all keep the face control on
+   * screen — recharging shows a disabled "recharging" state so it's not a mystery. */
+  protected readonly canPickFace = computed(
+    () => this.pickAllowed() || this.blinkAllowed() || this.blinkRecharging(),
   );
-  /** Either dev-pick or the Blink perk opens the value picker. */
-  protected readonly canPickFace = computed(() => this.pickAllowed() || this.blinkAllowed());
   protected readonly rollsBanked = computed(() => this.store.you()?.rolls ?? 0);
 
   /** Minute-granularity countdown to the next timed roll (null at cap / in debug).
@@ -1273,6 +1322,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           // The island boss carries a persistent HP pool: current hp can be
           // well below its true max.
           maxHp: ev.npc.maxHp ?? ev.npc.hp,
+          vestige: this.isVestigeFoe(ev.npc.name),
         },
         resultText: ev.text,
         rewards: this.buildRewards(ev),
@@ -1570,6 +1620,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return `undercity/guardians/${npcId}.png`;
   }
 
+  /** A beaten lair boss reforms at half strength as the "Vestige of <boss>"
+   *  (server names it so). Detect it from the display name so its combat sprite
+   *  wears the same drained filter it does in the overworld. */
+  private isVestigeFoe(name: string | undefined): boolean {
+    return (name ?? '').startsWith('Vestige of ');
+  }
+
   protected youSpriteUrl(): string | null {
     const you = this.store.you();
     return you ? this.spriteUrl(you.form, you.paint, you.hat) : null;
@@ -1640,6 +1697,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         startHp: ev.npc!.hp,
         maxHp: ev.npc!.maxHp ?? ev.npc!.hp,
         level: ev.npc!.level,
+        vestige: this.isVestigeFoe(ev.npc!.name),
       },
       personality: ev.npc!.personality ?? 'balanced',
       telegraph: ev.telegraph ?? null,
@@ -1684,6 +1742,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         startHp: pb.npc.hp,
         maxHp: pb.npc.maxHp,
         level: pb.npc.level,
+        vestige: this.isVestigeFoe(pb.npc.name),
       },
       personality: pb.npc.personality ?? 'balanced',
       telegraph: pb.telegraph,

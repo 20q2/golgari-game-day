@@ -153,6 +153,16 @@
     transition: transform 0.4s ease;
   }
 
+  // A beaten lair boss fights on as a drained "Vestige of <boss>" — give its
+  // sprite the same look it wears in the overworld (the drained filter is
+  // appended to the existing drop-shadow). Keep in sync with board-canvas.ts
+  // VESTIGE_FILTER + VESTIGE_ALPHA.
+  .sprite.vestige,
+  .sprite-icon.vestige {
+    filter: brightness(0.42) saturate(0.35) blur(0.7px) opacity(0.55)
+      drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55));
+  }
+
   .dmg-pop {
     position: absolute;
     top: -8px;

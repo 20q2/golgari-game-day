@@ -35,11 +35,11 @@ export const PERKS: Record<string, Perk> = {
   menace: { id: 'menace', name: 'Menace', track: 'atk', threshold: 12, blurb: 'Enemies bluff you less often.' },
   deathdrive: { id: 'deathdrive', name: 'Deathdrive', track: 'atk', threshold: 18, blurb: 'Below half HP, your Aggress swings hit harder.' },
   thick_hide: { id: 'thick_hide', name: 'Thick Hide', track: 'def', threshold: 6, blurb: 'Halve HP lost to hazards and bad mystery rolls.' },
-  carapace_grind: { id: 'carapace_grind', name: 'Carapace Grind', track: 'def', threshold: 12, blurb: 'Holding Guard grinds the foe down even when you don’t win the exchange.' },
+  carapace_grind: { id: 'carapace_grind', name: 'Carapace Grind', track: 'def', threshold: 12, blurb: '+15 Max HP, and holding Guard grinds the foe down even when you don’t win the exchange.' },
   last_stand: { id: 'last_stand', name: 'Last Stand', track: 'def', threshold: 18, blurb: 'Survive one lethal blow per descent at 1 HP.' },
   fleetfoot: { id: 'fleetfoot', name: 'Fleetfoot', track: 'spd', threshold: 6, blurb: 'You may reroll a die that shows 1.' },
   pathfinder: { id: 'pathfinder', name: 'Pathfinder', track: 'spd', threshold: 12, blurb: 'Roll with advantage — roll two dice, keep either.' },
-  blink: { id: 'blink', name: 'Blink', track: 'spd', threshold: 18, blurb: 'Once per turn, choose your die value.' },
+  blink: { id: 'blink', name: 'Blink', track: 'spd', threshold: 18, blurb: 'Choose your die value — then recharges for one roll.' },
 };
 
 /** The perks unlocked at a given invested stat value on one track. */

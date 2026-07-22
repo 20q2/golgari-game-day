@@ -122,4 +122,7 @@ def test_new_gear_entries_have_valid_shape():
         assert g['slot'] in data.GEAR_SLOTS, f"{gid} bad slot"
         assert g['tier'] in (1, 2, 3), f"{gid} bad tier"
         assert g['cost'] > 0, f"{gid} bad cost"
-        assert g.get('rider') or g.get('light'), f"{gid} has neither rider nor light"
+        # Every gear has a combat identity: a rider, a light source, or (for the
+        # pure Vital carapace line) a Max HP pool.
+        assert g.get('rider') or g.get('light') or g.get('maxHp'), \
+            f"{gid} has neither rider, light, nor maxHp"

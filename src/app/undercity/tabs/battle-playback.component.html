@@ -15,12 +15,13 @@
         @if (attacker.spriteUrl && !attackerSpriteFailed()) {
           <img
             class="sprite"
+            [class.vestige]="attacker.vestige"
             [src]="attacker.spriteUrl"
             [alt]="attacker.name"
             (error)="attackerSpriteFailed.set(true)"
           />
         } @else {
-          <mat-icon class="sprite-icon">{{ attacker.icon ?? 'pets' }}</mat-icon>
+          <mat-icon class="sprite-icon" [class.vestige]="attacker.vestige">{{ attacker.icon ?? 'pets' }}</mat-icon>
         }
         @if (popup()?.side === 'attacker') {
           <span class="dmg-pop">{{ popup()?.text }}</span>
@@ -39,12 +40,13 @@
         @if (defender.spriteUrl && !defenderSpriteFailed()) {
           <img
             class="sprite"
+            [class.vestige]="defender.vestige"
             [src]="defender.spriteUrl"
             [alt]="defender.name"
             (error)="defenderSpriteFailed.set(true)"
           />
         } @else {
-          <mat-icon class="sprite-icon">{{ defender.icon ?? 'bug_report' }}</mat-icon>
+          <mat-icon class="sprite-icon" [class.vestige]="defender.vestige">{{ defender.icon ?? 'bug_report' }}</mat-icon>
         }
         @if (popup()?.side === 'defender') {
           <span class="dmg-pop">{{ popup()?.text }}</span>

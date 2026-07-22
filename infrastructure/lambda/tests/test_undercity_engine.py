@@ -793,6 +793,42 @@ def test_reach_negates_round1_punish_only():
     assert d.hp < 30
 
 
+def test_skitter_dodges_like_flyby():
+    # Skitter (Slitherhead) reuses the Flyby dodge mechanic.
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'skitter'}))
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(randoms=[0.10], uniform=1.0))
+    assert d.hp == 30   # punish dodged
+
+
+def test_outpace_negates_round1_like_reach():
+    # Outpace (Sporeback Skirmisher) reuses the Reach round-1 negate.
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'outpace'}))
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    assert d.hp == 30
+    resolve_round(a, d, 'aggress', 'feint', 2, FakeRng(uniform=1.0))
+    assert d.hp < 30
+
+
+def test_flurry_adds_chip_on_successful_roll():
+    # Flurry (Vinelash Reaper): a weaker Swarm — bonus strike only when the
+    # per-round chance roll succeeds (random() < FLURRY_CHANCE).
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'flurry'}))
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    resolve_round(a, d, 'feint', 'feint', 1, FakeRng(randoms=[0.10], uniform=1.0))
+    # feint whiff chips each for 1; flurry fires and adds round(5*0.5)=2 onto d.
+    assert d.hp == 27 and a.hp == 29
+
+
+def test_flurry_skips_bonus_on_failed_roll():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'flurry'}))
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    resolve_round(a, d, 'feint', 'feint', 1, FakeRng(randoms=[0.99], uniform=1.0))
+    # 0.99 >= FLURRY_CHANCE: no bonus strike, only the mutual feint whiff chip.
+    assert d.hp == 29 and a.hp == 29
+
+
 def test_deathtouch_aggress_pierces_def():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'deathtouch_stomp'}))
     d = fighter(atk=10, dfn=8, hp=60, max_hp=60)
@@ -1137,12 +1173,12 @@ def test_every_gear_rider_is_defined_and_stanced():
 def test_gear_roster_doubled():
     # Full rarity ladders (gear-rarity Phase 2): every effect family spans
     # Common/Rare/Legendary. 48 combat pieces + 2 illuminating (Torchfang fang,
-    # Glowspore charm) = 50.
-    assert len(data.GEAR) == 50
+    # Glowspore charm) = 50, plus the 3-tier pure-HP Vital carapace line = 53.
+    assert len(data.GEAR) == 53
     slots = {}
     for g in data.GEAR.values():
         slots[g['slot']] = slots.get(g['slot'], 0) + 1
-    assert slots == {'fang': 16, 'carapace': 15, 'charm': 19}
+    assert slots == {'fang': 16, 'carapace': 18, 'charm': 19}
 
 
 def test_battle_serde_persists_new_fields():

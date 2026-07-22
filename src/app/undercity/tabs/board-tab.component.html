@@ -1,12 +1,33 @@
 <div class="board-tab">
   <canvas #boardCanvas class="board-canvas"></canvas>
 
-  <!-- Jump the camera to the wandering Umori (shown only while it's on the board). -->
-  @if (store.umori()) {
-    <button class="find-umori-btn" (click)="findUmori()" title="Find Umori" aria-label="Find Umori">
-      <mat-icon class="mi">travel_explore</mat-icon>
+  <!-- Focus picker: jump the camera to any player (or the wandering Umori). -->
+  <div class="focus-picker">
+    <button
+      class="find-umori-btn"
+      [class.active]="showFocusMenu()"
+      (click)="showFocusMenu.set(!showFocusMenu())"
+      title="Focus a player"
+      aria-label="Focus a player"
+    >
+      <mat-icon class="mi">center_focus_strong</mat-icon>
     </button>
-  }
+    @if (showFocusMenu()) {
+      <div class="focus-backdrop" (click)="showFocusMenu.set(false)"></div>
+      <div class="focus-menu">
+        @for (t of focusTargets(); track t.key) {
+          <button class="focus-row" [class.you]="t.isYou" (click)="focusTarget(t.node)">
+            @if (t.spriteUrl; as url) {
+              <img class="focus-sprite" [src]="url" alt="" />
+            } @else {
+              <mat-icon class="mi focus-sprite">person</mat-icon>
+            }
+            <span class="focus-label">{{ t.label }}</span>
+          </button>
+        }
+      </div>
+    }
+  </div>
 
   <!-- Roll / pending banner -->
   <div class="roll-strip">
@@ -31,10 +52,21 @@
         </div>
       }
       @if (canPickFace()) {
-        <button class="uc-btn pick-btn" [disabled]="busy()" (click)="showRollPicker.set(!showRollPicker())">
-          <mat-icon class="mi">casino</mat-icon> {{ blinkAllowed() ? 'Blink' : 'Pick' }}
+        <button
+          class="uc-btn pick-btn"
+          [class.recharging]="blinkRecharging()"
+          [disabled]="busy() || blinkRecharging()"
+          [title]="blinkRecharging() ? 'Blink recharges after one ordinary roll' : ''"
+          (click)="showRollPicker.set(!showRollPicker())"
+        >
+          <mat-icon class="mi">{{ blinkRecharging() ? 'hourglass_empty' : 'casino' }}</mat-icon>
+          @if (blinkRecharging()) {
+            Blink recharging
+          } @else {
+            {{ blinkAllowed() ? 'Blink' : 'Pick' }}
+          }
         </button>
-        @if (showRollPicker()) {
+        @if (showRollPicker() && !blinkRecharging()) {
           <div class="roll-picker">
             @for (n of [1, 2, 3, 4, 5, 6]; track n) {
               <button class="uc-btn pick-face" [disabled]="busy()" (click)="pickRoll(n)">{{ n }}</button>
@@ -80,7 +112,7 @@
         }
         @case ('ossuary') {
           <button class="uc-btn" (click)="showOssuary.set(true)">
-            <mat-icon class="mi">casino</mat-icon> Ossuary
+            <mat-icon class="mi">casino</mat-icon> The Casino
           </button>
         }
         @case ('trading_post') {
@@ -499,7 +531,7 @@
         (click)="$event.stopPropagation()"
         style="background-image: linear-gradient(rgba(16, 14, 11, 0.82), rgba(16, 14, 11, 0.9)), url('undercity/pub_background.png')"
       >
-        <h3><img class="die-icon" src="undercity/icons/die.png" alt="" /> The Ossuary</h3>
+        <h3><img class="die-icon" src="undercity/icons/die.png" alt="" /> The Casino</h3>
         <p class="ossuary-tag">Serious Fun.™</p>
         <p class="modal-sub">Call the bone die. Win = double your bet.</p>
         <div class="ossuary-tokens" title="Rolls left this visit">

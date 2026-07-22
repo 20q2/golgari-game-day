@@ -153,13 +153,13 @@ export class HatchFlowComponent {
    */
   protected readonly biomes = [
     { id: 'city', name: 'The Undercity', bg: 'undercity/undercity_background.png', tint: 'rgba(38, 120, 110, 0.35)',
-      perk: 'City Rat', blurb: '+15 starting Spores.' },
+      perk: 'City Rat', blurb: 'Hatch with a random Tier-1 item, equipped.' },
     { id: 'cavern', name: 'Mosslight Cavern', bg: 'undercity/cavern_background.png', tint: 'rgba(70, 96, 190, 0.35)',
       perk: 'Glowblessed', blurb: '+10% flee chance.' },
     { id: 'bog', name: 'The Sedgemoor', bg: 'undercity/swamp_background.png', tint: 'rgba(52, 110, 60, 0.32)',
       perk: 'Mirefoot', blurb: 'Hazards cost you half.' },
     { id: 'bone', name: 'Ossuary Fields', bg: 'undercity/palace_background.png', tint: 'rgba(150, 150, 130, 0.30)',
-      perk: 'Marrowborn', blurb: '+2 DEF against wild creatures.' },
+      perk: 'Marrowborn', blurb: '+8 Max HP.' },
     { id: 'garden', name: 'The Rot-Gardens', bg: 'undercity/swamp_background.png', tint: 'rgba(140, 170, 40, 0.34)',
       perk: 'Composter', blurb: '+2 Spores from every loot space.' },
   ];

@@ -123,6 +123,8 @@ export interface YouDoc {
   shieldUntil?: string | null;
   pendingMove?: PendingMove | null;
   pendingLoadedDie?: number;
+  /** Blink (SPD-15): ordinary rolls still owed before Blink can be used again. */
+  blinkCooldown?: number;
   /** After a compost, the gate options to respawn at (home + last biome). */
   pendingRespawn?: { options: { gate: string; label: string }[] } | null;
   buffs: { kind: string; until?: string }[];
