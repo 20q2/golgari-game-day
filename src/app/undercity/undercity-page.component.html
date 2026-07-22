@@ -82,15 +82,14 @@
             </div>
           </div>
           <div class="hud-stats">
-            <span class="hud-chip" title="Rolls banked">
-              <mat-icon class="mi">casino</mat-icon> {{ you.rolls }}
-            </span>
             <span class="hud-chip" title="Spores">
               <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ you.spores }}
             </span>
-            <span class="hud-chip" title="Claim Guild Sigils from lair bosses to unseal the Queen">
-              <mat-icon class="mi gold">workspace_premium</mat-icon> {{ sigilsHeld() }}/{{ sigilsRequired }}
-            </span>
+            @if (sigilsHeld() > 0) {
+              <span class="hud-chip" title="Claim Guild Sigils from lair bosses to unseal the Queen">
+                <mat-icon class="mi gold">workspace_premium</mat-icon> {{ sigilsHeld() }}/{{ sigilsRequired }}
+              </span>
+            }
           </div>
         </header>
 

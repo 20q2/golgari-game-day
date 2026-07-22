@@ -47,6 +47,13 @@
           >
             <mat-icon class="mi">dark_mode</mat-icon> New Night (archives current)
           </button>
+          <button
+            class="uc-btn"
+            [disabled]="busy() || !hostKey.trim()"
+            (click)="grantRolls()"
+          >
+            <mat-icon class="mi">casino</mat-icon> Give me +3 rolls
+          </button>
         }
       </div>
       @if (message(); as msg) {

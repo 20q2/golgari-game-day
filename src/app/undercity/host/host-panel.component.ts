@@ -52,6 +52,25 @@ export class HostPanelComponent {
     });
   }
 
+  /** Admin cheat: top up your own banked rolls by 3. */
+  async grantRolls(): Promise<void> {
+    const me = this.store.ownUserId;
+    if (!me) {
+      this.message.set('No player to grant rolls to — join the night first.');
+      return;
+    }
+    await this.run(async () => {
+      localStorage.setItem(HOST_KEY_STORAGE, this.hostKey);
+      await this.store.action('admin', {
+        hostKey: this.hostKey,
+        cmd: 'grant',
+        target: me,
+        rolls: 3,
+      });
+      this.message.set('+3 rolls banked.');
+    });
+  }
+
   /** One-way finale: drop the sigil wards so everyone can storm the Queen. */
   async awaken(): Promise<void> {
     if (!this.confirmAwaken()) {

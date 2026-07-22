@@ -782,8 +782,21 @@ export class BoardCanvas {
   private resize(): void {
     const parent = this.canvas.parentElement;
     if (!parent) return;
+    // Preserve the world point currently at the viewport centre across the
+    // resize. Without this, a resize re-clamps the top-left corner only, so a
+    // viewport change — notably the mobile URL bar hiding, which shifts 100dvh
+    // moments after load — slides the camera off whatever it was framing
+    // (your own creature on first entry). Skip on the very first sizing, when
+    // there's no prior centre to keep.
+    const hadSize = this.canvas.width > 0 && this.canvas.height > 0;
+    const cx = this.camX + this.canvas.width / this.zoom / 2;
+    const cy = this.camY + this.canvas.height / this.zoom / 2;
     this.canvas.width = parent.clientWidth || window.innerWidth;
     this.canvas.height = parent.clientHeight || window.innerHeight;
+    if (hadSize) {
+      this.camX = cx - this.canvas.width / this.zoom / 2;
+      this.camY = cy - this.canvas.height / this.zoom / 2;
+    }
     this.clampCamera();
   }
 
@@ -945,8 +958,19 @@ export class BoardCanvas {
 
   start(): void {
     const own = this.players.find((p) => p.userId === this.ownUserId);
-    this.centerOn(own?.position ?? this.map.gate, false);
+    const focus = own?.position ?? this.map.gate;
+    // Defer the initial focus to the first animation frame: at start() time
+    // (AfterViewInit, mid-change-detection) the canvas can still report stale
+    // dimensions, which lands the camera off your creature. By the first frame
+    // the tab is laid out, so a fresh resize() + centre puts your own token
+    // dead-centre on entry.
+    let didInitialFocus = false;
     const loop = (ts: number) => {
+      if (!didInitialFocus) {
+        this.resize();
+        this.centerOn(focus, false);
+        didInitialFocus = true;
+      }
       this.draw(ts);
       this.rafId = requestAnimationFrame(loop);
     };
