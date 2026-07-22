@@ -212,8 +212,11 @@ export const CONSUMABLES: ConsumableInfo[] = [
   { id: 'smoke_spore', name: 'Smoke Spore', cost: 15, desc: 'Held: your next failed flee auto-succeeds.', icon: 'air' },
   { id: 'loaded_die', name: 'Loaded Die', cost: 25, desc: 'Choose your next roll’s value (1–6).', icon: 'casino' },
   { id: 'snare', name: 'Snare', cost: 18, desc: 'Trap your current space for the next visitor.', icon: 'gps_fixed' },
-  { id: 'scrying_spore', name: 'Scrying Spore', cost: 20, icon: 'visibility', inBattle: true,
-    effect: 'reveal', desc: 'In battle: reveal the enemy’s true intent this round.' },
+  // Listed in the battle item tray, but `effect: 'reveal'` makes it act on tap
+  // (fires the `combat-peek` action) instead of arming for the next stance like
+  // the three below — the battle component special-cases it.
+  { id: 'scrying_spore', name: 'Scrying Spore', cost: 20, icon: 'visibility',
+    effect: 'reveal', inBattle: true, desc: 'In battle: reveal the enemy’s true intent this round.' },
   { id: 'rot_bomb', name: 'Rot Bomb', cost: 22, icon: 'coronavirus', inBattle: true,
     effect: 'double_punish', desc: 'In battle: double your damage if you win this round.' },
   { id: 'chitin_ward', name: 'Chitin Ward', cost: 22, icon: 'security', inBattle: true,

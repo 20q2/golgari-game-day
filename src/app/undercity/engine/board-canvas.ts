@@ -124,6 +124,8 @@ export interface BoardPlayer {
   darkvision?: boolean;
   /** Evolution tier (1/2/3). Own token's tier greys out Tier-1-only tunnels. */
   tier?: number;
+  /** Status-bubble text; '' or absent = no bubble. */
+  status?: string;
 }
 
 /** In-world popover anchored above a node — what the space does. */
@@ -228,7 +230,7 @@ interface DustMote {
   size: number;
 }
 
-/** Green twinkle around a token that's promised a gate heal (world space). */
+/** Twinkle around a token — gate heal (green) or a self-buff cast (tinted). */
 interface Sparkle {
   x: number;
   y: number;
@@ -236,6 +238,8 @@ interface Sparkle {
   life: number;
   maxLife: number;
   size: number;
+  color: string; // fill
+  glow: string; // shadow/blur tint
 }
 
 /** Floating "+N" heal number that rises and fades off a token (world space). */
@@ -1762,7 +1766,7 @@ export class BoardCanvas {
     }
   }
 
-  private spawnSparkle(x: number, y: number): void {
+  private spawnSparkle(x: number, y: number, color = '#8fe6a0', glow = '#4fd08a'): void {
     const ttl = 0.5 + Math.random() * 0.4;
     this.sparkles.push({
       x: x + (Math.random() - 0.5) * 34,
@@ -1771,7 +1775,35 @@ export class BoardCanvas {
       life: ttl,
       maxLife: ttl,
       size: 1.5 + Math.random() * 2,
+      color,
+      glow,
     });
+  }
+
+  /**
+   * One-shot celebratory sparkle burst around the own token — fired when a
+   * self-buff spell lands. Colour is tinted per buff (ATK/DEF/SPD) so each
+   * reads distinctly, versus the gate heal's steady green twinkle. A brighter,
+   * faster pop than the sustained heal emitter.
+   */
+  burstBuff(color = '#ffd76a', glow = '#f2a900'): void {
+    const own = this.ownUserId ? this.tokenAnims.get(this.ownUserId) : undefined;
+    if (!own) return;
+    for (let i = 0; i < 22; i++) {
+      const ttl = 0.6 + Math.random() * 0.5;
+      const ang = Math.random() * Math.PI * 2;
+      const spread = Math.random() * 26;
+      this.sparkles.push({
+        x: own.x + Math.cos(ang) * spread,
+        y: own.y - 6 - Math.random() * 36,
+        vy: -18 - Math.random() * 22,
+        life: ttl,
+        maxLife: ttl,
+        size: 1.8 + Math.random() * 2.4,
+        color,
+        glow,
+      });
+    }
   }
 
   private spawnHealNumber(x: number, y: number, amount: number): void {
@@ -1816,8 +1848,8 @@ export class BoardCanvas {
       const a = s.life / s.maxLife;
       ctx.save();
       ctx.globalAlpha = Math.sin(a * Math.PI) * 0.9; // twinkle in and out
-      ctx.fillStyle = '#8fe6a0';
-      ctx.shadowColor = '#4fd08a';
+      ctx.fillStyle = s.color;
+      ctx.shadowColor = s.glow;
       ctx.shadowBlur = 6;
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
@@ -1973,6 +2005,33 @@ export class BoardCanvas {
     ctx.stroke();
     ctx.fillStyle = isOwn ? '#fbbf24' : '#e5f0e5';
     ctx.fillText(label, x, by + 3);
+
+    if (p.status) {
+      const headTop = y - targetH * 0.55;
+      const fontSize = 11;
+      ctx.font = `600 ${fontSize}px sans-serif`;
+      const padX = 7;
+      const padY = 4;
+      const bw = ctx.measureText(p.status).width + padX * 2;
+      const bh = fontSize + padY * 2;
+      const bx = x - bw / 2;
+      const bboxY = headTop - bh - 6;
+      ctx.beginPath();
+      ctx.roundRect(bx, bboxY, bw, bh, 5);
+      ctx.fillStyle = isOwn ? 'rgba(40,30,10,0.85)' : 'rgba(12,10,8,0.82)';
+      ctx.fill();
+      ctx.strokeStyle = isOwn ? 'rgba(251,191,36,0.85)' : 'rgba(190,210,190,0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x - 4, bboxY + bh - 1);
+      ctx.lineTo(x, bboxY + bh + 5);
+      ctx.lineTo(x + 4, bboxY + bh - 1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = isOwn ? '#fbbf24' : '#e5f0e5';
+      ctx.fillText(p.status, x, bboxY + padY + 1);
+    }
     ctx.restore();
   }
 

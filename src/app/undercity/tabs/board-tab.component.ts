@@ -124,6 +124,14 @@ function stepPrev(step: StepState): string | null {
   return step.path.length > 1 ? step.path[step.path.length - 2] : null;
 }
 
+/** Self-buff sparkle-burst colours [fill, glow], keyed by spell id. */
+const BUFF_TINT: Record<string, [string, string]> = {
+  rot_surge: ['#ffb26a', '#f2670a'], // +ATK — warm ember
+  harden_shell: ['#8fb6ff', '#3a6ff2'], // +DEF — steel blue
+  glowveil: ['#8ff0e6', '#25c9b8'], // +SPD — cyan
+};
+const DEFAULT_BUFF_TINT: [string, string] = ['#ffd76a', '#f2a900']; // gold
+
 @Component({
   selector: 'app-undercity-board-tab',
   standalone: true,
@@ -362,6 +370,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     await this.run(async () => {
       const resp = await this.store.action('cast', { spellId: spell.id, source, ...extra });
       this.closeSpellPickers();
+      if (resp.cast && spell.effect === 'self_buff') {
+        const [fill, glow] = BUFF_TINT[spell.id] ?? DEFAULT_BUFF_TINT;
+        this.board?.burstBuff(fill, glow);
+      }
       if (resp.cast?.text) this.showToast(resp.cast.text);
       if (resp.spaceEvent) {
         if (resp.you) this.board?.centerOn(resp.you.position);
@@ -1272,6 +1284,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           illuminated: p.userId === ownId ? this.illuminated() : false,
           darkvision: p.userId === ownId ? you?.homeBiome === 'cavern' : false,
           tier: p.userId === ownId ? (you?.tier ?? p.tier) : p.tier,
+          status: p.userId === ownId ? (you?.status ?? p.status ?? '') : (p.status ?? ''),
         };
       }),
     );

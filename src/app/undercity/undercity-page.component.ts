@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UserService } from '../services/user.service';
@@ -103,6 +103,47 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
    * of which tab is mounted, via UndercityStateService.pendingBattle(). */
   protected readonly inBattle = computed(() => !!this.store.pendingBattle());
 
+  /** Level-up celebration — the new level and how many levels were gained in
+   * one go. Null when nothing is being celebrated. */
+  protected readonly levelUpCelebration = signal<{ level: number; gained: number } | null>(null);
+  /** Last level we've seen for the current creature; null before the first
+   * read and whenever there's no creature (so a fresh hatch re-seeds cleanly).
+   * Seeding silently on first read means reopening an existing creature never
+   * fires a false celebration. */
+  private prevLevel: number | null = null;
+  /** Levels gained but not yet celebrated — banked while a battle is in
+   * progress so the fanfare pops once the victory screen closes. */
+  private pendingLevels = 0;
+
+  constructor() {
+    // Central level-up watcher: `you.level` can rise from battles, board
+    // spaces, or any other action, so we watch the one shared signal here in
+    // the always-mounted page rather than in each source.
+    effect(() => {
+      const you = this.store.you();
+      const inBattle = this.inBattle();
+      if (!you) {
+        this.prevLevel = null;
+        this.pendingLevels = 0;
+        return;
+      }
+      if (this.prevLevel === null) {
+        this.prevLevel = you.level;
+        return;
+      }
+      if (you.level > this.prevLevel) {
+        this.pendingLevels += you.level - this.prevLevel;
+        this.prevLevel = you.level;
+      }
+      // Hold the fanfare until we're clear of battle and nothing else is
+      // already showing, then flush the banked levels into one card.
+      if (this.pendingLevels > 0 && !inBattle && !this.levelUpCelebration()) {
+        this.levelUpCelebration.set({ level: this.prevLevel, gained: this.pendingLevels });
+        this.pendingLevels = 0;
+      }
+    });
+  }
+
   async ngOnInit(): Promise<void> {
     // Lock the document to the visible viewport for this full-screen sub-game.
     // The global `body.undercity-page` rules kill the default min-height:100lvh
@@ -135,5 +176,17 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   focusOwnCreature(): void {
     if (this.tab() !== 'board') return;
     this.store.requestRecenter();
+  }
+
+  /** Dismiss the level-up fanfare without navigating. */
+  closeLevelUp(): void {
+    this.levelUpCelebration.set(null);
+  }
+
+  /** "Upgrade Stats" — close the fanfare and jump to the Creature tab, where
+   * stat points are spent. */
+  goUpgradeStats(): void {
+    this.levelUpCelebration.set(null);
+    this.tab.set('creature');
   }
 }

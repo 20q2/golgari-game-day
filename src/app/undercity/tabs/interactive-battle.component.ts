@@ -245,9 +245,18 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     this.pendingItem.set(null);
   }
 
-  /** Arm (or disarm) an item from the inventory panel, then dismiss the panel. */
+  /** Tap an item in the tray. The Scrying Spore (`effect: 'reveal'`) acts at
+   *  once — it fires the peek instead of arming, since its whole point is to
+   *  reveal before you commit a stance. Everything else arms (or disarms) and
+   *  applies to the next stance. Either way, dismiss the panel. */
   protected armItem(id: string): void {
     if (this.busy() || this.done()) return;
+    const it = this.items.find((i) => i.id === id);
+    if (it?.effect === 'reveal') {
+      this.showItems.set(false);
+      this.doPeek();
+      return;
+    }
     this.pendingItem.set(this.pendingItem() === id ? null : id);
     this.showItems.set(false);
   }

@@ -1105,6 +1105,24 @@
     background: rgba(251, 191, 36, 0.14);
     border-color: rgba(251, 191, 36, 0.6);
   }
+
+  // Scrying Spore: acts on tap (reveals now), not armed — flag it in cyan so
+  // players read it as a different kind of action from the amber arm items.
+  &.reveal {
+    .item-icon { color: #7fd7e6; }
+  }
+  .item-tag {
+    flex-shrink: 0;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+    color: #bff0fb;
+    background: rgba(56, 189, 248, 0.16);
+    border: 1px solid rgba(56, 189, 248, 0.5);
+  }
 }
 
 .item-hint {

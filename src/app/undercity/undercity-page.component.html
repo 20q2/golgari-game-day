@@ -130,6 +130,29 @@
             <mat-icon class="tab-icon">receipt_long</mat-icon><span class="tab-label">Log</span>
           </button>
         </nav>
+
+        <!-- Level-up celebration: sunburst fanfare nudging the player to spend
+             stat points. Deferred out of battle by the effect that sets it. -->
+        @if (levelUpCelebration(); as lc) {
+          <div class="lvl-backdrop" (click)="closeLevelUp()" role="dialog" aria-live="assertive">
+            <div class="lvl-rays" aria-hidden="true"></div>
+            <div class="lvl-glow" aria-hidden="true"></div>
+            <div class="lvl-card" (click)="$event.stopPropagation()">
+              <span class="lvl-eyebrow">Level Up@if (lc.gained > 1) {&nbsp;×{{ lc.gained }}}</span>
+              @if (youSpriteUrl(); as url) {
+                <div class="lvl-portrait">
+                  <img [src]="url" [alt]="formName(you.form)" />
+                  <span class="lvl-badge">{{ lc.level }}</span>
+                </div>
+              }
+              <h3>You reached Level {{ lc.level }}!</h3>
+              <p class="lvl-sub">Your creature grows stronger — head to your creature and spend your points to raise your stats!</p>
+              <button class="uc-btn uc-btn-primary lvl-cta" (click)="goUpgradeStats()">
+                <mat-icon class="mi">pets</mat-icon> Upgrade Stats
+              </button>
+            </div>
+          </div>
+        }
       }
     }
   }

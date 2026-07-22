@@ -288,11 +288,6 @@
         <button class="util-btn help-btn" (click)="showHelp.set(!showHelp())" [title]="showHelp() ? 'Close' : 'How to fight'">
           <mat-icon class="mi">{{ showHelp() ? 'close' : 'help_outline' }}</mat-icon>
         </button>
-        @if (hasScry) {
-          <button class="util-btn" [disabled]="busy() || !!revealed()" (click)="doPeek()">
-            <mat-icon class="mi">visibility</mat-icon> Scry
-          </button>
-        }
         @if (canFlee) {
           <button
             class="util-btn flee-btn"
@@ -319,17 +314,27 @@
           <h3><mat-icon class="mi">backpack</mat-icon> Items</h3>
           <div class="item-list">
             @for (it of items; track it.id) {
-              <button class="item-row" [class.armed]="pendingItem() === it.id" [disabled]="busy()" (click)="armItem(it.id)">
+              <button
+                class="item-row"
+                [class.armed]="pendingItem() === it.id"
+                [class.reveal]="it.effect === 'reveal'"
+                [disabled]="busy() || (it.effect === 'reveal' && !!revealed())"
+                (click)="armItem(it.id)"
+              >
                 <mat-icon class="mi item-icon">{{ it.icon }}</mat-icon>
                 <span class="item-text">
                   <strong>{{ it.name }}</strong>
                   @if (it.desc) { <small>{{ it.desc }}</small> }
                 </span>
-                @if (pendingItem() === it.id) { <mat-icon class="mi item-check">check_circle</mat-icon> }
+                @if (it.effect === 'reveal') {
+                  <span class="item-tag">{{ revealed() ? 'Scried' : 'Reveal now' }}</span>
+                } @else if (pendingItem() === it.id) {
+                  <mat-icon class="mi item-check">check_circle</mat-icon>
+                }
               </button>
             }
           </div>
-          <p class="item-hint">Tap an item to arm it, then pick a stance to use it.</p>
+          <p class="item-hint">Tap to arm it for your next stance — the Scrying Spore reveals the foe instantly.</p>
         </div>
       </div>
     }
