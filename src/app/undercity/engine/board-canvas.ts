@@ -522,6 +522,15 @@ export class BoardCanvas {
     window.addEventListener('resize', this.boundResize);
   }
 
+  /** The wandering trading post's current node + move time (null when unknown). */
+  private umori: { node: string; movesAt: string } | null = null;
+  private umoriImg: HTMLImageElement | null = null;
+  private umoriLoading = false;
+
+  setUmori(umori: { node: string; movesAt: string } | null): void {
+    this.umori = umori;
+  }
+
   setPlayers(players: BoardPlayer[]): void {
     this.players = players;
     const own = players.find((p) => p.userId === this.ownUserId);
@@ -1115,6 +1124,8 @@ export class BoardCanvas {
 
     this.drawHealNumbers();
 
+    if (this.umori) this.drawUmori(ts);
+
     this.drawInfo();
 
     ctx.restore();
@@ -1440,6 +1451,66 @@ export class BoardCanvas {
     const key = GUARDIAN_PLACEHOLDER_SPRITE[guardianId] ?? DEFAULT_GUARDIAN_SPRITE;
     const ph = getRawImage(key);
     return ph ? { img: ph, pixelArt: true } : null;
+  }
+
+  /** Umori the wandering ooze, hopping above its current wilderness node with a
+   * move-countdown over its head. Drawn on the live layer (the static terrain
+   * prerender can't animate or re-place it every 2h). */
+  private drawUmori(ts: number): void {
+    if (!this.umori) return;
+    const n = this.nodeMap.get(this.umori.node);
+    if (!n || !this.inActive(n.id)) return;
+    const ctx = this.ctx;
+    const elapsed = (ts - this.startTime) / 1000;
+    const hop = Math.abs(Math.sin(elapsed * 3)) * HOP_HEIGHT; // lively bob
+    const cx = n.x;
+    const footAnchor = n.y - 6; // sit just above the space coin
+
+    const img = this.umoriSprite();
+    if (img) {
+      const h = 42;
+      const w = img.width * (h / img.height);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(img, cx - w / 2, footAnchor - h - hop, w, h);
+    }
+
+    // Countdown label above Umori's head (recomputed each frame — always honest).
+    const label = this.umoriCountdown();
+    ctx.save();
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    const tw = ctx.measureText(label).width;
+    const ty = footAnchor - 54 - hop;
+    ctx.fillStyle = 'rgba(20,14,28,0.82)';
+    ctx.beginPath();
+    ctx.roundRect(cx - tw / 2 - 6, ty - 11, tw + 12, 16, 6);
+    ctx.fill();
+    ctx.fillStyle = '#f4e6c0';
+    ctx.fillText(label, cx, ty + 1);
+    ctx.restore();
+  }
+
+  /** Remaining time until Umori hops, formatted like the bazaar restock label. */
+  private umoriCountdown(): string {
+    if (!this.umori) return '';
+    const ms = new Date(this.umori.movesAt + 'Z').getTime() - Date.now();
+    const min = Math.max(0, Math.ceil(ms / 60_000));
+    return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min}m`;
+  }
+
+  /** Lazily fetch Umori's sprite (the collector ooze, shopkeeper3). */
+  private umoriSprite(): HTMLImageElement | null {
+    if (this.umoriImg) return this.umoriImg;
+    if (!this.umoriLoading) {
+      this.umoriLoading = true;
+      const img = new Image();
+      img.onload = () => {
+        this.umoriImg = img;
+      };
+      img.src = 'undercity/map_events/shopkeeper3.png';
+    }
+    return null;
   }
 
   /** Lazily fetch undercity/guardians/<id>.png; a 404 stays on the placeholder. */
