@@ -14,7 +14,23 @@
           <mat-icon class="mi">touch_app</mat-icon> Poke (gift a roll)
         </button>
       } @else {
-        <span class="own-note">That's you! Looking sharp.</span>
+        <div class="status-editor">
+          <label class="status-label">Your status</label>
+          <input
+            class="status-input"
+            type="text"
+            [maxlength]="STATUS_MAX"
+            placeholder="Say something…"
+            [(ngModel)]="statusDraft"
+            (keyup.enter)="saveStatus()"
+          />
+          <div class="status-row">
+            <span class="status-count">{{ statusDraft().length }}/{{ STATUS_MAX }}</span>
+            <button class="uc-btn uc-btn-primary" [disabled]="busy()" (click)="saveStatus()">
+              <mat-icon class="mi">chat_bubble</mat-icon> Set status
+            </button>
+          </div>
+        </div>
       }
     </div>
   }

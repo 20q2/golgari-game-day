@@ -1282,3 +1282,41 @@
     }
   }
 }
+
+.hero-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  background: rgba(20, 24, 18, 0.6);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  .status-empty { opacity: 0.6; font-style: italic; }
+  .status-edit { font-size: 14px; opacity: 0.6; }
+}
+.status-input {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  background: rgba(20, 24, 18, 0.9);
+  color: inherit;
+  font: inherit;
+}
+.status-count { font-size: 0.7rem; opacity: 0.6; }
+.status-btn {
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px;
+}

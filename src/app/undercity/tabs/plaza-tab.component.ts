@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { PlazaCanvas, PlazaCreature } from '../engine/plaza-canvas';
@@ -118,7 +119,7 @@ function descDiff(a: string, b: string): DescSeg[] {
 @Component({
   selector: 'app-undercity-plaza-tab',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule],
   templateUrl: './plaza-tab.component.html',
   styleUrls: ['./plaza-tab.component.scss'],
 })
@@ -131,6 +132,9 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
   protected readonly selected = signal<PlazaCreature | null>(null);
   protected readonly busy = signal(false);
   protected readonly toast = signal<string | null>(null);
+
+  protected readonly STATUS_MAX = 24;
+  protected readonly statusDraft = signal('');
 
   // ── Forge buildings (Salvage Yard · Blacksmith) ──────────────────────────
   protected readonly gearMap = GEAR_MAP;
@@ -315,6 +319,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       hat: p.hat,
       shielded: isShielded(p),
       evolveGlow: evolveGlowActive(p as { evolvedAt?: string }),
+      status: p.status ?? '',
     };
   }
 
@@ -322,7 +327,12 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
     this.plaza = new PlazaCanvas(
       this.canvasRef.nativeElement,
       this.store.players().map((p) => this.toCreature(p)),
-      (creature) => this.selected.set(creature),
+      (creature) => {
+        this.selected.set(creature);
+        if (creature && creature.userId === this.store.ownUserId) {
+          this.statusDraft.set(this.store.you()?.status ?? '');
+        }
+      },
       this.store.ownUserId,
     );
     this.plaza.start();
@@ -348,6 +358,23 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       this.selected.set(null);
     } catch (e) {
       this.showToast(e instanceof Error ? e.message : 'Poke failed');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  async saveStatus(): Promise<void> {
+    if (this.busy()) return;
+    const text = this.statusDraft().trim();
+    this.busy.set(true);
+    try {
+      await this.store.setStatus(text);
+      const ownId = this.store.ownUserId;
+      if (ownId) this.plaza?.setStatus(ownId, text.slice(0, this.STATUS_MAX));
+      this.showToast(text ? 'Status updated.' : 'Status cleared.');
+      this.selected.set(null);
+    } catch (e) {
+      this.showToast(e instanceof Error ? e.message : 'Could not update status');
     } finally {
       this.busy.set(false);
     }

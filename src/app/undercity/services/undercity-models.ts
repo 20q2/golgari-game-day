@@ -36,6 +36,8 @@ export interface PublicPlayer {
   sigils: number;
   paint: Record<string, number>;
   hat: string | null;
+  /** Free-text status bubble shown above the creature; '' or absent = none. */
+  status?: string;
   renown: number;
   /** Attribute-threshold perks (server-derived); public for the spectator card. */
   perks?: string[];
@@ -79,6 +81,8 @@ export interface YouDoc {
   userId: string;
   username: string;
   creatureName?: string;
+  /** Free-text status bubble shown above your creature; '' or absent = none. */
+  status?: string;
   species: string;
   form: string;
   tier: number;

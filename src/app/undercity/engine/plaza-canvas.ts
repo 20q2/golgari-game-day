@@ -23,6 +23,8 @@ export interface PlazaCreature {
   hat: string | null;
   shielded: boolean;
   evolveGlow: boolean;
+  /** Status-bubble text; '' or absent = no bubble. */
+  status?: string;
 }
 
 const BASE_SPRITE_SCALE = 1.25;
@@ -259,6 +261,13 @@ export class PlazaCanvas {
       d.tapJump = 0.45;
       d.tapJumpHeight = 20 + Math.random() * 16;
     }
+  }
+
+  /** Update a creature's status text in place so the bubble reflects a local
+   * edit immediately, before the next roster poll arrives. */
+  setStatus(userId: string, status: string): void {
+    const d = this.dinos.find((x) => x.partner.userId === userId);
+    if (d) d.partner.status = status;
   }
 
   setTremorPhase(active: boolean): void {
@@ -888,7 +897,52 @@ export class PlazaCanvas {
       ctx.restore();
     }
 
+    if (d.partner.status && d.fadeOut === 0 && d.dropIn === 0) {
+      const isOwnDino =
+        this.ownUserId !== null && d.partner.userId === this.ownUserId;
+      const headTop = y - halfH + hopY - (d.partner.hat ? 16 : 8);
+      this.drawStatusBubble(x, headTop, d.partner.status, d.scale, isOwnDino);
+    }
+
     this.drawNameplate(d, x, y + halfH * 0.85 + 10, d.nameplateScale);
+  }
+
+  private drawStatusBubble(
+    cx: number,
+    bottomY: number,
+    text: string,
+    scale: number,
+    isOwn: boolean,
+  ): void {
+    const ctx = this.ctx;
+    const fontSize = Math.round(6 * scale);
+    ctx.font = `600 ${fontSize}px sans-serif`;
+    const padX = 5 * scale;
+    const padY = 3 * scale;
+    const bubbleW = ctx.measureText(text).width + padX * 2;
+    const bubbleH = fontSize + padY * 2;
+    const bx = cx - bubbleW / 2;
+    const by = bottomY - bubbleH;
+    ctx.save();
+    ctx.fillStyle = isOwn ? 'rgba(40,30,10,0.82)' : 'rgba(10,14,10,0.82)';
+    ctx.strokeStyle = isOwn ? 'rgba(251,191,36,0.7)' : 'rgba(74,222,128,0.4)';
+    ctx.lineWidth = 0.6 * scale;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bubbleW, bubbleH, 3 * scale);
+    ctx.fill();
+    ctx.stroke();
+    // Tail pointing down toward the head.
+    ctx.beginPath();
+    ctx.moveTo(cx - 2.5 * scale, by + bubbleH - 0.5);
+    ctx.lineTo(cx, by + bubbleH + 3 * scale);
+    ctx.lineTo(cx + 2.5 * scale, by + bubbleH - 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#f2f7f2';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, cx, by + bubbleH / 2);
+    ctx.restore();
   }
 
   private drawNameplate(d: Dino, cx: number, topY: number, scale = 1, alpha = 1): void {

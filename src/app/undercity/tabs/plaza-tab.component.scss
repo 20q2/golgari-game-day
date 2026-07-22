@@ -304,3 +304,33 @@
   font-family: inherit;
   text-align: right;
 }
+
+.status-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.status-label {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+.status-input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  background: rgba(20, 24, 18, 0.9);
+  color: inherit;
+  font: inherit;
+}
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.status-count {
+  font-size: 0.7rem;
+  opacity: 0.6;
+}

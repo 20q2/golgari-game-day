@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import {
@@ -48,7 +49,7 @@ function loadSubTab(): CreatureSubTab {
 @Component({
   selector: 'app-undercity-creature-tab',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule],
   templateUrl: './creature-tab.component.html',
   styleUrls: ['./creature-tab.component.scss'],
 })
@@ -154,6 +155,27 @@ export class CreatureTabComponent {
     await this.run(async () => {
       const resp = await this.store.action('equip-gear', { index });
       this.showToast(resp.text ?? 'Equipped.');
+    });
+  }
+
+  // ── Status bubble ───────────────────────────────────────────────────────────
+  protected readonly STATUS_MAX = 24;
+  protected readonly editingStatus = signal(false);
+  protected readonly statusDraft = signal('');
+
+  beginEditStatus(): void {
+    this.statusDraft.set(this.store.you()?.status ?? '');
+    this.editingStatus.set(true);
+  }
+
+  cancelEditStatus(): void {
+    this.editingStatus.set(false);
+  }
+
+  async saveStatus(): Promise<void> {
+    await this.run(async () => {
+      await this.store.setStatus(this.statusDraft().trim());
+      this.editingStatus.set(false);
     });
   }
 

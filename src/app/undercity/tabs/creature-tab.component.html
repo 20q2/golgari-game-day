@@ -21,6 +21,36 @@
             }
           </div>
 
+          <div class="hero-status">
+            @if (editingStatus()) {
+              <input
+                class="status-input"
+                type="text"
+                [maxlength]="STATUS_MAX"
+                placeholder="Say something…"
+                [(ngModel)]="statusDraft"
+                (keyup.enter)="saveStatus()"
+              />
+              <span class="status-count">{{ statusDraft().length }}/{{ STATUS_MAX }}</span>
+              <button class="status-btn" [disabled]="busy()" (click)="saveStatus()" title="Save">
+                <mat-icon class="mi">check</mat-icon>
+              </button>
+              <button class="status-btn" (click)="cancelEditStatus()" title="Cancel">
+                <mat-icon class="mi">close</mat-icon>
+              </button>
+            } @else {
+              <button class="status-chip" (click)="beginEditStatus()">
+                <mat-icon class="mi">chat_bubble</mat-icon>
+                @if (you.status) {
+                  <span class="status-text">{{ you.status }}</span>
+                } @else {
+                  <span class="status-text status-empty">Set a status…</span>
+                }
+                <mat-icon class="mi status-edit">edit</mat-icon>
+              </button>
+            }
+          </div>
+
           <div class="hero-bar">
             <span class="hero-bar-label"><mat-icon class="mi hp-mi">favorite</mat-icon> HP</span>
             <div class="bar">

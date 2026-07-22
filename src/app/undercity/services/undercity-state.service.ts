@@ -155,6 +155,11 @@ export class UndercityStateService {
     }
   }
 
+  /** Set the status-bubble text (server trims/caps; '' clears it). */
+  async setStatus(text: string): Promise<void> {
+    await this.action('set-status', { status: text });
+  }
+
   private patchYou(you: YouDoc): void {
     const cur = this._state();
     if (!cur) return;
