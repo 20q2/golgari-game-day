@@ -54,8 +54,11 @@ def test_space_type_distribution():
     # v13 (2026-07-20 escape ladders): +5 'ladder' (10->15), one post-boss escape
     # spur off each sigil lair. Also reflects an in-flight editor pass that
     # retyped a few spaces (loot 43->44, wild 68->66, mystery 10->12).
+    # v14 (2026-07-21 island bazaar): isl_bg1 retyped mystery->shop to add the
+    # central-island endgame bazaar (shop 5->6, mystery 12->11). See
+    # specs/2026-07-21-undercity-bazaar-tiers-design.md.
     assert counts == {
-        'gate': 5, 'loot': 44, 'wild': 66, 'elite': 28, 'shop': 5, 'mystery': 12,
+        'gate': 5, 'loot': 44, 'wild': 66, 'elite': 28, 'shop': 6, 'mystery': 11,
         'hazard': 45, 'warp': 5, 'shrine': 1, 'ladder': 15, 'lair': 6,
         'ossuary': 1, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
         'excavation': 4, 'cache': 6, 'crystal_vein': 4, 'vault_lock': 1,
