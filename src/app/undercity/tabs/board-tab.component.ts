@@ -97,6 +97,8 @@ interface LiveBattle {
   resumeRevealed: Stance | null;
   startRound: number;
   frenzyFrom: number | null;
+  /** SPD-based escape % for the flee button (100 with a held Smoke Spore). */
+  fleeChance: number | null;
 }
 
 /** A row in the top-right focus picker (a player, or Umori). */
@@ -387,6 +389,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   // ── Trading post (leave-one-take-one, any owned item) ───────────────────
+  /** Material-icon fallbacks for gear slots (battle-reward chips that can't use
+   *  the svg registry). The Bazaar/Umori rows use the richer 'uc-<slot>' svgs. */
   private readonly SLOT_ICONS: Record<string, string> = {
     fang: 'hardware',
     carapace: 'shield',
@@ -401,9 +405,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       const c = CONSUMABLE_MAP[id];
       if (c) offers.push({ id, kind: 'consumable', icon: c.icon, label: c.name, sub: c.desc });
     }
-    for (const [slot, id] of Object.entries(you.gear ?? {})) {
+    for (const [, id] of Object.entries(you.gear ?? {})) {
       const g = GEAR_MAP[id];
-      if (g) offers.push({ id, kind: 'gear', icon: this.SLOT_ICONS[slot] ?? 'hardware', label: g.name, sub: g.desc });
+      if (g) {
+        const r = tierRarity(g.tier);
+        offers.push({ id, kind: 'gear', icon: '', slot: g.slot, rarity: r.key,
+                      rarityLabel: r.label, label: g.name, sub: g.desc });
+      }
     }
     for (const id of you.grimoires ?? []) {
       const g = GRIMOIRE_MAP[id];
@@ -412,14 +420,20 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return offers;
   }
 
-  protected tradeStockDetail(id: string): { icon: string; label: string; sub: string } {
+  /** Display detail for a stock line — same icon/rarity vocabulary as the Bazaar
+   *  (svg slot icon + rarity badge for gear; item icon for consumables/tomes). */
+  protected tradeStockDetail(id: string): TradeOffer {
     const c = CONSUMABLE_MAP[id];
-    if (c) return { icon: c.icon, label: c.name, sub: c.desc };
+    if (c) return { id, kind: 'consumable', icon: c.icon, label: c.name, sub: c.desc };
     const g = GEAR_MAP[id];
-    if (g) return { icon: this.SLOT_ICONS[g.slot] ?? 'hardware', label: g.name, sub: g.desc };
+    if (g) {
+      const r = tierRarity(g.tier);
+      return { id, kind: 'gear', icon: '', slot: g.slot, rarity: r.key,
+               rarityLabel: r.label, label: g.name, sub: g.desc };
+    }
     const gr = GRIMOIRE_MAP[id];
-    if (gr) return { icon: 'menu_book', label: gr.name, sub: this.grimoireSpellList(gr) };
-    return { icon: 'help', label: id, sub: '' };
+    if (gr) return { id, kind: 'grimoire', icon: 'menu_book', label: gr.name, sub: this.grimoireSpellList(gr) };
+    return { id, kind: 'consumable', icon: 'help', label: id, sub: '' };
   }
 
   /** Client-side mirror of the server's take-side guards, so blocked takes read as a disabled button. */
@@ -499,6 +513,19 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   protected readonly tierRarity = tierRarity;
+
+  /** Held-stash cap (mirrors GEAR_STASH_SIZE in undercity_config.py). */
+  protected readonly GEAR_STASH_SIZE = 6;
+
+  /** Bought gear goes to the stash now (no auto-equip) — sales stall when it's full. */
+  protected readonly stashFull = computed(
+    () => (this.store.you()?.gearStash?.length ?? 0) >= this.GEAR_STASH_SIZE,
+  );
+
+  /** Whether the player can cover a straight Spore price. */
+  protected canAfford(cost: number): boolean {
+    return (this.store.you()?.spores ?? 0) >= cost;
+  }
 
   protected shopConsumableRows(): { info: ConsumableInfo; qty: number }[] {
     return (this.currentBazaar()?.consumables ?? [])
@@ -638,7 +665,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // Loot spores are shown inline in the grass scene, not as a chip — so a
     // plain forage doesn't render an empty chip row.
     const spores = ev.spores && ev.type !== 'loot';
-    return !!(spores || ev.sporesLost || ev.hp || ev.item || ev.gear || ev.paint || ev.hat);
+    return !!(spores || ev.sporesLost || ev.hp || ev.item || ev.gear);
   }
 
   protected readonly nodeType = computed(() => {
@@ -946,8 +973,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Map a mystery outcome to a reel face so it lands on something meaningful. */
   private mysterySymbol(ev: SpaceEvent): string {
     if (ev.item) return 'item';
-    if (ev.hat) return 'hat';
-    if (ev.paint) return 'paint';
     if (ev.to) return 'warp';
     if ((ev.hp ?? 0) > 0) return 'heal';
     if ((ev.hp ?? 0) < 0 || ev.sporesLost) return 'hurt';
@@ -1717,6 +1742,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       resumeRevealed: null,
       startRound: 1,
       frenzyFrom: ev.frenzyFrom ?? null,
+      fleeChance: ev.fleeChance ?? null,
     });
   }
 
@@ -1762,6 +1788,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       resumeRevealed: pb.revealed ?? null,
       startRound: pb.round ?? 1,
       frenzyFrom: pb.frenzyFrom ?? null,
+      fleeChance: pb.fleeChance ?? null,
     });
   }
 
@@ -1811,8 +1838,21 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   async onFlee(): Promise<void> {
     try {
       const resp = await this.store.action('combat-flee');
+      // A failed flee whose enemy blow was lethal comes back as a battle result.
+      if (resp.spaceEvent) {
+        this.liveB?.fleeFailed();
+        this.finishLiveBattle(resp.spaceEvent);
+        return;
+      }
       const c = resp.combat as CombatFlee | undefined;
-      this.liveB?.fleeResult(!!c?.fled);
+      if (c?.fled) {
+        this.liveB?.fleeResult(true);
+      } else if (c && c.entries) {
+        // Failed flee: announce it, then play the enemy's free action.
+        this.liveB?.fleeFailed(c.entries, c.telegraph ?? null, c.playerHp ?? 0, c.npcHp ?? 0, c.playerStatus ?? null, c.npcStatus ?? null);
+      } else {
+        this.liveB?.unlock();
+      }
     } catch {
       this.liveB?.unlock();
     }

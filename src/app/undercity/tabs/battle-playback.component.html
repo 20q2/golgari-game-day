@@ -53,6 +53,24 @@
         }
       </div>
 
+      @if (done() && hasRewards()) {
+        <div class="coin-rain" aria-hidden="true">
+          @for (c of coinParticles(); track $index) {
+            <img
+              class="coin"
+              src="undercity/icons/rot.png"
+              alt=""
+              [style.left.%]="c.left"
+              [style.animation-delay.s]="c.delay"
+              [style.animation-duration.s]="c.duration"
+              [style.--drift]="c.drift + 'px'"
+              [style.--spin]="c.rotate + 'deg'"
+              [style.--scale]="c.scale"
+            />
+          }
+        </div>
+      }
+
       @if (done()) {
         <div
           class="outcome-banner"
@@ -99,7 +117,7 @@
         <div class="reward-chips">
           @if (r.spores) {
             <span class="reward-chip spores">
-              <mat-icon class="mi">grain</mat-icon> +{{ r.spores }} Spores
+              <img class="mi-coin" src="undercity/icons/rot.png" alt="Spores" /> +{{ r.spores }} Spores
             </span>
           }
           @if (r.xp) {

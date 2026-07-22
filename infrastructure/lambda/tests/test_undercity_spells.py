@@ -543,8 +543,7 @@ def test_mystery_item_can_upgrade_to_grimoire(table, monkeypatch):
     doc = db._get_player(table, sid, 'user-alex')
     monkeypatch.setattr(db.engine, 'roll_mystery', lambda *a, **k: {
         'roll': 6, 'spores': 0, 'xp': 0, 'hpPct': 0, 'item': 'random',
-        'paint': False, 'hat': False, 'heal': False, 'buff': None,
-        'teleport': False, 'curse': False,
+        'heal': False, 'buff': None, 'teleport': False, 'curse': False,
         'text': 'A free consumable lies discarded.'})
     # First random() skips the gear-drop roll (>= GEAR_DROP['mystery'] chance);
     # the second forces the grimoire upgrade.

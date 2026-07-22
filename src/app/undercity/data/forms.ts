@@ -74,7 +74,7 @@ export const STARTERS: FormInfo[] = [
   {
     id: 'saproling', name: 'Saproling', tier: 1, passive: 'drift', passiveName: 'Endless Ranks',
     blurb: 'A quick, expendable plant token — the swarm made flesh.',
-    stats: { hp: 25, atk: 5, def: 5, spd: 6 },
+    stats: { hp: 25, atk: 4, def: 5, spd: 6 },
   },
   {
     id: 'zombie', name: 'Zombie', tier: 1, passive: 'regrowth', passiveName: 'Regrowth',

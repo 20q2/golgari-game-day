@@ -334,16 +334,6 @@
                 {{ ev.gear.outcome === 'stashed' ? 'to stash' : 'stash full → materials' }}
               </span>
             }
-            @if (ev.paint) {
-              <span class="chip item">
-                <mat-icon class="mi">palette</mat-icon> {{ ev.duplicate ? 'Duplicate paint' : 'New paint!' }}
-              </span>
-            }
-            @if (ev.hat) {
-              <span class="chip item">
-                <mat-icon class="mi">checkroom</mat-icon> {{ ev.duplicate ? 'Duplicate hat' : 'New hat!' }}
-              </span>
-            }
           </div>
         }
         <button class="uc-btn uc-btn-primary" (click)="closeSpaceModal()">OK</button>
@@ -368,17 +358,30 @@
         </p>
 
         <div class="shop-tabs" role="tablist">
-          <button class="shop-tab" [class.active]="shopTab() === 'gear'" (click)="setShopTab('gear')">Gear</button>
-          <button class="shop-tab" [class.active]="shopTab() === 'consumables'" (click)="setShopTab('consumables')">Consumables</button>
-          <button class="shop-tab" [class.active]="shopTab() === 'grimoires'" (click)="setShopTab('grimoires')">Grimoires</button>
+          <button class="shop-tab" [class.active]="shopTab() === 'gear'" (click)="setShopTab('gear')">
+            <mat-icon class="mi">shield</mat-icon> Gear
+          </button>
+          <button class="shop-tab" [class.active]="shopTab() === 'consumables'" (click)="setShopTab('consumables')">
+            <mat-icon class="mi">science</mat-icon> Consumables
+          </button>
+          <button class="shop-tab" [class.active]="shopTab() === 'grimoires'" (click)="setShopTab('grimoires')">
+            <mat-icon class="mi">auto_stories</mat-icon> Grimoires
+          </button>
         </div>
 
         @switch (shopTab()) {
           @case ('gear') {
-            <div class="shop-hint">Auto-equips; old piece trades in at 50%.</div>
+            <div class="shop-hint">
+              Purchases go to your stash — equip them at the Plaza.
+              @if (stashFull()) {
+                <span class="shop-warn">Stash full ({{ GEAR_STASH_SIZE }}/{{ GEAR_STASH_SIZE }}) — salvage a piece at the Plaza to buy more.</span>
+              }
+            </div>
             @for (r of shopGearRows(); track r.info.id) {
               <div class="shop-row" [attr.data-rarity]="tierRarity(r.info.tier).key">
-                <span class="shop-name">{{ r.info.name }}
+                <span class="shop-name">
+                  <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + r.info.slot"></mat-icon>
+                  {{ r.info.name }}
                   <span class="rarity-badge {{ tierRarity(r.info.tier).key }}">{{ tierRarity(r.info.tier).label }}</span>
                   @if (r.blackMarket) {
                     <span class="black-market-tag">Black Market</span>
@@ -386,15 +389,15 @@
                   <em>{{ r.info.desc }}</em></span>
                 <button
                   class="uc-btn shop-buy"
-                  [disabled]="busy() || r.qty <= 0 || store.you()?.gear?.[r.info.slot] === r.info.id"
+                  [disabled]="busy() || r.qty <= 0 || stashFull() || !canAfford(r.info.cost)"
                   (click)="buy(r.info)"
                 >
-                  @if (store.you()?.gear?.[r.info.slot] === r.info.id) {
-                    Equipped
-                  } @else if (r.qty <= 0) {
+                  @if (r.qty <= 0) {
                     Sold out
+                  } @else if (stashFull()) {
+                    Stash full
                   } @else {
-                    {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> <span class="shop-qty">×{{ r.qty }}</span>
+                    {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                   }
                 </button>
               </div>
@@ -409,11 +412,11 @@
                 <span class="shop-name">
                   <mat-icon class="mi">{{ r.info.icon }}</mat-icon> {{ r.info.name }} <em>{{ r.info.desc }}</em>
                 </span>
-                <button class="uc-btn shop-buy" [disabled]="busy() || r.qty <= 0" (click)="buy(r.info)">
+                <button class="uc-btn shop-buy" [disabled]="busy() || r.qty <= 0 || !canAfford(r.info.cost)" (click)="buy(r.info)">
                   @if (r.qty <= 0) {
                     Sold out
                   } @else {
-                    {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> <span class="shop-qty">×{{ r.qty }}</span>
+                    {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                   }
                 </button>
               </div>
@@ -428,7 +431,7 @@
                 <span class="shop-name">
                   <mat-icon class="mi">menu_book</mat-icon> {{ g.name }} <em>{{ grimoireSpellList(g) }}</em>
                 </span>
-                <button class="uc-btn shop-buy" [disabled]="busy() || ownsGrimoire(g.id)" (click)="buy(g)">
+                <button class="uc-btn shop-buy" [disabled]="busy() || ownsGrimoire(g.id) || !canAfford(g.cost)" (click)="buy(g)">
                   @if (ownsGrimoire(g.id)) {
                     Owned
                   } @else {
@@ -615,10 +618,18 @@
               <button
                 class="trade-chip"
                 [class.selected]="giveItem() === o.id"
+                [attr.data-rarity]="o.rarity"
                 (click)="giveItem.set(o.id)"
               >
-                <mat-icon class="mi">{{ o.icon }}</mat-icon>
+                @if (o.kind === 'gear') {
+                  <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + o.slot"></mat-icon>
+                } @else {
+                  <mat-icon class="mi">{{ o.icon }}</mat-icon>
+                }
                 {{ o.label }}
+                @if (o.rarity) {
+                  <span class="rarity-badge {{ o.rarity }}">{{ o.rarityLabel }}</span>
+                }
               </button>
             }
           </div>
@@ -626,11 +637,19 @@
 
         <div class="shop-section">Offered — take one (leaves your selected item here)</div>
         @for (s of tradingStock(); track $index) {
-          <div class="shop-row">
+          @let d = tradeStockDetail(s.item);
+          <div class="shop-row" [attr.data-rarity]="d.rarity">
             <span class="shop-name">
-              <mat-icon class="mi">{{ tradeStockDetail(s.item).icon }}</mat-icon>
-              {{ tradeStockDetail(s.item).label }}
-              <em>{{ tradeStockDetail(s.item).sub }} — found by {{ s.foundBy }}</em>
+              @if (d.kind === 'gear') {
+                <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + d.slot"></mat-icon>
+              } @else {
+                <mat-icon class="mi">{{ d.icon }}</mat-icon>
+              }
+              {{ d.label }}
+              @if (d.rarity) {
+                <span class="rarity-badge {{ d.rarity }}">{{ d.rarityLabel }}</span>
+              }
+              <em>{{ d.sub }} — found by {{ s.foundBy }}</em>
             </span>
             <button
               class="uc-btn shop-buy"
@@ -731,6 +750,7 @@
       [personality]="lb.personality"
       [telegraph]="lb.telegraph"
       [canFlee]="lb.kind !== 'barrier' && lb.kind !== 'boss'"
+      [fleeChance]="lb.fleeChance"
       [items]="lb.items"
       [hasScry]="lb.hasScry"
       [attackerStats]="lb.attackerStats"

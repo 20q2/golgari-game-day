@@ -184,6 +184,7 @@
   right: 0;
   top: 50%;
   transform: translateY(-50%);
+  z-index: 5; // stay legible above the coin rain
   padding: 8px 0;
   text-align: center;
   font-size: 1.9rem;
@@ -316,6 +317,45 @@
   }
 }
 
+// ── Victory spore-coin rain ────────────────────────────────────────────────
+// Coins tumble down the arena over the VICTORY banner, then the spoils chips
+// pop in below. Confined to the stage so horizontal drift never adds scrollbars.
+.coin-rain {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 3;
+
+  .coin {
+    position: absolute;
+    top: -28px;
+    width: 22px;
+    height: 22px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    animation-name: uc-coin-fall;
+    animation-timing-function: cubic-bezier(0.4, 0.1, 0.7, 1);
+    animation-fill-mode: both;
+  }
+}
+
+@keyframes uc-coin-fall {
+  0% {
+    opacity: 0;
+    transform: translate(0, -10px) rotate(0deg) scale(var(--scale, 1));
+  }
+  12% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--drift, 0px), 340px) rotate(var(--spin, 360deg)) scale(var(--scale, 1));
+  }
+}
+
 .rewards {
   flex-shrink: 0;
   margin: 4px 16px 0;
@@ -323,7 +363,7 @@
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(74, 124, 89, 0.22), rgba(74, 124, 89, 0.08));
   border: 1px solid rgba(120, 200, 140, 0.35);
-  animation: uc-reward-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: uc-fade-in 0.3s ease both;
 
   .rewards-title {
     display: block;
@@ -351,27 +391,45 @@
     background: rgba(0, 0, 0, 0.28);
     border: 1px solid rgba(255, 255, 255, 0.12);
     color: #e5f0e5;
+    // Each chip springs in on its own, staggered by position — the rain lands
+    // first, then the spoils tally themselves up one at a time.
+    transform-origin: center bottom;
+    animation: uc-reward-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    &:nth-child(1) { animation-delay: 0.4s; }
+    &:nth-child(2) { animation-delay: 0.5s; }
+    &:nth-child(3) { animation-delay: 0.6s; }
+    &:nth-child(4) { animation-delay: 0.7s; }
+    &:nth-child(5) { animation-delay: 0.8s; }
 
     .mi {
       font-size: 1rem;
       width: 1rem;
       height: 1rem;
     }
+    .mi-coin {
+      width: 1.05rem;
+      height: 1.05rem;
+      object-fit: contain;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+    }
 
     &.spores {
-      color: #e8cd a0;
       color: #e8cda0;
     }
     &.xp {
       color: #9ad0ff;
     }
+    // Item + gear + level-up are the exciting drops — bigger overshoot and a
+    // gold glow ring as they land.
     &.item {
       color: #c9a2ff;
+      animation-name: uc-reward-pop-big;
     }
     &.levelup {
       color: #12100e;
       background: linear-gradient(180deg, #ffe08a, #fbbf24);
       border-color: rgba(251, 191, 36, 0.8);
+      animation-name: uc-reward-pop-big;
     }
   }
 }
@@ -379,11 +437,39 @@
 @keyframes uc-reward-pop {
   from {
     opacity: 0;
-    transform: translateY(6px) scale(0.96);
+    transform: translateY(10px) scale(0.9);
   }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes uc-reward-pop-big {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.72);
+    box-shadow: 0 0 0 rgba(251, 191, 36, 0);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0) scale(1.18);
+    box-shadow: 0 0 16px rgba(251, 191, 36, 0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: 0 0 0 rgba(251, 191, 36, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coin-rain {
+    display: none;
+  }
+  .rewards .reward-chip {
+    animation: uc-fade-in 0.2s ease both !important;
+    animation-delay: 0s !important;
   }
 }
 

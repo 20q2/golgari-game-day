@@ -138,14 +138,15 @@ def test_marrowborn_home_grants_max_hp(table):
 
 
 def test_city_rat_home_grants_random_t1_gear(table):
-    # The Undercity (city) home: City Rat hatches with a random T1 item equipped,
-    # and no longer grants starting Spores.
+    # The Undercity (city) home: City Rat hatches with a random T1 item in the
+    # stash (no auto-equip), and no longer grants starting Spores.
     status, resp = act(table, 'join', starter='pest', home='city')
     assert status == 200
     you = resp['you']
     assert you['spores'] == 0
-    assert len(you['gear']) == 1
-    gid = next(iter(you['gear'].values()))
+    assert not you.get('gear')
+    assert len(you['gearStash']) == 1
+    gid = you['gearStash'][0]
     assert data.GEAR[gid]['tier'] == 1
 
 
@@ -733,12 +734,15 @@ def test_buy_gear_and_consumables(table):
     _seed_shop(table, sid, node,
                gear=[{'item': 'rusted_fang', 'qty': 2}, {'item': 'wurm_tooth', 'qty': 2}],
                consumables=[{'item': 'healing_moss', 'qty': 2}])
+    # Bought gear lands in the stash (no auto-equip) and never trades in the
+    # worn piece — the player equips it later at the Plaza.
     status, resp = act(table, 'buy', itemId='rusted_fang')
-    assert status == 200 and resp['you']['gear']['fang'] == 'rusted_fang'
+    assert status == 200 and 'rusted_fang' in resp['you']['gearStash']
+    assert not (resp['you'].get('gear') or {}).get('fang')
     assert resp['you']['spores'] == 180
-    status, resp = act(table, 'buy', itemId='wurm_tooth')  # trade-in refunds 10
-    assert resp['you']['spores'] == 180 - 80 + 10
-    assert resp['you']['gear']['fang'] == 'wurm_tooth'
+    status, resp = act(table, 'buy', itemId='wurm_tooth')  # no trade-in refund
+    assert resp['you']['spores'] == 180 - 80
+    assert 'wurm_tooth' in resp['you']['gearStash']
     status, resp = act(table, 'buy', itemId='healing_moss')
     assert status == 200 and 'healing_moss' in resp['you']['bag']
 
@@ -886,7 +890,8 @@ def test_umori_swap_gear(table):
     db._put_player(table, doc)
     status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
     assert status == 200
-    assert resp['you']['gear']['fang'] == take                 # T3 fang equipped
+    assert take in resp['you']['gearStash']                    # T3 fang stashed, not equipped
+    assert not (resp['you'].get('gear') or {}).get('fang')     # given piece left the slot
     assert resp['stock'][0] == {'item': 'rusted_fang', 'foundBy': 'Alex'}  # old piece left
 
 
@@ -1603,13 +1608,27 @@ def test_combatant_carries_riders_and_buffs_from_gear(table):
     assert 'harden_shell' in c.buffs
 
 
-def test_buy_charm_equips_into_charm_slot(table):
+def test_buy_charm_stashes_not_equips(table):
     sid, node = _at_shop(table, spores=500)
     _seed_shop(table, sid, node, gear=[{'item': 'quartz_charm', 'qty': 2}])
     status, resp = act(table, 'buy', itemId='quartz_charm')
     assert status == 200, resp
     doc = db._get_player(table, sid, 'user-alex')
-    assert doc['gear'].get('charm') == 'quartz_charm'
+    assert 'quartz_charm' in doc.get('gearStash', [])
+    assert not (doc.get('gear') or {}).get('charm')
+
+
+def test_buy_gear_stalls_when_stash_full(table):
+    sid, node = _at_shop(table, spores=500)
+    _seed_shop(table, sid, node, gear=[{'item': 'rusted_fang', 'qty': 2}])
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['gearStash'] = ['rusted_fang'] * data.GEAR_STASH_SIZE
+    db._put_player(table, doc)
+    before = db._get_player(table, sid, 'user-alex')['spores']
+    status, resp = act(table, 'buy', itemId='rusted_fang')
+    assert status == 409 and 'stash is full' in resp['error'].lower()
+    # Stalled: no Spores spent, stock not depleted.
+    assert db._get_player(table, sid, 'user-alex')['spores'] == before
 
 
 def test_battle_combatant_roundtrips_through_dict(table):
@@ -2137,6 +2156,79 @@ def test_cannot_flee_before_acting(table, monkeypatch):
     assert status == 200 and resp['combat']['fled'] is True
 
 
+def test_failed_flee_lets_enemy_perform_its_action(table, monkeypatch):
+    """A failed flee is not a free retry: the enemy takes its telegraphed action
+    for free, the player takes the hit, and the fight continues at the next round."""
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['spd'] = 1        # low SPD => low flee chance
+    doc['hp'] = 500       # beefy enough to survive one clean hit
+    db._put_player(table, doc)
+    _begin(table, sid, npc=dict(_FODDER, atk=8, spd=1))
+    doc = db._get_player(table, sid, 'user-alex')
+    rec = doc['battle']
+    rec['round'] = 2               # past the first-round flee gate
+    rec['npcActual'] = 'aggress'   # the enemy will swing this round
+    start_hp = rec['player']['hp']
+    db._put_player(table, doc)
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)  # flee roll fails
+    status, resp = act(table, 'combat-flee')
+    assert status == 200
+    c = resp['combat']
+    assert c['fled'] is False
+    assert c['entries']                       # a round actually resolved
+    assert c['playerHp'] < start_hp           # the enemy performed its action
+    assert c['round'] == 3                     # fight continues at the next round
+    assert db._get_player(table, sid, 'user-alex').get('battle') is not None
+
+
+def test_failed_flee_can_be_lethal(table, monkeypatch):
+    """The enemy's free swing on a failed flee can drop the player — the fight
+    ends in defeat rather than silently continuing."""
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['spd'] = 1
+    doc['hp'] = 1         # one clean hit ends it
+    db._put_player(table, doc)
+    _begin(table, sid, npc=dict(_FODDER, atk=20, spd=1))
+    doc = db._get_player(table, sid, 'user-alex')
+    rec = doc['battle']
+    rec['round'] = 2
+    rec['npcActual'] = 'aggress'
+    doc['lastStandUsed'] = True   # don't let the Last Stand perk save the KO
+    db._put_player(table, doc)
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)  # flee fails
+    status, resp = act(table, 'combat-flee')
+    assert status == 200
+    assert resp['spaceEvent']['battle']['outcome'] == 'defender'
+    assert db._get_player(table, sid, 'user-alex').get('battle') is None
+
+
+def test_battle_start_reports_flee_chance(table):
+    """The battle_start event carries the SPD-based escape %, so the flee button
+    can show the odds without the client re-deriving the formula."""
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    ev = _begin(table, sid, npc=dict(_FODDER, spd=4))
+    rec = db._get_player(table, sid, 'user-alex')['battle']
+    expected = min(95, db.engine.flee_chance(rec['player']['spd'], rec['npc']['spd'])
+                   + rec['player'].get('flee_bonus', 0))
+    assert ev['fleeChance'] == expected
+
+
+def test_flee_chance_is_100_when_holding_a_smoke_spore(table):
+    """A held Smoke Spore auto-succeeds a failed flee, so the odds read 100%."""
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['bag'] = ['smoke_spore']
+    db._put_player(table, doc)
+    ev = _begin(table, sid)
+    assert ev['fleeChance'] == 100
+
+
 def test_get_active_season_public_wrapper():
     t = FakeTable()
     assert db.get_active_season(t) == (None, None)
@@ -2388,7 +2480,9 @@ def test_join_grants_one_night_starter_items(table):
     assert status == 200, resp
     you = resp['you']
     assert 'healing_moss' in you['bag']
-    assert you['gear']['fang'] == 'rusted_fang'
+    # Starter gear (and the City Rat piece) land in the stash — no auto-equip.
+    assert 'rusted_fang' in you['gearStash']
+    assert not (you.get('gear') or {}).get('fang')
     assert you['spores'] == 15  # City Rat now grants gear, not spores; +15 from spore pouch
     perm = db._get_perm(table, 'user-alex')
     assert perm['renown'] == 100 - 20 - 25 - 15

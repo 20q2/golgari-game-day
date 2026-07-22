@@ -21,8 +21,6 @@ const SYMBOLS: Record<string, Symbol> = {
   item: { icon: 'inventory_2', color: '#b79bff' },
   heal: { icon: 'favorite', color: '#7fce8f' },
   hurt: { icon: 'heart_broken', color: '#e07a7a' },
-  paint: { icon: 'palette', color: '#7fa6e0' },
-  hat: { icon: 'checkroom', color: '#e0b45a' },
   warp: { icon: 'cyclone', color: '#4fc4bc' },
   mystery: { icon: 'help', color: '#c4a5ff' },
 };

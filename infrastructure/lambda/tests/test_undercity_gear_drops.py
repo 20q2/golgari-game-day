@@ -89,8 +89,7 @@ def test_mystery_free_item_can_be_gear(table, monkeypatch):
                         lambda *a, **k: {'roll': 7, 'text': 'x', 'spores': 0,
                                          'xp': 0, 'hpPct': 0, 'heal': False,
                                          'buff': None, 'curse': False,
-                                         'teleport': False, 'item': True,
-                                         'paint': False, 'hat': False})
+                                         'teleport': False, 'item': True})
     _force_fang_drop(monkeypatch)
     out = db._mystery(table, sid, doc)
     assert out['gear']['slot'] == 'fang'

@@ -565,6 +565,18 @@ def _telegraph_next(rec):
     return _shown_telegraph(rec)
 
 
+def _flee_pct(rec):
+    """Display-only escape chance for the flee button. Purely SPD-based (frozen
+    at battle start, so constant for the whole fight) + the glowveil bonus,
+    capped like the engine; a held Smoke Spore auto-succeeds a failed roll, so
+    the odds read 100%. Mirrors engine.flee_attempt."""
+    p, n = rec['player'], rec['npc']
+    if p.get('has_smoke_spore'):
+        return 100
+    return min(95, engine.flee_chance(int(p['spd']), int(n['spd']))
+               + int(p.get('flee_bonus', 0)))
+
+
 def _frenzy_from(kind):
     """Round the Collapse begins for this battle kind. On for EVERY kind so no
     fight can stalemate (sudden death) — persistent-pool foes (lair/boss) just
@@ -601,6 +613,7 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
                                               npc_snap['spd'], npc_snap['maxHp'])},
             'telegraph': shown, 'round': 1,
             'frenzyFrom': _frenzy_from(kind),
+            'fleeChance': _flee_pct(rec),
             'playerStatus': _battle_status(rec['player']),
             'npcStatus': _battle_status(rec['npc']),
             'text': f'A {npc["name"]} bars your path!'}
@@ -652,23 +665,6 @@ def _grant_xp(table, sid, doc, amount):
         _event(table, sid, 'level', f"{doc['username']}'s {_creature_label(doc)} reached level {doc['level']}!",
                actor=doc['userId'])
     return gained
-
-
-def _grant_cosmetic(table, doc, perm, kind):
-    """Drop a random hat/paint into the permanent wardrobe. Dupes → Spores."""
-    if kind == 'hat':
-        weights = [data.HAT_RARITY_WEIGHTS[h['rarity']] for h in data.HATS]
-        pick = _rng.choices(data.HATS, weights=weights, k=1)[0]
-        owned = perm['hats']
-    else:
-        pick = _rng.choice(data.PAINTS)
-        owned = perm['paints']
-    if pick['id'] in owned:
-        doc['spores'] = doc.get('spores', 0) + data.DUPLICATE_SPORES
-        return pick, True
-    owned.append(pick['id'])
-    table.put_item(Item=perm)
-    return pick, False
 
 
 def _give_consumable(doc):
@@ -1731,13 +1727,14 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         doc['maxHp'] += data.MARROWBORN_MAXHP
         doc['hp'] += data.MARROWBORN_MAXHP
     elif home == 'city':
-        # City Rat: hatch with a random Tier-1 piece of gear, auto-equipped.
-        # Seeded on the player id so the pick is stable (varies per player, but
-        # deterministic — no test flakiness, no re-roll on recompute).
+        # City Rat: hatch with a random Tier-1 piece of gear in the stash — no
+        # auto-equip; the player equips it at the Plaza. Seeded on the player id
+        # so the pick is stable (varies per player, but deterministic — no test
+        # flakiness, no re-roll on recompute).
         t1 = sorted(gid for gid, g in data.GEAR.items() if g.get('tier') == 1)
         if t1:
             gid = random.Random(zlib.crc32(f'cityrat:{user_id}'.encode())).choice(t1)
-            doc['gear'][data.GEAR[gid]['slot']] = gid
+            doc.setdefault('gearStash', []).append(gid)
     if is_bot:
         doc['isBot'] = True
     return doc
@@ -1811,7 +1808,8 @@ def _apply_shop_purchases(perm, doc, payload):
         if it['kind'] == 'consumable':
             doc['bag'].append(it['id'])
         elif it['kind'] == 'gear':
-            doc['gear'][data.GEAR[it['id']]['slot']] = it['id']
+            # No auto-equip: starter gear goes to the stash to equip at the Plaza.
+            doc.setdefault('gearStash', []).append(it['id'])
         elif it['kind'] == 'spores':
             doc['spores'] = doc.get('spores', 0) + it['amount']
     if equip_hat:
@@ -2479,17 +2477,6 @@ def _mystery(table, sid, doc):
                 item = _give_consumable(doc)
                 if item:
                     out['item'] = item
-    perm = None
-    if res['paint']:
-        perm = _get_perm(table, doc['userId'])
-        pick, dupe = _grant_cosmetic(table, doc, perm, 'paint')
-        out['paint'] = pick['id']
-        out['duplicate'] = dupe
-    if res['hat']:
-        perm = _get_perm(table, doc['userId'])
-        pick, dupe = _grant_cosmetic(table, doc, perm, 'hat')
-        out['hat'] = pick['id']
-        out['duplicate'] = dupe
     if res['roll'] == 12:
         _event(table, sid, 'jackpot',
                f"{doc['username']} hit a JACKPOT BLOOM in the tunnels!", actor=doc['userId'])
@@ -2744,6 +2731,17 @@ def _combat_round(table, sid, doc, payload):
         player_c, npc_c, stance, rec['npcActual'], rnd, _rng,
         force_winner=force_winner, double_win_for=double_win_for,
         negate_loss_for=negate_loss_for, frenzy_from=frenzy_from)
+    return _conclude_round(table, sid, doc, rec, player_c, npc_c, entries,
+                           frenzy_from)
+
+
+def _conclude_round(table, sid, doc, rec, player_c, npc_c, entries, frenzy_from,
+                    extra=None):
+    """Shared tail for a resolved combat round (a stance exchange OR a failed
+    flee): store both combatants, end the battle if someone dropped, otherwise
+    advance the round + re-telegraph and return the ongoing-combat payload.
+    `extra` merges into the combat payload (e.g. the failed-flee flag)."""
+    rnd = rec['round']
     rec['strikes'].extend(entries)
     _bt_store(player_c, rec['player'])
     _bt_store(npc_c, rec['npc'])
@@ -2776,14 +2774,17 @@ def _combat_round(table, sid, doc, payload):
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
-    return _ok(doc, combat={'round': rec['round'], 'entries': entries,
-                            'telegraph': shown,
-                            'frenzyFrom': frenzy_from,
-                            'playerHp': rec['player']['hp'],
-                            'npcHp': rec['npc']['hp'],
-                            'playerStatus': _battle_status(rec['player']),
-                            'npcStatus': _battle_status(rec['npc']),
-                            'revealNext': rec['player']['reveal_next']})
+    combat = {'round': rec['round'], 'entries': entries,
+              'telegraph': shown,
+              'frenzyFrom': frenzy_from,
+              'playerHp': rec['player']['hp'],
+              'npcHp': rec['npc']['hp'],
+              'playerStatus': _battle_status(rec['player']),
+              'npcStatus': _battle_status(rec['npc']),
+              'revealNext': rec['player']['reveal_next']}
+    if extra:
+        combat.update(extra)
+    return _ok(doc, combat=combat)
 
 
 def _combat_flee(table, sid, doc, payload):
@@ -2810,14 +2811,14 @@ def _combat_flee(table, sid, doc, payload):
             return conflict
         return _ok(doc, combat={'fled': True, 'smokeSporeUsed': r['smokeSporeUsed'],
                                 'scrounged': salvage or None})
-    # failed flee: caught off guard (-1 DEF), forfeit the round.
-    _bt_store(player_c, rec['player'])
-    rec['player']['dfn'] = player_c.dfn
-    conflict = _save_or_conflict(table, doc)
-    if conflict:
-        return conflict
-    return _ok(doc, combat={'fled': False, 'round': rec['round'],
-                            'telegraph': rec['npcShown']})
+    # Failed flee: caught off guard (-1 DEF from flee_attempt), and the enemy
+    # takes its telegraphed action for free — resolving as a round the fleer
+    # loses. It can be lethal, ending the fight in defeat.
+    frenzy_from = _frenzy_from(rec['kind'])
+    entries = engine.flee_punish(player_c, npc_c, rec['npcActual'], rec['round'],
+                                 _rng, frenzy_from=frenzy_from)
+    return _conclude_round(table, sid, doc, rec, player_c, npc_c, entries,
+                           frenzy_from, extra={'fled': False})
 
 
 def _battle_resume(rec, player_hp):
@@ -2831,6 +2832,7 @@ def _battle_resume(rec, player_hp):
         'round': rec.get('round', 1),
         'telegraph': _shown_telegraph(rec),
         'frenzyFrom': _frenzy_from(rec.get('kind')),
+        'fleeChance': _flee_pct(rec),
         'playerHp': player_hp,
         'playerStatus': _battle_status(rec.get('player', {})),
         'npcStatus': _battle_status(rec.get('npc', {})),
@@ -3762,15 +3764,18 @@ def _buy(table, sid, doc, payload):
             return _err('Sold out — check back after the restock.', 409)
         g = data.GEAR[item_id]
         cost = g['cost']
-        old_id = (doc.get('gear') or {}).get(g['slot'])
-        refund = int(data.GEAR[old_id]['cost'] * data.GEAR_SELL_BACK) if old_id else 0
-        if doc.get('spores', 0) + refund < cost:
+        if doc.get('spores', 0) < cost:
             return _err('Not enough Spores.', 409)
-        doc['spores'] = doc.get('spores', 0) + refund - cost
-        doc.setdefault('gear', {})[g['slot']] = item_id
-        # Troll Hide etc. can raise effective max HP; clamp is handled on damage.
+        # No auto-equip: purchased gear lands in the stash; equip it at the Plaza.
+        # If the stash is full we stall the sale rather than grinding the piece —
+        # the player clears room by salvaging at the Plaza first.
+        stash = doc.setdefault('gearStash', [])
+        if len(stash) >= data.GEAR_STASH_SIZE:
+            return _err('Your gear stash is full — salvage a piece at the Plaza first.', 409)
+        doc['spores'] = doc.get('spores', 0) - cost
+        stash.append(item_id)
         deplete = line
-        text = f"Bought {g['name']}" + (f' (traded in for {refund})' if refund else '')
+        text = f"Bought {g['name']} — stashed. Equip it at the Plaza."
     elif item_id in data.CONSUMABLES:
         line = next((e for e in stock['consumables'] if e['item'] == item_id), None)
         if not line:
@@ -3901,6 +3906,8 @@ def _trade(table, sid, doc, payload):
             return _err('Your bag is full (3 slots).', 409)
     if take_kind == 'grimoire' and taken['item'] in grimoires:
         return _err('You already own that grimoire.', 409)
+    if take_kind == 'gear' and len(doc.get('gearStash') or []) >= data.GEAR_STASH_SIZE:
+        return _err('Your gear stash is full — salvage a piece at the Plaza first.', 409)
 
     # Remove the given item.
     if give_kind == 'consumable':
@@ -3921,7 +3928,8 @@ def _trade(table, sid, doc, payload):
     if take_kind == 'consumable':
         doc.setdefault('bag', []).append(taken['item'])
     elif take_kind == 'gear':
-        doc.setdefault('gear', {})[data.GEAR[taken['item']]['slot']] = taken['item']
+        # No auto-equip: the bartered piece lands in the stash to equip at the Plaza.
+        doc.setdefault('gearStash', []).append(taken['item'])
     elif take_kind == 'grimoire':
         doc.setdefault('grimoires', []).append(taken['item'])
         if not doc.get('equippedGrimoire'):

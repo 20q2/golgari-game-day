@@ -39,6 +39,41 @@ export interface BattleRewards {
   gearStashed?: boolean;
 }
 
+/** One spore coin in the victory rain — pre-randomized so it doesn't jitter on
+ * change detection. Consumed as inline CSS custom properties by the template. */
+export interface CoinParticle {
+  left: number; // % across the arena
+  delay: number; // s before it starts falling
+  duration: number; // s to fall + fade
+  drift: number; // px horizontal sway
+  rotate: number; // deg total spin
+  scale: number; // size multiplier
+}
+
+/**
+ * Build the celebratory spore-coin rain for a win. Count scales with the haul so
+ * a gear drop or level-up visibly rains harder than a few loose spores. Shared by
+ * both battle screens; call once and cache — never inside change detection.
+ */
+export function buildCoinParticles(r: BattleRewards): CoinParticle[] {
+  const rnd = () => Math.random();
+  let count = 14;
+  if (r.gearName) count += 4;
+  if (r.levels) count += 4;
+  const coins: CoinParticle[] = [];
+  for (let i = 0; i < count; i++) {
+    coins.push({
+      left: rnd() * 100,
+      delay: rnd() * 0.55,
+      duration: 0.9 + rnd() * 0.7,
+      drift: (rnd() - 0.5) * 60,
+      rotate: (rnd() < 0.5 ? -1 : 1) * (180 + rnd() * 360),
+      scale: 0.6 + rnd() * 0.7,
+    });
+  }
+  return coins;
+}
+
 /** One rendered strike in the battle log. */
 interface LogEntry {
   round: number;
@@ -76,6 +111,16 @@ export class BattlePlaybackComponent implements OnInit, OnDestroy {
       !!r &&
       (!!r.spores || !!r.xp || !!r.levels || !!r.itemName || !!r.gearName)
     );
+  }
+
+  // Built once on first read (when a win is shown) so the rain doesn't reshuffle
+  // every change-detection tick.
+  private coinsCache: CoinParticle[] | null = null;
+  protected coinParticles(): CoinParticle[] {
+    if (!this.coinsCache && this.hasRewards()) {
+      this.coinsCache = buildCoinParticles(this.rewards!);
+    }
+    return this.coinsCache ?? [];
   }
 
   protected readonly attackerHp = signal(0);

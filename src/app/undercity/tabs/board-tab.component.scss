@@ -921,6 +921,10 @@
 
 .shop-tab {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   padding: 6px 4px;
   font-size: 0.8rem;
   font-weight: 700;
@@ -929,6 +933,12 @@
   border: 1px solid transparent;
   border-radius: 8px;
   cursor: pointer;
+
+  .mi {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
 
   &.active {
     color: #d8f3dc;
@@ -943,10 +953,11 @@
   margin: 4px 0 2px;
 }
 
-.shop-qty {
-  font-size: 0.72rem;
-  color: #9aa79a;
-  margin-left: 2px;
+.shop-warn {
+  display: block;
+  margin-top: 2px;
+  color: var(--accent-color);
+  font-weight: 600;
 }
 
 .shop-empty {
@@ -1014,6 +1025,14 @@
     font-size: 0.85rem;
     color: #d8f3dc;
 
+    .slot-mi {
+      color: #9aa79a;
+      font-size: 1.2rem;
+      width: 1.2rem;
+      height: 1.2rem;
+      vertical-align: middle;
+    }
+
     em {
       color: #9aa79a;
       font-style: normal;
@@ -1060,6 +1079,14 @@
     width: 1rem;
     height: 1rem;
   }
+  .slot-mi {
+    color: #9aa79a;
+  }
+
+  // Rarity-tinted border so gear chips read the same as the bazaar rows.
+  &[data-rarity='common'] { border-color: rgba(154, 167, 160, 0.55); }
+  &[data-rarity='rare'] { border-color: rgba(95, 209, 138, 0.6); }
+  &[data-rarity='legendary'] { border-color: rgba(251, 191, 36, 0.6); }
 
   &:hover {
     border-color: rgba(120, 200, 140, 0.6);

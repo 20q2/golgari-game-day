@@ -924,6 +924,20 @@ def test_flee_attempt_success_and_smoke_fallback():
     assert r3['escaped'] is False and f3.dfn == 4
 
 
+from undercity_engine import flee_punish
+
+
+def test_flee_punish_lets_enemy_land_its_action_for_free():
+    # A caught-off-guard fleer eats the enemy's telegraphed (aggress) hit and
+    # does no offense of its own.
+    fleer = fighter(name='Fleer', hp=40, max_hp=40, atk=6, dfn=5, spd=1)
+    enemy = fighter(name='Foe', hp=40, max_hp=40, atk=10, dfn=5, spd=1)
+    entries = flee_punish(fleer, enemy, 'aggress', rnd=2, rng=FakeRng())
+    assert fleer.hp < 40           # the enemy performed its action
+    assert enemy.hp == 40          # the fleer landed nothing back
+    assert entries and any(e.get('dmg') for e in entries)
+
+
 from undercity_engine import pick_stance, telegraph
 
 

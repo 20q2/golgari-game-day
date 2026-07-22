@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-import { BattleSide, BattleRewards } from './battle-playback.component';
+import { BattleSide, BattleRewards, CoinParticle, buildCoinParticles } from './battle-playback.component';
 import { CombatEntry, Stance, BattleStatus } from '../services/undercity-models';
 import { STANCES, STANCE_MAP, PERSONALITY_TELL, StanceAugment, COUNTER, StatusChip, StatusInfo, STATUS_INFO, statusChips } from '../data/combat';
 
@@ -60,6 +60,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   /** Foe's predicted stance for the round — null when no read procced. */
   @Input() telegraph: Stance | null = null;
   @Input() canFlee = true;
+  /** SPD-based escape % shown on the flee button (100 with a held Smoke Spore). */
+  @Input() fleeChance: number | null = null;
   @Input() items: BattleItem[] = [];
   @Input() hasScry = false;
   @Input() attackerStats: CombatStats | null = null;
@@ -98,6 +100,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   protected readonly outcome = signal<Outcome | null>(null);
   protected readonly resultText = signal('');
   protected readonly rewards = signal<BattleRewards | null>(null);
+  /** Brief "Couldn't escape!" flash shown when a flee attempt fails. */
+  protected readonly fleeNotice = signal(false);
   protected readonly showHelp = signal(false);
   protected readonly showItems = signal(false);
   protected readonly attackerSpriteFailed = signal(false);
@@ -111,7 +115,15 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     defender: false,
   });
   protected readonly struck = signal<Side | null>(null);
-  protected readonly pop = signal<{ side: Side; text: string; kind: 'dmg' | 'heal' | 'miss' } | null>(null);
+  protected readonly pop = signal<{
+    side: Side;
+    text: string;
+    kind: 'dmg' | 'heal' | 'miss';
+    /** Source glyph shown before the number (stance / rot / thorns / …). */
+    icon?: string;
+    /** True when `icon` is a registered `uc-*` SVG rather than a Material ligature. */
+    iconSvg?: boolean;
+  } | null>(null);
   /** Hide the telegraph/controls while the exchange plays. */
   protected readonly resolving = signal(false);
 
@@ -246,6 +258,14 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     this.peek.emit();
   }
 
+  /** Tooltip for the flee button once fleeing is allowed — names the odds, and
+   *  the Smoke Spore guarantee at 100%. */
+  protected fleeTitle(): string {
+    if (this.fleeChance == null) return 'Flee the fight';
+    if (this.fleeChance >= 100) return 'Escape guaranteed (Smoke Spore)';
+    return `Flee the fight — ${this.fleeChance}% chance to escape`;
+  }
+
   protected doFlee(): void {
     if (this.busy() || this.done() || !this.hasActed()) return;
     this.busy.set(true);
@@ -329,6 +349,27 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     this.busy.set(false); // failed flee: the fight continues, re-enable input
   }
 
+  /**
+   * A flee attempt failed. Flash the notice, then play the enemy's free action
+   * (the caught-off-guard round the server resolved). With no round args the
+   * blow was lethal and the parent drives finish() separately — just flash.
+   */
+  fleeFailed(
+    entries?: CombatEntry[],
+    telegraph: Stance | null = null,
+    playerHp = 0,
+    npcHp = 0,
+    playerStatus: BattleStatus | null = null,
+    npcStatus: BattleStatus | null = null,
+  ): void {
+    this.fleeNotice.set(true);
+    this.timers.push(setTimeout(() => this.fleeNotice.set(false), 1500));
+    if (entries) {
+      this.applyRound(entries, telegraph, playerHp, npcHp, playerStatus, npcStatus);
+    }
+    // lethal case: parent calls finish(); leave busy=true until it lands.
+  }
+
   // ── Beat sequencer ───────────────────────────────────────────────────────────
 
   /**
@@ -367,7 +408,9 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     let first = true;
     for (const e of effects) {
       // First blow lands at the aggressor's impact (~mid leap); rest space out.
-      at(first ? (header ? 780 : 220) : 560, () => this.animateEntry(e));
+      at(first ? (header ? 780 : 220) : 560, () =>
+        this.animateEntry(e, header?.aStance, header?.dStance),
+      );
       first = false;
     }
 
@@ -388,7 +431,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     return !!(e.dmg || e.heal || e.miss || e.negated);
   }
 
-  private animateEntry(e: CombatEntry): void {
+  private animateEntry(e: CombatEntry, aStance?: Stance, dStance?: Stance): void {
     // rot + frenzy: `by` is the side TAKING the damage → it IS the target.
     const rot = !!e.rot || !!e.frenzy;
     // strike/counter/swarm: `by` is the dealer → target is the other side.
@@ -399,7 +442,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
       const cur = target === 'attacker' ? this.attackerHp() : this.defenderHp();
       (target === 'attacker' ? this.attackerHp : this.defenderHp).set(Math.max(0, cur - e.dmg));
       this.struck.set(target);
-      this.pop.set({ side: target, text: `-${e.dmg}`, kind: 'dmg' });
+      const ic = this.dmgIcon(e, aStance, dStance);
+      this.pop.set({ side: target, text: `-${e.dmg}`, kind: 'dmg', icon: ic?.icon, iconSvg: ic?.svg });
       this.timers.push(setTimeout(() => this.struck.set(null), 380));
     } else if (e.miss || e.negated) {
       this.pop.set({ side: target, text: e.negated ? 'ward' : 'miss', kind: 'miss' });
@@ -416,9 +460,38 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     this.timers.push(setTimeout(() => this.pop.set(null), 520));
   }
 
+  /**
+   * Pick the source glyph shown before a damage number so the pop reads at a
+   * glance: rot tick, thorns reflect, swarm chip, guard counter, or the winning
+   * stance itself. `svg:true` means a `uc-*` SVG icon; otherwise a Material
+   * ligature. Order matters — specific effect tags win over the plain strike.
+   */
+  private dmgIcon(e: CombatEntry, aStance?: Stance, dStance?: Stance): { icon: string; svg: boolean } | null {
+    if (e.rot) return { icon: 'coronavirus', svg: false }; // rot damage-over-time
+    if (e.frenzy) return { icon: 'local_fire_department', svg: false }; // legacy escalation
+    if (e.retaliation) return { icon: 'uc-carapace', svg: true }; // thorns / scavenge reflect
+    if (e.swarm) return { icon: 'uc-fang', svg: true }; // swarm chip
+    if (e.counter || e.guardChip) return { icon: 'uc-shield', svg: true }; // guard counter / chip
+    if (e.mitigated) return { icon: 'uc-sword', svg: true }; // aggressor's hit soaked by a guard
+    // Plain decisive blow — badge it with the winner's stance.
+    const stance = e.winner === 'attacker' ? aStance : e.winner === 'defender' ? dStance : undefined;
+    if (stance) return { icon: STANCE_MAP[stance].icon, svg: true };
+    return null;
+  }
+
   protected hasRewards(): boolean {
     const r = this.rewards();
     return this.outcome() === 'attacker' && !!r && (!!r.spores || !!r.xp || !!r.levels || !!r.itemName || !!r.gearName);
+  }
+
+  // Built once on first read (when a win is shown) so the victory rain doesn't
+  // reshuffle on every change-detection tick.
+  private coinsCache: CoinParticle[] | null = null;
+  protected coinParticles(): CoinParticle[] {
+    if (!this.coinsCache && this.hasRewards()) {
+      this.coinsCache = buildCoinParticles(this.rewards()!);
+    }
+    return this.coinsCache ?? [];
   }
 
   protected outcomeLabel(): string {

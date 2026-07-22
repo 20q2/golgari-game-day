@@ -52,7 +52,7 @@ STARTERS = {
         'blurb': 'Glass-cannon insect. First Bite: always strikes first in round 1.',
     },
     'saproling': {
-        'name': 'Saproling', 'hp': 25, 'atk': 5, 'def': 5, 'spd': 6,
+        'name': 'Saproling', 'hp': 25, 'atk': 4, 'def': 5, 'spd': 6,
         'passive': 'drift',
         'blurb': 'Quick, expendable plant token — the swarm made flesh. Endless Ranks: +15% flee chance; bad mystery events reroll once.',
     },

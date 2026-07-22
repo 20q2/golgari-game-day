@@ -81,7 +81,13 @@
           </span>
         }
         @if (pop()?.side === 'attacker') {
-          <span class="dmg-pop" [class.heal]="pop()?.kind === 'heal'" [class.miss]="pop()?.kind === 'miss'">{{ pop()?.text }}</span>
+          <span class="dmg-pop" [class.heal]="pop()?.kind === 'heal'" [class.miss]="pop()?.kind === 'miss'">
+            @if (pop()?.icon; as ic) {
+              @if (pop()?.iconSvg) { <mat-icon class="pop-src" [svgIcon]="ic"></mat-icon> }
+              @else { <mat-icon class="pop-src">{{ ic }}</mat-icon> }
+            }
+            {{ pop()?.text }}
+          </span>
         }
       </div>
 
@@ -128,7 +134,13 @@
           </span>
         }
         @if (pop()?.side === 'defender') {
-          <span class="dmg-pop" [class.heal]="pop()?.kind === 'heal'" [class.miss]="pop()?.kind === 'miss'">{{ pop()?.text }}</span>
+          <span class="dmg-pop" [class.heal]="pop()?.kind === 'heal'" [class.miss]="pop()?.kind === 'miss'">
+            @if (pop()?.icon; as ic) {
+              @if (pop()?.iconSvg) { <mat-icon class="pop-src" [svgIcon]="ic"></mat-icon> }
+              @else { <mat-icon class="pop-src">{{ ic }}</mat-icon> }
+            }
+            {{ pop()?.text }}
+          </span>
         }
       </div>
 
@@ -140,10 +152,32 @@
         </div>
       }
 
+      @if (done() && hasRewards()) {
+        <div class="coin-rain" aria-hidden="true">
+          @for (c of coinParticles(); track $index) {
+            <img
+              class="coin"
+              src="undercity/icons/rot.png"
+              alt=""
+              [style.left.%]="c.left"
+              [style.animation-delay.s]="c.delay"
+              [style.animation-duration.s]="c.duration"
+              [style.--drift]="c.drift + 'px'"
+              [style.--spin]="c.rotate + 'deg'"
+              [style.--scale]="c.scale"
+            />
+          }
+        </div>
+      }
+
       @if (done()) {
         <div class="outcome-banner" [class.win]="outcome() === 'attacker'" [class.lose]="outcome() === 'defender'">
           {{ outcomeLabel() }}
         </div>
+      }
+
+      @if (fleeNotice()) {
+        <div class="flee-notice">Couldn't escape!</div>
       }
     </div>
 
@@ -263,10 +297,11 @@
           <button
             class="util-btn flee-btn"
             [disabled]="busy() || !hasActed()"
-            [title]="hasActed() ? 'Flee the fight' : 'Make a move before you can flee'"
+            [title]="hasActed() ? fleeTitle() : 'Make a move before you can flee'"
             (click)="doFlee()"
           >
             <mat-icon class="mi">directions_run</mat-icon> Flee
+            @if (fleeChance != null) { <span class="flee-odds">{{ fleeChance }}%</span> }
           </button>
         }
       </div>
@@ -304,7 +339,7 @@
       <div class="rewards">
         <span class="rewards-title">Spoils</span>
         <div class="reward-chips">
-          @if (r.spores) { <span class="reward-chip spores"><mat-icon class="mi">grain</mat-icon> +{{ r.spores }} Spores</span> }
+          @if (r.spores) { <span class="reward-chip spores"><img class="mi-coin" src="undercity/icons/rot.png" alt="Spores" /> +{{ r.spores }} Spores</span> }
           @if (r.xp) { <span class="reward-chip xp"><mat-icon class="mi">auto_awesome</mat-icon> +{{ r.xp }} XP</span> }
           @if (r.itemName) { <span class="reward-chip item"><mat-icon class="mi">{{ r.itemIcon ?? 'inventory_2' }}</mat-icon> {{ r.itemName }}</span> }
           @if (r.gearName) { <span class="reward-chip item"><mat-icon class="mi">{{ r.gearIcon ?? 'hardware' }}</mat-icon> {{ r.gearName }} — {{ r.gearStashed ? 'to stash' : 'stash full → materials' }}</span> }

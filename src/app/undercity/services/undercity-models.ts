@@ -282,6 +282,12 @@ export interface CombatEntry {
   rot?: boolean;
   swarm?: boolean;
   retaliation?: boolean;
+  /** Guard's decisive counter-blow (winner guarded). */
+  counter?: boolean;
+  /** The aggressor's hit soaked by a winning Guard. */
+  mitigated?: boolean;
+  /** Chip damage a Guard leaks through on a stalled exchange. */
+  guardChip?: boolean;
   rotApplied?: number;
   /** Legacy environmental "collapse" damage — no longer emitted by the engine
    *  (combat now escalates via each creature's own swings). Kept for playback of
@@ -313,7 +319,17 @@ export interface CombatFlee {
   fled: boolean;
   smokeSporeUsed?: boolean;
   round?: number;
-  telegraph?: Stance;
+  telegraph?: Stance | null;
+  /** On a FAILED flee the enemy takes its telegraphed action for free — the
+   *  server resolves a full round and returns its playback (unless the blow was
+   *  lethal, in which case the outcome arrives as a spaceEvent instead). */
+  entries?: CombatEntry[];
+  frenzyFrom?: number | null;
+  playerHp?: number;
+  npcHp?: number;
+  playerStatus?: BattleStatus;
+  npcStatus?: BattleStatus;
+  revealNext?: boolean;
 }
 
 export interface CombatPeek {
@@ -327,6 +343,8 @@ export interface BattleResume {
   round: number;
   telegraph: Stance | null;
   frenzyFrom?: number | null;
+  /** SPD-based escape % shown on the flee button (100 with a held Smoke Spore). */
+  fleeChance?: number;
   playerHp: number;
   playerStatus?: BattleStatus;
   npcStatus?: BattleStatus;
@@ -357,6 +375,11 @@ export interface TradeOffer {
   id: string;
   kind: 'consumable' | 'gear' | 'grimoire';
   icon: string;
+  /** Gear slot ('fang'|'carapace'|'charm') -> the 'uc-<slot>' svg icon. */
+  slot?: string;
+  /** Rarity key ('common'|'rare'|'legendary') for coloring + the badge. */
+  rarity?: string;
+  rarityLabel?: string;
   label: string;
   sub: string;
 }
@@ -512,6 +535,8 @@ export interface SpaceEvent {
   telegraph?: Stance;
   round?: number;
   frenzyFrom?: number | null;
+  /** SPD-based escape % shown on the flee button (100 with a held Smoke Spore). */
+  fleeChance?: number;
   playerStatus?: BattleStatus;
   npcStatus?: BattleStatus;
 }

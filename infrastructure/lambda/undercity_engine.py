@@ -426,6 +426,22 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
     return entries
 
 
+# The stance that BEATS a given one (aggress>feint>guard>aggress).
+_NEUTRALIZE = {'aggress': 'guard', 'guard': 'feint', 'feint': 'aggress'}
+
+
+def flee_punish(fleer, enemy, enemy_stance, rnd, rng, frenzy_from=None) -> list:
+    """A FAILED flee: the fleer is caught off guard and the enemy lands its
+    telegraphed action for free. Resolve one normal round with the enemy forced
+    to win the exchange, handing the fleer the stance that WOULD have beaten the
+    enemy — so the engine treats it as a clean loss with no punish-back, i.e. a
+    defenceless runner who simply eats the blow. The enemy's real stance still
+    drives the hit (a guarding foe still counters; an aggressor still swings big).
+    Mutates both combatants; returns the round's log entries."""
+    return resolve_round(fleer, enemy, _NEUTRALIZE[enemy_stance], enemy_stance,
+                         rnd, rng, force_winner='defender', frenzy_from=frenzy_from)
+
+
 def resolve_battle_rounds(attacker, defender, rng, pick_a, pick_d,
                           frenzy_from=data.FRENZY_START) -> dict:
     """
@@ -773,8 +789,7 @@ def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool, biome: str = None
 
     mult = 2 if has_doubling_rot else 1
     out = {'roll': roll, 'spores': 0, 'xp': 0, 'hpPct': 0, 'item': None,
-           'paint': False, 'hat': False, 'heal': False, 'buff': None,
-           'teleport': False, 'curse': False}
+           'heal': False, 'buff': None, 'teleport': False, 'curse': False}
     if roll == 1:
         if biome == 'garden':
             out.update(text='Composting spores overflow the mulch pile. +{} Spores.'.format(26 * mult),
@@ -787,9 +802,9 @@ def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool, biome: str = None
     elif roll == 2:
         out.update(text='A corpse blooms with insight. +10 XP.', xp=10)
     elif roll == 3:
-        out.update(text='A lost wardrobe crate! A paint drops.', paint=True)
+        out.update(text='Spores of memory bloom with a flash of insight. +10 XP.', xp=10)
     elif roll == 4:
-        out.update(text='The hat hermit takes a liking to you.', hat=True)
+        out.update(text='A cache of forgotten supplies — a free consumable.', item='random')
     elif roll == 5:
         out.update(text='A kindly witch mends you fully and cleanses hazards.', heal=True)
     elif roll == 6:
