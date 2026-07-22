@@ -2222,14 +2222,23 @@ def _resolve_space(table, sid, doc, node, prev):
                 'stock': _umori_barter_stock(table, sid, _uwin)}
 
     if ntype == 'loot':
-        # Gate the reward behind a Flow puzzle: stash the pick + masked view on
-        # the doc (survives a refresh) and defer the roll to _solve_loot_puzzle.
-        # Only pick puzzles with at least one rock — a clear (rockless) board
-        # traces trivially and feels like an empty reward.
+        # Gate the reward behind a Flow puzzle and scatter reward symbols on it:
+        # roll each category's PRESENCE now (spores always, item ~10%, gear rare),
+        # place them, and stash the placement. The VALUE of whichever reward the
+        # player traces to first is rolled later in _solve_loot_puzzle. Only pick
+        # puzzles with at least one rock — a clear board traces trivially.
         pid = _rng.choice([p['id'] for p in data.FLOW_PUZZLES if p['rocks']])
-        doc['pendingLoot'] = {'puzzleId': pid, 'view': _flow_puzzle_view(pid)}
-        return {'type': 'loot_puzzle', 'node': node,
-                'puzzle': doc['pendingLoot']['view']}
+        puzzle = data.flow_puzzle(pid)
+        kinds = ['spores']
+        if _rng.random() < 0.10:
+            kinds.append('item')
+        if _rng.random() < data.GEAR_DROP['loot'][0]:
+            kinds.append('gear')
+        rewards = _place_loot_rewards(puzzle, kinds, _rng)
+        view = _flow_puzzle_view(pid)
+        view['rewards'] = rewards
+        doc['pendingLoot'] = {'puzzleId': pid, 'view': view, 'rewards': rewards}
+        return {'type': 'loot_puzzle', 'node': node, 'puzzle': view}
 
     if ntype == 'wild':
         return _wild_battle(table, sid, doc, region=region)

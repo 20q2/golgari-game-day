@@ -2562,3 +2562,24 @@ def test_award_gear_rolls_a_drop(monkeypatch):
     doc = {'userId': 'u', 'spores': 0, 'gear': {}}
     ev = db._award_gear(doc)
     assert ev['type'] == 'loot' and ev['gear']['slot'] == 'fang'
+
+
+def test_loot_landing_always_has_spores_reward(table, monkeypatch):
+    node = _first_loot_node()
+    sid, doc = _player_at(table, node, spores=0)
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)   # no item, no gear
+    ev = db._resolve_space(table, sid, doc, node, None)
+    assert ev['type'] == 'loot_puzzle'
+    kinds = [r['kind'] for r in ev['puzzle']['rewards']]
+    assert kinds == ['spores']
+    assert doc['spores'] == 0                              # not credited yet
+    assert doc['pendingLoot']['rewards'] == ev['puzzle']['rewards']
+
+
+def test_loot_landing_can_roll_all_three(table, monkeypatch):
+    node = _first_loot_node()
+    sid, doc = _player_at(table, node, spores=0)
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)    # item + gear both fire
+    ev = db._resolve_space(table, sid, doc, node, None)
+    kinds = {r['kind'] for r in ev['puzzle']['rewards']}
+    assert kinds == {'spores', 'item', 'gear'}
