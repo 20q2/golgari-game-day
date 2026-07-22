@@ -17,6 +17,8 @@ DEBUG = False
 ROLL_CAP = 15
 JOIN_ROLLS = 3
 BRAVERY_BONUS_ROLLS = 1      # extra starting rolls for hatching a random creature
+SHINY_HATCH_CHANCE = 0.05    # chance a hatched creature is shiny — purely cosmetic
+                             # (a gold sparkle over its sprite + a hatch-log call-out)
 ROLL_REGEN_MINUTES = 30      # regen tick length in minutes, up to ROLL_CAP
 ROLLS_PER_REGEN = 3          # rolls banked each tick (3 rolls every 30 minutes)
 CLAIM_FINISHED_ROLLS = 2
@@ -164,6 +166,24 @@ MARROWBORN_MAXHP = 8   # Ossuary Fields (bone) home: flat +Max HP, applied at ha
 
 # ── Renown shop (pre-spawn) ──────────────────────────────────────────────────
 SHOP_START_RENOWN = 50       # seed for a brand-new player: one common hat OR one plain color
+
+# ── World Event ("The Great Beast") ──────────────────────────────────────────
+# A season-shared co-op boss that spawns in the wilderness once the first sigil
+# lair is cleared. Players chip a shared HP pool in bounded skirmishes; on death
+# every contributor is paid by damage bracket. Mirror in
+# src/app/undercity/data/world-event.ts when tuned.
+WORLD_EVENT_HP          = 200   # shared pool; sized so it takes many skirmishes
+WORLD_EVENT_ROUND_CAP   = 6     # a single skirmish auto-ends after this many rounds
+WORLD_EVENT_MAJOR_SHARE = 0.25  # damage-share threshold for the Major bracket
+WORLD_EVENT_MINOR_SHARE = 0.10  # damage-share threshold for the Minor bracket
+
+# Per-bracket payout: (spores, renown). Vanquisher = single top damage dealer.
+WORLD_EVENT_REWARDS = {
+    'vanquisher':  {'spores': 120, 'renown': 5},
+    'major':       {'spores': 80,  'renown': 3},
+    'minor':       {'spores': 45,  'renown': 2},
+    'participant': {'spores': 20,  'renown': 0},
+}
 
 # ── Procedural dungeons ──────────────────────────────────────────────────────
 # When True, each night's five dungeon pockets are regenerated from a per-season
