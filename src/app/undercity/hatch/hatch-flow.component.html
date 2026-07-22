@@ -240,7 +240,14 @@
       <div class="stat-sheet">
         @for (row of statRows(form); track row.key) {
           <div class="stat-row">
-            <span class="stat-label">{{ row.label }}</span>
+            <span class="stat-label">
+              @if (row.icon) {
+                <mat-icon class="mi stat-icon" [class]="'k-' + row.key">{{ row.icon }}</mat-icon>
+              } @else if (row.svg) {
+                <mat-icon class="mi stat-icon" [class]="'k-' + row.key" [svgIcon]="row.svg"></mat-icon>
+              }
+              <span class="stat-label-text">{{ row.label }}</span>
+            </span>
             <span class="stat-track">
               <span
                 class="stat-fill"

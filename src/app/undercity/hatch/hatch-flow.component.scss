@@ -567,16 +567,37 @@
 }
 .stat-row {
   display: grid;
-  grid-template-columns: 2.6rem 1fr 2rem;
+  grid-template-columns: 3.8rem 1fr 2rem;
   align-items: center;
   gap: 10px;
 }
 .stat-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   color: #9aa79a;
-  text-align: right;
+}
+.stat-icon {
+  font-size: 1.05rem;
+  width: 1.05rem;
+  height: 1.05rem;
+
+  &.k-hp {
+    color: #99d98c;
+  }
+  &.k-atk {
+    color: #f0a05a;
+  }
+  &.k-def {
+    color: #7fb0e0;
+  }
+  &.k-spd {
+    color: #f0d060;
+  }
 }
 .stat-track {
   height: 9px;

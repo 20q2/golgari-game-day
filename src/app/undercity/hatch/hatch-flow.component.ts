@@ -204,17 +204,20 @@ export class HatchFlowComponent {
    *  bars read as relative strengths rather than all pinning to full. */
   private static readonly STAT_MAX: Record<string, number> = { hp: 40, atk: 10, def: 10, spd: 10 };
 
-  /** Stat-sheet rows for the showcase: label, value, and fill percent. */
-  statRows(form: FormInfo): { key: string; label: string; value: number; pct: number }[] {
+  /** Stat-sheet rows for the showcase: icon, label, value, and fill percent.
+   *  `icon` is a ligature mat-icon, `svg` a registered [svgIcon] (uc-* set). */
+  statRows(
+    form: FormInfo,
+  ): { key: string; label: string; icon?: string; svg?: string; value: number; pct: number }[] {
     const s = form.stats;
     if (!s) return [];
     const pct = (k: string, v: number) =>
       Math.min(100, Math.round((v / HatchFlowComponent.STAT_MAX[k]) * 100));
     return [
-      { key: 'hp', label: 'HP', value: s.hp, pct: pct('hp', s.hp) },
-      { key: 'atk', label: 'ATK', value: s.atk, pct: pct('atk', s.atk) },
-      { key: 'def', label: 'DEF', value: s.def, pct: pct('def', s.def) },
-      { key: 'spd', label: 'SPD', value: s.spd, pct: pct('spd', s.spd) },
+      { key: 'hp', label: 'HP', icon: 'favorite', value: s.hp, pct: pct('hp', s.hp) },
+      { key: 'atk', label: 'ATK', svg: 'uc-sword', value: s.atk, pct: pct('atk', s.atk) },
+      { key: 'def', label: 'DEF', svg: 'uc-shield', value: s.def, pct: pct('def', s.def) },
+      { key: 'spd', label: 'SPD', svg: 'uc-bolt', value: s.spd, pct: pct('spd', s.spd) },
     ];
   }
 
