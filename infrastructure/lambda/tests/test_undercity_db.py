@@ -2536,3 +2536,29 @@ def test_place_loot_rewards_gear_not_adjacent_to_start():
             puzzle, ['spores', 'gear'], random.Random(seed))
         gear = next(tuple(r['cell']) for r in rewards if r['kind'] == 'gear')
         assert abs(gear[0] - start[0]) + abs(gear[1] - start[1]) != 1
+
+
+def test_award_spores_credits_forage_amount(monkeypatch):
+    monkeypatch.setattr(db._rng, 'choice', lambda seq: seq[0])   # picks 8
+    doc = {'userId': 'u', 'spores': 0}
+    ev = db._award_spores(doc)
+    assert ev['type'] == 'loot' and ev['spores'] == 8
+    assert doc['spores'] == 8
+
+
+def test_award_item_puts_consumable_in_bag(monkeypatch):
+    monkeypatch.setattr(db._rng, 'choice',
+                        lambda seq: list(data.CONSUMABLES.keys())[0])
+    doc = {'userId': 'u', 'spores': 0, 'bag': []}
+    ev = db._award_item(doc)
+    assert ev['type'] == 'loot' and ev['item'] == list(data.CONSUMABLES.keys())[0]
+    assert doc['bag'] == [ev['item']]
+
+
+def test_award_gear_rolls_a_drop(monkeypatch):
+    monkeypatch.setattr(db._rng, 'choice',
+                        lambda seq: 'fang' if 'fang' in seq else seq[0])
+    monkeypatch.setattr(db._rng, 'choices', lambda seq, weights=None, k=1: [seq[0]])
+    doc = {'userId': 'u', 'spores': 0, 'gear': {}}
+    ev = db._award_gear(doc)
+    assert ev['type'] == 'loot' and ev['gear']['slot'] == 'fang'

@@ -2146,27 +2146,39 @@ def _scrounge_consolation(doc, rec):
     return amount
 
 
-def _award_loot(doc):
-    """Roll and apply a loot-space reward, returning the {type:'loot',...} event.
-    Relocated from the old _resolve_space loot branch — rolls at claim time now,
-    once the player solves the Flow puzzle gating the loot."""
-    chance, tiers = data.GEAR_DROP['loot']
-    if _rng.random() < chance:
-        drop = _roll_gear_drop(doc, tiers)
-        if drop:
-            return {'type': 'loot',
-                    'text': f'You unearth a piece of gear — {_drop_phrase(drop)}!',
-                    'gear': drop}
-    if _rng.random() < 0.10:
-        item = _give_consumable(doc)
-        if item:
-            return {'type': 'loot', 'text': f'You unearth a {data.CONSUMABLES[item]["name"]}!',
-                    'item': item}
+def _award_spores(doc):
+    """Forage-spore loot reward (the always-present floor)."""
     amount = _scrounge(doc, _rng.choice([8, 8, 9, 9, 10, 10, 11, 12, 13, 15]))
     if doc.get('homeBiome') == 'garden':
         amount += 2  # Composter hatch perk
     doc['spores'] = doc.get('spores', 0) + amount
-    return {'type': 'loot', 'text': f'You forage {amount} Spores from the rot.', 'spores': amount}
+    return {'type': 'loot', 'text': f'You forage {amount} Spores from the rot.',
+            'spores': amount}
+
+
+def _award_item(doc):
+    """Consumable loot reward; a full bag salvages to Spores (via _give_consumable)."""
+    item = _give_consumable(doc)
+    if item:
+        return {'type': 'loot',
+                'text': f'You unearth a {data.CONSUMABLES[item]["name"]}!',
+                'item': item}
+    # Bag was full — _give_consumable already credited 5 Spores.
+    return {'type': 'loot', 'text': 'Your bag was full — you salvage 5 Spores.',
+            'spores': 5}
+
+
+def _award_gear(doc):
+    """Gear loot reward; falls back to Spores if a drop somehow fails to roll."""
+    drop = _roll_gear_drop(doc, data.GEAR_DROP['loot'][1])
+    if drop:
+        return {'type': 'loot',
+                'text': f'You unearth a piece of gear — {_drop_phrase(drop)}!',
+                'gear': drop}
+    return _award_spores(doc)
+
+
+_LOOT_AWARDERS = {'spores': _award_spores, 'item': _award_item, 'gear': _award_gear}
 
 
 def _resolve_space(table, sid, doc, node, prev):
