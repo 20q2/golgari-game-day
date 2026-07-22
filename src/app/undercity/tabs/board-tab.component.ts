@@ -189,6 +189,17 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly gambleResult = signal<string | null>(null);
   protected readonly rolling = signal(false);
   protected readonly rolledValue = signal<number | null>(null);
+
+  /** First-turn coach-mark: points a new player at the Roll button until they
+   *  take their first roll. Persisted per device so it never returns. */
+  private static readonly COACH_KEY = 'uc.coachSeen';
+  protected readonly showCoach = signal(!localStorage.getItem(BoardTabComponent.COACH_KEY));
+  protected dismissCoach(): void {
+    if (!this.showCoach()) return;
+    localStorage.setItem(BoardTabComponent.COACH_KEY, '1');
+    this.showCoach.set(false);
+  }
+
   /** Fleetfoot (SPD-5): the last roll came up 1 and may be rerolled once. */
   protected readonly canReroll = signal(false);
   protected readonly gambleRolling = signal(false);
@@ -820,6 +831,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   async roll(picked?: number, opts?: { blink?: boolean; reroll?: boolean }): Promise<void> {
+    this.dismissCoach();
     if (this.busy()) return;
     this.showRollPicker.set(false);
     this.canReroll.set(false);
@@ -1037,9 +1049,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   private stepChoices(step: StepState): string[] {
     const dests = this.store.you()?.pendingMove?.dests ?? [];
-    const closed = this.map.nodes
-      .filter((n) => n.type === 'barrier' && !this.store.barriersOpen().includes(n.id))
-      .map((n) => n.id);
+    // Include the post-boss escape ladders (degree-1 dead-end spurs), not just
+    // sealed barriers — both are bonk stops you march up to and halt on, so an
+    // exact-count landing isn't required. Server dests already gate unclaimed
+    // ones out. Without this the escape ladder is only tappable on the rare
+    // roll that lands on it exactly.
+    const closed = this.closedBarrierIds();
     return legalSteps(this.map, stepPos(step), stepPrev(step), step.left, dests, closed);
   }
 
@@ -1519,6 +1534,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         icon: NPC_ICONS[ev.npc!.id] ?? 'bug_report',
         startHp: ev.npc!.hp,
         maxHp: ev.npc!.maxHp ?? ev.npc!.hp,
+        level: ev.npc!.level,
       },
       personality: ev.npc!.personality ?? 'balanced',
       telegraph: ev.telegraph ?? null,
@@ -1562,6 +1578,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         icon: NPC_ICONS[pb.npc.id ?? ''] ?? 'bug_report',
         startHp: pb.npc.hp,
         maxHp: pb.npc.maxHp,
+        level: pb.npc.level,
       },
       personality: pb.npc.personality ?? 'balanced',
       telegraph: pb.telegraph,

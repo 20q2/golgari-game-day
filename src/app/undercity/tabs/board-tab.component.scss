@@ -31,6 +31,59 @@
   white-space: nowrap;
 }
 
+// First-turn coach-mark: sits on its own row under the Roll button.
+.coach-pill {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.16);
+  border: 1px solid rgba(251, 191, 36, 0.6);
+  color: #fbe6a8;
+  font-size: 0.82rem;
+  animation: coach-pulse 1.8s ease-in-out infinite;
+
+  strong {
+    color: #fbbf24;
+  }
+
+  .coach-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.7;
+
+    .mi {
+      font-size: 1rem;
+      height: 1rem;
+      width: 1rem;
+    }
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+@keyframes coach-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(251, 191, 36, 0);
+  }
+}
+
 .roll-picker {
   flex-basis: 100%;
   display: flex;

@@ -15,6 +15,14 @@
         <img class="die-icon" src="undercity/icons/die.png" alt="" />
         Roll ({{ debugMode() ? '∞' : rollsBanked() }})
       </button>
+      @if (showCoach()) {
+        <div class="coach-pill" role="status">
+          <span>New here? Tap <strong>Roll</strong> to take your first turn.</span>
+          <button class="coach-close" (click)="dismissCoach()" aria-label="Dismiss">
+            <mat-icon class="mi">close</mat-icon>
+          </button>
+        </div>
+      }
       @if (canPickFace()) {
         <button class="uc-btn pick-btn" [disabled]="busy()" (click)="showRollPicker.set(!showRollPicker())">
           <mat-icon class="mi">casino</mat-icon> {{ blinkAllowed() ? 'Blink' : 'Pick' }}
