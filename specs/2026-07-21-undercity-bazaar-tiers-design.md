@@ -99,8 +99,16 @@ Consumables and grimoires blocks are unchanged. Grimoires remain
   `board-terrain.ts` (`n.type === 'shop'`) and `board-tab.component.ts`
   (`ev.type === 'shop'`) render it as a bazaar (previously an inert `mystery`
   decal). The trading post at `isl_trade` is unaffected.
-- **Island keeper flavor:** give the island bazaar its own keeper art/quote
-  (extend/branch `BAZAAR_KEEPERS`) so it reads as the special endgame vendor.
+- **Keeper flavor** (`board-tab.component.ts`):
+  - Biome bazaars rotate between **keeper 1** (`shopkeeper1.png`, turnips) and
+    **keeper 2** (`shopkeeper2.png`, "the stock improved") only. The Witch drops
+    out of the biome rotation.
+  - The island bazaar (`isl_bg1`) always shows **the Witch, keeper 4**
+    (`shopkeeper4.png`, "Baba has cauldrons…") — its fixed endgame vendor.
+  - `bazaarKeeper()` becomes node-aware: return the Witch when the current bazaar
+    is an island node, otherwise rotate over the biome pair by window index.
+  - `tradingKeeper` (`shopkeeper3.png`, the ooze) is untouched — that persona is
+    Umori, reserved for the future wandering trading post.
 - **Black-market badge:** in the shop modal, mark any gear line with
   `blackMarket` (badge/label) so the rare biome T3 reads as an event.
 - No tier data to mirror — `src/app/undercity/data/items.ts` already carries
