@@ -69,6 +69,15 @@ export class HatchFlowComponent {
   /** Chosen creature, held while the player then picks a home biome. */
   protected readonly chosenStarter = signal<FormInfo | null>(null);
 
+  /** Step 1a: which creature's showcase is open (null = browse the lineup). */
+  protected readonly showcaseId = signal<string | null>(null);
+  /** True while the open showcase was reached via Bravery (a random roll). */
+  protected readonly braveryReveal = signal(false);
+  /** The creature currently showcased, resolved from `showcaseId`. */
+  protected readonly showcasedForm = computed(
+    () => this.starters.find((s) => s.id === this.showcaseId()) ?? null,
+  );
+
   /** True when the creature was rolled by Bravery — grants a bonus starting roll. */
   protected readonly bravery = signal(false);
 
@@ -180,25 +189,76 @@ export class HatchFlowComponent {
       .join(' / ');
   }
 
+  /** One-word archetype shown under each creature in the browse lineup. */
+  private static readonly ARCHETYPES: Record<string, string> = {
+    pest: 'Balanced',
+    kraul: 'Glass Cannon',
+    saproling: 'Tank',
+    zombie: 'Horde',
+  };
+  archetype(form: FormInfo): string {
+    return HatchFlowComponent.ARCHETYPES[form.id] ?? 'Balanced';
+  }
+
+  /** Per-stat bar scales, chosen for headroom above the starter spread so the
+   *  bars read as relative strengths rather than all pinning to full. */
+  private static readonly STAT_MAX: Record<string, number> = { hp: 40, atk: 10, def: 10, spd: 10 };
+
+  /** Stat-sheet rows for the showcase: label, value, and fill percent. */
+  statRows(form: FormInfo): { key: string; label: string; value: number; pct: number }[] {
+    const s = form.stats;
+    if (!s) return [];
+    const pct = (k: string, v: number) =>
+      Math.min(100, Math.round((v / HatchFlowComponent.STAT_MAX[k]) * 100));
+    return [
+      { key: 'hp', label: 'HP', value: s.hp, pct: pct('hp', s.hp) },
+      { key: 'atk', label: 'ATK', value: s.atk, pct: pct('atk', s.atk) },
+      { key: 'def', label: 'DEF', value: s.def, pct: pct('def', s.def) },
+      { key: 'spd', label: 'SPD', value: s.spd, pct: pct('spd', s.spd) },
+    ];
+  }
+
   paintName(hue: number): string {
     return PAINTS.find((p) => p.hue === hue)?.name ?? PAINT_MAP['forest'].name;
   }
 
-  /** Step 1: pick the creature, then advance to the home-biome choice. */
-  chooseStarter(starter: FormInfo): void {
-    this.bravery.set(false);
-    this.chosenStarter.set(starter);
+  /** Step 1a: open a creature's showcase from the lineup. */
+  openShowcase(starter: FormInfo): void {
+    this.braveryReveal.set(false);
+    this.showcaseId.set(starter.id);
   }
 
   /**
-   * Step 1 (Bravery): let fate choose the creature and bank a bonus starting
-   * roll for the nerve. The pick is revealed so naming/biome/shop proceed as
-   * normal; the bonus roll is granted server-side from the `bravery` flag.
+   * Step 1a (Bravery): let fate roll a creature and reveal it in the showcase.
+   * The bonus starting roll is granted server-side from the `bravery` flag,
+   * which is committed alongside the pick in `confirmShowcase`.
    */
-  chooseBravery(): void {
+  openBravery(): void {
     const pick = this.starters[Math.floor(Math.random() * this.starters.length)];
-    this.bravery.set(true);
-    this.chosenStarter.set(pick);
+    this.braveryReveal.set(true);
+    this.showcaseId.set(pick.id);
+  }
+
+  /** Close the showcase and return to the lineup. */
+  backToBrowse(): void {
+    this.showcaseId.set(null);
+    this.braveryReveal.set(false);
+  }
+
+  /** Step 1b: commit the showcased creature, then advance to the biome choice. */
+  confirmShowcase(): void {
+    const form = this.showcasedForm();
+    if (!form) return;
+    this.bravery.set(this.braveryReveal());
+    this.chosenStarter.set(form);
+  }
+
+  /** Back out of biome selection all the way to the creature lineup. */
+  resetCreatureChoice(): void {
+    this.chosenStarter.set(null);
+    this.showcaseId.set(null);
+    this.braveryReveal.set(false);
+    this.bravery.set(false);
   }
 
   /** Step 2: pick a home biome, then advance to naming. */

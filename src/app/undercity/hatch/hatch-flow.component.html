@@ -201,65 +201,104 @@
           </button>
         }
       </div>
-      <button class="biome-back" (click)="chosenStarter.set(null)" [disabled]="joining()">
+      <button class="biome-back" (click)="resetCreatureChoice()" [disabled]="joining()">
         ← pick a different creature
       </button>
     }
   } @else {
+    @if (showcasedForm(); as form) {
+    <!-- Step 1b: full-screen creature showcase -->
+    <div class="showcase" [class.from-bravery]="braveryReveal()">
+      <button class="showcase-back" (click)="backToBrowse()" [disabled]="joining()">
+        <mat-icon class="mi">arrow_back</mat-icon> back
+      </button>
+
+      @if (braveryReveal()) {
+        <p class="fate-banner">
+          <mat-icon class="mi fate-dice">casino</mat-icon>
+          Fate chose you a <strong>{{ form.name }}</strong>!
+        </p>
+      }
+
+      <div class="showcase-hero">
+        @if (spriteUrl(form); as url) {
+          <img class="showcase-sprite" [src]="url" [alt]="form.name" />
+        }
+      </div>
+
+      <h1 class="showcase-name">{{ form.name }}</h1>
+      <p class="showcase-archetype">{{ archetype(form) }}</p>
+
+      @if (braveryReveal()) {
+        <p class="bravery-bonus">
+          <mat-icon class="mi">casino</mat-icon> +1 bonus roll for your nerve
+        </p>
+      }
+
+      <p class="showcase-blurb">{{ form.blurb }}</p>
+
+      <div class="stat-sheet">
+        @for (row of statRows(form); track row.key) {
+          <div class="stat-row">
+            <span class="stat-label">{{ row.label }}</span>
+            <span class="stat-track">
+              <span
+                class="stat-fill"
+                [class]="'k-' + row.key"
+                [style.--pct]="row.pct + '%'"
+              ></span>
+            </span>
+            <span class="stat-val">{{ row.value }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="ability-card">
+        <span class="ability-head">
+          <mat-icon class="mi">auto_awesome</mat-icon> {{ form.passiveName }}
+        </span>
+        <span class="ability-desc">{{ passiveBlurbs[form.passive] }}</span>
+      </div>
+
+      <p class="showcase-evo">Evolves toward: {{ evolutionPreview(form) }}</p>
+
+      <button class="hatch-btn" (click)="confirmShowcase()" [disabled]="joining()">
+        {{ braveryReveal() ? 'Spawn this one →' : 'Choose ' + form.name + ' →' }}
+      </button>
+    </div>
+  } @else {
+    <!-- Step 1a: browse the lineup -->
     <h1>It's hatching! Choose your creature</h1>
-    <p class="choose-hint">This choice shapes your whole night — no takebacks.</p>
-    <div class="starter-grid">
-      @if (firstHatch()) {
+    <p class="choose-hint">Tap a creature to see its stats and ability.</p>
+    <div class="starter-grid lineup">
+      @for (starter of starters; track starter.id) {
         <button
-          class="starter-card bravery-card recommended"
-          (click)="chooseBravery()"
+          class="starter-card lineup-card"
+          (click)="openShowcase(starter)"
           [disabled]="joining()"
         >
-          <span class="starter-badge">First time? Start here</span>
-          <mat-icon class="bravery-icon">casino</mat-icon>
-          <span class="starter-name">Bravery</span>
-          <span class="starter-blurb"
-            >Not sure? Let the swarm choose your hatchling — and take a bonus roll for the
-            nerve.</span
-          >
-          <span class="starter-passive">
-            <strong>Reward:</strong> a random creature and +1 roll the moment you spawn.
-          </span>
-        </button>
-      }
-      @for (starter of starters; track starter.id) {
-        <button class="starter-card" (click)="chooseStarter(starter)" [disabled]="joining()">
           @if (spriteUrl(starter); as url) {
             <img class="starter-sprite" [src]="url" [alt]="starter.name" />
           }
           <span class="starter-name">{{ starter.name }}</span>
-          <span class="starter-blurb">{{ starter.blurb }}</span>
-          <span class="starter-stats">
-            <mat-icon class="mi hp-mi">favorite</mat-icon>{{ starter.stats?.hp }}
-            <mat-icon class="mi" svgIcon="uc-sword"></mat-icon>{{ starter.stats?.atk }}
-            <mat-icon class="mi" svgIcon="uc-shield"></mat-icon>{{ starter.stats?.def }}
-            <mat-icon class="mi" svgIcon="uc-bolt"></mat-icon>{{ starter.stats?.spd }}
-          </span>
-          <span class="starter-passive">
-            <strong>{{ starter.passiveName }}:</strong> {{ passiveBlurbs[starter.passive] }}
-          </span>
-          <span class="starter-evo">Evolves toward: {{ evolutionPreview(starter) }}</span>
+          <span class="starter-tag">{{ archetype(starter) }}</span>
         </button>
       }
-      @if (!firstHatch()) {
-        <button class="starter-card bravery-card" (click)="chooseBravery()" [disabled]="joining()">
-          <mat-icon class="bravery-icon">casino</mat-icon>
-          <span class="starter-name">Bravery</span>
-          <span class="starter-blurb"
-            >Not sure? Let the swarm choose your hatchling — and take a bonus roll for the
-            nerve.</span
-          >
-          <span class="starter-passive">
-            <strong>Reward:</strong> a random creature and +1 roll the moment you spawn.
-          </span>
-        </button>
-      }
+      <button
+        class="starter-card lineup-card bravery-card"
+        [class.recommended]="firstHatch()"
+        (click)="openBravery()"
+        [disabled]="joining()"
+      >
+        @if (firstHatch()) {
+          <span class="starter-badge">First time? Start here</span>
+        }
+        <mat-icon class="bravery-icon">casino</mat-icon>
+        <span class="starter-name">Bravery</span>
+        <span class="starter-tag">Let fate decide</span>
+      </button>
     </div>
+    }
   }
 </div>
 }
