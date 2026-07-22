@@ -2235,11 +2235,6 @@ def _resolve_space(table, sid, doc, node, prev):
     if ntype == 'shop':
         return {'type': 'shop', 'text': 'The Rot-Farm Bazaar creaks open.'}
 
-    if ntype == 'trading_post':
-        return {'type': 'trading_post', 'node': node,
-                'text': 'A crooked stall of swapped oddments. Leave one, take one.',
-                'stock': _trading_post_stock(table, sid, node)}
-
     if ntype == 'excavation':
         doc['excavationDigsLeft'] = data.EXCAVATION_DIGS_PER_VISIT
         # Materialize the shared site on arrival so the buried finds show through
@@ -3798,18 +3793,20 @@ def _item_name(item_id):
 
 
 def _trade(table, sid, doc, payload):
-    """Swap one owned item (consumable, equipped gear, or an owned grimoire)
-    for one of the post's 3 stock items. The item you leave becomes the next
-    visitor's stock, tagged with your name."""
-    nodes = _season_map(table, sid)
+    """Swap one owned gear piece or grimoire for one of Umori's stock items. The
+    item you leave becomes the next visitor's stock (this window), tagged with
+    your name. Only valid while standing on Umori's current wandering node."""
     node = doc.get('position')
-    if nodes.get(node, {}).get('type') != 'trading_post':
-        return _err('You are not at a trading post.', 409)
+    win = _umori_window()
+    if node != _umori_node(win):
+        return _err('Umori is not here.', 409)
     give = payload.get('give')
     take_index = payload.get('takeIndex')
     give_kind = _item_kind(give)
     if give_kind is None:
         return _err('Unknown item.')
+    if give_kind == 'consumable':
+        return _err('Umori only trades in gear and grimoires.', 409)
 
     bag = doc.get('bag') or []
     gear = doc.get('gear') or {}
@@ -3822,7 +3819,7 @@ def _trade(table, sid, doc, payload):
     if give_kind == 'grimoire' and give not in grimoires:
         return _err("You don't own that grimoire.", 409)
 
-    stock = _trading_post_stock(table, sid, node)
+    stock = _umori_barter_stock(table, sid, win)
     if not isinstance(take_index, int) or not (0 <= take_index < len(stock)):
         return _err('Pick something to take.', 409)
 
@@ -3866,7 +3863,8 @@ def _trade(table, sid, doc, payload):
     conflict = _save_or_conflict(table, doc)  # guard the player write first
     if conflict:
         return conflict
-    _save_trading_post(table, sid, node, stock)  # then the shared stock
+    table.put_item(Item={'pk': _season_pk(sid),      # then the shared window stock
+                         'sk': f'POST#UMORI#{win}', 'stock': stock})
 
     give_name = _item_name(give)
     take_name = _item_name(taken['item'])

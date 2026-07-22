@@ -57,10 +57,13 @@ def test_space_type_distribution():
     # v14 (2026-07-21 island bazaar): isl_bg1 retyped mystery->shop to add the
     # central-island endgame bazaar (shop 5->6, mystery 12->11). See
     # specs/2026-07-21-undercity-bazaar-tiers-design.md.
+    # v15 (2026-07-21 Umori): isl_trade retyped trading_post->mystery; the trading
+    # post is now the wandering Umori (no static node). mystery 11->12, trading_post
+    # removed. See specs/2026-07-21-undercity-umori-wandering-post-design.md.
     assert counts == {
-        'gate': 5, 'loot': 44, 'wild': 66, 'elite': 28, 'shop': 6, 'mystery': 11,
+        'gate': 5, 'loot': 44, 'wild': 66, 'elite': 28, 'shop': 6, 'mystery': 12,
         'hazard': 45, 'warp': 5, 'shrine': 1, 'ladder': 15, 'lair': 6,
-        'ossuary': 1, 'boss': 1, 'barrier': 2, 'vault': 1, 'trading_post': 1,
+        'ossuary': 1, 'boss': 1, 'barrier': 2, 'vault': 1,
         'excavation': 4, 'cache': 6, 'crystal_vein': 4, 'vault_lock': 1,
         'rest': 5, 'trove': 5, 'tunnel': 10,
     }

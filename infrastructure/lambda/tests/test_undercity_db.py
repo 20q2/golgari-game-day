@@ -823,163 +823,91 @@ def test_snare_plant_and_trigger(table):
     assert pile['pile'] == 10 and not pile.get('ownerId')
 
 
-def test_trading_post_pre_seed_and_swap(table):
+def _stand_on_umori(table):
+    """Join and move the player onto the current Umori node. Returns (sid, doc,
+    node); doc is re-fetched so its optimistic `ver` is current for a later put."""
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'isl_trade'
-    doc['bag'] = ['snare']
+    node = db._umori_node(db._umori_window())
+    doc['position'] = node
     db._put_player(table, doc)
+    return sid, db._get_player(table, sid, 'user-alex'), node
 
-    # Landing shows the 3 house items, all tagged "the Swarm".
-    ev = db._resolve_space(table, sid, doc, 'isl_trade', 'isl_warp')
-    assert ev['type'] == 'trading_post'
-    assert [s['item'] for s in ev['stock']] == data.TRADING_POST_SEED
+
+def _t3_fang():
+    return next(g for g, v in data.GEAR.items() if v['tier'] == 3 and v['slot'] == 'fang')
+
+
+def _t3_tome():
+    return next(g for g, v in data.GRIMOIRES.items() if v['tier'] == 3)
+
+
+def test_umori_pre_seeds_t3_stock(table):
+    sid, doc, node = _stand_on_umori(table)
+    ev = db._resolve_space(table, sid, doc, node, 'somewhere')
+    assert ev['type'] == 'trading_post' and ev['umori'] is True
     assert all(s['foundBy'] == 'the Swarm' for s in ev['stock'])
-
-    # Swap our Snare for stock slot 0 (healing_moss).
-    status, resp = act(table, 'trade', give='snare', takeIndex=0)
-    assert status == 200
-    you = resp['you']
-    assert 'snare' not in you['bag'] and 'healing_moss' in you['bag']
-    assert len(you['bag']) == 1                              # net bag size unchanged
-    stock = resp['stock']
-    assert len(stock) == data.TRADING_POST_SIZE              # stock stays at 3
-    assert stock[0] == {'item': 'snare', 'foundBy': 'Alex'}  # tagged with our name
-
-    # A later visitor sees what we left behind.
-    ev2 = db._resolve_space(table, sid, doc, 'isl_trade', 'isl_warp')
-    assert ev2['stock'][0] == {'item': 'snare', 'foundBy': 'Alex'}
+    for s in ev['stock']:
+        defn = data.GEAR.get(s['item']) or data.GRIMOIRES[s['item']]
+        assert defn['tier'] == 3
 
 
-def test_trading_post_swap_gear(table):
-    act(table, 'join', starter='pest')
-    sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'isl_trade'
+def test_umori_swap_gear(table):
+    sid, doc, node = _stand_on_umori(table)
+    win = db._umori_window()
+    take = _t3_fang()
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'POST#UMORI#{win}',
+                         'stock': [{'item': take, 'foundBy': 'the Swarm'}]})
     doc['gear'] = {'fang': 'rusted_fang'}
     db._put_player(table, doc)
-
-    # Seed the post with a gear item left behind by an earlier visitor.
-    db._save_trading_post(table, sid, 'isl_trade',
-                           [{'item': 'kraul_barb', 'foundBy': 'Sam'},
-                            {'item': 'healing_moss', 'foundBy': 'the Swarm'},
-                            {'item': 'loaded_die', 'foundBy': 'the Swarm'}])
-
     status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
     assert status == 200
-    you = resp['you']
-    assert you['gear']['fang'] == 'kraul_barb'          # new piece equipped
-    stock = resp['stock']
-    assert stock[0] == {'item': 'rusted_fang', 'foundBy': 'Alex'}  # old piece left behind
+    assert resp['you']['gear']['fang'] == take                 # T3 fang equipped
+    assert resp['stock'][0] == {'item': 'rusted_fang', 'foundBy': 'Alex'}  # old piece left
 
 
-def test_trading_post_swap_grimoire(table):
-    act(table, 'join', starter='pest')
-    sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'isl_trade'
+def test_umori_swap_grimoire_auto_equips(table):
+    sid, doc, node = _stand_on_umori(table)
+    win = db._umori_window()
+    take = _t3_tome()
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'POST#UMORI#{win}',
+                         'stock': [{'item': take, 'foundBy': 'the Swarm'}]})
     doc['grimoires'] = ['moldering_folio']
     doc['equippedGrimoire'] = 'moldering_folio'
     db._put_player(table, doc)
-
-    db._save_trading_post(table, sid, 'isl_trade',
-                           [{'item': 'gardeners_primer', 'foundBy': 'Sam'},
-                            {'item': 'healing_moss', 'foundBy': 'the Swarm'},
-                            {'item': 'loaded_die', 'foundBy': 'the Swarm'}])
-
     status, resp = act(table, 'trade', give='moldering_folio', takeIndex=0)
     assert status == 200
-    you = resp['you']
-    assert you['grimoires'] == ['gardeners_primer']
-    assert you['equippedGrimoire'] == 'gardeners_primer'  # cleared, then auto-equipped from the take
+    assert resp['you']['grimoires'] == [take]
+    assert resp['you']['equippedGrimoire'] == take
     assert resp['stock'][0] == {'item': 'moldering_folio', 'foundBy': 'Alex'}
 
 
-def test_trading_post_take_grimoire_auto_equips_if_none_owned(table):
-    act(table, 'join', starter='pest')
-    sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'isl_trade'
-    doc['bag'] = ['snare']
+def test_umori_rejects_consumable_give(table):
+    sid, doc, node = _stand_on_umori(table)
+    doc['bag'] = ['healing_moss']
     db._put_player(table, doc)
-
-    db._save_trading_post(table, sid, 'isl_trade',
-                           [{'item': 'gardeners_primer', 'foundBy': 'Sam'},
-                            {'item': 'healing_moss', 'foundBy': 'the Swarm'},
-                            {'item': 'loaded_die', 'foundBy': 'the Swarm'}])
-
-    status, resp = act(table, 'trade', give='snare', takeIndex=0)
-    assert status == 200
-    you = resp['you']
-    assert you['grimoires'] == ['gardeners_primer']
-    assert you['equippedGrimoire'] == 'gardeners_primer'   # auto-equipped, had none
+    status, resp = act(table, 'trade', give='healing_moss', takeIndex=0)
+    assert status == 409 and 'gear and grimoires' in resp['error']
 
 
-def test_trading_post_rejects_duplicate_grimoire_take(table):
+def test_umori_rejects_trade_when_not_on_node(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'isl_trade'
-    doc['bag'] = ['snare']
-    doc['grimoires'] = ['gardeners_primer']
-    db._put_player(table, doc)
-
-    db._save_trading_post(table, sid, 'isl_trade',
-                           [{'item': 'gardeners_primer', 'foundBy': 'Sam'},
-                            {'item': 'healing_moss', 'foundBy': 'the Swarm'},
-                            {'item': 'loaded_die', 'foundBy': 'the Swarm'}])
-
-    status, _ = act(table, 'trade', give='snare', takeIndex=0)
-    assert status == 409  # already own that grimoire
-
-
-def test_trading_post_rejects_bag_overflow_take(table):
-    act(table, 'join', starter='pest')
-    sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'isl_trade'
+    other = next(n for n in data.UMORI_NODES if n != db._umori_node(db._umori_window()))
+    doc['position'] = other
     doc['gear'] = {'fang': 'rusted_fang'}
-    doc['bag'] = ['healing_moss', 'smoke_spore', 'loaded_die']  # already full
     db._put_player(table, doc)
-
-    db._save_trading_post(table, sid, 'isl_trade',
-                           [{'item': 'snare', 'foundBy': 'the Swarm'},
-                            {'item': 'chitin_scrap', 'foundBy': 'the Swarm'},
-                            {'item': 'moldering_folio', 'foundBy': 'the Swarm'}])
-
-    status, _ = act(table, 'trade', give='rusted_fang', takeIndex=0)
-    assert status == 409  # bag is full, can't take a consumable
+    status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
+    assert status == 409 and 'Umori is not here' in resp['error']
 
 
-def test_trading_post_rejects_give_not_owned(table):
-    act(table, 'join', starter='pest')
-    sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'isl_trade'
-    doc['gear'] = {}
-    doc['grimoires'] = []
+def test_umori_rejects_out_of_range_take(table):
+    sid, doc, node = _stand_on_umori(table)
+    doc['gear'] = {'fang': 'rusted_fang'}
     db._put_player(table, doc)
-
-    status, _ = act(table, 'trade', give='rusted_fang', takeIndex=0)
-    assert status == 409  # don't have that gear equipped
-    status, _ = act(table, 'trade', give='moldering_folio', takeIndex=0)
-    assert status == 409  # don't own that grimoire
-
-
-def test_trading_post_guards(table):
-    act(table, 'join', starter='pest')
-    sid = _sid(table)
-    status, _ = act(table, 'trade', give='snare', takeIndex=0)
-    assert status == 409  # not standing at a trading post
-
-    doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = 'isl_trade'
-    doc['bag'] = ['snare']
-    db._put_player(table, doc)
-    status, _ = act(table, 'trade', give='loaded_die', takeIndex=0)
-    assert status == 409  # you don't own that item
-    status, _ = act(table, 'trade', give='snare', takeIndex=9)
+    status, _ = act(table, 'trade', give='rusted_fang', takeIndex=9)
     assert status == 409  # take index out of range
 
 

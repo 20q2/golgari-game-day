@@ -863,7 +863,7 @@
   },
   {
    "id": "isl_trade",
-   "type": "trading_post",
+   "type": "mystery",
    "x": 1683,
    "y": 1211,
    "region": "isle",
