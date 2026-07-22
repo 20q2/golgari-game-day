@@ -8,6 +8,7 @@ import { BoardMap } from './engine/board-canvas';
 import { UndercityApiService } from './services/undercity-api.service';
 import { formSprite } from './data/species';
 import { xpToNext, formName } from './data/forms';
+import { DUNGEONS, SIGILS_REQUIRED } from './data/dungeons';
 import { HatchFlowComponent } from './hatch/hatch-flow.component';
 import { BoardTabComponent } from './tabs/board-tab.component';
 import { CreatureTabComponent } from './tabs/creature-tab.component';
@@ -44,6 +45,14 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   protected readonly assetsReady = signal(false);
   protected readonly map = signal<BoardMap | null>(null);
   protected readonly formName = formName;
+  /** Guild Sigils needed to unseal the Queen — for the HUD tracker. */
+  protected readonly sigilsRequired = SIGILS_REQUIRED;
+  /** Guild Sigils held: lair first-kills recorded in poiClaims (mirrors the
+   *  count board-tab uses for the sigil-claimed celebration). */
+  protected readonly sigilsHeld = computed(() => {
+    const claims = this.store.you()?.poiClaims ?? [];
+    return Object.keys(DUNGEONS).filter((b) => claims.includes(`${b}_lair`)).length;
+  });
 
   protected readonly phase = computed<'signin' | 'loading' | 'idle' | 'hatch' | 'play' | 'ended'>(
     () => {

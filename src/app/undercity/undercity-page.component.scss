@@ -240,6 +240,16 @@
   font-weight: 700;
   font-size: 0.95rem;
   white-space: nowrap;
+
+  .mi {
+    font-size: 1.05rem;
+    height: 1.05rem;
+    width: 1.05rem;
+
+    &.gold {
+      color: #fbbf24;
+    }
+  }
 }
 
 // ── Tab body + bar ───────────────────────────────────────────────────────────
