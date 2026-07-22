@@ -850,3 +850,18 @@ def validate_flow_solution(puzzle, path):
     if len(set(cells)) != len(cells):
         return False
     return len(cells) == w * h - len(rocks)
+
+
+def first_reward_on_path(rewards, path):
+    """Return the `kind` of the first reward cell the path enters, or None.
+
+    `rewards` is [{'kind': str, 'cell': [r, c]}, ...]; `path` is [[r, c], ...] in
+    draw order. One cell holds at most one reward, so there are no ties — the
+    first path cell that matches any reward cell wins.
+    """
+    by_cell = {tuple(rw['cell']): rw['kind'] for rw in rewards}
+    for cell in path:
+        kind = by_cell.get(tuple(cell))
+        if kind is not None:
+            return kind
+    return None

@@ -1071,6 +1071,32 @@ def test_validate_flow_rejects_wrong_endpoints():
     assert _eng_flow.validate_flow_solution(_P, _SNAKE[::-1]) is False  # starts at end
 
 
+def test_first_reward_on_path_picks_earliest():
+    rewards = [{'kind': 'spores', 'cell': [0, 2]},
+               {'kind': 'gear', 'cell': [0, 1]}]
+    path = [[0, 0], [0, 1], [0, 2], [0, 3]]
+    # gear cell [0,1] is entered before spores cell [0,2]
+    assert _eng_flow.first_reward_on_path(rewards, path) == 'gear'
+
+
+def test_first_reward_on_path_respects_later_order():
+    rewards = [{'kind': 'gear', 'cell': [0, 3]},
+               {'kind': 'spores', 'cell': [0, 1]}]
+    path = [[0, 0], [0, 1], [0, 2], [0, 3]]
+    # spores cell [0,1] comes first along the path
+    assert _eng_flow.first_reward_on_path(rewards, path) == 'spores'
+
+
+def test_first_reward_on_path_none_when_no_reward_on_path():
+    rewards = [{'kind': 'gear', 'cell': [5, 5]}]
+    path = [[0, 0], [0, 1]]
+    assert _eng_flow.first_reward_on_path(rewards, path) is None
+
+
+def test_first_reward_on_path_empty_rewards():
+    assert _eng_flow.first_reward_on_path([], [[0, 0], [0, 1]]) is None
+
+
 def test_validate_flow_rejects_diagonal_step():
     bad = [[0, 0], [1, 1]] + _SNAKE[1:]
     assert _eng_flow.validate_flow_solution(_P, bad) is False
