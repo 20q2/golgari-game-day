@@ -779,6 +779,48 @@
   }
 }
 
+// Bravery blind-commit prompt — the point of no return before fate rolls.
+.bravery-commit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(380px, 100%);
+  text-align: center;
+  animation: showcase-in 0.4s ease both;
+}
+.bravery-commit-dice {
+  font-size: 3.4rem;
+  width: 3.4rem;
+  height: 3.4rem;
+  color: #f0d060;
+  filter: drop-shadow(0 0 16px rgba(240, 208, 96, 0.5));
+  animation: dice-spin 0.7s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+.bravery-commit-title {
+  margin: 0;
+  font-size: 1.7rem;
+  color: #eafff0;
+}
+.bravery-commit-body {
+  margin: 0;
+  max-width: 30ch;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #c7d4cb;
+
+  strong {
+    color: #ffe89a;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bravery-commit,
+  .bravery-commit-dice {
+    animation: none;
+  }
+}
+
 .renown-bal {
   display: inline-flex;
   align-items: center;

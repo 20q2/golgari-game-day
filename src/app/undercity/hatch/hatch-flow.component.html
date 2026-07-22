@@ -55,33 +55,11 @@
       <p class="error-text">{{ err }}</p>
     }
 
-    <h2 class="shop-head">Starter items <span class="shop-sub">one night</span></h2>
-    <div class="kit-row">
-      <button class="uc-btn kit-btn" (click)="fillRecommendedKit()">
-        <mat-icon class="mi">auto_awesome</mat-icon> Recommended kit
-      </button>
-      @if (cartItems().length || cartHats().length || cartPaints().length) {
+    @if (cartHats().length || cartPaints().length) {
+      <div class="kit-row">
         <button class="uc-btn clear-btn" (click)="clearCart()">Clear</button>
-      }
-    </div>
-    <div class="shop-grid">
-      @for (item of shopItems; track item.id) {
-        <button
-          class="shop-card"
-          [class.carted]="cartItems().includes(item.id)"
-          (click)="toggleItem(item)"
-        >
-          <mat-icon class="mi shop-item-icon">{{ item.icon }}</mat-icon>
-          <span class="shop-name">{{ item.name }}</span>
-          <span class="shop-desc">{{ item.desc }}</span>
-          @if (cartItems().includes(item.id)) {
-            <span class="shop-tag in-cart">In cart · tap to remove</span>
-          } @else {
-            <span class="shop-cost">{{ item.cost }}</span>
-          }
-        </button>
-      }
-    </div>
+      </div>
+    }
 
     <h2 class="shop-head">Looks <span class="shop-sub">optional</span></h2>
     <div class="shop-grid">
@@ -201,17 +179,23 @@
           </button>
         }
       </div>
-      <button class="biome-back" (click)="resetCreatureChoice()" [disabled]="joining()">
-        ← pick a different creature
-      </button>
+      @if (!bravery()) {
+        <button class="biome-back" (click)="resetCreatureChoice()" [disabled]="joining()">
+          ← pick a different creature
+        </button>
+      }
     }
   } @else {
     @if (showcasedForm(); as form) {
     <!-- Step 1b: full-screen creature showcase -->
     <div class="showcase" [class.from-bravery]="braveryReveal()">
-      <button class="showcase-back" (click)="backToBrowse()" [disabled]="joining()">
-        <mat-icon class="mi">arrow_back</mat-icon> back
-      </button>
+      <!-- A Bravery reveal is already locked in: no way back, no reroll. Only
+           the manual-browse path keeps its back button. -->
+      @if (!braveryReveal()) {
+        <button class="showcase-back" (click)="backToBrowse()" [disabled]="joining()">
+          <mat-icon class="mi">arrow_back</mat-icon> back
+        </button>
+      }
 
       @if (braveryReveal()) {
         <p class="fate-banner">
@@ -271,6 +255,23 @@
 
       <button class="hatch-btn" (click)="confirmShowcase()" [disabled]="joining()">
         {{ braveryReveal() ? 'Spawn this one →' : 'Choose ' + form.name + ' →' }}
+      </button>
+    </div>
+  } @else if (braveryConfirm()) {
+    <!-- Step 1a (Bravery): blind commit prompt — fate rolls only after this. -->
+    <div class="bravery-commit">
+      <mat-icon class="bravery-commit-dice">casino</mat-icon>
+      <h1 class="bravery-commit-title">Let fate decide?</h1>
+      <p class="bravery-commit-body">
+        Fate will choose your creature — and you're locked in. No peeking, no
+        swapping, no reroll. In return for your nerve, you hatch with
+        <strong>+1 bonus starting roll</strong>.
+      </p>
+      <button class="hatch-btn" (click)="confirmBravery()" [disabled]="joining()">
+        Let fate decide →
+      </button>
+      <button class="biome-back" (click)="cancelBravery()" [disabled]="joining()">
+        ← not yet
       </button>
     </div>
   } @else {

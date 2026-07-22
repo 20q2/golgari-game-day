@@ -455,9 +455,8 @@ def _combatant(doc):
         riders=_riders(doc), rider_mag=_rider_mags(doc), buffs=_active_buff_kinds(doc),
         perks=engine.attribute_perks(doc),
         has_smoke_spore='smoke_spore' in (doc.get('bag') or []),
-        flee_bonus=(10 if doc.get('homeBiome') == 'cavern' else 0)
-                   + (15 if any(b.get('kind') == 'glowveil'
-                                for b in (doc.get('buffs') or [])) else 0))
+        flee_bonus=(15 if any(b.get('kind') == 'glowveil'
+                              for b in (doc.get('buffs') or [])) else 0))
 
 
 # ── Battle-record serde (Plan 2 interactive combat) ──────────────────────────
@@ -1733,9 +1732,11 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         doc['hp'] += data.MARROWBORN_MAXHP
     elif home == 'city':
         # City Rat: hatch with a random Tier-1 piece of gear, auto-equipped.
-        t1 = [gid for gid, g in data.GEAR.items() if g.get('tier') == 1]
+        # Seeded on the player id so the pick is stable (varies per player, but
+        # deterministic — no test flakiness, no re-roll on recompute).
+        t1 = sorted(gid for gid, g in data.GEAR.items() if g.get('tier') == 1)
         if t1:
-            gid = random.choice(sorted(t1))
+            gid = random.Random(zlib.crc32(f'cityrat:{user_id}'.encode())).choice(t1)
             doc['gear'][data.GEAR[gid]['slot']] = gid
     if is_bot:
         doc['isBot'] = True

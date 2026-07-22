@@ -4,7 +4,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { STARTERS, TIER2, FormInfo, PASSIVE_BLURBS } from '../data/forms';
 import { PAINTS, PAINT_MAP, HATS, HAT_MAP, HAT_PRICES, PAINT_PRICE } from '../data/cosmetics';
-import { RENOWN_SHOP_ITEMS, RenownShopItem } from '../data/items';
 import { getRecoloredDataUrl } from '../engine/sprite-engine';
 import { formSprite } from '../data/species';
 import { randomCreatureName } from '../data/names';
@@ -73,6 +72,10 @@ export class HatchFlowComponent {
   protected readonly showcaseId = signal<string | null>(null);
   /** True while the open showcase was reached via Bravery (a random roll). */
   protected readonly braveryReveal = signal(false);
+  /** True while the Bravery commit prompt is up (before fate rolls). Committing
+   *  is blind and irreversible — that's the point — so the roll only happens
+   *  once the player confirms here. */
+  protected readonly braveryConfirm = signal(false);
   /** The creature currently showcased, resolved from `showcaseId`. */
   protected readonly showcasedForm = computed(
     () => this.starters.find((s) => s.id === this.showcaseId()) ?? null,
@@ -97,12 +100,10 @@ export class HatchFlowComponent {
   protected readonly allHats = HATS;
   protected readonly hatPrices = HAT_PRICES;
   protected readonly paintPrice = PAINT_PRICE;
-  protected readonly shopItems = RENOWN_SHOP_ITEMS;
 
   /** Cart: ids the player intends to buy this visit. */
   protected readonly cartHats = signal<string[]>([]);
   protected readonly cartPaints = signal<string[]>([]);
-  protected readonly cartItems = signal<string[]>([]);
   /** Which owned/bought cosmetic to spawn wearing (null = none). */
   protected readonly equipHat = signal<string | null>(null);
   protected readonly equipPaint = signal<string | null>(null);
@@ -118,10 +119,6 @@ export class HatchFlowComponent {
     let sum = 0;
     for (const h of this.cartHats()) sum += this.hatPrice(h);
     sum += this.cartPaints().length * this.paintPrice;
-    for (const i of this.cartItems()) {
-      const it = this.shopItems.find((s) => s.id === i);
-      if (it) sum += it.cost;
-    }
     return sum;
   });
 
@@ -138,13 +135,6 @@ export class HatchFlowComponent {
     return this.owned(this.store.wardrobe()?.paints, id, this.cartPaints());
   }
 
-  /** Consumable slots the starter kit would use, guarded against BAG_SIZE (3). */
-  private cartBagCount(): number {
-    return this.cartItems().filter(
-      (i) => this.shopItems.find((s) => s.id === i)?.kind === 'consumable',
-    ).length;
-  }
-
   /**
    * Home biomes — mirrors BIOMES in undercity_data.py (id order = display).
    * `bg` reuses the board floor art (see LEGACY_FLOOR_SRC in board-canvas.ts);
@@ -155,7 +145,7 @@ export class HatchFlowComponent {
     { id: 'city', name: 'The Undercity', bg: 'undercity/undercity_background.png', tint: 'rgba(38, 120, 110, 0.35)',
       perk: 'City Rat', blurb: 'Hatch with a random Tier-1 item, equipped.' },
     { id: 'cavern', name: 'Mosslight Cavern', bg: 'undercity/cavern_background.png', tint: 'rgba(70, 96, 190, 0.35)',
-      perk: 'Glowblessed', blurb: '+10% flee chance.' },
+      perk: 'Darkvision', blurb: 'See 2 spaces away in dungeons.' },
     { id: 'bog', name: 'The Sedgemoor', bg: 'undercity/swamp_background.png', tint: 'rgba(52, 110, 60, 0.32)',
       perk: 'Mirefoot', blurb: 'Hazards cost you half.' },
     { id: 'bone', name: 'Ossuary Fields', bg: 'undercity/palace_background.png', tint: 'rgba(150, 150, 130, 0.30)',
@@ -200,9 +190,11 @@ export class HatchFlowComponent {
     return HatchFlowComponent.ARCHETYPES[form.id] ?? 'Balanced';
   }
 
-  /** Per-stat bar scales, chosen for headroom above the starter spread so the
-   *  bars read as relative strengths rather than all pinning to full. */
-  private static readonly STAT_MAX: Record<string, number> = { hp: 40, atk: 10, def: 10, spd: 10 };
+  /** Per-stat bar scales. HP is standardized across all starters, so its bar
+   *  sits uniformly below full (headroom for growth). ATK/DEF/SPD use a tighter
+   *  max so the 3–6 starter spread reads as distinct relative strengths rather
+   *  than all clustering near half. */
+  private static readonly STAT_MAX: Record<string, number> = { hp: 40, atk: 8, def: 8, spd: 8 };
 
   /** Stat-sheet rows for the showcase: icon, label, value, and fill percent.
    *  `icon` is a ligature mat-icon, `svg` a registered [svgIcon] (uc-* set). */
@@ -232,14 +224,30 @@ export class HatchFlowComponent {
   }
 
   /**
-   * Step 1a (Bravery): let fate roll a creature and reveal it in the showcase.
-   * The bonus starting roll is granted server-side from the `bravery` flag,
-   * which is committed alongside the pick in `confirmShowcase`.
+   * Step 1a (Bravery): open the commit prompt. No roll happens yet — Bravery is
+   * a blind, irreversible bargain, so the player must accept the terms before
+   * fate reveals anything (see `confirmBravery`).
    */
   openBravery(): void {
+    this.braveryConfirm.set(true);
+  }
+
+  /**
+   * Commit to Bravery: roll a random creature and reveal it, already locked in.
+   * From here there's no back-to-browse and no "pick a different creature" — the
+   * only way forward is to spawn what fate dealt. The bonus starting roll is
+   * granted server-side from the `bravery` flag, committed in `confirmShowcase`.
+   */
+  confirmBravery(): void {
     const pick = this.starters[Math.floor(Math.random() * this.starters.length)];
+    this.braveryConfirm.set(false);
     this.braveryReveal.set(true);
     this.showcaseId.set(pick.id);
+  }
+
+  /** Dismiss the Bravery commit prompt without rolling — back to the lineup. */
+  cancelBravery(): void {
+    this.braveryConfirm.set(false);
   }
 
   /** Close the showcase and return to the lineup. */
@@ -308,28 +316,12 @@ export class HatchFlowComponent {
     }
   }
 
-  /** One-tap balanced starter: +2 ATK fang and +2 DEF carapace (25+25 = full 50). */
-  fillRecommendedKit(): void {
-    this.cartItems.set(['rusted_fang', 'chitin_scrap']);
-  }
-
-  /** Empty the whole cart (items + cosmetics) and any pending equips. */
+  /** Empty the cosmetics cart and any pending equips. */
   clearCart(): void {
-    this.cartItems.set([]);
     this.cartHats.set([]);
     this.cartPaints.set([]);
     this.equipHat.set(null);
     this.equipPaint.set(null);
-  }
-
-  toggleItem(item: RenownShopItem): void {
-    const cart = this.cartItems();
-    if (cart.includes(item.id)) {
-      this.cartItems.set(cart.filter((i) => i !== item.id));
-    } else if (this.canAfford(item.cost)) {
-      if (item.kind === 'consumable' && this.cartBagCount() >= 3) return;
-      this.cartItems.set([...cart, item.id]);
-    }
   }
 
   wearHat(id: string | null): void {
@@ -354,7 +346,7 @@ export class HatchFlowComponent {
         creatureName: this.creatureName().trim(),
         buyHats: this.cartHats(),
         buyPaints: this.cartPaints(),
-        buyItems: this.cartItems(),
+        buyItems: [],
         equipHat: this.equipHat(),
         equipPaint: this.equipPaint(),
         bravery: this.bravery(),

@@ -120,6 +120,8 @@ export interface BoardPlayer {
   hat?: string | null;
   /** Own token only: illuminating gear equipped — reveals the whole dungeon. */
   illuminated?: boolean;
+  /** Own token only: Mosslight Cavern's Darkvision perk — light radius 2 not 1. */
+  darkvision?: boolean;
   /** Evolution tier (1/2/3). Own token's tier greys out Tier-1-only tunnels. */
   tier?: number;
 }
@@ -438,6 +440,9 @@ export class BoardCanvas {
   /** Own illumination state: illuminating gear reveals the whole dungeon. */
   private ownIlluminated = false;
 
+  /** Darkvision (Mosslight Cavern hatch perk): dungeon light radius 2, not 1. */
+  private ownDarkvision = false;
+
   private boundResize = () => this.resize();
   private pointerHandlers: {
     onDown: (e: PointerEvent) => void;
@@ -543,6 +548,7 @@ export class BoardCanvas {
     const own = players.find((p) => p.userId === this.ownUserId);
     this.ownPosition = own?.position ?? null;
     this.ownIlluminated = !!own?.illuminated;
+    this.ownDarkvision = !!own?.darkvision;
     const tier = own?.tier ?? 1;
     if (tier !== this.ownTier) {
       this.ownTier = tier;
@@ -587,15 +593,16 @@ export class BoardCanvas {
     }
   }
 
-  /** A dungeon node is lit if explored or within your light radius (1 hop).
-   *  Illuminating gear reveals the whole dungeon layer — power for information. */
+  /** A dungeon node is lit if explored or within your light radius — 1 hop
+   *  normally, 2 with the Mosslight Cavern Darkvision perk. Illuminating gear
+   *  reveals the whole dungeon layer — power for information. */
   private isLit(nodeId: string): boolean {
     if (this.activeLayerId === OVERWORLD) return true;
     if (this.revealAll) return true; // broadcast: no fog-of-war on the TV
     if (this.ownIlluminated) return true; // illuminating gear: whole dungeon lit
     if (this.explored.get(this.activeLayerId)?.has(nodeId)) return true;
     if (!this.ownPosition) return false;
-    return this.hopsWithin(this.ownPosition, nodeId, 1);
+    return this.hopsWithin(this.ownPosition, nodeId, this.ownDarkvision ? 2 : 1);
   }
 
   /** True if `goal` is within `maxHops` graph steps of `start`. */

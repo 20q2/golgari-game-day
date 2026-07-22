@@ -64,22 +64,22 @@ export const STARTERS: FormInfo[] = [
   {
     id: 'pest', name: 'Pest', tier: 1, passive: 'scrounger', passiveName: 'Scrounger',
     blurb: 'A balanced sewer rat. Never hungry, never broke.',
-    stats: { hp: 30, atk: 5, def: 5, spd: 5 },
+    stats: { hp: 25, atk: 5, def: 5, spd: 5 },
   },
   {
     id: 'kraul', name: 'Kraul Grub', tier: 1, passive: 'first_bite', passiveName: 'First Bite',
     blurb: 'A glass-cannon insect. Bites first, asks never.',
-    stats: { hp: 30, atk: 6, def: 3, spd: 5 },
+    stats: { hp: 25, atk: 6, def: 3, spd: 5 },
   },
   {
     id: 'saproling', name: 'Saproling', tier: 1, passive: 'drift', passiveName: 'Endless Ranks',
     blurb: 'A quick, expendable plant token — the swarm made flesh.',
-    stats: { hp: 30, atk: 5, def: 5, spd: 6 },
+    stats: { hp: 25, atk: 5, def: 5, spd: 6 },
   },
   {
     id: 'zombie', name: 'Zombie', tier: 1, passive: 'regrowth', passiveName: 'Regrowth',
     blurb: "Was somebody once; dead now, and it doesn't stay down.",
-    stats: { hp: 30, atk: 5, def: 6, spd: 3 },
+    stats: { hp: 25, atk: 5, def: 6, spd: 3 },
   },
 ];
 

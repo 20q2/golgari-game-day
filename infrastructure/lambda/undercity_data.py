@@ -41,23 +41,23 @@ def xp_to_next(level: int) -> int:
 # Starter lines (tier 1). Stats are the level-1 base.
 STARTERS = {
     'pest': {
-        'name': 'Pest', 'hp': 30, 'atk': 5, 'def': 5, 'spd': 5,
+        'name': 'Pest', 'hp': 25, 'atk': 5, 'def': 5, 'spd': 5,
         'passive': 'scrounger',
         'blurb': 'Balanced sewer rat. Scrounger: +25% Spores from all loot & bounties, '
                  'and scrounge Spores even from fights you lose or flee.',
     },
     'kraul': {
-        'name': 'Kraul Grub', 'hp': 30, 'atk': 6, 'def': 3, 'spd': 5,
+        'name': 'Kraul Grub', 'hp': 25, 'atk': 6, 'def': 3, 'spd': 5,
         'passive': 'first_bite',
         'blurb': 'Glass-cannon insect. First Bite: always strikes first in round 1.',
     },
     'saproling': {
-        'name': 'Saproling', 'hp': 30, 'atk': 5, 'def': 5, 'spd': 6,
+        'name': 'Saproling', 'hp': 25, 'atk': 5, 'def': 5, 'spd': 6,
         'passive': 'drift',
         'blurb': 'Quick, expendable plant token — the swarm made flesh. Endless Ranks: +15% flee chance; bad mystery events reroll once.',
     },
     'zombie': {
-        'name': 'Zombie', 'hp': 30, 'atk': 5, 'def': 6, 'spd': 3,
+        'name': 'Zombie', 'hp': 25, 'atk': 5, 'def': 6, 'spd': 3,
         'passive': 'regrowth',
         'blurb': 'Was somebody once; dead now, and it doesn\'t stay down. Regrowth: heal 20% max HP after any battle.',
     },
@@ -482,7 +482,7 @@ BIOME_SPELLS = {
     'garden': 'rot_surge',    # The Rot-Gardens (Composter)
     'bone':   'bone_chill',   # Ossuary Fields (Marrowborn)
     'bog':    'bog_snare',    # The Sedgemoor (Mirefoot)
-    'cavern': 'glowveil',     # Mosslight Cavern (Glowblessed)
+    'cavern': 'glowveil',     # Mosslight Cavern (Darkvision)
     'city':   'scrap_toss',   # The Undercity (City Rat)
 }
 
@@ -930,8 +930,8 @@ BOSS_NODE = _MAP_DOC['boss']
 BIOMES = {
     # Rounded-square cavern mouth.
     'cavern': {'name': 'Mosslight Cavern', 'center': (900, 520),
-               'rx': 320, 'ry': 260, 'sq': 3.6, 'perk': 'glowblessed',
-               'perkName': 'Glowblessed', 'perkBlurb': '+10% flee chance.'},
+               'rx': 320, 'ry': 260, 'sq': 3.6, 'perk': 'darkvision',
+               'perkName': 'Darkvision', 'perkBlurb': 'See 2 spaces away in dungeons.'},
     # Wide, low oblong — a sprawling moor.
     'bog': {'name': 'The Sedgemoor', 'center': (2700, 520),
             'rx': 440, 'ry': 190, 'sq': 2.0, 'perk': 'mirefoot',

@@ -102,7 +102,7 @@ def test_full_join_roll_move_flow(table, monkeypatch):
     status, resp = act(table, 'join', starter='saproling', home='cavern')
     assert status == 200
     you = resp['you']
-    assert you['hp'] == 30 and you['position'] == 'cavern_r0' and you['rolls'] == 3
+    assert you['hp'] == 25 and you['position'] == 'cavern_r0' and you['rolls'] == 3
     assert you['homeBiome'] == 'cavern'
     assert you['passives'] == ['drift']
 
@@ -133,7 +133,7 @@ def test_marrowborn_home_grants_max_hp(table):
     status, resp = act(table, 'join', starter='pest', home='bone')
     assert status == 200
     you = resp['you']
-    assert you['maxHp'] == 30 + data.MARROWBORN_MAXHP
+    assert you['maxHp'] == 25 + data.MARROWBORN_MAXHP
     assert you['hp'] == you['maxHp']
 
 
@@ -756,7 +756,7 @@ def test_evolution_gates_and_bonuses(table):
     status, resp = act(table, 'evolve', form='slitherhead')
     assert status == 200
     you = resp['you']
-    assert you['tier'] == 2 and you['maxHp'] == 30 and you['spd'] == 6 + 4
+    assert you['tier'] == 2 and you['maxHp'] == 25 and you['spd'] == 6 + 4
     assert you['hp'] == you['maxHp']
     assert 'skitter' in you['passives'] and 'drift' in you['passives']
 

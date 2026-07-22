@@ -58,7 +58,7 @@ def test_bot_add_creates_public_player(table):
     assert bot['isBot'] is True
     assert bot['species'] == 'saproling'
     assert bot['userId'].startswith('BOT#')
-    assert bot['hp'] == 30 and bot['position'] == 'cavern_r0'
+    assert bot['hp'] == 25 and bot['position'] == 'cavern_r0'
 
     # It appears in the season roster like any player.
     _, state = db.handle_state(table, {'userId': 'user-host'})

@@ -28,7 +28,8 @@ def test_illuminating_gear_exists():
 
 
 def test_illuminating_gear_has_no_combat_penalty(table):
-    doc = _join(table)
+    # Pin a neutral home: City Rat would grant a random T1 piece and skew `base`.
+    doc = _join(table, home='garden')
     base = engine.effective_stats(doc)
     # Equipping the Torchfang adds only its declared stats — no hidden penalty
     # for carrying a light (the old torch cost −3 ATK / −2 DEF while lit).
