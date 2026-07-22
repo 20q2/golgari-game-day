@@ -182,13 +182,22 @@
       }
       <div class="biome-grid">
         @for (biome of biomes; track biome.id) {
-          <button class="biome-card" (click)="chooseBiome(biome.id)" [disabled]="joining()">
-            <mat-icon class="biome-icon">{{ biome.icon }}</mat-icon>
-            <span class="biome-name">{{ biome.name }}</span>
-            <span class="biome-perk"><strong>{{ biome.perk }}:</strong> {{ biome.blurb }}</span>
+          <button
+            class="biome-card"
+            [style.--biome-bg]="'url(' + biome.bg + ')'"
+            [style.--biome-tint]="biome.tint"
+            (click)="chooseBiome(biome.id)"
+            [disabled]="joining()"
+          >
+            <span class="biome-art" aria-hidden="true"></span>
             @if (biome.id === 'city') {
               <span class="biome-firsttag">Good first home</span>
             }
+            <span class="biome-body">
+              <span class="biome-name">{{ biome.name }}</span>
+              <span class="biome-perk-name">{{ biome.perk }}</span>
+              <span class="biome-blurb">{{ biome.blurb }}</span>
+            </span>
           </button>
         }
       </div>

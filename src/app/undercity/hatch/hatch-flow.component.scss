@@ -146,48 +146,98 @@
 
 .biome-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
-  width: min(680px, 100%);
+  width: min(720px, 100%);
 }
 
 .biome-card {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 14px 10px;
-  border: 1px solid var(--accent-color, #4a7c59);
-  border-radius: 10px;
-  background: rgba(20, 26, 20, 0.7);
-  color: #e5f0e5;
+  align-items: flex-end;
+  min-height: 156px;
+  padding: 0;
+  border: 1px solid rgba(120, 160, 128, 0.35);
+  border-radius: 12px;
+  overflow: hidden;
+  isolation: isolate;
+  color: #eef6ee;
+  text-align: left;
   cursor: pointer;
   transition:
-    transform 0.1s ease,
-    background 0.1s ease;
+    transform 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+
+  // Photo layer — the biome's board floor art.
+  .biome-art {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background-image: var(--biome-bg);
+    background-size: cover;
+    background-position: center;
+    transition: transform 0.35s ease;
+  }
+
+  // Legibility gradient + per-biome color tint so shared art still reads apart.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      linear-gradient(
+        to top,
+        rgba(8, 10, 8, 0.94) 0%,
+        rgba(8, 10, 8, 0.55) 46%,
+        rgba(8, 10, 8, 0.1) 100%
+      ),
+      var(--biome-tint, transparent);
+  }
 
   &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    background: rgba(40, 60, 44, 0.85);
+    transform: translateY(-3px);
+    border-color: var(--accent-color, #6fbf8a);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+
+    .biome-art {
+      transform: scale(1.06);
+    }
   }
   &:disabled {
     opacity: 0.5;
     cursor: default;
   }
 
-  .biome-icon {
-    font-size: 34px;
-    width: 34px;
-    height: 34px;
-    color: var(--accent-color, #6fbf8a);
+  .biome-body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    width: 100%;
+    padding: 12px 12px 13px;
   }
   .biome-name {
-    font-weight: 700;
+    font-weight: 800;
+    font-size: 1.02rem;
+    line-height: 1.15;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   }
-  .biome-perk {
+  .biome-perk-name {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--accent-color, #4a7c59);
+    color: #0c130c;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .biome-blurb {
     font-size: 0.8rem;
-    opacity: 0.85;
-    text-align: center;
+    opacity: 0.94;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
   }
 }
 
@@ -395,14 +445,18 @@
 }
 
 .biome-firsttag {
-  margin-top: 4px;
-  padding: 1px 8px;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  padding: 2px 9px;
   border-radius: 999px;
-  background: rgba(251, 191, 36, 0.16);
-  color: #fbbf24;
-  font-size: 0.66rem;
+  background: rgba(251, 191, 36, 0.92);
+  color: #1a1410;
+  font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
 .bravery-note {
