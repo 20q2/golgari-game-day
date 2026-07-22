@@ -8,16 +8,31 @@ import { RENOWN_SHOP_ITEMS, RenownShopItem } from '../data/items';
 import { getRecoloredDataUrl } from '../engine/sprite-engine';
 import { formSprite } from '../data/species';
 import { randomCreatureName } from '../data/names';
+import { IntroCutsceneComponent } from './intro-cutscene.component';
 
 @Component({
   selector: 'app-undercity-hatch-flow',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, IntroCutsceneComponent],
   templateUrl: './hatch-flow.component.html',
   styleUrls: ['./hatch-flow.component.scss'],
 })
 export class HatchFlowComponent {
   protected readonly store = inject(UndercityStateService);
+
+  /** localStorage flag: the one-time story intro has played for this device. */
+  private static readonly INTRO_KEY = 'uc.introSeen';
+  /** True for a first-time player — drives the intro cutscene and the novice
+   *  defaults (Bravery-first, "good first home"). Captured before the flag is set. */
+  protected readonly firstHatch = signal(!localStorage.getItem(HatchFlowComponent.INTRO_KEY));
+  /** Whether to show the cutscene right now (cleared once dismissed). */
+  protected readonly showIntro = signal(!localStorage.getItem(HatchFlowComponent.INTRO_KEY));
+
+  /** Finish the intro: persist the flag and drop into the egg screen. */
+  dismissIntro(): void {
+    localStorage.setItem(HatchFlowComponent.INTRO_KEY, '1');
+    this.showIntro.set(false);
+  }
 
   protected readonly taps = signal(0);
   protected readonly hatched = computed(() => this.taps() >= 3);
