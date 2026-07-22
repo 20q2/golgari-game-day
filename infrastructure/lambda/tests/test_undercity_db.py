@@ -1,4 +1,5 @@
 """Integration tests for the action dispatcher against an in-memory table."""
+import random
 import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -2509,3 +2510,29 @@ def test_cancel_loot_puzzle_forfeits(table):
     assert status == 200
     assert not resp['you'].get('pendingLoot')
     assert resp['you']['spores'] == 0           # nothing awarded
+
+
+# ── Multi-solution loot rewards ──────────────────────────────────────────────
+
+def test_place_loot_rewards_distinct_valid_cells():
+    puzzle = data.flow_puzzle('p02')   # 4x4, start [0,3], end [3,0], rock [1,1]
+    rng = random.Random(1)
+    rewards = db._place_loot_rewards(puzzle, ['spores', 'item', 'gear'], rng)
+    kinds = [r['kind'] for r in rewards]
+    assert kinds == ['spores', 'item', 'gear']
+    cells = [tuple(r['cell']) for r in rewards]
+    assert len(set(cells)) == 3                       # distinct
+    rocks = {tuple(c) for c in puzzle['rocks']}
+    start, end = tuple(puzzle['start']), tuple(puzzle['end'])
+    for cell in cells:
+        assert cell not in rocks and cell != start and cell != end
+
+
+def test_place_loot_rewards_gear_not_adjacent_to_start():
+    puzzle = data.flow_puzzle('p02')
+    start = tuple(puzzle['start'])
+    for seed in range(30):
+        rewards = db._place_loot_rewards(
+            puzzle, ['spores', 'gear'], random.Random(seed))
+        gear = next(tuple(r['cell']) for r in rewards if r['kind'] == 'gear')
+        assert abs(gear[0] - start[0]) + abs(gear[1] - start[1]) != 1

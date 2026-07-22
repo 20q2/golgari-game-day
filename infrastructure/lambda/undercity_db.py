@@ -2092,6 +2092,35 @@ def _flow_puzzle_view(pid):
             'start': p['start'], 'end': p['end'], 'rocks': p['rocks']}
 
 
+def _place_loot_rewards(puzzle, kinds, rng):
+    """Place one reward per kind on a distinct non-rock, non-start, non-end cell.
+    The gear cell is never orthogonally adjacent to the start (no step-one grabs).
+    Returns [{'kind': str, 'cell': [r, c]}, ...] in the order of `kinds`. Placement
+    is a cosmetic overlay — it never blocks a cell, so the puzzle stays solvable."""
+    w, h = puzzle['w'], puzzle['h']
+    rocks = {tuple(c) for c in puzzle['rocks']}
+    start, end = tuple(puzzle['start']), tuple(puzzle['end'])
+    cells = [[r, c] for r in range(h) for c in range(w)
+             if (r, c) not in rocks and (r, c) != start and (r, c) != end]
+    rng.shuffle(cells)
+
+    def adjacent_to_start(cell):
+        return abs(cell[0] - start[0]) + abs(cell[1] - start[1]) == 1
+
+    rewards, used = [], set()
+    for kind in kinds:
+        for cell in cells:
+            t = (cell[0], cell[1])
+            if t in used:
+                continue
+            if kind == 'gear' and adjacent_to_start(cell):
+                continue
+            rewards.append({'kind': kind, 'cell': [cell[0], cell[1]]})
+            used.add(t)
+            break
+    return rewards
+
+
 def _scrounge(doc, amount):
     """Pest's Scrounger passive: scale a positive loot/bounty reward by
     SCROUNGER_MULT (rounded). Non-positive amounts (penalties) pass through so
