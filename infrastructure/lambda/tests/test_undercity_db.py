@@ -2583,3 +2583,53 @@ def test_loot_landing_can_roll_all_three(table, monkeypatch):
     ev = db._resolve_space(table, sid, doc, node, None)
     kinds = {r['kind'] for r in ev['puzzle']['rewards']}
     assert kinds == {'spores', 'item', 'gear'}
+
+
+def _land_loot_with(table, monkeypatch, placement):
+    """Land on a loot node with a forced reward placement; return (sid, doc, puzzle)."""
+    node = _first_loot_node()
+    sid, doc = _player_at(table, node, spores=0, bag=[], gear={})
+    monkeypatch.setattr(db, '_place_loot_rewards',
+                        lambda puzzle, kinds, rng: placement(puzzle))
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)   # ensure item+gear present
+    db._resolve_space(table, sid, doc, node, None)
+    return sid, doc, data.flow_puzzle(doc['pendingLoot']['puzzleId'])
+
+
+def test_solve_awards_gear_when_hit_first(table, monkeypatch):
+    # Gear on the first step after start, spores on the last step before end →
+    # the canonical solution reaches gear first.
+    sid, doc, puzzle = _land_loot_with(
+        table, monkeypatch,
+        lambda pz: [{'kind': 'gear', 'cell': pz['solution'][1]},
+                    {'kind': 'spores', 'cell': pz['solution'][-2]}])
+    monkeypatch.setattr(db._rng, 'choice',
+                        lambda seq: 'fang' if 'fang' in seq else seq[0])
+    monkeypatch.setattr(db._rng, 'choices', lambda seq, weights=None, k=1: [seq[0]])
+    status, body = db._solve_loot_puzzle(table, sid, doc, {'path': puzzle['solution']})
+    assert status == 200
+    assert body['spaceEvent']['gear']['slot'] == 'fang'
+    assert doc.get('pendingLoot') is None
+
+
+def test_solve_awards_spores_when_hit_first(table, monkeypatch):
+    sid, doc, puzzle = _land_loot_with(
+        table, monkeypatch,
+        lambda pz: [{'kind': 'spores', 'cell': pz['solution'][1]},
+                    {'kind': 'gear', 'cell': pz['solution'][-2]}])
+    monkeypatch.setattr(db._rng, 'choice', lambda seq: seq[0])   # forage picks 8
+    status, body = db._solve_loot_puzzle(table, sid, doc, {'path': puzzle['solution']})
+    assert status == 200
+    # Pest's Scrounger passive scales the 8-spore forage roll by SCROUNGER_MULT.
+    assert body['spaceEvent']['spores'] == round(8 * data.SCROUNGER_MULT)
+    assert 'gear' not in body['spaceEvent']
+
+
+def test_solve_rejects_incomplete_path(table, monkeypatch):
+    sid, doc, puzzle = _land_loot_with(
+        table, monkeypatch,
+        lambda pz: [{'kind': 'spores', 'cell': pz['solution'][1]}])
+    status, body = db._solve_loot_puzzle(
+        table, sid, doc, {'path': puzzle['solution'][:3]})
+    assert status == 409
+    assert doc['pendingLoot'] is not None

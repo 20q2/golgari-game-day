@@ -4114,7 +4114,7 @@ def _dig(table, sid, doc, payload):
 # ── Flow loot puzzle ──────────────────────────────────────────────────────────
 
 def _solve_loot_puzzle(table, sid, doc, payload):
-    """Validate the drawn Flow path; on success award the deferred loot reward."""
+    """Validate the drawn Flow path; award the FIRST reward the path crosses."""
     pending = doc.get('pendingLoot')
     if not pending:
         return _err('No loot puzzle to solve.', 409)
@@ -4126,8 +4126,10 @@ def _solve_loot_puzzle(table, sid, doc, payload):
     path = payload.get('path') or []
     if not engine.validate_flow_solution(puzzle, path):
         return _err("That path isn't a full solution.", 409)
+    kind = engine.first_reward_on_path(pending.get('rewards') or [], path)
     doc.pop('pendingLoot', None)
-    event = _award_loot(doc)
+    awarder = _LOOT_AWARDERS.get(kind, _award_spores)  # None → spores fallback
+    event = awarder(doc)
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict

@@ -66,14 +66,17 @@ def test_wild_win_can_drop_gear(table, monkeypatch):
 
 
 def test_loot_tile_can_drop_gear(table, monkeypatch):
-    node = next(n for n, nd in data.MAP_NODES.items() if nd['type'] == 'loot')
-    sid, doc = _player_at(table, node, spores=0)
-    # Loot is now gated by a Flow puzzle: landing defers, the reward (incl. gear)
-    # rolls in _award_loot when the puzzle is solved.
-    gate = db._resolve_space(table, sid, doc, node, None)
-    assert gate['type'] == 'loot_puzzle'
+    # Loot is gated by a Flow puzzle: landing scatters reward symbols; the value
+    # of whichever the path reaches first rolls in _solve_loot_puzzle. Force gear
+    # onto the solution's first step so the canonical solution claims gear first.
+    from tests.test_undercity_db import _land_loot_with
+    sid, doc, puzzle = _land_loot_with(
+        table, monkeypatch,
+        lambda pz: [{'kind': 'gear', 'cell': pz['solution'][1]}])
     _force_fang_drop(monkeypatch)
-    out = db._award_loot(doc)
+    status, body = db._solve_loot_puzzle(table, sid, doc, {'path': puzzle['solution']})
+    assert status == 200
+    out = body['spaceEvent']
     assert out['type'] == 'loot'
     assert out['gear']['slot'] == 'fang'
 
