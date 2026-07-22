@@ -11,6 +11,30 @@
   display: block;
 }
 
+// Floating jump-to-Umori control (top-right, clear of the centered roll strip).
+.find-umori-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(210, 160, 90, 0.6);
+  background: rgba(30, 20, 40, 0.72);
+  color: #d8f3dc;
+  cursor: pointer;
+
+  .mi {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+}
+
 .roll-strip {
   position: absolute;
   top: 10px;

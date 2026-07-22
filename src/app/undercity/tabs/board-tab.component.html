@@ -1,6 +1,13 @@
 <div class="board-tab">
   <canvas #boardCanvas class="board-canvas"></canvas>
 
+  <!-- Jump the camera to the wandering Umori (shown only while it's on the board). -->
+  @if (store.umori()) {
+    <button class="find-umori-btn" (click)="findUmori()" title="Find Umori" aria-label="Find Umori">
+      <mat-icon class="mi">travel_explore</mat-icon>
+    </button>
+  }
+
   <!-- Roll / pending banner -->
   <div class="roll-strip">
     <!-- While the overlay die is mid-tumble, keep the strip clear so the value

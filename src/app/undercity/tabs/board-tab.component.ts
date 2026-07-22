@@ -445,6 +445,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return this.islandBazaar() ? "The Witch's Cauldron" : 'Rot-Farm Bazaar';
   }
 
+  /** Center the board camera on Umori's current wandering node. */
+  protected findUmori(): void {
+    const u = this.store.umori();
+    if (u) this.board?.centerOn(u.node);
+  }
+
   protected shopGearRows(): { info: GearInfo; qty: number; blackMarket: boolean }[] {
     return (this.currentBazaar()?.gear ?? [])
       .map((s) => ({ info: GEAR_MAP[s.item], qty: s.qty, blackMarket: !!s.blackMarket }))
@@ -1069,6 +1075,17 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Space name + blurb (with snare hint) for a node's popover. */
   private buildNodeInfo(nodeId: string): NodeInfo | null {
+    const u = this.store.umori();
+    if (u && nodeId === u.node) {
+      const ms = new Date(u.movesAt + 'Z').getTime() - Date.now();
+      const min = Math.max(0, Math.ceil(ms / 60_000));
+      const t = min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`;
+      return {
+        nodeId,
+        title: 'Umori, the Wandering Post',
+        body: `A rare T3 barter — but Umori oozes on in ${t}. Trade while you can.`,
+      };
+    }
     const node = this.map?.nodes.find((n) => n.id === nodeId);
     if (!node) return null;
     let title = this.spaceName(node.type);
@@ -1184,6 +1201,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       }),
     );
     this.board.setSnares(this.store.snares());
+    this.board.setUmori(this.store.umori());
     this.board.setBarriersOpen(this.store.barriersOpen());
     this.board.setGuardianPools(this.store.guardians());
     const here = step ? stepPos(step) : null;

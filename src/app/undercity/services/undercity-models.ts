@@ -220,6 +220,8 @@ export interface GameState {
   snares: string[];
   /** Trading post node id -> its 3 shared stock slots. */
   tradingPosts?: Record<string, TradeStockItem[]>;
+  /** The wandering trading post's current node + when it next hops (ISO, UTC no suffix). */
+  umori?: { node: string; movesAt: string };
   /** Shop node id -> its current shared stock and restock clock. */
   bazaars?: Record<string, BazaarView>;
   /** Player Market — priced gear listings (mirrors undercity_db MARKET# records). */
