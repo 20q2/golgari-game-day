@@ -252,21 +252,21 @@ export class IntroCutsceneComponent implements OnInit, OnDestroy {
   protected readonly panels: Panel[] = [
     {
       kind: 'gate',
-      text: 'Beneath the game table sleeps Savra, the Swarm Queen. Whoever earns the most Renown before dawn is crowned above her.',
+      text: 'Deep under the table, the Swarm Queen waits behind a sealed gate. Whoever has the most Renown when the night ends wins.',
     },
     {
       kind: 'renown',
-      text: "Renown is won by the fang — never by hoarding. Beat the deep's wild beasts and any rival who crosses you.",
+      text: "You earn Renown by fighting — beat wild creatures and other players. Exploring and hoarding Spores won't earn any.",
     },
     {
       kind: 'guardians',
-      text: "Five guardians each hold a Guild Sigil. Claim a lair's first kill and the bounty is yours alone — the richest Renown in the dark.",
+      text: 'Five guardians each hold a Guild Sigil. Land the first kill on one for a big Renown bounty.',
     },
     {
       kind: 'seals',
-      text: 'Gather three Sigils to unseal the Queen — then every blow you land on her swells your Renown before dawn.',
+      text: "Collect 3 Sigils and the Queen's gate opens. Every hit you land on her earns more Renown.",
     },
-    { kind: 'egg', text: "But first — you're still in your shell. Tap to crack it." },
+    { kind: 'egg', text: "But first — you're still in your egg. Tap to crack it." },
   ];
 
   protected readonly index = signal(0);

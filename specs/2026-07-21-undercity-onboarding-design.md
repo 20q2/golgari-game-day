@@ -72,11 +72,11 @@ before the egg. Still panels, cross-fading; **Skip** always visible; tap or auto
 
 | Panel | Visual (all in-repo) | Narration |
 |---|---|---|
-| 1 | `undercity/gate_background.png` dimmed; a shadowed silhouette behind a sealed gate (CSS) | "Beneath the game table sleeps Savra, the Swarm Queen. Whoever earns the most Renown before dawn is crowned above her." |
-| 2 | Gold `military_tech` medal (the Renown vocabulary) | "Renown is won by the fang — never by hoarding. Beat the deep's wild beasts and any rival who crosses you." |
-| 3 | Row of the 5 biome-lair guardian portraits (`undercity/guardians/<id>.png`: `ishkanah`, `sarulf`, `gitrog_monster`, `skullbriar`, `slimefoot`) | "Five guardians each hold a Guild Sigil. Claim a lair's first kill and the bounty is yours alone — the richest Renown in the dark." |
-| 4 | Three gold **`workspace_premium`** seals igniting (the Guild-Sigil vocabulary — see Correctness) | "Gather three Sigils to unseal the Queen — then every blow you land on her swells your Renown before dawn." |
-| 5 | A single waiting egg | "But first — you're still in your shell. **Tap to crack it.**" → dissolves into the egg screen |
+| 1 | `undercity/gate_background.png` dimmed; a shadowed silhouette behind a sealed gate (CSS) | "Deep under the table, the Swarm Queen waits behind a sealed gate. Whoever has the most Renown when the night ends wins." |
+| 2 | Gold `military_tech` medal (the Renown vocabulary) | "You earn Renown by fighting — beat wild creatures and other players. Exploring and hoarding Spores won't earn any." |
+| 3 | Row of the 5 biome-lair guardian portraits (`undercity/guardians/<id>.png`: `ishkanah`, `sarulf`, `gitrog_monster`, `skullbriar`, `slimefoot`) | "Five guardians each hold a Guild Sigil. Land the first kill on one for a big Renown bounty." |
+| 4 | Three gold **`workspace_premium`** seals igniting (the Guild-Sigil vocabulary — see Correctness) | "Collect 3 Sigils and the Queen's gate opens. Every hit you land on her earns more Renown." |
+| 5 | A single waiting egg | "But first — you're still in your egg. **Tap to crack it.**" → dissolves into the egg screen |
 
 Panel 5 *is* the handoff: the cutscene ends by naming the first mechanic, so "what do I
 do?" is answered before the player even hatches. Panels 1–4 teach the Renown economy the
