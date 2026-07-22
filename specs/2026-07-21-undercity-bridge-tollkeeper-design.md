@@ -22,9 +22,10 @@ too big to fit* — and enforces it:
 
 - **Tier 1 ("kids")** — cross free, exactly as today. The dialog is a friendly
   confirm.
-- **Tier 2 ("adults")** — **forced stop, then cross**: pay 50 spores, stop on
-  the bridge mouth this turn, and your **next roll** carries you across free.
-  Can't afford 50 → the bridge is blocked (no free pass-through, no overshoot).
+- **Tier 2 ("adults")** — pay 50 spores at the tollkeeper and cross the **same
+  turn**: you pop out the far side and your turn ends there. Bridges are a
+  forced stop so an adult can't skip the toll by walking through the spur.
+  Can't afford 50 → the bridge is blocked entirely (no free pass-through).
 - **Tier 3 ("dragons / lich lords")** — **too large to enter at all.** The
   bridge is never a destination and never a corridor. Tapping one still shows a
   playful "you'll never fit" dialog so the tile isn't a dead end.
@@ -95,36 +96,18 @@ Tier-3 has bridges in `blocked`, so `closed` never matters for them.
 
 ### `_resolve_space` tunnel branch — landing behavior splits by tier
 
-Today the branch warps every lander across (`doc['position'] =
-TUNNEL_EXITS[node]`) and charges the toll inline. Split it:
+This branch already warps every lander across (`doc['position'] =
+TUNNEL_EXITS[node]`) and charges `TUNNEL_TOLL.get(tier, 0)` inline. Under the
+same-turn model it needs **no structural change** — a Tier-2 that lands on a
+mouth is charged 50 and warped across, consequence-free, exactly as today (only
+the toll number moved from 8 to 50, via config). The new forced-stop upstream is
+what guarantees an adult actually *lands* on the mouth (and pays) instead of
+walking through the spur untouched.
 
-- **Tier 1** — warp across now, free, consequence-free (unchanged): return the
-  current `{'type': 'tunnel', 'to': exit_node, 'toll': 0, 'text': …}`.
-- **Tier 2** — this landing is the *forced stop*. Charge 50 spores, **stay on
-  the mouth** (do **not** set `position` to the exit), and return a distinct
-  payload, e.g. `{'type': 'tunnel', 'paid': True, 'toll': 50, 'to': None,
-  'text': 'You squeeze up to the bridge and pay the toll. Your next roll
-  carries you across.'}`. No far-side landing effect resolves (consequence-free,
-  as today).
-
-Tier-3 never reaches this branch (blocked upstream).
-
-### Carrying a paid Tier-2 across on the next roll
-
-A Tier-2 standing **on a bridge mouth** got there by paying, so their next roll
-carries them across for free. In `_roll`, before computing legal destinations:
-
-- If the mover's `position` is in `TUNNEL_NODES` and the mover is evolved
-  (`tier > TUNNEL_TIER_MAX`), immediately place them at
-  `TUNNEL_EXITS[position]`, consume the roll, charge **no** toll, and return a
-  tunnel-cross event (`{'type': 'tunnel', 'to': exit, 'toll': 0, 'text': 'You
-  slip across the bridge to the far side.'}`). This is the "your next roll
-  carries you across" step, mirroring the escape-ladder feel.
-
-Edge case: a unit deposited on a mouth by teleport/admin/respawn also gets the
-free carry-across on its next roll. Acceptable — arriving on a mouth by any
-means means the crossing is already committed; it never grants a *second* free
-crossing because the carry lands you off the bridge.
+- **Tier 1** — warp across now, free, consequence-free (unchanged).
+- **Tier 2** — charge 50, warp across, consequence-free (unchanged shape;
+  reaching the branch at all is the behavior change).
+- **Tier 3** — never reaches this branch (blocked upstream in `_blocked_nodes`).
 
 ## Client (`src/app/undercity/`)
 
@@ -184,26 +167,24 @@ Backend — `cd infrastructure/lambda && python -m pytest tests -q`:
   Tier-3 (`legal_destinations`/`board_distance` with `_blocked_nodes`); it can
   still reach every biome via the Wilderness (existing no-trap test still
   passes).
-- **Tier 2 forced stop:** with ≥50 spores, a bridge mouth is a legal
-  destination but nothing beyond it is (stop-node), from a biome neighbor.
-- **Tier 2 landing:** `_resolve_space` on a mouth charges 50, leaves `position`
-  on the mouth (no warp), returns `paid: True`.
-- **Tier 2 carry-across:** a `_roll` while standing on a mouth warps to
-  `TUNNEL_EXITS[mouth]`, consumes the roll, charges no second toll.
+- **Tier 2 forced stop:** with ≥50 spores, using the movement stop-set
+  (`_stop_nodes`), a bridge mouth is a legal destination but nothing beyond it
+  is a corridor — the adult halts on the mouth instead of walking through.
+- **Tier 2 landing:** `_resolve_space` on a mouth charges 50 and warps to
+  `TUNNEL_EXITS[mouth]` (position updated), consequence-free.
 - **Tier 2 broke:** <50 spores → bridge in `_blocked_nodes`, not a destination.
-- **Tier 1 unchanged:** warp-on-landing, free, consequence-free.
+- **Tier 1 unchanged:** warp-on-landing, free, consequence-free; tunnels are
+  NOT in the Tier-1 stop-set (they still pass/warp freely).
 - **Update existing tests:** the current suite asserts `TUNNEL_TOLL == {2:8,
-  3:16}` (`test_tunnel_toll_table`) and Tier-2 warp-on-landing
-  (`test_tier2_tunnel_landing_charges_the_toll`, which expects
-  `position == TUNNEL_EXITS[...]`). These change: toll is 50, and a Tier-2
-  landing now stays on the mouth. Retune those assertions to the new rules.
+  3:16}` (`test_tunnel_toll_table`) — retune to `{2: 50}`. The Tier-2
+  landing test (`test_tier2_tunnel_landing_charges_the_toll`) already expects a
+  warp to the exit; only its toll number changes (8 → 50).
 
 ## Non-goals (YAGNI)
 
 - **Teleport into a bridge** is not specially gated (rare; matches the
-  wilds-warning precedent). A teleport that lands a Tier-2 on a mouth simply
-  gets the free carry-across next roll.
+  wilds-warning precedent).
 - **Flat 50 toll** — no per-crossing scaling, no distance/biome variation.
-- **No new persistent state** beyond the transient "standing on a mouth" (which
-  is just `position`); no localStorage flag (the dialog shows every crossing).
+- **No new persistent state** and no localStorage flag (the dialog shows every
+  crossing, computed live from tier + spores).
 - No change to enemy difficulty, the Wilderness, the boss finale, or PvP.
