@@ -18,7 +18,7 @@ interface Symbol {
 /** Reel faces — the outcome the server rolled maps to one of these keys. */
 const SYMBOLS: Record<string, Symbol> = {
   spores: { icon: 'grain', color: '#e0c069' },
-  item: { icon: 'inventory_2', color: '#b79bff' },
+  item: { icon: 'backpack', color: '#b79bff' },
   heal: { icon: 'favorite', color: '#7fce8f' },
   hurt: { icon: 'heart_broken', color: '#e07a7a' },
   warp: { icon: 'cyclone', color: '#4fc4bc' },

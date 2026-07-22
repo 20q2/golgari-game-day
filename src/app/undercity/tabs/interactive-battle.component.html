@@ -341,7 +341,7 @@
         <div class="reward-chips">
           @if (r.spores) { <span class="reward-chip spores"><img class="mi-coin" src="undercity/icons/rot.png" alt="Spores" /> +{{ r.spores }} Spores</span> }
           @if (r.xp) { <span class="reward-chip xp"><mat-icon class="mi">auto_awesome</mat-icon> +{{ r.xp }} XP</span> }
-          @if (r.itemName) { <span class="reward-chip item"><mat-icon class="mi">{{ r.itemIcon ?? 'inventory_2' }}</mat-icon> {{ r.itemName }}</span> }
+          @if (r.itemName) { <span class="reward-chip item"><mat-icon class="mi">{{ r.itemIcon ?? 'backpack' }}</mat-icon> {{ r.itemName }}</span> }
           @if (r.gearName) { <span class="reward-chip item"><mat-icon class="mi">{{ r.gearIcon ?? 'hardware' }}</mat-icon> {{ r.gearName }} — {{ r.gearStashed ? 'to stash' : 'stash full → materials' }}</span> }
           @if (r.levels) { <span class="reward-chip levelup"><mat-icon class="mi">arrow_upward</mat-icon> Level up{{ r.levels > 1 ? ' ×' + r.levels : '' }}!</span> }
         </div>

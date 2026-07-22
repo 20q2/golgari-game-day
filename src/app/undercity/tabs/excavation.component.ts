@@ -261,7 +261,7 @@ export class ExcavationModalComponent implements OnChanges {
 
   private iconFor(it: DigItemView): string {
     if (it.kind === 'spores') return 'grain';
-    return CONSUMABLE_MAP[it.item ?? '']?.icon ?? 'inventory_2';
+    return CONSUMABLE_MAP[it.item ?? '']?.icon ?? 'backpack';
   }
 
   private labelFor(it: DigItemView): string {
