@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FlowPuzzleView } from '../services/undercity-models';
+import { MatIconModule } from '@angular/material/icon';
+import { FlowPuzzleView, FlowReward } from '../services/undercity-models';
 
 type Cell = [number, number];
 
@@ -13,12 +14,14 @@ type Cell = [number, number];
 @Component({
   selector: 'app-undercity-flow-puzzle',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   template: `
     <div class="flow-overlay" (click)="gaveUp.emit()">
       <div class="flow-card" (click)="$event.stopPropagation()" [style.background-image]="washBg">
         <h3>🌿 Overgrown Cache</h3>
-        <p class="flow-sub">Trace a vine from 🌱 to 🌾 through every empty tile.</p>
+        <p class="flow-sub">
+          Trace one vine through every empty tile — the first prize it touches is yours.
+        </p>
 
         <div
           class="flow-grid"
@@ -39,13 +42,11 @@ type Cell = [number, number];
                 [class.end]="isEnd(ri, ci)"
                 [class.filled]="inPath(ri, ci)"
                 [class.tip]="isTip(ri, ci)"
+                [class.claimed]="isClaimed(ri, ci)"
+                [class.faded]="isFaded(ri, ci)"
               >
-                @if (isStart(ri, ci)) {
-                  <span>🌱</span>
-                } @else if (isEnd(ri, ci)) {
-                  <span>🌾</span>
-                } @else if (isRock(ri, ci)) {
-                  <span>🪨</span>
+                @if (rewardAt(ri, ci); as rw) {
+                  <mat-icon class="reward-ic" [svgIcon]="iconFor(rw)"></mat-icon>
                 }
               </div>
             }
@@ -130,6 +131,21 @@ type Cell = [number, number];
       .cell.rock {
         background: #2a2622;
       }
+      .cell .reward-ic {
+        width: 70%;
+        height: 70%;
+        color: #e0c088;
+      }
+      .cell.filled .reward-ic {
+        color: #10140e;
+      }
+      .cell.claimed {
+        box-shadow: inset 0 0 0 2px #8fd08a, 0 0 8px rgba(143, 208, 138, 0.7);
+      }
+      .cell.faded .reward-ic {
+        opacity: 0.25;
+        filter: grayscale(1);
+      }
       .flow-hint {
         margin: 0;
         font-size: 0.8rem;
@@ -179,6 +195,44 @@ export class FlowPuzzleModalComponent {
   protected isTip(r: number, c: number): boolean {
     const p = this.path();
     return p.length > 0 && p[p.length - 1][0] === r && p[p.length - 1][1] === c;
+  }
+
+  /** Registry name of the SVG icon for each reward kind. */
+  private readonly rewardIcon: Record<FlowReward['kind'], string> = {
+    spores: 'uc-spore',
+    item: 'uc-pouch',
+    gear: 'uc-chest',
+  };
+
+  /** The reward at (r,c), or null. */
+  protected rewardAt(r: number, c: number): FlowReward | null {
+    return (this.puzzle.rewards ?? []).find((rw) => rw.cell[0] === r && rw.cell[1] === c) ?? null;
+  }
+
+  protected iconFor(rw: FlowReward): string {
+    return this.rewardIcon[rw.kind];
+  }
+
+  /** The first reward cell the current path crosses, or null. */
+  protected readonly claimedRewardCell = computed<[number, number] | null>(() => {
+    for (const [r, c] of this.path()) {
+      const rw = (this.puzzle.rewards ?? []).find((x) => x.cell[0] === r && x.cell[1] === c);
+      if (rw) return [r, c];
+    }
+    return null;
+  });
+
+  protected isClaimed(r: number, c: number): boolean {
+    const cell = this.claimedRewardCell();
+    return !!cell && cell[0] === r && cell[1] === c;
+  }
+
+  /** A reward cell that is NOT the first-crossed one, once one has been claimed. */
+  protected isFaded(r: number, c: number): boolean {
+    const claimed = this.claimedRewardCell();
+    if (!claimed) return false;
+    const isReward = (this.puzzle.rewards ?? []).some((x) => x.cell[0] === r && x.cell[1] === c);
+    return isReward && !(claimed[0] === r && claimed[1] === c);
   }
 
   protected readonly isSolved = computed(() => {
