@@ -167,6 +167,63 @@
     </div>
   }
 
+  <!-- Bridge tollkeeper: a Nyx Weaver whose spider-silk threads span the biome
+       gaps. Fires on every bridge crossing, tier-aware. No backdrop-click
+       dismissal — a button must be tapped. The silk bears kids (T1) free,
+       strains under adults (T2 → 50-spore mending fee), and would snap under
+       dragons/lich lords (T3 → can't cross). -->
+  @if (bridgePrompt()) {
+    <div class="uc-modal-backdrop">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">toll</mat-icon> The Nyx Weaver</h3>
+        <img
+          class="modal-art"
+          src="undercity/map_events/bridge_keeper.png"
+          alt="The Nyx Weaver, keeper of the silk bridge"
+        />
+        @if (bridgeTier() >= 3) {
+          <p class="modal-sub">
+            The Nyx Weaver skitters back in alarm. &ldquo;No &mdash; <em>no.</em>
+            A beast your size would rip my threads to tatters. This silk will
+            <em>never</em> hold you. Away!&rdquo;
+          </p>
+        } @else if (bridgeTier() === 2 && !bridgeCommittable()) {
+          <p class="modal-sub">
+            The Nyx Weaver plucks a taut strand. &ldquo;Fifty spores to reinforce
+            the silk for a grown-up &mdash; or find another way across.&rdquo;
+            You can't afford the mending fee. (Little ones cross free; dragons
+            and lich lords would tear the web apart.)
+          </p>
+        } @else if (bridgeTier() === 2) {
+          <p class="modal-sub">
+            The Nyx Weaver weighs you against her threads. &ldquo;A grown-up will
+            strain my silk &mdash; <strong>50 spores</strong> to reinforce the
+            strands and see you across.&rdquo; (Little ones cross free; dragons
+            and lich lords would tear the web apart.)
+          </p>
+        } @else {
+          <p class="modal-sub">
+            The Nyx Weaver clacks her fangs in welcome. &ldquo;Light as a leaf
+            &mdash; my silk will bear you with ease, little one. Skitter
+            across!&rdquo; (Grown-ups pay 50 spores to reinforce the strands;
+            dragons and lich lords would snap them outright.)
+          </p>
+        }
+        <div class="choice-grid">
+          <button class="uc-btn" (click)="turnBackBridge()">
+            <mat-icon class="mi">undo</mat-icon> Turn back
+          </button>
+          @if (bridgeCommittable()) {
+            <button class="uc-btn uc-btn-primary" (click)="payBridge()">
+              <mat-icon class="mi">{{ bridgeTier() === 1 ? 'directions_walk' : 'paid' }}</mat-icon>
+              {{ bridgeTier() === 1 ? 'Skitter across' : 'Pay 50 &amp; cross' }}
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- Rolling die overlay -->
   @if (rolling()) {
     <div class="dice-overlay">

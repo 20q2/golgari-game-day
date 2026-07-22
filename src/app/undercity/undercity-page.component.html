@@ -49,8 +49,8 @@
       </div>
     }
     @case ('ended') {
-      <app-undercity-ceremony [result]="store.result()" [hallOfFame]="store.hallOfFame()" />
-      <div class="idle-screen">
+      <div class="ended-screen">
+        <app-undercity-ceremony [result]="store.result()" [hallOfFame]="store.hallOfFame()" />
         <app-undercity-host-panel />
       </div>
     }

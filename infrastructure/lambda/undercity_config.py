@@ -51,6 +51,11 @@ SCROUNGER_MULT = 1.25     # Pest passive: ×Spores from all loot (forage/dig/mys
                           # and combat bounties. A % (not a flat +2) so the pest
                           # stays the economy specialist as bounties scale — client
                           # blurb mirror in src/app/undercity/data/forms.ts
+SCROUNGER_LOSS_FRACTION = 0.3  # Pest passive: even on a LOST / fled / stalemated
+                          # wild or elite fight, scrounge this fraction of the
+                          # bounty it would have won. Makes the pest's income
+                          # survival-independent — the economy identity doesn't
+                          # collapse when a fragile balanced statline dies.
 
 # Gear rider knobs (combat riders in undercity_engine.resolve_round).
 CUTPURSE_SPORES = 6   # flat Spores after a won fight in which you landed a Feint
@@ -118,11 +123,13 @@ RIDER_SCALE = {
 # Wilderness instead. See specs/2026-07-20-undercity-tunnels-wilderness-design.md.
 TUNNEL_TIER_MAX = 1
 
-# Spore toll an evolved unit pays to USE a tunnel (tier -> cost). Tiers <=
-# TUNNEL_TIER_MAX travel free; a unit that cannot afford its toll is blocked
-# from tunnels entirely (see _blocked_nodes in undercity_db.py). The client
-# tunnel blurb mirrors this rule in prose only — no number is duplicated.
-TUNNEL_TOLL = {2: 8, 3: 16}
+# Spore toll to cross a bridge (a `tunnel` node), keyed by tier. Tiers <=
+# TUNNEL_TIER_MAX cross free ("kids"); a tier WITH an entry pays that toll
+# ("adults"); a tier with NO entry is too large to fit and is blocked from
+# bridges entirely (Tier 3 today — "dragons & lich lords"). See _blocked_nodes
+# and _stop_nodes in undercity_db.py. The client mirrors this rule in the
+# tollkeeper dialog prose only.
+TUNNEL_TOLL = {2: 50}
 
 # ── Facilities ───────────────────────────────────────────────────────────────
 SHOP_REFRESH_MIN = 30        # bazaar restock window (minutes); the client's

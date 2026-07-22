@@ -23,6 +23,19 @@
   background-repeat: no-repeat;
 }
 
+// End-of-night ceremony is taller than the viewport on mobile (champion stage
+// + podium + full standings table + host panel), so it needs its own scroll
+// container — `.undercity` clips with `overflow: hidden`.
+.ended-screen {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md, 16px);
+  padding-bottom: var(--spacing-lg, 24px);
+}
+
 .gate-screen,
 .idle-screen {
   flex: 1;

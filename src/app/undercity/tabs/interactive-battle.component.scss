@@ -183,6 +183,28 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  &.right .name-row { justify-content: flex-end; }
+
+  .foe-level {
+    flex-shrink: 0;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #f0d98c;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(240, 217, 140, 0.4);
+    border-radius: 999px;
+    padding: 1px 6px;
+    line-height: 1.4;
   }
 
   .hp-track {

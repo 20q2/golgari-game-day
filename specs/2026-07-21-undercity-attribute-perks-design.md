@@ -33,12 +33,12 @@ This design fixes that two ways at once:
   `['spd']`), which is species base + level-up spends + evolution bonuses.
   **Gear and temporary buffs are excluded** — they change effective stats, never
   perk state, so swapping gear never lights or dims a perk.
-- Nodes at **5 / 10 / 15**. Unlock is `doc[stat] >= threshold` — monotonic and
+- Nodes at **6 / 12 / 18**. Unlock is `doc[stat] >= threshold` — monotonic and
   stateless, so it derives from the save with no migration and no new currency.
 - **Base stats light the tier-1 node.** A kraul (atk 8) hatches with *Rend*; a
   saproling (def 7) hatches with *Thick Hide*. This is intended — it reinforces
   species fantasy. (If we later want nodes to always feel *earned*, the only
-  change is bumping thresholds to 8/13/18; the mechanic is unchanged.)
+  change is bumping thresholds further; the mechanic is unchanged.)
 
 ### The tracks
 
@@ -130,7 +130,7 @@ measured is preserved by construction.
 ## Client
 
 - **Attribute track UI** in the creature panel (`src/app/undercity/`): three
-  short tracks (ATK/DEF/SPD) showing the 5/10/15 nodes, which are lit, current
+  short tracks (ATK/DEF/SPD) showing the 6/12/18 nodes, which are lit, current
   value, and next node. Reads perk defs from a new
   `src/app/undercity/data/perks.ts` mirror.
 - **Roll UX** for SPD perks: Pathfinder shows two dice with a pick; Blink shows a
@@ -164,4 +164,4 @@ unlocked perk set so the client renders without recomputing rules.
   scope (PvP shelved).
 - No perk respec/refund system — perks track the stat you invested; that's the
   commitment. Revisit only if playtest asks for it.
-- Thresholds fixed at 5/10/15 (base lights tier-1) unless playtest says otherwise.
+- Thresholds fixed at 6/12/18 (base lights tier-1) unless playtest says otherwise.

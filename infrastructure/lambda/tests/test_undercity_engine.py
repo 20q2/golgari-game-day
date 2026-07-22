@@ -430,8 +430,10 @@ def test_cursed_idol_debuff():
 # ── Renown ───────────────────────────────────────────────────────────────────
 
 def test_renown_table():
-    p = {'level': 8, 'pvpWins': 3, 'wildWins': 7, 'spores': 52, 'bossDamage': 45}
-    assert data.compute_renown(p) == 80 + 45 + 21 + 10 + 4
+    # Only fights + firsts count: level and spores grant no Renown.
+    p = {'level': 8, 'pvpWins': 3, 'wildWins': 7, 'spores': 52, 'bossDamage': 45,
+         'poiClaims': ['bar_e', 'lair_titan']}
+    assert data.compute_renown(p) == 45 + 21 + 50 + 4  # pvp + wild + 2 firsts + boss
 
 
 # ── Unique dungeons (v6) ─────────────────────────────────────────────────────
@@ -1225,7 +1227,9 @@ def test_tunnel_tier_max_is_one():
 
 
 def test_tunnel_toll_table():
-    assert data.TUNNEL_TOLL == {2: 8, 3: 16}
+    # Only Tier-2 has a toll entry. A tier absent from the table (Tier-3) is
+    # too large to enter a bridge at all — see _blocked_nodes.
+    assert data.TUNNEL_TOLL == {2: 50}
 
 
 def test_tunnel_exits_cover_every_tunnel_with_a_biome_node():

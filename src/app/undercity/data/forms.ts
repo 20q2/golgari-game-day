@@ -35,7 +35,7 @@ export const PASSIVE_NAMES: Record<string, string> = {
 };
 
 export const PASSIVE_BLURBS: Record<string, string> = {
-  scrounger: '+25% Spores from all loot and combat bounties.',
+  scrounger: '+25% Spores from all loot & bounties, and scrounge Spores even from fights you lose or flee.',
   first_bite: 'Always strikes first in round 1.',
   regrowth: 'Heal 20% max HP after any battle.',
   drift: '+15% flee chance; bad mystery events reroll once.',

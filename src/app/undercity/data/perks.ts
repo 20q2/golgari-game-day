@@ -1,6 +1,6 @@
 // Mirror of infrastructure/lambda/undercity_data.py PERKS / PERK_TRACKS.
 // Perks derive from the INVESTED base stat (species base + level spends +
-// evolution bonuses), never gear/buffs. Nodes at 5/10/15; base stats can
+// evolution bonuses), never gear/buffs. Nodes at 6/12/18; base stats can
 // already light the tier-1 node. Keep in sync with the server.
 export type PerkTrack = 'atk' | 'def' | 'spd';
 
@@ -8,38 +8,38 @@ export interface Perk {
   id: string;
   name: string;
   track: PerkTrack;
-  threshold: 5 | 10 | 15;
+  threshold: 6 | 12 | 18;
   blurb: string;
 }
 
-export const PERK_TRACKS: Record<PerkTrack, { threshold: 5 | 10 | 15; id: string }[]> = {
+export const PERK_TRACKS: Record<PerkTrack, { threshold: 6 | 12 | 18; id: string }[]> = {
   atk: [
-    { threshold: 5, id: 'rend' },
-    { threshold: 10, id: 'menace' },
-    { threshold: 15, id: 'deathdrive' },
+    { threshold: 6, id: 'rend' },
+    { threshold: 12, id: 'menace' },
+    { threshold: 18, id: 'deathdrive' },
   ],
   def: [
-    { threshold: 5, id: 'thick_hide' },
-    { threshold: 10, id: 'carapace_grind' },
-    { threshold: 15, id: 'last_stand' },
+    { threshold: 6, id: 'thick_hide' },
+    { threshold: 12, id: 'carapace_grind' },
+    { threshold: 18, id: 'last_stand' },
   ],
   spd: [
-    { threshold: 5, id: 'fleetfoot' },
-    { threshold: 10, id: 'pathfinder' },
-    { threshold: 15, id: 'blink' },
+    { threshold: 6, id: 'fleetfoot' },
+    { threshold: 12, id: 'pathfinder' },
+    { threshold: 18, id: 'blink' },
   ],
 };
 
 export const PERKS: Record<string, Perk> = {
-  rend: { id: 'rend', name: 'Rend', track: 'atk', threshold: 5, blurb: 'A winning Aggress always applies 1 rot.' },
-  menace: { id: 'menace', name: 'Menace', track: 'atk', threshold: 10, blurb: 'Enemies bluff you less often.' },
-  deathdrive: { id: 'deathdrive', name: 'Deathdrive', track: 'atk', threshold: 15, blurb: 'Below half HP, your Aggress swings hit harder.' },
-  thick_hide: { id: 'thick_hide', name: 'Thick Hide', track: 'def', threshold: 5, blurb: 'Halve HP lost to hazards and bad mystery rolls.' },
-  carapace_grind: { id: 'carapace_grind', name: 'Carapace Grind', track: 'def', threshold: 10, blurb: 'Holding Guard grinds the foe down even when you don’t win the exchange.' },
-  last_stand: { id: 'last_stand', name: 'Last Stand', track: 'def', threshold: 15, blurb: 'Survive one lethal blow per descent at 1 HP.' },
-  fleetfoot: { id: 'fleetfoot', name: 'Fleetfoot', track: 'spd', threshold: 5, blurb: 'You may reroll a die that shows 1.' },
-  pathfinder: { id: 'pathfinder', name: 'Pathfinder', track: 'spd', threshold: 10, blurb: 'Roll with advantage — roll two dice, keep either.' },
-  blink: { id: 'blink', name: 'Blink', track: 'spd', threshold: 15, blurb: 'Once per turn, choose your die value.' },
+  rend: { id: 'rend', name: 'Rend', track: 'atk', threshold: 6, blurb: 'A winning Aggress always applies 1 rot.' },
+  menace: { id: 'menace', name: 'Menace', track: 'atk', threshold: 12, blurb: 'Enemies bluff you less often.' },
+  deathdrive: { id: 'deathdrive', name: 'Deathdrive', track: 'atk', threshold: 18, blurb: 'Below half HP, your Aggress swings hit harder.' },
+  thick_hide: { id: 'thick_hide', name: 'Thick Hide', track: 'def', threshold: 6, blurb: 'Halve HP lost to hazards and bad mystery rolls.' },
+  carapace_grind: { id: 'carapace_grind', name: 'Carapace Grind', track: 'def', threshold: 12, blurb: 'Holding Guard grinds the foe down even when you don’t win the exchange.' },
+  last_stand: { id: 'last_stand', name: 'Last Stand', track: 'def', threshold: 18, blurb: 'Survive one lethal blow per descent at 1 HP.' },
+  fleetfoot: { id: 'fleetfoot', name: 'Fleetfoot', track: 'spd', threshold: 6, blurb: 'You may reroll a die that shows 1.' },
+  pathfinder: { id: 'pathfinder', name: 'Pathfinder', track: 'spd', threshold: 12, blurb: 'Roll with advantage — roll two dice, keep either.' },
+  blink: { id: 'blink', name: 'Blink', track: 'spd', threshold: 18, blurb: 'Once per turn, choose your die value.' },
 };
 
 /** The perks unlocked at a given invested stat value on one track. */

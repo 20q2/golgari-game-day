@@ -43,7 +43,8 @@ STARTERS = {
     'pest': {
         'name': 'Pest', 'hp': 30, 'atk': 6, 'def': 5, 'spd': 5,
         'passive': 'scrounger',
-        'blurb': 'Balanced sewer rat. Scrounger: +25% Spores from all loot and combat bounties.',
+        'blurb': 'Balanced sewer rat. Scrounger: +25% Spores from all loot & bounties, '
+                 'and scrounge Spores even from fights you lose or flee.',
     },
     'kraul': {
         'name': 'Kraul Grub', 'hp': 24, 'atk': 8, 'def': 3, 'spd': 7,
@@ -158,33 +159,33 @@ ALL_FORMS = {**{k: dict(v, tier=1) for k, v in STARTERS.items()},
 
 # ── Attribute perk tracks (design 2026-07-21) ────────────────────────────────
 # A perk unlocks when the INVESTED base stat (species base + level spends +
-# evolution bonuses; NOT gear/buffs) reaches its threshold. Nodes at 5/10/15;
+# evolution bonuses; NOT gear/buffs) reaches its threshold. Nodes at 6/12/18;
 # base stats can already light the tier-1 node (kraul atk 8 -> Rend). Client
 # mirror: src/app/undercity/data/perks.ts
 PERK_TRACKS = {
-    'atk': [(5, 'rend'), (10, 'menace'), (15, 'deathdrive')],
-    'def': [(5, 'thick_hide'), (10, 'carapace_grind'), (15, 'last_stand')],
-    'spd': [(5, 'fleetfoot'), (10, 'pathfinder'), (15, 'blink')],
+    'atk': [(6, 'rend'), (12, 'menace'), (18, 'deathdrive')],
+    'def': [(6, 'thick_hide'), (12, 'carapace_grind'), (18, 'last_stand')],
+    'spd': [(6, 'fleetfoot'), (12, 'pathfinder'), (18, 'blink')],
 }
 
 PERKS = {
-    'rend':           {'name': 'Rend', 'track': 'atk', 'threshold': 5,
+    'rend':           {'name': 'Rend', 'track': 'atk', 'threshold': 6,
                        'blurb': 'A winning Aggress always applies 1 rot.'},
-    'menace':         {'name': 'Menace', 'track': 'atk', 'threshold': 10,
+    'menace':         {'name': 'Menace', 'track': 'atk', 'threshold': 12,
                        'blurb': 'Enemies bluff you less often.'},
-    'deathdrive':     {'name': 'Deathdrive', 'track': 'atk', 'threshold': 15,
+    'deathdrive':     {'name': 'Deathdrive', 'track': 'atk', 'threshold': 18,
                        'blurb': 'Below half HP, your Aggress swings hit harder.'},
-    'thick_hide':     {'name': 'Thick Hide', 'track': 'def', 'threshold': 5,
+    'thick_hide':     {'name': 'Thick Hide', 'track': 'def', 'threshold': 6,
                        'blurb': 'Halve HP lost to hazards and bad mystery rolls.'},
-    'carapace_grind': {'name': 'Carapace Grind', 'track': 'def', 'threshold': 10,
+    'carapace_grind': {'name': 'Carapace Grind', 'track': 'def', 'threshold': 12,
                        'blurb': 'Holding Guard grinds the foe down even when you don’t win the exchange.'},
-    'last_stand':     {'name': 'Last Stand', 'track': 'def', 'threshold': 15,
+    'last_stand':     {'name': 'Last Stand', 'track': 'def', 'threshold': 18,
                        'blurb': 'Survive one lethal blow per descent at 1 HP.'},
-    'fleetfoot':      {'name': 'Fleetfoot', 'track': 'spd', 'threshold': 5,
+    'fleetfoot':      {'name': 'Fleetfoot', 'track': 'spd', 'threshold': 6,
                        'blurb': 'You may reroll a die that shows 1.'},
-    'pathfinder':     {'name': 'Pathfinder', 'track': 'spd', 'threshold': 10,
+    'pathfinder':     {'name': 'Pathfinder', 'track': 'spd', 'threshold': 12,
                        'blurb': 'Roll with advantage — roll two dice, keep either.'},
-    'blink':          {'name': 'Blink', 'track': 'spd', 'threshold': 15,
+    'blink':          {'name': 'Blink', 'track': 'spd', 'threshold': 18,
                        'blurb': 'Once per turn, choose your die value.'},
 }
 
@@ -628,6 +629,25 @@ WILDERNESS_ELITE_NPCS = [
 ]
 
 
+# ── Derived opponent level (battle UI) ───────────────────────────────────────
+# Enemies store no level. This maps a stat block onto the player's own level
+# scale so the "Lv. N" beside a foe reads as "roughly what player level this is a
+# fair fight for." Calibrated against the enemy tables and the recommended-level
+# notes scattered above: basic wilds ~Lv1, elites ~Lv2-3, wilderness wilds
+# ~Lv5-6, wilderness elites ~Lv7-8, lair/barrier bosses ~Lv3-5. maxHp is capped
+# so the finale boss's huge SHARED persistent pool (Savra, 400 HP) doesn't read
+# as an absurd level — her menace is the shared pool the HP bar already shows.
+# The battle_start / battle-resume payloads carry the computed level to the
+# client (no client mirror — the value always arrives with the fight).
+ENEMY_LEVEL_HP_CAP = 80   # above any normal enemy (max is 70); clips only the boss pool
+
+
+def enemy_level(atk: int, dfn: int, spd: int, max_hp: int) -> int:
+    """A 1-based power level derived from a foe's stat block (see note above)."""
+    power = atk + dfn + spd + min(max_hp, ENEMY_LEVEL_HP_CAP) / 4
+    return max(1, round((power - 17) / 4.5))
+
+
 # ── Cosmetics ────────────────────────────────────────────────────────────────
 
 HATS = [
@@ -832,22 +852,26 @@ def dungeon_entrance(biome):
 
 # ── Renown ───────────────────────────────────────────────────────────────────
 
+# Renown is earned only by *fighting* and by *firsts* — never by passive
+# progression. Levelling and hoarding Spores (both of which accrue from
+# exploration, salvage, mystery rooms, timeouts, etc.) grant no Renown.
+#   • beating enemies  → per_wild_win / per_pvp_win
+#   • beating bosses   → boss_damage_per_point (the finale) + the lair first-kill
+#                        that also books a per_poi claim
+#   • doing a "first"  → per_poi, one claim per player for each barrier broken,
+#                        lair first-kill, vault, trove, and treasure cache
 RENOWN = {
-    'per_level': 10,
     'per_pvp_win': 15,
     'per_wild_win': 3,
-    'per_poi': 25,  # each barrier broken / lair first-kill / vault find
-    'spores_per_point': 5,
+    'per_poi': 25,  # each barrier broken / lair first-kill / vault / trove / cache
     'boss_damage_per_point': 10,
 }
 
 
 def compute_renown(player: dict) -> int:
-    return (RENOWN['per_level'] * player.get('level', 1)
-            + RENOWN['per_pvp_win'] * player.get('pvpWins', 0)
+    return (RENOWN['per_pvp_win'] * player.get('pvpWins', 0)
             + RENOWN['per_wild_win'] * player.get('wildWins', 0)
             + RENOWN['per_poi'] * len(player.get('poiClaims', []))
-            + player.get('spores', 0) // RENOWN['spores_per_point']
             + player.get('bossDamage', 0) // RENOWN['boss_damage_per_point'])
 
 

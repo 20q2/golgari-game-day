@@ -19,6 +19,8 @@ export interface BattleSide {
   icon?: string;
   startHp: number;
   maxHp: number;
+  /** Derived power level shown beside a foe's name (NPCs only). */
+  level?: number;
 }
 
 /** Spoils shown in the victory popup after a won battle. */

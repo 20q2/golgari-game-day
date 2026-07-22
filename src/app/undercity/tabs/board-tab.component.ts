@@ -210,6 +210,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   private readonly stepping = signal<StepState | null>(null);
   /** Node id of the wilderness step held pending the danger notice, or null. */
   protected readonly wildsPrompt = signal<string | null>(null);
+  /** Node id of a bridge (tunnel) mouth whose tollkeeper dialog is open, or
+   *  null. Shown on every attempt to cross a bridge, tier-aware. */
+  protected readonly bridgePrompt = signal<string | null>(null);
   private readonly ritesShown = new Set<string>();
 
   protected readonly showSpells = signal(false);
@@ -919,9 +922,24 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           this.wildsPrompt.set(nodeId);
           return;
         }
+        // Every bridge crossing meets the tollkeeper first (Tier-1 free,
+        // Tier-2 pays 50) — hold the step and let the dialog commit it.
+        if (this.isBridge(nodeId)) {
+          this.hideInfo();
+          this.bridgePrompt.set(nodeId);
+          return;
+        }
         this.commitStep(step, nodeId);
         return;
       }
+    }
+    // Tapping a bridge that isn't a legal step this roll (Tier-3 too large, or
+    // a broke Tier-2) still opens the tollkeeper so they learn why — the dialog
+    // is informational there, with only Turn back.
+    if (this.isBridge(nodeId)) {
+      this.hideInfo();
+      this.bridgePrompt.set(nodeId);
+      return;
     }
     // Not a walk step — peek at what this space does.
     this.toggleInfo(nodeId);
@@ -936,10 +954,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.board?.centerOn(nodeId);
     // Bonk: a sealed barrier halts the walk immediately — you stop at the
     // wall and spend the rest of the roll, matching the server's dests.
+    const node = this.map.nodes.find((n) => n.id === nodeId);
     const sealedStop =
-      this.map.nodes.find((n) => n.id === nodeId)?.type === 'barrier' &&
-      !this.store.barriersOpen().includes(nodeId);
-    if (step.left === 1 || sealedStop) void this.move(nodeId);
+      node?.type === 'barrier' && !this.store.barriersOpen().includes(nodeId);
+    // Evolved units (tier > 1) halt on a bridge mouth to pay the toll — a bonk
+    // stop like a sealed barrier, so the move auto-commits on arrival.
+    const bridgeStop = node?.type === 'tunnel' && (this.store.you()?.tier ?? 1) > 1;
+    if (step.left === 1 || sealedStop || bridgeStop) void this.move(nodeId);
   }
 
   // ── Ashen Wilds first-entry warning ─────────────────────────────────────────
@@ -985,6 +1006,45 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** "Turn back" — dismiss; the walk is untouched so other routes stay open. */
   protected turnBackWilds(): void {
     this.wildsPrompt.set(null);
+  }
+
+  // ── Bridge tollkeeper ────────────────────────────────────────────────────────
+
+  private isBridge(nodeId: string): boolean {
+    return this.map.nodes.find((n) => n.id === nodeId)?.type === 'tunnel';
+  }
+
+  /** True when the held bridge is actually a reachable step this roll (Tier-1 /
+   *  funded Tier-2). A blocked unit (Tier-3, or a broke Tier-2) sees the dialog
+   *  purely as information — there is nothing to commit. */
+  protected bridgeCommittable(): boolean {
+    const nodeId = this.bridgePrompt();
+    const step = this.stepping();
+    return !!(nodeId && step && this.bridgeCommittableFor(step, nodeId));
+  }
+
+  protected bridgeTier(): number {
+    return this.store.you()?.tier ?? 1;
+  }
+
+  /** "Hop across" (Tier-1) / "Pay 50 & cross" (funded Tier-2): take the held
+   *  step. The server charges the toll / enforces the block on landing. */
+  protected payBridge(): void {
+    const nodeId = this.bridgePrompt();
+    const step = this.stepping();
+    this.bridgePrompt.set(null);
+    if (nodeId && step && this.bridgeCommittableFor(step, nodeId)) {
+      this.commitStep(step, nodeId);
+    }
+  }
+
+  /** "Turn back": dismiss; leave the walk untouched so other routes stay open. */
+  protected turnBackBridge(): void {
+    this.bridgePrompt.set(null);
+  }
+
+  private bridgeCommittableFor(step: StepState, nodeId: string): boolean {
+    return step.left >= 1 && this.stepChoices(step).includes(nodeId);
   }
 
   // ── Space info popover ───────────────────────────────────────────────────────
@@ -1049,13 +1109,24 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   private stepChoices(step: StepState): string[] {
     const dests = this.store.you()?.pendingMove?.dests ?? [];
-    // Include the post-boss escape ladders (degree-1 dead-end spurs), not just
-    // sealed barriers — both are bonk stops you march up to and halt on, so an
-    // exact-count landing isn't required. Server dests already gate unclaimed
-    // ones out. Without this the escape ladder is only tappable on the rare
-    // roll that lands on it exactly.
-    const closed = this.closedBarrierIds();
+    const closed = this.stepClosedIds();
     return legalSteps(this.map, stepPos(step), stepPrev(step), step.left, dests, closed);
+  }
+
+  /** Client walk-stop set: the shared sealed-barrier / escape-ladder stops
+   *  (post-boss escape ladders are degree-1 dead-end spurs — bonk stops you
+   *  march up to and halt on, so an exact-count landing isn't required; server
+   *  dests gate unclaimed ones out), plus every bridge for evolved units
+   *  (tier > 1) so their walk halts on the mouth. Mirrors undercity_db.
+   *  _stop_nodes. Scoped to walking only — NOT used for spell range / distance
+   *  (those keep closedBarrierIds()). */
+  private stepClosedIds(): string[] {
+    const closed = this.closedBarrierIds();
+    if ((this.store.you()?.tier ?? 1) > 1) {
+      const bridges = this.map.nodes.filter((n) => n.type === 'tunnel').map((n) => n.id);
+      return [...closed, ...bridges];
+    }
+    return closed;
   }
 
   private syncBoard(): void {

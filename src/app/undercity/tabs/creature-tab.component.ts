@@ -92,12 +92,12 @@ export class CreatureTabComponent {
     },
     def: {
       label: 'Defense',
-      icon: 'shield',
+      icon: 'uc-shield',
       desc: 'Armor against blows. Every point of DEF shaves damage off each hit you take.',
     },
     spd: {
       label: 'Speed',
-      icon: 'bolt',
+      icon: 'uc-bolt',
       desc: "Strike first when it beats your foe's Speed, and slip away more often when you try to flee.",
     },
   };

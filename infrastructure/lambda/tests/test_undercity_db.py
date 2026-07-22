@@ -311,6 +311,51 @@ def test_tier2_standing_on_a_tunnel_can_still_leave(table):
     assert 'cavern_r2' in dests
 
 
+def test_tier3_is_too_large_for_bridges(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['tier'] = 3
+    doc['spores'] = 9999          # can trivially afford any toll — irrelevant
+    # Every bridge node is blocked outright for an apex unit.
+    assert data.TUNNEL_NODES <= db._blocked_nodes(doc)
+    doc['position'] = 'cavern_r2'
+    dests = engine.legal_destinations(
+        data.MAP_NODES, doc['position'], 1,
+        db._closed_barriers(table, sid), db._blocked_nodes(doc))
+    assert 't_bone_cavern1' not in dests
+
+
+def test_funded_tier2_stops_on_a_bridge_not_through_it(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['tier'] = 2
+    doc['spores'] = data.TUNNEL_TOLL[2]      # funded, so allowed onto bridges
+    doc['position'] = 'cavern_r2'
+    closed = db._stop_nodes(table, sid, doc)
+    blocked = db._blocked_nodes(doc)
+    # The near mouth is a valid STOP with a 1-roll...
+    assert 't_bone_cavern1' in engine.legal_destinations(
+        data.MAP_NODES, doc['position'], 1, closed, blocked)
+    # ...but a 2-roll cannot corridor THROUGH it to its paired mouth.
+    assert 't_bone_cavern0' not in engine.legal_destinations(
+        data.MAP_NODES, doc['position'], 2, closed, blocked)
+
+
+def test_tier1_passes_through_a_bridge_freely(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['tier'] = 1
+    doc['position'] = 'cavern_r2'
+    closed = db._stop_nodes(table, sid, doc)   # Tier-1: bridges NOT added
+    blocked = db._blocked_nodes(doc)
+    # A 2-roll walks straight through the spur to the paired mouth.
+    assert 't_bone_cavern0' in engine.legal_destinations(
+        data.MAP_NODES, doc['position'], 2, closed, blocked)
+
+
 def test_roll_picks_exact_face_in_debug(table, monkeypatch):
     monkeypatch.setattr(data, 'DEBUG', True)
     act(table, 'join', starter='saproling', home='cavern')
@@ -1037,7 +1082,7 @@ def test_season_end_produces_standings(table):
     status, resp = act(table, 'season-end', hostKey='swampking')
     assert status == 200
     standings = resp['result']['standings']
-    assert standings[0]['userId'] == 'user-sam'  # 50+30 renown beats 10
+    assert standings[0]['userId'] == 'user-sam'  # 30 renown (2 pvp wins) beats 0
 
     status, state = db.handle_state(table, {'userId': 'user-alex'})
     assert state['season']['status'] == 'ended'
@@ -1232,8 +1277,8 @@ def test_rot_bloom_trades_hp_for_spores(table):
     hp_before = doc['hp']
     out = db._hazard(table, sid, doc, 'garden_m2')
     assert out['hazardId'] == 'rot_bloom'
-    # pest base DEF 5 unlocks Thick Hide, which halves hazard HP loss (3 -> 2).
-    assert doc['hp'] == hp_before - 2
+    # pest base DEF 5 is below the DEF-6 Thick Hide node, so it takes full HP loss.
+    assert doc['hp'] == hp_before - 3
     assert doc['spores'] == 14
 
 
@@ -1270,6 +1315,19 @@ def test_scrounger_scales_loot_and_bounty_by_mult():
     assert db._scrounge(pest, 20) == round(20 * data.SCROUNGER_MULT)
     assert db._scrounge(pest, 20) > db._scrounge(plain, 20) == 20
     assert db._scrounge(pest, -10) == -10
+
+
+def test_scrounger_consolation_on_lost_or_fled_grind_fight():
+    # A scrounger pest pockets a fraction of the bounty even on a lost/fled
+    # wild/elite fight; a non-scrounger gets nothing, and it never applies to
+    # non-grind fights (barrier/boss/lair).
+    pest = {'passives': ['scrounger'], 'spores': 0}
+    plain = {'passives': [], 'spores': 0}
+    elite_rec = {'kind': 'elite', 'npcMeta': {'bounty': 20}}
+    assert db._scrounge_consolation(pest, elite_rec) == round(20 * data.SCROUNGER_LOSS_FRACTION)
+    assert pest['spores'] == round(20 * data.SCROUNGER_LOSS_FRACTION)
+    assert db._scrounge_consolation(plain, elite_rec) == 0
+    assert db._scrounge_consolation(pest, {'kind': 'boss', 'npcMeta': {'bounty': 120}}) == 0
 
 
 def test_ladder_blurb_names_the_dungeon(table):
@@ -1676,6 +1734,18 @@ def test_start_battle_includes_status(table, monkeypatch):
     ev = _begin(table, sid)
     assert ev['playerStatus'] == {'rot': 0, 'buffs': []}
     assert ev['npcStatus'] == {'rot': 0, 'buffs': []}
+
+
+def test_start_battle_reports_opponent_level(table, monkeypatch):
+    """The battle_start payload carries the derived opponent level for the UI."""
+    monkeypatch.setattr(db, '_rng', _ZeroRng())
+    act(table, 'join', starter='kraul')
+    sid = _sid(table)
+    npc = dict(_FODDER)
+    ev = _begin(table, sid, npc=npc)
+    assert ev['npc']['level'] == data.enemy_level(
+        npc['atk'], npc['def'], npc['spd'], npc.get('maxHp', npc['hp']))
+    assert ev['npc']['level'] >= 1
 
 
 def test_combat_round_reports_status(table, monkeypatch):
@@ -2202,13 +2272,18 @@ def test_new_player_is_seeded_with_renown_and_it_is_surfaced(table):
 
 
 def test_archive_banks_each_players_renown(table):
-    # Fresh level-1 pest in cavern: compute_renown = 10*1 + 0 spores//5 = 10.
+    # Renown is combat/firsts only, so give the pest a couple of wild wins:
+    # compute_renown = 3 * 2 wildWins = 6 (level & spores no longer count).
     act(table, 'join', starter='pest', home='cavern')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['wildWins'] = 2
+    db._put_player(table, doc)
     status, resp = act(table, 'season-end', hostKey='swampking')
     assert status == 200
     perm = db._get_perm(table, 'user-alex')
-    # Seed (50) + this night's earned renown (10).
-    assert perm['renown'] == data.SHOP_START_RENOWN + 10
+    # Seed (50) + this night's earned renown (6).
+    assert perm['renown'] == data.SHOP_START_RENOWN + 6
 
 
 def _fund(table, user, renown):

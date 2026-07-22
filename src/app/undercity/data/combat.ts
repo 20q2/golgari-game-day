@@ -9,12 +9,12 @@ export interface StanceInfo {
   blurb: string; // what it beats, one line
 }
 
-// Stance icons mirror the stat they lean on: Aggress↔ATK (sword), Guard↔DEF
-// (shield), Feint↔SPD (bolt). `uc-`-prefixed tokens are SVG icons ([svgIcon]).
+// Stance icons mirror the stat they lean on: Aggress↔ATK (uc-sword), Guard↔DEF
+// (uc-shield), Feint↔SPD (uc-bolt). `uc-`-prefixed tokens are SVG icons ([svgIcon]).
 export const STANCES: StanceInfo[] = [
   { id: 'aggress', label: 'Aggress', icon: 'uc-sword', blurb: 'Beats Feint. Loses to Guard. Damage scales with ATK.' },
-  { id: 'guard', label: 'Guard', icon: 'shield', blurb: 'Beats Aggress. Loses to Feint. Damage scales with DEF.' },
-  { id: 'feint', label: 'Feint', icon: 'bolt', blurb: 'Beats Guard. Loses to Aggress. Damage scales with SPD.' },
+  { id: 'guard', label: 'Guard', icon: 'uc-shield', blurb: 'Beats Aggress. Loses to Feint. Damage scales with DEF.' },
+  { id: 'feint', label: 'Feint', icon: 'uc-bolt', blurb: 'Beats Guard. Loses to Aggress. Damage scales with SPD.' },
 ];
 
 export const STANCE_MAP: Record<Stance, StanceInfo> = Object.fromEntries(

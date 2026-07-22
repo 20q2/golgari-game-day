@@ -28,13 +28,13 @@ def _doc(atk=1, dfn=1, spd=1):
 # ── Task 1: attribute_perks ──────────────────────────────────────────────────
 
 def test_no_perks_below_first_threshold():
-    assert engine.attribute_perks(_doc(4, 4, 4)) == frozenset()
+    assert engine.attribute_perks(_doc(5, 5, 5)) == frozenset()
 
 
 def test_thresholds_unlock_in_order():
-    assert engine.attribute_perks(_doc(atk=5)) == frozenset({'rend'})
-    assert engine.attribute_perks(_doc(atk=10)) == frozenset({'rend', 'menace'})
-    assert engine.attribute_perks(_doc(atk=15)) == frozenset({'rend', 'menace', 'deathdrive'})
+    assert engine.attribute_perks(_doc(atk=6)) == frozenset({'rend'})
+    assert engine.attribute_perks(_doc(atk=12)) == frozenset({'rend', 'menace'})
+    assert engine.attribute_perks(_doc(atk=18)) == frozenset({'rend', 'menace', 'deathdrive'})
 
 
 def test_base_stat_lights_tier1_across_tracks():
@@ -44,7 +44,7 @@ def test_base_stat_lights_tier1_across_tracks():
 
 
 def test_all_three_tracks_independent():
-    perks = engine.attribute_perks(_doc(atk=10, dfn=15, spd=5))
+    perks = engine.attribute_perks(_doc(atk=12, dfn=18, spd=6))
     assert perks == frozenset({'rend', 'menace', 'thick_hide', 'carapace_grind',
                                'last_stand', 'fleetfoot'})
 
@@ -52,7 +52,7 @@ def test_all_three_tracks_independent():
 # ── Task 2: Combatant carries perks ──────────────────────────────────────────
 
 def test_combatant_carries_perks_and_survives_serde():
-    doc = {'username': 'x', 'hp': 30, 'maxHp': 30, 'atk': 15, 'def': 5, 'spd': 5,
+    doc = {'username': 'x', 'hp': 30, 'maxHp': 30, 'atk': 18, 'def': 5, 'spd': 5,
            'stance': 'fight'}
     c = db._combatant(doc)
     assert c.has_perk('rend') and c.has_perk('deathdrive')
@@ -165,7 +165,7 @@ def test_last_stand_survives_once_per_descent(table, monkeypatch):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['def'] = 15   # unlock last_stand
+    doc['def'] = 18   # unlock last_stand
     doc['hp'] = 20
     db._put_player(table, doc)
     doc = db._get_player(table, sid, 'user-alex')
@@ -189,10 +189,10 @@ def test_last_stand_not_triggered_without_perk(table, monkeypatch):
 
 # ── Task 10: Blink ───────────────────────────────────────────────────────────
 
-def test_blink_lets_spd15_choose_value(table):
+def test_blink_lets_spd18_choose_value(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 15
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 18
     db._put_player(table, doc)
     status, resp = act(table, 'roll', blink=True, value=6)
     assert status == 200 and resp['roll']['value'] == 6 and resp['roll'].get('blink') is True
@@ -212,7 +212,7 @@ def test_blink_ignored_without_perk(table):
 def test_pathfinder_rolls_two_and_unions_destinations(table, monkeypatch):
     act(table, 'join', starter='pest')
     sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 10  # pathfinder
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 12  # pathfinder
     db._put_player(table, doc)
     vals = iter([2, 5])
     monkeypatch.setattr(db._rng, 'randint', lambda a, b: next(vals))
@@ -240,7 +240,7 @@ def test_no_pathfinder_single_value(table, monkeypatch):
 def test_fleetfoot_offers_optional_reroll_of_a_one(table, monkeypatch):
     act(table, 'join', starter='pest')
     sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 5  # fleetfoot, no pathfinder
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 6  # fleetfoot, no pathfinder
     db._put_player(table, doc)
     monkeypatch.setattr(db._rng, 'randint', lambda a, b: 1)
     status, resp = act(table, 'roll')
@@ -255,11 +255,11 @@ def test_fleetfoot_offers_optional_reroll_of_a_one(table, monkeypatch):
 
 
 def test_blink_chosen_one_offers_no_reroll(table):
-    # A Blink user (SPD-15, also has Fleetfoot) who deliberately picks 1 must NOT
+    # A Blink user (SPD-18, also has Fleetfoot) who deliberately picks 1 must NOT
     # be nagged to reroll it — the reroll is only for random 1s.
     act(table, 'join', starter='pest')
     sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 15
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 18
     db._put_player(table, doc)
     status, resp = act(table, 'roll', blink=True, value=1)
     assert status == 200 and resp['roll']['value'] == 1

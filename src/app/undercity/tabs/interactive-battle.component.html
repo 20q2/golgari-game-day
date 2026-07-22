@@ -21,7 +21,10 @@
         }
       </div>
       <div class="plate right">
-        <span class="side-name">{{ defender.name }}</span>
+        <div class="name-row">
+          <span class="side-name">{{ defender.name }}</span>
+          @if (defender.level != null) { <span class="foe-level" title="Opponent power level">Lv {{ defender.level }}</span> }
+        </div>
         <div class="hp-track">
           <div class="hp-fill" [class.low]="hpPct('defender') <= 50" [class.crit]="hpPct('defender') <= 25" [style.width.%]="hpPct('defender')"></div>
         </div>
@@ -48,8 +51,8 @@
       @if (enteredStats() && attackerStats; as s) {
         <div class="stat-col enter">
           <span class="stat"><mat-icon class="mi" svgIcon="uc-sword"></mat-icon>{{ s.atk }}</span>
-          <span class="stat"><mat-icon class="mi">shield</mat-icon>{{ s.def }}</span>
-          <span class="stat"><mat-icon class="mi">bolt</mat-icon>{{ s.spd }}</span>
+          <span class="stat"><mat-icon class="mi" svgIcon="uc-shield"></mat-icon>{{ s.def }}</span>
+          <span class="stat"><mat-icon class="mi" svgIcon="uc-bolt"></mat-icon>{{ s.spd }}</span>
         </div>
       }
 
@@ -130,8 +133,8 @@
       @if (enteredStats() && defenderStats; as s) {
         <div class="stat-col enter">
           <span class="stat"><mat-icon class="mi" svgIcon="uc-sword"></mat-icon>{{ s.atk }}</span>
-          <span class="stat"><mat-icon class="mi">shield</mat-icon>{{ s.def }}</span>
-          <span class="stat"><mat-icon class="mi">bolt</mat-icon>{{ s.spd }}</span>
+          <span class="stat"><mat-icon class="mi" svgIcon="uc-shield"></mat-icon>{{ s.def }}</span>
+          <span class="stat"><mat-icon class="mi" svgIcon="uc-bolt"></mat-icon>{{ s.spd }}</span>
         </div>
       }
 
@@ -323,8 +326,8 @@
           <p>Each round, read the foe’s telegraphed intent (the icon over its head) and pick the stance that beats it:</p>
           <ul class="help-triangle">
             <li><mat-icon class="mi" svgIcon="uc-sword"></mat-icon> <strong>Aggress</strong> beats Feint</li>
-            <li><mat-icon class="mi">bolt</mat-icon> <strong>Feint</strong> beats Guard</li>
-            <li><mat-icon class="mi">shield</mat-icon> <strong>Guard</strong> beats Aggress</li>
+            <li><mat-icon class="mi" svgIcon="uc-bolt"></mat-icon> <strong>Feint</strong> beats Guard</li>
+            <li><mat-icon class="mi" svgIcon="uc-shield"></mat-icon> <strong>Guard</strong> beats Aggress</li>
           </ul>
           <p>Win the read and you land the big hit; guess wrong and you eat one. Your <strong>ATK/DEF/SPD</strong> (beside each fighter) set how hard the blows land.</p>
           <p><strong>Scry</strong> reveals the true intent (bosses bluff). <strong>Flee</strong> bails a losing fight. Combat items fire on your next stance.</p>

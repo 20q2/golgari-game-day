@@ -214,6 +214,20 @@ def _closed_barriers(table, sid):
                      | set(data.ESCAPE_LADDERS))
 
 
+def _stop_nodes(table, sid, doc):
+    """The engine `closed` set for THIS mover: the shared sealed-barrier /
+    escape-ladder stops from _closed_barriers, plus — for evolved units
+    (tier > TUNNEL_TIER_MAX) — every bridge (tunnel) node. An evolved unit must
+    STOP on a bridge mouth and pay the toll on landing; it can never corridor
+    through a bridge for free. Tier-1 units pass/warp through bridges freely, so
+    bridges are not added for them. (Bridges a unit can't afford / is too large
+    for are already removed by _blocked_nodes, which wins over closed.)"""
+    closed = _closed_barriers(table, sid)
+    if doc.get('tier', 1) > data.TUNNEL_TIER_MAX:
+        closed = closed | data.TUNNEL_NODES
+    return closed
+
+
 def _wild_warp_dest(nodes, node):
     """A random legal node to be flung to — never into a POI, past a barrier, or
     onto a post-boss escape ladder (those are earned, per-player exits)."""
@@ -306,19 +320,19 @@ def _passives(doc):
 
 
 def _blocked_nodes(doc):
-    """Nodes this unit may not step onto. Tier-1 units are barred from no tunnels.
-    Evolved units (tier > TUNNEL_TIER_MAX) may use tunnels only if they can
-    afford the tier toll (charged on landing in _resolve_space); a unit that
-    cannot afford it is barred from tunnels entirely — not a destination and
-    not a pass-through. Post-boss escape ladders stay barred until you have
+    """Nodes this unit may not step onto. Tier-1 units are barred from no
+    bridges. Evolved units pay a tier toll (charged on landing in
+    _resolve_space): a Tier-2 that cannot afford it is barred from bridges
+    entirely, and an apex unit whose tier has no toll entry is too large to fit
+    and is barred outright. Post-boss escape ladders stay barred until you have
     personally cleared the matching sigil lair (its node in poiClaims) — that
     per-player gate is what makes the ladder 'appear' only for a player who beat
     the boss."""
     blocked = set()
     tier = doc.get('tier', 1)
     if tier > data.TUNNEL_TIER_MAX:
-        toll = data.TUNNEL_TOLL.get(tier, 0)
-        if doc.get('spores', 0) < toll:
+        toll = data.TUNNEL_TOLL.get(tier)   # None => too large to fit a bridge
+        if toll is None or doc.get('spores', 0) < toll:
             blocked |= data.TUNNEL_NODES
     claims = doc.get('poiClaims') or []
     for esc, lair in data.ESCAPE_LADDERS.items():
@@ -513,7 +527,9 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
             'npc': {'name': npc['name'], 'id': npc.get('id'),
                     'hp': npc_snap['hp'], 'maxHp': npc_snap['maxHp'],
                     'atk': npc_snap['atk'], 'def': npc_snap['dfn'],
-                    'spd': npc_snap['spd']},
+                    'spd': npc_snap['spd'],
+                    'level': data.enemy_level(npc_snap['atk'], npc_snap['dfn'],
+                                              npc_snap['spd'], npc_snap['maxHp'])},
             'telegraph': shown, 'round': 1,
             'frenzyFrom': _frenzy_from(kind),
             'playerStatus': _battle_status(rec['player']),
@@ -1510,7 +1526,7 @@ def _admin_bot_step(table, sid, payload):
         return err
     if not doc.get('isBot'):
         return _err('bot-step moves bots only.')
-    closed = _closed_barriers(table, sid)
+    closed = _stop_nodes(table, sid, doc)
     blocked = _blocked_nodes(doc)
     dests = set()
     for steps in range(random.randint(1, 4), 0, -1):
@@ -1860,7 +1876,7 @@ def _roll(table, sid, doc, payload):
 
     def _legal(v):
         return engine.legal_destinations(nodes, doc['position'], v,
-                                         _closed_barriers(table, sid),
+                                         _stop_nodes(table, sid, doc),
                                          _blocked_nodes(doc))
 
     # Pathfinder (SPD-10 perk): roll a second die and keep either — destinations
@@ -2004,6 +2020,21 @@ def _scrounge(doc, amount):
     the pest 'gathers' — forage, digs, mystery finds, and combat bounties."""
     if amount > 0 and 'scrounger' in _passives(doc):
         return round(amount * data.SCROUNGER_MULT)
+    return amount
+
+
+def _scrounge_consolation(doc, rec):
+    """Pest's Scrounger picks the bones even on a lost / fled / stalemated wild or
+    elite fight: a fraction of the bounty it would have won. This makes the pest's
+    income survival-independent — its earnings aren't gutted by dying, which is
+    what lets a fragile balanced statline still be the economy specialist over a
+    long, swingy day. Returns the Spores awarded (0 if not a scrounger, or not a
+    grind fight)."""
+    if rec.get('kind') not in ('wild', 'elite') or 'scrounger' not in _passives(doc):
+        return 0
+    amount = round((rec.get('npcMeta') or {}).get('bounty', 0) * data.SCROUNGER_LOSS_FRACTION)
+    if amount > 0:
+        doc['spores'] = doc.get('spores', 0) + amount
     return amount
 
 
@@ -2211,7 +2242,8 @@ def _resolve_space(table, sid, doc, node, prev):
             doc['spores'] = doc.get('spores', 0) - toll
         doc['position'] = exit_node
         return {'type': 'tunnel', 'to': exit_node, 'toll': toll,
-                'text': 'You slip through the tunnel and out the far side.'}
+                'text': "You skitter across the Nyx Weaver's silk threads to "
+                        'the far side.'}
 
     return {'type': ntype, 'text': '…'}
 
@@ -2616,12 +2648,14 @@ def _combat_flee(table, sid, doc, payload):
             doc['bag'].remove('smoke_spore')
         doc['hp'] = player_c.hp
         doc['hpUpdatedAt'] = _now()
+        salvage = _scrounge_consolation(doc, rec)
         doc.pop('battle', None)
         _consume_one_battle_buffs(doc)
         conflict = _save_or_conflict(table, doc)
         if conflict:
             return conflict
-        return _ok(doc, combat={'fled': True, 'smokeSporeUsed': r['smokeSporeUsed']})
+        return _ok(doc, combat={'fled': True, 'smokeSporeUsed': r['smokeSporeUsed'],
+                                'scrounged': salvage or None})
     # failed flee: caught off guard (-1 DEF), forfeit the round.
     _bt_store(player_c, rec['player'])
     rec['player']['dfn'] = player_c.dfn
@@ -2655,6 +2689,9 @@ def _battle_resume(rec, player_hp):
             'atk': npc.get('atk'),
             'def': npc.get('dfn'),
             'spd': npc.get('spd'),
+            'level': data.enemy_level(npc.get('atk', 0), npc.get('dfn', 0),
+                                      npc.get('spd', 0),
+                                      npc.get('maxHp', npc.get('hp', 0))),
             'personality': npc.get('personality'),
         },
     }
@@ -2728,13 +2765,21 @@ def _finish_wild(table, sid, doc, rec, result):
         out['text'] = f"You compost the {npc['name']}! +{bounty} Spores."
     elif result['outcome'] == 'defender':
         _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
+        salvage = _scrounge_consolation(doc, rec)
         _compost(table, sid, doc,
                  f"{doc['username']}'s {_creature_label(doc)} was composted by a "
                  f"{npc['name']}. The swarm remembers.")
         out['text'] = f"The {npc['name']} grinds you into the mulch. Back to the Gate…"
+        if salvage:
+            out['spores'] = salvage
+            out['text'] += f" (You scrounge {salvage} Spores from the muck on the way down.)"
     else:
         _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
+        salvage = _scrounge_consolation(doc, rec)
         out['text'] = f"You and the {npc['name']} circle each other and part ways."
+        if salvage:
+            out['spores'] = salvage
+            out['text'] += f" You scrounge {salvage} Spores as you back off."
     return out
 
 

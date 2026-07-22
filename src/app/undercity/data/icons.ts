@@ -40,10 +40,26 @@ export const UC_CHARM_SVG =
   '<path d="M12 7 L17 12.2 L12 21.6 L7 12.2 Z"/>' +
   '</svg>';
 
+/** Shield — the Defense stat. A crested heater shield with a central ridge. */
+export const UC_SHIELD_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">' +
+  '<path d="M12 1.8 L19.6 4.6 V11.2 C19.6 16.4 16.3 20.4 12 22.4 ' +
+  'C7.7 20.4 4.4 16.4 4.4 11.2 V4.6 Z ' +
+  'M11.3 5.8 h1.4 V18.6 h-1.4 Z"/>' +
+  '</svg>';
+
+/** Bolt — the Speed stat. A chunky lightning strike. */
+export const UC_BOLT_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">' +
+  '<path d="M13.4 1.6 L4.8 13.4 H9.8 L8.4 22.4 L18.8 9.6 H13.4 L16.2 1.6 Z"/>' +
+  '</svg>';
+
 /** All Undercity SVG icons keyed by their `uc-…` registry name. */
 export const UC_SVG_ICONS: Record<string, string> = {
   'uc-sword': UC_SWORD_SVG,
   'uc-fang': UC_FANG_SVG,
   'uc-carapace': UC_CARAPACE_SVG,
   'uc-charm': UC_CHARM_SVG,
+  'uc-shield': UC_SHIELD_SVG,
+  'uc-bolt': UC_BOLT_SVG,
 };

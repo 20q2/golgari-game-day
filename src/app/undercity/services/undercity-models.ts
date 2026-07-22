@@ -335,6 +335,8 @@ export interface BattleResume {
     atk?: number;
     def?: number;
     spd?: number;
+    /** Derived opponent power level shown in the battle screen. */
+    level?: number;
     personality?: string;
   };
 }
@@ -479,6 +481,8 @@ export interface SpaceEvent {
     atk?: number;
     def?: number;
     spd?: number;
+    /** Derived opponent power level shown in the battle screen. */
+    level?: number;
     bounty?: number;
     personality?: string;
   };
