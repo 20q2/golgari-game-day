@@ -20,18 +20,40 @@ import { IntroCutsceneComponent } from './intro-cutscene.component';
 export class HatchFlowComponent {
   protected readonly store = inject(UndercityStateService);
 
-  /** localStorage flag: the one-time story intro has played for this device. */
+  /** localStorage flag: this device has hatched at least once (drives the
+   *  once-per-device novice experience, NOT the per-night intro). */
   private static readonly INTRO_KEY = 'uc.introSeen';
-  /** True for a first-time player — drives the intro cutscene and the novice
-   *  defaults (Bravery-first, "good first home"). Captured before the flag is set. */
-  protected readonly firstHatch = signal(!localStorage.getItem(HatchFlowComponent.INTRO_KEY));
-  /** Whether to show the cutscene right now (cleared once dismissed). */
-  protected readonly showIntro = signal(!localStorage.getItem(HatchFlowComponent.INTRO_KEY));
+  /** localStorage: the seasonId whose story intro has already been watched. */
+  private static readonly INTRO_SEASON_KEY = 'uc.introSeenSeason';
 
-  /** Finish the intro: persist the flag and drop into the egg screen. */
+  /** True for a first-time player — drives the novice defaults (Bravery-first,
+   *  "good first home"). Permanent per device; unlike the intro it does not replay. */
+  protected readonly firstHatch = signal(!localStorage.getItem(HatchFlowComponent.INTRO_KEY));
+
+  /** The last season whose intro was dismissed, tracked so the story replays
+   *  each new night. */
+  private readonly introSeenSeason = signal<string | null>(
+    localStorage.getItem(HatchFlowComponent.INTRO_SEASON_KEY),
+  );
+
+  /** Show the story intro once per night: whenever the current season differs
+   *  from the one we last watched it for. Stays hidden until state loads. */
+  protected readonly showIntro = computed(() => {
+    const seasonId = this.store.season()?.seasonId;
+    if (!seasonId) {
+      return false;
+    }
+    return this.introSeenSeason() !== seasonId;
+  });
+
+  /** Finish the intro: remember it for this night (and mark the device seen). */
   dismissIntro(): void {
+    const seasonId = this.store.season()?.seasonId ?? null;
     localStorage.setItem(HatchFlowComponent.INTRO_KEY, '1');
-    this.showIntro.set(false);
+    if (seasonId) {
+      localStorage.setItem(HatchFlowComponent.INTRO_SEASON_KEY, seasonId);
+    }
+    this.introSeenSeason.set(seasonId);
   }
 
   protected readonly taps = signal(0);
