@@ -370,6 +370,41 @@
   }
 }
 
+// First-timer emphasis: solid gold border + glow, room for the badge.
+.starter-card.recommended {
+  position: relative;
+  border-style: solid;
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.14);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.4), 0 0 18px rgba(251, 191, 36, 0.3);
+}
+
+.starter-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #fbbf24;
+  color: #1a1410;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.biome-firsttag {
+  margin-top: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.16);
+  color: #fbbf24;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .bravery-note {
   display: inline-flex;
   align-items: center;

@@ -165,6 +165,9 @@
             <mat-icon class="biome-icon">{{ biome.icon }}</mat-icon>
             <span class="biome-name">{{ biome.name }}</span>
             <span class="biome-perk"><strong>{{ biome.perk }}:</strong> {{ biome.blurb }}</span>
+            @if (biome.id === 'city') {
+              <span class="biome-firsttag">Good first home</span>
+            }
           </button>
         }
       </div>
@@ -176,6 +179,24 @@
     <h1>It's hatching! Choose your creature</h1>
     <p class="choose-hint">This choice shapes your whole night — no takebacks.</p>
     <div class="starter-grid">
+      @if (firstHatch()) {
+        <button
+          class="starter-card bravery-card recommended"
+          (click)="chooseBravery()"
+          [disabled]="joining()"
+        >
+          <span class="starter-badge">First time? Start here</span>
+          <mat-icon class="bravery-icon">casino</mat-icon>
+          <span class="starter-name">Bravery</span>
+          <span class="starter-blurb"
+            >Not sure? Let the swarm choose your hatchling — and take a bonus roll for the
+            nerve.</span
+          >
+          <span class="starter-passive">
+            <strong>Reward:</strong> a random creature and +1 roll the moment you spawn.
+          </span>
+        </button>
+      }
       @for (starter of starters; track starter.id) {
         <button class="starter-card" (click)="chooseStarter(starter)" [disabled]="joining()">
           @if (spriteUrl(starter); as url) {
@@ -195,14 +216,19 @@
           <span class="starter-evo">Evolves toward: {{ evolutionPreview(starter) }}</span>
         </button>
       }
-      <button class="starter-card bravery-card" (click)="chooseBravery()" [disabled]="joining()">
-        <mat-icon class="bravery-icon">casino</mat-icon>
-        <span class="starter-name">Bravery</span>
-        <span class="starter-blurb">Let fate crack the egg — you don't get to choose what climbs out.</span>
-        <span class="starter-passive">
-          <strong>Reward:</strong> a random creature and +1 roll the moment you spawn.
-        </span>
-      </button>
+      @if (!firstHatch()) {
+        <button class="starter-card bravery-card" (click)="chooseBravery()" [disabled]="joining()">
+          <mat-icon class="bravery-icon">casino</mat-icon>
+          <span class="starter-name">Bravery</span>
+          <span class="starter-blurb"
+            >Not sure? Let the swarm choose your hatchling — and take a bonus roll for the
+            nerve.</span
+          >
+          <span class="starter-passive">
+            <strong>Reward:</strong> a random creature and +1 roll the moment you spawn.
+          </span>
+        </button>
+      }
     </div>
   }
 </div>
