@@ -62,6 +62,42 @@ def _shop_window_end(window):
     return end.isoformat(timespec='seconds')
 
 
+def _umori_window(now=None):
+    """Which 2-hour window Umori's location/stock belong to. Pure function of the
+    wall clock — every client computes the same value (no server tick)."""
+    now = now or datetime.utcnow()
+    secs = int((now - _EPOCH).total_seconds())
+    return secs // (data.UMORI_DWELL_MIN * 60)
+
+
+def _umori_window_end(window):
+    """ISO timestamp Umori next hops (the client's countdown target)."""
+    end = _EPOCH + timedelta(seconds=(window + 1) * data.UMORI_DWELL_MIN * 60)
+    return end.isoformat(timespec='seconds')
+
+
+def _umori_node(window):
+    """Deterministic wilderness node Umori occupies this window (stable hash)."""
+    rng = random.Random(zlib.crc32(f'umori:{window}'.encode()))
+    return rng.choice(data.UMORI_NODES)
+
+
+def _umori_stock(window):
+    """Fresh T3 barter seed for a window: distinct-slot T3 gear + T3 grimoires."""
+    rng = random.Random(zlib.crc32(f'umori-stock:{window}'.encode()))
+    by_slot = {}
+    for gid, g in data.GEAR.items():
+        if g['tier'] == 3:
+            by_slot.setdefault(g['slot'], []).append(gid)
+    slots = list(by_slot)
+    rng.shuffle(slots)
+    picks = [rng.choice(by_slot[s]) for s in slots[:data.UMORI_STOCK_SPEC['gear']]]
+    tomes = [gid for gid, gr in data.GRIMOIRES.items() if gr['tier'] == 3]
+    rng.shuffle(tomes)
+    picks += tomes[:data.UMORI_STOCK_SPEC['grimoire']]
+    return [{'item': i, 'foundBy': 'the Swarm'} for i in picks]
+
+
 def _weighted_tier(rng, weights):
     """Deterministic weighted pick from {tier: weight}. Sorted for stability."""
     total = sum(weights.values())

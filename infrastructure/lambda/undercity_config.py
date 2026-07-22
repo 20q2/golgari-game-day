@@ -145,6 +145,10 @@ SHOP_CONSUMABLE_QTY = 2      # units per stocked consumable line
 # sighting per bazaar every ~10 hours. Island bazaars ignore this (they stock T3
 # directly). Endgame T3 gear should be a treat, never a shortcut.
 BAZAAR_BLACKMARKET_CHANCE = 0.05
+# Umori, the wandering trading post: minutes it dwells at one wilderness node
+# before hopping to a new random one. Location/stock are pure functions of this
+# window (see undercity_db._umori_window) — no server tick.
+UMORI_DWELL_MIN = 120
 SHRINE_BLESSING_COST = 15
 OSSUARY_MAX_BET = 20
 OSSUARY_ROLLS_PER_VISIT = 3  # gambles allowed per landing; refills when you land again

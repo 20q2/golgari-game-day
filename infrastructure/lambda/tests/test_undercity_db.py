@@ -2063,6 +2063,40 @@ def test_biome_black_market_is_rare_and_deterministic():
     assert db._gen_shop_stock(node, hits[0]) == db._gen_shop_stock(node, hits[0])
 
 
+# ── Umori: the wandering trading post ────────────────────────────────────────
+
+def test_umori_window_math():
+    base = datetime(2026, 7, 21, 12, 0, 0)
+    w = db._umori_window(base)
+    assert db._umori_window(base + timedelta(minutes=90)) == w          # same 2h window
+    assert db._umori_window(base + timedelta(minutes=121)) == w + 1      # next window
+    assert db._umori_window_end(w) > base.isoformat(timespec='seconds')
+
+
+def test_umori_node_is_deterministic_wilderness():
+    for w in range(0, 50):
+        node = db._umori_node(w)
+        assert node in data.UMORI_NODES
+        assert data.MAP_NODES[node]['region'] == 'wilderness'
+        assert db._umori_node(w) == node                                # stable per window
+    # It actually wanders (not pinned to one node across windows).
+    assert len({db._umori_node(w) for w in range(0, 50)}) > 1
+
+
+def test_umori_stock_is_all_t3_and_deterministic():
+    for w in range(0, 30):
+        stock = db._umori_stock(w)
+        assert len(stock) == data.UMORI_STOCK_SPEC['gear'] + data.UMORI_STOCK_SPEC['grimoire']
+        gears = [s['item'] for s in stock if s['item'] in data.GEAR]
+        tomes = [s['item'] for s in stock if s['item'] in data.GRIMOIRES]
+        assert len(gears) == data.UMORI_STOCK_SPEC['gear']
+        assert len(tomes) == data.UMORI_STOCK_SPEC['grimoire']
+        assert all(data.GEAR[g]['tier'] == 3 for g in gears)
+        assert all(data.GRIMOIRES[t]['tier'] == 3 for t in tomes)
+        assert len({data.GEAR[g]['slot'] for g in gears}) == len(gears)  # distinct slots
+    assert db._umori_stock(5) == db._umori_stock(5)
+
+
 def test_shop_stock_reads_current_regenerates_stale(table):
     sid = _sid(table)
     node = next(n for n, v in data.MAP_NODES.items() if v['type'] == 'shop')

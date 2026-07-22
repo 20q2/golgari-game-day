@@ -545,6 +545,10 @@ ISLAND_BAZAAR_GEAR_TIERS = {2: 7, 3: 3}
 # Bazaar nodes that use ISLAND_BAZAAR_GEAR_TIERS instead of the biome table.
 ISLAND_BAZAAR_NODES = {'isl_bg1'}
 
+# Umori barter seed per move: this many distinct-slot T3 gear pieces + this many
+# T3 grimoires (all tier 3 — the endgame payoff for reaching the wandering post).
+UMORI_STOCK_SPEC = {'gear': 2, 'grimoire': 1}
+
 # Excavation dig sites (Ossuary Fields focus). A shared 5x5 grid holds four
 # buried items sized by footprint; each landing grants 3 digs (reveal one cell
 # each), refilled per visit like the Ossuary. Revealing an item's last cell
@@ -955,6 +959,9 @@ GATE_NODE = HOME_GATES[DEFAULT_BIOME]  # legacy alias; respawns use homeBiome
 MAP_NODES = {n['id']: n for n in _MAP_DOC['nodes']}
 WARP_NODES = [nid for nid, n in MAP_NODES.items() if n['type'] == 'warp']
 TUNNEL_NODES = frozenset(nid for nid, n in MAP_NODES.items() if n['type'] == 'tunnel')
+# Wilderness nodes Umori can wander to (stable insertion order from map.json →
+# deterministic picks). Recomputed from the map, so it tracks edits.
+UMORI_NODES = [nid for nid, n in MAP_NODES.items() if n.get('region') == 'wilderness']
 
 # The board splits into a fixed surface and regenerable dungeon pockets. The
 # depths (region == 'depths') are procedurally regenerated per night when
