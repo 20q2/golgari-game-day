@@ -338,11 +338,19 @@ STANCE_STAT_WEIGHT    = 0.5   # Aggress double-dip: swing = atk × (1 + this). A
 STANCE_OFFHAND_ATK_WEIGHT = 0.5  # ATK's PARTIAL base on Guard/Feint swings — low
                               # so a pure-ATK build can't also swing hard while
                               # guarding or feinting.
-STANCE_SIG_WEIGHT     = 1.0   # Guard↔DEF / Feint↔SPD scaling. Guard swing =
-                              # OFFHAND_ATK×atk + this×def; Feint likewise off SPD.
-                              # Set high (≥ the double-dip) so a DEDICATED tank or
-                              # speedster hits hard in its stance — DEF/SPD builds
-                              # feel good to play, not just ATK.
+# Per-stance signature-stat weight (spec 2026-07-21 rebalance). Guard keeps DEF's
+# full weight (the tank's identity); Feint's SPD weight is lowered so SPD is a
+# tempo/read stat, not also a heavy damage stat. Replaces the old single
+# STANCE_SIG_WEIGHT (Guard↔DEF and Feint↔SPD used to share it at 1.0). Guard swing
+# = OFFHAND_ATK×atk + GUARD_SIG_WEIGHT×def; Feint = OFFHAND_ATK×atk + FEINT_SIG_WEIGHT×spd.
+GUARD_SIG_WEIGHT = 1.0
+FEINT_SIG_WEIGHT = 0.6
+
+# DEF is proportional mitigation, not flat subtraction (spec 2026-07-21). A hit is
+# scaled by (1 - def/(def+MITIGATION_K)), capped at MITIGATION_CAP so nothing is
+# invincible. def5 ~33%, def7 ~41%, def15 ~60% reduction.
+MITIGATION_K = 10.0
+MITIGATION_CAP = 0.75
 # F-vs-F is a whiff: no damage either way.
 
 ROT_PER_STACK   = 2   # damage per rot stack, ticked at end of each round
@@ -376,8 +384,9 @@ FRENZY_RAMP  = 0.2   # per-tier bonus to each creature's own swing (round 4 = x1
 # passives, and reader gear. Scrying Spore forces a true read on demand; a Glint
 # feint-win guarantees the next round's read (see engine reveal_next).
 READ_BASE = 0.25
-READ_MAX = 0.90              # cap so a read is never fully guaranteed by stacking
-READ_SPD_COEFF = 0.015       # faster creatures read better (+1.5%/SPD)
+READ_MAX = 0.80              # cap so a read is never near-guaranteed (was 0.90)
+READ_SPD_COEFF = 0.008       # faster creatures read better, but SPD no longer
+                             # monopolises reads (was 0.015)
 READ_PASSIVE_BONUS = {'first_bite': 0.20, 'flyby': 0.15}  # the fast insect lines
 # gear read bonuses live on GEAR[*]['readBonus'] (Glint + Seer charms)
 
@@ -522,6 +531,19 @@ TRADING_POST_SEED = ['healing_moss', 'smoke_spore', 'loaded_die']
 TRADING_POST_SIZE = len(TRADING_POST_SEED)
 
 # Rot-Farm Bazaar limited-stock knobs (SHOP_*) live in undercity_config.py.
+
+# ── Bazaar gear tiers ────────────────────────────────────────────────────────
+# Standard (biome) bazaars stock these tiers only (uniform pick among all pieces
+# of these tiers within the chosen slot). T3 reaches biome shops solely via the
+# rare BAZAAR_BLACKMARKET_CHANCE event (see undercity_db._gen_shop_stock).
+BAZAAR_GEAR_TIERS = {1, 2}
+
+# Island bazaars pick a tier by weight (then a random piece of it). ~70% T2 /
+# ~30% T3 -> "mostly T2, some T3".
+ISLAND_BAZAAR_GEAR_TIERS = {2: 7, 3: 3}
+
+# Bazaar nodes that use ISLAND_BAZAAR_GEAR_TIERS instead of the biome table.
+ISLAND_BAZAAR_NODES = {'isl_bg1'}
 
 # Excavation dig sites (Ossuary Fields focus). A shared 5x5 grid holds four
 # buried items sized by footprint; each landing grants 3 digs (reveal one cell

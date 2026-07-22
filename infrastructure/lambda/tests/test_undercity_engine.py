@@ -563,10 +563,10 @@ def test_round_guard_beats_aggress_mitigate_and_counter():
     d = fighter(atk=10, dfn=5, spd=5, hp=30, max_hp=30)   # guard
     rng = FakeRng(uniform=1.0)
     resolve_round(a, d, 'aggress', 'guard', 1, rng)
-    # aggressor base 1.5*10=15, -def5=10, mitigated *0.4 => 4 to guard
+    # aggressor base 1.5*10=15, ×(1-5/15)=10, mitigated *0.4 => 4 to guard
     assert d.hp == 26
-    # guard counter base 0.5*10 + 1.0*5 = 10, -def5=5, *0.6 => round(3.0)=3
-    assert a.hp == 27
+    # guard counter base 0.5*10 + 1.0*5 = 10, ×(1-5/15)=7, *0.6 => round(4.2)=4
+    assert a.hp == 26
 
 
 def test_round_clash_both_take_full():
@@ -580,7 +580,8 @@ def test_round_clash_both_take_full():
 def test_round_whiff_nobody_hit():
     a = fighter(hp=30, max_hp=30); d = fighter(hp=30, max_hp=30)
     resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0))
-    assert a.hp == 30 and d.hp == 30   # atk6-def5 chip rounds to 0
+    # feint swing 0.5*6+0.6*5=6, ×(1-5/15)=4, chip round(4*0.15)=1 each
+    assert a.hp == 29 and d.hp == 29
 
 
 def test_guard_swing_scales_with_defense():
@@ -592,8 +593,8 @@ def test_guard_swing_scales_with_defense():
     hi_hit = _base_hit(hi, tgt, rng, stance='guard')
     assert hi_hit > lo_hit
     # Guard swing = OFFHAND_ATK×atk + SIG×def (DEF is the driver now).
-    assert lo_hit == round(data.STANCE_OFFHAND_ATK_WEIGHT * 10 + data.STANCE_SIG_WEIGHT * 2)  # 7
-    assert hi_hit == round(data.STANCE_OFFHAND_ATK_WEIGHT * 10 + data.STANCE_SIG_WEIGHT * 8)  # 13
+    assert lo_hit == round(data.STANCE_OFFHAND_ATK_WEIGHT * 10 + data.GUARD_SIG_WEIGHT * 2)  # 7
+    assert hi_hit == round(data.STANCE_OFFHAND_ATK_WEIGHT * 10 + data.GUARD_SIG_WEIGHT * 8)  # 13
 
 
 def test_feint_swing_scales_with_speed():
@@ -603,6 +604,22 @@ def test_feint_swing_scales_with_speed():
     rng = FakeRng(uniform=1.0)
     assert (_base_hit(fast, tgt, rng, stance='feint')
             > _base_hit(slow, tgt, rng, stance='feint'))
+
+
+def test_def_is_proportional_mitigation():
+    # A raw aggress swing of 15 (atk10) against increasing DEF is reduced by a
+    # fraction def/(def+10), capped at 0.75. Not a flat subtraction.
+    striker = fighter(atk=10, dfn=0, spd=0)
+    rng = FakeRng(uniform=1.0)
+    assert _base_hit(striker, fighter(atk=0, dfn=0), rng, stance='aggress') == 15   # no DEF
+    assert _base_hit(striker, fighter(atk=0, dfn=5), rng, stance='aggress') == 10   # 15×(1−5/15)=10
+    assert _base_hit(striker, fighter(atk=0, dfn=10), rng, stance='aggress') == 8   # 15×0.5=7.5→8
+    # Cap: even absurd DEF cannot reduce below 25% of the swing.
+    big = fighter(atk=100, dfn=0, spd=0)   # aggress swing 150
+    assert _base_hit(big, fighter(atk=0, dfn=1000), rng, stance='aggress') == round(150 * 0.25)  # 38
+    # pierce eats into the mitigation, not the final damage.
+    assert (_base_hit(striker, fighter(atk=0, dfn=10), rng, stance='aggress', pierce=5)
+            == _base_hit(striker, fighter(atk=0, dfn=5), rng, stance='aggress'))
 
 
 def test_aggress_swing_scales_with_strength():
@@ -621,6 +638,35 @@ def test_aggress_swing_ignores_defense_and_speed():
     rng = FakeRng(uniform=1.0)
     assert (_base_hit(base, tgt, rng, stance='aggress')
             == _base_hit(tanky, tgt, rng, stance='aggress'))
+
+
+def test_rebalance_tunables_exist_and_are_sane():
+    # SPD de-god: Feint leans less on its signature stat than Guard does.
+    assert data.GUARD_SIG_WEIGHT == 1.0
+    assert data.FEINT_SIG_WEIGHT == 0.6
+    assert data.FEINT_SIG_WEIGHT < data.GUARD_SIG_WEIGHT
+    # DEF mitigation curve.
+    assert data.MITIGATION_K == 10.0
+    assert 0.0 < data.MITIGATION_CAP <= 1.0
+    # Reads tamed.
+    assert data.READ_SPD_COEFF == 0.008
+    assert data.READ_MAX == 0.80
+    # The single shared weight is gone (replaced by the two above).
+    assert not hasattr(data, 'STANCE_SIG_WEIGHT')
+
+
+def test_feint_swing_leans_lighter_on_spd_than_guard_on_def():
+    # Same magnitude in the signature stat: a Feint (SPD) should now swing for
+    # less than a Guard (DEF), because FEINT_SIG_WEIGHT < GUARD_SIG_WEIGHT.
+    guarder = fighter(atk=10, dfn=12, spd=0)
+    feinter = fighter(atk=10, dfn=0, spd=12)
+    tgt = fighter(atk=0, dfn=0)
+    rng = FakeRng(uniform=1.0)
+    guard_hit = _base_hit(guarder, tgt, rng, stance='guard')
+    feint_hit = _base_hit(feinter, tgt, rng, stance='feint')
+    assert guard_hit == round(0.5 * 10 + 1.0 * 12)   # 17
+    assert feint_hit == round(0.5 * 10 + 0.6 * 12)   # 12
+    assert feint_hit < guard_hit
 
 
 def test_double_guard_deals_no_damage():
@@ -658,7 +704,8 @@ def test_rot_stacks_tick_end_of_round():
     a = fighter(hp=30, max_hp=30); d = fighter(hp=30, max_hp=30)
     d.rot_stacks = 2
     resolve_round(a, d, 'feint', 'feint', 1, FakeRng(uniform=1.0))
-    assert d.hp == 30 - 2 * data.ROT_PER_STACK  # 30 - 4 = 26
+    # whiff chip 1 + rot 2*2 = 5 total off d
+    assert d.hp == 30 - 1 - 2 * data.ROT_PER_STACK  # 30 - 1 - 4 = 25
 
 
 def test_venom_barb_first_win_bonus_once():
@@ -781,8 +828,8 @@ def test_spiked_boosts_guard_counter():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)                        # aggressor
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30, riders=frozenset({'spiked'}))
     resolve_round(a, d, 'aggress', 'guard', 1, FakeRng(uniform=1.0))
-    # counter base 0.5*10+1.0*5=10, -def5=5, *0.6*spiked1.5=0.9 => round(4.5)=4
-    assert a.hp == 30 - 4
+    # counter base 0.5*10+1.0*5=10, ×(1-5/15)=7, *0.6*spiked1.5=0.9 => round(6.3)=6
+    assert a.hp == 30 - 6
 
 
 def test_trickster_halves_lost_feint_punish():

@@ -1983,7 +1983,8 @@ def test_shop_window_math():
 
 
 def test_gen_shop_stock_shape_and_determinism():
-    node = next(n for n, v in data.MAP_NODES.items() if v['type'] == 'shop')
+    node = next(n for n, v in data.MAP_NODES.items()
+                if v['type'] == 'shop' and n not in data.ISLAND_BAZAAR_NODES)
     stock = db._gen_shop_stock(node, 100)
 
     # Gear: SHOP_GEAR_SLOTS lines, all valid, spread across distinct slots.
@@ -1991,6 +1992,13 @@ def test_gen_shop_stock_shape_and_determinism():
     slots = [data.GEAR[e['item']]['slot'] for e in stock['gear']]
     assert len(set(slots)) == len(slots)
     assert all(e['qty'] == data.SHOP_GEAR_QTY for e in stock['gear'])
+    # Biome bazaars: every gear line is T1/T2, except a rare black-market T3.
+    for e in stock['gear']:
+        t = data.GEAR[e['item']]['tier']
+        if e.get('blackMarket'):
+            assert t == 3
+        else:
+            assert t in data.BAZAAR_GEAR_TIERS
 
     # Consumables: SHOP_CONSUMABLE_SLOTS distinct lines, >=1 in-battle ('combat').
     assert len(stock['consumables']) == data.SHOP_CONSUMABLE_SLOTS
@@ -2008,6 +2016,32 @@ def test_gen_shop_stock_shape_and_determinism():
     assert db._gen_shop_stock(node, 100) == stock
     assert db._gen_shop_stock(node, 101) != stock
     assert stock['window'] == 100
+
+
+def test_island_bazaar_stocks_only_t2_t3():
+    node = next(iter(data.ISLAND_BAZAAR_NODES))
+    for w in range(100, 160):
+        stock = db._gen_shop_stock(node, w)
+        for e in stock['gear']:
+            assert data.GEAR[e['item']]['tier'] in (2, 3)
+            assert not e.get('blackMarket')          # island never uses black market
+    # Mostly T2, some T3 — both tiers show up across many windows.
+    tiers = [data.GEAR[e['item']]['tier']
+             for w in range(100, 300) for e in db._gen_shop_stock(node, w)['gear']]
+    assert 2 in tiers and 3 in tiers
+
+
+def test_biome_black_market_is_rare_and_deterministic():
+    node = next(n for n, v in data.MAP_NODES.items()
+                if v['type'] == 'shop' and n not in data.ISLAND_BAZAAR_NODES)
+    windows = list(range(0, 2000))
+    hits = [w for w in windows
+            if any(e.get('blackMarket') for e in db._gen_shop_stock(node, w)['gear'])]
+    assert 0 < len(hits) < len(windows) * 0.2        # happens, but rare
+    for w in hits:                                    # every black-market line is T3
+        bm = [e for e in db._gen_shop_stock(node, w)['gear'] if e.get('blackMarket')]
+        assert bm and all(data.GEAR[e['item']]['tier'] == 3 for e in bm)
+    assert db._gen_shop_stock(node, hits[0]) == db._gen_shop_stock(node, hits[0])
 
 
 def test_shop_stock_reads_current_regenerates_stale(table):

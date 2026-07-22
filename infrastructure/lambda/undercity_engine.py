@@ -132,23 +132,29 @@ def _swing_base(striker: 'Combatant', stance: str) -> float:
                 and striker.hp < 0.5 * striker.max_hp):
             base *= (1 + data.DEATHDRIVE_MULT)
         return base
-    # Guard/Feint lean on their OWN signature stat (DEF / SPD) and take only a
-    # partial ATK base, so a pure-ATK build can't also swing hard while guarding
-    # or feinting, and a dedicated DEF/SPD build's stance hits for real.
+    # Guard/Feint lean on their OWN signature stat, but at DIFFERENT weights:
+    # Guard↔DEF at full weight (the tank), Feint↔SPD lighter (SPD is a tempo/read
+    # stat, not a heavy hitter). Both take only a partial ATK base, so a pure-ATK
+    # build can't also swing hard while guarding or feinting.
     sig = getattr(striker, _STANCE_STAT[stance])
-    return data.STANCE_OFFHAND_ATK_WEIGHT * striker.atk + data.STANCE_SIG_WEIGHT * sig
+    sig_weight = data.GUARD_SIG_WEIGHT if stance == 'guard' else data.FEINT_SIG_WEIGHT
+    return data.STANCE_OFFHAND_ATK_WEIGHT * striker.atk + sig_weight * sig
 
 
 def _base_hit(striker: Combatant, target: Combatant, rng, pierce: int = 0,
               *, stance: str, ramp: float = 1.0) -> int:
-    """The raw stance-scaled hit before stance multipliers. The swing base is
-    striker.atk (universal) plus STANCE_STAT_WEIGHT × the stance's signature
-    stat (Aggress↔ATK, Guard↔DEF, Feint↔SPD). `ramp` is the escalation factor
-    (>1 once a fight drags past FRENZY_START) that grows every creature's own
-    swings so a slow fight still resolves. Floors at 1. A pending dmg_penalty
-    (from a Serrated feint) is spent here on the striker's next hit."""
-    swing = round(_swing_base(striker, stance) * ramp * rng.uniform(0.85, 1.15))
-    hit = max(1, swing - max(0, target.dfn - pierce))
+    """The raw stance-scaled hit before stance multipliers. The swing base comes
+    from _swing_base (Aggress↔ATK, Guard↔DEF, Feint↔SPD, at per-stance weights).
+    DEF is PROPORTIONAL mitigation: the swing is scaled by (1 - def/(def+K)),
+    capped at MITIGATION_CAP so nothing is invincible; `pierce` lowers effective
+    DEF before the ratio. `ramp` is the escalation factor (>1 once a fight drags
+    past FRENZY_START) that grows every creature's own swings so a slow fight
+    still resolves. Floors at 1. A pending dmg_penalty (from a Serrated feint) is
+    spent here on the striker's next hit."""
+    raw = _swing_base(striker, stance) * ramp * rng.uniform(0.85, 1.15)
+    dfn = max(0, target.dfn - pierce)
+    mitigation = min(data.MITIGATION_CAP, dfn / (dfn + data.MITIGATION_K))
+    hit = max(1, round(raw * (1 - mitigation)))
     if striker.dmg_penalty:
         hit = max(1, hit - striker.dmg_penalty)
         striker.dmg_penalty = 0

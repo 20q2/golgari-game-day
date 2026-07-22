@@ -62,20 +62,56 @@ def _shop_window_end(window):
     return end.isoformat(timespec='seconds')
 
 
+def _weighted_tier(rng, weights):
+    """Deterministic weighted pick from {tier: weight}. Sorted for stability."""
+    total = sum(weights.values())
+    roll = rng.random() * total
+    for tier in sorted(weights):
+        roll -= weights[tier]
+        if roll < 0:
+            return tier
+    return max(weights)
+
+
 def _gen_shop_stock(node, window):
     """Deterministic per (node, window) so every player computes the identical
     stock with no coordinated write. MUST use a stable hash — Python's builtin
     hash() is per-process salted (PYTHONHASHSEED) and would desync players."""
     rng = random.Random(zlib.crc32(f'{node}:{window}'.encode()))
 
-    # Gear: one piece per distinct slot (fang/carapace/charm), random tier within.
+    # Gear: one piece per distinct slot. Tier is chosen per bazaar class —
+    # biome bazaars stock T1/T2 (BAZAAR_GEAR_TIERS) with a rare black-market T3;
+    # island bazaars pick by weight (ISLAND_BAZAAR_GEAR_TIERS: mostly T2/some T3).
     by_slot = {}
     for gid, g in data.GEAR.items():
         by_slot.setdefault(g['slot'], []).append(gid)
     slots = list(by_slot)
     rng.shuffle(slots)
-    gear = [{'item': rng.choice(by_slot[s]), 'qty': data.SHOP_GEAR_QTY}
-            for s in slots[:data.SHOP_GEAR_SLOTS]]
+    chosen = slots[:data.SHOP_GEAR_SLOTS]
+
+    is_island = node in data.ISLAND_BAZAAR_NODES
+
+    # Biome bazaars: a rare window forces ONE chosen slot to a "black-market" T3.
+    black_slot = None
+    if not is_island and rng.random() < data.BAZAAR_BLACKMARKET_CHANCE:
+        black_slot = rng.choice(chosen)
+
+    gear = []
+    for s in chosen:
+        by_tier = {}
+        for gid in by_slot[s]:
+            by_tier.setdefault(data.GEAR[gid]['tier'], []).append(gid)
+        if is_island:
+            weights = {t: w for t, w in data.ISLAND_BAZAAR_GEAR_TIERS.items() if t in by_tier}
+            gid = rng.choice(by_tier[_weighted_tier(rng, weights)])
+            gear.append({'item': gid, 'qty': data.SHOP_GEAR_QTY})
+        elif s == black_slot and 3 in by_tier:
+            gid = rng.choice(by_tier[3])
+            gear.append({'item': gid, 'qty': data.SHOP_GEAR_QTY, 'blackMarket': True})
+        else:
+            pool = [gid for gid in by_slot[s] if data.GEAR[gid]['tier'] in data.BAZAAR_GEAR_TIERS]
+            gid = rng.choice(pool)
+            gear.append({'item': gid, 'qty': data.SHOP_GEAR_QTY})
 
     # Consumables: guarantee >=1 in-battle ('combat') item, no duplicates.
     combat = [cid for cid, c in data.CONSUMABLES.items() if c.get('combat')]

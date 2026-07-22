@@ -140,6 +140,11 @@ SHOP_CONSUMABLE_SLOTS = 3    # consumable lines per refresh (>=1 in-battle)
 SHOP_GRIMOIRE_SLOTS = 2      # tier-1 grimoires per refresh (never deplete)
 SHOP_GEAR_QTY = 2            # units per stocked gear line
 SHOP_CONSUMABLE_QTY = 2      # units per stocked consumable line
+# Per-(node, window) chance a biome bazaar rolls a rare "black-market" event
+# that forces ONE of its gear slots to a T3 piece. 30-min windows -> roughly one
+# sighting per bazaar every ~10 hours. Island bazaars ignore this (they stock T3
+# directly). Endgame T3 gear should be a treat, never a shortcut.
+BAZAAR_BLACKMARKET_CHANCE = 0.05
 SHRINE_BLESSING_COST = 15
 OSSUARY_MAX_BET = 20
 OSSUARY_ROLLS_PER_VISIT = 3  # gambles allowed per landing; refills when you land again
