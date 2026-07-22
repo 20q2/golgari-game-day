@@ -2097,6 +2097,30 @@ def test_umori_stock_is_all_t3_and_deterministic():
     assert db._umori_stock(5) == db._umori_stock(5)
 
 
+def test_resolve_on_umori_node_opens_a_trading_post(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    win = db._umori_window()
+    node = db._umori_node(win)
+    ev = db._resolve_space(table, sid, doc, node, doc.get('position'))
+    assert ev['type'] == 'trading_post' and ev['umori'] is True
+    assert ev['node'] == node
+    assert ev['movesAt'] == db._umori_window_end(win)
+    # Stock is the T3 seed for this window.
+    assert [s['item'] for s in ev['stock']] == [s['item'] for s in db._umori_stock(win)]
+
+
+def test_state_surfaces_umori(table):
+    act(table, 'join', starter='pest')
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    win = db._umori_window()
+    assert state['umori']['node'] == db._umori_node(win)
+    assert state['umori']['movesAt'] == db._umori_window_end(win)
+    # Display stock is seeded for the current Umori node.
+    assert state['tradingPosts'][db._umori_node(win)]
+
+
 def test_shop_stock_reads_current_regenerates_stale(table):
     sid = _sid(table)
     node = next(n for n, v in data.MAP_NODES.items() if v['type'] == 'shop')

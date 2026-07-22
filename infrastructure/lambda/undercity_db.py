@@ -1146,6 +1146,12 @@ def handle_state(table, query_params):
         if n['type'] == 'trading_post' and nid not in posts:
             posts[nid] = _seed_stock()
 
+    # Umori the wandering post: its current node + display-seeded T3 stock so the
+    # board can render it anywhere and the exchange opens from turn one.
+    umori_win = _umori_window()
+    umori_node = _umori_node(umori_win)
+    posts[umori_node] = _umori_barter_stock(table, sid, umori_win)
+
     # Masked dig-site views for every excavation node (empty/covered until dug).
     excavations = {nid: _dig_view(sites.get(nid))
                    for nid, n in nodes.items() if n['type'] == 'excavation'}
@@ -1179,6 +1185,7 @@ def handle_state(table, query_params):
         'players': players,
         'snares': snares,
         'tradingPosts': posts,
+        'umori': {'node': umori_node, 'movesAt': _umori_window_end(umori_win)},
         'bazaars': bazaars,
         'market': market,
         'excavations': excavations,
@@ -2162,6 +2169,16 @@ def _resolve_space(table, sid, doc, node, prev):
         doc['spores'] = doc.get('spores', 0) + pile
         table.delete_item(Key={'pk': _season_pk(sid), 'sk': f'SPACE#{node}'})
         return {'type': 'pile', 'text': f'You scoop up {pile} spilled Spores!', 'spores': pile}
+
+    # Umori the wandering ooze pacifies whatever wilderness space it sits on this
+    # window and opens a T3 barter (overrides the node's normal event). Runs after
+    # snare/pile so player traps still fire, before the normal type dispatch.
+    _uwin = _umori_window()
+    if node == _umori_node(_uwin):
+        return {'type': 'trading_post', 'node': node, 'umori': True,
+                'movesAt': _umori_window_end(_uwin),
+                'text': 'Umori the ooze has oozed up a crooked stall here. Leave one, take one.',
+                'stock': _umori_barter_stock(table, sid, _uwin)}
 
     if ntype == 'loot':
         # Gate the reward behind a Flow puzzle: stash the pick + masked view on
@@ -3744,6 +3761,15 @@ def _trading_post_stock(table, sid, node):
     if rec and rec.get('stock'):
         return rec['stock']
     return _seed_stock()
+
+
+def _umori_barter_stock(table, sid, window):
+    """Intra-window barter state for Umori (POST#UMORI#<window>); a fresh T3 seed
+    when nobody has traded yet this window. A stale window is ignored → reset."""
+    rec = _get(table, _season_pk(sid), f'POST#UMORI#{window}')
+    if rec and rec.get('stock'):
+        return rec['stock']
+    return _umori_stock(window)
 
 
 def _save_trading_post(table, sid, node, stock):
