@@ -1290,3 +1290,56 @@ def test_tunnel_exits_cover_every_tunnel_with_a_biome_node():
     # Spot-check one known pair.
     assert data.TUNNEL_EXITS['t_cavern_bog0'] == 'bog_r1'
     assert data.TUNNEL_EXITS['t_cavern_bog1'] == 'cavern_r9'
+
+
+# ── Balance regression: SPD no longer trivialises, DEF measurably mitigates ────
+# (spec 2026-07-21 combat rebalance) — exercises resolve_round with smart-play.
+import random as _bal_random
+
+_BAL_CTR = {'guard': 'feint', 'aggress': 'guard', 'feint': 'aggress'}
+
+
+def _fight_vs_gitrog(atk, dfn, spd, hp, read_chance, seeds=1500):
+    """Smart-play a build against the Gitrog Monster (turtle, hp48/def7); return
+    (win_rate, median_hp_taken)."""
+    taken = []
+    wins = 0
+    for seed in range(seeds):
+        rng = _bal_random.Random(seed)
+
+        class R:
+            uniform = staticmethod(lambda a, b: rng.uniform(a, b))
+            random = staticmethod(rng.random)
+            randint = staticmethod(rng.randint)
+            choice = staticmethod(rng.choice)
+
+        p = fighter(name='P', hp=hp, max_hp=hp, atk=atk, dfn=dfn, spd=spd)
+        g = fighter(name='G', hp=48, max_hp=48, atk=12, dfn=7, spd=5)
+        for rnd in range(1, 25):
+            actual = pick_stance('turtle', R)
+            shown = telegraph(actual, 0.35, R)
+            ps = _BAL_CTR[shown] if R.random() < read_chance else 'feint'
+            resolve_round(p, g, ps, actual, rnd, R, frenzy_from=data.FRENZY_START)
+            if g.hp <= 0 or p.hp <= 0:
+                wins += 1 if (g.hp <= 0 and p.hp > 0) else 0
+                taken.append(hp - max(0, p.hp))
+                break
+        else:
+            taken.append(hp - max(0, p.hp))
+    taken.sort()
+    return wins / seeds, taken[len(taken) // 2]
+
+
+def test_spd_build_no_longer_trivialises_a_boss():
+    rc = min(data.READ_MAX, data.READ_BASE + data.READ_SPD_COEFF * 15)
+    _win, taken = _fight_vs_gitrog(8, 6, 15, 40, rc)
+    # Used to take ~10 of 40 and win ~89%; now it must actually bleed.
+    assert taken >= 16, f'SPD build only took {taken} — still too safe'
+
+
+def test_def_measurably_reduces_damage_taken():
+    rc = min(data.READ_MAX, data.READ_BASE + data.READ_SPD_COEFF * 5)
+    _w_low, taken_low = _fight_vs_gitrog(8, 2, 5, 50, rc)
+    _w_high, taken_high = _fight_vs_gitrog(8, 15, 5, 50, rc)
+    # Same HP pool, same offense — armor must visibly lower HP lost.
+    assert taken_high < taken_low, f'DEF did nothing: {taken_high} vs {taken_low}'
