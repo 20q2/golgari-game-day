@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 
 interface Panel {
-  kind: 'gate' | 'guardians' | 'seals' | 'egg';
+  kind: 'gate' | 'renown' | 'guardians' | 'seals' | 'egg';
   text: string;
 }
 
@@ -41,6 +41,9 @@ const GUARDIAN_IDS = ['ishkanah', 'sarulf', 'gitrog_monster', 'skullbriar', 'sli
           @switch (p.kind) {
             @case ('gate') {
               <div class="gate-silhouette" aria-hidden="true"></div>
+            }
+            @case ('renown') {
+              <mat-icon class="renown-medal" aria-hidden="true">military_tech</mat-icon>
             }
             @case ('guardians') {
               <div class="guardian-row">
@@ -159,6 +162,14 @@ const GUARDIAN_IDS = ['ishkanah', 'sarulf', 'gitrog_monster', 'skullbriar', 'sli
         height: auto;
         filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.7));
       }
+      .renown-medal {
+        font-size: 4.25rem;
+        width: 4.25rem;
+        height: 4.25rem;
+        color: #e0b445;
+        filter: drop-shadow(0 0 16px rgba(224, 180, 69, 0.6));
+        animation: seal-pop 0.5s ease both;
+      }
       .seal-row {
         display: flex;
         gap: 1.25rem;
@@ -241,12 +252,19 @@ export class IntroCutsceneComponent implements OnInit, OnDestroy {
   protected readonly panels: Panel[] = [
     {
       kind: 'gate',
-      text: 'Beneath the game table, the Swarm Queen sleeps behind a sealed gate.',
+      text: 'Beneath the game table sleeps Savra, the Swarm Queen. Whoever earns the most Renown before dawn is crowned above her.',
     },
-    { kind: 'guardians', text: 'Her guardians hold the Guild Sigils.' },
+    {
+      kind: 'renown',
+      text: "Renown is won by the fang — never by hoarding. Beat the deep's wild beasts and any rival who crosses you.",
+    },
+    {
+      kind: 'guardians',
+      text: "Five guardians each hold a Guild Sigil. Claim a lair's first kill and the bounty is yours alone — the richest Renown in the dark.",
+    },
     {
       kind: 'seals',
-      text: 'Claim three, and the gate opens. Grow the biggest legend by dawn to be crowned.',
+      text: 'Gather three Sigils to unseal the Queen — then every blow you land on her swells your Renown before dawn.',
     },
     { kind: 'egg', text: "But first — you're still in your shell. Tap to crack it." },
   ];
@@ -268,7 +286,7 @@ export class IntroCutsceneComponent implements OnInit, OnDestroy {
   /** (Re)start the auto-advance timer for the current panel. */
   private arm(): void {
     this.disarm();
-    this.timer = setTimeout(() => this.next(), 4000);
+    this.timer = setTimeout(() => this.next(), 5500);
   }
   private disarm(): void {
     if (this.timer) {

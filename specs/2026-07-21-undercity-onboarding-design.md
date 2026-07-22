@@ -72,13 +72,17 @@ before the egg. Still panels, cross-fading; **Skip** always visible; tap or auto
 
 | Panel | Visual (all in-repo) | Narration |
 |---|---|---|
-| 1 | `undercity/gate_background.png` dimmed; a shadowed silhouette behind a sealed gate (CSS) | "Beneath the game table, the Swarm Queen sleeps behind a sealed gate." |
-| 2 | Row of the 5 biome-lair guardian portraits (`undercity/guardians/<id>.png`: `ishkanah`, `sarulf`, `gitrog_monster`, `skullbriar`, `slimefoot`) | "Her guardians hold the Guild Sigils." |
-| 3 | Three gold **`workspace_premium`** seals igniting (the Guild-Sigil vocabulary — see Correctness) | "Claim three, and the gate opens. Grow the biggest legend by dawn to be crowned." |
-| 4 | A single waiting egg | "But first — you're still in your shell. **Tap to crack it.**" → dissolves into the egg screen |
+| 1 | `undercity/gate_background.png` dimmed; a shadowed silhouette behind a sealed gate (CSS) | "Beneath the game table sleeps Savra, the Swarm Queen. Whoever earns the most Renown before dawn is crowned above her." |
+| 2 | Gold `military_tech` medal (the Renown vocabulary) | "Renown is won by the fang — never by hoarding. Beat the deep's wild beasts and any rival who crosses you." |
+| 3 | Row of the 5 biome-lair guardian portraits (`undercity/guardians/<id>.png`: `ishkanah`, `sarulf`, `gitrog_monster`, `skullbriar`, `slimefoot`) | "Five guardians each hold a Guild Sigil. Claim a lair's first kill and the bounty is yours alone — the richest Renown in the dark." |
+| 4 | Three gold **`workspace_premium`** seals igniting (the Guild-Sigil vocabulary — see Correctness) | "Gather three Sigils to unseal the Queen — then every blow you land on her swells your Renown before dawn." |
+| 5 | A single waiting egg | "But first — you're still in your shell. **Tap to crack it.**" → dissolves into the egg screen |
 
-Panel 4 *is* the handoff: the cutscene ends by naming the first mechanic, so "what do I
-do?" is answered before the player even hatches.
+Panel 5 *is* the handoff: the cutscene ends by naming the first mechanic, so "what do I
+do?" is answered before the player even hatches. Panels 1–4 teach the Renown economy the
+game actually implements (`undercity_data.compute_renown`): fighting (`per_wild_win` /
+`per_pvp_win`), firsts (`per_poi` — lair first-kills, vaults, caches), and boss damage
+(`boss_damage_per_point`) — never passive hoarding.
 
 - **Where it renders:** inside `HatchFlowComponent`, as the first gate. A `showIntro`
   signal is initialized from `localStorage['uc.introSeen']`. Template becomes
