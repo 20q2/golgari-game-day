@@ -20,7 +20,9 @@ type Cell = [number, number];
       <div class="flow-card" (click)="$event.stopPropagation()" [style.background-image]="washBg">
         <h3>🌿 Overgrown Cache</h3>
         <p class="flow-sub">
-          Trace one vine through every empty tile — the first prize it touches is yours.
+          Draw from the <b class="lbl-start">green start</b> to the
+          <b class="lbl-end">amber goal</b>, filling every tile — the first prize you
+          cross is yours.
         </p>
 
         <div
@@ -95,6 +97,12 @@ type Cell = [number, number];
         font-size: 0.85rem;
         color: #9aa79a;
       }
+      .flow-sub .lbl-start {
+        color: #7cfc6b;
+      }
+      .flow-sub .lbl-end {
+        color: #f2b04a;
+      }
       .flow-grid {
         display: grid;
         gap: 4px;
@@ -104,6 +112,7 @@ type Cell = [number, number];
         touch-action: none; /* let us own the drag on touch devices */
       }
       .cell {
+        position: relative;
         aspect-ratio: 1;
         border-radius: 6px;
         border: 1px solid rgba(0, 0, 0, 0.5);
@@ -122,11 +131,49 @@ type Cell = [number, number];
       .cell.tip {
         filter: brightness(1.25);
       }
+      /* Start — vivid green, gently pulsing, with a solid centre pip. */
       .cell.start {
-        box-shadow: inset 0 0 0 2px #e0c088;
+        box-shadow: inset 0 0 0 3px #7cfc6b, 0 0 10px rgba(124, 252, 107, 0.55);
+        animation: flow-start-pulse 1.6s ease-in-out infinite;
       }
+      .cell.start:not(.filled) {
+        background: radial-gradient(ellipse at center, #274d2b 0%, #16241a 90%);
+      }
+      /* End — warm amber goal, with a hollow target ring. */
       .cell.end {
-        box-shadow: inset 0 0 0 2px #c9b26f;
+        box-shadow: inset 0 0 0 3px #f2b04a, 0 0 10px rgba(242, 176, 74, 0.55);
+      }
+      .cell.end:not(.filled) {
+        background: radial-gradient(ellipse at center, #4a3a1a 0%, #2c2210 90%);
+      }
+      .cell.start::after,
+      .cell.end::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 32%;
+        height: 32%;
+        border-radius: 50%;
+        pointer-events: none;
+      }
+      .cell.start::after {
+        background: #7cfc6b;
+        box-shadow: 0 0 6px rgba(124, 252, 107, 0.9);
+      }
+      .cell.end::after {
+        border: 3px solid #f2b04a;
+        box-shadow: 0 0 6px rgba(242, 176, 74, 0.7);
+      }
+      @keyframes flow-start-pulse {
+        0%,
+        100% {
+          box-shadow: inset 0 0 0 3px #7cfc6b, 0 0 6px rgba(124, 252, 107, 0.4);
+        }
+        50% {
+          box-shadow: inset 0 0 0 3px #7cfc6b, 0 0 14px rgba(124, 252, 107, 0.85);
+        }
       }
       .cell.rock {
         background: #2a2622;
