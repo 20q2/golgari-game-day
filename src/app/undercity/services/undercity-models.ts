@@ -430,6 +430,14 @@ export interface DigFound {
   bagFull?: boolean;
 }
 
+/** A reward symbol placed on a loot-puzzle cell. The first one the drawn path
+ * crosses is what the player keeps; the server decides which — this is only
+ * used for rendering. Values are never sent to the client. */
+export interface FlowReward {
+  kind: 'spores' | 'item' | 'gear';
+  cell: [number, number];
+}
+
 /** Masked Flow puzzle sent to the client — layout only, never the solution. */
 export interface FlowPuzzleView {
   id: string;
@@ -438,6 +446,8 @@ export interface FlowPuzzleView {
   start: [number, number];
   end: [number, number];
   rocks: [number, number][];
+  /** Reward symbols scattered on the board (first-crossed wins). */
+  rewards: FlowReward[];
 }
 
 export interface SpaceEvent {
