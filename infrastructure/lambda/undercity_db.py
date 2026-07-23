@@ -4778,8 +4778,38 @@ def _dig(table, sid, doc, payload):
 
 # ── Flow loot puzzle ──────────────────────────────────────────────────────────
 
+def _award_flow_reward(doc, path, rewards):
+    """Award an Overgrown Cache solve: movement spores (0.5/tile, capped) plus the
+    first item/gear pickup the path crosses. Returns one {type:'loot',...} event
+    combining both. Spores are credited here; item/gear via the existing awarders."""
+    tiles = len(path)
+    base = min(int(tiles * data.FLOW_SPORE_PER_CELL), data.FLOW_SPORE_CAP)
+    move_spores = _scrounge(doc, base)
+    if doc.get('homeBiome') == 'garden':
+        move_spores += 2  # Composter hatch perk (matches _award_spores)
+    doc['spores'] = doc.get('spores', 0) + move_spores
+
+    kind = engine.first_reward_on_path(rewards or [], path)
+    event = {'type': 'loot', 'spores': move_spores}
+    if kind == 'gear':
+        sub = _award_gear(doc)
+    elif kind == 'item':
+        sub = _award_item(doc)
+    else:
+        event['text'] = f'You forage {move_spores} Spores routing through the cache.'
+        return event
+
+    # Merge the item/gear award onto the movement-spore event.
+    event['spores'] = move_spores + sub.get('spores', 0)
+    for key in ('item', 'gear'):
+        if key in sub:
+            event[key] = sub[key]
+    event['text'] = f"{sub['text']} (+{move_spores} Spores foraged on the way.)"
+    return event
+
+
 def _solve_loot_puzzle(table, sid, doc, payload):
-    """Validate the drawn Flow path; award the FIRST reward the path crosses."""
+    """Validate the drawn route (connect-only); award movement spores + first item."""
     pending = doc.get('pendingLoot')
     if not pending:
         return _err('No loot puzzle to solve.', 409)
@@ -4789,12 +4819,10 @@ def _solve_loot_puzzle(table, sid, doc, payload):
         _save_or_conflict(table, doc)
         return _err('That puzzle is no longer available.', 409)
     path = payload.get('path') or []
-    if not engine.validate_flow_solution(puzzle, path):
-        return _err("That path isn't a full solution.", 409)
-    kind = engine.first_reward_on_path(pending.get('rewards') or [], path)
+    if not engine.validate_flow_path(puzzle, path):
+        return _err("That path doesn't connect the two dots.", 409)
+    event = _award_flow_reward(doc, path, pending.get('rewards') or [])
     doc.pop('pendingLoot', None)
-    awarder = _LOOT_AWARDERS.get(kind, _award_spores)  # None → spores fallback
-    event = awarder(doc)
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict

@@ -2979,39 +2979,67 @@ def _land_loot_with(table, monkeypatch, placement):
     return sid, doc, data.flow_puzzle(doc['pendingLoot']['puzzleId'])
 
 
-def test_solve_awards_gear_when_hit_first(table, monkeypatch):
-    # Gear on the first step after start, spores on the last step before end →
-    # the canonical solution reaches gear first.
+def test_solve_awards_gear_hit_first_plus_movement_spores(table, monkeypatch):
+    # Gear one step after start → crossed first. Movement spores stack on top.
     sid, doc, puzzle = _land_loot_with(
         table, monkeypatch,
         lambda pz: [{'kind': 'gear', 'cell': pz['solution'][1]},
-                    {'kind': 'spores', 'cell': pz['solution'][-2]}])
+                    {'kind': 'item', 'cell': pz['solution'][-2]}])
     monkeypatch.setattr(db._rng, 'choice',
                         lambda seq: 'fang' if 'fang' in seq else seq[0])
     monkeypatch.setattr(db._rng, 'choices', lambda seq, weights=None, k=1: [seq[0]])
-    status, body = db._solve_loot_puzzle(table, sid, doc, {'path': puzzle['solution']})
+    sol = puzzle['solution']
+    status, body = db._solve_loot_puzzle(table, sid, doc, {'path': sol})
     assert status == 200
-    assert body['spaceEvent']['gear']['slot'] == 'fang'
+    ev = body['spaceEvent']
+    assert ev['gear']['slot'] == 'fang'
+    # Movement spores: floor(len * 0.5) capped at 10, then Scrounger-scaled.
+    base = min(int(len(sol) * data.FLOW_SPORE_PER_CELL), data.FLOW_SPORE_CAP)
+    assert ev['spores'] == round(base * data.SCROUNGER_MULT)
     assert doc.get('pendingLoot') is None
 
 
-def test_solve_awards_spores_when_hit_first(table, monkeypatch):
-    sid, doc, puzzle = _land_loot_with(
-        table, monkeypatch,
-        lambda pz: [{'kind': 'spores', 'cell': pz['solution'][1]},
-                    {'kind': 'gear', 'cell': pz['solution'][-2]}])
-    monkeypatch.setattr(db._rng, 'choice', lambda seq: seq[0])   # forage picks 8
-    status, body = db._solve_loot_puzzle(table, sid, doc, {'path': puzzle['solution']})
+def test_solve_no_item_crossed_awards_spores_only(table, monkeypatch):
+    # Both pickups sit off a straight connecting path → nothing crossed.
+    node = _first_loot_node()
+    sid, doc = _player_at(table, node, spores=0, bag=[], gear={})
+    # Force a board + placement we control: use p02 (4x4, start[0,3] end[3,0]).
+    monkeypatch.setattr(db._rng, 'choice', lambda seq: 'p02')
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)          # no gear
+    monkeypatch.setattr(db, '_place_loot_rewards',
+                        lambda pz, kinds, rng: [{'kind': 'item', 'cell': [0, 0]},
+                                                {'kind': 'item', 'cell': [1, 1]}])
+    db._resolve_space(table, sid, doc, node, None)
+    # A path down the right edge then along the bottom row misses [0,0] and [1,1].
+    path = [[0, 3], [1, 3], [2, 3], [3, 3], [3, 2], [3, 1], [3, 0]]
+    status, body = db._solve_loot_puzzle(table, sid, doc, {'path': path})
     assert status == 200
-    # Pest's Scrounger passive scales the 8-spore forage roll by SCROUNGER_MULT.
-    assert body['spaceEvent']['spores'] == round(8 * data.SCROUNGER_MULT)
-    assert 'gear' not in body['spaceEvent']
+    ev = body['spaceEvent']
+    assert 'item' not in ev and 'gear' not in ev
+    base = min(int(len(path) * data.FLOW_SPORE_PER_CELL), data.FLOW_SPORE_CAP)
+    assert ev['spores'] == round(base * data.SCROUNGER_MULT)
 
 
-def test_solve_rejects_incomplete_path(table, monkeypatch):
+def test_solve_accepts_short_connecting_path(table, monkeypatch):
+    # The new rule: a partial path that still reaches the end is valid.
+    node = _first_loot_node()
+    sid, doc = _player_at(table, node, spores=0, bag=[], gear={})
+    monkeypatch.setattr(db._rng, 'choice', lambda seq: 'p02')
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)
+    monkeypatch.setattr(db, '_place_loot_rewards',
+                        lambda pz, kinds, rng: [{'kind': 'item', 'cell': [0, 0]}])
+    db._resolve_space(table, sid, doc, node, None)
+    path = [[0, 3], [1, 3], [2, 3], [3, 3], [3, 2], [3, 1], [3, 0]]  # right+bottom edge
+    status, body = db._solve_loot_puzzle(table, sid, doc, {'path': path})
+    assert status == 200
+    assert doc.get('pendingLoot') is None
+
+
+def test_solve_rejects_disconnected_path(table, monkeypatch):
     sid, doc, puzzle = _land_loot_with(
         table, monkeypatch,
-        lambda pz: [{'kind': 'spores', 'cell': pz['solution'][1]}])
+        lambda pz: [{'kind': 'item', 'cell': pz['solution'][1]}])
+    # Prefix that does NOT reach the end tile → rejected.
     status, body = db._solve_loot_puzzle(
         table, sid, doc, {'path': puzzle['solution'][:3]})
     assert status == 409
