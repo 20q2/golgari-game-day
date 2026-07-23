@@ -43,6 +43,19 @@ const CUSTOM_CLASSIFIERS: Record<string, Classifier> = {
   saproling: classifySaprolingPixel,
 };
 
+// Legacy Dino-Party placeholder art that recolours via the default green-marker
+// classifier despite shipping no authored mask. Every real sprite is segmented
+// by its <key>.mask.png; a maskless sprite that isn't listed here (and has no
+// custom classifier) can't be split into body/belly/stripes without garbling
+// full-colour art, so canRecolor() leaves it untouched until its mask lands.
+const GREEN_MARKER_SPRITES = new Set(['diplo']);
+
+/** Whether a sprite can be segmented for recolouring: it has an authored mask,
+ *  a custom classifier, or is a known green-marker placeholder. */
+function canRecolor(sprite: string): boolean {
+  return !!maskImages[sprite] || sprite in CUSTOM_CLASSIFIERS || GREEN_MARKER_SPRITES.has(sprite);
+}
+
 const rawImages: Record<string, HTMLImageElement> = {};
 const maskImages: Record<string, HTMLImageElement> = {};
 // Optional per-sprite hat guides (undercity/player_sprites/<key>.hat.png): a
@@ -649,6 +662,21 @@ export function getRecolored(
 ): HTMLCanvasElement | null {
   const img = rawImages[sprite];
   if (!img) return null;
+  // No mask (and no classifier) → we can't split this art into body/belly/
+  // stripes without garbling it, so return it unrecoloured. Recolour turns on
+  // automatically the moment a <key>.mask.png ships — no code change needed.
+  if (!canRecolor(sprite)) {
+    const cached = recolorCache.get(`${sprite}-raw`);
+    if (cached) return cached;
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext('2d')!.drawImage(img, 0, 0);
+    recolorCache.set(`${sprite}-raw`, canvas);
+    return canvas;
+  }
   const hues = regions.map((r) => colors[r] ?? 120);
   const key = `${sprite}-${hues.join('-')}`;
   const cached = recolorCache.get(key);

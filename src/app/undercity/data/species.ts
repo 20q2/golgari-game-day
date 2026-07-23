@@ -13,50 +13,42 @@ export interface SpeciesSprite {
   scale: number;
 }
 
-// Every authored mask (undercity/player_sprites/<key>.mask.png) segments a
-// sprite into the same three recolor zones — red→body, green→belly, blue→
-// stripes — which the wardrobe paints target in this order. One shared const
-// keeps every mask-bearing sprite on that standard. The green-marker Dino-Party
-// placeholders (classifyPixel in sprite-engine.ts) resolve to the same three
-// zones, so they reuse it too. Finished art with no mask keeps regions: [] so
-// the recolor is skipped entirely rather than misfiring the classifier.
+// Every sprite's mask (undercity/player_sprites/<key>.mask.png) segments it into
+// the same three recolor zones — red→body, green→belly, blue→stripes — which the
+// wardrobe paints target in this order. One shared const puts every form on that
+// standard: the recolor engine (sprite-engine.ts canRecolor) only tints a sprite
+// once its mask ships, so forms whose art has no mask yet simply draw unchanged
+// until the file lands — no per-form regions bookkeeping needed.
 const MASK_REGIONS = ['body', 'belly', 'stripes'];
 
-// Finished Golgari art has no recolor markers — regions: [] disables the
-// hue-shift (wardrobe paints won't tint these forms) and hats fall back to
-// the default anchor.
 export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   // Tier 1 starters
   pest: { sprite: 'pest', regions: MASK_REGIONS, scale: 0.7 },
-  // Centipede art (undercity/player_sprites/insect.png) — mask-driven like the
-  // rest, on the standard region set.
   kraul: { sprite: 'insect', regions: MASK_REGIONS, scale: 0.7 },
   saproling: { sprite: 'saproling', regions: MASK_REGIONS, scale: 0.7 },
   zombie: { sprite: 'zombie', regions: MASK_REGIONS, scale: 0.7 },
-  // Squirrel line — squirrel.png and squirrel_mage.png carry hat/mask recolor
-  // markers; the other evolved art (squirrel_general/clamity_beast) has none.
   squirrel: { sprite: 'squirrel', regions: MASK_REGIONS, scale: 0.7 },
   // Tier 2 — same line sprite, grown up
-  brackish_trudge: { sprite: 'brackish_trudge', regions: [], scale: 1.0 },
-  vexing_pest: { sprite: 'vexing_pest', regions: [], scale: 0.9 },
-  kraul_warrior: { sprite: 'grave_shell_scarab', regions: [], scale: 1.0 },
-  golgari_longlegs: { sprite: 'golgari_longlegs', regions: [], scale: 1.0 },
-  slitherhead: { sprite: 'slitherhead', regions: [], scale: 1.0 },
-  // woodwraith_strangler id now displays as Myconid Sporetender — real art.
-  woodwraith_strangler: { sprite: 'myconid_sporetender', regions: [], scale: 1.05 },
-  shambling_shell: { sprite: 'shambling_shell', regions: [], scale: 1.0 },
-  corpsejack_menace: { sprite: 'corpsejack_menace', regions: [], scale: 0.95 },
+  brackish_trudge: { sprite: 'brackish_trudge', regions: MASK_REGIONS, scale: 1.0 },
+  vexing_pest: { sprite: 'vexing_pest', regions: MASK_REGIONS, scale: 0.9 },
+  kraul_warrior: { sprite: 'grave_shell_scarab', regions: MASK_REGIONS, scale: 1.0 },
+  golgari_longlegs: { sprite: 'golgari_longlegs', regions: MASK_REGIONS, scale: 1.0 },
+  slitherhead: { sprite: 'slitherhead', regions: MASK_REGIONS, scale: 1.0 },
+  // woodwraith_strangler id now displays as Myconid Sporetender.
+  woodwraith_strangler: { sprite: 'myconid_sporetender', regions: MASK_REGIONS, scale: 1.05 },
+  shambling_shell: { sprite: 'shambling_shell', regions: MASK_REGIONS, scale: 1.0 },
+  corpsejack_menace: { sprite: 'corpsejack_menace', regions: MASK_REGIONS, scale: 0.95 },
   // Deathrite Shaman has no dedicated art yet — reuse the zombie pawn as placeholder.
   deathrite_shaman: { sprite: 'zombie', regions: MASK_REGIONS, scale: 1.0 },
-  // Apexes — real Golgari art (regions: [] disables recolor markers)
-  grave_titan: { sprite: 'grave_titan', regions: [], scale: 1.25 },
-  golgari_lich_lord: { sprite: 'golgari_lich_lord', regions: [], scale: 1.3 },
-  swamp_dragon: { sprite: 'swamp_dragon', regions: [], scale: 1.3 },
+  // Apexes
+  grave_titan: { sprite: 'grave_titan', regions: MASK_REGIONS, scale: 1.25 },
+  golgari_lich_lord: { sprite: 'golgari_lich_lord', regions: MASK_REGIONS, scale: 1.3 },
+  swamp_dragon: { sprite: 'swamp_dragon', regions: MASK_REGIONS, scale: 1.3 },
   izoni: { sprite: 'diplo', regions: MASK_REGIONS, scale: 1.3 }, // still Dino Party placeholder
   // Squirrel T2/T3
-  squirrel_warrior: { sprite: 'squirrel_general', regions: [], scale: 1.0 },
+  squirrel_warrior: { sprite: 'squirrel_general', regions: MASK_REGIONS, scale: 1.0 },
   squirrel_mage: { sprite: 'squirrel_mage', regions: MASK_REGIONS, scale: 1.0 },
-  calamity_beast: { sprite: 'clamity_beast', regions: [], scale: 1.3 },
+  calamity_beast: { sprite: 'clamity_beast', regions: MASK_REGIONS, scale: 1.3 },
 };
 
 /** A selectable cosmetic look for a starter. `id` is the sprite key stored
