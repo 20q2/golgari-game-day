@@ -93,3 +93,9 @@ def test_market_listing_appears_in_state(table):
     status, state = db.handle_state(table, {'userId': 'user-alex'})
     assert status == 200
     assert any(l['gearId'] == 'bark_hide' and l['price'] == 45 for l in state['market'])
+
+
+def test_market_price_band_by_kind():
+    assert db._market_price_band('gear', 'bark_hide') == (22, 90)          # cost 45
+    assert db._market_price_band('consumable', 'healing_moss') == (6, 24)  # cost 12
+    assert db._market_price_band('scroll', 'spore_bolt') == (5, 20)        # INSCRIBE_COST[1]=10

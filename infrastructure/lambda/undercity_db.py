@@ -926,9 +926,41 @@ def _upgrade_gear(table, sid, doc, payload):
 
 # ── Player Market (Plaza, priced) ────────────────────────────────────────────
 
-def _market_price_band(gid):
-    """(min, max) Spore price allowed for a gear id, bounded around base cost."""
-    cost = data.GEAR[gid]['cost']
+# Per-kind inventory routing for market listings. Each entry says which player-doc
+# field holds that kind, its capacity, and how to derive a base cost / display name.
+_MARKET_KINDS = {
+    'gear': {
+        'field': 'gearStash', 'cap': data.GEAR_STASH_SIZE,
+        'cost': lambda i: data.GEAR[i]['cost'],
+        'name': lambda i: data.GEAR[i]['name'],
+    },
+    'consumable': {
+        'field': 'bag', 'cap': data.BAG_SIZE,
+        'cost': lambda i: data.CONSUMABLES[i]['cost'],
+        'name': lambda i: data.CONSUMABLES[i]['name'],
+    },
+    'scroll': {
+        'field': 'scrolls', 'cap': data.SCROLL_SATCHEL_CAP,
+        'cost': lambda i: data.INSCRIBE_COST[data.SPELLS[i]['tier']],
+        'name': lambda i: data.SPELLS[i]['name'],
+    },
+}
+
+# Player-doc field label for "your X is full" errors.
+_MARKET_FULL_LABEL = {'gear': 'stash', 'consumable': 'bag', 'scroll': 'scroll satchel'}
+
+
+def _market_kind(listing):
+    """Resolve (kind, itemId) for a listing. Legacy rows carry only `gearId`/no
+    `kind`, so default to gear."""
+    kind = listing.get('kind', 'gear')
+    item_id = listing.get('itemId') or listing.get('gearId')
+    return kind, item_id
+
+
+def _market_price_band(kind, item_id):
+    """(min, max) Spore price allowed for an item, bounded around its base cost."""
+    cost = _MARKET_KINDS[kind]['cost'](item_id)
     lo = max(1, int(cost * data.MARKET_PRICE_MIN_PCT))
     hi = max(lo, int(cost * data.MARKET_PRICE_MAX_PCT))
     return lo, hi
