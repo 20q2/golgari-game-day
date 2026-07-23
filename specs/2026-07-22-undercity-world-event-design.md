@@ -108,9 +108,12 @@ Combat rules:
   applies within those 6 rounds as normal, so a skirmish can also end early by
   KO or flee.
 - On skirmish end (`_finish_battle` `world` branch): compute damage dealt this
-  skirmish = `hp_before - npc_hp_after`. Subtract it from the shared pool,
-  clamp at 0, and add it to `dmg[userId]` **and** the player's existing
-  `bossDamage` counter.
+  skirmish = `poolStart - npc_hp_after`. Re-read the live pool (concurrent
+  skirmishes may have chipped it), subtract the delta, clamp at 0, and add it to
+  the event's `dmg[userId]` contributor map. It is **not** added to the player's
+  `bossDamage` counter — that counter already feeds season-end renown via
+  `compute_renown`, and double-banking would double-count against the immediate
+  bracket renown below. `dmg` is the single source of truth for brackets.
 - The beast does **not** die from being disengaged — a capped/fled skirmish just
   leaves it chipped. Any player may re-engage every time they land on a node;
   **no cooldown, no per-player cap** (pure repeatable).
@@ -176,8 +179,8 @@ modal).
 - Landing on any of the three nodes returns a `world_event` space event (overlay
   wins over the node's normal type); landing elsewhere is unaffected.
 - Engaging starts a `kind='world'` battle; the fight ends at the 6-round cap;
-  damage dealt is subtracted from the shared pool and banked into `dmg[uid]` and
-  `bossDamage`.
+  damage dealt is subtracted from the shared pool and banked into `dmg[uid]`
+  (overlay also wins over Umori's wandering stall on a shared node).
 - Repeated skirmishes by the same and different players keep chipping the same
   shared pool (no cooldown/cap).
 - The skirmish that empties the pool sets `dead = true`, pays each contributor by
