@@ -45,6 +45,7 @@ import {
   SPELL_MAP,
   SpellInfo,
   cooldownLeftMin,
+  spellPowerLabel,
 } from '../data/spells';
 import {
   GEAR_MAP,
@@ -284,6 +285,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected cooldownLabel(spellId: string): string {
     const left = cooldownLeftMin(this.store.you()?.spellCooldowns, spellId);
     return left > 0 ? `${left} min` : 'Ready';
+  }
+
+  /** Level-scaled magnitude label for a spell at the player's level ('' if flat). */
+  protected readonly spellPowerLabel = spellPowerLabel;
+  protected playerLevel(): number {
+    return this.store.you()?.level ?? 1;
   }
 
   protected spellReady(spellId: string): boolean {
@@ -1435,6 +1442,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.board.setClearedDungeons(
       claims.filter((c) => c.endsWith('_lair')).map((c) => c.split('_')[0]),
     );
+    this.board.setFirsts(this.store.firsts());
   }
 
   private async move(to: string): Promise<void> {

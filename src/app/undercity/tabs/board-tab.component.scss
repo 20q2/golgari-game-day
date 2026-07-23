@@ -1458,3 +1458,15 @@
     animation: uc-sunburst-in 0.4s ease-out both;
   }
 }
+
+// Level-scaled spell magnitude chip in the cast picker (spell-scaling plan).
+.spell-power-chip {
+  display: inline-block;
+  margin: 0 4px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(233, 30, 99, 0.15); // --accent tint
+  color: var(--accent-color, #e91e63);
+}

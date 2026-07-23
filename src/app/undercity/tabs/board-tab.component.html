@@ -887,7 +887,11 @@
         @for (sp of castableSpells(); track sp.id) {
           <div class="shop-row">
             <span class="shop-name">
-              <mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }} <em>{{ sp.desc }}</em>
+              <mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}
+              @if (spellPowerLabel(sp, playerLevel()); as pw) {
+                <span class="spell-power-chip">{{ pw }}</span>
+              }
+              <em>{{ sp.desc }}</em>
             </span>
             <button
               class="uc-btn shop-buy"
