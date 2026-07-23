@@ -11,7 +11,8 @@ A living reference for the Dokapon-style spell system: what it does for players,
 ### Your loadout
 
 - **Innate spell** — every creature can always cast the signature spell of its *home biome* (chosen at hatch). No book needed, no way to lose it.
-- **Grimoires** — spell books found in the world. Each book carries a **fixed bundle of 1–3 spells**; you never learn loose spells, the book *is* the loadout. Every book you ever find goes into a **permanent collection** (never sold, never lost; duplicates convert to 15 Spores), but only **one book is open at a time**. Swap freely from the Creature tab. Your first book auto-opens.
+- **Grimoires** — spell books found in the world. A book starts with 1–3 spells and can hold up to its tier's capacity (I:2 / II:3 / III:4); you **grow a book by inscribing scrolls at the Sedgemoor Witch** (a full book burns out a spell to make room). Every book you ever find goes into a **permanent collection** (never sold, never lost; duplicates convert to 15 Spores), but only **one book is open at a time**. Swap freely from the Creature tab. Your first book auto-opens.
+- **Scrolls** — one-spell items found in the world (tiered drops) or bought from the witch. Cast one-shot (no cooldown, consumed) or inscribe into a grimoire. Held in a capped satchel.
 - Castable at any moment = innate spell + the spells in your open book.
 
 ### Casting
@@ -179,13 +180,32 @@ Cross-doc concurrency: field spells write the victim's doc first (`_put_player`,
 - **Cooldowns only start on a successful cast** — validation errors and shielded/out-of-range targets must return before `_start_spell_cooldown`.
 - **A dodge still costs the cooldown and still notifies the victim.**
 - **The grimoire collection is permanent** — nothing removes entries from `grimoires`.
-- **Loadouts are fixed bundles** — no mechanism may let players compose custom spell sets; power growth comes from finding better books.
+- **Loadouts are mutable but capacity-bounded** (design 2026-07-23, retires the old
+  "fixed bundles" rule). A book's contents are per-player state (`grimoireSpells`,
+  read via `_book_spells`), grown by finding **spell scrolls** and inscribing them
+  at the **Sedgemoor Witch**. A book never holds more spells than its tier allows
+  (`GRIMOIRE_CAPACITY` = I:2 / II:3 / III:4); inscribing into a full book burns out
+  a chosen spell. Only **one book is open at a time**, and every added spell must be
+  a scroll the player physically found or bought — there is no free "pick any spell"
+  menu (except the Calamity Beast's **Wish**).
+
+### Scrolls & the Sedgemoor Witch (design 2026-07-23)
+
+- A **scroll** carries one spell and lives in the `scrolls` satchel (cap
+  `SCROLL_SATCHEL_CAP`). It can be **cast one-shot** (`source: 'scroll'` — no book,
+  no cooldown, consumed) or **inscribed** into a grimoire at the witch.
+- Scrolls **drop tiered by content difficulty** (`_roll_scroll_drop`,
+  `SCROLL_DROP_CHANCE`/`SCROLL_DROP_TIER`): tier-I from mystery, tier-II from caches,
+  tier-III from vault / lair / boss kills. This is how tier-II/III spells enter play.
+- The witch is a singleton `witch` space (bog `bog_r7`). Actions:
+  `witch-inscribe` `{scrollSpellId, grimoireId, overwriteSpellId?}` and
+  `witch-buy-scroll` `{spellId}` (rotating tier-I stock, `WITCH_SCROLL_STOCK`).
 
 ## Roadmap
 
 | Phase | Content | Status |
 | --- | --- | --- |
 | 1 | Core casting, innate spells, tier-I books in shops + mystery drops, full UI | ✅ Shipped |
-| 2 | Scrolls — consumable one-shot casts that bypass cooldowns (`source: 'scroll'` is reserved and currently rejected) | Not built |
-| 3 | Tier-II/III books from lair first-kills, vault/cache claims, and dig sites | Not built (books already defined in data) |
-| 4 | Spell-shrine board space (arcane library) via the `add-undercity-space` skill | Not built |
+| 2 | Scrolls — one-shot casts (`source: 'scroll'`, no cooldown) + tiered world drops | ✅ Shipped (2026-07-23) |
+| 3 | Tier-II/III spell access — via scroll drops from caches / vault / lair / boss | ✅ Shipped (scrolls; books still defined in data) |
+| 4 | Sedgemoor Witch space (inscribe scrolls into books, buy tier-I scrolls) | ✅ Shipped (2026-07-23) |
