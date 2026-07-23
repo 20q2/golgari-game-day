@@ -6,7 +6,7 @@ export interface GearInfo {
   id: string;
   name: string;
   slot: 'fang' | 'carapace' | 'charm';
-  tier: 1 | 2 | 3;
+  tier: 1 | 2 | 3 | 4;
   cost: number;
   desc: string;
   /** Stance-rider tag (mirrors GEAR_RIDERS); undefined for plain stat gear. */
@@ -134,10 +134,43 @@ export const GEAR: GearInfo[] = [
     desc: '+1 ATK · Illuminated: reveals the entire dungeon while equipped.' },
   { id: 'glowspore_charm', name: 'Glowspore Charm', slot: 'charm', tier: 1, cost: 30, light: 'full',
     desc: 'Bioluminescent: reveals the entire dungeon while equipped.' },
+  // Mythic (tier 4) — craft-only; forge a Legendary at the Blacksmith for 3 Chrysalis Ichor.
+  { id: 'wyrm_godtooth', name: 'Wyrm Godtooth', slot: 'fang', tier: 4, cost: 150, rider: 'barbed', atk: 8, spd: 1,
+    desc: '+8 ATK, +1 SPD · Barbed: Aggress applies rot even on a loss.' },
+  { id: 'sanguine_leviathan', name: 'Sanguine Leviathan', slot: 'fang', tier: 4, cost: 150, rider: 'bloodfang', atk: 8, spd: 1,
+    desc: '+8 ATK, +1 SPD · Bloodfang: heal 70% of your winning Aggress damage.' },
+  { id: 'worldrender_maw', name: 'Worldrender Maw', slot: 'fang', tier: 4, cost: 150, rider: 'deep_biter', atk: 8, spd: 1,
+    desc: '+8 ATK, +1 SPD · Deep-biter: winning hits hit much harder.' },
+  { id: 'apex_ravener', name: 'Apex Ravener', slot: 'fang', tier: 4, cost: 150, rider: 'rabid', atk: 7, spd: 2,
+    desc: '+7 ATK, +2 SPD · Rabid: each Aggress win, your Aggress hits gain +4 for the fight.' },
+  { id: 'worldcleaver', name: 'Worldcleaver', slot: 'fang', tier: 4, cost: 150, rider: 'gutcleaver', atk: 8,
+    desc: '+8 ATK · Gutcleaver: winning Aggress vs a foe below 30% HP deals +90%.' },
+  { id: 'titan_carapace', name: 'Titan Carapace', slot: 'carapace', tier: 4, cost: 150, rider: 'thick', def: 6, maxHp: 8,
+    desc: '+6 DEF, +8 max HP · Thick: Guard chips in a stall, softer when wrong.' },
+  { id: 'thornlord_aegis', name: 'Thornlord Aegis', slot: 'carapace', tier: 4, cost: 150, rider: 'bramble', def: 6, maxHp: 8,
+    desc: '+6 DEF, +8 max HP · Bramble: reflect 5 damage whenever you are struck.' },
+  { id: 'wyrmscale_wall', name: 'Wyrmscale Wall', slot: 'carapace', tier: 4, cost: 150, rider: 'spiked', def: 6, maxHp: 8,
+    desc: '+6 DEF, +8 max HP · Spiked: Guard counter hits +100% harder.' },
+  { id: 'adamant_bulwark', name: 'Adamant Bulwark', slot: 'carapace', tier: 4, cost: 150, rider: 'bulwark', def: 6, maxHp: 8,
+    desc: '+6 DEF, +8 max HP · Bulwark: each round you Guard, +3 DEF for the fight.' },
+  { id: 'ancient_grove_shell', name: 'Ancient Grove Shell', slot: 'carapace', tier: 4, cost: 150, rider: 'mossback', def: 6, maxHp: 8,
+    desc: '+6 DEF, +8 max HP · Mossback: heal 5 each round you end in Guard.' },
+  { id: 'godtrickster_idol', name: 'Godtrickster’s Idol', slot: 'charm', tier: 4, cost: 150, rider: 'trickster', spd: 3,
+    desc: '+3 SPD · Trickster: a lost Feint punishes 80% less.' },
+  { id: 'plaguelord_idol', name: 'Plaguelord Idol', slot: 'charm', tier: 4, cost: 150, rider: 'venomtrick', spd: 2,
+    desc: '+2 SPD · Venomtrick: winning a Feint applies 4 rot.' },
+  { id: 'eviscerator_idol', name: 'Eviscerator Idol', slot: 'charm', tier: 4, cost: 150, rider: 'serrated', spd: 2,
+    desc: '+2 SPD · Serrated: a winning Feint saps 4 from the foe’s next-round damage.' },
+  { id: 'allseeing_idol', name: 'All-Seeing Idol', slot: 'charm', tier: 4, cost: 150, rider: 'seer', spd: 2,
+    desc: '+2 SPD · Seer: overwhelmingly raises how often you read the foe’s intent.' },
+  { id: 'kingpin_idol', name: 'Kingpin Idol', slot: 'charm', tier: 4, cost: 150, rider: 'cutpurse', spd: 3,
+    desc: '+3 SPD · Cutpurse: land a winning Feint for +12 Spores after a win.' },
+  { id: 'prism_idol', name: 'Prism Idol', slot: 'charm', tier: 4, cost: 150, rider: 'glint', spd: 2,
+    desc: '+2 SPD · Glint: winning a Feint reveals the true next intent; ++read rate.' },
 ];
 
 /** Gear rarity, derived from tier (mirrors the server: tier IS the rarity). */
-export type Rarity = 'common' | 'rare' | 'legendary';
+export type Rarity = 'common' | 'rare' | 'legendary' | 'mythic';
 
 export interface RarityInfo {
   key: Rarity;
@@ -148,6 +181,7 @@ const RARITY_BY_TIER: Record<number, RarityInfo> = {
   1: { key: 'common', label: 'Common' },
   2: { key: 'rare', label: 'Rare' },
   3: { key: 'legendary', label: 'Legendary' },
+  4: { key: 'mythic', label: 'Mythic' },
 };
 
 /** Map a gear tier (1/2/3) to its rarity name/key. Defaults to Common. */
@@ -177,6 +211,7 @@ export function nextRung(id: string): string | null {
 export const UPGRADE_COST: Record<number, { spores: number; moltings: number; ichor: number }> = {
   2: { spores: 40, moltings: 3, ichor: 0 },
   3: { spores: 80, moltings: 6, ichor: 1 },
+  4: { spores: 150, moltings: 0, ichor: 3 },
 };
 
 /** Salvage Yard grind yield by rarity (mirrors SALVAGE_MOLTINGS / SALVAGE_ICHOR). */
@@ -184,6 +219,7 @@ export const SALVAGE_YIELD: Record<number, { moltings: number; ichor: number }> 
   1: { moltings: 1, ichor: 0 },
   2: { moltings: 2, ichor: 0 },
   3: { moltings: 4, ichor: 1 },
+  4: { moltings: 6, ichor: 1 },
 };
 
 /** Player Market price band for a gear id (mirrors MARKET_PRICE_MIN/MAX_PCT). */
