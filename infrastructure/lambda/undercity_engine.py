@@ -246,8 +246,8 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             # decisive blow finds only air (a guaranteed one-round negate).
             entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
                             'miss': True, 'winner': win_side})
-        elif (losr.has('flyby') or losr.has('skitter')) and rng.random() < data.FLYBY_DODGE:
-            # Flyby / Skitter: loser evades the whole punish.
+        elif (losr.has('vexing') or losr.has('skitter')) and rng.random() < data.FLYBY_DODGE:
+            # Vexing / Skitter: loser evades the whole punish.
             entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
                             'miss': True, 'winner': win_side})
         elif win_stance == 'guard':

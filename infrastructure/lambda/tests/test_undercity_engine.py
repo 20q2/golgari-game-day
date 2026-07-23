@@ -774,9 +774,9 @@ def test_negate_loss_cancels_punish():
     assert d.hp == 30   # punish negated
 
 
-def test_flyby_dodges_the_punish():
+def test_vexing_dodges_the_punish():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
-    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'flyby'}))
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'vexing'}))
     # random() returns 0.10 < 0.25 => dodge
     resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(randoms=[0.10], uniform=1.0))
     assert d.hp == 30   # punish dodged
@@ -793,8 +793,8 @@ def test_reach_negates_round1_punish_only():
     assert d.hp < 30
 
 
-def test_skitter_dodges_like_flyby():
-    # Skitter (Slitherhead) reuses the Flyby dodge mechanic.
+def test_skitter_dodges_like_vexing():
+    # Skitter (Slitherhead) reuses the Vexing dodge mechanic.
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'skitter'}))
     resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(randoms=[0.10], uniform=1.0))

@@ -123,7 +123,7 @@ hits**, and **raw strike vs DoT attrition**.
 | | *Juggernaut* | Thick carapace + `regrowth`/high HP + Barbed fang → unkillable, inevitable rot chip |
 | **Glass cannon** | *Burst* | Deep-biter + `first_bite`/`rot_breath` + high SPD → one devastating winning hit |
 | | *Flurry* | `swarm` + `venom_barb` + many small hits → death by a thousand cuts |
-| **Feint duelist** | *Reader* | Glint charm + reveal consumables + `flyby` → win exchanges on information |
+| **Feint duelist** | *Reader* | Glint charm + reveal consumables + `vexing` → win exchanges on information |
 | | *Tempo* | Serrated charm + `weaken_hex` → grind the enemy's damage down |
 | **DoT / attrition** | — | Barbed fang + `rot_surge` (Aggress DoT) + `drain_life` → stack rot, heal off it, outlast |
 
@@ -165,7 +165,7 @@ lose an exchange." No form needs redesigning.
 | `scavenge` | retaliate 2 when struck | retaliate when you **lose** an exchange | Thorns tank |
 | `deathtouch_stomp` | ignore 3 DEF | Aggress pierces some Guard mitigation | Anti-tank aggro |
 | `drain_life` | heal 50% dmg dealt | unchanged — heals off any damage incl. rot | DoT sustain |
-| `flyby` | 25% enemy miss | 25% chance to dodge an exchange **loss** | Reader/evasion |
+| `vexing` | 25% enemy miss | 25% chance to dodge an exchange **loss** | Reader/evasion |
 | `regrowth`/`rootwall` | post-battle heal | unchanged | Tank |
 
 **Economy/board passives — untouched:** `scrounger`, `doubling_rot`, `drift`,

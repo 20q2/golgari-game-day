@@ -38,7 +38,7 @@ augments a stance, show that effect inline on the corresponding stance button.
    the client mirror follows the backend 1:1 so the mapping stays authoritative.
 
 2. **Stance-specific passives** — only the passives that clearly augment a single
-   stance are surfaced. Everything else (flyby, scavenge, swarm, drain_life,
+   stance are surfaced. Everything else (vexing, scavenge, swarm, drain_life,
    first_bite, …) fires regardless of stance and is deliberately excluded to keep
    the buttons honest.
 

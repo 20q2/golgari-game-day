@@ -350,6 +350,11 @@ export class BoardCanvas {
   private layers = new Map<string, Layer>();
   private layerOf = new Map<string, string>();
   private activeLayerId: string = OVERWORLD;
+  /** The layer your *own* token currently sits on. Distinct from
+   * activeLayerId: the focus picker can point the view at another layer
+   * (spectateOn) while your token stays put — the auto-follow only kicks in
+   * when this value changes, i.e. you actually crossed layers yourself. */
+  private ownLayer: string = OVERWORLD;
   private explored = new Map<string, Set<string>>(); // layerId -> lit node ids
   private static readonly EXPLORED_KEY = 'undercity-explored-v1';
   private floorTex: FloorTextures = {};
@@ -598,8 +603,13 @@ export class BoardCanvas {
     if (!this.ownUserId) return;
     // The visible layer follows your own token: descend a ladder and the view
     // swaps to that dungeon pocket; climb out and it returns to the overworld.
+    // Guard on ownLayer *changing* rather than "differs from active" so a
+    // repeated poll can't yank the view back while you're spectating another
+    // player's layer via the focus picker (spectateOn) — that only ends when
+    // your own token crosses layers or you recenter on yourself.
     const target = this.ownPosition ? this.layerOf.get(this.ownPosition) ?? OVERWORLD : OVERWORLD;
-    if (target !== this.activeLayerId) {
+    if (target !== this.ownLayer) {
+      this.ownLayer = target;
       this.activeLayerId = target;
       this.clampCamera();
       if (this.ownPosition) this.centerOn(this.ownPosition, false);
@@ -850,6 +860,20 @@ export class BoardCanvas {
       w: b.w,
       h: b.h,
     });
+  }
+
+  /**
+   * Focus-picker action: reveal whatever layer holds `nodeId` — the overworld,
+   * a dungeon pocket, or a lair — and center the camera on it. Unlike the
+   * own-token auto-follow this sticks: a repeated poll won't drag the view back
+   * to your own creature until your token crosses layers or you recenter on
+   * yourself. Snaps (no glide) when crossing layers, glides within one.
+   */
+  spectateOn(nodeId: string): void {
+    if (!this.nodeMap.has(nodeId)) return;
+    const switching = (this.layerOf.get(nodeId) ?? OVERWORLD) !== this.activeLayerId;
+    this.showLayerOf(nodeId);
+    this.centerOn(nodeId, !switching);
   }
 
   // ── Camera / input (same interaction model as the plaza) ───────────────────

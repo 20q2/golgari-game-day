@@ -110,7 +110,7 @@ Evolutions trigger at **level 5** (Tier 2) and **level 10** (Tier 3) as a full-s
 
 | From | Option A | Option B |
 |---|---|---|
-| Pest | **Brackish Trudge** — bruiser (+HP/+ATK); passive: *Undying* — first compost each hour, revive at 50% HP instead | **Stinkweed Imp** — speedster (+SPD/+ATK); passive: *Flyby* — 25% chance enemy strikes miss |
+| Pest | **Brackish Trudge** — bruiser (+HP/+ATK); passive: *Undying* — first compost each hour, revive at 50% HP instead | **Vexing Pest** — speedster (+SPD/+ATK); passive: *Vexing* — 25% chance enemy strikes miss |
 | Kraul Grub | **Kraul Warrior** — striker (+ATK); passive: *Venom Barb* — your first strike each battle deals +3 | **Kraul Forager** — raider (+DEF); passive: *Deathrite* — +50% Spores stolen on PvP wins |
 | Saproling | **Slitherhead** — counterpuncher (+ATK/+HP); passive: *Scavenge* — retaliate for 2 damage whenever struck | **Woodwraith Strangler** — fortress (+DEF/+HP); passive: *Rootwall* — Regrowth improves to 35% |
 | Spore | **Shambling Shell** — durable trickster (+HP/+DEF); passive: *Dredge* — reclaim your snare after it triggers | **Corpsejack Menace** — fungal tycoon (+ATK); passive: *Doubling Rot* — mystery-event Spore payouts doubled |
@@ -121,12 +121,12 @@ Evolutions trigger at **level 5** (Tier 2) and **level 10** (Tier 3) as a full-s
 |---|---|---|---|
 | **Grave Titan** | Brackish Trudge, Kraul Forager, Woodwraith Strangler, Shambling Shell | HP/DEF | *Deathtouch Stomp:* your strikes ignore 3 of the enemy's DEF |
 | **Golgari Lich Lord** | Kraul Forager, Slitherhead, Woodwraith Strangler, Corpsejack Menace | ATK/HP | *Drain Life:* heal for 50% of damage you deal |
-| **Swamp Dragon** | Brackish Trudge, Stinkweed Imp, Kraul Warrior | ATK/SPD | *Rot Breath:* round-1 strike hits for double |
-| **Izoni, Thousand-Eyed** | Stinkweed Imp, Kraul Warrior, Slitherhead, Shambling Shell, Corpsejack Menace | SPD | *Swarm:* one extra strike every battle round |
+| **Swamp Dragon** | Brackish Trudge, Vexing Pest, Kraul Warrior | ATK/SPD | *Rot Breath:* round-1 strike hits for double |
+| **Izoni, Thousand-Eyed** | Vexing Pest, Kraul Warrior, Slitherhead, Shambling Shell, Corpsejack Menace | SPD | *Swarm:* one extra strike every battle round |
 
 *(Matrix invariant: every Tier-2 form offers exactly two apexes.)*
 
-*(Names are Golgari-flavored placeholders — real MTG cards where they exist (Brackish Trudge, Stinkweed Imp, Shambling Shell, Slitherhead, Corpsejack Menace, Grave Titan, Izoni) and thematic inventions elsewhere. Swap freely; only archetype/stat identities are load-bearing.)*
+*(Names are Golgari-flavored placeholders — real MTG cards where they exist (Brackish Trudge, Vexing Pest, Shambling Shell, Slitherhead, Corpsejack Menace, Grave Titan, Izoni) and thematic inventions elsewhere. Swap freely; only archetype/stat identities are load-bearing.)*
 
 ### Sprite placeholders
 
@@ -208,7 +208,7 @@ timeout = 6 rounds with both alive → attacker retreats; no compost;
           both keep remaining HP; small consolation XP (5/5)
 ```
 
-Passives (Flyby, Scavenge, Swarm, Drain Life, Rot Breath, Deathtouch Stomp, Venom Barb) hook into obvious points of this loop. Keep the implementation a pure function: `(attackerDoc, defenderDoc, seed) → {log, result}` — trivially testable.
+Passives (Vexing, Scavenge, Swarm, Drain Life, Rot Breath, Deathtouch Stomp, Venom Barb) hook into obvious points of this loop. Keep the implementation a pure function: `(attackerDoc, defenderDoc, seed) → {log, result}` — trivially testable.
 
 ### PvP: stances (the async defense)
 

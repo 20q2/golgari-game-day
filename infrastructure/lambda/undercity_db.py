@@ -285,6 +285,13 @@ def _get_player(table, sid, user_id):
             doc['species'] = 'zombie'
         if doc.get('form') == 'spore':
             doc['form'] = 'zombie'
+        # Backward-compat: the pest T2 was renamed stinkweed_imp -> vexing_pest.
+        if doc.get('form') == 'stinkweed_imp':
+            doc['form'] = 'vexing_pest'
+        # Backward-compat: the pest T2 passive was renamed flyby -> vexing.
+        passives = doc.get('passives')
+        if passives and 'flyby' in passives:
+            doc['passives'] = ['vexing' if p == 'flyby' else p for p in passives]
     return doc
 
 

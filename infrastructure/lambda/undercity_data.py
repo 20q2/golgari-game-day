@@ -88,10 +88,10 @@ TIER2 = {
         'passive': 'undying',
         'blurb': 'Bruiser. Undying: first compost each hour revives you at 50% HP instead.',
     },
-    'stinkweed_imp': {
-        'name': 'Stinkweed Imp', 'line': 'pest', 'bonus': {'spd': 2, 'atk': 2},
-        'passive': 'flyby',
-        'blurb': 'Speedster. Flyby: 25% chance enemy strikes miss.',
+    'vexing_pest': {
+        'name': 'Vexing Pest', 'line': 'pest', 'bonus': {'spd': 2, 'atk': 2},
+        'passive': 'vexing',
+        'blurb': 'Speedster. Vexing: 25% chance enemy strikes miss.',
     },
     'kraul_warrior': {
         'name': 'Grave Scarab', 'line': 'kraul', 'bonus': {'atk': 4},
@@ -158,19 +158,19 @@ APEX = {
     'swamp_dragon': {
         'name': 'Swamp Dragon', 'bonus': {'atk': 2, 'spd': 2},
         'passive': 'rot_breath',
-        'from': ['stinkweed_imp', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior'],
+        'from': ['vexing_pest', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior'],
         'blurb': 'Rot Breath: round-1 strike hits for double.',
     },
     'izoni': {
         'name': 'Izoni, Thousand-Eyed', 'bonus': {'spd': 4},
         'passive': 'swarm',
-        'from': ['stinkweed_imp', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage'],
+        'from': ['vexing_pest', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage'],
         'blurb': 'Swarm: one extra strike every battle round.',
     },
     'calamity_beast': {
         'name': 'Calamity Beast', 'bonus': {'maxHp': 6, 'spd': 2},
         'passive': 'wish',
-        'from': ['squirrel_warrior', 'squirrel_mage', 'deathrite_shaman', 'stinkweed_imp', 'corpsejack_menace'],
+        'from': ['squirrel_warrior', 'squirrel_mage', 'deathrite_shaman', 'vexing_pest', 'corpsejack_menace'],
         'blurb': 'Wish: learn the Wish spell — once ready, cast ANY spell in the world, from any list.',
     },
 }
@@ -424,7 +424,7 @@ READ_BASE = 0.25
 READ_MAX = 0.80              # cap so a read is never near-guaranteed (was 0.90)
 READ_SPD_COEFF = 0.008       # faster creatures read better, but SPD no longer
                              # monopolises reads (was 0.015)
-READ_PASSIVE_BONUS = {'first_bite': 0.20, 'flyby': 0.15}  # the fast insect lines
+READ_PASSIVE_BONUS = {'first_bite': 0.20, 'vexing': 0.15}  # the fast insect lines
 # gear read bonuses live on GEAR[*]['readBonus'] (Glint + Seer charms)
 
 # Monster AI (spec §1). Each personality is a weight triple over
@@ -1033,7 +1033,7 @@ DUNGEON_NPCS = {
                'itemChance': 0.10, 'personality': 'turtle', 'bluff': 0.10},
     'bone':   {'id': 'gravewight', 'name': 'Wight of Precinct Six',
                'hp': 24, 'atk': 8, 'def': 4, 'spd': 3, 'bounty': 15, 'xp': 15,
-               'itemChance': 0.10, 'personality': 'balanced', 'bluff': 0.10},
+               'itemChance': 0.10, 'personality': 'turtle', 'bluff': 0.10},
     'garden': {'id': 'rot_grub',   'name': 'Thallid',
                'hp': 28, 'atk': 7, 'def': 3, 'spd': 5, 'bounty': 14, 'xp': 15,
                'itemChance': 0.15, 'personality': 'turtle', 'bluff': 0.10},

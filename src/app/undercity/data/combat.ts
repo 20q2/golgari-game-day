@@ -85,7 +85,7 @@ export const RIDER_AUGMENTS: Record<string, Omit<StanceAugment, 'source'>> = {
 };
 
 /** Creature passive id → the stance it augments. Only passives that clearly boost
- *  a single stance are listed; stance-agnostic passives (flyby, scavenge, swarm…)
+ *  a single stance are listed; stance-agnostic passives (vexing, scavenge, swarm…)
  *  are deliberately omitted so the buttons stay honest. */
 export const PASSIVE_AUGMENTS: Record<string, Omit<StanceAugment, 'source'>> = {
   venom_barb: { stance: 'aggress', label: 'Venom Barb', blurb: 'Your first strike each battle deals +3.' },

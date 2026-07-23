@@ -35,7 +35,7 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   squirrel: { sprite: 'squirrel', regions: PLAYER_REGIONS, scale: 0.7 },
   // Tier 2 — same line sprite, grown up
   brackish_trudge: { sprite: 'brackish_trudge', regions: [], scale: 1.0 },
-  stinkweed_imp: { sprite: 'stinkweed_imp', regions: [], scale: 0.9 },
+  vexing_pest: { sprite: 'vexing_pest', regions: [], scale: 0.9 },
   kraul_warrior: { sprite: 'grave_shell_scarab', regions: [], scale: 1.0 },
   golgari_longlegs: { sprite: 'golgari_longlegs', regions: [], scale: 1.0 },
   slitherhead: { sprite: 'slitherhead', regions: [], scale: 1.0 },

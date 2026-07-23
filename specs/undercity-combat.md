@@ -71,7 +71,7 @@ shows the truth unless it bluffs. Bluff rate + stats are the difficulty dials.
 round — each round `_telegraph_next` rolls against a per-battle **read chance**
 (`_read_chance`, snapshotted at `_start_battle` into `rec['readChance']`):
 `READ_BASE` + `READ_SPD_COEFF`×SPD + `READ_PASSIVE_BONUS` (reader passives
-`first_bite`/`flyby`) + gear `readBonus` (Seer/Glint charms), capped `READ_MAX`.
+`first_bite`/`vexing`) + gear `readBonus` (Seer/Glint charms), capped `READ_MAX`.
 When it misses, `_shown_telegraph` returns `None` (client shows a muted "?").
 A Scrying Spore (`combat-peek`) forces a true read on demand; a Glint feint-win
 sets `reveal_next`, guaranteeing the next round is a true read. The client

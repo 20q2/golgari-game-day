@@ -3037,6 +3037,6 @@ def test_squirrel_line_and_calamity_beast_wired():
     assert 'calamity_beast' in data.apex_options('squirrel_warrior')
     assert 'calamity_beast' in data.apex_options('squirrel_mage')
     assert 'calamity_beast' in data.apex_options('deathrite_shaman')
-    assert 'calamity_beast' in data.apex_options('stinkweed_imp')
+    assert 'calamity_beast' in data.apex_options('vexing_pest')
     assert data.APEX['calamity_beast']['passive'] == 'wish'
     assert data.SPELLS['wish']['effect'] == 'wish'

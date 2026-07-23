@@ -715,15 +715,19 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Center the board camera on a focus-picker row, then close the menu. */
   protected focusTarget(node: string): void {
-    this.board?.centerOn(node);
+    // spectateOn (not centerOn) so the picker can follow a player who's down a
+    // dungeon or in a lair — it dives to that layer and won't be yanked back by
+    // the next poll's auto-follow.
+    this.board?.spectateOn(node);
     this.showFocusMenu.set(false);
   }
 
   /** Snap the camera back to the active player's own creature. Called from the
-   *  page's biome chip so tapping it re-centres on you. */
+   *  page's biome chip so tapping it re-centres on you. Uses spectateOn so it
+   *  also crosses back to your layer if you'd been spectating elsewhere. */
   focusSelf(): void {
     const pos = this.store.you()?.position;
-    if (pos) this.board?.centerOn(pos);
+    if (pos) this.board?.spectateOn(pos);
   }
 
   protected shopGearRows(): { info: GearInfo; qty: number; blackMarket: boolean }[] {
@@ -978,7 +982,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     effect(() => {
       this.store.recenterRequest();
       const pos = untracked(() => this.store.you()?.position);
-      if (pos) this.board?.centerOn(pos);
+      if (pos) this.board?.spectateOn(pos);
     });
   }
 
