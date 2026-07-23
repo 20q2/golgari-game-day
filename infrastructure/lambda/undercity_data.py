@@ -780,6 +780,34 @@ LAIR_BOSSES = {
                     'personality': 'turtle', 'bluff': 0.35, **_LAIR_REWARD},
 }
 
+# The wilderness World Event boss. `spriteId` maps to public/undercity/sigil_boss/
+# art on the client. Stats are per-swing combat stats; the live shared pool comes
+# from WORLD_EVENT_HP (config, re-exported above) via the WORLDEVENT record.
+WORLD_EVENT = {
+    'id': 'moor_wyrm',
+    'name': 'The Moor-Wyrm',
+    'spriteId': 'moor_wyrm',
+    'atk': 12, 'def': 6, 'spd': 5,
+    'personality': 'brute', 'bluff': 0.30,
+}
+
+
+def world_event_reward(share, is_top):
+    """Map a contributor's damage `share` (dealt / maxHp, 0..1) and whether they
+    are the single top damage dealer to a bracket key + its reward dict.
+    Returns (bracket_key, {'spores': int, 'renown': int}). WORLD_EVENT_* scalars
+    come from undercity_config via the `import *` at the top of this module."""
+    if is_top:
+        key = 'vanquisher'
+    elif share >= WORLD_EVENT_MAJOR_SHARE:
+        key = 'major'
+    elif share >= WORLD_EVENT_MINOR_SHARE:
+        key = 'minor'
+    else:
+        key = 'participant'
+    return key, WORLD_EVENT_REWARDS[key]
+
+
 # Field-curse buffs, when they land on a rooted guardian/boss, resolve to a
 # flat NPC stat penalty applied for its NEXT battle (floored at 1). Roll-halving
 # (vines/bog_snare) is meaningless for an NPC, so it becomes a speed bite.
