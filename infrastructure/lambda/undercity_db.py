@@ -4015,13 +4015,15 @@ def _season_players(table, sid):
     return [_clean(i) for i in resp['Items']]
 
 
-def _broadcast_away(table, sid, entry, exclude_user_id=None):
-    """Fan a news away-event out to every season player except the actor, so a
-    returning player learns what fell while they were gone. Best-effort: a lost
-    optimistic-lock race just drops that one player's line."""
+def _broadcast_away(table, sid, entry, exclude_user_id=None, skip_user_ids=None):
+    """Fan a news away-event out to every season player except the actor (and any
+    in `skip_user_ids`), so a returning player learns what fell while they were
+    gone. Best-effort: a lost optimistic-lock race just drops that one player's
+    line."""
+    skip = set(skip_user_ids or ())
     for p in _season_players(table, sid):
         uid = p.get('userId')
-        if not uid or uid == exclude_user_id:
+        if not uid or uid == exclude_user_id or uid in skip:
             continue
         for _ in range(3):
             _push_away_event(p, dict(entry))

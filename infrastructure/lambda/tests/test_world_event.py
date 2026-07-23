@@ -264,10 +264,12 @@ def test_payout_grants_xp_gear_and_roster_to_all():
     sid = _sid(table)
     _join(table, 'u_top', 'Top')
     _join(table, 'u_minor', 'Minor')
-    top_xp0 = db._get_player(table, sid, 'u_top')['xp']
-    minor_xp0 = db._get_player(table, sid, 'u_minor')['xp']
-    top_stash0 = len(db._get_player(table, sid, 'u_top').get('gearStash') or [])
-    minor_stash0 = len(db._get_player(table, sid, 'u_minor').get('gearStash') or [])
+    top0 = db._get_player(table, sid, 'u_top')
+    minor0 = db._get_player(table, sid, 'u_minor')
+    top_prog0 = (top0['level'], top0['xp'])
+    minor_prog0 = (minor0['level'], minor0['xp'])
+    top_stash0 = len(top0.get('gearStash') or [])
+    minor_stash0 = len(minor0.get('gearStash') or [])
 
     rec = {'spawned': True, 'node': 'x', 'nodes': ['a', 'x', 'b'],
            'hp': 1, 'maxHp': 200, 'dmg': {'u_top': 150, 'u_minor': 25}, 'dead': False}
@@ -277,10 +279,13 @@ def test_payout_grants_xp_gear_and_roster_to_all():
     results = db._world_event_payout(table, sid, top)
 
     by_uid = {r['userId']: r for r in results}
-    # XP bonus banked for both brackets.
-    assert top['xp'] == top_xp0 + data.WORLD_EVENT_REWARDS['vanquisher']['xp']
+    # XP bonus banked for both brackets (may convert into level-ups, so assert
+    # forward progress in (level, xp) rather than a raw xp sum).
+    assert by_uid['u_top']['xp'] == data.WORLD_EVENT_REWARDS['vanquisher']['xp']
+    assert by_uid['u_minor']['xp'] == data.WORLD_EVENT_REWARDS['minor']['xp']
     minor_doc = db._get_player(table, sid, 'u_minor')
-    assert minor_doc['xp'] == minor_xp0 + data.WORLD_EVENT_REWARDS['minor']['xp']
+    assert (top['level'], top['xp']) > top_prog0
+    assert (minor_doc['level'], minor_doc['xp']) > minor_prog0
     # One guaranteed gear piece each (stash grew by 1; small values never hit the cap here).
     assert len(top.get('gearStash') or []) == top_stash0 + 1
     assert len(minor_doc.get('gearStash') or []) == minor_stash0 + 1
