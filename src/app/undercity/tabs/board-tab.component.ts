@@ -1392,6 +1392,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           shielded: isShielded(p),
           hat: p.hat,
           shiny: p.shiny,
+          effect: p.effect,
           illuminated: p.userId === ownId ? this.illuminated() : false,
           darkvision: p.userId === ownId ? you?.homeBiome === 'cavern' : false,
           tier: p.userId === ownId ? (you?.tier ?? p.tier) : p.tier,

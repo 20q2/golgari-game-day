@@ -9,7 +9,7 @@
  * "disturbed ground" tells, pulsing move-choice highlights, and y-sorted
  * player tokens (recolored mini sprites) with ground shadows.
  */
-import { getRecolored, getRawImage, hatPlacement } from './sprite-engine';
+import { getRecolored, getRawImage, hatPlacement, drawCreatureEffect } from './sprite-engine';
 import { formSprite } from '../data/species';
 import {
   BARRIER_GUARDIANS,
@@ -122,6 +122,8 @@ export interface BoardPlayer {
   hat?: string | null;
   /** Cosmetic-only shiny — draws a steady gold sparkle over the token. */
   shiny?: boolean;
+  /** Animated special paint — an overlay drawn over the token's silhouette. */
+  effect?: string | null;
   /** Own token only: illuminating gear equipped — reveals the whole dungeon. */
   illuminated?: boolean;
   /** Own token only: Mosslight Cavern's Darkvision perk — light radius 2 not 1. */
@@ -337,6 +339,7 @@ export class BoardCanvas {
   private healPending = false;
   private sparkleAccum = 0; // time since last sparkle emission
   private shinyAccum = 0; // time since last shiny twinkle emission
+  private effectClock = 0; // ms, monotonic; drives special-paint overlays
   private pendingHealPops: { userId: string; amount: number }[] = [];
   private lastTs = performance.now();
   private rafId: number | null = null;
@@ -1904,6 +1907,7 @@ export class BoardCanvas {
     } else {
       this.sparkleAccum = 0;
     }
+    this.effectClock += dt * 1000; // drives special-paint overlays
     // Shiny creatures twinkle gold — a steady, gentler emitter over every shiny
     // token on-screen (distinct from the green gate-heal sparkle above).
     this.shinyAccum += dt;
@@ -2036,6 +2040,10 @@ export class BoardCanvas {
       ctx.save();
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(sprite, x - spriteW / 2, top, spriteW, drawH);
+      // Animated special paint over the silhouette (under the hat, which stays crisp).
+      if (p.effect) {
+        drawCreatureEffect(ctx, spr.sprite, p.effect, x - spriteW / 2, top, spriteW, drawH, this.effectClock);
+      }
       // Hat, placed in sprite-pixel space then scaled to the token's draw box
       // (scaleY carries the breath stretch so the hat rides with the head).
       const rect = hatPlacement(spr.sprite, p.hat);
