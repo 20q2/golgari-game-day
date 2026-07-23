@@ -82,3 +82,18 @@ def test_vault_first_full_later_reduced(table, monkeypatch):
 
     rec = db._get(table, db._season_pk(sid), 'FIRST#vault')
     assert rec['by'] == 'Alice' and rec['kind'] == 'vault'
+
+
+def test_finish_lair_stamps_first(table, monkeypatch):
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)  # suppress lair gear roll
+    monkeypatch.setattr(db._rng, 'choices', lambda seq, weights=None, k=1: [seq[0]])
+    monkeypatch.setattr(db._rng, 'choice', lambda seq: seq[0])
+    sid = 'S'
+    doc = {'userId': 'u1', 'username': 'Alice', 'spores': 0,
+           'level': data.LEVEL_CAP, 'xp': 0, 'poiClaims': []}
+    rec_battle = {'node': 'city_lair', 'ctx': {'slain': False, 'vestMax': 10},
+                  'npcMeta': {'name': 'Ishkanah, Grafwidow'}, 'npc': {'maxHp': 40}}
+    result = {'outcome': 'attacker', 'defenderHp': 0}
+    db._finish_lair(table, sid, doc, rec_battle, result)
+    rec = db._get(table, db._season_pk(sid), 'FIRST#city_lair')
+    assert rec['by'] == 'Alice' and rec['kind'] == 'lair'

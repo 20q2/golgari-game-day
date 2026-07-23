@@ -3206,6 +3206,8 @@ def _finish_lair(table, sid, doc, rec, result):
             # Season-global first kill of ANY lair — wake the wilderness beast.
             # Spawn is idempotent, so only the very first lair actually spawns it.
             _spawn_world_event(table, sid, actor_id=doc['userId'])
+            # Season-global first kill of THIS lair — stamp the gate name-plate.
+            _claim_first(table, sid, node, 'lair', doc)
         claims = doc.setdefault('poiClaims', [])
         personal_first = node not in claims
         if personal_first:
@@ -3374,6 +3376,7 @@ def _finish_boss(table, sid, doc, rec, result):
     doc['bossDamage'] = doc.get('bossDamage', 0) + dealt
     if result['outcome'] == 'attacker':
         _set_boss_hp(table, sid, boss['hp'])
+        _claim_first(table, sid, node, 'boss', doc)
         claims = doc.setdefault('poiClaims', [])
         first = 'boss' not in claims
         reward = boss['first'] if first else boss['repeat']
