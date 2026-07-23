@@ -134,6 +134,14 @@ Combat consumables map to three general one-round modifiers on `resolve_round`:
 4. **Plan 3 (client):** mirror the gear/rider into `src/app/undercity/data/*.ts`
    for display.
 
+**Rarity tiers.** `tier` 1/2/3 = Common/Rare/Legendary; `tier` 4 = **Mythic**,
+which is **craft-only** — forged from a Legendary of the same rider family at the
+Blacksmith for 3 Chrysalis Ichor (`UPGRADE_ICHOR[4]`) + Spores, never dropped, sold,
+or found (no tier-4 in `GEAR_DROP`, the bazaar tier sets, or the boss trove). A
+Mythic adds the `RIDER_SCALE[*][4]` magnitude step plus a stat band above T3. Adding
+a Mythic = one tier-4 `GEAR` entry (auto-indexes into `GEAR_FAMILY[rider][4]`) + the
+`RIDER_SCALE` tier-4 value; see [specs/2026-07-23-undercity-mythic-gear-design.md](2026-07-23-undercity-mythic-gear-design.md).
+
 ## 5. Add an effect
 
 - **New passive:** add `passive` to a form spec, implement in `resolve_round`
