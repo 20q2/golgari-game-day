@@ -55,7 +55,7 @@
       <p class="error-text">{{ err }}</p>
     }
 
-    @if (cartHats().length || cartPaints().length) {
+    @if (cartHats().length || cartPaints().length || cartEffects().length) {
       <div class="kit-row">
         <button class="uc-btn clear-btn" (click)="clearCart()">Clear</button>
       </div>
@@ -100,6 +100,29 @@
             <span class="shop-tag in-cart">In cart · tap to remove</span>
           } @else {
             <span class="shop-cost">{{ hatPrices[hat.rarity] }}</span>
+          }
+        </button>
+      }
+    </div>
+
+    <h2 class="shop-head">Special Paints <span class="shop-sub">animated</span></h2>
+    <div class="shop-grid">
+      @for (sp of allSpecialPaints; track sp.id) {
+        <button
+          class="shop-card swatch-card"
+          [class.owned]="ownsEffect(sp.id)"
+          [class.carted]="cartEffects().includes(sp.id)"
+          [class.worn]="equipEffect() === sp.id"
+          (click)="ownsEffect(sp.id) ? wearEffect(sp.id) : toggleEffect(sp.id)"
+        >
+          <span class="swatch" [style.background]="specialPaintSwatch[sp.id]"></span>
+          <span class="shop-name">{{ sp.name }}</span>
+          @if (ownsEffect(sp.id)) {
+            <span class="shop-tag">{{ equipEffect() === sp.id ? 'wearing' : 'wear' }}</span>
+          } @else if (cartEffects().includes(sp.id)) {
+            <span class="shop-tag in-cart">In cart · tap to remove</span>
+          } @else {
+            <span class="shop-cost">{{ specialPaintPrice }}</span>
           }
         </button>
       }

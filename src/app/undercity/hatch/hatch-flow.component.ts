@@ -3,7 +3,17 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { STARTERS, TIER2, FormInfo, PASSIVE_BLURBS } from '../data/forms';
-import { PAINTS, PAINT_MAP, HATS, HAT_MAP, HAT_PRICES, PAINT_PRICE } from '../data/cosmetics';
+import {
+  PAINTS,
+  PAINT_MAP,
+  HATS,
+  HAT_MAP,
+  HAT_PRICES,
+  PAINT_PRICE,
+  SPECIAL_PAINTS,
+  SPECIAL_PAINT_PRICE,
+  SPECIAL_PAINT_SWATCH,
+} from '../data/cosmetics';
 import { getRecoloredDataUrl } from '../engine/sprite-engine';
 import { formSprite } from '../data/species';
 import { randomCreatureName } from '../data/names';
@@ -100,13 +110,18 @@ export class HatchFlowComponent {
   protected readonly allHats = HATS;
   protected readonly hatPrices = HAT_PRICES;
   protected readonly paintPrice = PAINT_PRICE;
+  protected readonly allSpecialPaints = SPECIAL_PAINTS;
+  protected readonly specialPaintPrice = SPECIAL_PAINT_PRICE;
+  protected readonly specialPaintSwatch = SPECIAL_PAINT_SWATCH;
 
   /** Cart: ids the player intends to buy this visit. */
   protected readonly cartHats = signal<string[]>([]);
   protected readonly cartPaints = signal<string[]>([]);
+  protected readonly cartEffects = signal<string[]>([]);
   /** Which owned/bought cosmetic to spawn wearing (null = none). */
   protected readonly equipHat = signal<string | null>(null);
   protected readonly equipPaint = signal<string | null>(null);
+  protected readonly equipEffect = signal<string | null>(null);
 
   protected readonly balance = computed(() => this.store.wardrobe()?.renown ?? 0);
 
@@ -119,6 +134,7 @@ export class HatchFlowComponent {
     let sum = 0;
     for (const h of this.cartHats()) sum += this.hatPrice(h);
     sum += this.cartPaints().length * this.paintPrice;
+    sum += this.cartEffects().length * this.specialPaintPrice;
     return sum;
   });
 
@@ -133,6 +149,9 @@ export class HatchFlowComponent {
   }
   protected ownsPaint(id: string): boolean {
     return this.owned(this.store.wardrobe()?.paints, id, this.cartPaints());
+  }
+  protected ownsEffect(id: string): boolean {
+    return this.owned(this.store.wardrobe()?.effects, id, this.cartEffects());
   }
 
   /**
@@ -316,12 +335,26 @@ export class HatchFlowComponent {
     }
   }
 
+  toggleEffect(id: string): void {
+    const cart = this.cartEffects();
+    if (cart.includes(id)) {
+      this.cartEffects.set(cart.filter((e) => e !== id));
+      if (this.equipEffect() === id && !this.store.wardrobe()?.effects?.includes(id)) {
+        this.equipEffect.set(null);
+      }
+    } else if (!this.ownsEffect(id) && this.canAfford(this.specialPaintPrice)) {
+      this.cartEffects.set([...cart, id]);
+    }
+  }
+
   /** Empty the cosmetics cart and any pending equips. */
   clearCart(): void {
     this.cartHats.set([]);
     this.cartPaints.set([]);
+    this.cartEffects.set([]);
     this.equipHat.set(null);
     this.equipPaint.set(null);
+    this.equipEffect.set(null);
   }
 
   wearHat(id: string | null): void {
@@ -329,6 +362,9 @@ export class HatchFlowComponent {
   }
   wearPaint(id: string | null): void {
     this.equipPaint.set(this.equipPaint() === id ? null : id);
+  }
+  wearEffect(id: string | null): void {
+    this.equipEffect.set(this.equipEffect() === id ? null : id);
   }
 
   /** Step 3: name the creature and hatch for real. */
@@ -346,9 +382,11 @@ export class HatchFlowComponent {
         creatureName: this.creatureName().trim(),
         buyHats: this.cartHats(),
         buyPaints: this.cartPaints(),
+        buyEffects: this.cartEffects(),
         buyItems: [],
         equipHat: this.equipHat(),
         equipPaint: this.equipPaint(),
+        equipEffect: this.equipEffect(),
         bravery: this.bravery(),
       });
     } catch (e) {

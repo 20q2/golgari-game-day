@@ -78,3 +78,11 @@ export const SPECIAL_PAINT_MAP: Record<string, SpecialPaintInfo> = Object.fromEn
 
 /** Renown price per special paint (mirror SPECIAL_PAINT_PRICE in undercity_data.py). */
 export const SPECIAL_PAINT_PRICE = 500;
+
+/** CSS `background` preview for each special paint, for shop/wardrobe swatches. */
+export const SPECIAL_PAINT_SWATCH: Record<string, string> = {
+  prismatic: 'conic-gradient(from 0deg, #ff5f6d, #ffc371, #47e891, #4facfe, #b06ab3, #ff5f6d)',
+  rainbow: 'linear-gradient(90deg, #ff5f6d, #ffc371, #47e891, #4facfe, #b06ab3)',
+  metallic: 'linear-gradient(135deg, #9aa3ad 0%, #f5f7fa 45%, #c3ccd6 55%, #7c8792 100%)',
+  starry: 'radial-gradient(circle at 30% 30%, #4a6bb0 0, #12234a 60%, #0a1428 100%)',
+};
