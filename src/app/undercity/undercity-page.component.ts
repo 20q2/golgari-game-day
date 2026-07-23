@@ -1,4 +1,13 @@
-import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UserService } from '../services/user.service';
@@ -40,6 +49,15 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   protected readonly userService = inject(UserService);
   protected readonly store = inject(UndercityStateService);
   private readonly api = inject(UndercityApiService);
+
+  /** The mounted board tab, when the board is the active tab — lets the biome
+   *  chip re-centre the camera on the player. */
+  @ViewChild(BoardTabComponent) private boardTab?: BoardTabComponent;
+
+  /** Snap the board camera back to the player's creature (biome-chip tap). */
+  protected focusSelf(): void {
+    this.boardTab?.focusSelf();
+  }
 
   protected readonly tab = signal<Tab>('board');
   protected readonly assetsReady = signal(false);

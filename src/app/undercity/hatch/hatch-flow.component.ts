@@ -69,6 +69,27 @@ export class HatchFlowComponent {
   protected readonly taps = signal(0);
   protected readonly hatched = computed(() => this.taps() >= 3);
   protected readonly eggHue = signal<number>(130);
+
+  /** Increments on every tap; drives the shake + debris-burst re-trigger. */
+  protected readonly burst = signal(0);
+
+  /** Progressive crack art: intact → cracked → shattered as taps climb. */
+  protected readonly eggArt = computed(() => {
+    const stage = ['golgari_egg', 'golgari_egg.2', 'golgari_egg.3'][Math.min(this.taps(), 2)];
+    return `undercity/other/${stage}.png`;
+  });
+
+  /** Debris chips flung out on each tap — precomputed transform vars per chip. */
+  protected readonly debrisChips = Array.from({ length: 8 }, (_, i) => {
+    const angle = (i / 8) * 2 * Math.PI + (i % 2 ? 0.4 : -0.4);
+    const dist = 42 + (i % 3) * 18;
+    return {
+      '--dx': `${Math.round(Math.cos(angle) * dist)}px`,
+      '--dy': `${Math.round(Math.sin(angle) * dist)}px`,
+      '--rot': `${(i % 2 ? 1 : -1) * (120 + i * 40)}deg`,
+      '--delay': `${(i % 4) * 20}ms`,
+    } as Record<string, string>;
+  });
   protected readonly joining = signal(false);
   protected readonly error = signal<string | null>(null);
 
@@ -191,7 +212,9 @@ export class HatchFlowComponent {
   protected readonly canPickShell = computed(() => (this.store.wardrobe()?.seals ?? 0) >= 1);
 
   tapEgg(): void {
-    if (!this.hatched()) this.taps.set(this.taps() + 1);
+    if (this.hatched()) return;
+    this.taps.set(this.taps() + 1);
+    this.burst.set(this.burst() + 1);
   }
 
   pickShell(hue: number): void {
@@ -224,6 +247,7 @@ export class HatchFlowComponent {
     kraul: 'Glass Cannon',
     saproling: 'Horde',
     zombie: 'Tank',
+    squirrel: 'Caster',
   };
   archetype(form: FormInfo): string {
     return HatchFlowComponent.ARCHETYPES[form.id] ?? 'Balanced';

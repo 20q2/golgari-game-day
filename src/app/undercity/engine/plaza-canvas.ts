@@ -1001,23 +1001,35 @@ export class PlazaCanvas {
     const bubbleW = ctx.measureText(text).width + padX * 2;
     const bubbleH = fontSize + padY * 2;
     const bx = cx - bubbleW / 2;
-    const by = bottomY - bubbleH;
+    // Lift the bubble so the trailing thought-dots have room between it and the head.
+    const trailGap = 6 * scale;
+    const by = bottomY - trailGap - bubbleH;
     ctx.save();
-    ctx.fillStyle = isOwn ? 'rgba(40,30,10,0.82)' : 'rgba(10,14,10,0.82)';
-    ctx.strokeStyle = isOwn ? 'rgba(251,191,36,0.7)' : 'rgba(74,222,128,0.4)';
+    const fill = 'rgba(248,250,248,0.95)';
+    const stroke = isOwn ? 'rgba(251,191,36,0.85)' : 'rgba(74,222,128,0.6)';
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = stroke;
     ctx.lineWidth = 0.6 * scale;
+    // White cloud bubble.
     ctx.beginPath();
-    ctx.roundRect(bx, by, bubbleW, bubbleH, 3 * scale);
+    ctx.roundRect(bx, by, bubbleW, bubbleH, 4 * scale);
     ctx.fill();
     ctx.stroke();
-    // Tail pointing down toward the head.
-    ctx.beginPath();
-    ctx.moveTo(cx - 2.5 * scale, by + bubbleH - 0.5);
-    ctx.lineTo(cx, by + bubbleH + 3 * scale);
-    ctx.lineTo(cx + 2.5 * scale, by + bubbleH - 0.5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#f2f7f2';
+    // Trail of shrinking thought-dots dropping toward the creature's head.
+    const dots = [
+      { r: 1.7 * scale, t: 0.28 },
+      { r: 1.1 * scale, t: 0.62 },
+      { r: 0.7 * scale, t: 0.95 },
+    ];
+    for (const dot of dots) {
+      const dy = by + bubbleH + trailGap * dot.t;
+      ctx.beginPath();
+      ctx.arc(cx, dy, dot.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    // Dark text for contrast against the white bubble.
+    ctx.fillStyle = '#1a2e1a';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, cx, by + bubbleH / 2);

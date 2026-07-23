@@ -23,20 +23,19 @@
     }
     <button
       class="egg"
-      [class.crack1]="taps() === 1"
-      [class.crack2]="taps() === 2"
-      [style.--egg-color]="'hsl(' + eggHue() + ', 55%, 42%)'"
+      [style.--egg-hue-rotate]="eggHue() - 130 + 'deg'"
       (click)="tapEgg()"
       aria-label="Tap the egg"
     >
-      <span class="egg-shape"></span>
-      @if (taps() > 0) {
-        <span class="egg-cracks">
-          <mat-icon>bolt</mat-icon>
-          @if (taps() === 2) {
-            <mat-icon>bolt</mat-icon>
-          }
-        </span>
+      @for (b of [burst()]; track b) {
+        <span class="egg-shape" [class.shake]="b > 0" [style.background-image]="'url(' + eggArt() + ')'"></span>
+        @if (b > 0) {
+          <span class="debris" aria-hidden="true">
+            @for (chip of debrisChips; track $index) {
+              <i class="chip" [style]="chip"></i>
+            }
+          </span>
+        }
       }
     </button>
     <p class="tap-hint">Tap the egg… ({{ taps() }}/3)</p>

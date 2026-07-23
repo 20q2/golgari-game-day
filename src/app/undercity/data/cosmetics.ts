@@ -65,8 +65,11 @@ export const PAINT_MAP: Record<string, PaintInfo> = Object.fromEntries(PAINTS.ma
  * Mirror: NEUTRAL_BANDS in infrastructure/lambda/undercity_data.py.
  */
 export const NEUTRAL_BANDS: Record<number, [number, number]> = {
-  [-1]: [0.68, 0.97], // white
-  [-2]: [0.28, 0.62], // grey
+  // Wide bands so shading survives the desaturation — a narrow band flattens the
+  // region into a washed-out blob. Black reads well even narrow (dark hides the
+  // loss of contrast); light tones need the extra range to keep highs vs shadows.
+  [-1]: [0.42, 1.0], // white
+  [-2]: [0.12, 0.72], // grey
   [-3]: [0.04, 0.32], // black
 };
 

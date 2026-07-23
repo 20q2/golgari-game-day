@@ -94,6 +94,30 @@
         </div>
       }
 
+      <div class="special-paints">
+        <span class="special-label">Special paint (animated)</span>
+        <div class="special-row">
+          <button
+            class="special"
+            [class.active]="specialPaint() === null"
+            (click)="setSpecialPaint(null)"
+          >
+            None
+          </button>
+          @for (sp of specialPaints; track sp.id) {
+            <button
+              class="special"
+              [class.active]="specialPaint() === sp.id"
+              [title]="sp.name"
+              (click)="setSpecialPaint(sp.id)"
+            >
+              <span class="special-swatch" [style.background]="specialPaintSwatch[sp.id]"></span>
+              <span class="special-name">{{ sp.name }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
       <p class="hint">
         The mask view paints <strong style="color: #ef4444">body</strong>,
         <strong style="color: #a3e635">belly</strong>, and

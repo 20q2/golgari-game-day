@@ -211,15 +211,58 @@ header {
     width: 22px;
     height: 22px;
     border-radius: 6px;
-    border: 2px solid transparent;
+    // A faint ring so dark/black swatches don't vanish into the panel.
+    border: 2px solid rgba(255, 255, 255, 0.28);
     cursor: pointer;
     padding: 0;
 
     &:hover {
-      border-color: rgba(255, 255, 255, 0.4);
+      border-color: rgba(255, 255, 255, 0.6);
     }
     &.active {
       border-color: #fff;
+    }
+  }
+}
+
+.special-paints {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  .special-label {
+    font-size: 0.82rem;
+    color: #b7c7b7;
+  }
+  .special-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .special {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #262117;
+    color: #e5f0e5;
+    border: 1px solid #3a4432;
+    border-radius: 8px;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+
+    &:hover {
+      border-color: #6b8f5a;
+    }
+    &.active {
+      border-color: #fff;
+      background: #3c5a2f;
+    }
+    .special-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
     }
   }
 }

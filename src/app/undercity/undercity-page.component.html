@@ -109,9 +109,15 @@
             }
           }
           @if (tab() === 'board' && currentBiome(); as biome) {
-            <div class="biome-chip" aria-live="polite">
+            <button
+              type="button"
+              class="biome-chip"
+              aria-live="polite"
+              title="Center camera on your creature"
+              (click)="focusSelf()"
+            >
               <mat-icon class="mi">location_on</mat-icon>{{ biome }}
-            </div>
+            </button>
           }
         </main>
 

@@ -16,12 +16,14 @@ import {
   classifierFor,
   buildRegionMap,
   buildRegionMapFromMask,
+  buildSilhouette,
+  drawEffectMasked,
   ensureHatGuide,
   hatPlacement,
   paintedRgb,
   preloadAll,
 } from '../engine/sprite-engine';
-import { PAINTS, paintSwatchCss } from '../data/cosmetics';
+import { PAINTS, SPECIAL_PAINTS, SPECIAL_PAINT_SWATCH, paintSwatchCss } from '../data/cosmetics';
 
 type RegionKey = 'body' | 'belly' | 'stripes';
 
@@ -111,6 +113,11 @@ export class ColorTestComponent implements AfterViewInit {
   /** The hat toggle is only offered when the sprite has a hat guide. */
   protected readonly canHat = computed(() => this.current()?.hasHat ?? false);
 
+  /** Special (animated) paints to preview over the sprite; null = none. */
+  protected readonly specialPaints = SPECIAL_PAINTS;
+  protected readonly specialPaintSwatch = SPECIAL_PAINT_SWATCH;
+  protected readonly specialPaint = signal<string | null>(null);
+
   protected readonly regionList: { key: RegionKey; name: string }[] = [
     { key: 'body', name: 'Body · region 0 (primary)' },
     { key: 'belly', name: 'Belly · region 1 (secondary)' },
@@ -131,6 +138,21 @@ export class ColorTestComponent implements AfterViewInit {
   private readonly currentImage = signal<HTMLImageElement | null>(null);
   private objectUrl: string | null = null;
   private viewReady = false;
+
+  // Last rendered base (recolored sprite + geometry + silhouette), so the
+  // special-paint animation loop can re-composite each frame without redoing
+  // the (potentially 1024px) recolor.
+  private base: {
+    off: HTMLCanvasElement;
+    w: number;
+    h: number;
+    eff: number;
+    topPad: number;
+    sidePad: number;
+    rect: ReturnType<typeof hatPlacement>;
+    silhouette: HTMLCanvasElement | null;
+  } | null = null;
+  private animHandle = 0;
 
   protected readonly swatch = computed(() => {
     const h = this.hue();
@@ -208,6 +230,25 @@ export class ColorTestComponent implements AfterViewInit {
       this.hatReady(); // re-render once the hat art has loaded
       this.guideVersion(); // re-render once the hat guide lands
       if (this.viewReady && img) this.render(img, h, regions, scale);
+    });
+
+    // Special-paint preview: animate the overlay while one is selected. RAF only
+    // re-composites the cached base (cheap), so the recolor isn't redone.
+    effect((onCleanup) => {
+      const fx = this.specialPaint();
+      cancelAnimationFrame(this.animHandle);
+      this.animHandle = 0;
+      if (!this.viewReady) return;
+      if (!fx) {
+        this.composite(0); // redraw without an effect
+        return;
+      }
+      const loop = (t: number) => {
+        this.composite(t);
+        this.animHandle = requestAnimationFrame(loop);
+      };
+      this.animHandle = requestAnimationFrame(loop);
+      onCleanup(() => cancelAnimationFrame(this.animHandle));
     });
 
     // Discover the sprite catalog from the folder manifest.
@@ -361,6 +402,11 @@ export class ColorTestComponent implements AfterViewInit {
     if (this.canHat()) this.showTophat.set(!this.showTophat());
   }
 
+  /** Select a special paint to preview, or clear it (click the active one). */
+  setSpecialPaint(id: string | null): void {
+    this.specialPaint.set(id && this.specialPaint() !== id ? id : null);
+  }
+
   // ── Recolor (mirrors the engine: authored mask when it fits, else classifier) ──
 
   private render(
@@ -465,20 +511,48 @@ export class ColorTestComponent implements AfterViewInit {
     const topPad = rect ? Math.max(0, -rect.sy) : 0;
     const sidePad = rect ? Math.max(0, -rect.sx, rect.sx + rect.sw - w) : 0;
 
+    // Silhouette (colored regions only) for the special-paint overlay — matches
+    // how the board clips effects to the creature.
+    const silhouette = showRegions ? null : buildSilhouette(regionMap, w, h);
+
+    this.base = { off, w, h, eff, topPad, sidePad, rect, silhouette };
+    this.composite(0);
+  }
+
+  /**
+   * Composite the cached base (recolored sprite + hat) to the visible canvas,
+   * with an optional animated special-paint overlay clipped to the silhouette.
+   * `timeMs` drives the animation; called once per render and per RAF frame.
+   */
+  private composite(timeMs: number): void {
+    const b = this.base;
+    if (!b || !this.viewReady) return;
     const canvas = this.previewRef.nativeElement;
-    canvas.width = Math.round((w + sidePad * 2) * eff);
-    canvas.height = Math.round((h + topPad) * eff);
+    canvas.width = Math.round((b.w + b.sidePad * 2) * b.eff);
+    canvas.height = Math.round((b.h + b.topPad) * b.eff);
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(off, sidePad * eff, topPad * eff, w * eff, h * eff);
-    if (rect) {
+
+    const dx = b.sidePad * b.eff;
+    const dy = b.topPad * b.eff;
+    const dw = b.w * b.eff;
+    const dh = b.h * b.eff;
+    ctx.drawImage(b.off, dx, dy, dw, dh);
+
+    // Special-paint overlay sits on the creature, under the hat.
+    const fx = this.specialPaint();
+    if (fx && b.silhouette) {
+      drawEffectMasked(ctx, b.silhouette, fx, dx, dy, dw, dh, timeMs);
+    }
+
+    if (b.rect) {
       ctx.drawImage(
-        rect.img,
-        (sidePad + rect.sx) * eff,
-        (topPad + rect.sy) * eff,
-        rect.sw * eff,
-        rect.sh * eff,
+        b.rect.img,
+        (b.sidePad + b.rect.sx) * b.eff,
+        (b.topPad + b.rect.sy) * b.eff,
+        b.rect.sw * b.eff,
+        b.rect.sh * b.eff,
       );
     }
   }
