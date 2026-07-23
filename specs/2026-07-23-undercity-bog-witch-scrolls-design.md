@@ -156,13 +156,88 @@ Server is the source of truth; the client mirrors for display (per CLAUDE.md).
 
 | Concern | File |
 |---|---|
-| Witch modal | new component for the `witch` space: inscribe flow (pick scroll → pick book → pick overwrite target if full) + buy-scroll list. Follows the shrine/ossuary modal pattern |
+| Witch modal | new component for the `witch` space: inscribe flow (pick scroll → pick book → pick overwrite target if full) + buy-scroll list. Follows the shrine/ossuary modal pattern; full UX in §7 — reuses `tierRarity` + `data-rarity`/`.rarity-badge`, adds category chips + capacity meters |
+| Rarity/chip reuse | import `tierRarity`/`RarityInfo` from `data/items.ts`; reuse the plaza rarity SCSS (`data-rarity` borders, `.rarity-badge`) rather than duplicating colors |
 | Scroll casting | `tabs/board-tab.component.*` cast flow — a "Scrolls" source alongside innate/grimoire; sends `source: 'scroll'` |
 | Loadout UI | `tabs/creature-tab.component.*` Grimoire card — render per-book contents from `grimoireSpells`; show the satchel |
 | Data mirrors | `data/spells.ts` (SCROLL tier→spell weights for display, witch stock), `data/items.ts` if scrolls surface there |
 | Types | `services/undercity-models.ts` — `scrolls`, `grimoireSpells` on `YouDoc`; witch space payload; scroll cast source |
 
-## 7. Balance & interaction notes
+## 7. The witch shop — UX & visual design
+
+The witch modal is the flashiest new surface, so it must read instantly:
+*rarity by color, meaning by chip.* It **reuses the existing rarity system**
+(`tierRarity` in `data/items.ts`; the plaza's `data-rarity` borders and
+`.rarity-badge` chips) — no new palette is invented. Scrolls and grimoires are
+tiered I/II/III, mapping straight onto Common / Rare / Legendary.
+
+### Rarity language (reused verbatim)
+
+| Tier | Rarity | Color (existing token) |
+|---|---|---|
+| I | Common | `#9aa7a0` (gray-green) |
+| II | Rare | `#5fd18a` (Golgari green) |
+| III | Legendary | `#fbbf24` (amber-gold) |
+
+Applied as a **3px left border** on every scroll/book card (the plaza pattern)
+plus a small **rarity chip** ("Common/Rare/Legendary") in the card corner. Rarity
+is **never color-only** — the chip text and the tier label carry it too
+(accessibility + colorblind safety). Legendary (tier-III) cards get a subtle
+animated gold shimmer, reusing the shiny-sparkle treatment already in the engine.
+
+### Spell-category chips (the second color axis)
+
+Every scroll/spell also shows a **category chip** so you know *what it does* at a
+glance, color-coded from the semantic tokens in STYLE_GUIDE.md (not the rarity
+palette — the two axes stay visually separate):
+
+| Category | Chip color (semantic token) | Icon |
+|---|---|---|
+| Damage (`field_damage`) | `--error` red | `uc-sword` / bolt |
+| Heal (`self_heal`) | `--success` green | `favorite` |
+| Buff (`self_buff`) | `--info` blue | `uc-shield` |
+| Curse (`field_curse`) | `--accent` (Golgari purple/pink) | hex/skull |
+| Mobility (`teleport`/`recall`/`fate_die`) | `--warning` amber | `uc-bolt` |
+| Boss (`boss_strike`) | `--rating-gold` | crown |
+
+Damage/heal chips render the **level-scaled** number (from the squirrel spec's
+pillar-1 `spellPower` mirror), e.g. "18 dmg" not the flat base — so the shop
+shows real, current power.
+
+### Layout — two segments in one modal
+
+A witch-themed modal (bog-green→violet gradient header, candle/cauldron motif,
+distinct from the utilitarian bazaar) with a segmented toggle:
+
+**① Inscribe** (the craft):
+1. **Your scrolls** — a rarity-bordered grid of satchel scroll cards (icon, spell
+   name, category chip, rarity chip, scaled power). Empty state: "No scrolls yet
+   — find them in the deep, or buy one below." Satchel counter chip `4/6`.
+2. Tap a scroll → **pick a book** — your grimoires as cards, each showing a
+   **capacity meter** (filled pips `●●○` = 2/3) and its current spells as small
+   category-colored **spell-chips**. Books with no room are dimmed with a
+   "Full — swap a spell" affordance rather than being hidden.
+3. If the chosen book is full → **burn-out picker**: the book's spell-chips
+   become selectable, the doomed one highlighted in `--error` with a "burn out"
+   label, and a confirm ("Inscribe *X*, burn *Y*? This is permanent.").
+4. **Cost chip** (Spores, by tier) on the confirm button; disabled + "Not enough
+   Spores" when unaffordable (dim, don't hide).
+
+**② Buy scrolls** (the on-ramp): the witch's rotating tier-I stock as scroll
+cards with a Spore price chip, an owned/"in satchel" state, and a sold-out state
+— mirroring the bazaar's stock rotation UI so it feels familiar.
+
+### States & micro-interactions
+
+- **Affordability / ownership / cap** states are always *shown dimmed*, never
+  hidden, so the player learns the economy.
+- Inscribe success plays a short "scroll dissolves into the book" flourish and
+  bumps the book's capacity meter; the satchel counter ticks down.
+- All of it is **theme-aware** (light/dark) via the existing tokens, and mobile-
+  first (the board is phone-first): cards in a responsive 2-up grid, chips wrap,
+  no horizontal scroll.
+
+## 8. Balance & interaction notes
 
 - **Power ceiling** is bounded by per-tier capacity (max 4 in a tier-III book) +
   one-book-open + scroll scarcity + cooldowns (board casting is still on
@@ -175,7 +250,7 @@ Server is the source of truth; the client mirrors for display (per CLAUDE.md).
 - **Never-kill:** scroll casts on the board keep the 1-HP floor, exactly like
   book/innate casts. No new kill path is introduced by this feature.
 
-## 8. Out of scope / open questions
+## 9. Out of scope / open questions
 
 - **Casting scrolls *in combat*.** This feature makes scrolls board-castable and
   inscribable. Whether a one-shot scroll can also be spent inside the
