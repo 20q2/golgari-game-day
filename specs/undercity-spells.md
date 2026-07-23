@@ -10,7 +10,7 @@ A living reference for the Dokapon-style spell system: what it does for players,
 
 ### Your loadout
 
-- **Innate spell** — every creature can always cast the signature spell of its *home biome* (chosen at hatch). No book needed, no way to lose it.
+- **Innate spell** — every creature can always cast the signature spell of its *home biome* (chosen at hatch). No book needed, no way to lose it. A few races also carry a *species* signature (the Squirrel's Acorn Fury) that stacks alongside the biome innate — see the innate spells section.
 - **Grimoires** — spell books found in the world. A book starts with 1–3 spells and can hold up to its tier's capacity (I:2 / II:3 / III:4); you **grow a book by inscribing scrolls at the Sedgemoor Witch** (a full book burns out a spell to make room). Every book you ever find goes into a **permanent collection** (never sold, never lost; duplicates convert to 15 Spores), but only **one book is open at a time**. Swap freely from the Creature tab. Your first book auto-opens.
 - **Scrolls** — one-spell items found in the world (tiered drops) or bought from the witch. Cast one-shot (no cooldown, consumed) or inscribe into a grimoire. Held in a capped satchel.
 - Castable at any moment = innate spell + the spells in your open book.
@@ -49,6 +49,11 @@ Every spell that hits (or fizzles against) you lands in your inbox:
 | The Sedgemoor (bog) | **Bog Snare** | Curse, range 5: next roll halved | 30 min |
 | Mosslight Cavern (cavern) | **Glowveil** | Self: +2 SPD & +15% flee next battle | 30 min |
 | The Undercity (city) | **Scrap Toss** | 8 damage, range 5 | 30 min |
+
+> **Species innate:** the Squirrel race additionally always knows **Acorn Fury**
+> (self: +2 ATK next battle, 15 min) on top of its biome innate — the only race
+> with two innate spells (doubled to +4 by a Squirrel Warrior, and its cooldown is
+> halved by `spell_haste`). Keyed by `SPECIES_SPELLS` in `undercity_data.py`.
 
 ### Grimoire spells
 
