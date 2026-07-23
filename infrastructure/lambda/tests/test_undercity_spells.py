@@ -98,6 +98,13 @@ def test_spell_fields_match_effect_kind():
             assert sp.get('buffKind'), sid_
 
 
+def test_every_spell_has_client_display_fields():
+    """Codegen source parity: every spell carries an icon + desc for the client."""
+    for sid_, sp in data.SPELLS.items():
+        assert sp.get('desc'), f'{sid_} missing desc'
+        assert sp.get('icon'), f'{sid_} missing icon'
+
+
 # ── Engine helpers ───────────────────────────────────────────────────────────
 
 _LINE_NODES = {
