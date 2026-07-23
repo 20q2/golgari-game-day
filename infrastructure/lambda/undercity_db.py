@@ -1005,6 +1005,16 @@ def cutpurse_bonus(doc, feint_won, won):
     return _rider_mags(doc).get('cutpurse', 0)
 
 
+def _book_spells(doc, gid):
+    """A grimoire's CURRENT spells for this player. Contents are mutable
+    per-player state in doc['grimoireSpells'] (inscribed at the Sedgemoor Witch);
+    falls back to the static bundle for older docs / unseen books."""
+    per = (doc.get('grimoireSpells') or {}).get(gid)
+    if per is not None:
+        return per
+    return list(data.GRIMOIRES.get(gid, {}).get('spells') or [])
+
+
 def _grant_grimoire(doc, gid):
     """Add a book to the permanent collection; the first one auto-opens.
     Duplicates convert to Spores. Returns True when the book was new."""
@@ -1013,6 +1023,9 @@ def _grant_grimoire(doc, gid):
         doc['spores'] = doc.get('spores', 0) + data.GRIMOIRE_DUPLICATE_SPORES
         return False
     owned.append(gid)
+    # Seed the mutable per-player contents from the static bundle.
+    doc.setdefault('grimoireSpells', {})[gid] = list(
+        data.GRIMOIRES.get(gid, {}).get('spells') or [])
     if not doc.get('equippedGrimoire'):
         doc['equippedGrimoire'] = gid
     return True
@@ -1801,6 +1814,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'stance': 'fight',
         'pendingMove': None, 'buffs': [],
         'grimoires': [], 'equippedGrimoire': None,
+        'scrolls': [], 'grimoireSpells': {},
         'spellCooldowns': {}, 'pokeCooldowns': {}, 'awayEvents': [],
         'lastFinishedClaim': None, 'taughtClaims': 0, 'pokesReceived': 0,
         'pvpWins': 0, 'wildWins': 0, 'composts': 0, 'bossDamage': 0,
@@ -3849,8 +3863,8 @@ def _cast(table, sid, doc, payload):
         if data.BIOME_SPELLS.get(doc.get('homeBiome')) != spell_id:
             return _spell_err("That is not your biome's gift.", 'not_castable')
     elif source == 'grimoire':
-        book = data.GRIMOIRES.get(doc.get('equippedGrimoire') or '')
-        if not book or spell_id not in book['spells']:
+        gid = doc.get('equippedGrimoire') or ''
+        if gid not in (doc.get('grimoires') or []) or spell_id not in _book_spells(doc, gid):
             return _spell_err('That spell is not in your open grimoire.', 'not_castable')
     elif source == 'wish':
         # Only the Calamity Beast (wish passive) may cast Wish.

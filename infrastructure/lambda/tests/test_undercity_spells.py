@@ -781,3 +781,16 @@ def test_non_calamity_cannot_wish(table):
     act(table, 'join', starter='pest', home='garden')      # no wish passive
     status, resp = act(table, 'cast', spellId='wish', source='wish', wishSpellId='rot_surge')
     assert status != 200 and resp['code'] == 'not_castable'
+
+
+# ── Scrolls & mutable grimoires (design 2026-07-23 bog-witch-scrolls) ────────
+
+def test_book_spells_seeds_and_reads_per_player(fresh_table=None):
+    doc = db._new_player_doc('s1', 'u1', 'W', 'pest', 'bog')
+    assert doc['scrolls'] == [] and doc['grimoireSpells'] == {}
+    db._grant_grimoire(doc, 'moldering_folio')          # tier-I, [spore_bolt]
+    assert doc['grimoireSpells']['moldering_folio'] == ['spore_bolt']
+    assert db._book_spells(doc, 'moldering_folio') == ['spore_bolt']
+    # older doc without grimoireSpells falls back to the static bundle
+    legacy = {'grimoires': ['gardeners_primer']}
+    assert db._book_spells(legacy, 'gardeners_primer') == ['mend_flesh', 'harden_shell']
