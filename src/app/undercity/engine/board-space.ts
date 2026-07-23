@@ -20,6 +20,7 @@ export const TYPE_COLORS: Record<string, string> = {
   trading_post: '#5a9a6a',
   excavation: '#b8934e',
   shrine: '#caa04a',
+  witch: '#8e3f8a',
   hazard: '#647694',
   warp: '#3aa8a4',
   gate: '#ffffff',

@@ -994,10 +994,12 @@ export class PlazaCanvas {
     isOwn: boolean,
   ): void {
     const ctx = this.ctx;
-    const fontSize = Math.round(6 * scale);
-    ctx.font = `600 ${fontSize}px sans-serif`;
-    const padX = 5 * scale;
-    const padY = 3 * scale;
+    // Your own status is drawn larger so it reads clearly above your creature.
+    const sizeMul = isOwn ? 9 : 6;
+    const fontSize = Math.round(sizeMul * scale);
+    ctx.font = `700 ${fontSize}px sans-serif`;
+    const padX = (isOwn ? 6 : 5) * scale;
+    const padY = (isOwn ? 4 : 3) * scale;
     const bubbleW = ctx.measureText(text).width + padX * 2;
     const bubbleH = fontSize + padY * 2;
     const bx = cx - bubbleW / 2;
@@ -1005,11 +1007,11 @@ export class PlazaCanvas {
     const trailGap = 6 * scale;
     const by = bottomY - trailGap - bubbleH;
     ctx.save();
-    const fill = 'rgba(248,250,248,0.95)';
-    const stroke = isOwn ? 'rgba(251,191,36,0.85)' : 'rgba(74,222,128,0.6)';
+    const fill = isOwn ? 'rgba(255,252,240,0.98)' : 'rgba(248,250,248,0.95)';
+    const stroke = isOwn ? 'rgba(251,191,36,0.95)' : 'rgba(74,222,128,0.6)';
     ctx.fillStyle = fill;
     ctx.strokeStyle = stroke;
-    ctx.lineWidth = 0.6 * scale;
+    ctx.lineWidth = (isOwn ? 1 : 0.6) * scale;
     // White cloud bubble.
     ctx.beginPath();
     ctx.roundRect(bx, by, bubbleW, bubbleH, 4 * scale);
