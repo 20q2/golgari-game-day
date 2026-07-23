@@ -196,10 +196,13 @@ regressions guard changes to these. See
 
 ## Attribute perks (design 2026-07-21)
 
-Investing in an attribute unlocks threshold perks (nodes at **5 / 10 / 15**),
-derived from the **invested base stat** (`doc['atk'/'def'/'spd']` = species base
-+ level spends + evolution bonuses — **gear/buffs never light a perk**). Base
-stats can already light a tier-1 node (a kraul hatches with *Rend*). The set is
+Investing in an attribute unlocks threshold perks (nodes at **6 / 12 / 18**),
+derived from the **invested base stat plus equipped gear** (`perk_stat` =
+`doc['atk'/'def'/'spd']` — species base + level spends + evolution bonuses —
+**plus the equipped gear's stat bonuses**; **temporary buffs never light a
+perk**, so they can't flicker perks mid-fight). Gear can therefore bridge a
+creature up to a threshold, and equipping/swapping a piece may light or dim a
+perk. Base stats can already light a tier-1 node (a kraul hatches with *Rend*). The set is
 computed by `engine.attribute_perks(doc)` and rides on `Combatant.perks`; it is
 surfaced in state as `you.perks` / `player.perks`.
 

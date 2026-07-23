@@ -191,7 +191,8 @@ ALL_FORMS = {**{k: dict(v, tier=1) for k, v in STARTERS.items()},
 
 # ── Attribute perk tracks (design 2026-07-21) ────────────────────────────────
 # A perk unlocks when the INVESTED base stat (species base + level spends +
-# evolution bonuses; NOT gear/buffs) reaches its threshold. Nodes at 6/12/18;
+# evolution bonuses) PLUS equipped gear reaches its threshold; temporary buffs
+# still never light a perk (see engine.perk_stat). Nodes at 6/12/18;
 # base stats can already light the tier-1 node (kraul atk 8 -> Rend). Client
 # mirror: src/app/undercity/data/perks.ts
 PERK_TRACKS = {

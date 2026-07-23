@@ -16,7 +16,7 @@ SPD are dead investments; every build funnels into ATK.
 
 This design fixes that two ways at once:
 
-1. **Attribute perk tracks** — crossing 5 / 10 / 15 in an attribute unlocks a
+1. **Attribute perk tracks** — crossing 6 / 12 / 18 in an attribute unlocks a
    perk, giving DEF and SPD identities that live *outside* the damage race
    (survival, traversal, tempo). Pairs with keep-and-swap gear: gear is the
    swappable tactical layer, the perk track is the creature's permanent identity.
