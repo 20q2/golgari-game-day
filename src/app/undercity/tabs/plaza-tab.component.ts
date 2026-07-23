@@ -17,13 +17,17 @@ import { PlazaCanvas, PlazaCreature } from '../engine/plaza-canvas';
 import { PublicPlayer, evolveGlowActive, isShielded } from '../services/undercity-models';
 import {
   GEAR_MAP,
+  CONSUMABLE_MAP,
   tierRarity,
   nextRung,
   UPGRADE_COST,
   SALVAGE_YIELD,
-  marketPriceBand,
+  marketBand,
+  MarketKind,
+  RarityInfo,
   GearInfo,
 } from '../data/items';
+import { SPELL_MAP } from '../data/spells';
 
 /**
  * A run of the upgraded description. `same` is unchanged carry-over text; a change
@@ -34,6 +38,15 @@ export interface DescSeg {
   same?: string;
   from?: string;
   to?: string;
+}
+
+/** Normalized display fields for a market listing, resolved from its kind. */
+interface MarketView {
+  name: string;
+  desc: string;
+  icon?: string; // material-icon ligature (consumable / scroll)
+  svgIcon?: string; // gear slot svg id, e.g. 'uc-fang'
+  rarity?: RarityInfo; // gear / scroll tier rarity; undefined for consumables
 }
 
 interface UpgradeRow {
@@ -140,7 +153,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
   protected readonly gearMap = GEAR_MAP;
   protected readonly tierRarity = tierRarity;
   protected readonly building = signal<'salvage' | 'blacksmith' | 'market' | null>(null);
-  protected readonly priceBand = marketPriceBand;
+  protected readonly marketBand = marketBand;
 
   protected readonly materials = computed(
     () => this.store.you()?.materials ?? { moltings: 0, ichor: 0 },
@@ -149,6 +162,18 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
   protected readonly stashRows = computed(() =>
     (this.store.you()?.gearStash ?? [])
       .map((id, index) => ({ index, info: GEAR_MAP[id] }))
+      .filter((r) => !!r.info),
+  );
+
+  protected readonly bagRows = computed(() =>
+    (this.store.you()?.bag ?? [])
+      .map((id, index) => ({ index, info: CONSUMABLE_MAP[id] }))
+      .filter((r) => !!r.info),
+  );
+
+  protected readonly scrollRows = computed(() =>
+    (this.store.you()?.scrolls ?? [])
+      .map((id, index) => ({ index, info: SPELL_MAP[id] }))
       .filter((r) => !!r.info),
   );
 
@@ -188,19 +213,49 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
     return !!you && you.spores >= cost.spores && m.moltings >= cost.moltings && m.ichor >= cost.ichor;
   }
 
-  // Player Market listings, enriched with gear info + own-listing flag.
+  private marketView(kind: MarketKind, id: string): MarketView | null {
+    if (kind === 'gear') {
+      const g = GEAR_MAP[id];
+      if (!g) return null;
+      return { name: g.name, desc: g.desc, svgIcon: 'uc-' + g.slot, rarity: tierRarity(g.tier) };
+    }
+    if (kind === 'consumable') {
+      const c = CONSUMABLE_MAP[id];
+      if (!c) return null;
+      return { name: c.name, desc: c.desc, icon: c.icon };
+    }
+    const s = SPELL_MAP[id];
+    if (!s) return null;
+    return { name: s.name, desc: s.desc, icon: s.icon, rarity: tierRarity(s.tier) };
+  }
+
+  // Player Market listings, normalized by kind + own-listing flag.
   protected readonly marketRows = computed(() =>
     this.store
       .market()
-      .map((l) => ({ ...l, info: GEAR_MAP[l.gearId], own: l.sellerId === this.store.ownUserId }))
-      .filter((l) => !!l.info),
+      .map((l) => {
+        const kind = (l.kind ?? 'gear') as MarketKind;
+        const itemId = l.itemId ?? l.gearId ?? '';
+        return {
+          id: l.id,
+          price: l.price,
+          sellerName: l.sellerName,
+          kind,
+          view: this.marketView(kind, itemId),
+          own: l.sellerId === this.store.ownUserId,
+        };
+      })
+      .filter((r) => !!r.view),
   );
 
-  protected canBuy(l: { price: number; own: boolean }): boolean {
+  protected canBuy(l: { price: number; own: boolean; kind: MarketKind }): boolean {
     const you = this.store.you();
     if (!you || l.own) return false;
-    const stashFull = (you.gearStash?.length ?? 0) >= 6;
-    return you.spores >= l.price && !stashFull;
+    const held =
+      l.kind === 'consumable' ? you.bag : l.kind === 'scroll' ? you.scrolls : you.gearStash;
+    const cap = l.kind === 'consumable' ? 3 : 6; // BAG_SIZE=3; gearStash/scrolls=6
+    const full = (held?.length ?? 0) >= cap;
+    return you.spores >= l.price && !full;
   }
 
   protected openBuilding(b: 'salvage' | 'blacksmith' | 'market'): void {
@@ -223,11 +278,15 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  async marketList(index: number, price: number): Promise<void> {
+  async marketList(kind: MarketKind, index: number, price: number): Promise<void> {
     if (this.busy() || !Number.isFinite(price)) return;
     this.busy.set(true);
     try {
-      const resp = await this.store.action('market-list', { index, price: Math.round(price) });
+      const resp = await this.store.action('market-list', {
+        kind,
+        index,
+        price: Math.round(price),
+      });
       this.showToast(resp.text ?? 'Listed.');
     } catch (e) {
       this.showToast(e instanceof Error ? e.message : 'Listing failed');
