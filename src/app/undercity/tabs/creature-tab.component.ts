@@ -22,10 +22,18 @@ import {
   cooldownLeftMin,
   grimoireSwapLeftMin,
 } from '../data/spells';
-import { HATS, PAINTS, HatInfo, PaintInfo } from '../data/cosmetics';
+import {
+  HATS,
+  PAINTS,
+  SPECIAL_PAINTS,
+  SPECIAL_PAINT_SWATCH,
+  HatInfo,
+  PaintInfo,
+  SpecialPaintInfo,
+} from '../data/cosmetics';
 import { PERKS, PERK_TRACKS, PerkTrack } from '../data/perks';
 import { formSprite } from '../data/species';
-import { getRecoloredDataUrl, getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
+import { getRecoloredDataUrl, getRecoloredWithHatEffectDataUrl } from '../engine/sprite-engine';
 import { isShielded } from '../services/undercity-models';
 import { DUNGEONS, SIGILS_REQUIRED } from '../data/dungeons';
 
@@ -217,6 +225,8 @@ export class CreatureTabComponent {
   protected readonly consumableMap = CONSUMABLE_MAP;
   protected readonly hats = HATS;
   protected readonly paints = PAINTS;
+  protected readonly specialPaints = SPECIAL_PAINTS;
+  protected readonly specialPaintSwatch = SPECIAL_PAINT_SWATCH;
   protected readonly formName = formName;
   protected readonly isShielded = isShielded;
   protected readonly dieValues = [1, 2, 3, 4, 5, 6];
@@ -225,7 +235,7 @@ export class CreatureTabComponent {
     const you = this.store.you();
     if (!you) return null;
     const spr = formSprite(you.form);
-    return getRecoloredWithHatDataUrl(spr.sprite, you.paint ?? {}, spr.regions, you.hat);
+    return getRecoloredWithHatEffectDataUrl(spr.sprite, you.paint ?? {}, spr.regions, you.hat, you.effect);
   });
 
   /** Recolorable zones for the current form — drives the wardrobe paint groups.
@@ -343,6 +353,11 @@ export class CreatureTabComponent {
     return PAINTS.filter((p) => owned.has(p.id));
   });
 
+  protected readonly ownedEffects = computed<SpecialPaintInfo[]>(() => {
+    const owned = new Set(this.store.wardrobe()?.effects ?? []);
+    return SPECIAL_PAINTS.filter((e) => owned.has(e.id));
+  });
+
   formSpriteUrl(form: FormInfo): string | null {
     const you = this.store.you();
     const spr = formSprite(form.id);
@@ -434,6 +449,15 @@ export class CreatureTabComponent {
     if (!you) return;
     const next = { ...you.paint, [region]: paint.hue };
     await this.run(() => this.store.action('customize', { paint: next, hat: you.hat ?? '' }).then(() => undefined));
+  }
+
+  async setEffect(effect: string | null): Promise<void> {
+    const you = this.store.you();
+    if (!you) return;
+    const next = you.effect === effect ? '' : (effect ?? '');
+    await this.run(() =>
+      this.store.action('customize', { effect: next, hat: you.hat ?? '' }).then(() => undefined),
+    );
   }
 
   protected async run(fn: () => Promise<void>): Promise<void> {

@@ -484,6 +484,31 @@
                   </div>
                 </div>
               }
+              @if (ownedEffects().length) {
+                <div class="wardrobe-group">
+                  <span class="wardrobe-label">special paint</span>
+                  <div class="swatch-row">
+                    <button
+                      class="hat-chip"
+                      [class.selected]="!you.effect"
+                      [disabled]="busy()"
+                      (click)="setEffect(null)"
+                    >
+                      none
+                    </button>
+                    @for (sp of ownedEffects(); track sp.id) {
+                      <button
+                        class="paint-swatch"
+                        [class.selected]="you.effect === sp.id"
+                        [style.background]="specialPaintSwatch[sp.id]"
+                        [title]="sp.name"
+                        [disabled]="busy()"
+                        (click)="setEffect(sp.id)"
+                      ></button>
+                    }
+                  </div>
+                </div>
+              }
             </section>
           }
           @case ('sigils') {
