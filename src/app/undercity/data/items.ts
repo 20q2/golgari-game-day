@@ -1,5 +1,7 @@
 /** Shop catalogue (mirrors GEAR / CONSUMABLES in undercity_data.py). */
 
+import { SPELL_MAP } from './spells';
+
 export interface GearInfo {
   id: string;
   name: string;
@@ -229,6 +231,26 @@ export const GEAR_MAP: Record<string, GearInfo> = Object.fromEntries(GEAR.map((g
 export const CONSUMABLE_MAP: Record<string, ConsumableInfo> = Object.fromEntries(
   CONSUMABLES.map((c) => [c.id, c]),
 );
+
+/** Scroll base cost by spell tier (mirrors INSCRIBE_COST in undercity_config.py). */
+export const INSCRIBE_COST: Record<number, number> = { 1: 10, 2: 20, 3: 30 };
+
+export type MarketKind = 'gear' | 'consumable' | 'scroll';
+
+/** Base cost a market price band is derived from, per kind (mirrors _MARKET_KINDS). */
+export function marketItemCost(kind: MarketKind, id: string): number {
+  if (kind === 'consumable') return CONSUMABLE_MAP[id]?.cost ?? 0;
+  if (kind === 'scroll') return INSCRIBE_COST[SPELL_MAP[id]?.tier ?? 1] ?? 0;
+  return GEAR_MAP[id]?.cost ?? 0;
+}
+
+/** Allowed Spore price band for any listable item (mirrors _market_price_band). */
+export function marketBand(kind: MarketKind, id: string): { lo: number; hi: number } {
+  const cost = marketItemCost(kind, id);
+  const lo = Math.max(1, Math.floor(cost * MARKET_PRICE_MIN_PCT));
+  const hi = Math.max(lo, Math.floor(cost * MARKET_PRICE_MAX_PCT));
+  return { lo, hi };
+}
 
 /** Pre-spawn Renown shop starter kit (mirrors RENOWN_SHOP_ITEMS in
  * undercity_data.py). One-night items granted into the fresh player at spawn. */
