@@ -88,7 +88,7 @@ def test_spell_fields_match_effect_kind():
     for sid_, sp in data.SPELLS.items():
         assert sp['effect'] in ('self_buff', 'self_heal', 'field_curse',
                                 'field_damage', 'teleport', 'recall',
-                                'fate_die', 'boss_strike'), sid_
+                                'fate_die', 'boss_strike', 'wish'), sid_
         assert sp['cooldownMin'] > 0, sid_
         if sp['effect'] in ('field_curse', 'field_damage', 'teleport'):
             assert sp.get('range', 0) > 0, sid_

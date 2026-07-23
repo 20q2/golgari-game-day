@@ -185,10 +185,12 @@ def test_everything_reachable_from_gate():
     assert seen == set(MAP_NODES)
 
 
-def test_every_tier2_form_offers_exactly_two_apexes():
+def test_every_tier2_form_offers_at_least_two_apexes():
+    # Every T2 gives a real T3 choice (>= 2). Most offer 2; the lines that can
+    # also become the Calamity Beast (design 2026-07-23 squirrel-simple) offer 3.
     from undercity_data import TIER2, apex_options
     for fid in TIER2:
-        assert len(apex_options(fid)) == 2, fid
+        assert 2 <= len(apex_options(fid)) <= 3, (fid, apex_options(fid))
 
 
 def test_dungeon_tables_cover_all_biomes():

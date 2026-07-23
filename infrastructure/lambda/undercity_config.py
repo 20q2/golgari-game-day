@@ -202,3 +202,9 @@ PROCEDURAL_DUNGEONS = True
 # per character level above 1: effective = base + round(PER_LEVEL * (level - 1)).
 # Level-1 casts still land for the printed base. Buffs/curses stay flat.
 SPELL_POWER_PER_LEVEL = 1.0
+
+# ── Squirrel caster passives (design 2026-07-23 squirrel-simple) ─────────────
+SPELL_HASTE_MULT = 0.5        # spell_haste (T1): spell cooldowns × this
+SPELL_WARRIOR_MULT = 2        # spell_warrior (T2): self-buff/heal magnitude × this
+SPELL_MAGE_DAMAGE_MULT = 1.5  # spell_mage (T2): the mage's damage/boss spells × this
+SPELL_MAGE_DODGE_MULT = 0.5   # spell_mage (T2): dodge chance vs the mage × this (2× hit)

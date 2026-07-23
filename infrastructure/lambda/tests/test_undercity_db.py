@@ -3027,3 +3027,16 @@ def test_ok_reports_effective_maxhp_not_base():
     you = db._ok(doc)[1]['you']
     assert you['maxHp'] == eff                        # not the base 30
     assert you['hp'] <= you['maxHp']                  # no phantom over-max
+
+
+def test_squirrel_line_and_calamity_beast_wired():
+    import undercity_data as data
+    assert data.STARTERS['squirrel']['passive'] == 'spell_haste'
+    assert set(data.tier2_options('squirrel')) == {'squirrel_warrior', 'squirrel_mage'}
+    # Calamity Beast reachable from both squirrel T2s AND several other lines.
+    assert 'calamity_beast' in data.apex_options('squirrel_warrior')
+    assert 'calamity_beast' in data.apex_options('squirrel_mage')
+    assert 'calamity_beast' in data.apex_options('deathrite_shaman')
+    assert 'calamity_beast' in data.apex_options('stinkweed_imp')
+    assert data.APEX['calamity_beast']['passive'] == 'wish'
+    assert data.SPELLS['wish']['effect'] == 'wish'

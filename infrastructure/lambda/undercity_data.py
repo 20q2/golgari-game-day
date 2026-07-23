@@ -61,6 +61,11 @@ STARTERS = {
         'passive': 'regrowth',
         'blurb': 'Was somebody once; dead now, and it doesn\'t stay down. Regrowth: heal 20% max HP after any battle.',
     },
+    'squirrel': {
+        'name': 'Squirrel', 'hp': 25, 'atk': 4, 'def': 4, 'spd': 7,
+        'passive': 'spell_haste',
+        'blurb': 'A twitchy little caster. Spell Haste: your spell cooldowns are halved — cast twice as often as anyone else.',
+    },
 }
 
 # Cosmetic-only alternate sprite per starter. Client mirror: FORM_VARIANTS in
@@ -124,6 +129,16 @@ TIER2 = {
         'passive': 'soul_harvest',
         'blurb': 'Durable ritualist. Soul Harvest: +50% Spores from wild & elite battle wins.',
     },
+    'squirrel_warrior': {
+        'name': 'Squirrel Warrior', 'line': 'squirrel', 'bonus': {'maxHp': 6, 'atk': 2},
+        'passive': 'spell_warrior',
+        'blurb': 'Spellblade. Spell Warrior: buffs and heals you cast on yourself are doubled (and you still cast 50% faster).',
+    },
+    'squirrel_mage': {
+        'name': 'Squirrel Mage', 'line': 'squirrel', 'bonus': {'maxHp': 4, 'spd': 2},
+        'passive': 'spell_mage',
+        'blurb': 'Battlemage. Spell Mage: your damaging spells deal +50% and are twice as likely to land (and you still cast 50% faster).',
+    },
 }
 
 # Apex forms (level 10).
@@ -143,14 +158,20 @@ APEX = {
     'swamp_dragon': {
         'name': 'Swamp Dragon', 'bonus': {'atk': 2, 'spd': 2},
         'passive': 'rot_breath',
-        'from': ['stinkweed_imp', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace'],
+        'from': ['stinkweed_imp', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior'],
         'blurb': 'Rot Breath: round-1 strike hits for double.',
     },
     'izoni': {
         'name': 'Izoni, Thousand-Eyed', 'bonus': {'spd': 4},
         'passive': 'swarm',
-        'from': ['stinkweed_imp', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace'],
+        'from': ['stinkweed_imp', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage'],
         'blurb': 'Swarm: one extra strike every battle round.',
+    },
+    'calamity_beast': {
+        'name': 'Calamity Beast', 'bonus': {'maxHp': 6, 'spd': 2},
+        'passive': 'wish',
+        'from': ['squirrel_warrior', 'squirrel_mage', 'deathrite_shaman', 'stinkweed_imp', 'corpsejack_menace'],
+        'blurb': 'Wish: learn the Wish spell — once ready, cast ANY spell in the world, from any list.',
     },
 }
 
@@ -486,6 +507,11 @@ SPELLS = {
     'queens_bane': {'name': "Queen's Bane", 'category': 'boss', 'tier': 3,
                     'cooldownMin': 60, 'effect': 'boss_strike', 'power': 15,
                     'blurb': 'Sear the Queen or a lair boss for 15, from anywhere.'},
+    # Calamity Beast (T3) innate — cast ANY spell in the world. Not in any
+    # grimoire or biome; granted by the `wish` passive. See squirrel-simple design.
+    'wish':        {'name': 'Wish', 'category': 'boss', 'tier': 3,
+                    'cooldownMin': 60, 'effect': 'wish',
+                    'blurb': 'Bend the world: cast any spell in existence, from any list.'},
 }
 
 # Home biome -> innate spell (always castable, no grimoire needed).
@@ -726,6 +752,14 @@ PAINTS = [
     {'id': 'navy', 'name': 'Navy', 'hue': 230},
     {'id': 'violet', 'name': 'Violet', 'hue': 270},
     {'id': 'rose', 'name': 'Rose', 'hue': 340},
+    # Achromatic paints. Real hues are 0–359; these carry out-of-range sentinel
+    # values (< 0) stored verbatim in a creature's `paint`. The server treats
+    # them as opaque numbers — the client recolor reads "< 0" as greyscale and
+    # remaps brightness into a band (NEUTRAL_BANDS in src/app/undercity/data/
+    # cosmetics.ts). Keep ids/values in sync with that client mirror.
+    {'id': 'white', 'name': 'White', 'hue': -1},
+    {'id': 'grey', 'name': 'Grey', 'hue': -2},
+    {'id': 'black', 'name': 'Black', 'hue': -3},
 ]
 DEFAULT_PAINTS = ['forest', 'gold']  # everyone owns these from their first hatch
 
