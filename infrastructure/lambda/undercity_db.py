@@ -215,6 +215,23 @@ def _event(table, sid, etype, text, actor=None, extra=None):
     table.put_item(Item=item)
 
 
+def _claim_first(table, sid, node, kind, doc):
+    """Idempotently stamp the season-global first conqueror of a landmark.
+    Returns True iff THIS call won the race (this player is the global first).
+    Race-safe: the conditional put lets exactly one concurrent writer win."""
+    try:
+        table.put_item(
+            Item={'pk': _season_pk(sid), 'sk': f'FIRST#{node}',
+                  'by': doc['username'], 'uid': doc['userId'],
+                  'at': _now(), 'kind': kind},
+            ConditionExpression='attribute_not_exists(pk)')
+        return True
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            return False
+        raise
+
+
 def _get(table, pk, sk):
     resp = table.get_item(Key={'pk': pk, 'sk': sk})
     return _clean(resp.get('Item')) if resp.get('Item') else None
