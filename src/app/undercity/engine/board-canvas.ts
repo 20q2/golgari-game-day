@@ -31,6 +31,8 @@ import {
   TERRAIN_RES,
 } from './board-terrain';
 import { computeLayers, layerIndex, OVERWORLD, LayerSpec } from './board-layers';
+import { WORLD_EVENT_SPRITE } from '../data/world-event';
+import { WorldEventState } from '../services/undercity-models';
 
 export interface BoardNode {
   id: string;
@@ -118,6 +120,8 @@ export interface BoardPlayer {
   shielded: boolean;
   /** Equipped hat id, if any — drawn on the head via the sprite's hat guide. */
   hat?: string | null;
+  /** Cosmetic-only shiny — draws a steady gold sparkle over the token. */
+  shiny?: boolean;
   /** Own token only: illuminating gear equipped — reveals the whole dungeon. */
   illuminated?: boolean;
   /** Own token only: Mosslight Cavern's Darkvision perk — light radius 2 not 1. */
@@ -277,6 +281,9 @@ const LAIR_BACK_OFFSET = 26; // px north — sits behind the lair space
 // weakened echo rather than the living threat it used to be.
 const VESTIGE_FILTER = 'brightness(0.42) saturate(0.35) blur(0.7px)';
 const VESTIGE_ALPHA = 0.55; // translucent — you can see the floor through it
+// The wilderness World Event beast — larger than a lair boss, since it straddles
+// a 3-tile footprint and is the biggest thing on the overworld.
+const WORLD_EVENT_H = 150;
 
 /** One render/view layer: its node subset + world bounds, and its terrain. */
 interface Layer {
@@ -305,6 +312,12 @@ export class BoardCanvas {
   private guardianTex = new Map<string, HTMLImageElement>();
   private guardianMiss = new Set<string>();
   private guardianLoading = new Set<string>();
+  /** The live wilderness World Event ("Great Beast"), or null. Its sprite is
+   *  drawn straddling its 3-node footprint, centered on `center`. */
+  private worldEvent: WorldEventState | null = null;
+  private worldEventTex: HTMLImageElement | null = null;
+  private worldEventLoading = false;
+  private worldEventMiss = false;
   private choices = new Set<string>();
   private backChoice: string | null = null;
   private info: NodeInfo | null = null;
@@ -323,6 +336,7 @@ export class BoardCanvas {
   private heals: HealNumber[] = [];
   private healPending = false;
   private sparkleAccum = 0; // time since last sparkle emission
+  private shinyAccum = 0; // time since last shiny twinkle emission
   private pendingHealPops: { userId: string; amount: number }[] = [];
   private lastTs = performance.now();
   private rafId: number | null = null;
@@ -652,6 +666,28 @@ export class BoardCanvas {
    *  overworld health bars drawn above each guardian/sigil boss. */
   setGuardianPools(pools: Record<string, { hp: number; maxHp: number }>): void {
     this.guardianPools = pools;
+  }
+
+  /** The live wilderness World Event, or null to clear it (killed / never
+   *  spawned). Kicks off the sprite load the first time one appears. */
+  setWorldEvent(we: WorldEventState | null): void {
+    this.worldEvent = we && !we.dead ? we : null;
+    if (this.worldEvent) this.loadWorldEvent();
+  }
+
+  private loadWorldEvent(): void {
+    if (this.worldEventTex || this.worldEventLoading || this.worldEventMiss) return;
+    this.worldEventLoading = true;
+    const img = new Image();
+    img.onload = () => {
+      this.worldEventTex = img;
+      this.worldEventLoading = false;
+    };
+    img.onerror = () => {
+      this.worldEventMiss = true;
+      this.worldEventLoading = false;
+    };
+    img.src = WORLD_EVENT_SPRITE;
   }
 
   /**
@@ -1287,6 +1323,11 @@ export class BoardCanvas {
     // Sigil bosses pace behind their lair spaces.
     if (n.type === 'lair') this.drawLairBoss(n, elapsed);
 
+    // The wilderness World Event beast squats across its 3-node footprint.
+    if (this.worldEvent && this.worldEvent.nodes.includes(n.id)) {
+      this.drawWorldEventTile(n, elapsed);
+    }
+
     // A rusty ladder whose dungeon boss has already fallen wears a small skull
     // badge — the den below holds nothing now but the boss's vestige.
     if (n.type === 'ladder' && this.clearedDungeons.has(n.id.split('_')[0])) {
@@ -1454,6 +1495,47 @@ export class BoardCanvas {
     if (pool && !vestige) {
       this.drawGuardianHp(cx, top - 6, pool.hp, pool.maxHp, 56);
     }
+    ctx.restore();
+  }
+
+  /**
+   * The wilderness World Event beast. Every occupied tile gets a pulsing red
+   * highlight ring so players see where to land; the center tile also draws the
+   * big beast sprite (straddling the run) with a shared HP bar above it.
+   */
+  private drawWorldEventTile(n: BoardNode, elapsed: number): void {
+    const ctx = this.ctx;
+    const we = this.worldEvent!;
+
+    // Pulsing highlight ring on each of the 3 occupied tiles.
+    const pulse = 0.5 + 0.3 * Math.sin(elapsed * 3);
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(n.x, n.y, NODE_R + 8, DISC_RY + 6, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(198, 47, 63, ${pulse})`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
+
+    if (n.id !== we.center) return;
+
+    // The beast itself, centered on the middle tile and drawn on top.
+    const art = this.worldEventTex;
+    const breath = 1 + Math.sin(elapsed * 1.4) * 0.03;
+    const footAnchor = n.y + 6;
+    ctx.save();
+    // Ground shadow under the whole footprint.
+    ctx.beginPath();
+    ctx.ellipse(n.x, footAnchor, 92, 26, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    ctx.fill();
+    if (art) {
+      const drawH = WORLD_EVENT_H * breath;
+      const w = art.width * (drawH / art.height);
+      ctx.drawImage(art, n.x - w / 2, footAnchor - drawH, w, drawH);
+    }
+    // Shared HP bar above the beast.
+    this.drawGuardianHp(n.x, footAnchor - WORLD_EVENT_H * breath - 4, we.hp, we.maxHp, 72);
     ctx.restore();
   }
 
@@ -1821,6 +1903,17 @@ export class BoardCanvas {
       }
     } else {
       this.sparkleAccum = 0;
+    }
+    // Shiny creatures twinkle gold — a steady, gentler emitter over every shiny
+    // token on-screen (distinct from the green gate-heal sparkle above).
+    this.shinyAccum += dt;
+    while (this.shinyAccum > 0.16) {
+      this.shinyAccum -= 0.16;
+      for (const p of this.players) {
+        if (!p.shiny) continue;
+        const tok = this.tokenAnims.get(p.userId);
+        if (tok) this.spawnSparkle(tok.x, tok.y, '#ffe27a', '#f2a900');
+      }
     }
     for (let i = this.sparkles.length - 1; i >= 0; i--) {
       const s = this.sparkles[i];
