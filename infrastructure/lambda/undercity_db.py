@@ -1364,6 +1364,7 @@ def handle_action(table, body):
         'trade': _trade, 'dig': _dig, 'strike': _strike,
         'vault-guess': _vault_guess, 'respawn': _respawn,
         'cast': _cast,
+        'witch-inscribe': _witch_inscribe, 'witch-buy-scroll': _witch_buy_scroll,
         'equip-grimoire': _equip_grimoire, 'ack-events': _ack_events,
         'solve-loot-puzzle': _solve_loot_puzzle,
         'cancel-loot-puzzle': _cancel_loot_puzzle,
@@ -2507,6 +2508,11 @@ def _resolve_space(table, sid, doc, node, prev):
 
     if ntype == 'shrine':
         return {'type': 'shrine', 'text': 'A shrine of candles and bone. The swarm listens.'}
+
+    if ntype == 'witch':
+        return {'type': 'witch',
+                'text': 'The Sedgemoor Witch stirs her cauldron. She reads scrolls '
+                        'into books — for a price — and sells a few of her own.'}
 
     if ntype == 'ossuary':
         # Fresh landing refills the visit's dice — three rolls, then the
@@ -4113,6 +4119,65 @@ def _cast_boss_strike(table, sid, doc, spell, target):
             text = f'The {display} is already at the brink — finish it in person.'
         return {'dmg': dealt, 'targetName': display, 'text': text}
     return _spell_err('Aim at the Queen (boss) or a lair.', 'invalid_target', 400)
+
+
+# ── The Sedgemoor Witch (design 2026-07-23 bog-witch-scrolls) ────────────────
+
+def _witch_inscribe(table, sid, doc, payload):
+    """Inscribe a held scroll into a grimoire the player owns. Capacity is by the
+    book's tier (GRIMOIRE_CAPACITY); a full book burns out a chosen spell to make
+    room. Consumes the scroll and a tier-scaled Spore fee."""
+    nodes = _season_map(table, sid)
+    if nodes.get(doc.get('position'), {}).get('type') != 'witch':
+        return _err('You are not at the witch.', 409)
+    scroll = (payload or {}).get('scrollSpellId')
+    gid = (payload or {}).get('grimoireId')
+    if scroll not in (doc.get('scrolls') or []):
+        return _err('You have no such scroll.', 400)
+    if gid not in (doc.get('grimoires') or []):
+        return _err('You do not own that grimoire.', 400)
+    cap = data.GRIMOIRE_CAPACITY[data.GRIMOIRES[gid]['tier']]
+    spells = list(_book_spells(doc, gid))
+    if scroll in spells:
+        return _err('That book already holds that spell.', 409)
+    cost = data.INSCRIBE_COST[data.SPELLS[scroll]['tier']]
+    if doc.get('spores', 0) < cost:
+        return _err(f'The witch wants {cost} Spores.', 409)
+    if len(spells) >= cap:
+        ow = (payload or {}).get('overwriteSpellId')
+        if ow not in spells:
+            return _err('That book is full — choose a spell to burn out.', 409)
+        spells.remove(ow)
+    spells.append(scroll)
+    doc.setdefault('grimoireSpells', {})[gid] = spells
+    doc['scrolls'].remove(scroll)
+    doc['spores'] -= cost
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text=f"The witch inscribes {data.SPELLS[scroll]['name']} "
+                         f"into {data.GRIMOIRES[gid]['name']}.")
+
+
+def _witch_buy_scroll(table, sid, doc, payload):
+    """Buy a tier-I scroll from the witch's stock into the satchel for Spores."""
+    nodes = _season_map(table, sid)
+    if nodes.get(doc.get('position'), {}).get('type') != 'witch':
+        return _err('You are not at the witch.', 409)
+    spell_id = (payload or {}).get('spellId')
+    if spell_id not in data.WITCH_SCROLL_STOCK:
+        return _err("The witch isn't brewing that one.", 409)
+    price = round(data.INSCRIBE_COST[data.SPELLS[spell_id]['tier']] * data.WITCH_SCROLL_MARKUP)
+    if doc.get('spores', 0) < price:
+        return _err(f'That scroll costs {price} Spores.', 409)
+    if len(doc.get('scrolls') or []) >= data.SCROLL_SATCHEL_CAP:
+        return _err('Your scroll satchel is full.', 409)
+    doc['spores'] -= price
+    doc.setdefault('scrolls', []).append(spell_id)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text=f"You buy a {data.SPELLS[spell_id]['name']} scroll.")
 
 
 def _equip_grimoire(table, sid, doc, payload):

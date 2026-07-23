@@ -811,3 +811,60 @@ def test_scroll_cast_consumes_and_ignores_cooldown(table):
     # none left -> cannot cast
     status, resp = act(table, 'cast', spellId='mend_flesh', source='scroll')
     assert status != 200 and resp['code'] == 'not_castable'
+
+
+def _at_witch(table):
+    """Join a player and stand them on the Sedgemoor Witch node (bog_r7)."""
+    act(table, 'join', starter='pest', home='bog')
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    doc['position'] = 'bog_r7'
+    doc['spores'] = 100
+    db._put_player(table, doc)
+    return doc
+
+
+def test_witch_space_resolves(table):
+    doc = _at_witch(table)
+    ev = db._resolve_space(table, _sid(table), doc, 'bog_r7', None)
+    assert ev['type'] == 'witch'
+
+
+def test_witch_inscribe_appends_when_room(table):
+    _at_witch(table)
+    give_book(table, 'user-alex', 'moldering_folio')     # tier-I cap 2, [spore_bolt]
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    doc['scrolls'] = ['mend_flesh']; doc['position'] = 'bog_r7'; doc['spores'] = 100
+    db._put_player(table, doc)
+    status, resp = act(table, 'witch-inscribe', scrollSpellId='mend_flesh', grimoireId='moldering_folio')
+    assert status == 200
+    d = db._get_player(table, _sid(table), 'user-alex')
+    assert d['grimoireSpells']['moldering_folio'] == ['spore_bolt', 'mend_flesh']
+    assert 'mend_flesh' not in d['scrolls'] and d['spores'] == 90   # INSCRIBE_COST[1]=10
+
+
+def test_witch_inscribe_full_book_burns_overwrite(table):
+    _at_witch(table)
+    give_book(table, 'user-alex', 'gardeners_primer')    # tier-I cap 2 = FULL [mend_flesh, harden_shell]
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    doc['scrolls'] = ['scrap_toss']; doc['position'] = 'bog_r7'; doc['spores'] = 100
+    db._put_player(table, doc)
+    # full + no overwrite target -> error
+    status, _ = act(table, 'witch-inscribe', scrollSpellId='scrap_toss', grimoireId='gardeners_primer')
+    assert status != 200
+    # with a valid overwrite -> burns it
+    status, _ = act(table, 'witch-inscribe', scrollSpellId='scrap_toss',
+                    grimoireId='gardeners_primer', overwriteSpellId='harden_shell')
+    assert status == 200
+    assert db._book_spells(db._get_player(table, _sid(table), 'user-alex'),
+                           'gardeners_primer') == ['mend_flesh', 'scrap_toss']
+
+
+def test_witch_buy_scroll(table):
+    _at_witch(table)
+    status, resp = act(table, 'witch-buy-scroll', spellId='spore_bolt')
+    assert status == 200
+    d = db._get_player(table, _sid(table), 'user-alex')
+    assert d['scrolls'] == ['spore_bolt'] and d['spores'] == 100 - 16   # round(10*1.6)
+    # not in stock -> error
+    status, _ = act(table, 'witch-buy-scroll', spellId='queens_bane')
+    assert status != 200
