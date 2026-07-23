@@ -1221,12 +1221,13 @@ def test_gear_roster_doubled():
     # Common/Rare/Legendary. 48 combat pieces + 2 illuminating (Torchfang fang,
     # Glowspore charm) = 50, plus the 3-tier pure-HP Vital carapace line = 53.
     # Mythic (tier 4, craft-only) adds one piece per rider family: +5 fang,
-    # +5 carapace, +6 charm = 16 -> 69.
-    assert len(data.GEAR) == 69
+    # +5 carapace, +6 charm = 16 -> 69. The tier-2 Hybrid line (no-rider,
+    # two-stat; design 2026-07-23) adds 1 per slot -> 72.
+    assert len(data.GEAR) == 72
     slots = {}
     for g in data.GEAR.values():
         slots[g['slot']] = slots.get(g['slot'], 0) + 1
-    assert slots == {'fang': 21, 'carapace': 23, 'charm': 25}
+    assert slots == {'fang': 22, 'carapace': 24, 'charm': 26}
 
 
 def test_battle_serde_persists_new_fields():

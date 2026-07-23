@@ -125,7 +125,9 @@ def test_new_gear_entries_have_valid_shape():
         assert g['slot'] in data.GEAR_SLOTS, f"{gid} bad slot"
         assert g['tier'] in (1, 2, 3, 4), f"{gid} bad tier"
         assert g['cost'] > 0, f"{gid} bad cost"
-        # Every gear has a combat identity: a rider, a light source, or (for the
-        # pure Vital carapace line) a Max HP pool.
-        assert g.get('rider') or g.get('light') or g.get('maxHp'), \
-            f"{gid} has neither rider, light, nor maxHp"
+        # Every gear has an identity: a rider, a light source, a Max HP pool
+        # (the pure Vital carapace line), or a two-stat split across the perk
+        # attributes (the no-rider Hybrid line, design 2026-07-23).
+        two_perk_stats = sum(1 for s in ('atk', 'def', 'spd') if g.get(s, 0) > 0) >= 2
+        assert g.get('rider') or g.get('light') or g.get('maxHp') or two_perk_stats, \
+            f"{gid} has no rider, light, maxHp, nor a two-stat split"

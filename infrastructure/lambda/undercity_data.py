@@ -264,6 +264,13 @@ GEAR = {
     'bloatsac_plate':    {'name': 'Bloatsac Plate',    'slot': 'carapace', 'tier': 1, 'cost': 22, 'maxHp': 6},
     'engorged_carapace': {'name': 'Engorged Carapace', 'slot': 'carapace', 'tier': 2, 'cost': 46, 'maxHp': 12, 'def': 1},
     'leviathan_hide':    {'name': 'Leviathan Hide',    'slot': 'carapace', 'tier': 3, 'cost': 82, 'maxHp': 20, 'def': 2},
+    # ── Hybrid line (tier 2) — two-stat, no rider. Off-ladder like Vital/
+    # Illuminating: trade the rider for stats split across two PERK attributes
+    # so one piece can bridge two perk nodes (perk_stat sums equipped gear).
+    # Each sits on the slot matching its PRIMARY stat. Design 2026-07-23.
+    'duelist_fang':   {'name': 'Duelist Fang',   'slot': 'fang',     'tier': 2, 'cost': 46, 'atk': 3, 'spd': 2},
+    'warbrand_plate': {'name': 'Warbrand Plate', 'slot': 'carapace', 'tier': 2, 'cost': 46, 'def': 3, 'atk': 2},
+    'wardens_charm':  {'name': "Warden's Charm",  'slot': 'charm',    'tier': 2, 'cost': 46, 'spd': 2, 'def': 2},
     # Charm — Feint riders (new slot; light on raw stats, value is the rider)
     'quartz_charm':   {'name': 'Quartz Charm',   'slot': 'charm', 'tier': 1, 'cost': 20, 'spd': 1, 'rider': 'trickster'},
     'venom_charm':    {'name': 'Venom Charm',    'slot': 'charm', 'tier': 1, 'cost': 25, 'spd': 1, 'rider': 'venomtrick'},
