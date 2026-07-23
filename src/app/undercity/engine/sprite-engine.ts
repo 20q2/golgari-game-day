@@ -50,7 +50,13 @@ function imageDataOf(img: HTMLImageElement): { data: Uint8ClampedArray; w: numbe
 const recolorCache = new Map<string, HTMLCanvasElement>();
 const anchorCache: Record<string, { x: number; y: number } | null> = {};
 let plazaBgImage: HTMLImageElement | null = null;
+let starryImage: HTMLImageElement | null = null;
 let loadPromise: Promise<void> | null = null;
+
+/** The Starry special-paint texture, or null until it loads (effect skips a frame). */
+export function getStarryTexture(): HTMLImageElement | null {
+  return starryImage;
+}
 
 interface HatImage {
   img: HTMLImageElement;
@@ -364,6 +370,15 @@ export function preloadAll(): Promise<void> {
   const bg = loadImage('undercity/plaza_background.png').then((img) => {
     plazaBgImage = img;
   });
+  // Starry special-paint texture. Fire-and-forget: a missing texture must not
+  // break preload — the starry effect simply skips its frames until it loads.
+  const starry = loadImage('undercity/effects/starry.jpg')
+    .then((img) => {
+      starryImage = img;
+    })
+    .catch(() => {
+      /* no starry texture — the starry effect renders nothing */
+    });
   // Canvases draw Material Icons ligatures (board glyphs, plaza emotes) —
   // make sure the font is resident before the first frame.
   const iconFont = document.fonts.load("26px 'Material Icons'").then(() => undefined);
@@ -378,9 +393,15 @@ export function preloadAll(): Promise<void> {
         /* missing hat art — getHatImage returns null and renderers skip it */
       }),
   );
-  loadPromise = Promise.all([...sprites, ...masks, ...hatGuides, ...hatLoads, bg, iconFont]).then(
-    () => undefined,
-  );
+  loadPromise = Promise.all([
+    ...sprites,
+    ...masks,
+    ...hatGuides,
+    ...hatLoads,
+    bg,
+    starry,
+    iconFont,
+  ]).then(() => undefined);
   return loadPromise;
 }
 
@@ -417,6 +438,133 @@ function regionMapFor(sprite: string, img: HTMLImageElement): Int8Array {
   }
   regionMapCache.set(sprite, map);
   return map;
+}
+
+// ── Special-paint (animated effect) overlays ────────────────────────────────
+
+// Silhouette masks: opaque white where the sprite has any colored region, else
+// transparent. Built once per sprite from its cached region map and reused for
+// every effect frame — the animated overlay is clipped to this via source-in.
+const silhouetteCache = new Map<string, HTMLCanvasElement>();
+
+export function getSilhouetteMask(sprite: string): HTMLCanvasElement | null {
+  const cached = silhouetteCache.get(sprite);
+  if (cached) return cached;
+  const img = rawImages[sprite];
+  if (!img) return null;
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const map = regionMapFor(sprite, img);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  const imageData = ctx.createImageData(w, h);
+  const data = imageData.data;
+  for (let p = 0; p < map.length; p++) {
+    if (map[p] >= 0) {
+      const i = p * 4;
+      data[i] = 255;
+      data[i + 1] = 255;
+      data[i + 2] = 255;
+      data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+  silhouetteCache.set(sprite, canvas);
+  return canvas;
+}
+
+// One reusable scratch canvas for all effect compositing — grown, never
+// reallocated per frame. Effects are painted here (clipped to the silhouette)
+// then blitted onto the destination canvas with plain source-over.
+let effectScratch: HTMLCanvasElement | null = null;
+function scratchOf(w: number, h: number): CanvasRenderingContext2D {
+  if (!effectScratch) effectScratch = document.createElement('canvas');
+  if (effectScratch.width < w || effectScratch.height < h) {
+    effectScratch.width = Math.max(effectScratch.width, w);
+    effectScratch.height = Math.max(effectScratch.height, h);
+  }
+  const ctx = effectScratch.getContext('2d')!;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  ctx.clearRect(0, 0, effectScratch.width, effectScratch.height);
+  return ctx;
+}
+
+/**
+ * Paint an animated special-paint overlay for `effect` onto `ctx`, clipped to
+ * the sprite's silhouette and confined to the destination box (dx,dy,dw,dh).
+ * `timeMs` is a monotonic time (e.g. the RAF timestamp); pass 0 for a static
+ * frame. Cheap: mask blit + one fill/texture draw + composite — no pixel reads.
+ */
+export function drawCreatureEffect(
+  ctx: CanvasRenderingContext2D,
+  sprite: string,
+  effect: string,
+  dx: number,
+  dy: number,
+  dw: number,
+  dh: number,
+  timeMs: number,
+): void {
+  const mask = getSilhouetteMask(sprite);
+  if (!mask || dw <= 0 || dh <= 0) return;
+  const w = Math.ceil(dw);
+  const h = Math.ceil(dh);
+  const sc = scratchOf(w, h);
+  const now = timeMs / 1000;
+
+  // 1) lay the silhouette, 2) clip the effect to it via source-in.
+  sc.imageSmoothingEnabled = false;
+  sc.drawImage(mask, 0, 0, w, h);
+  sc.globalCompositeOperation = 'source-in';
+
+  if (effect === 'metallic') {
+    const shineX = (((now * 0.4) % 1.6) - 0.3) * w;
+    const grad = sc.createLinearGradient(shineX - 0.12 * w, 0, shineX + 0.12 * w, 0);
+    grad.addColorStop(0, 'rgba(255,255,255,0)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.35)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    sc.fillStyle = grad;
+    sc.fillRect(0, 0, w, h);
+  } else if (effect === 'rainbow') {
+    const band = w * 0.5;
+    const sweepX = (((now * 0.35) % 1.6) - 0.3) * w;
+    const base = Math.floor((now * 50) % 360);
+    const grad = sc.createLinearGradient(sweepX - band, 0, sweepX + band, 0);
+    grad.addColorStop(0, 'rgba(255,255,255,0)');
+    grad.addColorStop(0.2, `hsla(${base}, 100%, 65%, 0.35)`);
+    grad.addColorStop(0.5, `hsla(${(base + 120) % 360}, 100%, 65%, 0.4)`);
+    grad.addColorStop(0.8, `hsla(${(base + 240) % 360}, 100%, 65%, 0.35)`);
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    sc.fillStyle = grad;
+    sc.fillRect(0, 0, w, h);
+  } else if (effect === 'prismatic') {
+    sc.globalAlpha = 0.12;
+    const hue = Math.floor((now * 10 + 180) % 360);
+    sc.fillStyle = `hsl(${hue}, 100%, 70%)`;
+    sc.fillRect(0, 0, w, h);
+    sc.globalAlpha = 1;
+  } else if (effect === 'starry') {
+    const tex = starryImage;
+    if (!tex) return; // texture not loaded yet — skip this frame
+    sc.imageSmoothingEnabled = true;
+    sc.globalAlpha = 0.6;
+    const texW = tex.naturalWidth;
+    const texH = tex.naturalHeight;
+    const range = texW * 0.08;
+    const panX = texW * 0.25 + Math.sin(now * 0.15) * range;
+    const panY = texH * 0.25 + Math.cos(now * 0.1) * range * 0.6;
+    sc.drawImage(tex, panX, panY, texW * 0.4, texH * 0.4, 0, 0, w, h);
+    sc.globalAlpha = 1;
+  } else {
+    return; // unknown effect id — draw nothing
+  }
+
+  // Blit the silhouette-clipped effect onto the destination.
+  ctx.drawImage(effectScratch!, 0, 0, w, h, dx, dy, dw, dh);
 }
 
 /**
@@ -586,6 +734,60 @@ export function getRecoloredWithHatDataUrl(
   hatId: string | null | undefined,
 ): string | null {
   return getRecoloredWithHat(sprite, colors, regions, hatId)?.toDataURL() ?? null;
+}
+
+// Static portraits with a single (non-animated) frame of a special paint baked
+// in — for list rows and small portraits that shouldn't each spin up a RAF.
+const recolorHatEffectCache = new Map<string, HTMLCanvasElement>();
+
+/**
+ * A static portrait: recolored sprite + hat with one frame of `effect`
+ * composited on. Cached by sprite + hues + hat + effect. Falls back to the
+ * plain hat portrait when there's no effect.
+ */
+export function getRecoloredWithHatEffect(
+  sprite: string,
+  colors: Record<string, number>,
+  regions: string[],
+  hatId: string | null | undefined,
+  effect: string | null | undefined,
+): HTMLCanvasElement | null {
+  const base = getRecoloredWithHat(sprite, colors, regions, hatId);
+  if (!base || !effect) return base;
+  const hues = regions.map((r) => colors[r] ?? 120).join('-');
+  const key = `${sprite}-${hues}-${hatId}-${effect}`;
+  const cached = recolorHatEffectCache.get(key);
+  if (cached) return cached;
+
+  const out = document.createElement('canvas');
+  out.width = base.width;
+  out.height = base.height;
+  const ctx = out.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(base, 0, 0);
+  const img = rawImages[sprite];
+  if (img) {
+    const sw = img.naturalWidth || img.width;
+    const sh = img.naturalHeight || img.height;
+    // The plain recolor is exactly sprite-sized and sits bottom-aligned,
+    // horizontally centered within the (hat-)padded portrait. Draw the effect
+    // over that footprint.
+    const ex = (base.width - sw) / 2;
+    const ey = base.height - sh;
+    drawCreatureEffect(ctx, sprite, effect, ex, ey, sw, sh, 0);
+  }
+  recolorHatEffectCache.set(key, out);
+  return out;
+}
+
+export function getRecoloredWithHatEffectDataUrl(
+  sprite: string,
+  colors: Record<string, number>,
+  regions: string[],
+  hatId: string | null | undefined,
+  effect: string | null | undefined,
+): string | null {
+  return getRecoloredWithHatEffect(sprite, colors, regions, hatId, effect)?.toDataURL() ?? null;
 }
 
 /** Head anchor: mask white-blob centroid, else the sprite's pure-red marker, else default. */
