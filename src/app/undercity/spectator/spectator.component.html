@@ -52,6 +52,21 @@
     </div>
   </div>
 
+  <!-- Persistent lobby pin — top-right, always visible except when the rail owns
+       that corner (hotspot/boss scenes) or nothing is gathering players -->
+  <div class="lobby-pin" *ngIf="showLobbyPin()">
+    <div class="lobby-head">
+      <span class="dot"></span> Waiting for Players
+    </div>
+    <div class="lobby-row" *ngFor="let e of lobbyGames()">
+      <div class="lobby-title">{{ e.gameTitle }}</div>
+      <div class="lobby-players">
+        <span class="q-count">{{ e.joined.length }} in</span>
+        <span class="q-names">{{ rosterNames(e) }}</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Hero card (hero scene) -->
   <div class="hero-card" *ngIf="scene().kind === 'hero' && scene().player as hp">
     <div class="hero-portrait">

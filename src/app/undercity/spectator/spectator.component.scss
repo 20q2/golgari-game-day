@@ -326,6 +326,82 @@ $panel-line: rgba(216, 194, 102, 0.35);
   }
 }
 
+// ── Persistent lobby pin ──────────────────────────────────────────────────────
+// Top-right, same anchor as .rail (they never show together — see showLobbyPin()).
+.lobby-pin {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 6;
+  width: 320px;
+  max-width: 32vw;
+  padding: 14px 16px;
+  background: $panel;
+  border: 1px solid $panel-line;
+  border-radius: 14px;
+  backdrop-filter: blur(4px);
+  color: $ink;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+
+  .lobby-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: $gold;
+    padding-bottom: 10px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid $panel-line;
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: $gold;
+      box-shadow: 0 0 8px $gold;
+    }
+  }
+
+  .lobby-row {
+    padding: 9px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+
+    &:first-of-type {
+      border-top: none;
+    }
+
+    .lobby-title {
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .lobby-players {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-top: 3px;
+      font-size: 15px;
+      color: rgba(230, 239, 230, 0.72);
+
+      .q-count {
+        flex: 0 0 auto;
+        font-weight: 800;
+        color: $gold;
+      }
+
+      .q-names {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+}
+
 // ── Hero card ─────────────────────────────────────────────────────────────────
 .hero-card {
   position: absolute;

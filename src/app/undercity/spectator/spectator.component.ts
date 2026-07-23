@@ -325,6 +325,13 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.scene().kind === 'hotspot' || this.scene().kind === 'boss';
   }
 
+  /** True when the persistent lobby pin should occupy the top-right corner.
+   *  Yields to the renown rail on hotspot/boss scenes (same anchor), and
+   *  hides entirely when nothing is gathering players. */
+  protected showLobbyPin(): boolean {
+    return this.lobbyGames().length > 0 && !this.showRail();
+  }
+
   /** Queued games currently being played at a table. */
   protected activeGames(): QueueEntry[] {
     return this.queue.entries().filter((e) => e.status === 'active');
