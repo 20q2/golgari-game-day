@@ -1211,6 +1211,12 @@ ESCAPE_LADDERS = {b + '_esc': b + '_lair' for b in BIOMES}
 # target; no graph edge exists between them, so the climb bypasses walk rules).
 ESCAPE_EXITS = {b + '_esc': b + '_lt' for b in BIOMES}
 
+# Every ladder node on the board (descent pairs <biome>_lt / <biome>_lb plus the
+# post-boss escape spurs <biome>_esc). Ladders are walk-stops: a mover halts ON a
+# ladder and never corridors through, then crosses for free via the ladder-cross
+# action. Static from the committed board; procedural depths preserve these ids.
+LADDER_NODES = frozenset(n for n, nd in MAP_NODES.items() if nd['type'] == 'ladder')
+
 # The island boss: one persistent HP pool per season. Anyone with enough
 # sigils can chip at it; whoever lands the killing blow takes the kill, then
 # the Sovereign reforms at full strength for the next challenger.

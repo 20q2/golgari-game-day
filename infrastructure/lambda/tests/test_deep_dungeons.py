@@ -354,3 +354,26 @@ def test_wild_warp_never_targets_escape_ladder(monkeypatch):
     monkeypatch.setattr(db, '_rng', _Stub())
     db._wild_warp_dest(data.MAP_NODES, 'cavern_r0')
     assert not (set(captured['opts']) & set(data.ESCAPE_LADDERS))
+
+
+# ── Ladder crossing: free pause-points (specs/2026-07-23-undercity-ladder-*) ──
+
+def test_all_ladders_are_walk_stops(table):
+    # Every ladder node (descent pairs + escape spurs) halts a walk: a mover is
+    # stopped ON it, never corridors through. (data/db imported at file top.)
+    doc = _join(table)
+    stop = db._stop_nodes(table, _sid(table), doc)
+    ladders = {n for n, nd in data.MAP_NODES.items() if nd['type'] == 'ladder'}
+    assert ladders, 'expected some ladder nodes on the board'
+    assert ladders <= stop
+
+
+def test_ladder_target_descent_and_escape():
+    nodes = data.MAP_NODES
+    # Descent pair points at its ladder twin, both directions.
+    assert db._ladder_target(nodes, 'cavern_lt') == 'cavern_lb'
+    assert db._ladder_target(nodes, 'cavern_lb') == 'cavern_lt'
+    # Escape spur points one-way at the biome surface mouth.
+    assert db._ladder_target(nodes, 'cavern_esc') == 'cavern_lt'
+    # Non-ladder nodes have no target.
+    assert db._ladder_target(nodes, 'cavern_lair') is None

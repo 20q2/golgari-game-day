@@ -320,11 +320,30 @@ def _stop_nodes(table, sid, doc):
     STOP on a bridge mouth and pay the toll on landing; it can never corridor
     through a bridge for free. Tier-1 units pass/warp through bridges freely, so
     bridges are not added for them. (Bridges a unit can't afford / is too large
-    for are already removed by _blocked_nodes, which wins over closed.)"""
-    closed = _closed_barriers(table, sid)
+    for are already removed by _blocked_nodes, which wins over closed.)
+    Every ladder (descent pairs + escape spurs) is a walk-stop too: a mover halts
+    ON a ladder and never corridors through — ladders are added to this WALKING
+    set only, not the spell set (_closed_barriers), so spell range is unchanged."""
+    closed = _closed_barriers(table, sid) | data.LADDER_NODES
     if doc.get('tier', 1) > data.TUNNEL_TIER_MAX:
         closed = closed | data.TUNNEL_NODES
     return closed
+
+
+def _ladder_target(nodes, node):
+    """The far end a ladder crosses to, or None if `node` is not a crossable
+    ladder. Escape spurs go one-way to the biome surface mouth (ESCAPE_EXITS);
+    a descent ladder goes to its ladder-type neighbour (the <biome>_lt / _lb
+    twin)."""
+    if node in data.ESCAPE_LADDERS:
+        return data.ESCAPE_EXITS[node]
+    nd = nodes.get(node)
+    if not nd or nd.get('type') != 'ladder':
+        return None
+    for nb in nd['neighbors']:
+        if nodes.get(nb, {}).get('type') == 'ladder':
+            return nb
+    return None
 
 
 def _wild_warp_dest(nodes, node):
