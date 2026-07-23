@@ -97,13 +97,17 @@ per-player.
 
 ## State delivery
 
-In the state-builder record loop (`undercity_db.py`, the `for item in items:` block),
-collect `FIRST#` rows into a dict and surface them:
+`handle_state` fetches most records with a single `sk >= 'PLAYER#'` range query.
+`FIRST#` sorts *before* `PLAYER#`, so it is **not** covered by that range — it needs
+its own `begins_with` query, exactly like the existing `MARKET#` and `EVENT#` fetches:
 
 ```python
-elif item['sk'].startswith('FIRST#'):
-    firsts[item['sk'].replace('FIRST#', '')] = {
-        'by': item.get('by'), 'at': item.get('at'), 'kind': item.get('kind')}
+fr = table.query(
+    KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+    ExpressionAttributeValues={':pk': pk, ':sk': 'FIRST#'})
+firsts = {i['sk'].replace('FIRST#', ''):
+          {'by': i.get('by'), 'at': i.get('at'), 'kind': i.get('kind')}
+          for i in (_clean(x) for x in fr['Items'])}
 ```
 
 Add to the serialized `out`: `out['firsts'] = firsts`  (`{ node: {by, at, kind} }`).
