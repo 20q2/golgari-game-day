@@ -5,43 +5,45 @@ import {
   ViewChild,
   computed,
   effect,
+  inject,
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { rgbToHsv, hsvToRgb } from '../engine/colors';
-import { ALL_SPRITES } from '../data/species';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { hsvToRgb } from '../engine/colors';
 import {
   classifierFor,
   buildRegionMap,
   buildRegionMapFromMask,
+  ensureHatGuide,
   hatPlacement,
+  paintedRgb,
   preloadAll,
 } from '../engine/sprite-engine';
-import { PAINTS } from '../data/cosmetics';
+import { PAINTS, paintSwatchCss } from '../data/cosmetics';
 
 type RegionKey = 'body' | 'belly' | 'stripes';
 
+/** One selectable sprite, discovered from the folder manifest. */
 interface SpriteOption {
+  /** Sprite key = base filename without extension (undefined for uploads). */
+  name?: string;
   label: string;
+  /** Base art URL. */
   url: string;
-  /** Classifier key (sprite name); undefined for uploaded files. */
-  sprite?: string;
+  /** A `<name>.mask.png` sits beside the base art. */
+  hasMask: boolean;
+  /** A `<name>.hat.png` guide sits beside the base art (enables the hat toggle). */
+  hasHat: boolean;
 }
 
-// The recolored player art lives here; keep in sync with public/undercity/player_sprites.
-const PLAYER_SPRITES = [
-  'pest',
-  'insect',
-  'zombie',
-  'saproling',
-  'plant',
-  'myconid_sporetender',
-  'slitherhead',
-  'shambling_shell',
-  'corpsejack_menace',
-  'brackish_trudge',
-  'brackish_trudge_stinky',
-];
+/** Shape of public/data/undercity-player-sprites.json — one entry per base
+ *  `<name>.png` in public/undercity/player_sprites/, with flags for the
+ *  companion mask/hat files. Built by scripts/gen-player-sprites-manifest.mjs. */
+interface PlayerSpriteManifest {
+  sprites: { name: string; hasMask: boolean; hasHat: boolean }[];
+}
 
 // Debug tints for the region-mask view (body / belly / stripes).
 const MASK_RGB: Record<number, [number, number, number]> = {
@@ -53,11 +55,18 @@ const MASK_RGB: Record<number, [number, number, number]> = {
 /**
  * Dev-only sprite recolor sandbox (route: /undercity/color-test).
  *
- * Loads any sprite by URL or file upload and applies the exact region
- * classifier from sprite-engine.ts, so you can dial each region's hue and
- * confirm a sprite is baked into the green marker palette correctly. The
- * "regions" toggle paints body/belly/stripes as flat debug colors to show
- * how every pixel was classified. Nothing here touches game state.
+ * Lists every sprite in public/undercity/player_sprites/ (discovered from the
+ * manifest, so new art appears automatically — no hardcoded list). Each sprite
+ * is 1–3 files:
+ *   <name>.png       base art
+ *   <name>.mask.png  region mask — when it matches the art's size the hue
+ *                    sliders recolor body/belly/stripes exactly as the board
+ *                    does (buildRegionMapFromMask). No/size-mismatched mask →
+ *                    the sprite's pixel classifier is used, same as the board.
+ *   <name>.hat.png   hat guide — when present, the "Hat" toggle places a hat.
+ * Uploads are supported for a quick look (classifier segmentation, no hat).
+ * The recolor mirrors the engine, so this is the place to confirm a sprite
+ * paints cleanly. Nothing here touches game state.
  */
 @Component({
   selector: 'app-undercity-color-test',
@@ -69,30 +78,26 @@ const MASK_RGB: Record<number, [number, number, number]> = {
 export class ColorTestComponent implements AfterViewInit {
   @ViewChild('preview') previewRef!: ElementRef<HTMLCanvasElement>;
 
-  protected readonly sprites: SpriteOption[] = [
-    ...PLAYER_SPRITES.map((n) => ({
-      label: `player: ${n}`,
-      url: `undercity/player_sprites/${n}.png`,
-      sprite: n,
-    })),
-    ...ALL_SPRITES.map((n) => ({
-      label: `placeholder: ${n}`,
-      url: `undercity/sprites/${n}.png`,
-      sprite: n,
-    })),
-  ];
+  private readonly http = inject(HttpClient);
+
+  protected readonly sprites = signal<SpriteOption[]>([]);
   protected readonly paints = PAINTS;
 
-  protected readonly spriteUrl = signal(this.sprites[0].url);
-  // Which classifier to segment with — the selected sprite's key (null for uploads).
-  private readonly spriteKey = signal<string | null>(this.sprites[0].sprite ?? null);
+  protected readonly spriteUrl = signal('');
+  // The current selection (null for uploads) — carries its mask/hat availability.
+  protected readonly current = signal<SpriteOption | null>(null);
+  // Classifier key for segmentation (null for uploads → default green-marker).
+  private readonly spriteKey = signal<string | null>(null);
   protected readonly hue = signal<Record<RegionKey, number>>({ body: 130, belly: 50, stripes: 130 });
   protected readonly showRegions = signal(false);
   protected readonly lightBg = signal(false);
-  /** Draw a tophat on the sprite via its hat guide (or head anchor fallback). */
+  /** Draw a hat on the sprite via its `<name>.hat.png` guide. */
   protected readonly showTophat = signal(false);
-  /** True once preloadAll() has the hat art + guides resident. */
+  /** True once preloadAll() has the hat art resident. */
   private readonly hatReady = signal(false);
+  /** Bumped once the selected sprite's hat guide has loaded, so the preview
+   *  re-renders with the hat placed. */
+  private readonly guideVersion = signal(0);
   protected readonly scale = signal(5);
   protected readonly loadError = signal<string | null>(null);
   protected readonly dims = signal<{ w: number; h: number } | null>(null);
@@ -103,21 +108,24 @@ export class ColorTestComponent implements AfterViewInit {
     stripes: 0,
   });
 
+  /** The hat toggle is only offered when the sprite has a hat guide. */
+  protected readonly canHat = computed(() => this.current()?.hasHat ?? false);
+
   protected readonly regionList: { key: RegionKey; name: string }[] = [
     { key: 'body', name: 'Body · region 0 (primary)' },
     { key: 'belly', name: 'Belly · region 1 (secondary)' },
     { key: 'stripes', name: 'Stripes · region 2 (accent)' },
   ];
 
-  // Smoothed region map cached against the image (and mask) it was built from, so
-  // dragging the hue sliders doesn't rebuild it every frame.
+  // Region map cached against the (image, mask) it was built from, so dragging
+  // the hue sliders doesn't rebuild it every frame.
   private regionCache: {
     img: HTMLImageElement | null;
     mask: HTMLImageElement | null;
     map: Int8Array | null;
   } = { img: null, mask: null, map: null };
   private readonly imageCache = new Map<string, HTMLImageElement>();
-  // Authored masks loaded on demand for the selected sprite (null once a fetch fails).
+  // Authored masks loaded on demand (null once a fetch fails or is skipped).
   private readonly maskCache = new Map<string, HTMLImageElement | null>();
   private readonly currentMask = signal<HTMLImageElement | null>(null);
   private readonly currentImage = signal<HTMLImageElement | null>(null);
@@ -126,14 +134,20 @@ export class ColorTestComponent implements AfterViewInit {
 
   protected readonly swatch = computed(() => {
     const h = this.hue();
-    const css = (deg: number) => `hsl(${deg}, 65%, 50%)`;
+    const css = (v: number) => paintSwatchCss(v, 65, 50);
     return { body: css(h.body), belly: css(h.belly), stripes: css(h.stripes) };
   });
 
+  /** Swatch CSS for a paint value (template helper for the paint buttons). */
+  protected swatchCss(value: number): string {
+    return paintSwatchCss(value, 65, 50);
+  }
+
   constructor() {
-    // Load the selected/ uploaded image, then cache + publish it.
+    // Load the selected / uploaded base art, then cache + publish it.
     effect(() => {
       const url = this.spriteUrl();
+      if (!url) return;
       const cached = this.imageCache.get(url);
       if (cached) {
         this.currentImage.set(cached);
@@ -149,14 +163,15 @@ export class ColorTestComponent implements AfterViewInit {
       img.src = url;
     });
 
-    // Load the authored mask for the selected sprite key (if any), so the
-    // sandbox segments exactly like the board. Uploads (null key) never have one.
+    // Load the authored mask when the sprite has one, so the sliders segment
+    // exactly like the board. No mask (or upload) → classifier fallback.
     effect(() => {
-      const key = this.spriteKey();
-      if (!key) {
+      const opt = this.current();
+      if (!opt?.name || !opt.hasMask) {
         this.currentMask.set(null);
         return;
       }
+      const key = opt.name;
       if (this.maskCache.has(key)) {
         this.currentMask.set(this.maskCache.get(key)!);
         return;
@@ -173,25 +188,67 @@ export class ColorTestComponent implements AfterViewInit {
       img.src = `undercity/player_sprites/${key}.mask.png`;
     });
 
-    // Redraw whenever the image, hues, selected sprite, or view options change.
+    // Load the sprite's hat guide (preloadAll only covers the built-in sprites),
+    // then re-render so the hat lands in the right place.
+    effect(() => {
+      const opt = this.current();
+      if (!opt?.name || !opt.hasHat) return;
+      void ensureHatGuide(opt.name).then(() => this.guideVersion.update((v) => v + 1));
+    });
+
+    // Redraw whenever the image, hues, selection, or view options change.
     effect(() => {
       const img = this.currentImage();
       const h = this.hue();
       const regions = this.showRegions();
       const scale = this.scale();
       this.spriteKey(); // re-render when the classifier changes
-      this.currentMask(); // re-render when the authored mask loads
-      this.showTophat(); // re-render when the tophat toggles
+      this.currentMask(); // re-render once the mask loads
+      this.showTophat(); // re-render when the hat toggles
       this.hatReady(); // re-render once the hat art has loaded
+      this.guideVersion(); // re-render once the hat guide lands
       if (this.viewReady && img) this.render(img, h, regions, scale);
     });
+
+    // Discover the sprite catalog from the folder manifest.
+    void firstValueFrom(this.http.get<PlayerSpriteManifest>('data/undercity-player-sprites.json'))
+      .then((manifest) => {
+        const options: SpriteOption[] = manifest.sprites.map((s) => ({
+          name: s.name,
+          label: `${s.name}${s.hasMask ? ' · mask' : ''}${s.hasHat ? ' · hat' : ''}`,
+          url: `undercity/player_sprites/${s.name}.png`,
+          hasMask: s.hasMask,
+          hasHat: s.hasHat,
+        }));
+        if (!options.length) {
+          this.loadError.set('No sprites found in player_sprites/.');
+          return;
+        }
+        this.sprites.set(options);
+        // Open on the first sprite that actually recolors (has a mask) so the
+        // sandbox is useful on load; else just the first sprite.
+        this.select(options.find((o) => o.hasMask) ?? options[0]);
+      })
+      .catch(() =>
+        this.loadError.set(
+          'Could not load the sprite manifest — run `npm run gen:player-sprites`.',
+        ),
+      );
+  }
+
+  /** Point the sandbox at a sprite: its base art URL + mask/hat flags. */
+  private select(opt: SpriteOption): void {
+    this.spriteUrl.set(opt.url);
+    this.spriteKey.set(opt.name ?? null);
+    this.current.set(opt);
+    if (!opt.hasHat) this.showTophat.set(false);
   }
 
   ngAfterViewInit(): void {
     this.viewReady = true;
     const img = this.currentImage();
     if (img) this.render(img, this.hue(), this.showRegions(), this.scale());
-    // Load the hat art + per-sprite hat guides so the tophat toggle can draw.
+    // Load the hat art so the tophat toggle can draw once enabled.
     void preloadAll().then(() => this.hatReady.set(true));
   }
 
@@ -199,8 +256,8 @@ export class ColorTestComponent implements AfterViewInit {
 
   selectSprite(event: Event): void {
     const url = (event.target as HTMLSelectElement).value;
-    this.spriteUrl.set(url);
-    this.spriteKey.set(this.sprites.find((s) => s.url === url)?.sprite ?? null);
+    const opt = this.sprites().find((s) => s.url === url);
+    if (opt) this.select(opt);
   }
 
   onFile(event: Event): void {
@@ -208,10 +265,10 @@ export class ColorTestComponent implements AfterViewInit {
     if (!file) return;
     if (this.objectUrl) URL.revokeObjectURL(this.objectUrl);
     this.objectUrl = URL.createObjectURL(file);
-    // Register under its own label so the <select> doesn't fight it.
-    const url = this.objectUrl;
-    this.spriteUrl.set(url);
+    this.spriteUrl.set(this.objectUrl);
     this.spriteKey.set(null); // uploads use the default green-marker classifier
+    this.current.set(null); // uploads have no mask/hat
+    this.showTophat.set(false);
   }
 
   setHue(region: RegionKey, event: Event): void {
@@ -301,10 +358,10 @@ export class ColorTestComponent implements AfterViewInit {
   }
 
   toggleTophat(): void {
-    this.showTophat.set(!this.showTophat());
+    if (this.canHat()) this.showTophat.set(!this.showTophat());
   }
 
-  // ── Recolor (uses the sprite-engine smoothed region map, mirroring the board) ──
+  // ── Recolor (mirrors the engine: authored mask when it fits, else classifier) ──
 
   private render(
     img: HTMLImageElement,
@@ -325,12 +382,16 @@ export class ColorTestComponent implements AfterViewInit {
     const data = imageData.data;
     const targetHues = [hues.body, hues.belly, hues.stripes];
 
-    // Prefer the authored mask (board parity); else the smoothed classifier map.
-    // Cache invalidates on either the image or the mask changing.
+    // Prefer the authored mask when it matches the art (board parity); else the
+    // sprite's classifier. Cache invalidates on the image or the mask changing.
     const mask = this.currentMask();
     if (this.regionCache.img !== img || this.regionCache.mask !== mask) {
       let map: Int8Array;
-      if (mask && (mask.naturalWidth || mask.width) === w && (mask.naturalHeight || mask.height) === h) {
+      if (
+        mask &&
+        (mask.naturalWidth || mask.width) === w &&
+        (mask.naturalHeight || mask.height) === h
+      ) {
         const mc = document.createElement('canvas');
         mc.width = w;
         mc.height = h;
@@ -355,7 +416,9 @@ export class ColorTestComponent implements AfterViewInit {
 
       // Hat-anchor marker → repaint as body color (engine parity).
       if (r === 255 && g === 0 && b === 0) {
-        const [nr, ng, nb] = hsvToRgb(targetHues[0] ?? 120, 0.65, 0.55);
+        const bodyVal = targetHues[0] ?? 120;
+        const [nr, ng, nb] =
+          bodyVal >= 0 ? hsvToRgb(bodyVal, 0.65, 0.55) : paintedRgb(128, 128, 128, bodyVal);
         data[i] = nr;
         data[i + 1] = ng;
         data[i + 2] = nb;
@@ -375,8 +438,7 @@ export class ColorTestComponent implements AfterViewInit {
         data[i + 1] = mg;
         data[i + 2] = mb;
       } else {
-        const hsv = rgbToHsv(r, g, b);
-        const [nr, ng, nb] = hsvToRgb(targetHues[region] ?? hsv.h, hsv.s, hsv.v);
+        const [nr, ng, nb] = paintedRgb(r, g, b, targetHues[region]);
         data[i] = nr;
         data[i + 1] = ng;
         data[i + 2] = nb;
@@ -392,11 +454,14 @@ export class ColorTestComponent implements AfterViewInit {
     const MAX_SIDE = 1536;
     const eff = Math.min(scale, MAX_SIDE / Math.max(w, h));
 
-    // Tophat overlay (mirrors the game): placement is in sprite-pixel space, so
-    // it maps to the offscreen render 1:1 and scales to the preview by `eff`.
-    // The canvas grows upward/sideways so a high or wide hat isn't clipped.
+    // Hat overlay via the sprite's guide (placement is in sprite-pixel space, so
+    // it maps to the offscreen render 1:1 and scales by `eff`). The canvas grows
+    // upward/sideways so a high or wide hat isn't clipped.
+    const opt = this.current();
     const rect =
-      this.showTophat() && this.hatReady() ? hatPlacement(this.spriteKey() ?? '', 'top_hat') : null;
+      this.showTophat() && this.hatReady() && opt?.hasHat
+        ? hatPlacement(opt.name ?? '', 'top_hat')
+        : null;
     const topPad = rect ? Math.max(0, -rect.sy) : 0;
     const sidePad = rect ? Math.max(0, -rect.sx, rect.sx + rect.sw - w) : 0;
 

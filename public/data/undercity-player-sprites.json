@@ -1,0 +1,129 @@
+{
+  "sprites": [
+    {
+      "name": "brackish_trudge",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "brackish_trudge_stinky",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "clamity_beast",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "corpsejack_menace",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "golgari_lich_lord",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "golgari_longlegs",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "grave_shell_scarab",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "grave_titan",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "insect",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
+      "name": "insect_2",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
+      "name": "myconid_sporetender",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "pest",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
+      "name": "pest_2",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
+      "name": "pest_big",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "plant",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "saproling",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
+      "name": "saproling_2",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
+      "name": "shambling_shell",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "slitherhead",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "squirrel",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
+      "name": "squirrel_general",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "squirrel_mage",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "swamp_dragon",
+      "hasMask": false,
+      "hasHat": false
+    },
+    {
+      "name": "zombie",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
+      "name": "zombie_2",
+      "hasMask": true,
+      "hasHat": true
+    }
+  ]
+}

@@ -33,6 +33,7 @@ export const HAT_MAP: Record<string, HatInfo> = Object.fromEntries(HATS.map((h) 
 export interface PaintInfo {
   id: string;
   name: string;
+  /** Region hue 0–359, or a neutral sentinel < 0 (see NEUTRAL_BANDS). */
   hue: number;
 }
 
@@ -47,9 +48,46 @@ export const PAINTS: PaintInfo[] = [
   { id: 'navy', name: 'Navy', hue: 230 },
   { id: 'violet', name: 'Violet', hue: 270 },
   { id: 'rose', name: 'Rose', hue: 340 },
+  // Achromatic paints. Real hues are 0–359, so these use out-of-range sentinel
+  // values (< 0): the recolor reads "value < 0" as "greyscale, not a hue" and
+  // remaps brightness into the band below (keep NEUTRAL_BANDS in sync).
+  { id: 'white', name: 'White', hue: -1 },
+  { id: 'grey', name: 'Grey', hue: -2 },
+  { id: 'black', name: 'Black', hue: -3 },
 ];
 
 export const PAINT_MAP: Record<string, PaintInfo> = Object.fromEntries(PAINTS.map((p) => [p.id, p]));
+
+/**
+ * Brightness band [lo, hi] each neutral sentinel remaps a region's pixels into
+ * (saturation forced to 0). Remapping the pixel's original brightness rather
+ * than flat-filling keeps the region's light-and-shadow so form stays readable.
+ * Mirror: NEUTRAL_BANDS in infrastructure/lambda/undercity_data.py.
+ */
+export const NEUTRAL_BANDS: Record<number, [number, number]> = {
+  [-1]: [0.68, 0.97], // white
+  [-2]: [0.28, 0.62], // grey
+  [-3]: [0.04, 0.32], // black
+};
+
+/** A paint value is achromatic (neutral) rather than a hue. */
+export function isNeutralPaint(value: number): boolean {
+  return value < 0;
+}
+
+/** CSS `background` for a paint swatch — a fixed tone for neutrals, else hsl. */
+export function paintSwatchCss(value: number, saturation = 60, lightness = 45): string {
+  switch (value) {
+    case -1:
+      return '#f2f2f2';
+    case -2:
+      return '#808080';
+    case -3:
+      return '#1e1e1e';
+    default:
+      return `hsl(${value}, ${saturation}%, ${lightness}%)`;
+  }
+}
 
 /** Renown prices (mirror HAT_PRICES / PAINT_PRICE in undercity_data.py). */
 export const HAT_PRICES: Record<HatInfo['rarity'], number> = {

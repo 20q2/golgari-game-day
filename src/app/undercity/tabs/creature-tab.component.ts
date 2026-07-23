@@ -27,6 +27,7 @@ import {
   PAINTS,
   SPECIAL_PAINTS,
   SPECIAL_PAINT_SWATCH,
+  paintSwatchCss,
   HatInfo,
   PaintInfo,
   SpecialPaintInfo,
@@ -227,6 +228,11 @@ export class CreatureTabComponent {
   protected readonly paints = PAINTS;
   protected readonly specialPaints = SPECIAL_PAINTS;
   protected readonly specialPaintSwatch = SPECIAL_PAINT_SWATCH;
+
+  /** CSS background for a paint swatch (neutral-aware). */
+  protected swatchCss(value: number): string {
+    return paintSwatchCss(value);
+  }
   protected readonly formName = formName;
   protected readonly isShielded = isShielded;
   protected readonly dieValues = [1, 2, 3, 4, 5, 6];

@@ -4,6 +4,10 @@
   "private": true,
   "scripts": {
     "ng": "ng",
+    "gen:player-sprites": "node scripts/gen-player-sprites-manifest.mjs",
+    "prestart": "npm run gen:player-sprites",
+    "prebuild": "npm run gen:player-sprites",
+    "prebuild:prod": "npm run gen:player-sprites",
     "start": "ng serve",
     "build": "ng build --configuration development --base-href='/golgari-game-day/'",
     "build:prod": "ng build --configuration production --base-href='/golgari-game-day/' && npm run flatten-build",

@@ -29,7 +29,7 @@
       <label class="field">
         <span>Sprite</span>
         <select (change)="selectSprite($event)">
-          @for (s of sprites; track s.url) {
+          @for (s of sprites(); track s.url) {
             <option [value]="s.url" [selected]="s.url === spriteUrl()">{{ s.label }}</option>
           }
         </select>
@@ -47,8 +47,14 @@
         <button class="btn" [class.active]="lightBg()" (click)="toggleBg()">
           {{ lightBg() ? 'Light bg' : 'Dark bg' }}
         </button>
-        <button class="btn" [class.active]="showTophat()" (click)="toggleTophat()">
-          {{ showTophat() ? 'Tophat on' : 'Tophat off' }}
+        <button
+          class="btn"
+          [class.active]="showTophat()"
+          [disabled]="!canHat()"
+          [title]="canHat() ? '' : 'No <name>.hat.png for this sprite'"
+          (click)="toggleTophat()"
+        >
+          {{ showTophat() ? 'Hat on' : 'Hat off' }}
         </button>
         <button class="btn" (click)="reset()">Reset hues</button>
         <button class="btn" (click)="exportMask()">Export region mask</button>
@@ -78,9 +84,9 @@
             @for (p of paints; track p.id) {
               <button
                 class="paint"
-                [style.background]="'hsl(' + p.hue + ', 65%, 50%)'"
+                [style.background]="swatchCss(p.hue)"
                 [class.active]="hue()[region.key] === p.hue"
-                [title]="p.name + ' (' + p.hue + '°)'"
+                [title]="p.name"
                 (click)="applyPaint(region.key, p.hue)"
               ></button>
             }

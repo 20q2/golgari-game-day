@@ -13,6 +13,7 @@ import {
   SPECIAL_PAINTS,
   SPECIAL_PAINT_PRICE,
   SPECIAL_PAINT_SWATCH,
+  paintSwatchCss,
 } from '../data/cosmetics';
 import { getRecoloredDataUrl } from '../engine/sprite-engine';
 import { formSprite, FORM_VARIANTS, FormVariant } from '../data/species';
@@ -195,6 +196,11 @@ export class HatchFlowComponent {
 
   pickShell(hue: number): void {
     this.eggHue.set(hue);
+  }
+
+  /** CSS background for a paint swatch (neutral-aware). */
+  swatchCss(value: number): string {
+    return paintSwatchCss(value);
   }
 
   spriteUrl(starter: FormInfo, variant?: string | null): string | null {

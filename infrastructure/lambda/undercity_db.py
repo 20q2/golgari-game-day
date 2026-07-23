@@ -3704,17 +3704,41 @@ def _spell_cd_ready(doc, spell_id):
 
 
 def _start_spell_cooldown(doc, spell_id):
-    until = (datetime.utcnow()
-             + timedelta(minutes=data.SPELLS[spell_id]['cooldownMin']))
+    minutes = data.SPELLS[spell_id]['cooldownMin']
+    # Squirrel Spell Haste: cooldowns are halved (cast twice as often).
+    if 'spell_haste' in (doc.get('passives') or []):
+        minutes *= data.SPELL_HASTE_MULT
+    until = datetime.utcnow() + timedelta(minutes=minutes)
     doc.setdefault('spellCooldowns', {})[spell_id] = until.isoformat(timespec='seconds')
 
 
-def _apply_buff(doc, kind, until=None):
-    """Refresh-don't-stack: strip any same-kind buff, then append."""
+def _spell_damage(spell, doc):
+    """Level-scaled spell damage, ×1.5 for a Squirrel Mage (spell_mage)."""
+    dmg = engine.spell_power(spell, doc)
+    if 'spell_mage' in (doc.get('passives') or []):
+        dmg = round(dmg * data.SPELL_MAGE_DAMAGE_MULT)
+    return dmg
+
+
+def _spell_dodge_pct(caster_doc, target_doc):
+    """Dodge % against a caster's field spell; halved for a Squirrel Mage."""
+    chance = engine.spell_dodge_chance(engine.effective_stats(caster_doc)['spd'],
+                                       engine.effective_stats(target_doc)['spd'])
+    if 'spell_mage' in (caster_doc.get('passives') or []):
+        chance *= data.SPELL_MAGE_DODGE_MULT
+    return chance
+
+
+def _apply_buff(doc, kind, until=None, mult=1):
+    """Refresh-don't-stack: strip any same-kind buff, then append. `mult` scales
+    a beneficial self-buff's magnitude (Squirrel Warrior doubles self-casts;
+    read in engine.effective_stats)."""
     doc['buffs'] = [b for b in (doc.get('buffs') or []) if b.get('kind') != kind]
     entry = {'kind': kind}
     if until:
         entry['until'] = until
+    if mult != 1:
+        entry['mult'] = mult
     doc['buffs'].append(entry)
 
 
@@ -3881,7 +3905,7 @@ def _cast_at_guardian(table, sid, doc, spell, target_id):
                           'out_of_range')
 
     if spell['effect'] == 'field_damage':
-        new_hp = max(1, hp - engine.spell_power(spell, doc))
+        new_hp = max(1, hp - _spell_damage(spell, doc))
         dealt = hp - new_hp
         save(new_hp, buffs)
         if dealt:
@@ -3921,17 +3945,15 @@ def _cast_at_player(table, sid, doc, spell_id, spell, target_id):
         return _spell_err(f"They are beyond the spell's reach "
                           f"({spell['range']} spaces).", 'out_of_range')
 
-    caster_spd = engine.effective_stats(doc)['spd']
-
     def apply(t):
         engine.regen_hp(t, _now())
         _expire_buffs(t)
-        chance = engine.spell_dodge_chance(caster_spd, engine.effective_stats(t)['spd'])
+        chance = _spell_dodge_pct(doc, t)
         dodged = _rng.random() * 100 < chance
         dmg = 0
         if not dodged:
             if spell['effect'] == 'field_damage':
-                dmg = engine.spell_power(spell, doc)
+                dmg = _spell_damage(spell, doc)
                 t['hp'] = max(1, t['hp'] - dmg)   # never composts (spec §2.2)
                 t['hpUpdatedAt'] = _now()
             else:
@@ -4006,7 +4028,7 @@ def _cast_boss_strike(table, sid, doc, spell, target):
     at 1 — the killing blow must be landed in person."""
     if target == 'boss':
         hp = _boss_hp(table, sid)
-        new_hp = max(1, hp - engine.spell_power(spell, doc))
+        new_hp = max(1, hp - _spell_damage(spell, doc))
         dealt = hp - new_hp
         _set_boss_hp(table, sid, new_hp)
         doc['bossDamage'] = doc.get('bossDamage', 0) + dealt
@@ -4021,7 +4043,7 @@ def _cast_boss_strike(table, sid, doc, spell, target):
         return {'dmg': dealt, 'targetName': name, 'text': text}
     if target in data.LAIR_BOSSES:
         hp, slain, _ = _lair_state(table, sid, target)
-        new_hp = max(1, hp - engine.spell_power(spell, doc))
+        new_hp = max(1, hp - _spell_damage(spell, doc))
         dealt = hp - new_hp
         _set_lair_state(table, sid, target, new_hp, slain)
         name = data.LAIR_BOSSES[target]['name']

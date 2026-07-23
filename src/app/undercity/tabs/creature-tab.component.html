@@ -475,7 +475,7 @@
                       <button
                         class="paint-swatch"
                         [class.selected]="you.paint[region] === p.hue"
-                        [style.background]="'hsl(' + p.hue + ', 60%, 45%)'"
+                        [style.background]="swatchCss(p.hue)"
                         [title]="p.name"
                         [disabled]="busy()"
                         (click)="setPaint($any(region), p)"

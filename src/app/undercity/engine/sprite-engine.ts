@@ -11,9 +11,25 @@
  */
 import { rgbToHsv, hsvToRgb } from './colors';
 import { ALL_SPRITES } from '../data/species';
-import { HATS, HatInfo } from '../data/cosmetics';
+import { HATS, HatInfo, NEUTRAL_BANDS } from '../data/cosmetics';
 
 type Classifier = (r: number, g: number, b: number, a: number) => number;
+
+/**
+ * Recolor a single pixel by a paint value. A value ≥ 0 is a hue: shift hue and
+ * keep the pixel's own saturation/brightness (the classic marker recolor). A
+ * value < 0 is an achromatic sentinel (see NEUTRAL_BANDS in cosmetics.ts):
+ * force saturation to 0 and remap the pixel's brightness into the paint's band,
+ * so the region turns greyscale while keeping its light-and-shadow.
+ */
+export function paintedRgb(r: number, g: number, b: number, value: number): [number, number, number] {
+  const hsv = rgbToHsv(r, g, b);
+  if (value >= 0) return hsvToRgb(value, hsv.s, hsv.v);
+  const band = NEUTRAL_BANDS[value];
+  if (!band) return hsvToRgb(0, 0, hsv.v); // unknown sentinel → plain desaturate
+  const [lo, hi] = band;
+  return hsvToRgb(0, 0, lo + hsv.v * (hi - lo));
+}
 
 const CUSTOM_CLASSIFIERS: Record<string, Classifier> = {
   godzilla: classifyGodzillaPixel,
@@ -292,9 +308,12 @@ function recolorImage(
       b = data[i + 2],
       a = data[i + 3];
 
-    // Hat-anchor marker → repaint as body color.
+    // Hat-anchor marker → repaint as body color (mid-tone for a hue, band
+    // midpoint for a neutral).
     if (r === 255 && g === 0 && b === 0 && a > 0) {
-      const [nr, ng, nb] = hsvToRgb(targetHues[0] ?? 120, 0.65, 0.55);
+      const bodyVal = targetHues[0] ?? 120;
+      const [nr, ng, nb] =
+        bodyVal >= 0 ? hsvToRgb(bodyVal, 0.65, 0.55) : paintedRgb(128, 128, 128, bodyVal);
       data[i] = nr;
       data[i + 1] = ng;
       data[i + 2] = nb;
@@ -303,9 +322,9 @@ function recolorImage(
 
     const region = regionMap[p];
     if (region < 0) continue; // outline / untouched / transparent
-    const hsv = rgbToHsv(r, g, b);
-    const newHue = targetHues[region] ?? hsv.h;
-    const [nr, ng, nb] = hsvToRgb(newHue, hsv.s, hsv.v);
+    const value = targetHues[region];
+    if (value === undefined) continue; // no paint for this region → keep art
+    const [nr, ng, nb] = paintedRgb(r, g, b, value);
     data[i] = nr;
     data[i + 1] = ng;
     data[i + 2] = nb;
@@ -405,6 +424,30 @@ export function preloadAll(): Promise<void> {
   return loadPromise;
 }
 
+// Hat guides fetched on demand (per key), so ensureHatGuide is idempotent and
+// non-destructive — it only ever adds a <key>.hat.png guide, never touches the
+// shared raw-sprite or mask caches.
+const ensuredGuides = new Set<string>();
+
+/**
+ * Load a sprite's <key>.hat.png guide into the engine so hatPlacement() can
+ * position a hat on it — for keys outside ALL_SPRITES (which preloadAll covers),
+ * e.g. sprites the dev color-test sandbox discovers from the folder. A missing
+ * guide is fine (the caller simply won't offer a hat). Idempotent per key.
+ */
+export function ensureHatGuide(key: string): Promise<void> {
+  if (ensuredGuides.has(key)) return Promise.resolve();
+  ensuredGuides.add(key);
+  return loadImage(`undercity/player_sprites/${key}.hat.png`)
+    .then((img) => {
+      hatGuideImages[key] = img;
+      delete hatGuideCache[key]; // drop any cached "no guide" result
+    })
+    .catch(() => {
+      ensuredGuides.delete(key); // allow a retry if the file appears later
+    });
+}
+
 export function getPlazaBackground(): HTMLImageElement | null {
   return plazaBgImage;
 }
@@ -447,14 +490,10 @@ function regionMapFor(sprite: string, img: HTMLImageElement): Int8Array {
 // every effect frame — the animated overlay is clipped to this via source-in.
 const silhouetteCache = new Map<string, HTMLCanvasElement>();
 
-export function getSilhouetteMask(sprite: string): HTMLCanvasElement | null {
-  const cached = silhouetteCache.get(sprite);
-  if (cached) return cached;
-  const img = rawImages[sprite];
-  if (!img) return null;
-  const w = img.naturalWidth || img.width;
-  const h = img.naturalHeight || img.height;
-  const map = regionMapFor(sprite, img);
+/** A white-on-transparent silhouette canvas from a region map (opaque white
+ *  wherever a colored region sits). Shared by getSilhouetteMask and any caller
+ *  that already has a region map (e.g. the color-test sandbox). */
+export function buildSilhouette(map: Int8Array, w: number, h: number): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
@@ -471,6 +510,17 @@ export function getSilhouetteMask(sprite: string): HTMLCanvasElement | null {
     }
   }
   ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+export function getSilhouetteMask(sprite: string): HTMLCanvasElement | null {
+  const cached = silhouetteCache.get(sprite);
+  if (cached) return cached;
+  const img = rawImages[sprite];
+  if (!img) return null;
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const canvas = buildSilhouette(regionMapFor(sprite, img), w, h);
   silhouetteCache.set(sprite, canvas);
   return canvas;
 }
@@ -510,7 +560,27 @@ export function drawCreatureEffect(
   timeMs: number,
 ): void {
   const mask = getSilhouetteMask(sprite);
-  if (!mask || dw <= 0 || dh <= 0) return;
+  if (!mask) return;
+  drawEffectMasked(ctx, mask, effect, dx, dy, dw, dh, timeMs);
+}
+
+/**
+ * Like drawCreatureEffect but takes an explicit silhouette `mask` canvas
+ * (opaque white where the creature is) instead of a sprite-name lookup — for
+ * callers outside the engine's sprite caches, e.g. the color-test sandbox which
+ * segments its own arbitrary images.
+ */
+export function drawEffectMasked(
+  ctx: CanvasRenderingContext2D,
+  mask: HTMLCanvasElement,
+  effect: string,
+  dx: number,
+  dy: number,
+  dw: number,
+  dh: number,
+  timeMs: number,
+): void {
+  if (dw <= 0 || dh <= 0) return;
   const w = Math.ceil(dw);
   const h = Math.ceil(dh);
   const sc = scratchOf(w, h);

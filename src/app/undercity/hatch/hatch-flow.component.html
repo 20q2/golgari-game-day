@@ -14,7 +14,7 @@
           <button
             class="shell-swatch"
             [class.selected]="eggHue() === paint.hue"
-            [style.background]="'hsl(' + paint.hue + ', 60%, 45%)'"
+            [style.background]="swatchCss(paint.hue)"
             [title]="paint.name"
             (click)="pickShell(paint.hue)"
           ></button>
@@ -71,7 +71,7 @@
           [class.worn]="equipPaint() === paint.id"
           (click)="ownsPaint(paint.id) ? wearPaint(paint.id) : togglePaint(paint.id)"
         >
-          <span class="swatch" [style.background]="'hsl(' + paint.hue + ', 60%, 45%)'"></span>
+          <span class="swatch" [style.background]="swatchCss(paint.hue)"></span>
           <span class="shop-name">{{ paint.name }}</span>
           @if (ownsPaint(paint.id)) {
             <span class="shop-tag">{{ equipPaint() === paint.id ? 'wearing' : 'wear' }}</span>

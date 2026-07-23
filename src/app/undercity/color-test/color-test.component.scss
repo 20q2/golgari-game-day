@@ -156,6 +156,13 @@ header {
     background: #3c5a2f;
     border-color: #7cb069;
   }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    &:hover {
+      border-color: #3a4432;
+    }
+  }
 }
 
 .region {
