@@ -2979,6 +2979,8 @@ def _finish_battle(table, sid, doc, rec, result):
         out = _finish_barrier(table, sid, doc, rec, result)
     elif kind == 'lair':
         out = _finish_lair(table, sid, doc, rec, result)
+    elif kind == 'world':
+        out = _finish_world(table, sid, doc, rec, result)
     else:
         out = _finish_boss(table, sid, doc, rec, result)
     bonus = cutpurse_bonus(doc, rec['player'].get('feint_won', False),
@@ -3145,6 +3147,109 @@ def _finish_lair(table, sid, doc, rec, result):
         out['text'] = (f"The {display} withdraws, wounded — "
                        f'{max(1, result["defenderHp"])}/{npc_max} HP. It will be waiting.')
     return out
+
+
+def _finish_world(table, sid, doc, rec, result):
+    """Bank this skirmish's damage into the shared pool + the contributor map.
+    Re-reads the live pool (concurrent skirmishes may have chipped it) and applies
+    the delta, so no write clobbers another player's contribution. If the pool
+    hits 0, resolve the tiered payout to everyone."""
+    spec = data.WORLD_EVENT
+    dealt = max(0, int(rec['ctx'].get('poolStart', 0)) - int(result['defenderHp']))
+    uid = doc['userId']
+    _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])  # participation XP
+    out = {'type': 'world_event',
+           'npc': {'name': spec['name'], 'id': spec['id'], 'maxHp': rec['npc']['maxHp']},
+           'battle': result, 'dealt': dealt}
+
+    we = _world_event(table, sid)
+    if not we or we.get('dead'):
+        # Beast already fell (a concurrent killer). Damage is moot; no double pay.
+        out['text'] = f"You land your blows, but the {spec['name']} has already fallen."
+        return out
+
+    new_hp = max(0, int(we['hp']) - dealt)
+    we['hp'] = new_hp
+    we['dmg'][uid] = int(we['dmg'].get(uid, 0)) + dealt
+    _set_world_event(table, sid, we)
+
+    if result['outcome'] == 'defender':
+        _compost(table, sid, doc,
+                 f"{doc['username']} was flung down by the {spec['name']} "
+                 f"(it lingers at {new_hp} HP).")
+        out['text'] = (f"The {spec['name']} hurls you off — but your blows landed "
+                       f"({dealt} dmg). Back to the Gate…")
+    else:
+        out['text'] = (f"You rake the {spec['name']} for {dealt} damage. "
+                       'It shrugs and settles back in.')
+
+    if new_hp <= 0:
+        results = _world_event_payout(table, sid, doc)
+        out['worldKill'] = True
+        mine = next((r for r in results if r['userId'] == uid), None)
+        if mine:
+            out['reward'] = {'bracket': mine['bracket'], 'spores': mine['spores'],
+                             'renown': mine['renown']}
+            out['spores'] = mine['spores']   # display echo; credited in payout
+        out['text'] = (f"Your blow fells the {spec['name']}! It collapses into the mire — "
+                       'the spoils are shared out by who bled it most.')
+    return out
+
+
+def _world_event_payout(table, sid, killer_doc):
+    """Deplete-triggered payout. Marks the event dead (idempotent guard), then
+    pays every contributor by damage bracket: spores to their season doc, renown
+    to their perm doc, and an awayEvent line so absent players learn of it. The
+    killer's season doc is mutated in place (the caller persists it) to avoid an
+    optimistic-lock clobber. Returns a list of {userId, bracket, spores, renown}."""
+    we = _world_event(table, sid)
+    if not we or we.get('dead'):
+        return []
+    we['dead'] = True
+    we['hp'] = 0
+    _set_world_event(table, sid, we)
+
+    max_hp = max(1, int(we['maxHp']))
+    dmg = {u: int(v) for u, v in (we.get('dmg') or {}).items() if int(v) > 0}
+    killer_uid = killer_doc['userId']
+    if not dmg:
+        _event(table, sid, 'boss', f"The {data.WORLD_EVENT['name']} has fallen!")
+        return []
+    top_uid = max(dmg, key=lambda u: (dmg[u], u))  # deterministic tiebreak
+
+    results = []
+    for uid, dealt in dmg.items():
+        share = dealt / max_hp
+        bracket, reward = data.world_event_reward(share, uid == top_uid)
+        if uid == killer_uid:
+            killer_doc['spores'] = killer_doc.get('spores', 0) + reward['spores']
+        else:
+            p = _get_player(table, sid, uid)
+            if p:
+                p['spores'] = p.get('spores', 0) + reward['spores']
+                _push_away_event(p, {
+                    'kind': 'world_kill', 'name': data.WORLD_EVENT['name'],
+                    'bracket': bracket, 'spores': reward['spores'],
+                    'renown': reward['renown'], 'at': _now()})
+                for _ in range(3):
+                    if _put_player(table, p):
+                        break
+                    p = _get_player(table, sid, uid)
+                    if not p:
+                        break
+        if reward['renown']:
+            perm = _get_perm(table, uid)
+            perm['renown'] = perm.get('renown', 0) + reward['renown']
+            table.put_item(Item=perm)
+        results.append({'userId': uid, 'bracket': bracket,
+                        'spores': reward['spores'], 'renown': reward['renown']})
+
+    _event(table, sid, 'boss',
+           f"The {data.WORLD_EVENT['name']} has fallen! The wilderness quiets.")
+    _broadcast_away(table, sid, {'kind': 'world_fallen',
+                                 'name': data.WORLD_EVENT['name'], 'at': _now()},
+                    killer_uid)
+    return results
 
 
 def _finish_boss(table, sid, doc, rec, result):

@@ -179,3 +179,97 @@ def test_world_skirmish_caps_at_six_rounds(monkeypatch):
     assert db._get_player(table, sid, 'user-alex').get('battle') is None
     assert rounds <= data.WORLD_EVENT_ROUND_CAP
     assert 'spaceEvent' in last
+
+
+# ── Task 7: damage banking + tiered payout ───────────────────────────────────
+
+def test_skirmish_banks_damage_to_pool_and_dmg_map(monkeypatch):
+    table = _started_table()
+    sid = _sid(table)
+    _join(table, 'user-alex', 'Alex')
+    we = _place_live_event(table, sid)
+    start = we['hp']
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = we['nodes'][0]
+    db._put_player(table, doc)
+    act(table, 'world-engage', user='user-alex', name='Alex')
+
+    # Chip 3 HP per round; never kills the 200-HP pool -> ends at the round cap.
+    def _stub(att, dfn, *a, **k):
+        dfn.hp -= 3
+        return [{'round': 1, 'by': 'attacker', 'dmg': 3, 'winner': 'attacker'}]
+    monkeypatch.setattr(db.engine, 'resolve_round', _stub)
+    for _ in range(12):
+        act(table, 'combat-round', user='user-alex', name='Alex', stance='aggress')
+        if not db._get_player(table, sid, 'user-alex').get('battle'):
+            break
+
+    we = db._world_event(table, sid)
+    dealt = start - we['hp']
+    assert dealt > 0
+    assert we['dmg'].get('user-alex') == dealt
+    assert we['dead'] is False
+
+
+def test_pool_depletion_pays_contributors_by_bracket():
+    table = _started_table()
+    sid = _sid(table)
+    _join(table, 'u_top', 'Top')
+    _join(table, 'u_minor', 'Minor')
+    top_before = db._get_player(table, sid, 'u_top')['spores']
+    minor_before = db._get_player(table, sid, 'u_minor')['spores']
+
+    rec = {'spawned': True, 'node': 'x', 'nodes': ['a', 'x', 'b'],
+           'hp': 1, 'maxHp': 200, 'dmg': {'u_top': 150, 'u_minor': 25}, 'dead': False}
+    db._set_world_event(table, sid, rec)
+
+    top = db._get_player(table, sid, 'u_top')  # the killer doc (mutated in place)
+    results = db._world_event_payout(table, sid, top)
+
+    assert db._world_event(table, sid)['dead'] is True
+    brackets = {r['userId']: r['bracket'] for r in results}
+    assert brackets['u_top'] == 'vanquisher'
+    assert brackets['u_minor'] == 'minor'
+
+    # Killer: credited in place on the passed doc (caller persists it), not to the
+    # stored doc.
+    assert top['spores'] == top_before + data.WORLD_EVENT_REWARDS['vanquisher']['spores']
+    # Non-killer: credited to the stored doc + an away-event line.
+    minor_doc = db._get_player(table, sid, 'u_minor')
+    assert minor_doc['spores'] == minor_before + data.WORLD_EVENT_REWARDS['minor']['spores']
+    assert any(e.get('kind') == 'world_kill' for e in minor_doc.get('awayEvents', []))
+    # Renown to perm for both.
+    assert db._get_perm(table, 'u_top')['renown'] >= data.WORLD_EVENT_REWARDS['vanquisher']['renown']
+    assert db._get_perm(table, 'u_minor')['renown'] >= data.WORLD_EVENT_REWARDS['minor']['renown']
+
+    # Idempotent: already dead -> no second payout.
+    assert db._world_event_payout(table, sid, top) == []
+
+
+def test_killing_blow_pays_killer_inline_and_marks_dead(monkeypatch):
+    table = _started_table()
+    sid = _sid(table)
+    _join(table, 'user-alex', 'Alex')
+    we = _place_live_event(table, sid)
+    we['hp'] = 3
+    db._set_world_event(table, sid, we)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = we['nodes'][0]
+    db._put_player(table, doc)
+    before = db._get_player(table, sid, 'user-alex')['spores']
+    act(table, 'world-engage', user='user-alex', name='Alex')
+
+    def _stub(att, dfn, *a, **k):
+        dfn.hp = 0
+        return [{'round': 1, 'by': 'attacker', 'dmg': 99, 'winner': 'attacker'}]
+    monkeypatch.setattr(db.engine, 'resolve_round', _stub)
+    status, resp = act(table, 'combat-round', user='user-alex', name='Alex', stance='aggress')
+    assert status == 200, resp
+
+    ev = resp['spaceEvent']
+    assert ev['type'] == 'world_event'
+    assert ev['worldKill'] is True
+    assert ev['reward']['bracket'] == 'vanquisher'
+    assert db._world_event(table, sid)['dead'] is True
+    after = db._get_player(table, sid, 'user-alex')['spores']
+    assert after == before + ev['reward']['spores']
