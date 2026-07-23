@@ -92,11 +92,39 @@
             }
           </div>
           @if (activeBuffs().length) {
-            <div class="hud-buffs" aria-label="Active buffs">
-              @for (b of activeBuffs(); track b.kind) {
-                <span class="buff-badge" [class.debuff]="b.info.tone === 'debuff'" [title]="b.info.label + ' — ' + b.info.blurb">
-                  <mat-icon class="mi">{{ b.info.icon }}</mat-icon>
-                </span>
+            <!-- Buffs float in their own section one row below the HUD (top-right,
+                 like the board's focus picker) so the HP/XP bars get room to
+                 breathe. Tap the row to expand a detail panel. -->
+            <div class="hud-buffs" [class.open]="showBuffDetails()">
+              <button
+                type="button"
+                class="buff-badges"
+                aria-label="Active buffs — tap for details"
+                [attr.aria-expanded]="showBuffDetails()"
+                (click)="showBuffDetails.set(!showBuffDetails())"
+              >
+                @for (b of activeBuffs(); track b.kind) {
+                  <span class="buff-badge" [class.debuff]="b.info.tone === 'debuff'">
+                    <mat-icon class="mi">{{ b.info.icon }}</mat-icon>
+                  </span>
+                }
+              </button>
+              @if (showBuffDetails()) {
+                <div class="buff-backdrop" (click)="showBuffDetails.set(false)"></div>
+                <div class="buff-details" role="dialog" aria-label="Active buff details">
+                  <h4 class="buff-details-title">Active effects</h4>
+                  @for (b of activeBuffs(); track b.kind) {
+                    <div class="buff-detail-row" [class.debuff]="b.info.tone === 'debuff'">
+                      <span class="buff-badge" [class.debuff]="b.info.tone === 'debuff'">
+                        <mat-icon class="mi">{{ b.info.icon }}</mat-icon>
+                      </span>
+                      <span class="buff-detail-text">
+                        <span class="buff-detail-name">{{ b.info.label }}</span>
+                        <span class="buff-detail-blurb">{{ b.info.blurb }}</span>
+                      </span>
+                    </div>
+                  }
+                </div>
               }
             </div>
           }

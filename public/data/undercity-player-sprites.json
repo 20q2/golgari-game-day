@@ -107,8 +107,8 @@
     },
     {
       "name": "squirrel_mage",
-      "hasMask": false,
-      "hasHat": false
+      "hasMask": true,
+      "hasHat": true
     },
     {
       "name": "swamp_dragon",

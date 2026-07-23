@@ -259,6 +259,42 @@ def test_pool_depletion_pays_contributors_by_bracket():
     assert db._world_event_payout(table, sid, top) == []
 
 
+def test_payout_grants_xp_gear_and_roster_to_all():
+    table = _started_table()
+    sid = _sid(table)
+    _join(table, 'u_top', 'Top')
+    _join(table, 'u_minor', 'Minor')
+    top_xp0 = db._get_player(table, sid, 'u_top')['xp']
+    minor_xp0 = db._get_player(table, sid, 'u_minor')['xp']
+    top_stash0 = len(db._get_player(table, sid, 'u_top').get('gearStash') or [])
+    minor_stash0 = len(db._get_player(table, sid, 'u_minor').get('gearStash') or [])
+
+    rec = {'spawned': True, 'node': 'x', 'nodes': ['a', 'x', 'b'],
+           'hp': 1, 'maxHp': 200, 'dmg': {'u_top': 150, 'u_minor': 25}, 'dead': False}
+    db._set_world_event(table, sid, rec)
+
+    top = db._get_player(table, sid, 'u_top')  # killer doc, mutated in place
+    results = db._world_event_payout(table, sid, top)
+
+    by_uid = {r['userId']: r for r in results}
+    # XP bonus banked for both brackets.
+    assert top['xp'] == top_xp0 + data.WORLD_EVENT_REWARDS['vanquisher']['xp']
+    minor_doc = db._get_player(table, sid, 'u_minor')
+    assert minor_doc['xp'] == minor_xp0 + data.WORLD_EVENT_REWARDS['minor']['xp']
+    # One guaranteed gear piece each (stash grew by 1; small values never hit the cap here).
+    assert len(top.get('gearStash') or []) == top_stash0 + 1
+    assert len(minor_doc.get('gearStash') or []) == minor_stash0 + 1
+    # Result rows carry the new fields + a full roster.
+    assert by_uid['u_top']['gear'] is not None and by_uid['u_top']['xp'] > 0
+    roster = by_uid['u_top']['roster']
+    assert [r['name'] for r in roster] == ['Top', 'Minor']  # ranked by damage
+    assert {r['bracket'] for r in roster} == {'vanquisher', 'minor'}
+    # Away-event for the non-killer carries bracket + xp + gear + roster.
+    ev = next(e for e in minor_doc['awayEvents'] if e['kind'] == 'world_kill')
+    assert ev['bracket'] == 'minor' and ev['xp'] > 0
+    assert 'gear' in ev and len(ev['roster']) == 2
+
+
 def test_killing_blow_pays_killer_inline_and_marks_dead(monkeypatch):
     table = _started_table()
     sid = _sid(table)

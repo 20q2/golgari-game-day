@@ -3488,12 +3488,25 @@ def _finish_world(table, sid, doc, rec, result):
     return out
 
 
+def _gear_award_summary(drop):
+    """Client-facing view of a _roll_gear_drop result: id, display name, tier,
+    and whether the stash was full so it was ground to materials. None → no drop."""
+    if not drop:
+        return None
+    g = data.GEAR.get(drop['id'], {})
+    return {'id': drop['id'], 'name': g.get('name', drop['id']),
+            'tier': drop['tier'], 'ground': drop['outcome'] == 'stash-full'}
+
+
 def _world_event_payout(table, sid, killer_doc):
     """Deplete-triggered payout. Marks the event dead (idempotent guard), then
-    pays every contributor by damage bracket: spores to their season doc, renown
-    to their perm doc, and an awayEvent line so absent players learn of it. The
-    killer's season doc is mutated in place (the caller persists it) to avoid an
-    optimistic-lock clobber. Returns a list of {userId, bracket, spores, renown}."""
+    pays every contributor by damage bracket: spores + kill-bonus XP + one
+    guaranteed gear piece to their season doc, renown to their perm doc, and a
+    rich `world_kill` awayEvent (accolade, loot, and the full contributor roster)
+    so absent players see the raid result on return. The killer's season doc is
+    mutated in place (the caller persists it) to avoid an optimistic-lock clobber.
+    Non-contributors get a plain `world_fallen` news line. Returns a list of
+    {userId, bracket, spores, renown, xp, gear, leveledTo, roster}."""
     we = _world_event(table, sid)
     if not we or we.get('dead'):
         return []
@@ -3509,38 +3522,73 @@ def _world_event_payout(table, sid, killer_doc):
         return []
     top_uid = max(dmg, key=lambda u: (dmg[u], u))  # deterministic tiebreak
 
-    results = []
+    # Pass 1: resolve each contributor's bracket + fetch their doc once, then
+    # build the shared roster (ranked by damage) for every notification.
+    entries = []
     for uid, dealt in dmg.items():
-        share = dealt / max_hp
-        bracket, reward = data.world_event_reward(share, uid == top_uid)
-        if uid == killer_uid:
-            killer_doc['spores'] = killer_doc.get('spores', 0) + reward['spores']
+        bracket, reward = data.world_event_reward(dealt / max_hp, uid == top_uid)
+        pdoc = killer_doc if uid == killer_uid else _get_player(table, sid, uid)
+        if not pdoc:
+            continue
+        entries.append({'uid': uid, 'dealt': dealt, 'bracket': bracket,
+                        'reward': reward, 'doc': pdoc, 'is_killer': uid == killer_uid,
+                        'name': pdoc.get('username', '???')})
+    roster = [{'name': e['name'], 'bracket': e['bracket']}
+              for e in sorted(entries, key=lambda e: (-e['dealt'], e['uid']))]
+
+    # Pass 2: grant + persist.
+    results = []
+    for e in entries:
+        uid, reward, bracket = e['uid'], e['reward'], e['bracket']
+        if e['is_killer']:
+            gear, leveled_to = _pay_world_reward(table, sid, e['doc'], reward)
         else:
-            p = _get_player(table, sid, uid)
-            if p:
-                p['spores'] = p.get('spores', 0) + reward['spores']
-                _push_away_event(p, {
-                    'kind': 'world_kill', 'name': data.WORLD_EVENT['name'],
-                    'bracket': bracket, 'spores': reward['spores'],
-                    'renown': reward['renown'], 'at': _now()})
-                for _ in range(3):
-                    if _put_player(table, p):
-                        break
-                    p = _get_player(table, sid, uid)
-                    if not p:
-                        break
+            gear, leveled_to = _pay_world_reward_retry(
+                table, sid, uid, reward, bracket, roster)
         if reward['renown']:
             perm = _get_perm(table, uid)
             perm['renown'] = perm.get('renown', 0) + reward['renown']
             table.put_item(Item=perm)
         results.append({'userId': uid, 'bracket': bracket,
-                        'spores': reward['spores'], 'renown': reward['renown']})
+                        'spores': reward['spores'], 'renown': reward['renown'],
+                        'xp': reward['xp'], 'gear': gear, 'leveledTo': leveled_to,
+                        'roster': roster})
 
     _event(table, sid, 'boss',
            f"The {data.WORLD_EVENT['name']} has fallen! The wilderness quiets.")
+    # News only for players who didn't bleed it (contributors got a world_kill).
     _broadcast_away(table, sid, {'kind': 'world_fallen',
                                  'name': data.WORLD_EVENT['name'], 'at': _now()},
-                    killer_uid)
+                    killer_uid, skip_user_ids=set(dmg))
+    return results
+
+
+def _pay_world_reward(table, sid, doc, reward):
+    """Credit spores + kill-bonus XP + one guaranteed gear piece onto `doc`
+    (mutated in place). Returns (gear_summary, leveled_to). Caller persists."""
+    doc['spores'] = doc.get('spores', 0) + reward['spores']
+    levels = _grant_xp(table, sid, doc, reward['xp'])
+    drop = _roll_gear_drop(doc, reward['tiers'])
+    return _gear_award_summary(drop), (doc['level'] if levels else None)
+
+
+def _pay_world_reward_retry(table, sid, uid, reward, bracket, roster):
+    """Non-killer path: re-fetch + re-apply the grant on each optimistic-lock
+    attempt so a lost race never silently drops the loot. Pushes the rich
+    `world_kill` awayEvent. Returns (gear_summary, leveled_to)."""
+    for _ in range(4):
+        p = _get_player(table, sid, uid)
+        if not p:
+            return None, None
+        gear, leveled_to = _pay_world_reward(table, sid, p, reward)
+        _push_away_event(p, {
+            'kind': 'world_kill', 'name': data.WORLD_EVENT['name'],
+            'bracket': bracket, 'spores': reward['spores'], 'xp': reward['xp'],
+            'renown': reward['renown'], 'gear': gear, 'leveledTo': leveled_to,
+            'roster': roster, 'at': _now()})
+        if _put_player(table, p):
+            return gear, leveled_to
+    return None, None
     return results
 
 

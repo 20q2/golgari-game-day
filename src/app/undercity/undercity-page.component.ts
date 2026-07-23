@@ -143,6 +143,9 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
       .sort((a, b) => Number(a.info.tone === 'debuff') - Number(b.info.tone === 'debuff'));
   });
 
+  /** Whether the floating buff detail panel (tap-to-expand) is open. */
+  protected readonly showBuffDetails = signal(false);
+
   /** True while a battle is in progress — the server tracks this independently
    * of which tab is mounted, via UndercityStateService.pendingBattle(). */
   protected readonly inBattle = computed(() => !!this.store.pendingBattle());

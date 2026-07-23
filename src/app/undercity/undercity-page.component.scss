@@ -135,6 +135,7 @@
 // ── HUD header strip ─────────────────────────────────────────────────────────
 
 .hud {
+  position: relative; // anchor for the floating buff panel below it
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -266,16 +267,107 @@
   }
 }
 
-// Active overworld buffs/curses carried into the next battle — a compact row of
-// round icon badges (green = buff, red = debuff). Tooltip carries the details.
+// Active overworld buffs/curses carried into the next battle. Floats in its own
+// section one row below the HUD (top-right, mirroring the board's focus picker)
+// so the HP/XP bars aren't crowded. Tap the badge row to expand the details.
 .hud-buffs {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 10px;
+  z-index: 6;
+
+  &.open {
+    z-index: 8;
+  }
+}
+
+.buff-badges {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-shrink: 0;
   flex-wrap: wrap;
-  max-width: 96px;
   justify-content: flex-end;
+  max-width: 120px;
+  position: relative;
+  z-index: 2;
+  padding: 3px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(26, 24, 21, 0.82);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(40, 36, 30, 0.9);
+  }
+}
+
+// Full-screen catcher so a tap anywhere off the panel closes it.
+.buff-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+
+.buff-details {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 2;
+  min-width: 220px;
+  max-width: 78vw;
+  max-height: 60vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(103, 194, 128, 0.5);
+  background: rgba(26, 24, 21, 0.96);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+
+.buff-details-title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8bbf9a;
+}
+
+.buff-detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+
+  .buff-badge {
+    flex-shrink: 0;
+  }
+}
+
+.buff-detail-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.buff-detail-name {
+  font-weight: 700;
+  color: #b7e4c7;
+  font-size: 0.9rem;
+
+  .buff-detail-row.debuff & {
+    color: #f2b8b8;
+  }
+}
+
+.buff-detail-blurb {
+  font-size: 0.8rem;
+  color: rgba(229, 240, 229, 0.8);
+  line-height: 1.35;
 }
 
 .buff-badge {
