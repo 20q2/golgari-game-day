@@ -190,12 +190,16 @@ WORLD_EVENT_ROUND_CAP   = 6     # a single skirmish auto-ends after this many ro
 WORLD_EVENT_MAJOR_SHARE = 0.25  # damage-share threshold for the Major bracket
 WORLD_EVENT_MINOR_SHARE = 0.10  # damage-share threshold for the Minor bracket
 
-# Per-bracket payout: (spores, renown). Vanquisher = single top damage dealer.
+# Per-bracket payout. Vanquisher = single top damage dealer. `tiers` is the gear
+# drop's tier-weight profile (keys are gear tiers, values relative weights) — one
+# guaranteed piece per contributor, weighted better as the bracket rises. `xp` is
+# the kill-bonus XP on top of the per-skirmish participation XP. Mirror the
+# spores/renown/xp in src/app/undercity/data/world-event.ts when tuned.
 WORLD_EVENT_REWARDS = {
-    'vanquisher':  {'spores': 120, 'renown': 5},
-    'major':       {'spores': 80,  'renown': 3},
-    'minor':       {'spores': 45,  'renown': 2},
-    'participant': {'spores': 20,  'renown': 0},
+    'vanquisher':  {'spores': 120, 'renown': 5, 'xp': 60, 'tiers': {2: 0.4, 3: 0.6}},
+    'major':       {'spores': 80,  'renown': 3, 'xp': 40, 'tiers': {2: 0.7, 3: 0.3}},
+    'minor':       {'spores': 45,  'renown': 2, 'xp': 25, 'tiers': {1: 0.5, 2: 0.5}},
+    'participant': {'spores': 20,  'renown': 0, 'xp': 15, 'tiers': {1: 1.0}},
 }
 
 # ── Procedural dungeons ──────────────────────────────────────────────────────

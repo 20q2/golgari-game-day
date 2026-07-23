@@ -181,6 +181,19 @@ def test_world_skirmish_caps_at_six_rounds(monkeypatch):
     assert 'spaceEvent' in last
 
 
+# ── World-boss reward table shape ────────────────────────────────────────────
+
+def test_reward_brackets_carry_xp_and_gear_tiers():
+    for key in ('vanquisher', 'major', 'minor', 'participant'):
+        r = data.WORLD_EVENT_REWARDS[key]
+        assert r['xp'] > 0, f'{key} missing xp'
+        assert r['tiers'] and all(isinstance(t, int) for t in r['tiers']), \
+            f'{key} missing/invalid gear tiers'
+    # Better brackets trend toward better gear: vanquisher can roll T3, participant cannot.
+    assert 3 in data.WORLD_EVENT_REWARDS['vanquisher']['tiers']
+    assert 3 not in data.WORLD_EVENT_REWARDS['participant']['tiers']
+
+
 # ── Task 7: damage banking + tiered payout ───────────────────────────────────
 
 def test_skirmish_banks_damage_to_pool_and_dmg_map(monkeypatch):

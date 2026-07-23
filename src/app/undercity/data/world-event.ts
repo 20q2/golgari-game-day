@@ -8,11 +8,11 @@ export const WORLD_EVENT = {
   spriteId: 'moor_wyrm',
   roundCap: 6,
   rewards: {
-    vanquisher: { spores: 120, renown: 5 },
-    major: { spores: 80, renown: 3 },
-    minor: { spores: 45, renown: 2 },
-    participant: { spores: 20, renown: 0 },
-  } as Record<string, { spores: number; renown: number }>,
+    vanquisher: { spores: 120, renown: 5, xp: 60 },
+    major: { spores: 80, renown: 3, xp: 40 },
+    minor: { spores: 45, renown: 2, xp: 25 },
+    participant: { spores: 20, renown: 0, xp: 15 },
+  } as Record<string, { spores: number; renown: number; xp: number }>,
 };
 
 // Path (relative to the app base href) of the beast sprite.
