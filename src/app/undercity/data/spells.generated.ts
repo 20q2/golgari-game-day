@@ -20,6 +20,19 @@ export const SPELLS: SpellInfo[] = [
   { id: "deep_step", name: "Deep Step", category: "traversal", tier: 3, cooldownMin: 30, effect: "teleport", range: 6, desc: "Blink to any space within 6 steps.", icon: "alt_route" },
   { id: "queens_bane", name: "Queen's Bane", category: "boss", tier: 3, cooldownMin: 60, effect: "boss_strike", power: 15, desc: "Sear the Queen or a lair boss, from anywhere.", icon: "gavel" },
   { id: "wish", name: "Wish", category: "boss", tier: 3, cooldownMin: 60, effect: "wish", desc: "Cast any spell in existence, from any list.", icon: "auto_awesome" },
+  { id: "ember_fleck", name: "Ember Fleck", category: "field", tier: 1, cooldownMin: 15, effect: "field_damage", range: 4, power: 10, desc: "A quick fleck of ember at close range.", icon: "whatshot" },
+  { id: "necrotic_lance", name: "Necrotic Lance", category: "field", tier: 2, cooldownMin: 28, effect: "field_damage", range: 9, power: 16, desc: "A long lance of necrotic rot.", icon: "colorize" },
+  { id: "withering_gout", name: "Withering Gout", category: "field", tier: 3, cooldownMin: 26, effect: "field_damage", range: 6, power: 26, desc: "A gout of withering decay.", icon: "coronavirus" },
+  { id: "renewing_bloom", name: "Renewing Bloom", category: "buff", tier: 2, cooldownMin: 25, effect: "self_heal", power: 20, desc: "A bloom of renewing spores.", icon: "local_florist" },
+  { id: "deep_mend", name: "Deep Mend", category: "buff", tier: 3, cooldownMin: 30, effect: "self_heal", power: 34, desc: "Deep restorative mycelium knits you whole.", icon: "healing" },
+  { id: "sear_throne", name: "Sear the Throne", category: "boss", tier: 3, cooldownMin: 60, effect: "boss_strike", power: 22, desc: "Sear the Queen or a lair boss, from anywhere.", icon: "local_fire_department" },
+  { id: "shadowstep", name: "Shadowstep", category: "traversal", tier: 2, cooldownMin: 25, effect: "teleport", range: 3, desc: "Blink to any space within 3 steps.", icon: "nightlight" },
+  { id: "savage_roar", name: "Savage Roar", category: "buff", tier: 2, cooldownMin: 25, effect: "self_buff", desc: "+5 ATK in your next battle.", icon: "local_fire_department" },
+  { id: "iron_hide", name: "Iron Hide", category: "buff", tier: 2, cooldownMin: 25, effect: "self_buff", desc: "+4 DEF in your next battle.", icon: "security" },
+  { id: "fleetfoot_draught", name: "Fleetfoot Draught", category: "buff", tier: 2, cooldownMin: 25, effect: "self_buff", desc: "+3 SPD in your next battle.", icon: "directions_run" },
+  { id: "warding_dance", name: "Warding Dance", category: "buff", tier: 3, cooldownMin: 30, effect: "self_buff", desc: "+3 DEF and +3 SPD in your next battle.", icon: "shield_moon" },
+  { id: "sap_vigor", name: "Sap Vigor", category: "field", tier: 2, cooldownMin: 25, effect: "field_curse", range: 6, desc: "Curse a rival: −3 SPD in their next battle.", icon: "trending_down" },
+  { id: "rust_curse", name: "Rust Curse", category: "field", tier: 3, cooldownMin: 28, effect: "field_curse", range: 6, desc: "Curse a rival: −4 DEF in their next battle.", icon: "broken_image" },
 ];
 
 export const GRIMOIRES: GrimoireInfo[] = [

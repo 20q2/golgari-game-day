@@ -146,6 +146,26 @@ def test_self_buff_mult_doubles_new_buff():
     assert engine.effective_stats(base)['atk'] == 10 + 5 * 2
 
 
+_NEW_SPELLS = {
+    'ember_fleck': ('field_damage', 1), 'necrotic_lance': ('field_damage', 2),
+    'withering_gout': ('field_damage', 3), 'renewing_bloom': ('self_heal', 2),
+    'deep_mend': ('self_heal', 3), 'sear_throne': ('boss_strike', 3),
+    'shadowstep': ('teleport', 2), 'savage_roar': ('self_buff', 2),
+    'iron_hide': ('self_buff', 2), 'fleetfoot_draught': ('self_buff', 2),
+    'warding_dance': ('self_buff', 3), 'sap_vigor': ('field_curse', 2),
+    'rust_curse': ('field_curse', 3),
+}
+
+
+def test_new_spells_present_and_shaped():
+    for sid_, (effect, tier) in _NEW_SPELLS.items():
+        sp = data.SPELLS[sid_]
+        assert sp['effect'] == effect and sp['tier'] == tier, sid_
+        # buffKind on the new self_buff/field_curse spells must be a real handled kind
+        if effect in ('self_buff', 'field_curse'):
+            assert sp['buffKind'] in db.ONE_BATTLE_BUFFS, sid_
+
+
 # ── Engine helpers ───────────────────────────────────────────────────────────
 
 _LINE_NODES = {
