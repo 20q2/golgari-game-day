@@ -36,8 +36,10 @@ export const TERRAIN_RES = 0.6;
  * suppresses it. Exported so the map editor can offer the toggle only where it
  * does something.
  */
+// trove/cache/vault are drawn as dynamic sprites in board-canvas (they swap to a
+// plundered variant at runtime), so they are NOT baked into the terrain landmarks.
 export const LANDMARK_TYPES = ['boss', 'gate', 'shop', 'shrine', 'warp',
-  'ossuary', 'lair', 'vault', 'cache', 'ladder'];
+  'ossuary', 'lair', 'ladder'];
 
 export interface EdgeCurve {
   a: BoardNode;

@@ -354,6 +354,9 @@ export class BoardCanvas {
   private static readonly EXPLORED_KEY = 'undercity-explored-v1';
   private floorTex: FloorTextures = {};
   private landmarkTex: LandmarkTextures = {};
+  private treasureTex: HTMLImageElement | null = null;
+  private treasurePlunderedTex: HTMLImageElement | null = null;
+  private firsts: Record<string, { by: string; kind: string }> = {};
   private clearedDungeons = new Set<string>(); // biome keys with your sigil
   private onEnterDungeonCb: ((biome: string) => void) | null = null;
   private ambient: BoardAmbient;
@@ -411,6 +414,11 @@ export class BoardCanvas {
       this.rebuildRaf = null;
       this.rebuildLayers();
     });
+  }
+
+  /** Season-global first-conqueror plates + plundered-treasure state. */
+  setFirsts(firsts: Record<string, { by: string; kind: string }>): void {
+    this.firsts = firsts ?? {};
   }
 
   /** Dungeons YOU hold the sigil for render as 'cleared' (banner, calm glow). */
@@ -550,6 +558,14 @@ export class BoardCanvas {
       };
       img.src = src;
     }
+    // Treasure hoard set-piece (+ its plundered variant), drawn dynamically per
+    // frame in drawSpace so the plundered swap needs no terrain rebuild.
+    const hoard = new Image();
+    hoard.onload = () => (this.treasureTex = hoard);
+    hoard.src = 'undercity/icons/treasure_hoard.png';
+    const plundered = new Image();
+    plundered.onload = () => (this.treasurePlunderedTex = plundered);
+    plundered.src = 'undercity/icons/treasure_hoard_plundered.png';
     // Image decals paint into the prerendered terrain; re-render as each lands.
     preloadDecalImages(map, () => this.scheduleRebuild());
     this.resize();
@@ -1330,6 +1346,27 @@ export class BoardCanvas {
     // Sigil bosses pace behind their lair spaces.
     if (n.type === 'lair') this.drawLairBoss(n, elapsed);
 
+    // Treasure tiles wear the hoard sprite, swapping to a plundered variant once
+    // their season-global first conqueror has cracked them open.
+    if (n.type === 'trove' || n.type === 'cache' || n.type === 'vault') {
+      this.drawTreasureHoard(n);
+    }
+
+    // First-conqueror name-plates: lairs show at their biome GATE (the dungeon
+    // entrance); Savra at the boss node; treasure at the tile itself.
+    if (n.type === 'gate') {
+      const lair = this.firsts[`${n.id.split('_')[0]}_lair`];
+      if (lair) this.drawNamePlate(n.x, n.y + 8, `First cleared by ${lair.by}`);
+    } else if (n.type === 'boss') {
+      const b = this.firsts[n.id];
+      if (b) this.drawNamePlate(n.x, n.y + 8, `First to fell the Queen: ${b.by}`);
+    } else if (
+      this.firsts[n.id] &&
+      (n.type === 'trove' || n.type === 'cache' || n.type === 'vault')
+    ) {
+      this.drawNamePlate(n.x, n.y + 8, `Plundered by ${this.firsts[n.id].by}`);
+    }
+
     // The wilderness World Event beast squats across its 3-node footprint.
     if (this.worldEvent && this.worldEvent.nodes.includes(n.id)) {
       this.drawWorldEventTile(n, elapsed);
@@ -1351,6 +1388,37 @@ export class BoardCanvas {
       ctx.stroke();
       ctx.setLineDash([]);
     }
+    ctx.restore();
+  }
+
+  /** Treasure set-piece for trove/cache/vault; plundered variant once claimed. */
+  private drawTreasureHoard(n: BoardNode): void {
+    const img = this.firsts[n.id] ? this.treasurePlunderedTex : this.treasureTex;
+    if (!img) return;
+    const ctx = this.ctx;
+    const h = 46; // world px
+    const w = (img.width / img.height) * h;
+    ctx.drawImage(img, n.x - w / 2, n.y - h + DISC_RY * 0.3, w, h);
+  }
+
+  /** A gilded name banner planted below a landmark, styled like the token name
+   *  pill (see drawLabel) so the board reads as one system. */
+  private drawNamePlate(x: number, y: number, text: string): void {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    const w = ctx.measureText(text).width + 14;
+    ctx.beginPath();
+    ctx.roundRect(x - w / 2, y, w, 18, 5);
+    ctx.fillStyle = 'rgba(12, 10, 8, 0.82)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.8)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText(text, x, y + 4);
     ctx.restore();
   }
 
