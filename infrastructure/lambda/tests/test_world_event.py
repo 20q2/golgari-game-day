@@ -94,3 +94,41 @@ def test_finish_lair_first_kill_spawns_event():
     result = {'outcome': 'attacker', 'attackerHp': 20, 'defenderHp': 0, 'strikes': []}
     db._finish_lair(table, sid, doc, rec, result)
     assert db._world_event(table, sid) is not None
+
+
+# ── Task 5: resolve-space overlay + engage action ────────────────────────────
+
+def test_landing_on_event_node_returns_world_event_space():
+    table = _started_table()
+    sid = _sid(table)
+    _join(table, 'user-alex', 'Alex')
+    we = _place_live_event(table, sid)
+    doc = db._get_player(table, sid, 'user-alex')
+    ev = db._resolve_space(table, sid, doc, we['node'], prev=None)
+    assert ev['type'] == 'world_event'
+    assert ev['hp'] == we['hp']
+    assert ev['name'] == data.WORLD_EVENT['name']
+    assert ev['nodes'] == we['nodes']
+
+
+def test_world_engage_starts_world_battle():
+    table = _started_table()
+    sid = _sid(table)
+    _join(table, 'user-alex', 'Alex')
+    we = _place_live_event(table, sid)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = we['nodes'][0]
+    db._put_player(table, doc)
+    status, resp = act(table, 'world-engage', user='user-alex', name='Alex')
+    assert status == 200, resp
+    assert resp['spaceEvent']['type'] == 'battle_start'
+    assert resp['spaceEvent']['kind'] == 'world'
+
+
+def test_world_engage_requires_standing_on_beast():
+    table = _started_table()
+    sid = _sid(table)
+    _join(table, 'user-alex', 'Alex')
+    _place_live_event(table, sid)  # player is at home gate, not on the beast
+    status, resp = act(table, 'world-engage', user='user-alex', name='Alex')
+    assert status == 409

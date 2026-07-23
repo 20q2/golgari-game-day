@@ -1285,7 +1285,8 @@ def handle_action(table, body):
         'gamble': _gamble, 'poke': _poke, 'customize': _customize,
         'set-status': _set_status,
         'drop-item': _drop_item,
-        'attack-boss': _attack_boss, 'trade': _trade, 'dig': _dig, 'strike': _strike,
+        'attack-boss': _attack_boss, 'world-engage': _world_engage,
+        'trade': _trade, 'dig': _dig, 'strike': _strike,
         'vault-guess': _vault_guess, 'respawn': _respawn,
         'cast': _cast,
         'equip-grimoire': _equip_grimoire, 'ack-events': _ack_events,
@@ -2054,7 +2055,11 @@ def _move(table, sid, doc, payload):
     path = payload.get('path')
     if path is not None:
         allowed = set(pm.get('values') or [pm['value']])
-        closed = _closed_barriers(table, sid)
+        # Mirror _roll's destination pass: _stop_nodes (not the bare shared
+        # barrier set) so an evolved unit's bridge mouths count as legal bonk
+        # stops here too — otherwise a T2 that rolls past a mouth is offered it
+        # as a destination but then rejected on commit ("not a legal walk").
+        closed = _stop_nodes(table, sid, doc)
         blocked = _blocked_nodes(doc)
         if (not path or path[0] != prev or path[-1] != to
                 or not engine.validate_walk(nodes, path, allowed, closed, blocked)):
@@ -2259,6 +2264,17 @@ def _resolve_space(table, sid, doc, node, prev):
                 'movesAt': _umori_window_end(_uwin),
                 'text': 'Umori the ooze has oozed up a crooked stall here. Leave one, take one.',
                 'stock': _umori_barter_stock(table, sid, _uwin)}
+
+    # World Event overlay: a live Great Beast squats on 3 wilderness nodes and
+    # overrides their normal event. Runs after snare/pile/Umori, before the
+    # node's own type dispatch.
+    we = _world_event(table, sid)
+    if we and we.get('spawned') and not we.get('dead') and node in we.get('nodes', []):
+        return {'type': 'world_event', 'node': node, 'center': we['node'],
+                'nodes': we['nodes'], 'hp': we['hp'], 'maxHp': we['maxHp'],
+                'name': data.WORLD_EVENT['name'], 'spriteId': data.WORLD_EVENT['spriteId'],
+                'text': f"The {data.WORLD_EVENT['name']} looms over the mire. "
+                        'Wade in and strike — every blow is tallied.'}
 
     if ntype == 'loot':
         # Gate the reward behind a Flow puzzle and scatter reward symbols on it:
@@ -3292,6 +3308,28 @@ def _append_treasure_gear(doc, out):
             out['gear'] = drop
             out['text'] += (' A piece of gear gleams among the hoard — '
                             + _drop_phrase(drop) + '.')
+
+
+def _world_engage(table, sid, doc, payload):
+    """Start a bounded skirmish against the live World Event. The player must be
+    standing on one of its nodes. Loads the current shared pool as the NPC's HP;
+    the 6-round cap + damage banking are handled in _conclude_round /
+    _finish_battle (kind 'world')."""
+    we = _world_event(table, sid)
+    if not we or not we.get('spawned') or we.get('dead'):
+        return _err('There is no World Event to fight right now.', 409)
+    if doc.get('position') not in we.get('nodes', []):
+        return _err('You must be standing on the beast to strike it.', 409)
+    if doc.get('battle'):
+        return _err('You are already in a fight.', 409)
+    spec = data.WORLD_EVENT
+    npc = dict(spec, hp=we['hp'], maxHp=we['maxHp'], name=spec['name'])
+    event = _start_battle(table, sid, doc, 'world', npc, node=doc['position'],
+                          ctx={'poolStart': we['hp']})
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, spaceEvent=event)
 
 
 def _battle(table, sid, doc, payload):
