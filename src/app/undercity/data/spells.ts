@@ -20,6 +20,9 @@ export interface SpellInfo {
   range?: number;
   /** fate_die: highest face the value-picker offers (defaults to 6). */
   maxValue?: number;
+  /** Base magnitude for damage/heal/boss spells (mirrors undercity_data power).
+   *  Omitted for buff/curse/traversal spells. Displayed value is spellPower(). */
+  power?: number;
   desc: string;
   /** Material Icons ligature name. */
   icon: string;
@@ -31,21 +34,21 @@ export const SPELLS: SpellInfo[] = [
   { id: 'bone_chill', name: 'Bone Chill', category: 'field', tier: 1, cooldownMin: 30, effect: 'field_curse', range: 5, desc: 'Curse a rival: −2 ATK in their next battle.', icon: 'ac_unit' },
   { id: 'bog_snare', name: 'Bog Snare', category: 'field', tier: 1, cooldownMin: 30, effect: 'field_curse', range: 5, desc: 'Curse a rival: their next roll is halved.', icon: 'water_drop' },
   { id: 'glowveil', name: 'Glowveil', category: 'buff', tier: 1, cooldownMin: 30, effect: 'self_buff', desc: '+2 SPD and +15% flee chance in your next battle.', icon: 'flare' },
-  { id: 'scrap_toss', name: 'Scrap Toss', category: 'field', tier: 1, cooldownMin: 30, effect: 'field_damage', range: 5, desc: 'Hurl city scrap at a rival for 8 damage.', icon: 'construction' },
+  { id: 'scrap_toss', name: 'Scrap Toss', category: 'field', tier: 1, cooldownMin: 30, effect: 'field_damage', range: 5, power: 8, desc: 'Hurl city scrap at a rival.', icon: 'construction' },
   // Tier I
-  { id: 'spore_bolt', name: 'Spore Bolt', category: 'field', tier: 1, cooldownMin: 20, effect: 'field_damage', range: 6, desc: 'A puff of caustic spores: 12 damage at range.', icon: 'flash_on' },
-  { id: 'mend_flesh', name: 'Mend Flesh', category: 'buff', tier: 1, cooldownMin: 20, effect: 'self_heal', desc: 'Knit your wounds: restore 12 HP.', icon: 'healing' },
+  { id: 'spore_bolt', name: 'Spore Bolt', category: 'field', tier: 1, cooldownMin: 20, effect: 'field_damage', range: 6, power: 12, desc: 'A puff of caustic spores at range.', icon: 'flash_on' },
+  { id: 'mend_flesh', name: 'Mend Flesh', category: 'buff', tier: 1, cooldownMin: 20, effect: 'self_heal', power: 12, desc: 'Knit your wounds.', icon: 'healing' },
   { id: 'harden_shell', name: 'Harden Shell', category: 'buff', tier: 1, cooldownMin: 20, effect: 'self_buff', desc: '+2 DEF in your next battle.', icon: 'shield' },
   { id: 'skitter_step', name: 'Skitter Step', category: 'traversal', tier: 1, cooldownMin: 25, effect: 'fate_die', maxValue: 3, desc: 'Skitter ahead: choose your next roll (1–3).', icon: 'directions_run' },
   // Tier II
-  { id: 'rot_bolt', name: 'Rot Bolt', category: 'field', tier: 2, cooldownMin: 25, effect: 'field_damage', range: 7, desc: 'A lance of concentrated rot: 20 damage at range.', icon: 'thunderstorm' },
+  { id: 'rot_bolt', name: 'Rot Bolt', category: 'field', tier: 2, cooldownMin: 25, effect: 'field_damage', range: 7, power: 20, desc: 'A lance of concentrated rot at range.', icon: 'thunderstorm' },
   { id: 'weaken_hex', name: 'Weaken Hex', category: 'field', tier: 2, cooldownMin: 25, effect: 'field_curse', range: 6, desc: 'Curse a rival: −3 ATK in their next battle.', icon: 'heart_broken' },
   { id: 'mycelial_recall', name: 'Mycelial Recall', category: 'traversal', tier: 2, cooldownMin: 45, effect: 'recall', desc: 'The threads drag you home to your biome gate.', icon: 'home' },
   { id: 'fate_die', name: 'Fate Die', category: 'traversal', tier: 2, cooldownMin: 40, effect: 'fate_die', desc: 'Choose the value of your next roll (1–6).', icon: 'casino' },
   // Tier III
-  { id: 'spore_burst', name: 'Spore Burst', category: 'field', tier: 3, cooldownMin: 30, effect: 'field_damage', range: 8, desc: 'A detonation of spores: 30 damage at range.', icon: 'coronavirus' },
+  { id: 'spore_burst', name: 'Spore Burst', category: 'field', tier: 3, cooldownMin: 30, effect: 'field_damage', range: 8, power: 30, desc: 'A detonation of spores at range.', icon: 'coronavirus' },
   { id: 'deep_step', name: 'Deep Step', category: 'traversal', tier: 3, cooldownMin: 30, effect: 'teleport', range: 6, desc: 'Blink to any space within 6 steps.', icon: 'alt_route' },
-  { id: 'queens_bane', name: "Queen's Bane", category: 'boss', tier: 3, cooldownMin: 60, effect: 'boss_strike', desc: 'Sear the Queen or a lair boss for 15, from anywhere.', icon: 'gavel' },
+  { id: 'queens_bane', name: "Queen's Bane", category: 'boss', tier: 3, cooldownMin: 60, effect: 'boss_strike', power: 15, desc: 'Sear the Queen or a lair boss, from anywhere.', icon: 'gavel' },
 ];
 
 export const SPELL_MAP: Record<string, SpellInfo> = Object.fromEntries(
@@ -108,4 +111,22 @@ export function grimoireSwapLeftMin(lastSwap: string | null | undefined): number
   const readyMs = new Date(lastSwap + 'Z').getTime() + GRIMOIRE_SWAP_COOLDOWN_MIN * 60_000;
   const ms = readyMs - Date.now();
   return ms > 0 ? Math.ceil(ms / 60_000) : 0;
+}
+
+/** Client mirror of engine.spell_power — MUST match undercity_config
+ *  SPELL_POWER_PER_LEVEL (1.0). Returns the level-scaled magnitude. */
+export const SPELL_POWER_PER_LEVEL = 1.0;
+
+export function spellPower(base: number | undefined, level: number): number {
+  if (!base) return 0;
+  return base + Math.round(SPELL_POWER_PER_LEVEL * (Math.max(1, level) - 1));
+}
+
+/** Short label for a spell's current effect at the player's level, e.g.
+ *  "18 dmg", "17 HP", or '' for non-power spells. */
+export function spellPowerLabel(spell: SpellInfo, level: number): string {
+  if (!spell.power) return '';
+  const v = spellPower(spell.power, level);
+  if (spell.effect === 'self_heal') return `${v} HP`;
+  return `${v} dmg`;
 }
