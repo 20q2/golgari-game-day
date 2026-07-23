@@ -73,11 +73,23 @@ export class HatchFlowComponent {
   /** Increments on every tap; drives the shake + debris-burst re-trigger. */
   protected readonly burst = signal(0);
 
+  /** The three progressive crack stages: intact → cracked → shattered. */
+  private static readonly EGG_STAGES = ['golgari_egg', 'golgari_egg.2', 'golgari_egg.3'];
+
   /** Progressive crack art: intact → cracked → shattered as taps climb. */
   protected readonly eggArt = computed(() => {
-    const stage = ['golgari_egg', 'golgari_egg.2', 'golgari_egg.3'][Math.min(this.taps(), 2)];
+    const stage = HatchFlowComponent.EGG_STAGES[Math.min(this.taps(), 2)];
     return `undercity/other/${stage}.png`;
   });
+
+  constructor() {
+    // Warm the browser cache with all three crack stages the moment the flow
+    // mounts (during the intro cutscene), so swapping the egg's background on
+    // each tap never flashes a mid-load blank.
+    for (const stage of HatchFlowComponent.EGG_STAGES) {
+      new Image().src = `undercity/other/${stage}.png`;
+    }
+  }
 
   /** Debris chips flung out on each tap — precomputed transform vars per chip. */
   protected readonly debrisChips = Array.from({ length: 8 }, (_, i) => {

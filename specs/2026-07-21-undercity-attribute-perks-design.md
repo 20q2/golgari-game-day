@@ -28,11 +28,15 @@ This design fixes that two ways at once:
 
 ### Threshold mechanic
 
-- A perk unlocks when the creature's **invested** attribute reaches the
-  threshold. "Invested" = the base doc stat (`doc['atk']` / `['def']` /
-  `['spd']`), which is species base + level-up spends + evolution bonuses.
-  **Gear and temporary buffs are excluded** — they change effective stats, never
-  perk state, so swapping gear never lights or dims a perk.
+- A perk unlocks when the creature's attribute reaches the threshold, counting
+  the **invested base stat plus equipped gear**. "Invested" = the base doc stat
+  (`doc['atk']` / `['def']` / `['spd']`) — species base + level-up spends +
+  evolution bonuses — and gear bonuses are now added on top (`engine.perk_stat`).
+  So gear can bridge a creature up to a threshold, and equipping/swapping gear
+  may light or dim a perk. **Temporary buffs are still excluded** — they flicker
+  round to round and would toggle perks mid-fight. *(Updated 2026-07-23: gear was
+  originally excluded so swaps never touched perk state; the tactical gear layer
+  now feeds the threshold intentionally.)*
 - Nodes at **6 / 12 / 18**. Unlock is `doc[stat] >= threshold` — monotonic and
   stateless, so it derives from the save with no migration and no new currency.
 - **Base stats light the tier-1 node.** A kraul (atk 8) hatches with *Rend*; a

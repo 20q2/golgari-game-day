@@ -1874,12 +1874,16 @@ def _begin(table, sid, kind='wild', npc=None, ctx=None, user='user-alex'):
 
 
 def test_battle_status_reads_rot_and_buffs():
-    side = {'rot_stacks': 3, 'buffs': ['harden_shell', 'weaken_hex']}
-    assert db._battle_status(side) == {'rot': 3, 'buffs': ['harden_shell', 'weaken_hex']}
+    side = {'rot_stacks': 3, 'buffs': ['harden_shell', 'weaken_hex'],
+            'statDelta': {'atk': -3, 'def': 2, 'spd': 0}}
+    assert db._battle_status(side) == {
+        'rot': 3, 'buffs': ['harden_shell', 'weaken_hex'],
+        'delta': {'atk': -3, 'def': 2, 'spd': 0}}
 
 
 def test_battle_status_defaults_empty():
-    assert db._battle_status({}) == {'rot': 0, 'buffs': []}
+    assert db._battle_status({}) == {
+        'rot': 0, 'buffs': [], 'delta': {'atk': 0, 'def': 0, 'spd': 0}}
 
 
 def test_start_battle_includes_status(table, monkeypatch):
@@ -1887,8 +1891,9 @@ def test_start_battle_includes_status(table, monkeypatch):
     act(table, 'join', starter='kraul')
     sid = _sid(table)
     ev = _begin(table, sid)
-    assert ev['playerStatus'] == {'rot': 0, 'buffs': []}
-    assert ev['npcStatus'] == {'rot': 0, 'buffs': []}
+    zero = {'atk': 0, 'def': 0, 'spd': 0}
+    assert ev['playerStatus'] == {'rot': 0, 'buffs': [], 'delta': zero}
+    assert ev['npcStatus'] == {'rot': 0, 'buffs': [], 'delta': zero}
 
 
 def test_start_battle_reports_opponent_level(table, monkeypatch):

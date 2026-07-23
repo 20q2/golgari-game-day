@@ -349,6 +349,9 @@ export interface CombatEntry {
 export interface BattleStatus {
   rot: number; // rot stack count (0 = none); drives the DoT
   buffs: string[]; // active buff/debuff effect kinds
+  /** Net temporary stat swing from those buffs/curses (server-computed): +N from
+   *  self-buffs, -N from curses. Drives the ±N annotation beside each stat. */
+  delta?: { atk: number; def: number; spd: number };
 }
 
 export interface CombatRound {

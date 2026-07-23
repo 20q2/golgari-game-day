@@ -1,7 +1,8 @@
 // Mirror of infrastructure/lambda/undercity_data.py PERKS / PERK_TRACKS.
-// Perks derive from the INVESTED base stat (species base + level spends +
-// evolution bonuses), never gear/buffs. Nodes at 6/12/18; base stats can
-// already light the tier-1 node. Keep in sync with the server.
+// Perks derive from base stat (species base + level spends + evolution bonuses)
+// PLUS equipped gear — gear can bridge a creature up to a threshold, so swapping
+// gear may light/dim a perk. Temporary buffs still never count. Nodes at 6/12/18;
+// base stats can already light the tier-1 node. Keep in sync with the server.
 export type PerkTrack = 'atk' | 'def' | 'spd';
 
 export interface Perk {

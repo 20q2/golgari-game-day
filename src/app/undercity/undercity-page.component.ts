@@ -17,6 +17,7 @@ import { BoardMap } from './engine/board-canvas';
 import { UndercityApiService } from './services/undercity-api.service';
 import { formSprite } from './data/species';
 import { xpToNext, formName } from './data/forms';
+import { STATUS_INFO, StatusInfo } from './data/combat';
 import { DUNGEONS, SIGILS_REQUIRED } from './data/dungeons';
 import { HatchFlowComponent } from './hatch/hatch-flow.component';
 import { BoardTabComponent } from './tabs/board-tab.component';
@@ -129,6 +130,17 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     if (!pos || !map) return null;
     const region = map.nodes.find((n) => n.id === pos)?.region ?? 'city';
     return map.regions?.[region]?.label ?? null;
+  });
+
+  /** Overworld buffs/curses carried into the next battle, mapped to HUD badges.
+   * Reuses the in-battle STATUS_INFO registry so icons/blurbs stay in sync;
+   * unknown kinds are skipped, buffs sort ahead of debuffs. */
+  protected readonly activeBuffs = computed<{ kind: string; info: StatusInfo }[]>(() => {
+    const buffs = this.store.you()?.buffs ?? [];
+    return buffs
+      .filter((b) => STATUS_INFO[b.kind])
+      .map((b) => ({ kind: b.kind, info: STATUS_INFO[b.kind] }))
+      .sort((a, b) => Number(a.info.tone === 'debuff') - Number(b.info.tone === 'debuff'));
   });
 
   /** True while a battle is in progress — the server tracks this independently

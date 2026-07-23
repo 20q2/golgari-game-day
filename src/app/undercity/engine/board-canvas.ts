@@ -206,6 +206,8 @@ interface TokenAnim {
   start: number;
   hopIndex: number; // last footfall already dusted this move
   phase: number; // per-token breathing desync
+  hitLife?: number; // seconds left of a spell-hit flash/shake reaction
+  hitMax?: number;
 }
 
 /** An in-flight camera pan (+ optional zoom) tween. */
@@ -242,6 +244,7 @@ interface DustMote {
 interface Sparkle {
   x: number;
   y: number;
+  vx?: number; // horizontal drift (impact/implode bursts; absent = pure rise)
   vy: number;
   life: number;
   maxLife: number;
@@ -250,13 +253,53 @@ interface Sparkle {
   glow: string; // shadow/blur tint
 }
 
-/** Floating "+N" heal number that rises and fades off a token (world space). */
+/** Floating combat number that rises and fades off a token (world space).
+ *  `color` tints it — green heals, red damage; a plain 'miss'/'ward' word. */
 interface HealNumber {
   x: number;
   y: number;
   life: number;
   maxLife: number;
   text: string;
+  color?: string;
+}
+
+/** A traveling spell mote (world space) that fires an impact on arrival. */
+interface Bolt {
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  t: number; // 0..1 progress
+  dur: number; // seconds
+  color: string;
+  glow: string;
+  size: number;
+  hitUser?: string; // token to shake/flash on impact
+  dmg?: number; // draws -dmg over the target (absent/0 = none)
+  dodged?: boolean; // draws "miss" instead of an impact
+  done: boolean;
+}
+
+/** A queued spell-cast effect, resolved to live token/node positions in draw(). */
+export interface SpellCastFx {
+  shape: 'buff' | 'heal' | 'damage' | 'curse' | 'teleport' | 'recall' | 'fate' | 'boss' | 'wish';
+  casterId: string;
+  /** Another player's token the spell lands on. */
+  targetId?: string;
+  /** A node the spell targets (teleport destination or the boss lair). */
+  targetNode?: string;
+  color: string;
+  glow: string;
+  dmg?: number;
+  dodged?: boolean;
+}
+
+/** A queued "you got hit" reaction on a single token (spell landed on you). */
+export interface SpellHitFx {
+  targetId: string;
+  dmg?: number;
+  dodged?: boolean;
 }
 
 // Movement/idle animation of the creature tokens.
@@ -337,6 +380,10 @@ export class BoardCanvas {
   private dust: DustMote[] = [];
   private sparkles: Sparkle[] = [];
   private heals: HealNumber[] = [];
+  private bolts: Bolt[] = [];
+  // Spell effects queued from a cast/hit, resolved to live positions in draw().
+  private pendingCast: SpellCastFx[] = [];
+  private pendingHit: SpellHitFx[] = [];
   private healPending = false;
   private sparkleAccum = 0; // time since last sparkle emission
   private shinyAccum = 0; // time since last shiny twinkle emission
@@ -536,6 +583,7 @@ export class BoardCanvas {
       boss: 'undercity/icons/temple.png',
       shop: 'undercity/icons/bazaar.png',
       warp: 'undercity/icons/teleport.png',
+      witch: 'undercity/icons/bog_witch_hut.png',
     };
     // Re-render with whatever art has arrived; draw() reads this.active.terrain
     // fresh each frame, so each successful load pops in seamlessly.
@@ -1210,6 +1258,16 @@ export class BoardCanvas {
         this.pendingHealPops.splice(idx, 1);
       }
     }
+    // Spell FX: resolve queued casts/hits now that this frame's tokens are placed
+    // (positions live in tokenAnims, before the absent-token sweep below).
+    if (this.pendingCast.length) {
+      for (const fx of this.pendingCast) this.spawnCastFx(fx);
+      this.pendingCast = [];
+    }
+    if (this.pendingHit.length) {
+      for (const fx of this.pendingHit) this.spawnHitFx(fx);
+      this.pendingHit = [];
+    }
     // 🎲 badge over anyone seated at an active board-game table.
     if (this.diceMarkers.size) {
       for (const t of placed) {
@@ -1239,6 +1297,7 @@ export class BoardCanvas {
       y1: this.camY + this.viewH / this.zoom,
     });
 
+    this.drawBolts();
     this.drawHealNumbers();
 
     if (this.umori) this.drawUmori(ts);
@@ -1355,9 +1414,9 @@ export class BoardCanvas {
       this.drawTreasureHoard(n);
     }
 
-    // First-conqueror name-plates: lairs show at their biome GATE (the dungeon
+    // First-conqueror name-plates: lairs show at their dungeon LADDER (the den
     // entrance); Savra at the boss node; treasure at the tile itself.
-    if (n.type === 'gate') {
+    if (n.type === 'ladder') {
       const lair = this.firsts[`${n.id.split('_')[0]}_lair`];
       if (lair) this.drawNamePlate(n.x, n.y + 8, `First cleared by ${lair.by}`);
     } else if (n.type === 'boss') {
@@ -1967,7 +2026,210 @@ export class BoardCanvas {
   }
 
   private spawnHealNumber(x: number, y: number, amount: number): void {
-    this.heals.push({ x, y, life: 1.1, maxLife: 1.1, text: `+${amount}` });
+    this.heals.push({ x, y, life: 1.1, maxLife: 1.1, text: `+${amount}`, color: '#7fe6a0' });
+  }
+
+  // ── Spell FX ─────────────────────────────────────────────────────────────────
+  // A cast/hit only needs userIds; the actual particles are spawned in draw()
+  // once this frame's live token positions are known (mirrors pendingHealPops).
+
+  /** Queue a spell-cast effect (per-category bolt/puff/impact). */
+  playSpellCast(fx: SpellCastFx): void {
+    this.pendingCast.push(fx);
+  }
+
+  /** Queue a "spell landed on this token" reaction (flash + shake + number). */
+  playSpellHit(fx: SpellHitFx): void {
+    this.pendingHit.push(fx);
+  }
+
+  /** Mid-body world point of a token, or null if it isn't on-screen this frame. */
+  private tokenPoint(userId?: string): { x: number; y: number } | null {
+    if (!userId) return null;
+    const a = this.tokenAnims.get(userId);
+    return a ? { x: a.x, y: a.y - 22 } : null;
+  }
+
+  /** World point just above a node's disc (used for teleport / boss targets). */
+  private nodePoint(nodeId?: string): { x: number; y: number } | null {
+    if (!nodeId) return null;
+    const n = this.nodeMap.get(nodeId);
+    return n ? { x: n.x, y: n.y - DISC_RY - 22 } : null;
+  }
+
+  /** Resolve a queued cast into the right primitives at live positions. */
+  private spawnCastFx(fx: SpellCastFx): void {
+    const from = this.tokenPoint(fx.casterId);
+    if (!from) return;
+    const target = this.tokenPoint(fx.targetId) ?? this.nodePoint(fx.targetNode);
+    switch (fx.shape) {
+      case 'buff':
+      case 'heal':
+      case 'fate':
+      case 'wish':
+        this.puffAt(from.x, from.y, fx.color, fx.glow, 'burst');
+        break;
+      case 'recall':
+        this.puffAt(from.x, from.y, fx.color, fx.glow, 'implode');
+        break;
+      case 'teleport':
+        this.puffAt(from.x, from.y, fx.color, fx.glow, 'implode');
+        if (target) this.puffAt(target.x, target.y, fx.color, fx.glow, 'burst');
+        break;
+      case 'damage':
+      case 'curse':
+      case 'boss':
+        this.spawnBolt(from, target ?? from, fx);
+        break;
+    }
+  }
+
+  /** Resolve a queued hit into an impact + flash on one token. */
+  private spawnHitFx(fx: SpellHitFx): void {
+    const p = this.tokenPoint(fx.targetId);
+    if (!p) return;
+    if (fx.dodged) {
+      this.puffAt(p.x, p.y, '#cfe8ff', '#6fb7ff', 'burst', 8);
+      this.floatNumber(p.x, p.y, 'miss', '#cfe8ff');
+      return;
+    }
+    this.impactAt(p.x, p.y, '#ff5a3c', '#ff8a4a');
+    if (fx.dmg) this.floatNumber(p.x, p.y, `-${fx.dmg}`, '#ff6b5a');
+    this.hitToken(fx.targetId);
+  }
+
+  private spawnBolt(from: { x: number; y: number }, to: { x: number; y: number }, fx: SpellCastFx): void {
+    const dist = Math.hypot(to.x - from.x, to.y - from.y);
+    this.bolts.push({
+      fromX: from.x,
+      fromY: from.y,
+      toX: to.x,
+      toY: to.y,
+      t: 0,
+      dur: Math.min(0.55, 0.12 + dist / 900),
+      color: fx.color,
+      glow: fx.glow,
+      size: fx.shape === 'boss' ? 6 : 4,
+      hitUser: fx.targetId,
+      dmg: fx.dodged ? undefined : fx.dmg,
+      dodged: fx.dodged,
+      done: false,
+    });
+  }
+
+  private boltImpact(b: Bolt): void {
+    if (b.dodged) {
+      this.puffAt(b.toX, b.toY, '#cfe8ff', '#6fb7ff', 'burst', 8);
+      this.floatNumber(b.toX, b.toY, 'miss', '#cfe8ff');
+      return;
+    }
+    this.impactAt(b.toX, b.toY, b.color, b.glow);
+    if (b.dmg) this.floatNumber(b.toX, b.toY, `-${b.dmg}`, '#ff6b5a');
+    if (b.hitUser) this.hitToken(b.hitUser);
+  }
+
+  /** Kick off a token's flash/shake reaction. */
+  private hitToken(userId: string): void {
+    const a = this.tokenAnims.get(userId);
+    if (!a) return;
+    a.hitLife = 0.4;
+    a.hitMax = 0.4;
+  }
+
+  /** A sparkle pop: `burst` throws motes outward, `implode` drags a ring inward. */
+  private puffAt(
+    x: number,
+    y: number,
+    color: string,
+    glow: string,
+    mode: 'burst' | 'implode',
+    count = 18,
+  ): void {
+    for (let i = 0; i < count; i++) {
+      const ttl = 0.5 + Math.random() * 0.5;
+      const ang = Math.random() * Math.PI * 2;
+      if (mode === 'implode') {
+        const r = 20 + Math.random() * 22;
+        this.sparkles.push({
+          x: x + Math.cos(ang) * r,
+          y: y + Math.sin(ang) * r,
+          vx: -Math.cos(ang) * r * 1.6,
+          vy: -Math.sin(ang) * r * 1.6,
+          life: ttl,
+          maxLife: ttl,
+          size: 1.6 + Math.random() * 2,
+          color,
+          glow,
+        });
+      } else {
+        const spread = Math.random() * 24;
+        this.sparkles.push({
+          x: x + Math.cos(ang) * spread,
+          y: y - Math.random() * 20,
+          vx: Math.cos(ang) * 30,
+          vy: -18 - Math.random() * 22,
+          life: ttl,
+          maxLife: ttl,
+          size: 1.8 + Math.random() * 2.2,
+          color,
+          glow,
+        });
+      }
+    }
+  }
+
+  /** A tight radial spark burst where a blow lands. */
+  private impactAt(x: number, y: number, color: string, glow: string): void {
+    for (let i = 0; i < 16; i++) {
+      const ttl = 0.35 + Math.random() * 0.3;
+      const ang = Math.random() * Math.PI * 2;
+      const sp = 60 + Math.random() * 90;
+      this.sparkles.push({
+        x,
+        y,
+        vx: Math.cos(ang) * sp,
+        vy: Math.sin(ang) * sp,
+        life: ttl,
+        maxLife: ttl,
+        size: 1.6 + Math.random() * 2.2,
+        color,
+        glow,
+      });
+    }
+  }
+
+  private floatNumber(x: number, y: number, text: string, color: string): void {
+    this.heals.push({ x, y, life: 1.1, maxLife: 1.1, text, color });
+  }
+
+  private drawBolts(): void {
+    const ctx = this.ctx;
+    for (const b of this.bolts) {
+      const e = easeInOut(Math.min(1, b.t));
+      const x = b.fromX + (b.toX - b.fromX) * e;
+      const y = b.fromY + (b.toY - b.fromY) * e;
+      // A short trail behind the head reads as motion.
+      const te = easeInOut(Math.max(0, b.t - 0.14));
+      const tx = b.fromX + (b.toX - b.fromX) * te;
+      const ty = b.fromY + (b.toY - b.fromY) * te;
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = b.glow;
+      ctx.lineWidth = b.size * 0.9;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = b.color;
+      ctx.shadowColor = b.glow;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(x, y, b.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   private updateHealFx(dt: number): void {
@@ -2001,7 +2263,30 @@ export class BoardCanvas {
         this.sparkles.splice(i, 1);
         continue;
       }
+      if (s.vx) s.x += s.vx * dt;
       s.y += s.vy * dt;
+    }
+    // Advance spell bolts; fire the impact once as each lands.
+    for (let i = this.bolts.length - 1; i >= 0; i--) {
+      const b = this.bolts[i];
+      b.t += dt / b.dur;
+      if (b.t >= 1) {
+        if (!b.done) {
+          b.done = true;
+          this.boltImpact(b);
+        }
+        this.bolts.splice(i, 1);
+      }
+    }
+    // Decay per-token spell-hit reactions.
+    for (const a of this.tokenAnims.values()) {
+      if (a.hitLife != null) {
+        a.hitLife -= dt;
+        if (a.hitLife <= 0) {
+          a.hitLife = undefined;
+          a.hitMax = undefined;
+        }
+      }
     }
     for (let i = this.heals.length - 1; i >= 0; i--) {
       const h = this.heals[i];
@@ -2040,7 +2325,7 @@ export class BoardCanvas {
       ctx.textAlign = 'center';
       ctx.lineWidth = 3;
       ctx.strokeStyle = 'rgba(0,0,0,0.65)';
-      ctx.fillStyle = '#7fe6a0';
+      ctx.fillStyle = h.color ?? '#7fe6a0';
       ctx.strokeText(h.text, h.x, h.y);
       ctx.fillText(h.text, h.x, h.y);
       ctx.restore();
@@ -2071,6 +2356,10 @@ export class BoardCanvas {
     breath: number,
   ): void {
     const ctx = this.ctx;
+    // Spell-hit reaction: jitter the sprite sideways for the flash's duration.
+    const anim = this.tokenAnims.get(p.userId);
+    const hit = anim?.hitLife && anim.hitMax ? anim.hitLife / anim.hitMax : 0;
+    if (hit > 0) x += Math.sin(this.effectClock / 18) * 4 * hit;
     const spr = formSprite(p.form, p.spriteVariant);
     const sprite = getRecolored(spr.sprite, p.paint || {}, spr.regions);
     const isOwn = p.userId === this.ownUserId;
@@ -2140,6 +2429,21 @@ export class BoardCanvas {
       ctx.beginPath();
       ctx.arc(x, centerY, 10, 0, Math.PI * 2);
       ctx.fillStyle = '#4ade80';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    if (hit > 0) {
+      // Additive red bloom over the struck token — no per-pixel sprite tint.
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const r = targetH * 0.7;
+      const g = ctx.createRadialGradient(x, centerY, 0, x, centerY, r);
+      g.addColorStop(0, `rgba(255,80,60,${0.5 * hit})`);
+      g.addColorStop(1, 'rgba(255,80,60,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, centerY, r, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }

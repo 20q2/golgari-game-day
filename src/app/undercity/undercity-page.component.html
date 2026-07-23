@@ -91,6 +91,15 @@
               </span>
             }
           </div>
+          @if (activeBuffs().length) {
+            <div class="hud-buffs" aria-label="Active buffs">
+              @for (b of activeBuffs(); track b.kind) {
+                <span class="buff-badge" [class.debuff]="b.info.tone === 'debuff'" [title]="b.info.label + ' — ' + b.info.blurb">
+                  <mat-icon class="mi">{{ b.info.icon }}</mat-icon>
+                </span>
+              }
+            </div>
+          }
         </header>
 
         <main class="tab-body">

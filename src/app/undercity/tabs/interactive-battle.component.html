@@ -50,9 +50,9 @@
     >
       @if (enteredStats() && attackerStats; as s) {
         <div class="stat-col enter">
-          <span class="stat"><mat-icon class="mi" svgIcon="uc-sword"></mat-icon>{{ s.atk }}</span>
-          <span class="stat"><mat-icon class="mi" svgIcon="uc-shield"></mat-icon>{{ s.def }}</span>
-          <span class="stat"><mat-icon class="mi" svgIcon="uc-bolt"></mat-icon>{{ s.spd }}</span>
+          <span class="stat"><mat-icon class="mi" svgIcon="uc-sword"></mat-icon>{{ s.atk }}@if (s.delta?.atk) { <span class="stat-delta" [class.up]="s.delta!.atk > 0" [class.down]="s.delta!.atk < 0">{{ fmtDelta(s.delta!.atk) }}</span> }</span>
+          <span class="stat"><mat-icon class="mi" svgIcon="uc-shield"></mat-icon>{{ s.def }}@if (s.delta?.def) { <span class="stat-delta" [class.up]="s.delta!.def > 0" [class.down]="s.delta!.def < 0">{{ fmtDelta(s.delta!.def) }}</span> }</span>
+          <span class="stat"><mat-icon class="mi" svgIcon="uc-bolt"></mat-icon>{{ s.spd }}@if (s.delta?.spd) { <span class="stat-delta" [class.up]="s.delta!.spd > 0" [class.down]="s.delta!.spd < 0">{{ fmtDelta(s.delta!.spd) }}</span> }</span>
         </div>
       }
 
@@ -146,9 +146,9 @@
 
       @if (enteredStats() && defenderStats; as s) {
         <div class="stat-col enter">
-          <span class="stat"><mat-icon class="mi" svgIcon="uc-sword"></mat-icon>{{ s.atk }}</span>
-          <span class="stat"><mat-icon class="mi" svgIcon="uc-shield"></mat-icon>{{ s.def }}</span>
-          <span class="stat"><mat-icon class="mi" svgIcon="uc-bolt"></mat-icon>{{ s.spd }}</span>
+          <span class="stat"><mat-icon class="mi" svgIcon="uc-sword"></mat-icon>{{ s.atk }}@if (s.delta?.atk) { <span class="stat-delta" [class.up]="s.delta!.atk > 0" [class.down]="s.delta!.atk < 0">{{ fmtDelta(s.delta!.atk) }}</span> }</span>
+          <span class="stat"><mat-icon class="mi" svgIcon="uc-shield"></mat-icon>{{ s.def }}@if (s.delta?.def) { <span class="stat-delta" [class.up]="s.delta!.def > 0" [class.down]="s.delta!.def < 0">{{ fmtDelta(s.delta!.def) }}</span> }</span>
+          <span class="stat"><mat-icon class="mi" svgIcon="uc-bolt"></mat-icon>{{ s.spd }}@if (s.delta?.spd) { <span class="stat-delta" [class.up]="s.delta!.spd > 0" [class.down]="s.delta!.spd < 0">{{ fmtDelta(s.delta!.spd) }}</span> }</span>
         </div>
       }
 
@@ -285,7 +285,7 @@
         }
       </div>
       <div class="util-row">
-        <button class="util-btn help-btn" (click)="showHelp.set(!showHelp())" [title]="showHelp() ? 'Close' : 'How to fight'">
+        <button class="util-btn help-btn" (click)="toggleHelp()" [title]="showHelp() ? 'Close' : 'Effects & how to fight'">
           <mat-icon class="mi">{{ showHelp() ? 'close' : 'help_outline' }}</mat-icon>
         </button>
         @if (canFlee) {
@@ -364,20 +364,99 @@
       }
     </div>
 
-    <!-- How-to-fight panel -->
+    <!-- Effects & how-to-fight panel -->
     @if (showHelp()) {
       <div class="help-panel" (click)="showHelp.set(false)">
         <div class="help-body" (click)="$event.stopPropagation()">
-          <h3>How to fight</h3>
-          <p>Each round, read the foe’s telegraphed intent (the icon over its head) and pick the stance that beats it:</p>
-          <ul class="help-triangle">
-            <li><mat-icon class="mi" svgIcon="uc-sword"></mat-icon> <strong>Aggress</strong> beats Feint</li>
-            <li><mat-icon class="mi" svgIcon="uc-bolt"></mat-icon> <strong>Feint</strong> beats Guard</li>
-            <li><mat-icon class="mi" svgIcon="uc-shield"></mat-icon> <strong>Guard</strong> beats Aggress</li>
-          </ul>
-          <p>Win the read and you land the big hit; guess wrong and you eat one. Your <strong>ATK/DEF/SPD</strong> (beside each fighter) set how hard the blows land.</p>
-          <p>Little tags under a stance are <strong>perks</strong> — bonuses from your equipped gear and your creature's attribute perks that fire when you pick that stance (e.g. a winning Aggress applying rot, or Guard chipping the foe down).</p>
-          <p><strong>Scry</strong> reveals the true intent (bosses bluff). <strong>Flee</strong> bails a losing fight. Combat items fire on your next stance.</p>
+          <div class="help-tabs" role="tablist">
+            <button type="button" class="help-tab" [class.active]="helpTab() === 'effects'" (click)="helpTab.set('effects')">
+              <mat-icon class="mi">auto_awesome</mat-icon> Active effects
+            </button>
+            <button type="button" class="help-tab" [class.active]="helpTab() === 'rules'" (click)="helpTab.set('rules')">
+              <mat-icon class="mi">help_outline</mat-icon> Combat rules
+            </button>
+          </div>
+
+          @if (helpTab() === 'effects') {
+            <div class="help-tab-body">
+              @if (augments.length) {
+                <div class="fx-group">
+                  <h4>Your stance perks</h4>
+                  @for (a of augments; track a.label) {
+                    <div class="fx-row">
+                      <span class="fx-stance">
+                        @if (stanceMap[a.stance].icon.startsWith('uc-')) {
+                          <mat-icon class="mi" [svgIcon]="stanceMap[a.stance].icon"></mat-icon>
+                        } @else {
+                          <mat-icon class="mi">{{ stanceMap[a.stance].icon }}</mat-icon>
+                        }
+                      </span>
+                      <span class="fx-text">
+                        <strong>{{ a.label }}</strong>
+                        <span class="fx-meta">{{ stanceMap[a.stance].label }} · {{ a.source === 'gear' ? 'gear' : 'innate' }}</span>
+                        <small>{{ a.blurb }}</small>
+                      </span>
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (chipsFor('attacker'); as chips) {
+                @if (chips.length) {
+                  <div class="fx-group">
+                    <h4>Active on you</h4>
+                    @for (c of chips; track c.kind) {
+                      <div class="fx-row">
+                        <span class="fx-stance" [class.buff]="c.info.tone === 'buff'" [class.debuff]="c.info.tone === 'debuff'">
+                          <mat-icon class="mi">{{ c.info.icon }}</mat-icon>
+                        </span>
+                        <span class="fx-text">
+                          <strong>{{ c.info.label }}@if (c.count > 1) { <span class="fx-cnt">×{{ c.count }}</span> }</strong>
+                          <small>{{ c.info.blurb }}</small>
+                        </span>
+                      </div>
+                    }
+                  </div>
+                }
+              }
+
+              @if (chipsFor('defender'); as chips) {
+                @if (chips.length) {
+                  <div class="fx-group">
+                    <h4>Active on {{ defender.name }}</h4>
+                    @for (c of chips; track c.kind) {
+                      <div class="fx-row">
+                        <span class="fx-stance" [class.buff]="c.info.tone === 'buff'" [class.debuff]="c.info.tone === 'debuff'">
+                          <mat-icon class="mi">{{ c.info.icon }}</mat-icon>
+                        </span>
+                        <span class="fx-text">
+                          <strong>{{ c.info.label }}@if (c.count > 1) { <span class="fx-cnt">×{{ c.count }}</span> }</strong>
+                          <small>{{ c.info.blurb }}</small>
+                        </span>
+                      </div>
+                    }
+                  </div>
+                }
+              }
+
+              @if (!hasActiveEffects()) {
+                <p class="fx-empty">No active effects right now. Perks from equipped gear and your creature's innate abilities will appear here, along with any buffs or curses on either fighter.</p>
+              }
+            </div>
+          } @else {
+            <div class="help-tab-body">
+              <p>Each round, read the foe’s telegraphed intent (the icon over its head) and pick the stance that beats it:</p>
+              <ul class="help-triangle">
+                <li><mat-icon class="mi" svgIcon="uc-sword"></mat-icon> <strong>Aggress</strong> beats Feint</li>
+                <li><mat-icon class="mi" svgIcon="uc-bolt"></mat-icon> <strong>Feint</strong> beats Guard</li>
+                <li><mat-icon class="mi" svgIcon="uc-shield"></mat-icon> <strong>Guard</strong> beats Aggress</li>
+              </ul>
+              <p>Win the read and you land the big hit; guess wrong and you eat one. Your <strong>ATK/DEF/SPD</strong> (beside each fighter) set how hard the blows land.</p>
+              <p>Little tags under a stance are <strong>perks</strong> — bonuses from your equipped gear and your creature's attribute perks that fire when you pick that stance. See the <strong>Active effects</strong> tab for what each one does.</p>
+              <p><strong>Scry</strong> reveals the true intent (bosses bluff). <strong>Flee</strong> bails a losing fight. Combat items fire on your next stance.</p>
+            </div>
+          }
+
           <button class="uc-btn uc-btn-primary" (click)="showHelp.set(false)">Got it</button>
         </div>
       </div>

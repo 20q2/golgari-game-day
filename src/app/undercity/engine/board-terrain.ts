@@ -39,7 +39,7 @@ export const TERRAIN_RES = 0.6;
 // trove/cache/vault are drawn as dynamic sprites in board-canvas (they swap to a
 // plundered variant at runtime), so they are NOT baked into the terrain landmarks.
 export const LANDMARK_TYPES = ['boss', 'gate', 'shop', 'shrine', 'warp',
-  'ossuary', 'lair', 'ladder'];
+  'ossuary', 'lair', 'ladder', 'witch'];
 
 export interface EdgeCurve {
   a: BoardNode;
@@ -1945,6 +1945,9 @@ function drawLandmark(
     } else if (n.type === 'shop') {
       drawLandmarkImage(ctx, x, base, art, 66);
       glowSpots.push({ x, y: base - 26, r: 20, color: '235, 190, 110', phase: 1.7 });
+    } else if (n.type === 'witch') {
+      drawLandmarkImage(ctx, x, base, art, 72);
+      glowSpots.push({ x, y: base - 30, r: 24, color: '190, 110, 220', phase: 0.9 });
     } else {
       drawLandmarkImage(ctx, x, base, art, 62);
     }

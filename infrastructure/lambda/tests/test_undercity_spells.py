@@ -677,6 +677,34 @@ def test_lair_curse_applies_and_is_consumed(table):
     assert doc['battle']['npc']['atk'] == data.LAIR_BOSSES[node]['atk'] - 3
 
 
+def test_battle_status_surfaces_temporary_stat_deltas(table):
+    """A player buff and an enemy field-curse each surface a signed stat delta so
+    the battle UI can badge the temporary swing, and the foe's curse also rides
+    along as a status-chip kind (the enemy shows no chip otherwise)."""
+    sid, _ = db._active_season(table)
+    node = 'city_lair'
+    db._set_lair_state(table, sid, node, data.LAIR_BOSSES[node]['hp'], False,
+                       [{'kind': 'weaken_hex'}])
+    act(table, 'join', starter='pest', home='city')
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = node
+    doc['buffs'] = [{'kind': 'harden_shell'}]   # +2 DEF for this battle
+    db._put_player(table, doc)
+    db._lair(table, sid, doc, node)
+
+    # Player: harden_shell nets +2 DEF; ATK/SPD untouched.
+    player = db._battle_status(doc['battle']['player'])
+    assert player['delta'] == {'atk': 0, 'def': 2, 'spd': 0}
+
+    # Enemy: weaken_hex nets -3 ATK and shows as a chip so the detriment is legible.
+    npc = db._battle_status(doc['battle']['npc'])
+    assert npc['delta'] == {'atk': -3, 'def': 0, 'spd': 0}
+    assert 'weaken_hex' in npc['buffs']
+
+    # An unbuffed player reports a zero delta (no annotation shown).
+    assert db._battle_status({})['delta'] == {'atk': 0, 'def': 0, 'spd': 0}
+
+
 def _cast_near_node(table, target_node, home='city'):
     """Join a caster on a neighbour of target_node (distance 1, guaranteed in
     range) and return sid."""

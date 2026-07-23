@@ -58,6 +58,36 @@ def test_carapace_grind_grants_maxhp_via_effective_stats():
     assert engine.effective_stats(at)['maxHp'] == 30 + data.CARAPACE_GRIND_MAXHP
 
 
+def test_gear_can_bridge_to_a_threshold():
+    # base def 4 alone lights nothing; troll_hide (+5 def) pushes it to 9 -> tier-1.
+    base = {'atk': 1, 'def': 4, 'spd': 1}
+    assert 'thick_hide' not in engine.attribute_perks(base)
+    geared = {**base, 'gear': {'carapace': 'troll_hide'}}  # +5 def -> 9
+    assert 'thick_hide' in engine.attribute_perks(geared)
+
+
+def test_gear_stacks_with_base_across_a_tier():
+    # base def 8 (thick_hide) + bark_hide (+4 def) = 12 -> carapace_grind lights too.
+    doc = {'atk': 1, 'def': 8, 'spd': 1, 'gear': {'carapace': 'bark_hide'}}
+    perks = engine.attribute_perks(doc)
+    assert 'thick_hide' in perks and 'carapace_grind' in perks
+    assert 'last_stand' not in perks   # 12 < 18
+
+
+def test_removing_gear_dims_a_gear_lit_perk():
+    geared = {'atk': 1, 'def': 4, 'spd': 1, 'gear': {'carapace': 'troll_hide'}}
+    assert 'thick_hide' in engine.attribute_perks(geared)
+    geared['gear'] = {}
+    assert 'thick_hide' not in engine.attribute_perks(geared)
+
+
+def test_temporary_buffs_never_light_a_perk():
+    # harden_shell (+2 def via effective_stats) must NOT count toward perks.
+    doc = {'atk': 1, 'def': 5, 'spd': 1, 'buffs': [{'kind': 'harden_shell'}]}
+    assert engine.effective_stats(doc)['def'] == 7   # buff raises effective def
+    assert 'thick_hide' not in engine.attribute_perks(doc)   # but not the perk
+
+
 # ── Task 2: Combatant carries perks ──────────────────────────────────────────
 
 def test_combatant_carries_perks_and_survives_serde():

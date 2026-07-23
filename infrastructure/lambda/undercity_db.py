@@ -507,6 +507,17 @@ def _combatant(doc):
                               for b in (doc.get('buffs') or [])) else 0))
 
 
+def _buff_stat_delta(doc):
+    """Net temporary combat-stat swing from the player's active buffs/curses:
+    effective (with buffs) minus effective (buffs stripped). Gear cancels, so
+    only the buff/curse contribution remains — and because it goes through
+    effective_stats() it honors self-buff multipliers and the max(1,...) floors
+    exactly, and non-stat conditions (rot, vines-as-snare) net to zero."""
+    full = engine.effective_stats(doc)
+    base = engine.effective_stats({**doc, 'buffs': []})
+    return {s: int(full[s] - base[s]) for s in ('atk', 'def', 'spd')}
+
+
 # ── Battle-record serde (Plan 2 interactive combat) ──────────────────────────
 
 def _bt_snapshot(c):
@@ -559,9 +570,13 @@ def _bt_store(c, rec_side):
 
 def _battle_status(side):
     """Client-facing standing status for one combatant snapshot: the rot stack
-    count (drives the DoT) and the list of active buff/debuff effect kinds."""
+    count (drives the DoT), the list of active buff/debuff effect kinds, and the
+    net temporary stat modifier those buffs/curses apply (so the battle UI can
+    annotate each fighter's ATK/DEF/SPD with a ±N)."""
+    delta = side.get('statDelta') or {}
     return {'rot': int(side.get('rot_stacks', 0)),
-            'buffs': list(side.get('buffs') or [])}
+            'buffs': list(side.get('buffs') or []),
+            'delta': {s: int(delta.get(s, 0)) for s in ('atk', 'def', 'spd')}}
 
 
 def _npc_combatant(npc):
@@ -649,9 +664,16 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
     npc_snap = _bt_snapshot(_npc_combatant(npc))
     npc_snap['personality'] = npc.get('personality', data.NPC_DEFAULT_PERSONALITY)
     npc_snap['bluff'] = float(npc.get('bluff', data.NPC_DEFAULT_BLUFF))
+    # Surface any field-curse the foe carries: chips (debuffKinds -> status list,
+    # display-only; the engine never branches on these kinds) + the ±N delta.
+    if npc.get('debuffKinds'):
+        npc_snap['buffs'] = sorted(set(npc_snap.get('buffs') or []) | set(npc['debuffKinds']))
+        npc_snap['statDelta'] = npc.get('statDelta')
+    player_snap = _bt_snapshot(player_c)
+    player_snap['statDelta'] = _buff_stat_delta(doc)
     rec = {
         'kind': kind, 'node': node, 'round': 1,
-        'player': _bt_snapshot(player_c),
+        'player': player_snap,
         'npc': npc_snap,
         'npcMeta': npc,          # full spec for reward resolution
         'ctx': ctx or {},        # kind-specific (lair slain flag, boss hp pool, ...)
@@ -3903,13 +3925,30 @@ def _apply_buff(doc, kind, until=None, mult=1):
 def _apply_guardian_debuffs(npc, buffs):
     """Translate persisted field-curse buffs into flat NPC stat penalties for
     this one battle (each stat floored at 1). Guardians are rooted, so a
-    roll-halving curse becomes a speed penalty (see data.GUARDIAN_DEBUFF)."""
+    roll-halving curse becomes a speed penalty (see data.GUARDIAN_DEBUFF).
+
+    Records the applied curse kinds (`debuffKinds`, for the enemy's status chips)
+    and the net realized penalty (`statDelta`, after the floor, for the battle
+    UI's ±N annotation) so the client can surface the detriment the same way it
+    shows the player's buffs. The map's 'def' key becomes the snapshot's 'dfn'."""
+    applied = {}
+    kinds = []
     for b in buffs or []:
         delta = data.GUARDIAN_DEBUFF.get(b.get('kind'))
         if not delta:
             continue
+        kinds.append(b.get('kind'))
         for stat, d in delta.items():
-            npc[stat] = max(1, npc.get(stat, 0) + d)
+            before = npc.get(stat, 0)
+            after = max(1, before + d)
+            npc[stat] = after
+            applied[stat] = applied.get(stat, 0) + (after - before)
+    if kinds:
+        npc['debuffKinds'] = kinds
+        # 'def' penalties land on the snapshot's 'dfn' slot; remap for the client.
+        npc['statDelta'] = {'atk': int(applied.get('atk', 0)),
+                            'def': int(applied.get('def', 0)),
+                            'spd': int(applied.get('spd', 0))}
 
 
 def _push_away_event(target, entry):

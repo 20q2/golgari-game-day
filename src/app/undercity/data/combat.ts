@@ -140,6 +140,18 @@ export const STATUS_INFO: Record<string, StatusInfo> = {
     blurb: 'A lingering curse saps this fighter.' },
   vines: { label: 'Bog Snare', icon: 'grass', tone: 'debuff',
     blurb: 'Snared by clinging vines.' },
+  savage_roar: { label: 'Savage Roar', icon: 'whatshot', tone: 'buff',
+    blurb: '+5 ATK for this battle.' },
+  iron_hide: { label: 'Iron Hide', icon: 'security', tone: 'buff',
+    blurb: '+4 DEF for this battle.' },
+  fleetfoot: { label: 'Fleetfoot', icon: 'directions_run', tone: 'buff',
+    blurb: '+3 SPD for this battle.' },
+  warding_dance: { label: 'Warding Dance', icon: 'sports_martial_arts', tone: 'buff',
+    blurb: '+3 DEF and +3 SPD for this battle.' },
+  sap_vigor: { label: 'Sapped', icon: 'hourglass_bottom', tone: 'debuff',
+    blurb: 'Cursed: -3 SPD this battle.' },
+  rust_curse: { label: 'Rust Curse', icon: 'broken_image', tone: 'debuff',
+    blurb: 'Cursed: -4 DEF this battle.' },
 };
 
 export interface StatusChip {

@@ -23,11 +23,14 @@ export interface BattleItem {
   desc: string;
 }
 
-/** Combat stats shown beside a fighter. */
+/** Combat stats shown beside a fighter. The atk/def/spd are the effective values
+ *  the fight actually uses (base + gear + any active buffs/curses); `delta` is the
+ *  temporary buff/curse portion of that total, surfaced as a colored ±N. */
 export interface CombatStats {
   atk: number;
   def: number;
   spd: number;
+  delta?: { atk: number; def: number; spd: number };
 }
 
 type Outcome = 'attacker' | 'defender' | 'timeout' | 'fled';
@@ -103,6 +106,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   /** Brief "Couldn't escape!" flash shown when a flee attempt fails. */
   protected readonly fleeNotice = signal(false);
   protected readonly showHelp = signal(false);
+  /** Which help tab is open: current battlefield effects, or the rules primer. */
+  protected readonly helpTab = signal<'effects' | 'rules'>('effects');
   protected readonly showItems = signal(false);
   protected readonly attackerSpriteFailed = signal(false);
   protected readonly defenderSpriteFailed = signal(false);
@@ -227,6 +232,27 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   protected chipPopover(side: Side): StatusInfo | null {
     const c = this.openChip();
     return c && c.side === side ? (STATUS_INFO[c.kind] ?? null) : null;
+  }
+
+  /** Open (or close) the help overlay. When opening, land on the Active Effects
+   *  tab if there's anything live to explain (your stance perks or a standing
+   *  buff/debuff on either side); otherwise open straight to the rules. */
+  protected toggleHelp(): void {
+    if (this.showHelp()) {
+      this.showHelp.set(false);
+      return;
+    }
+    this.helpTab.set(this.hasActiveEffects() ? 'effects' : 'rules');
+    this.showHelp.set(true);
+  }
+
+  /** True when the Active Effects tab has anything to show. */
+  protected hasActiveEffects(): boolean {
+    return (
+      this.augments.length > 0 ||
+      this.chipsFor('attacker').length > 0 ||
+      this.chipsFor('defender').length > 0
+    );
   }
 
   /** Button tooltip: the stance blurb plus a line per active augment. */
@@ -516,6 +542,12 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
         // via the (in practice unreachable) COMBAT_HARD_CAP safety bound.
         return 'THE FIGHT ENDS IN EXHAUSTION';
     }
+  }
+
+  /** A signed label for a temporary stat swing ("+3" / "-2"), or '' when zero. */
+  protected fmtDelta(n: number | undefined | null): string {
+    if (!n) return '';
+    return n > 0 ? `+${n}` : `${n}`;
   }
 
   hpPct(side: Side): number {

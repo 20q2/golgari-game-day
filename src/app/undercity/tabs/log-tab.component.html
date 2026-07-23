@@ -15,7 +15,8 @@
             {{ p.username }}
             <small>{{ p.creatureName || p.formName }} · L{{ p.level }}</small>
           </span>
-          <span class="lb-stats" title="PvP wins / creature wins / Guild Sigils">
+          <span class="lb-stats" title="Rolls left / PvP wins / creature wins / Guild Sigils">
+            <mat-icon class="mi">casino</mat-icon>{{ p.rolls }}
             <mat-icon class="mi">sports_kabaddi</mat-icon>{{ p.pvpWins }}
             <mat-icon class="mi">bug_report</mat-icon>{{ p.wildWins }}
             <mat-icon class="mi">workspace_premium</mat-icon>{{ p.sigils }}

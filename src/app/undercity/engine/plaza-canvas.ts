@@ -994,6 +994,8 @@ export class PlazaCanvas {
     isOwn: boolean,
   ): void {
     const ctx = this.ctx;
+    // Draw the whole bubble twice as large so status text reads clearly.
+    scale *= 2;
     // Your own status is drawn larger so it reads clearly above your creature.
     const sizeMul = isOwn ? 9 : 6;
     const fontSize = Math.round(sizeMul * scale);

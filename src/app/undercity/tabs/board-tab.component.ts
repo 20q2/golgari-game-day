@@ -36,6 +36,7 @@ import {
   TradeOffer,
   TradeStockItem,
   VaultView,
+  YouDoc,
   isShielded,
 } from '../services/undercity-models';
 import { VAULT_POT_SEED } from '../data/vein-vault';
@@ -2116,6 +2117,48 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   // ── Interactive PvE battle (Plan 3) ──────────────────────────────────────────
 
+  /** The player's effective combat stats for the battle panel: base (`you`) +
+   *  equipped gear (mirrored from GEAR_MAP) + the temporary buff/curse swing the
+   *  server reports in `status.delta`. The delta is passed through so the panel
+   *  can annotate the temporary portion with a colored ±N. */
+  private playerCombatStats(
+    you: YouDoc | null | undefined,
+    status: BattleStatus | null | undefined,
+  ): CombatStats | null {
+    if (!you) return null;
+    const delta = status?.delta ?? { atk: 0, def: 0, spd: 0 };
+    const gear = { atk: 0, def: 0, spd: 0 };
+    for (const id of Object.values(you.gear ?? {})) {
+      const g = id ? GEAR_MAP[id] : undefined;
+      if (!g) continue;
+      gear.atk += g.atk ?? 0;
+      gear.def += g.def ?? 0;
+      gear.spd += g.spd ?? 0;
+    }
+    return {
+      atk: Math.max(1, you.atk + gear.atk + delta.atk),
+      def: Math.max(1, you.def + gear.def + delta.def),
+      spd: Math.max(1, you.spd + gear.spd + delta.spd),
+      delta,
+    };
+  }
+
+  /** The foe's combat stats for the panel. The server already bakes any field
+   *  curse into `atk/def/spd` (see _apply_guardian_debuffs), so those are the
+   *  effective values; `status.delta` (negative) is the curse portion to badge. */
+  private npcCombatStats(
+    npc: { atk?: number; def?: number; spd?: number },
+    status: BattleStatus | null | undefined,
+  ): CombatStats | null {
+    if (npc.atk == null || npc.def == null || npc.spd == null) return null;
+    return {
+      atk: npc.atk,
+      def: npc.def,
+      spd: npc.spd,
+      delta: status?.delta ?? { atk: 0, def: 0, spd: 0 },
+    };
+  }
+
   private openLiveBattle(ev: SpaceEvent, preHp: number): void {
     const you = this.store.you();
     const bag = you?.bag ?? [];
@@ -2144,11 +2187,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       kind: ev.kind ?? 'wild',
       items,
       hasScry: bag.includes('scrying_spore'),
-      attackerStats: you ? { atk: you.atk, def: you.def, spd: you.spd } : null,
-      defenderStats:
-        ev.npc!.atk != null && ev.npc!.def != null && ev.npc!.spd != null
-          ? { atk: ev.npc!.atk, def: ev.npc!.def, spd: ev.npc!.spd }
-          : null,
+      attackerStats: this.playerCombatStats(you, ev.playerStatus),
+      defenderStats: this.npcCombatStats(ev.npc!, ev.npcStatus),
       augments: computeStanceAugments(you?.gear, you?.passives),
       attackerStatus: ev.playerStatus ?? null,
       defenderStatus: ev.npcStatus ?? null,
@@ -2190,11 +2230,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       kind: pb.kind,
       items,
       hasScry: bag.includes('scrying_spore'),
-      attackerStats: you ? { atk: you.atk, def: you.def, spd: you.spd } : null,
-      defenderStats:
-        pb.npc.atk != null && pb.npc.def != null && pb.npc.spd != null
-          ? { atk: pb.npc.atk, def: pb.npc.def, spd: pb.npc.spd }
-          : null,
+      attackerStats: this.playerCombatStats(you, pb.playerStatus),
+      defenderStats: this.npcCombatStats(pb.npc, pb.npcStatus),
       augments: computeStanceAugments(you?.gear, you?.passives),
       attackerStatus: pb.playerStatus ?? null,
       defenderStatus: pb.npcStatus ?? null,

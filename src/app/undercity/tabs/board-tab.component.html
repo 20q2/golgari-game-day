@@ -113,7 +113,7 @@
       </div>
     }
 
-    @if (!rolling() && !store.you()?.pendingMove && castableSpells().length) {
+    @if (!rolling() && !store.you()?.pendingMove && (castableSpells().length || castableScrolls().length)) {
       <button class="uc-btn cast-btn" [disabled]="busy()" (click)="showSpells.set(true)">
         <mat-icon class="mi">auto_fix_high</mat-icon> Cast
       </button>

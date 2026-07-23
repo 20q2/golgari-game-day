@@ -266,6 +266,42 @@
   }
 }
 
+// Active overworld buffs/curses carried into the next battle — a compact row of
+// round icon badges (green = buff, red = debuff). Tooltip carries the details.
+.hud-buffs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  max-width: 96px;
+  justify-content: flex-end;
+}
+
+.buff-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(74, 124, 89, 0.22);
+  border: 1px solid rgba(103, 194, 128, 0.6);
+  color: #b7e4c7;
+
+  .mi {
+    font-size: 1rem;
+    height: 1rem;
+    width: 1rem;
+  }
+
+  &.debuff {
+    background: rgba(176, 58, 58, 0.22);
+    border-color: rgba(224, 108, 108, 0.6);
+    color: #f2b8b8;
+  }
+}
+
 // ── Tab body + bar ───────────────────────────────────────────────────────────
 
 .tab-body {
