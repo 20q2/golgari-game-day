@@ -682,3 +682,18 @@ def test_spell_power_scales_with_level():
 def test_spell_power_flat_for_powerless_spell():
     assert engine.spell_power({'effect': 'self_buff'}, {'level': 10}) == 0
     assert engine.spell_power({}, {}) == 0
+
+
+def test_field_damage_scales_with_caster_level(table, monkeypatch):
+    # A level-6 caster's Scrap Toss (base 8) lands for 8 + round(1.0*5) = 13.
+    _two_players_same_node(table)
+    monkeypatch.setattr(db, '_rng', FixedRng(random_values=[0.99, 0.99]))  # never dodge
+    alex = db._get_player(table, _sid(table), 'user-alex')
+    alex['level'] = 6
+    db._put_player(table, alex)
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate',
+                       target='user-sam')
+    assert status == 200
+    assert resp['cast']['dmg'] == 13
+    sam = db._get_player(table, _sid(table), 'user-sam')
+    assert sam['hp'] == 25 - 13

@@ -3779,7 +3779,7 @@ def _cast(table, sid, doc, payload):
         result = {'text': f"{spell['name']} takes hold. {spell['blurb']}"}
     elif effect == 'self_heal':
         eff = engine.effective_stats(doc)
-        heal = max(0, min(spell['power'], eff['maxHp'] - doc['hp']))
+        heal = max(0, min(engine.spell_power(spell, doc), eff['maxHp'] - doc['hp']))
         doc['hp'] += heal
         result = {'text': f'Torn flesh knits closed (+{heal} HP).', 'hp': heal}
     elif effect in ('field_damage', 'field_curse'):
@@ -3871,7 +3871,7 @@ def _cast_at_guardian(table, sid, doc, spell, target_id):
                           'out_of_range')
 
     if spell['effect'] == 'field_damage':
-        new_hp = max(1, hp - spell['power'])
+        new_hp = max(1, hp - engine.spell_power(spell, doc))
         dealt = hp - new_hp
         save(new_hp, buffs)
         if dealt:
@@ -3921,7 +3921,7 @@ def _cast_at_player(table, sid, doc, spell_id, spell, target_id):
         dmg = 0
         if not dodged:
             if spell['effect'] == 'field_damage':
-                dmg = spell['power']
+                dmg = engine.spell_power(spell, doc)
                 t['hp'] = max(1, t['hp'] - dmg)   # never composts (spec §2.2)
                 t['hpUpdatedAt'] = _now()
             else:
@@ -3996,7 +3996,7 @@ def _cast_boss_strike(table, sid, doc, spell, target):
     at 1 — the killing blow must be landed in person."""
     if target == 'boss':
         hp = _boss_hp(table, sid)
-        new_hp = max(1, hp - spell['power'])
+        new_hp = max(1, hp - engine.spell_power(spell, doc))
         dealt = hp - new_hp
         _set_boss_hp(table, sid, new_hp)
         doc['bossDamage'] = doc.get('bossDamage', 0) + dealt
@@ -4011,7 +4011,7 @@ def _cast_boss_strike(table, sid, doc, spell, target):
         return {'dmg': dealt, 'targetName': name, 'text': text}
     if target in data.LAIR_BOSSES:
         hp, slain, _ = _lair_state(table, sid, target)
-        new_hp = max(1, hp - spell['power'])
+        new_hp = max(1, hp - engine.spell_power(spell, doc))
         dealt = hp - new_hp
         _set_lair_state(table, sid, target, new_hp, slain)
         name = data.LAIR_BOSSES[target]['name']
