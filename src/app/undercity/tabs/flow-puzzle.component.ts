@@ -3,13 +3,19 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { FlowPuzzleView, FlowReward } from '../services/undercity-models';
 
+/** Mirror of undercity_config.FLOW_SPORE_PER_CELL / FLOW_SPORE_CAP. Keep in sync
+ * if the server tunables change. */
+const FLOW_SPORE_PER_CELL = 0.5;
+const FLOW_SPORE_CAP = 10;
+
 type Cell = [number, number];
 
 /**
- * The Flow loot-puzzle modal: drag a single line from the start dot to the end
- * dot, filling every non-rock cell. Pure presentation — the parent owns the
- * `solve-loot-puzzle` action. Emits `solved` with the path when complete, or
- * `gaveUp` when the player bails (forfeits the reward).
+ * The Overgrown Cache modal: drag a single line from the green start to the amber
+ * goal. Coverage is NOT required — any connecting route works. Every tile crossed
+ * is spores (shown live); the first item/gear pickup the route touches is redeemed.
+ * Pure presentation — the parent owns the `solve-loot-puzzle` action. Emits
+ * `solved` with the path on Claim, or `gaveUp` when the player bails.
  */
 @Component({
   selector: 'app-undercity-flow-puzzle',
@@ -20,9 +26,9 @@ type Cell = [number, number];
       <div class="flow-card" (click)="$event.stopPropagation()" [style.background-image]="washBg">
         <h3>🌿 Overgrown Cache</h3>
         <p class="flow-sub">
-          Draw from the <b class="lbl-start">green start</b> to the
-          <b class="lbl-end">amber goal</b>, filling every tile — the first prize you
-          cross is yours.
+          Trace a vine from the <b class="lbl-start">green start</b> to the
+          <b class="lbl-end">amber goal</b>. Every tile is spores — the longer the
+          route, the more you gather — and the first treasure you cross is yours.
         </p>
 
         <div
@@ -55,12 +61,16 @@ type Cell = [number, number];
           }
         </div>
 
-        <p class="flow-hint" [class.win]="isSolved()">
-          {{ isSolved() ? 'Solved! Claiming your find…' : 'Fill every tile in one line.' }}
+        <p class="flow-hint" [class.win]="isConnected()">
+          <span class="spore-tally">🌱 Spores: {{ sporesSoFar() }} / {{ sporeCap }}</span>
+          {{ isConnected() ? '— route complete, claim your find!' : '— connect 🌱 to 🌾.' }}
         </p>
         <div class="flow-actions">
           <button class="uc-btn ghost" (click)="reset()" [disabled]="busy">Reset</button>
           <button class="uc-btn ghost" (click)="gaveUp.emit()" [disabled]="busy">Give up</button>
+          <button class="uc-btn" (click)="claim()" [disabled]="busy || !isConnected()">
+            Claim
+          </button>
         </div>
       </div>
     </div>
@@ -282,16 +292,22 @@ export class FlowPuzzleModalComponent {
     return isReward && !(claimed[0] === r && claimed[1] === c);
   }
 
-  protected readonly isSolved = computed(() => {
+  /** The route is claimable once it connects start → end (coverage not required). */
+  protected readonly isConnected = computed(() => {
     const p = this.path();
-    const total = this.puzzle.w * this.puzzle.h - this.puzzle.rocks.length;
-    if (p.length !== total) return false;
+    if (p.length < 2) return false;
     const [sr, sc] = this.puzzle.start;
     const [er, ec] = this.puzzle.end;
     return (
       p[0][0] === sr && p[0][1] === sc && p[p.length - 1][0] === er && p[p.length - 1][1] === ec
     );
   });
+
+  /** Live movement-spore tally shown while drawing (matches the server award). */
+  protected readonly sporesSoFar = computed(() =>
+    Math.min(Math.floor(this.path().length * FLOW_SPORE_PER_CELL), FLOW_SPORE_CAP),
+  );
+  protected readonly sporeCap = FLOW_SPORE_CAP;
 
   protected reset(): void {
     this.path.set([]);
@@ -320,10 +336,10 @@ export class FlowPuzzleModalComponent {
 
   protected onUp(): void {
     this.drawing = false;
-    if (this.isSolved() && !this.busy) this.emitSolved();
   }
 
-  private emitSolved(): void {
+  protected claim(): void {
+    if (!this.isConnected() || this.busy) return;
     this.solved.emit(this.path().map(([r, c]) => [r, c] as [number, number]));
   }
 
