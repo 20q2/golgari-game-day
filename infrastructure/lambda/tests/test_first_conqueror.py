@@ -65,3 +65,20 @@ def test_cache_first_full_later_reduced(table, monkeypatch):
 
     rec = db._get(table, db._season_pk(sid), 'FIRST#city_cache')
     assert rec['by'] == 'Alice' and rec['kind'] == 'cache'
+
+
+def test_vault_first_full_later_reduced(table, monkeypatch):
+    _no_gear(monkeypatch)
+    sid = 'S'
+    alice = _treasure_doc('u1', 'Alice')
+    bob = _treasure_doc('u2', 'Bob')
+    full = data.VAULT_REWARD['spores']
+
+    r1 = db._vault(table, sid, alice, 'vault')
+    assert r1['spores'] == full
+
+    r2 = db._vault(table, sid, bob, 'vault')
+    assert r2['spores'] == int(full * data.PLUNDERED_LOOT_MULT)
+
+    rec = db._get(table, db._season_pk(sid), 'FIRST#vault')
+    assert rec['by'] == 'Alice' and rec['kind'] == 'vault'

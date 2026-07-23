@@ -2497,7 +2497,7 @@ def _resolve_space(table, sid, doc, node, prev):
         return _lair(table, sid, doc, node)
 
     if ntype == 'vault':
-        return _vault(table, sid, doc)
+        return _vault(table, sid, doc, node)
 
     if ntype == 'cache':
         return _cache(table, sid, doc, node)
@@ -3447,20 +3447,27 @@ def _boss(table, sid, doc, node, prev):
                          ctx={'hpBefore': hp_before})
 
 
-def _vault(table, sid, doc):
+def _vault(table, sid, doc, node):
     claims = doc.setdefault('poiClaims', [])
     if 'vault' in claims:
         return {'type': 'vault',
                 'text': 'The vault stands looted bare — by you, last time.'}
     claims.append('vault')
+    is_first = _claim_first(table, sid, node, 'vault', doc)
+    mult = 1.0 if is_first else data.PLUNDERED_LOOT_MULT
     r = data.VAULT_REWARD
-    doc['spores'] = doc.get('spores', 0) + r['spores']
-    _grant_xp(table, sid, doc, r['xp'])
-    _event(table, sid, 'vault',
-           f"{doc['username']} plundered the Sunken Vault!", actor=doc['userId'])
-    out = {'type': 'vault', 'spores': r['spores'],
-           'text': f"The hoard of the Erstwhile! +{r['spores']} Spores."}
-    _append_treasure_gear(doc, out)
+    spores = int(r['spores'] * mult)
+    doc['spores'] = doc.get('spores', 0) + spores
+    _grant_xp(table, sid, doc, int(r['xp'] * mult))
+    if is_first:
+        _event(table, sid, 'vault',
+               f"{doc['username']} was first to plunder the Sunken Vault!",
+               actor=doc['userId'])
+        text = f"The hoard of the Erstwhile! +{spores} Spores."
+    else:
+        text = f"You glean the dregs of the Sunken Vault — +{spores} Spores."
+    out = {'type': 'vault', 'spores': spores, 'text': text}
+    _append_treasure_gear(doc, out, mult)
     return out
 
 
