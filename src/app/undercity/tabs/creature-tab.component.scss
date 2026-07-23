@@ -729,6 +729,7 @@
   &[data-rarity='common'] { border-left-color: #9aa7a0; }
   &[data-rarity='rare'] { border-left-color: #5fd18a; }
   &[data-rarity='legendary'] { border-left-color: #fbbf24; }
+  &[data-rarity='mythic'] { border-left-color: #c084fc; }
 
   &.empty {
     opacity: 0.6;
@@ -776,6 +777,7 @@
     &.common { color: #9aa7a0; }
     &.rare { color: #5fd18a; }
     &.legendary { color: #fbbf24; }
+    &.mythic { color: #c084fc; }
   }
 
   .gear-tile-desc {
