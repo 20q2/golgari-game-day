@@ -2493,16 +2493,14 @@ def _resolve_space(table, sid, doc, node, prev):
                 'stock': _umori_barter_stock(table, sid, _uwin)}
 
     if ntype == 'loot':
-        # Gate the reward behind a Flow puzzle and scatter reward symbols on it:
-        # roll each category's PRESENCE now (spores always, item ~10%, gear rare),
-        # place them, and stash the placement. The VALUE of whichever reward the
-        # player traces to first is rolled later in _solve_loot_puzzle. Only pick
-        # puzzles with at least one rock — a clear board traces trivially.
+        # Overgrown Cache: a routing puzzle. Movement grants spores (awarded in
+        # _solve_loot_puzzle); the board only carries item/gear pickups — the
+        # first one the path crosses is redeemed. Always two consumable pouches,
+        # plus a rare gear chest for variety. Only pick puzzles with a rock so
+        # the board reads as a little maze rather than an empty square.
         pid = _rng.choice([p['id'] for p in data.FLOW_PUZZLES if p['rocks']])
         puzzle = data.flow_puzzle(pid)
-        kinds = ['spores']
-        if _rng.random() < 0.10:
-            kinds.append('item')
+        kinds = ['item', 'item']
         if _rng.random() < data.GEAR_DROP['loot'][0]:
             kinds.append('gear')
         rewards = _place_loot_rewards(puzzle, kinds, _rng)

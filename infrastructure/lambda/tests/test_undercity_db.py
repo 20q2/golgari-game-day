@@ -2947,25 +2947,25 @@ def test_award_gear_rolls_a_drop(monkeypatch):
     assert ev['type'] == 'loot' and ev['gear']['slot'] == 'fang'
 
 
-def test_loot_landing_always_has_spores_reward(table, monkeypatch):
+def test_loot_landing_places_two_items_no_gear(table, monkeypatch):
     node = _first_loot_node()
     sid, doc = _player_at(table, node, spores=0)
-    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)   # no item, no gear
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)   # gear roll misses
     ev = db._resolve_space(table, sid, doc, node, None)
     assert ev['type'] == 'loot_puzzle'
     kinds = [r['kind'] for r in ev['puzzle']['rewards']]
-    assert kinds == ['spores']
+    assert kinds == ['item', 'item']                       # no 'spores' symbol
     assert doc['spores'] == 0                              # not credited yet
     assert doc['pendingLoot']['rewards'] == ev['puzzle']['rewards']
 
 
-def test_loot_landing_can_roll_all_three(table, monkeypatch):
+def test_loot_landing_appends_gear_on_rare_roll(table, monkeypatch):
     node = _first_loot_node()
     sid, doc = _player_at(table, node, spores=0)
-    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)    # item + gear both fire
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)    # gear roll fires
     ev = db._resolve_space(table, sid, doc, node, None)
-    kinds = {r['kind'] for r in ev['puzzle']['rewards']}
-    assert kinds == {'spores', 'item', 'gear'}
+    kinds = [r['kind'] for r in ev['puzzle']['rewards']]
+    assert kinds == ['item', 'item', 'gear']
 
 
 def _land_loot_with(table, monkeypatch, placement):
