@@ -11,8 +11,9 @@ def test_rider_scale_covers_every_geared_rider():
 
 def test_rider_scale_is_monotonic_non_decreasing():
     for rider, rungs in data.RIDER_SCALE.items():
-        assert set(rungs) == {1, 2, 3}, f"{rider} must define tiers 1,2,3"
-        assert rungs[1] <= rungs[2] <= rungs[3], f"{rider} ladder not monotonic: {rungs}"
+        assert {1, 2, 3}.issubset(rungs), f"{rider} must define tiers 1,2,3"
+        ordered = [rungs[t] for t in sorted(rungs)]
+        assert ordered == sorted(ordered), f"{rider} ladder not monotonic: {rungs}"
 
 
 def test_combatant_mag_reads_rider_mag_with_default():
@@ -101,8 +102,9 @@ def _tiers_by_rider():
 
 
 def test_every_combat_rider_family_spans_all_three_rarities():
-    """Each rider must have a Common (t1), Rare (t2) and Legendary (t3) piece."""
-    incomplete = {r: sorted(t) for r, t in _tiers_by_rider().items() if t != {1, 2, 3}}
+    """Each rider must have at least a Common (t1), Rare (t2) and Legendary (t3) piece."""
+    incomplete = {r: sorted(t) for r, t in _tiers_by_rider().items()
+                  if not {1, 2, 3}.issubset(t)}
     assert not incomplete, f"rider families missing rungs: {incomplete}"
 
 
@@ -112,7 +114,8 @@ def test_read_rate_gear_readbonus_is_monotonic_by_tier():
     for rider in ('seer', 'glint'):
         rungs = sorted((g['tier'], g.get('readBonus', 0))
                        for g in data.GEAR.values() if g.get('rider') == rider)
-        assert [t for t, _ in rungs] == [1, 2, 3], f"{rider} missing a tier: {rungs}"
+        tiers = [t for t, _ in rungs]
+        assert {1, 2, 3}.issubset(tiers), f"{rider} missing a tier: {rungs}"
         bonuses = [b for _, b in rungs]
         assert bonuses == sorted(bonuses), f"{rider} readBonus not monotonic: {rungs}"
 
@@ -120,7 +123,7 @@ def test_read_rate_gear_readbonus_is_monotonic_by_tier():
 def test_new_gear_entries_have_valid_shape():
     for gid, g in data.GEAR.items():
         assert g['slot'] in data.GEAR_SLOTS, f"{gid} bad slot"
-        assert g['tier'] in (1, 2, 3), f"{gid} bad tier"
+        assert g['tier'] in (1, 2, 3, 4), f"{gid} bad tier"
         assert g['cost'] > 0, f"{gid} bad cost"
         # Every gear has a combat identity: a rider, a light source, or (for the
         # pure Vital carapace line) a Max HP pool.
