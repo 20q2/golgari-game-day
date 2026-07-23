@@ -44,6 +44,9 @@ const MAX_LEVEL = 12;
 // at draw time, so a 1024px dragon and a 64px imp render at one height), then let
 // tier set the real hierarchy. 90px keeps a T1 starter at its previous size.
 const NORMALIZED_SPRITE_PX = 90;
+// Fixed on-screen scale for status bubbles (~= a mid tier-1 creature's old
+// d.scale*2), so bubble legibility doesn't depend on creature tier/level.
+const BUBBLE_SCALE = 2.2;
 // Intended size hierarchy: each tier is 50% larger than the one below.
 const TIER_SCALE: Record<number, number> = { 1: 1, 2: 1.5, 3: 2.25 };
 
@@ -994,8 +997,11 @@ export class PlazaCanvas {
     isOwn: boolean,
   ): void {
     const ctx = this.ctx;
-    // Draw the whole bubble twice as large so status text reads clearly.
-    scale *= 2;
+    // Bubbles read at a fixed world-space size regardless of the creature's
+    // tier/level sprite scale. Tying it to d.scale made low-tier/low-level
+    // creatures show unreadably tiny bubbles (and maxed ones comically huge).
+    // The head-position offset already accounts for sprite size via headTop.
+    scale = BUBBLE_SCALE;
     // Your own status is drawn larger so it reads clearly above your creature.
     const sizeMul = isOwn ? 9 : 6;
     const fontSize = Math.round(sizeMul * scale);

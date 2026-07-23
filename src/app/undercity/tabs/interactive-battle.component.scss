@@ -930,7 +930,7 @@
   font-size: 1.35rem;
   color: #f87171;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.85);
-  animation: uc-pop 0.55s ease forwards;
+  animation: uc-pop 0.9s ease forwards;
   pointer-events: none;
   &.heal { color: #86efac; }
   &.miss { color: #cdd8cd; font-size: 1rem; }
@@ -946,7 +946,8 @@
 
 @keyframes uc-pop {
   0% { opacity: 0; transform: translate(-50%, 6px) scale(0.7); }
-  20% { opacity: 1; transform: translate(-50%, -4px) scale(1.15); }
+  12% { opacity: 1; transform: translate(-50%, -4px) scale(1.15); }
+  70% { opacity: 1; transform: translate(-50%, -14px) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -24px) scale(1); }
 }
 

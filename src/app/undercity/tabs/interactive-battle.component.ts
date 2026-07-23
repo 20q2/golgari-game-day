@@ -492,7 +492,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
       if (!e.dmg) this.pop.set({ side: healer, text: `+${e.heal}`, kind: 'heal' });
     }
 
-    this.timers.push(setTimeout(() => this.pop.set(null), 520));
+    this.timers.push(setTimeout(() => this.pop.set(null), 880));
   }
 
   /**
