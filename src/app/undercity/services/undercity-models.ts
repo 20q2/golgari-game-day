@@ -259,6 +259,9 @@ export interface GameState {
   barriersOpen?: string[];
   /** Island-boss (Savra) persistent HP pool. */
   boss?: { hp: number; maxHp: number };
+  /** Landmark node id -> its season-global first conqueror.
+   *  `kind` is 'lair' | 'boss' | 'trove' | 'cache' | 'vault'. */
+  firsts?: Record<string, { by: string; at?: string; kind: string }>;
   /** The wilderness World Event ("Great Beast"), or null if it never spawned. */
   worldEvent?: WorldEventState | null;
   /** Barrier/lair node id -> its live guardian HP pool (field-spell targets). */
