@@ -49,8 +49,42 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   izoni: { sprite: 'diplo', regions: DINO_REGIONS, scale: 1.3 }, // still Dino Party placeholder
 };
 
-export const ALL_SPRITES = [...new Set(Object.values(FORM_SPRITES).map((s) => s.sprite))];
+/** A selectable cosmetic look for a starter. `id` is the sprite key stored
+ *  server-side (mirror: STARTER_VARIANTS in undercity_data.py); the base look
+ *  reuses the form's plain key. `name` labels the hatch picker. */
+export interface FormVariant extends SpeciesSprite {
+  id: string;
+  name: string;
+}
 
-export function formSprite(form: string | undefined): SpeciesSprite {
+/** Base variant reuses the form's existing FORM_SPRITES entry, so the two
+ *  never drift on scale/regions. */
+function baseVariant(form: string): FormVariant {
+  return { id: form, name: 'Classic', ...FORM_SPRITES[form] };
+}
+
+export const FORM_VARIANTS: Record<string, FormVariant[]> = {
+  pest: [baseVariant('pest'), { id: 'pest_2', name: 'Alt', sprite: 'pest_2', regions: PLAYER_REGIONS, scale: 0.7 }],
+  saproling: [baseVariant('saproling'), { id: 'saproling_2', name: 'Alt', sprite: 'saproling_2', regions: PLAYER_REGIONS, scale: 0.7 }],
+  // zombie_2 ships no .mask.png, so it draws un-tinted (regions: []).
+  zombie: [baseVariant('zombie'), { id: 'zombie_2', name: 'Alt', sprite: 'zombie_2', regions: [], scale: 0.7 }],
+  kraul: [baseVariant('kraul'), { id: 'insect_2', name: 'Alt', sprite: 'insect_2', regions: PLAYER_REGIONS.slice(0, 2), scale: 0.7 }],
+};
+
+export const ALL_SPRITES = [
+  ...new Set([
+    ...Object.values(FORM_SPRITES).map((s) => s.sprite),
+    ...Object.values(FORM_VARIANTS)
+      .flat()
+      .map((v) => v.sprite),
+  ]),
+];
+
+export function formSprite(form: string | undefined, variant?: string | null): SpeciesSprite {
+  const variants = FORM_VARIANTS[form ?? ''];
+  if (variants && variant) {
+    const v = variants.find((x) => x.id === variant);
+    if (v) return v;
+  }
   return FORM_SPRITES[form ?? 'pest'] ?? FORM_SPRITES['pest'];
 }
