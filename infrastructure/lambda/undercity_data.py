@@ -288,6 +288,30 @@ GEAR = {
     # slot + near-zero stats, in exchange for total information.
     'torchfang':       {'name': 'Torchfang',       'slot': 'fang',  'tier': 1, 'cost': 30, 'atk': 1, 'light': 'full'},
     'glowspore_charm': {'name': 'Glowspore Charm', 'slot': 'charm', 'tier': 1, 'cost': 30, 'light': 'full'},
+    # ── Mythic (tier 4) — craft-only; forged from a Legendary at the Blacksmith
+    # for 3 Chrysalis Ichor. Never dropped/sold/found (no tier-4 in GEAR_DROP,
+    # the bazaar tier set, or the boss trove). One per rider family. New stat
+    # band above T3 + the RIDER_SCALE[*][4] magnitude step. Names/stats are the
+    # tune-undercity-balance surface.
+    # Fangs
+    'wyrm_godtooth':    {'name': 'Wyrm Godtooth',    'slot': 'fang', 'tier': 4, 'cost': 150, 'atk': 8, 'spd': 1, 'rider': 'barbed'},
+    'sanguine_leviathan':{'name': 'Sanguine Leviathan','slot': 'fang','tier': 4, 'cost': 150, 'atk': 8, 'spd': 1, 'rider': 'bloodfang'},
+    'worldrender_maw':  {'name': 'Worldrender Maw',   'slot': 'fang', 'tier': 4, 'cost': 150, 'atk': 8, 'spd': 1, 'rider': 'deep_biter'},
+    'apex_ravener':     {'name': 'Apex Ravener',      'slot': 'fang', 'tier': 4, 'cost': 150, 'atk': 7, 'spd': 2, 'rider': 'rabid'},
+    'worldcleaver':     {'name': 'Worldcleaver',      'slot': 'fang', 'tier': 4, 'cost': 150, 'atk': 8, 'rider': 'gutcleaver'},
+    # Carapaces
+    'titan_carapace':   {'name': 'Titan Carapace',    'slot': 'carapace', 'tier': 4, 'cost': 150, 'def': 6, 'maxHp': 8, 'rider': 'thick'},
+    'thornlord_aegis':  {'name': 'Thornlord Aegis',   'slot': 'carapace', 'tier': 4, 'cost': 150, 'def': 6, 'maxHp': 8, 'rider': 'bramble'},
+    'wyrmscale_wall':   {'name': 'Wyrmscale Wall',    'slot': 'carapace', 'tier': 4, 'cost': 150, 'def': 6, 'maxHp': 8, 'rider': 'spiked'},
+    'adamant_bulwark':  {'name': 'Adamant Bulwark',   'slot': 'carapace', 'tier': 4, 'cost': 150, 'def': 6, 'maxHp': 8, 'rider': 'bulwark'},
+    'ancient_grove_shell':{'name': 'Ancient Grove Shell','slot': 'carapace','tier': 4, 'cost': 150, 'def': 6, 'maxHp': 8, 'rider': 'mossback'},
+    # Charms
+    'godtrickster_idol':{'name': "Godtrickster's Idol",'slot': 'charm', 'tier': 4, 'cost': 150, 'spd': 3, 'rider': 'trickster'},
+    'plaguelord_idol':  {'name': 'Plaguelord Idol',   'slot': 'charm', 'tier': 4, 'cost': 150, 'spd': 2, 'rider': 'venomtrick'},
+    'eviscerator_idol': {'name': 'Eviscerator Idol',  'slot': 'charm', 'tier': 4, 'cost': 150, 'spd': 2, 'rider': 'serrated'},
+    'allseeing_idol':   {'name': 'All-Seeing Idol',   'slot': 'charm', 'tier': 4, 'cost': 150, 'spd': 2, 'rider': 'seer', 'readBonus': 0.60},
+    'kingpin_idol':     {'name': 'Kingpin Idol',      'slot': 'charm', 'tier': 4, 'cost': 150, 'spd': 3, 'rider': 'cutpurse'},
+    'prism_idol':       {'name': 'Prism Idol',        'slot': 'charm', 'tier': 4, 'cost': 150, 'spd': 2, 'rider': 'glint', 'readBonus': 0.20},
 }
 
 # Effect-family index: rider tag -> {tier: gear_id}. After the rarity ladders
