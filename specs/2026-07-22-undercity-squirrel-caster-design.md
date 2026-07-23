@@ -1,6 +1,10 @@
 # The Undercity — Squirrel Caster Race (design)
 
-**Status:** approved design, pending implementation plan.
+**Status:** ⚠️ SUPERSEDED (2026-07-23) by
+[2026-07-23-undercity-squirrel-simple-design.md](2026-07-23-undercity-squirrel-simple-design.md).
+The spell **level-scaling** (§2.5 pillar 1) shipped and is kept; the **Acorn
+Stash** and **in-combat casting** here are dropped in favor of the simpler
+multiplier-based squirrel. Retained for history.
 **Date:** 2026-07-22.
 
 Adds a fifth playable race — the **Squirrel**, a *caster* archetype built around a

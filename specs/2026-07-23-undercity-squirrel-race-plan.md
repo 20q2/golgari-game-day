@@ -1,5 +1,10 @@
 # Squirrel Caster Race + Acorn Stash + In-Combat Casting — Implementation Plan
 
+> ⚠️ **SUPERSEDED (2026-07-23)** by the simpler multiplier-based squirrel in
+> [2026-07-23-undercity-squirrel-simple-design.md](2026-07-23-undercity-squirrel-simple-design.md),
+> implemented inline. This plan (acorns + in-combat casting) is NOT being built.
+> Retained for history.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add the Squirrel — a fifth playable race (T1 + two T2 evolutions + one new T3 apex) built on a new **Acorn Stash** resource: a per-roll-refilling charge pool spent to recast on-cooldown spells (board) and to cast spells mid-combat (the caster's signature).
