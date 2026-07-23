@@ -58,3 +58,23 @@ export const HAT_PRICES: Record<HatInfo['rarity'], number> = {
   legendary: 300,
 };
 export const PAINT_PRICE = 40;
+
+export interface SpecialPaintInfo {
+  id: string;
+  name: string;
+}
+
+/** Animated whole-creature effects (mirror SPECIAL_PAINTS in undercity_data.py). */
+export const SPECIAL_PAINTS: SpecialPaintInfo[] = [
+  { id: 'prismatic', name: 'Prismatic' },
+  { id: 'rainbow', name: 'Rainbow' },
+  { id: 'metallic', name: 'Metallic' },
+  { id: 'starry', name: 'Starry' },
+];
+
+export const SPECIAL_PAINT_MAP: Record<string, SpecialPaintInfo> = Object.fromEntries(
+  SPECIAL_PAINTS.map((p) => [p.id, p]),
+);
+
+/** Renown price per special paint (mirror SPECIAL_PAINT_PRICE in undercity_data.py). */
+export const SPECIAL_PAINT_PRICE = 500;

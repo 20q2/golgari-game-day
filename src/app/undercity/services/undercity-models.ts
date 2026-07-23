@@ -36,6 +36,8 @@ export interface PublicPlayer {
   sigils: number;
   paint: Record<string, number>;
   hat: string | null;
+  /** Animated special paint — an overlay drawn over the creature's silhouette. */
+  effect?: string | null;
   /** Cosmetic-only shiny (5% at hatch): draws a gold sparkle over the sprite. */
   shiny?: boolean;
   /** Free-text status bubble shown above the creature; '' or absent = none. */
@@ -156,6 +158,8 @@ export interface YouDoc {
   poiClaims?: string[];
   paint: Record<string, number>;
   hat: string | null;
+  /** Animated special paint — an overlay drawn over the creature's silhouette. */
+  effect?: string | null;
   evolvedAt?: string;
   ver: number;
 }
@@ -181,6 +185,7 @@ export interface Standing {
   spores: number;
   paint: Record<string, number>;
   hat: string | null;
+  effect?: string | null;
 }
 
 export interface SeasonResult {
@@ -199,6 +204,7 @@ export interface HallOfFameNight {
 export interface Wardrobe {
   hats: string[];
   paints: string[];
+  effects: string[];
   seals: number;
   nights: number;
   /** Spendable renown balance for the pre-spawn shop. */
