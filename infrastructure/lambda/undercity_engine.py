@@ -704,17 +704,21 @@ def effective_stats(player: dict) -> dict:
         for stat in ('atk', 'def', 'spd', 'maxHp'):
             eff[stat] += g.get(stat, 0)
     for buff in (player.get('buffs') or []):
-        if buff.get('kind') == 'rot_surge':
-            eff['atk'] += 3
-        elif buff.get('kind') == 'cursed_idol':
+        kind = buff.get('kind')
+        # Beneficial self-buffs may carry a `mult` (Squirrel Warrior doubles
+        # self-cast buffs). Curses are never self-cast, so they ignore mult.
+        mult = buff.get('mult', 1)
+        if kind == 'rot_surge':
+            eff['atk'] += 3 * mult
+        elif kind == 'cursed_idol':
             eff['atk'] = max(1, eff['atk'] - 1)
-        elif buff.get('kind') == 'bone_chill':
+        elif kind == 'bone_chill':
             eff['atk'] = max(1, eff['atk'] - 2)
-        elif buff.get('kind') == 'glowveil':
-            eff['spd'] += 2
-        elif buff.get('kind') == 'harden_shell':
-            eff['def'] += 2
-        elif buff.get('kind') == 'weaken_hex':
+        elif kind == 'glowveil':
+            eff['spd'] += 2 * mult
+        elif kind == 'harden_shell':
+            eff['def'] += 2 * mult
+        elif kind == 'weaken_hex':
             eff['atk'] = max(1, eff['atk'] - 3)
     # Carapace Grind (DEF-12 perk): a flat Max HP bump while the perk is held.
     # Derived here (not persisted) so it appears in state and combat and vanishes

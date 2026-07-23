@@ -697,3 +697,14 @@ def test_field_damage_scales_with_caster_level(table, monkeypatch):
     assert resp['cast']['dmg'] == 13
     sam = db._get_player(table, _sid(table), 'user-sam')
     assert sam['hp'] == 25 - 13
+
+
+# ── Squirrel caster passives (design 2026-07-23 squirrel-simple) ─────────────
+
+def test_effective_stats_buff_mult_doubles_delta():
+    base = engine.effective_stats({'atk': 5, 'def': 5, 'spd': 5, 'maxHp': 25,
+                                   'buffs': [{'kind': 'rot_surge'}]})
+    assert base['atk'] == 8       # +3
+    doubled = engine.effective_stats({'atk': 5, 'def': 5, 'spd': 5, 'maxHp': 25,
+                                      'buffs': [{'kind': 'rot_surge', 'mult': 2}]})
+    assert doubled['atk'] == 11    # +6
