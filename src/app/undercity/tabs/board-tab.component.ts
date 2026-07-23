@@ -240,6 +240,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   } | null>(null);
   /** Biome awaiting its sigil fanfare until the victory screen is dismissed. */
   private pendingSigilBiome: string | null = null;
+  /** A world-boss raid summary to show the (present) killer once their battle
+   *  result closes — synthesized into a world_kill note so it reuses the away
+   *  modal's raid rendering. */
+  private pendingRaidSummary: AwayEvent | null = null;
   private sigilTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly showVein = signal(false);
   protected readonly veinDepth = signal(0);
@@ -2338,12 +2342,20 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // A first-kill lair boss reports the sigil it drops — remember it so the
     // sunburst fanfare can fire once the player dismisses the victory screen.
     this.pendingSigilBiome = outcome === 'attacker' && ev.sigil ? ev.sigil : null;
-    let text = ev.text ?? '';
-    if (ev.worldKill && ev.reward) {
-      text +=
-        ` (${ev.reward.bracket} bracket: +${ev.reward.spores} Spores` +
-        (ev.reward.renown ? `, +${ev.reward.renown} Renown` : '') +
-        ')';
+    const text = ev.text ?? '';
+    if (ev.worldKill && ev.reward && ev.raid) {
+      this.pendingRaidSummary = {
+        kind: 'world_kill',
+        name: ev.raid.name,
+        bracket: ev.reward.bracket as 'vanquisher' | 'major' | 'minor' | 'participant',
+        spores: ev.reward.spores,
+        xp: ev.reward.xp,
+        renown: ev.reward.renown,
+        gear: ev.reward.gear ?? null,
+        leveledTo: ev.reward.leveledTo ?? null,
+        roster: ev.raid.roster,
+        at: new Date().toISOString(),
+      };
     }
     this.liveB?.finish(outcome, you?.hp ?? 0, npcHp, text, this.buildRewards(ev), entries);
   }
@@ -2351,8 +2363,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   async closeLiveBattle(): Promise<void> {
     const biome = this.pendingSigilBiome;
     this.pendingSigilBiome = null;
+    const raid = this.pendingRaidSummary;
+    this.pendingRaidSummary = null;
     this.liveBattle.set(null);
-    await this.store.refresh(); // so poiClaims reflects the just-won sigil
+    await this.store.refresh(); // so poiClaims / stash reflect the just-won loot
+    if (raid) this.awayModal.set([raid]);
     if (biome) this.openSigilCelebration(biome);
   }
 
