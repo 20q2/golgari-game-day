@@ -1242,6 +1242,68 @@
   }
 }
 
+.away-raid {
+  border: 1px solid var(--accent-color, #b89b5e);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  margin-bottom: 0.5rem;
+  background: rgba(0, 0, 0, 0.25);
+
+  .away-raid-head {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    margin-bottom: 0.4rem;
+  }
+
+  .away-raid-you {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.4rem;
+
+    .haul {
+      font-weight: 600;
+    }
+  }
+
+  .away-raid-roster {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+  }
+
+  .bracket-badge {
+    display: inline-block;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--accent-color, #b89b5e);
+    color: #1a1205;
+
+    &.sm {
+      font-size: 0.62rem;
+    }
+  }
+}
+
 // Dig-site cleared celebration — sits above the dig overlay (z 1150).
 .dig-clear-backdrop {
   position: fixed;

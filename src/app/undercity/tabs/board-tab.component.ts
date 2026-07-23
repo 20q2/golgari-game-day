@@ -1080,6 +1080,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       }
       case 'boss':
         return `${e.name} was felled by ${e.by}.`;
+      case 'world_fallen':
+        return `${e.name} has fallen. The wilderness quiets.`;
+      case 'world_kill':
+        return `${e.name} has fallen — the spoils are shared out.`;
       case 'market':
         return e.text;
     }
@@ -1097,6 +1101,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       case 'reward':
         return 'casino';
       case 'boss':
+        return 'whatshot';
+      case 'world_kill':
+      case 'world_fallen':
         return 'whatshot';
       case 'market':
         return 'storefront';
@@ -1117,10 +1124,20 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return [
       { label: 'Attacks', rows: of('pvp', 'spell_hit', 'spell_dodged') },
       { label: 'Rewards', rows: of('reward') },
+      { label: 'The Wilderness', rows: of('world_kill', 'world_fallen') },
       { label: 'News', rows: of('boss') },
       { label: 'Market', rows: of('market') },
     ].filter((g) => g.rows.length);
   });
+
+  /** Accolade bracket → display label for the raid summary. */
+  protected bracketLabel(bracket: string): string {
+    return (
+      { vanquisher: 'Vanquisher', major: 'Major', minor: 'Minor', participant: 'Participant' }[
+        bracket
+      ] ?? bracket
+    );
+  }
 
   async dismissAway(): Promise<void> {
     this.awayModal.set(null);

@@ -882,10 +882,34 @@
           <h4 class="away-group">{{ group.label }}</h4>
           <div class="away-rows">
             @for (e of group.rows; track $index) {
-              <div class="away-row" [class.hit]="awayIsHit(e)">
-                <mat-icon class="mi">{{ awayIcon(e) }}</mat-icon>
-                <span>{{ awayText(e) }}</span>
-              </div>
+              @if (e.kind === 'world_kill') {
+                <div class="away-raid">
+                  <div class="away-raid-head">
+                    <mat-icon class="mi">whatshot</mat-icon> {{ e.name }} has fallen!
+                  </div>
+                  <div class="away-raid-you" [attr.data-bracket]="e.bracket">
+                    <span class="bracket-badge">{{ bracketLabel(e.bracket) }}</span>
+                    <span class="haul">
+                      +{{ e.spores }} Spores · +{{ e.xp }} XP@if (e.gear) {
+                        · {{ e.gear.name }} (T{{ e.gear.tier }}){{ e.gear.ground ? ' — salvaged' : '' }}
+                      }@if (e.leveledTo) { · Level {{ e.leveledTo }}! }
+                    </span>
+                  </div>
+                  <ol class="away-raid-roster">
+                    @for (r of e.roster; track $index) {
+                      <li>
+                        <span class="bracket-badge sm">{{ bracketLabel(r.bracket) }}</span>
+                        {{ r.name }}
+                      </li>
+                    }
+                  </ol>
+                </div>
+              } @else {
+                <div class="away-row" [class.hit]="awayIsHit(e)">
+                  <mat-icon class="mi">{{ awayIcon(e) }}</mat-icon>
+                  <span>{{ awayText(e) }}</span>
+                </div>
+              }
             }
           </div>
         }
