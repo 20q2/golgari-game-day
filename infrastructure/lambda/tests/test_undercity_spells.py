@@ -105,6 +105,47 @@ def test_every_spell_has_client_display_fields():
         assert sp.get('icon'), f'{sid_} missing icon'
 
 
+# ── New one-battle buff/curse kinds (expansion 2026-07-23) ───────────────────
+
+_NEW_BUFFS = [
+    ('savage_roar', 'atk', 5),
+    ('iron_hide', 'def', 4),
+    ('fleetfoot', 'spd', 3),
+    ('sap_vigor', 'spd', -3),
+    ('rust_curse', 'def', -4),
+]
+
+
+@pytest.mark.parametrize('kind,stat,delta', _NEW_BUFFS)
+def test_new_buff_kind_shifts_stat(kind, stat, delta):
+    base = {'atk': 10, 'def': 10, 'spd': 10, 'maxHp': 30, 'buffs': [{'kind': kind}]}
+    eff = engine.effective_stats(base)
+    assert eff[stat] == 10 + delta
+
+
+def test_warding_dance_shifts_two_stats():
+    base = {'atk': 10, 'def': 10, 'spd': 10, 'maxHp': 30,
+            'buffs': [{'kind': 'warding_dance'}]}
+    eff = engine.effective_stats(base)
+    assert eff['def'] == 13 and eff['spd'] == 13
+
+
+@pytest.mark.parametrize('kind', ['savage_roar', 'iron_hide', 'fleetfoot',
+                                  'warding_dance', 'sap_vigor', 'rust_curse'])
+def test_new_buff_kinds_are_one_battle(kind):
+    assert kind in db.ONE_BATTLE_BUFFS
+    doc = {'buffs': [{'kind': kind}]}
+    db._consume_one_battle_buffs(doc)
+    assert doc['buffs'] == []
+
+
+def test_self_buff_mult_doubles_new_buff():
+    """Squirrel Warrior doubling applies to the new self-buffs (mult carried)."""
+    base = {'atk': 10, 'def': 10, 'spd': 10, 'maxHp': 30,
+            'buffs': [{'kind': 'savage_roar', 'mult': 2}]}
+    assert engine.effective_stats(base)['atk'] == 10 + 5 * 2
+
+
 # ── Engine helpers ───────────────────────────────────────────────────────────
 
 _LINE_NODES = {

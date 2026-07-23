@@ -658,7 +658,9 @@ def _creature_label(doc):
     return doc.get('creatureName') or _form_name(doc)
 
 
-ONE_BATTLE_BUFFS = ('rot_surge', 'bone_chill', 'glowveil', 'harden_shell', 'weaken_hex')
+ONE_BATTLE_BUFFS = ('rot_surge', 'bone_chill', 'glowveil', 'harden_shell', 'weaken_hex',
+                    'savage_roar', 'iron_hide', 'fleetfoot', 'warding_dance',
+                    'sap_vigor', 'rust_curse')
 
 
 def _consume_one_battle_buffs(doc):
