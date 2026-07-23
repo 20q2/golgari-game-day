@@ -919,7 +919,8 @@ def _upgrade_gear(table, sid, doc, payload):
     next_tier = g['tier'] + 1
     next_gid = data.GEAR_FAMILY[rider].get(next_tier)
     if not next_gid:
-        return _err('That piece is already Legendary.', 409)
+        top = 'Mythic' if g['tier'] >= 4 else 'Legendary'
+        return _err(f'That piece is already {top}.', 409)
 
     spores_cost = data.UPGRADE_SPORES.get(next_tier, 0)
     moltings_cost = data.UPGRADE_MOLTINGS.get(next_tier, 0)
