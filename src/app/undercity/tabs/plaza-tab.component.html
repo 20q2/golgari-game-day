@@ -118,14 +118,20 @@
             <div class="forge-empty">Nothing to upgrade yet — find or stash gear that has a rarer rung.</div>
           }
         } @else {
-          <p class="forge-hint">Buy gear other players listed, or list your own stash for Spores.</p>
+          <p class="forge-hint">Buy what other players listed, or list your own gear, bag items, or scrolls for Spores.</p>
           <h4 class="forge-subhead">On the market</h4>
           @for (l of marketRows(); track l.id) {
-            <div class="forge-row" [attr.data-rarity]="tierRarity(l.info.tier).key">
-              <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + l.info.slot"></mat-icon>
-              <span class="forge-name">{{ l.info.name }}
-                <span class="rarity-badge {{ tierRarity(l.info.tier).key }}">{{ tierRarity(l.info.tier).label }}</span>
-                <em>by {{ l.sellerName }} · {{ l.info.desc }}</em>
+            <div class="forge-row" [attr.data-rarity]="l.view!.rarity?.key ?? 'common'">
+              @if (l.view!.svgIcon) {
+                <mat-icon class="mi slot-mi" [svgIcon]="l.view!.svgIcon"></mat-icon>
+              } @else {
+                <mat-icon class="mi slot-mi">{{ l.view!.icon }}</mat-icon>
+              }
+              <span class="forge-name">{{ l.view!.name }}
+                @if (l.view!.rarity) {
+                  <span class="rarity-badge {{ l.view!.rarity!.key }}">{{ l.view!.rarity!.label }}</span>
+                }
+                <em>by {{ l.sellerName }} · {{ l.view!.desc }}</em>
               </span>
               @if (l.own) {
                 <button class="uc-btn" [disabled]="busy()" (click)="marketCancel(l.id)">Cancel</button>
@@ -138,22 +144,58 @@
           } @empty {
             <div class="forge-empty">No listings yet. Be the first to sell something.</div>
           }
-          <h4 class="forge-subhead">Sell from your stash</h4>
+
+          <h4 class="forge-subhead">Sell gear</h4>
           @for (row of stashRows(); track row.index) {
             <div class="forge-row" [attr.data-rarity]="tierRarity(row.info.tier).key">
               <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + row.info.slot"></mat-icon>
               <span class="forge-name">{{ row.info.name }}
                 <span class="rarity-badge {{ tierRarity(row.info.tier).key }}">{{ tierRarity(row.info.tier).label }}</span>
-                <em>{{ priceBand(row.info.id).lo }}–{{ priceBand(row.info.id).hi }} Spores</em>
+                <em>{{ marketBand('gear', row.info.id).lo }}–{{ marketBand('gear', row.info.id).hi }} Spores</em>
               </span>
               <span class="forge-actions">
-                <input #price type="number" class="price-input" [value]="row.info.cost"
-                       [min]="priceBand(row.info.id).lo" [max]="priceBand(row.info.id).hi" />
-                <button class="uc-btn" [disabled]="busy()" (click)="marketList(row.index, price.valueAsNumber)">List</button>
+                <input #gp type="number" class="price-input" [value]="row.info.cost"
+                       [min]="marketBand('gear', row.info.id).lo" [max]="marketBand('gear', row.info.id).hi" />
+                <button class="uc-btn" [disabled]="busy()" (click)="marketList('gear', row.index, gp.valueAsNumber)">List</button>
               </span>
             </div>
           } @empty {
-            <div class="forge-empty">Your stash is empty — nothing to sell.</div>
+            <div class="forge-empty">No gear in your stash to sell.</div>
+          }
+
+          <h4 class="forge-subhead">Sell bag items</h4>
+          @for (row of bagRows(); track row.index) {
+            <div class="forge-row">
+              <mat-icon class="mi slot-mi">{{ row.info.icon }}</mat-icon>
+              <span class="forge-name">{{ row.info.name }}
+                <em>{{ marketBand('consumable', row.info.id).lo }}–{{ marketBand('consumable', row.info.id).hi }} Spores</em>
+              </span>
+              <span class="forge-actions">
+                <input #cp type="number" class="price-input" [value]="row.info.cost"
+                       [min]="marketBand('consumable', row.info.id).lo" [max]="marketBand('consumable', row.info.id).hi" />
+                <button class="uc-btn" [disabled]="busy()" (click)="marketList('consumable', row.index, cp.valueAsNumber)">List</button>
+              </span>
+            </div>
+          } @empty {
+            <div class="forge-empty">Your bag is empty.</div>
+          }
+
+          <h4 class="forge-subhead">Sell scrolls</h4>
+          @for (row of scrollRows(); track row.index) {
+            <div class="forge-row" [attr.data-rarity]="tierRarity(row.info.tier).key">
+              <mat-icon class="mi slot-mi">{{ row.info.icon }}</mat-icon>
+              <span class="forge-name">{{ row.info.name }}
+                <span class="rarity-badge {{ tierRarity(row.info.tier).key }}">{{ tierRarity(row.info.tier).label }}</span>
+                <em>{{ marketBand('scroll', row.info.id).lo }}–{{ marketBand('scroll', row.info.id).hi }} Spores</em>
+              </span>
+              <span class="forge-actions">
+                <input #sp type="number" class="price-input" [value]="marketBand('scroll', row.info.id).lo"
+                       [min]="marketBand('scroll', row.info.id).lo" [max]="marketBand('scroll', row.info.id).hi" />
+                <button class="uc-btn" [disabled]="busy()" (click)="marketList('scroll', row.index, sp.valueAsNumber)">List</button>
+              </span>
+            </div>
+          } @empty {
+            <div class="forge-empty">No scrolls in your satchel.</div>
           }
         }
       </div>
