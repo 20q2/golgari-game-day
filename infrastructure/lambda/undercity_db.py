@@ -3870,10 +3870,14 @@ def _cast(table, sid, doc, payload):
         # Only the Calamity Beast (wish passive) may cast Wish.
         if spell_id != 'wish' or 'wish' not in (doc.get('passives') or []):
             return _spell_err('You have not learned Wish.', 'not_castable')
+    elif source == 'scroll':
+        # A one-shot scroll: no book needed, no cooldown, consumed on success.
+        if spell_id not in (doc.get('scrolls') or []):
+            return _spell_err('You have no such scroll.', 'not_castable', 400)
     else:
-        return _spell_err('Scrolls come later — cast from your grimoire.',
+        return _spell_err('Cast from your grimoire, an innate gift, or a scroll.',
                           'not_castable', 400)
-    if not _spell_cd_ready(doc, spell_id):
+    if source != 'scroll' and not _spell_cd_ready(doc, spell_id):
         return _spell_err(f"{spell['name']} is still recharging.",
                           'spell_on_cooldown', 429)
 
@@ -3898,7 +3902,10 @@ def _cast(table, sid, doc, payload):
         result, extra = out
         effect = spell['effect']
 
-    _start_spell_cooldown(doc, spell_id)
+    if source == 'scroll':
+        doc['scrolls'].remove(spell_id)   # scrolls are one-shot, no cooldown
+    else:
+        _start_spell_cooldown(doc, spell_id)
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict

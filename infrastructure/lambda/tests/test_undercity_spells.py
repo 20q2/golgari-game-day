@@ -794,3 +794,20 @@ def test_book_spells_seeds_and_reads_per_player(fresh_table=None):
     # older doc without grimoireSpells falls back to the static bundle
     legacy = {'grimoires': ['gardeners_primer']}
     assert db._book_spells(legacy, 'gardeners_primer') == ['mend_flesh', 'harden_shell']
+
+
+def test_scroll_cast_consumes_and_ignores_cooldown(table):
+    act(table, 'join', starter='pest', home='garden')
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    doc['hp'] = 5
+    doc['scrolls'] = ['mend_flesh', 'mend_flesh']
+    db._put_player(table, doc)
+    # cast the scroll twice back-to-back — no cooldown gating, one consumed each
+    for expect_left in (1, 0):
+        status, resp = act(table, 'cast', spellId='mend_flesh', source='scroll')
+        assert status == 200
+        assert db._get_player(table, _sid(table), 'user-alex')['scrolls'].count('mend_flesh') == expect_left
+        assert 'mend_flesh' not in resp['you'].get('spellCooldowns', {})   # scroll never cools
+    # none left -> cannot cast
+    status, resp = act(table, 'cast', spellId='mend_flesh', source='scroll')
+    assert status != 200 and resp['code'] == 'not_castable'
