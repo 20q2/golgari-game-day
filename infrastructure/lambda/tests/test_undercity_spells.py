@@ -997,3 +997,49 @@ def test_cast_rust_curse_debuffs_target(table, monkeypatch):
     sam = db._get_player(table, sid, 'user-sam')
     assert {'kind': 'rust_curse'} in sam['buffs']
     assert engine.effective_stats(sam)['def'] == max(1, sam['def'] - 4)
+
+
+# --- Squirrel signature spell: Acorn Fury (species innate) ---
+
+def test_acorn_fury_data_and_species_map():
+    sp = data.SPELLS['acorn_fury']
+    assert sp['effect'] == 'self_buff'
+    assert sp['buffKind'] == 'acorn_fury'
+    assert sp['category'] == 'buff'
+    assert sp['cooldownMin'] == 15
+    assert sp['icon'] and sp['desc']          # client fields required
+    assert data.SPECIES_SPELLS['squirrel'] == 'acorn_fury'
+    for spell_id in data.SPECIES_SPELLS.values():
+        assert spell_id in data.SPELLS
+
+
+def test_acorn_fury_effective_stats_and_mult():
+    base = {'atk': 4, 'def': 4, 'spd': 7, 'maxHp': 25}
+    plain = dict(base, buffs=[{'kind': 'acorn_fury'}])
+    assert engine.effective_stats(plain)['atk'] == 6            # +2
+    doubled = dict(base, buffs=[{'kind': 'acorn_fury', 'mult': 2}])
+    assert engine.effective_stats(doubled)['atk'] == 8          # Squirrel Warrior +4
+
+
+def test_acorn_fury_is_one_battle_buff():
+    assert 'acorn_fury' in db.ONE_BATTLE_BUFFS
+    doc = {'buffs': [{'kind': 'acorn_fury'}, {'kind': 'vines'}]}
+    db._consume_one_battle_buffs(doc)
+    assert {'kind': 'acorn_fury'} not in doc['buffs']         # consumed
+    assert {'kind': 'vines'} in doc['buffs']                  # roll-buff survives
+
+
+def test_squirrel_casts_acorn_fury_innate(table):
+    act(table, 'join', starter='squirrel', home='garden')   # garden -> rot_surge biome
+    status, resp = act(table, 'cast', spellId='acorn_fury', source='innate')
+    assert status == 200, resp
+    assert {'kind': 'acorn_fury'} in resp['you']['buffs']
+    status, resp = act(table, 'cast', spellId='rot_surge', source='innate')
+    assert status == 200, resp
+    assert {'kind': 'rot_surge'} in resp['you']['buffs']
+
+
+def test_non_squirrel_cannot_cast_acorn_fury(table):
+    act(table, 'join', starter='pest', home='garden')
+    status, resp = act(table, 'cast', spellId='acorn_fury', source='innate')
+    assert status == 409 and resp['code'] == 'not_castable'

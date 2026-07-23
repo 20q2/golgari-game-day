@@ -583,6 +583,10 @@ SPELLS = {
                      'effect': 'field_curse', 'buffKind': 'rust_curse', 'range': 6,
                      'icon': 'broken_image', 'desc': 'Curse a rival: −4 DEF in their next battle.',
                      'blurb': 'Curse a rival: −4 DEF in their next battle.'},
+    'acorn_fury':   {'name': 'Acorn Fury', 'category': 'buff', 'tier': 1, 'cooldownMin': 15,
+                     'effect': 'self_buff', 'buffKind': 'acorn_fury',
+                     'icon': 'pest_control_rodent', 'desc': '+2 ATK in your next battle.',
+                     'blurb': '+2 ATK in your next battle.'},
 }
 
 # Home biome -> innate spell (always castable, no grimoire needed).
@@ -592,6 +596,12 @@ BIOME_SPELLS = {
     'bog':    'bog_snare',    # The Sedgemoor (Mirefoot)
     'cavern': 'glowveil',     # Mosslight Cavern (Darkvision)
     'city':   'scrap_toss',   # The Undercity (City Rat)
+}
+
+# Species (starter line) -> extra innate spell, castable alongside the biome
+# innate. `species` is the stored starter id and persists through evolution.
+SPECIES_SPELLS = {
+    'squirrel': 'acorn_fury',   # caster race signature
 }
 
 # Found books come pre-loaded with a FIXED 1–3 spell bundle — the book IS the
