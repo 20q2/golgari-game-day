@@ -36,6 +36,8 @@ export interface PublicPlayer {
   sigils: number;
   paint: Record<string, number>;
   hat: string | null;
+  /** Cosmetic-only shiny (5% at hatch): draws a gold sparkle over the sprite. */
+  shiny?: boolean;
   /** Free-text status bubble shown above the creature; '' or absent = none. */
   status?: string;
   renown: number;
@@ -242,6 +244,8 @@ export interface GameState {
   barriersOpen?: string[];
   /** Island-boss (Savra) persistent HP pool. */
   boss?: { hp: number; maxHp: number };
+  /** The wilderness World Event ("Great Beast"), or null if it never spawned. */
+  worldEvent?: WorldEventState | null;
   /** Barrier/lair node id -> its live guardian HP pool (field-spell targets). */
   guardians?: Record<string, GuardianPool>;
   events: GameEvent[];
@@ -250,6 +254,18 @@ export interface GameState {
   hallOfFame?: HallOfFameNight[];
   /** A pending interactive battle to resume after a reload (null if none). */
   battle?: BattleResume | null;
+}
+
+/** The wilderness World Event ("The Great Beast"): a season-shared co-op boss
+ * squatting on 3 wilderness nodes, its sprite centered on `center`. */
+export interface WorldEventState {
+  nodes: string[];
+  center: string;
+  hp: number;
+  maxHp: number;
+  name: string;
+  spriteId: string;
+  dead: boolean;
 }
 
 export interface BattleStrike {
@@ -343,7 +359,7 @@ export interface CombatPeek {
 
 /** Client-safe snapshot of a pending battle, so a refresh can reopen it. */
 export interface BattleResume {
-  kind: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss';
+  kind: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss' | 'world';
   round: number;
   telegraph: Stance | null;
   frenzyFrom?: number | null;
@@ -534,8 +550,18 @@ export interface SpaceEvent {
   /** Biome key of a Guild Sigil just claimed by clearing its lair boss (first
    * kill only). Drives the sigil-claimed celebration overlay. */
   sigil?: string;
+  /** world_event: the beast's footprint + live shared pool (landing / engage). */
+  center?: string;
+  nodes?: string[];
+  spriteId?: string;
+  /** world_event finish echo: damage this skirmish dealt to the shared pool. */
+  dealt?: number;
+  /** world_event finish echo: this blow felled the beast (triggers payout). */
+  worldKill?: boolean;
+  /** world_event finish echo: this player's bracket payout. */
+  reward?: { bracket: string; spores: number; renown: number };
   // battle_start (interactive PvE, Plan 2)
-  kind?: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss';
+  kind?: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss' | 'world';
   telegraph?: Stance;
   round?: number;
   frenzyFrom?: number | null;
