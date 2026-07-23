@@ -868,3 +868,33 @@ def test_witch_buy_scroll(table):
     # not in stock -> error
     status, _ = act(table, 'witch-buy-scroll', spellId='queens_bane')
     assert status != 200
+
+
+class _DropRng:
+    """Forces a scroll drop and picks the first spell in the tier pool."""
+    def random(self):
+        return 0.0
+    def randrange(self, n):
+        return 0
+
+
+def test_roll_scroll_drop_tiered_and_capped(monkeypatch):
+    monkeypatch.setattr(db, '_rng', _DropRng())
+    doc = {'scrolls': [], 'spores': 0}
+    got = db._roll_scroll_drop(doc, 'elite')          # tier-2 source
+    assert got in data.SCROLLABLE_BY_TIER[2]
+    assert doc['scrolls'][-1] == got
+    # full satchel -> converts to Spores instead of appending
+    doc['scrolls'] = ['spore_bolt'] * data.SCROLL_SATCHEL_CAP
+    doc['spores'] = 0
+    db._roll_scroll_drop(doc, 'loot')
+    assert len(doc['scrolls']) == data.SCROLL_SATCHEL_CAP
+    assert doc['spores'] == data.SCROLL_OVERFLOW_SPORES
+
+
+def test_roll_scroll_drop_can_miss(monkeypatch):
+    class _NoDrop:
+        def random(self): return 0.99
+    monkeypatch.setattr(db, '_rng', _NoDrop())
+    doc = {'scrolls': [], 'spores': 0}
+    assert db._roll_scroll_drop(doc, 'loot') is None and doc['scrolls'] == []

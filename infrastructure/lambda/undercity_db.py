@@ -732,6 +732,24 @@ def _drop_phrase(drop):
     return 'stashed' if drop['outcome'] == 'stashed' else 'ground into materials'
 
 
+def _roll_scroll_drop(doc, source):
+    """Maybe drop a spell scroll from a reward `source`. The tier is fixed by the
+    source (SCROLL_DROP_TIER); the spell is an equal-weight roll within that tier.
+    Appends to the scroll satchel, or converts to Spores when the satchel is full.
+    Returns the spell id dropped (for the caller to surface as `scroll=`), or None."""
+    if _rng.random() >= data.SCROLL_DROP_CHANCE.get(source, 0.0):
+        return None
+    pool = data.SCROLLABLE_BY_TIER.get(data.SCROLL_DROP_TIER.get(source, 1)) or []
+    if not pool:
+        return None
+    spell_id = pool[_rng.randrange(len(pool))]
+    if len(doc.get('scrolls') or []) >= data.SCROLL_SATCHEL_CAP:
+        doc['spores'] = doc.get('spores', 0) + data.SCROLL_OVERFLOW_SPORES
+    else:
+        doc.setdefault('scrolls', []).append(spell_id)
+    return spell_id
+
+
 def _roll_gear_drop(doc, tier_weights):
     """Roll a gear piece per the tier profile and route it to the gear stash —
     found gear is decided later at the Plaza (equip / salvage), no auto-equip or
@@ -2659,6 +2677,7 @@ def _mystery(table, sid, doc):
                f"{doc['username']} hit a JACKPOT BLOOM in the tunnels!", actor=doc['userId'])
     if res['teleport']:
         out['to'] = res['to']
+    _append_scroll(doc, out, 'mystery')
     return out
 
 
@@ -3278,6 +3297,7 @@ def _finish_lair(table, sid, doc, rec, result):
                        'its Vestige stirs in the lair!', actor=doc['userId'])
                 _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
                                              'name': b['name'], 'at': _now()}, doc['userId'])
+        _append_scroll(doc, out, 'lair')
     elif result['outcome'] == 'defender':
         _set_lair_state(table, sid, node, max(1, result['defenderHp']), slain)
         _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
@@ -3425,6 +3445,7 @@ def _finish_boss(table, sid, doc, rec, result):
                 out['gear'] = drop
         out['text'] = (f'SAVRA, QUEEN OF THE GOLGARI FALLS! +{reward["spores"]} Spores. '
                        'Her husk collapses — and already the rot begins to knit anew…')
+        _append_scroll(doc, out, 'boss')
         _event(table, sid, 'boss',
                f"{doc['username']} struck down SAVRA, QUEEN OF THE GOLGARI! "
                'The island trembles as she reforms.', actor=doc['userId'])
@@ -3501,6 +3522,7 @@ def _vault(table, sid, doc, node):
         text = f"You glean the dregs of the Sunken Vault — +{spores} Spores."
     out = {'type': 'vault', 'spores': spores, 'text': text}
     _append_treasure_gear(doc, out, mult)
+    _append_scroll(doc, out, 'vault')
     return out
 
 
@@ -3578,6 +3600,17 @@ def _cache(table, sid, doc, node):
         text = f"Picked-over spoils remain — +{spores} Spores."
     out = {'type': 'cache', 'spores': spores, 'text': text}
     _append_treasure_gear(doc, out, mult)
+    _append_scroll(doc, out, 'cache')
+    return out
+
+
+def _append_scroll(doc, out, source):
+    """Roll a tiered scroll drop for a reward space/finish and surface it on the
+    payload as `scroll` (see _roll_scroll_drop)."""
+    sc = _roll_scroll_drop(doc, source)
+    if sc:
+        out['scroll'] = sc
+        out['text'] = out.get('text', '') + f" A scroll of {data.SPELLS[sc]['name']} tumbles loose!"
     return out
 
 
