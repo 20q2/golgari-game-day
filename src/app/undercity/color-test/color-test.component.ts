@@ -34,7 +34,6 @@ const PLAYER_SPRITES = [
   'insect',
   'zombie',
   'saproling',
-  'grub',
   'plant',
   'myconid_sporetender',
   'slitherhead',

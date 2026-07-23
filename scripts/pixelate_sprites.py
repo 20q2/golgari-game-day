@@ -47,7 +47,7 @@ ALPHA_CUT = 128
 
 # Sprites to process (the 1024px faux-pixel ones). The 64px files in the folder
 # are already true pixel art and are left alone.
-TARGETS = ["pest", "insect", "zombie", "saproling", "plant", "grub"]
+TARGETS = ["pest", "insect", "zombie", "saproling", "plant"]
 
 
 def _trim_and_square(im):
