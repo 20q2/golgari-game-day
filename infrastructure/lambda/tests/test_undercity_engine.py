@@ -1172,6 +1172,38 @@ def test_flow_puzzles_all_solvable():
         assert _eng_flow.validate_flow_solution(p, p['solution']) is True, p['id']
 
 
+def test_validate_flow_path_accepts_short_connecting_path():
+    # 4x4, start [0,0], end [3,0]; a straight column connects without covering all.
+    assert _eng_flow.validate_flow_path(_P, [[0, 0], [1, 0], [2, 0], [3, 0]]) is True
+
+
+def test_validate_flow_path_accepts_full_snake():
+    assert _eng_flow.validate_flow_path(_P, _SNAKE) is True
+
+
+def test_validate_flow_path_rejects_empty():
+    assert _eng_flow.validate_flow_path(_P, []) is False
+
+
+def test_validate_flow_path_rejects_wrong_endpoints():
+    # ends at [3,0] required; this stops at [2,0].
+    assert _eng_flow.validate_flow_path(_P, [[0, 0], [1, 0], [2, 0]]) is False
+
+
+def test_validate_flow_path_rejects_diagonal_step():
+    assert _eng_flow.validate_flow_path(_P, [[0, 0], [1, 1], [3, 0]]) is False
+
+
+def test_validate_flow_path_rejects_revisit():
+    assert _eng_flow.validate_flow_path(
+        _P, [[0, 0], [1, 0], [0, 0], [1, 0], [2, 0], [3, 0]]) is False
+
+
+def test_validate_flow_path_rejects_entering_rock():
+    p = {'w': 4, 'h': 4, 'start': [0, 0], 'end': [0, 3], 'rocks': [[0, 1]]}
+    assert _eng_flow.validate_flow_path(p, [[0, 0], [0, 1], [0, 2], [0, 3]]) is False
+
+
 # ── Gear expansion (2026-07-20) ──────────────────────────────────────────────
 
 def test_every_gear_rider_is_defined_and_stanced():

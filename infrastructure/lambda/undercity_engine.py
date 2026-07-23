@@ -905,6 +905,32 @@ def validate_flow_solution(puzzle, path):
     return len(cells) == w * h - len(rocks)
 
 
+def validate_flow_path(puzzle, path):
+    """True iff `path` is a valid single-line route from start to end.
+
+    Same rules as validate_flow_solution EXCEPT full coverage is NOT required:
+    non-empty, begins at start, ends at end, every consecutive pair is
+    orthogonally adjacent (one step), no cell repeats, and no cell is a rock or
+    out of bounds. Used by the Overgrown Cache routing puzzle — the player only
+    needs to connect the two dots; spores scale with how far they route.
+    """
+    w, h = puzzle['w'], puzzle['h']
+    rocks = {tuple(c) for c in puzzle['rocks']}
+    start, end = tuple(puzzle['start']), tuple(puzzle['end'])
+    if not path:
+        return False
+    cells = [tuple(c) for c in path]
+    for r, c in cells:
+        if not (0 <= r < h and 0 <= c < w) or (r, c) in rocks:
+            return False
+    if cells[0] != start or cells[-1] != end:
+        return False
+    for (r1, c1), (r2, c2) in zip(cells, cells[1:]):
+        if abs(r1 - r2) + abs(c1 - c2) != 1:
+            return False
+    return len(set(cells)) == len(cells)
+
+
 def first_reward_on_path(rewards, path):
     """Return the `kind` of the first reward cell the path enters, or None.
 
