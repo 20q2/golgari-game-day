@@ -208,3 +208,16 @@ SPELL_HASTE_MULT = 0.5        # spell_haste (T1): spell cooldowns × this
 SPELL_WARRIOR_MULT = 2        # spell_warrior (T2): self-buff/heal magnitude × this
 SPELL_MAGE_DAMAGE_MULT = 1.5  # spell_mage (T2): the mage's damage/boss spells × this
 SPELL_MAGE_DODGE_MULT = 0.5   # spell_mage (T2): dodge chance vs the mage × this (2× hit)
+
+# ── Spell scrolls & the Sedgemoor Witch (design 2026-07-23 bog-witch-scrolls) ─
+SCROLL_SATCHEL_CAP = 6                       # held scrolls before drops convert to Spores
+GRIMOIRE_CAPACITY = {1: 2, 2: 3, 3: 4}       # spells a book can hold, by book tier
+INSCRIBE_COST = {1: 10, 2: 20, 3: 30}        # Spore fee to inscribe, by scroll tier
+SCROLL_OVERFLOW_SPORES = 12                  # Spores when a scroll drop/over-cap is refunded
+WITCH_SCROLL_MARKUP = 1.6                    # witch tier-I scroll price = inscribe cost × this
+# Per-source scroll drop chance (which tier drops where lives in SCROLL_DROP_TIER).
+SCROLL_DROP_CHANCE = {
+    'loot': 0.08, 'mystery': 0.10,
+    'elite': 0.15, 'dig': 0.20, 'cache': 0.18,
+    'lair': 0.35, 'vault': 0.40, 'boss': 0.50,
+}

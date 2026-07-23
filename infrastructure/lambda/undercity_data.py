@@ -565,6 +565,26 @@ GRIMOIRES = {
                             'blurb': 'The mycelium remembers every road.'},
 }
 
+# ── Spell scrolls (design 2026-07-23 bog-witch-scrolls) ──────────────────────
+# A scroll carries one spell. It can be cast one-shot (source: 'scroll', no
+# cooldown) or inscribed into a grimoire at the Sedgemoor Witch. Which spell
+# tier a scroll from each reward source carries (chances in SCROLL_DROP_CHANCE).
+SCROLL_DROP_TIER = {
+    'loot': 1, 'mystery': 1,
+    'elite': 2, 'dig': 2, 'cache': 2,
+    'lair': 3, 'vault': 3, 'boss': 3,
+}
+
+# Spell ids grouped by tier for weighted scroll rolls (equal weight within tier).
+SCROLLABLE_BY_TIER = {
+    1: [sid for sid, s in SPELLS.items() if s['tier'] == 1 and s['effect'] != 'wish'],
+    2: [sid for sid, s in SPELLS.items() if s['tier'] == 2 and s['effect'] != 'wish'],
+    3: [sid for sid, s in SPELLS.items() if s['tier'] == 3 and s['effect'] != 'wish'],
+}
+
+# The Sedgemoor Witch's tier-I scroll stock (price = INSCRIBE_COST × markup).
+WITCH_SCROLL_STOCK = ['spore_bolt', 'mend_flesh', 'harden_shell', 'scrap_toss']
+
 # Trading post: the central-island exchange opens each night holding these 3
 # house consumables (tagged "the Swarm"). Players swap one of their bag items
 # for one of these; whatever they leave becomes the next visitor's stock,
