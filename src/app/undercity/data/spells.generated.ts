@@ -33,6 +33,7 @@ export const SPELLS: SpellInfo[] = [
   { id: "warding_dance", name: "Warding Dance", category: "buff", tier: 3, cooldownMin: 30, effect: "self_buff", desc: "+3 DEF and +3 SPD in your next battle.", icon: "shield_moon" },
   { id: "sap_vigor", name: "Sap Vigor", category: "field", tier: 2, cooldownMin: 25, effect: "field_curse", range: 6, desc: "Curse a rival: −3 SPD in their next battle.", icon: "trending_down" },
   { id: "rust_curse", name: "Rust Curse", category: "field", tier: 3, cooldownMin: 28, effect: "field_curse", range: 6, desc: "Curse a rival: −4 DEF in their next battle.", icon: "broken_image" },
+  { id: "acorn_fury", name: "Acorn Fury", category: "buff", tier: 1, cooldownMin: 15, effect: "self_buff", desc: "+2 ATK in your next battle.", icon: "pest_control_rodent" },
 ];
 
 export const GRIMOIRES: GrimoireInfo[] = [
@@ -62,4 +63,8 @@ export const BIOME_SPELLS: Record<string, string> = {
   "bog": "bog_snare",
   "cavern": "glowveil",
   "city": "scrap_toss",
+};
+
+export const SPECIES_SPELLS: Record<string, string> = {
+  "squirrel": "acorn_fury",
 };

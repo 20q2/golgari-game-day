@@ -1,6 +1,6 @@
 """Generate the client spell mirror from the Python source of truth.
 
-Python (undercity_data.SPELLS/GRIMOIRES/BIOME_SPELLS) is authored; this renders
+Python (undercity_data.SPELLS/GRIMOIRES/BIOME_SPELLS/SPECIES_SPELLS) is authored; this renders
 src/app/undercity/data/spells.generated.ts (data arrays only). The hand-written
 spells.ts keeps the types + helpers and re-exports these arrays. The
 copies-match pytest in tests/test_spells_generated.py fails while they differ.
@@ -61,6 +61,9 @@ def render():
     lines += ['];', '', 'export const BIOME_SPELLS: Record<string, string> = {']
     lines += [f'  {_ts(biome)}: {_ts(spell_id)},'
               for biome, spell_id in data.BIOME_SPELLS.items()]
+    lines += ['};', '', 'export const SPECIES_SPELLS: Record<string, string> = {']
+    lines += [f'  {_ts(species)}: {_ts(spell_id)},'
+              for species, spell_id in data.SPECIES_SPELLS.items()]
     lines += ['};', '']
     return '\n'.join(lines)
 
