@@ -966,3 +966,34 @@ def test_roll_scroll_drop_can_miss(monkeypatch):
     monkeypatch.setattr(db, '_rng', _NoDrop())
     doc = {'scrolls': [], 'spores': 0}
     assert db._roll_scroll_drop(doc, 'loot') is None and doc['scrolls'] == []
+
+
+# ── cast: expansion buff/curse spells end-to-end (2026-07-23) ────────────────
+
+def test_cast_savage_roar_buffs_caster(table):
+    act(table, 'join', starter='kraul', home='city')
+    give_book(table, 'user-alex', 'berserkers_roll')
+    status, resp = act(table, 'cast', spellId='savage_roar', source='grimoire')
+    assert status == 200, resp
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    assert any(b['kind'] == 'savage_roar' for b in doc['buffs'])
+    assert engine.effective_stats(doc)['atk'] == doc['atk'] + 5
+
+
+def test_cast_rust_curse_debuffs_target(table, monkeypatch):
+    act(table, 'join', starter='kraul', home='city')
+    act(table, 'join', user='user-sam', name='Sam', starter='saproling', home='bog')
+    sid = _sid(table)
+    alex = db._get_player(table, sid, 'user-alex')
+    sam = db._get_player(table, sid, 'user-sam')
+    alex['position'] = sam['position'] = 'city_r2'
+    db._put_player(table, alex)
+    db._put_player(table, sam)
+    give_book(table, 'user-alex', 'throneburner_codex')
+    monkeypatch.setattr(db, '_rng', FixedRng(random_values=[0.99]))  # never dodge
+    status, resp = act(table, 'cast', spellId='rust_curse', source='grimoire',
+                       target='user-sam')
+    assert status == 200, resp
+    sam = db._get_player(table, sid, 'user-sam')
+    assert {'kind': 'rust_curse'} in sam['buffs']
+    assert engine.effective_stats(sam)['def'] == max(1, sam['def'] - 4)
