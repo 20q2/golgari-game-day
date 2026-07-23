@@ -49,7 +49,7 @@ export class LogTabComponent {
     return [...this.store.players()]
       .sort((a, b) => b.renown - a.renown)
       .map((p) => {
-        const spr = formSprite(p.form);
+        const spr = formSprite(p.form, p.spriteVariant);
         return {
           ...p,
           spriteUrl: getRecoloredWithHatDataUrl(spr.sprite, p.paint ?? {}, spr.regions, p.hat),

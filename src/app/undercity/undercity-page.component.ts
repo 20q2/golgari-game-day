@@ -98,7 +98,7 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   protected readonly youSpriteUrl = computed(() => {
     const you = this.store.you();
     if (!you) return null;
-    const spr = formSprite(you.form);
+    const spr = formSprite(you.form, you.spriteVariant);
     return getRecoloredWithHatDataUrl(spr.sprite, you.paint ?? {}, spr.regions, you.hat);
   });
 

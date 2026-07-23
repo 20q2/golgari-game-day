@@ -234,7 +234,7 @@ export class CreatureTabComponent {
   protected readonly spriteUrl = computed(() => {
     const you = this.store.you();
     if (!you) return null;
-    const spr = formSprite(you.form);
+    const spr = formSprite(you.form, you.spriteVariant);
     return getRecoloredWithHatEffectDataUrl(spr.sprite, you.paint ?? {}, spr.regions, you.hat, you.effect);
   });
 
@@ -243,7 +243,7 @@ export class CreatureTabComponent {
    * the marker-based sprites. */
   protected readonly paintRegions = computed(() => {
     const you = this.store.you();
-    return you ? formSprite(you.form).regions : [];
+    return you ? formSprite(you.form, you.spriteVariant).regions : [];
   });
 
   protected readonly xpNext = computed(() => {

@@ -25,7 +25,7 @@ export class CeremonyComponent {
   protected readonly podium = computed(() => this.standings().slice(0, 3));
 
   spriteUrl(s: Standing): string | null {
-    const spr = formSprite(s.form);
+    const spr = formSprite(s.form, s.spriteVariant);
     return getRecoloredWithHatDataUrl(spr.sprite, s.paint ?? {}, spr.regions, s.hat);
   }
 

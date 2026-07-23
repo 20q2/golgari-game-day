@@ -154,6 +154,7 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
         userId: p.userId,
         username: p.username,
         form: p.form,
+        spriteVariant: p.spriteVariant,
         level: p.level,
         paint: p.paint ?? {},
         position: p.position,
@@ -352,10 +353,10 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly portraitCache = new Map<string, string | null>();
 
   protected portrait(p: PublicPlayer): string | null {
-    const key = `${p.form}|${JSON.stringify(p.paint ?? {})}|${p.hat ?? ''}`;
+    const key = `${p.form}|${p.spriteVariant ?? ''}|${JSON.stringify(p.paint ?? {})}|${p.hat ?? ''}`;
     const hit = this.portraitCache.get(key);
     if (hit !== undefined) return hit;
-    const spr = formSprite(p.form);
+    const spr = formSprite(p.form, p.spriteVariant);
     const url = getRecoloredWithHatDataUrl(spr.sprite, p.paint ?? {}, spr.regions, p.hat);
     this.portraitCache.set(key, url);
     return url;

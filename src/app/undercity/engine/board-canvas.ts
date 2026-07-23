@@ -120,6 +120,8 @@ export interface BoardPlayer {
   shielded: boolean;
   /** Equipped hat id, if any — drawn on the head via the sprite's hat guide. */
   hat?: string | null;
+  /** Cosmetic starter look; picks the alt sprite in formSprite(). */
+  spriteVariant?: string | null;
   /** Cosmetic-only shiny — draws a steady gold sparkle over the token. */
   shiny?: boolean;
   /** Animated special paint — an overlay drawn over the token's silhouette. */
@@ -1139,7 +1141,7 @@ export class BoardCanvas {
 
         const t = Math.min(1, (ts - a.start) / MOVE_MS);
         const moving = t < 1;
-        const spr = formSprite(p.form);
+        const spr = formSprite(p.form, p.spriteVariant);
         const targetH = this.tokenHeight(p.userId === this.ownUserId) * spr.scale;
         const footY = a.y + targetH * 0.48;
 
@@ -1178,7 +1180,8 @@ export class BoardCanvas {
       for (const t of placed) {
         const idx = this.pendingHealPops.findIndex((h) => h.userId === t.p.userId);
         if (idx < 0) continue;
-        const targetH = this.tokenHeight(t.p.userId === this.ownUserId) * formSprite(t.p.form).scale;
+        const targetH =
+          this.tokenHeight(t.p.userId === this.ownUserId) * formSprite(t.p.form, t.p.spriteVariant).scale;
         this.spawnHealNumber(t.x, t.y - targetH + t.hopY, this.pendingHealPops[idx].amount);
         this.pendingHealPops.splice(idx, 1);
       }
@@ -1187,7 +1190,8 @@ export class BoardCanvas {
     if (this.diceMarkers.size) {
       for (const t of placed) {
         if (!this.diceMarkers.has(t.p.userId)) continue;
-        const targetH = this.tokenHeight(t.p.userId === this.ownUserId) * formSprite(t.p.form).scale;
+        const targetH =
+          this.tokenHeight(t.p.userId === this.ownUserId) * formSprite(t.p.form, t.p.spriteVariant).scale;
         this.drawDiceBadge(t.x, t.y - targetH + t.hopY, ts);
       }
     }
@@ -1196,7 +1200,7 @@ export class BoardCanvas {
     // Steps-left die floats above your head (Mario Party style), above tokens.
     const ownT = placed.find((t) => t.p.userId === this.ownUserId);
     if (this.stepDie !== null && ownT) {
-      const targetH = 72 * formSprite(ownT.p.form).scale;
+      const targetH = 72 * formSprite(ownT.p.form, ownT.p.spriteVariant).scale;
       this.drawStepDie(ownT.x, ownT.y - targetH / 2 + ownT.hopY, this.stepDie, ts);
     }
     for (const id of [...this.tokenAnims.keys()]) {
@@ -1996,7 +2000,7 @@ export class BoardCanvas {
     breath: number,
   ): void {
     const ctx = this.ctx;
-    const spr = formSprite(p.form);
+    const spr = formSprite(p.form, p.spriteVariant);
     const sprite = getRecolored(spr.sprite, p.paint || {}, spr.regions);
     const isOwn = p.userId === this.ownUserId;
     const targetH = this.tokenHeight(isOwn, p.tier) * spr.scale;
@@ -2085,7 +2089,7 @@ export class BoardCanvas {
   /** Name pill, drawn in a separate pass so no sprite ever covers a label. */
   private drawLabel(p: BoardPlayer, x: number, y: number): void {
     const ctx = this.ctx;
-    const spr = formSprite(p.form);
+    const spr = formSprite(p.form, p.spriteVariant);
     const isOwn = p.userId === this.ownUserId;
     const targetH = this.tokenHeight(isOwn, p.tier) * spr.scale;
     ctx.save();

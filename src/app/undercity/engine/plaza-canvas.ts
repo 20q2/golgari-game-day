@@ -16,6 +16,8 @@ export interface PlazaCreature {
   userId: string;
   username: string;
   form: string;
+  /** Cosmetic starter look; picks the alt sprite in formSprite(). */
+  spriteVariant?: string | null;
   formName: string;
   creatureName?: string;
   level: number;
@@ -193,7 +195,7 @@ export class PlazaCanvas {
 
   private buildDinoData(partner: PlazaCreature, reuse: Dino | null): Dino {
     const level = partner.level || 1;
-    const spr = formSprite(partner.form);
+    const spr = formSprite(partner.form, partner.spriteVariant);
     const spriteCanvas = getRecolored(spr.sprite, partner.paint || {}, spr.regions);
     const levelScale =
       SCALE_MIN + ((Math.min(level, MAX_LEVEL) - 1) / (MAX_LEVEL - 1)) * (SCALE_MAX - SCALE_MIN);
@@ -885,7 +887,7 @@ export class PlazaCanvas {
     if (d.partner.effect) {
       drawCreatureEffect(
         ctx,
-        formSprite(d.partner.form).sprite,
+        formSprite(d.partner.form, d.partner.spriteVariant).sprite,
         d.partner.effect,
         -halfW,
         -halfH,
@@ -899,7 +901,7 @@ export class PlazaCanvas {
 
     // Hat
     if (d.partner.hat) {
-      const spr = formSprite(d.partner.form);
+      const spr = formSprite(d.partner.form, d.partner.spriteVariant);
       // Placement is in sprite-pixel space; drawScale maps it to screen exactly
       // like the sprite body above (native origin sits at -halfW/-halfH).
       const rect = hatPlacement(spr.sprite, d.partner.hat);

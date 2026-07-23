@@ -531,7 +531,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly focusTargets = computed<FocusTarget[]>(() => {
     const youId = this.store.you()?.userId;
     const rows: FocusTarget[] = this.store.players().map((p) => {
-      const spr = formSprite(p.form);
+      const spr = formSprite(p.form, p.spriteVariant);
       const isYou = p.userId === youId;
       return {
         key: p.userId,
@@ -1386,6 +1386,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           userId: p.userId,
           username: p.username,
           form: p.form,
+          spriteVariant: p.spriteVariant,
           level: p.level,
           paint: p.paint ?? {},
           position,
@@ -1550,7 +1551,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         defender: {
           name: `${target.username}'s ${target.creatureName || target.formName}`,
           spriteUrl: targetPublic
-            ? this.spriteUrl(targetPublic.form, targetPublic.paint, targetPublic.hat)
+            ? this.spriteUrl(targetPublic.form, targetPublic.paint, targetPublic.hat, targetPublic.spriteVariant)
             : null,
           icon: 'pets',
           startHp: targetPublic?.hp ?? 30,
@@ -1805,15 +1806,16 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   protected youSpriteUrl(): string | null {
     const you = this.store.you();
-    return you ? this.spriteUrl(you.form, you.paint, you.hat) : null;
+    return you ? this.spriteUrl(you.form, you.paint, you.hat, you.spriteVariant) : null;
   }
 
   protected spriteUrl(
     form: string,
     paint: Record<string, number>,
     hat?: string | null,
+    variant?: string | null,
   ): string | null {
-    const spr = formSprite(form);
+    const spr = formSprite(form, variant);
     return getRecoloredWithHatDataUrl(spr.sprite, paint ?? {}, spr.regions, hat);
   }
 

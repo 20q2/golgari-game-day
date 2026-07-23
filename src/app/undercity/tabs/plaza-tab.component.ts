@@ -312,6 +312,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       userId: p.userId,
       username: p.username,
       form: p.form,
+      spriteVariant: p.spriteVariant,
       formName: p.formName,
       creatureName: p.creatureName,
       level: p.level,
