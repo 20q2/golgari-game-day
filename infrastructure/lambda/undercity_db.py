@@ -577,6 +577,14 @@ def _flee_pct(rec):
                + int(p.get('flee_bonus', 0)))
 
 
+def _round_cap(kind):
+    """Rounds after which a battle auto-ends. World-event skirmishes are bounded
+    (a chip, not a fight-to-KO); everything else uses the global safety cap."""
+    if kind == 'world':
+        return data.WORLD_EVENT_ROUND_CAP
+    return data.COMBAT_HARD_CAP
+
+
 def _frenzy_from(kind):
     """Round the Collapse begins for this battle kind. On for EVERY kind so no
     fight can stalemate (sudden death) — persistent-pool foes (lair/boss) just
@@ -2255,6 +2263,18 @@ def _resolve_space(table, sid, doc, node, prev):
         table.delete_item(Key={'pk': _season_pk(sid), 'sk': f'SPACE#{node}'})
         return {'type': 'pile', 'text': f'You scoop up {pile} spilled Spores!', 'spores': pile}
 
+    # World Event overlay: a live Great Beast squats on 3 wilderness nodes and
+    # overrides their normal event — including Umori's wandering stall, since the
+    # beast physically occupies the tile. Runs after snare/pile (player traps
+    # still fire) but before Umori and the node's own type dispatch.
+    we = _world_event(table, sid)
+    if we and we.get('spawned') and not we.get('dead') and node in we.get('nodes', []):
+        return {'type': 'world_event', 'node': node, 'center': we['node'],
+                'nodes': we['nodes'], 'hp': we['hp'], 'maxHp': we['maxHp'],
+                'name': data.WORLD_EVENT['name'], 'spriteId': data.WORLD_EVENT['spriteId'],
+                'text': f"The {data.WORLD_EVENT['name']} looms over the mire. "
+                        'Wade in and strike — every blow is tallied.'}
+
     # Umori the wandering ooze pacifies whatever wilderness space it sits on this
     # window and opens a T3 barter (overrides the node's normal event). Runs after
     # snare/pile so player traps still fire, before the normal type dispatch.
@@ -2264,17 +2284,6 @@ def _resolve_space(table, sid, doc, node, prev):
                 'movesAt': _umori_window_end(_uwin),
                 'text': 'Umori the ooze has oozed up a crooked stall here. Leave one, take one.',
                 'stock': _umori_barter_stock(table, sid, _uwin)}
-
-    # World Event overlay: a live Great Beast squats on 3 wilderness nodes and
-    # overrides their normal event. Runs after snare/pile/Umori, before the
-    # node's own type dispatch.
-    we = _world_event(table, sid)
-    if we and we.get('spawned') and not we.get('dead') and node in we.get('nodes', []):
-        return {'type': 'world_event', 'node': node, 'center': we['node'],
-                'nodes': we['nodes'], 'hp': we['hp'], 'maxHp': we['maxHp'],
-                'name': data.WORLD_EVENT['name'], 'spriteId': data.WORLD_EVENT['spriteId'],
-                'text': f"The {data.WORLD_EVENT['name']} looms over the mire. "
-                        'Wade in and strike — every blow is tallied.'}
 
     if ntype == 'loot':
         # Gate the reward behind a Flow puzzle and scatter reward symbols on it:
@@ -2839,7 +2848,7 @@ def _conclude_round(table, sid, doc, rec, player_c, npc_c, entries, frenzy_from,
     _bt_store(player_c, rec['player'])
     _bt_store(npc_c, rec['npc'])
 
-    over = player_c.hp <= 0 or npc_c.hp <= 0 or rnd >= data.COMBAT_HARD_CAP
+    over = player_c.hp <= 0 or npc_c.hp <= 0 or rnd >= _round_cap(rec['kind'])
     if over:
         if npc_c.hp <= 0 and player_c.hp <= 0:
             outcome = 'attacker' if player_c.hp >= npc_c.hp else 'defender'

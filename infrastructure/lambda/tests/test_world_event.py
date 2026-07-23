@@ -125,6 +125,21 @@ def test_world_engage_starts_world_battle():
     assert resp['spaceEvent']['kind'] == 'world'
 
 
+def test_world_event_overrides_umori_on_shared_node():
+    """The beast physically occupies the tile, so it must win over Umori's
+    wandering stall when both land on the same wilderness node."""
+    table = _started_table()
+    sid = _sid(table)
+    _join(table, 'user-alex', 'Alex')
+    umori = db._umori_node(db._umori_window())
+    rec = {'spawned': True, 'node': umori, 'nodes': [umori, umori, umori],
+           'hp': 200, 'maxHp': 200, 'dmg': {}, 'dead': False}
+    db._set_world_event(table, sid, rec)
+    doc = db._get_player(table, sid, 'user-alex')
+    ev = db._resolve_space(table, sid, doc, umori, prev=None)
+    assert ev['type'] == 'world_event'
+
+
 def test_world_engage_requires_standing_on_beast():
     table = _started_table()
     sid = _sid(table)
@@ -132,3 +147,35 @@ def test_world_engage_requires_standing_on_beast():
     _place_live_event(table, sid)  # player is at home gate, not on the beast
     status, resp = act(table, 'world-engage', user='user-alex', name='Alex')
     assert status == 409
+
+
+# ── Task 6: 6-round skirmish cap ─────────────────────────────────────────────
+
+def test_world_skirmish_caps_at_six_rounds(monkeypatch):
+    table = _started_table()
+    sid = _sid(table)
+    _join(table, 'user-alex', 'Alex')
+    we = _place_live_event(table, sid)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = we['nodes'][0]
+    db._put_player(table, doc)
+    act(table, 'world-engage', user='user-alex', name='Alex')
+
+    # Neither side deals damage -> only the round cap can end the fight.
+    def _stub(att, dfn, *a, **k):
+        return [{'round': 1, 'by': 'attacker', 'dmg': 0, 'winner': 'draw'}]
+    monkeypatch.setattr(db.engine, 'resolve_round', _stub)
+
+    rounds, last = 0, None
+    for _ in range(12):  # more than the cap
+        status, resp = act(table, 'combat-round', user='user-alex', name='Alex',
+                           stance='guard')
+        assert status == 200, resp
+        rounds += 1
+        last = resp
+        if not db._get_player(table, sid, 'user-alex').get('battle'):
+            break
+
+    assert db._get_player(table, sid, 'user-alex').get('battle') is None
+    assert rounds <= data.WORLD_EVENT_ROUND_CAP
+    assert 'spaceEvent' in last
