@@ -329,6 +329,34 @@ def test_killing_blow_pays_killer_inline_and_marks_dead(monkeypatch):
     assert after == before + ev['reward']['spores']
 
 
+def test_killing_blow_result_carries_loot_and_roster(monkeypatch):
+    table = _started_table()
+    sid = _sid(table)
+    _join(table, 'user-alex', 'Alex')
+    we = _place_live_event(table, sid)
+    we['hp'] = 3
+    we['dmg'] = {'user-alex': 40}  # prior chip so Alex is a real contributor
+    db._set_world_event(table, sid, we)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = we['nodes'][0]
+    db._put_player(table, doc)
+    act(table, 'world-engage', user='user-alex', name='Alex')
+
+    def _stub(att, dfn, *a, **k):
+        dfn.hp = 0
+        return [{'round': 1, 'by': 'attacker', 'dmg': 99, 'winner': 'attacker'}]
+    monkeypatch.setattr(db.engine, 'resolve_round', _stub)
+    status, resp = act(table, 'combat-round', user='user-alex', name='Alex', stance='aggress')
+    assert status == 200, resp
+
+    ev = resp['spaceEvent']
+    assert ev['worldKill'] is True
+    assert ev['reward']['xp'] > 0
+    assert 'gear' in ev['reward']  # may be a dict or None, but the key is present
+    assert ev['raid']['name'] == data.WORLD_EVENT['name']
+    assert any(r['name'] == 'Alex' for r in ev['raid']['roster'])
+
+
 # ── Task 8: state payload ────────────────────────────────────────────────────
 
 def test_state_exposes_world_event_block():

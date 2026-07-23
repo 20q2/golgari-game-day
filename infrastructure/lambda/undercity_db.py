@@ -3481,7 +3481,9 @@ def _finish_world(table, sid, doc, rec, result):
         mine = next((r for r in results if r['userId'] == uid), None)
         if mine:
             out['reward'] = {'bracket': mine['bracket'], 'spores': mine['spores'],
-                             'renown': mine['renown']}
+                             'renown': mine['renown'], 'xp': mine['xp'],
+                             'gear': mine['gear'], 'leveledTo': mine['leveledTo']}
+            out['raid'] = {'name': spec['name'], 'roster': mine['roster']}
             out['spores'] = mine['spores']   # display echo; credited in payout
         out['text'] = (f"Your blow fells the {spec['name']}! It collapses into the mire — "
                        'the spoils are shared out by who bled it most.')
