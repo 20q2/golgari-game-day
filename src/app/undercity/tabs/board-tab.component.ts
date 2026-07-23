@@ -41,11 +41,14 @@ import { VAULT_POT_SEED } from '../data/vein-vault';
 import {
   BIOME_SPELLS,
   GRIMOIRE_MAP,
+  GRIMOIRE_CAPACITY,
   GrimoireInfo,
   SPELLS,
   SPELL_MAP,
   SpellInfo,
+  WITCH_SCROLL_STOCK,
   cooldownLeftMin,
+  spellCategoryStyle,
   spellPowerLabel,
 } from '../data/spells';
 import {
@@ -74,6 +77,7 @@ import { FlowPuzzleModalComponent } from './flow-puzzle.component';
 import { CrystalVeinModalComponent, VeinEffect } from './crystal-vein.component';
 import { GuildvaultModalComponent } from './guildvault.component';
 import { MysteryReelComponent } from './mystery-reel.component';
+import { BoardEventFeedComponent } from './board-event-feed.component';
 
 interface BattleView {
   battle: BattleResult;
@@ -149,6 +153,7 @@ const DEFAULT_BUFF_TINT: [string, string] = ['#ffd76a', '#f2a900']; // gold
     CrystalVeinModalComponent,
     GuildvaultModalComponent,
     MysteryReelComponent,
+    BoardEventFeedComponent,
   ],
   templateUrl: './board-tab.component.html',
   styleUrls: ['./board-tab.component.scss'],
@@ -176,6 +181,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly showShrine = signal(false);
   protected readonly showWarp = signal<string[] | null>(null);
   protected readonly showOssuary = signal(false);
+  // ── Sedgemoor Witch modal state ──
+  protected readonly showWitch = signal(false);
+  protected readonly witchSeg = signal<'inscribe' | 'buy'>('inscribe');
+  protected readonly pickedScroll = signal<string | null>(null);
+  protected readonly pickedBook = signal<string | null>(null);
+  protected readonly burnTarget = signal<string | null>(null);
   protected readonly showTradingPost = signal(false);
   protected readonly tradingStock = signal<TradeStockItem[]>([]);
   protected readonly giveItem = signal<string | null>(null);
@@ -258,6 +269,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly wishPick = signal(false);
   /** Wish: the chosen spell being targeted — non-null routes the cast as a Wish. */
   protected readonly wishSpell = signal<SpellInfo | null>(null);
+  /** Scroll cast: the spell being cast from a one-shot scroll (source 'scroll'). */
+  protected readonly scrollCast = signal<SpellInfo | null>(null);
   /** "While you were away" — populated once, from the first you-doc snapshot. */
   protected readonly awayModal = signal<AwayEvent[] | null>(null);
   private awayInitDone = false;
@@ -291,6 +304,17 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Every spell Wish can become (all but Wish itself). */
   protected readonly allSpellsForWish = SPELLS.filter((s) => s.id !== 'wish');
+
+  /** Held scrolls as castable SpellInfos (one-shot, source 'scroll'). */
+  protected readonly castableScrolls = computed<SpellInfo[]>(() =>
+    (this.store.you()?.scrolls ?? []).map((id) => SPELL_MAP[id]).filter(Boolean),
+  );
+
+  /** Cast a held scroll one-shot: target it normally, then send source 'scroll'. */
+  pickScrollCast(spell: SpellInfo): void {
+    this.scrollCast.set(spell);
+    this.routeSpellTargeting(spell);
+  }
 
   protected cooldownLabel(spellId: string): string {
     const left = cooldownLeftMin(this.store.you()?.spellCooldowns, spellId);
@@ -360,6 +384,15 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return out.sort((a, b) => a.dist - b.dist);
   }
 
+  /** Live lair bosses a boss-strike spell can sear. boss_strike is range-less
+   *  ("from anywhere"), so no distance filter — lairs carry their node id, which
+   *  the server matches against data.LAIR_BOSSES. */
+  protected spellLairTargets(): { target: string; name: string; hp: number; maxHp: number }[] {
+    return Object.entries(this.store.guardians())
+      .filter(([, g]) => g.kind === 'lair')
+      .map(([node, g]) => ({ target: node, name: g.name, hp: g.hp, maxHp: g.maxHp }));
+  }
+
   /** Value-picker faces for a fate_die spell: 1..maxValue (Fate Die = 6, Skitter Step = 3). */
   protected dieFaces(spell: SpellInfo): number[] {
     return Array.from({ length: spell.maxValue ?? 6 }, (_, i) => i + 1);
@@ -415,14 +448,18 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   async castSpell(spell: SpellInfo, extra: Record<string, unknown> = {}): Promise<void> {
     const you = this.store.you();
     const wished = this.wishSpell();
+    const scrolling = this.scrollCast();
     // A Wish casts the chosen spell but sends spellId 'wish' + wishSpellId.
     const isWish = !!wished && wished.id === spell.id;
+    const isScroll = !isWish && !!scrolling && scrolling.id === spell.id;
     const spellId = isWish ? 'wish' : spell.id;
     const source = isWish
       ? 'wish'
-      : BIOME_SPELLS[you?.homeBiome ?? ''] === spell.id
-        ? 'innate'
-        : 'grimoire';
+      : isScroll
+        ? 'scroll'
+        : BIOME_SPELLS[you?.homeBiome ?? ''] === spell.id
+          ? 'innate'
+          : 'grimoire';
     if (isWish) extra = { wishSpellId: spell.id, ...extra };
     const preHp = you?.hp ?? 0;
     await this.run(async () => {
@@ -449,11 +486,86 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.castTeleport.set(null);
     this.wishPick.set(false);
     this.wishSpell.set(null);
+    this.scrollCast.set(null);
     this.syncBoard();
   }
 
   protected ownsGrimoire(id: string): boolean {
     return (this.store.you()?.grimoires ?? []).includes(id);
+  }
+
+  // ── Sedgemoor Witch ────────────────────────────────────────────────────────
+  protected readonly spellCategoryStyle = spellCategoryStyle;
+  protected readonly witchStock = WITCH_SCROLL_STOCK;
+  protected spellInfo(id: string): SpellInfo | undefined {
+    return SPELL_MAP[id];
+  }
+  /** Spells currently in a book (mutable per-player, falling back to the bundle). */
+  protected bookSpells(gid: string): string[] {
+    return this.store.you()?.grimoireSpells?.[gid] ?? GRIMOIRE_MAP[gid]?.spells ?? [];
+  }
+  protected bookCap(gid: string): number {
+    return GRIMOIRE_CAPACITY[GRIMOIRE_MAP[gid]?.tier ?? 1] ?? 2;
+  }
+  protected bookName(gid: string): string {
+    return GRIMOIRE_MAP[gid]?.name ?? gid;
+  }
+  protected bookTier(gid: string): number {
+    return GRIMOIRE_MAP[gid]?.tier ?? 1;
+  }
+  protected bookFull(gid: string): boolean {
+    return this.bookSpells(gid).length >= this.bookCap(gid);
+  }
+  /** Fill pips for a book's capacity meter. */
+  protected bookPips(gid: string): boolean[] {
+    const filled = this.bookSpells(gid).length;
+    return Array.from({ length: this.bookCap(gid) }, (_, i) => i < filled);
+  }
+  protected pickScroll(id: string): void {
+    this.pickedScroll.set(this.pickedScroll() === id ? null : id);
+    this.pickedBook.set(null);
+    this.burnTarget.set(null);
+  }
+  protected pickBook(gid: string): void {
+    this.pickedBook.set(this.pickedBook() === gid ? null : gid);
+    this.burnTarget.set(null);
+  }
+  /** Inscribe requires a burn target only when the chosen book is full. */
+  protected canInscribe(): boolean {
+    const s = this.pickedScroll();
+    const b = this.pickedBook();
+    if (!s || !b) return false;
+    if (this.bookSpells(b).includes(s)) return false;
+    return !this.bookFull(b) || !!this.burnTarget();
+  }
+  async inscribe(): Promise<void> {
+    const scrollSpellId = this.pickedScroll();
+    const grimoireId = this.pickedBook();
+    if (!scrollSpellId || !grimoireId || !this.canInscribe()) return;
+    const overwriteSpellId = this.bookFull(grimoireId) ? this.burnTarget() : null;
+    await this.run(async () => {
+      const resp = await this.store.action('witch-inscribe', {
+        scrollSpellId,
+        grimoireId,
+        ...(overwriteSpellId ? { overwriteSpellId } : {}),
+      });
+      if (resp.text) this.showToast(resp.text);
+      this.pickedScroll.set(null);
+      this.pickedBook.set(null);
+      this.burnTarget.set(null);
+    });
+  }
+  async buyScroll(spellId: string): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('witch-buy-scroll', { spellId });
+      if (resp.text) this.showToast(resp.text);
+    });
+  }
+  protected closeWitch(): void {
+    this.showWitch.set(false);
+    this.pickedScroll.set(null);
+    this.pickedBook.set(null);
+    this.burnTarget.set(null);
   }
 
   protected grimoireSpellList(g: GrimoireInfo): string {
@@ -605,6 +717,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected focusTarget(node: string): void {
     this.board?.centerOn(node);
     this.showFocusMenu.set(false);
+  }
+
+  /** Snap the camera back to the active player's own creature. Called from the
+   *  page's biome chip so tapping it re-centres on you. */
+  focusSelf(): void {
+    const pos = this.store.you()?.position;
+    if (pos) this.board?.centerOn(pos);
   }
 
   protected shopGearRows(): { info: GearInfo; qty: number; blackMarket: boolean }[] {
@@ -1546,6 +1665,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     } else if (ev.type === 'ossuary') {
       this.showOssuary.set(true);
       this.store.openFacility.set({ kind: 'ossuary' });
+    } else if (ev.type === 'witch') {
+      this.showWitch.set(true);
     } else if (ev.type === 'trading_post') {
       this.openTradingPost(ev.stock);
     } else if (ev.type === 'excavation') {

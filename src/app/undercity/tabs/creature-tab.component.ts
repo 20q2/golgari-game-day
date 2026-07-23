@@ -316,7 +316,10 @@ export class CreatureTabComponent {
   });
 
   bookSpells(book: GrimoireInfo): SpellInfo[] {
-    return book.spells.map((id) => SPELL_MAP[id]).filter(Boolean);
+    // Prefer the player's mutable contents (inscribed at the Sedgemoor Witch),
+    // falling back to the static bundle for older docs.
+    const ids = this.store.you()?.grimoireSpells?.[book.id] ?? book.spells;
+    return ids.map((id) => SPELL_MAP[id]).filter(Boolean);
   }
 
   cooldownLabel(spellId: string): string {

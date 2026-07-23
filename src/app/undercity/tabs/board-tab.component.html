@@ -132,6 +132,11 @@
             <mat-icon class="mi">casino</mat-icon> The Casino
           </button>
         }
+        @case ('witch') {
+          <button class="uc-btn" (click)="showWitch.set(true)">
+            <mat-icon class="mi">auto_fix_high</mat-icon> The Witch
+          </button>
+        }
         @case ('trading_post') {
           <button class="uc-btn" (click)="openTradingPost()">
             <mat-icon class="mi">swap_horiz</mat-icon> Trading Post
@@ -182,6 +187,9 @@
   @if (toast(); as t) {
     <div class="board-toast">{{ t }}</div>
   }
+
+  <!-- Bottom-left recent-events ticker (display-only overlay) -->
+  <app-undercity-event-feed />
 
   <!-- Respawn gate choice (after a compost) -->
   @if (store.you()?.pendingRespawn; as pr) {
@@ -902,6 +910,21 @@
             </button>
           </div>
         }
+        @if (castableScrolls().length) {
+          <h4 class="spell-section">Scrolls <span class="scroll-note">one-shot, no cooldown</span></h4>
+          @for (sp of castableScrolls(); track $index) {
+            <div class="shop-row">
+              <span class="shop-name">
+                <mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}
+                @if (spellPowerLabel(sp, playerLevel()); as pw) {
+                  <span class="spell-power-chip">{{ pw }}</span>
+                }
+                <em>{{ sp.desc }}</em>
+              </span>
+              <button class="uc-btn shop-buy" [disabled]="busy()" (click)="pickScrollCast(sp)">Use</button>
+            </div>
+          }
+        }
         <button class="uc-btn close-btn" (click)="closeSpellPickers()">Never mind</button>
       </div>
     </div>
@@ -925,6 +948,100 @@
           </div>
         }
         <button class="uc-btn close-btn" (click)="closeSpellPickers()">Never mind</button>
+      </div>
+    </div>
+  }
+
+  <!-- The Sedgemoor Witch: inscribe scrolls into books, or buy tier-I scrolls -->
+  @if (showWitch()) {
+    <div class="uc-modal-backdrop" (click)="closeWitch()">
+      <div class="uc-modal witch-modal" (click)="$event.stopPropagation()">
+        <header class="witch-head">
+          <h3><mat-icon class="mi">auto_fix_high</mat-icon> The Sedgemoor Witch</h3>
+        </header>
+        <div class="witch-seg">
+          <button [class.active]="witchSeg() === 'inscribe'" (click)="witchSeg.set('inscribe')">Inscribe</button>
+          <button [class.active]="witchSeg() === 'buy'" (click)="witchSeg.set('buy')">Buy scrolls</button>
+        </div>
+
+        @if (witchSeg() === 'inscribe') {
+          @if (!(store.you()?.scrolls?.length)) {
+            <p class="witch-hint">No scrolls yet — find them in the deep, or buy one.</p>
+          } @else {
+            <p class="witch-hint">Pick a scroll, then a book to inscribe it into.</p>
+            <div class="witch-grid">
+              @for (s of store.you()?.scrolls ?? []; track $index) {
+                @if (spellInfo(s); as sp) {
+                  <button
+                    class="witch-card"
+                    [attr.data-rarity]="tierRarity(sp.tier).key"
+                    [class.picked]="pickedScroll() === s"
+                    (click)="pickScroll(s)"
+                  >
+                    <span class="wc-name">{{ sp.name }}</span>
+                    <span class="wc-cat" [style.color]="spellCategoryStyle(sp).color">
+                      {{ spellCategoryStyle(sp).kind }}
+                      @if (spellPowerLabel(sp, playerLevel()); as pw) { · {{ pw }} }
+                    </span>
+                    <span class="rarity-badge" [ngClass]="tierRarity(sp.tier).key">{{ tierRarity(sp.tier).label }}</span>
+                  </button>
+                }
+              }
+            </div>
+          }
+
+          @if (pickedScroll()) {
+            <h4 class="witch-sub">Into which book?</h4>
+            <div class="witch-grid">
+              @for (g of store.you()?.grimoires ?? []; track g) {
+                <button
+                  class="witch-book"
+                  [attr.data-rarity]="tierRarity(bookTier(g)).key"
+                  [class.picked]="pickedBook() === g"
+                  (click)="pickBook(g)"
+                >
+                  <span class="wc-name">{{ bookName(g) }}</span>
+                  <span class="wc-pips">
+                    @for (f of bookPips(g); track $index) {
+                      <span class="wc-pip" [class.filled]="f">●</span>
+                    }
+                  </span>
+                  <span class="wc-spells">
+                    @for (sp of bookSpells(g); track sp) {
+                      <span
+                        class="wc-chip"
+                        [style.color]="spellCategoryStyle(spellInfo(sp)!).color"
+                        [class.doomed]="pickedBook() === g && burnTarget() === sp"
+                        (click)="$event.stopPropagation(); pickedBook.set(g); bookFull(g) && burnTarget.set(sp)"
+                      >{{ spellInfo(sp)!.name }}</span>
+                    }
+                  </span>
+                  @if (pickedBook() === g && bookFull(g)) {
+                    <span class="wc-warn">Full — tap a spell above to burn it out.</span>
+                  }
+                </button>
+              }
+            </div>
+            <button class="uc-btn uc-btn-primary witch-confirm" [disabled]="busy() || !canInscribe()" (click)="inscribe()">
+              Inscribe
+            </button>
+          }
+        } @else {
+          <p class="witch-hint">Fresh-brewed tier-I scrolls.</p>
+          <div class="witch-grid">
+            @for (id of witchStock; track id) {
+              @if (spellInfo(id); as sp) {
+                <div class="witch-card" [attr.data-rarity]="tierRarity(sp.tier).key">
+                  <span class="wc-name">{{ sp.name }}</span>
+                  <span class="wc-cat" [style.color]="spellCategoryStyle(sp).color">{{ spellCategoryStyle(sp).kind }}</span>
+                  <button class="uc-btn shop-buy" [disabled]="busy()" (click)="buyScroll(id)">Buy</button>
+                </div>
+              }
+            }
+          </div>
+        }
+
+        <button class="uc-btn close-btn" (click)="closeWitch()">Leave</button>
       </div>
     </div>
   }
@@ -990,9 +1107,19 @@
         <h3><mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}</h3>
         <p class="modal-sub">Whose hide do you sear from afar?</p>
         <div class="choice-grid">
-          <button class="uc-btn" [disabled]="busy()" (click)="castSpell(sp, { target: 'boss' })">
-            <mat-icon class="mi">visibility</mat-icon> Savra, the Queen
-          </button>
+          @if (store.state()?.boss; as boss) {
+            <button class="uc-btn" [disabled]="busy()" (click)="castSpell(sp, { target: 'boss' })">
+              <mat-icon class="mi">visibility</mat-icon> Savra, the Queen ({{ boss.hp }}/{{ boss.maxHp }})
+            </button>
+          }
+          @for (t of spellLairTargets(); track t.target) {
+            <button class="uc-btn" [disabled]="busy()" (click)="castSpell(sp, { target: t.target })">
+              <mat-icon class="mi">visibility</mat-icon> {{ t.name }} ({{ t.hp }}/{{ t.maxHp }})
+            </button>
+          }
+          @if (!store.state()?.boss && spellLairTargets().length === 0) {
+            <p class="modal-sub">No bosses stir right now — nothing to sear.</p>
+          }
         </div>
         <button class="uc-btn close-btn" (click)="closeSpellPickers()">Never mind</button>
       </div>

@@ -1470,3 +1470,74 @@
   background: rgba(233, 30, 99, 0.15); // --accent tint
   color: var(--accent-color, #e91e63);
 }
+
+// ── The Sedgemoor Witch modal (design 2026-07-23 bog-witch-scrolls §7) ──────
+.witch-modal {
+  .witch-head {
+    background: linear-gradient(135deg, #2a4d3a, #4b2d5e);
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 8px 8px 0 0;
+    margin: -16px -16px 10px;
+    h3 { margin: 0; }
+  }
+  .witch-seg {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    button {
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid rgba(127, 127, 127, 0.35);
+      border-radius: 8px;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font-weight: 600;
+      &.active { background: var(--accent-color, #e91e63); color: #fff; border-color: transparent; }
+    }
+  }
+  .witch-hint { font-size: 0.82rem; opacity: 0.75; margin: 4px 0 8px; }
+  .witch-sub { margin: 12px 0 6px; font-size: 0.9rem; }
+  .witch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .witch-card,
+  .witch-book {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    text-align: left;
+    padding: 8px 10px;
+    border: 1px solid rgba(127, 127, 127, 0.25);
+    border-left: 3px solid transparent;
+    border-radius: 8px;
+    background: rgba(127, 127, 127, 0.06);
+    cursor: pointer;
+    // Rarity (tier) palette — mirrors plaza-tab.component.scss.
+    &[data-rarity='common'] { border-left-color: #9aa7a0; }
+    &[data-rarity='rare'] { border-left-color: #5fd18a; }
+    &[data-rarity='legendary'] { border-left-color: #fbbf24; }
+    &.picked { outline: 2px solid var(--accent-color, #e91e63); }
+  }
+  .wc-name { font-weight: 700; font-size: 0.86rem; }
+  .wc-cat { font-size: 0.72rem; font-weight: 700; }
+  .rarity-badge {
+    position: absolute; top: 6px; right: 8px;
+    font-size: 0.62rem; font-weight: 700; text-transform: uppercase; opacity: 0.8;
+    &.common { color: #9aa7a0; }
+    &.rare { color: #5fd18a; }
+    &.legendary { color: #fbbf24; }
+  }
+  .wc-pips { display: flex; gap: 2px; }
+  .wc-pip { font-size: 0.7rem; opacity: 0.3; &.filled { opacity: 1; color: #5fd18a; } }
+  .wc-spells { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+  .wc-chip {
+    font-size: 0.72rem; font-weight: 600;
+    padding: 1px 6px; border-radius: 8px;
+    background: rgba(127, 127, 127, 0.14);
+    &.doomed { text-decoration: line-through; color: var(--error, #f44336) !important; }
+  }
+  .wc-warn { font-size: 0.7rem; color: var(--warning, #ff9800); margin-top: 2px; }
+  .witch-confirm { width: 100%; margin-top: 10px; &:disabled { opacity: 0.5; } }
+}

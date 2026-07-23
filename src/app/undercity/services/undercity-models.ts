@@ -83,6 +83,8 @@ export interface CastResult {
   hp?: number;
   targetName?: string;
   to?: string;
+  /** For a Wish cast: the spell id the player wished into being. */
+  wished?: string;
 }
 
 export interface YouDoc {
@@ -144,6 +146,11 @@ export interface YouDoc {
   /** Grimoires ever found — a permanent collection; one may be open at a time. */
   grimoires?: string[];
   equippedGrimoire?: string | null;
+  /** Per-player mutable book contents (spells inscribed at the Sedgemoor Witch),
+   *  keyed by grimoire id. Falls back to the static bundle when absent. */
+  grimoireSpells?: Record<string, string[]>;
+  /** Held spell scrolls (spell ids) — cast one-shot or inscribe at the witch. */
+  scrolls?: string[];
   /** ISO time the open grimoire was last changed; opening another is gated. */
   lastGrimoireSwap?: string | null;
   /** spellId -> ISO time it comes off cooldown (server clock, no trailing Z). */
@@ -520,6 +527,8 @@ export interface SpaceEvent {
   text: string;
   spores?: number;
   item?: string;
+  /** A spell-scroll drop (mirrors undercity_db._roll_scroll_drop): the spell id. */
+  scroll?: string;
   /** A gear drop from a loot source (mirrors undercity_db._roll_gear_drop).
    * Found gear routes to the stash; if the stash was full it is auto-ground
    * into materials ('stash-full'). */

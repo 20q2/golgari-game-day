@@ -116,6 +116,25 @@ export function grimoireSwapLeftMin(lastSwap: string | null | undefined): number
   return ms > 0 ? Math.ceil(ms / 60_000) : 0;
 }
 
+/** Mirror of GRIMOIRE_CAPACITY / WITCH_SCROLL_STOCK in undercity_config.py /
+ *  undercity_data.py — spells a book holds by tier, and the witch's tier-I stock. */
+export const GRIMOIRE_CAPACITY: Record<number, number> = { 1: 2, 2: 3, 3: 4 };
+export const WITCH_SCROLL_STOCK = ['spore_bolt', 'mend_flesh', 'harden_shell', 'scrap_toss'];
+
+/** Category → semantic color + short kind label (design §7 second color axis).
+ *  Kept separate from the rarity (tier) palette so the two axes read distinctly. */
+export function spellCategoryStyle(spell: SpellInfo): { color: string; kind: string } {
+  switch (spell.effect) {
+    case 'field_damage': return { color: 'var(--error, #f44336)', kind: 'Damage' };
+    case 'self_heal': return { color: 'var(--success, #4caf50)', kind: 'Heal' };
+    case 'self_buff': return { color: 'var(--info, #2196f3)', kind: 'Buff' };
+    case 'field_curse': return { color: 'var(--accent-color, #e91e63)', kind: 'Curse' };
+    case 'boss_strike':
+    case 'wish': return { color: 'var(--rating-gold, #ffd700)', kind: 'Boss' };
+    default: return { color: 'var(--warning, #ff9800)', kind: 'Mobility' };
+  }
+}
+
 /** Client mirror of engine.spell_power — MUST match undercity_config
  *  SPELL_POWER_PER_LEVEL (1.0). Returns the level-scaled magnitude. */
 export const SPELL_POWER_PER_LEVEL = 1.0;
