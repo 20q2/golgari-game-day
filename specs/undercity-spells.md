@@ -65,6 +65,15 @@ Every spell that hits (or fizzles against) you lands in your inbox:
 | Deep Step | III | Teleport | 6 | 30 min |
 | Queen's Bane | III | 15 damage to Savra or a lair pool, from anywhere | ∞ | 60 min |
 
+### Spell power scales with level
+
+Damage/heal/boss-strike magnitude is `base + round(SPELL_POWER_PER_LEVEL ×
+(level − 1))` (`SPELL_POWER_PER_LEVEL = 1.0`, `undercity_config.py`). The tables
+above list **base** (level-1) values; e.g. a level-10 Spore Bolt lands for 21,
+not 12. Buff/curse/traversal spells are flat. Server: `engine.spell_power`.
+Client mirror: `data/spells.ts` `spellPower` / `spellPowerLabel` (the cast picker
+shows the live scaled number).
+
 ### The books
 
 | Grimoire | Tier | Cost | Spells | How to get it |
