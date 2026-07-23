@@ -550,9 +550,12 @@ ISLAND_BAZAAR_GEAR_TIERS = {2: 7, 3: 3}
 # Bazaar nodes that use ISLAND_BAZAAR_GEAR_TIERS instead of the biome table.
 ISLAND_BAZAAR_NODES = {'isl_bg1'}
 
-# Umori barter seed per move: this many distinct-slot T3 gear pieces + this many
-# T3 grimoires (all tier 3 — the endgame payoff for reaching the wandering post).
-UMORI_STOCK_SPEC = {'gear': 2, 'grimoire': 1}
+# Umori barter seed per move: one T3 gear piece for EACH gear slot + this many T3
+# grimoires (all tier 3 — the endgame payoff for reaching the wandering post).
+UMORI_STOCK_SPEC = {'gear_per_slot': 1, 'grimoire': 1}
+
+# Fixed slot order for Umori's gear lines (keeps takeIndex + the UI stable).
+UMORI_GEAR_SLOTS = ['fang', 'carapace', 'charm']
 
 # Excavation dig sites (Ossuary Fields focus). A shared 5x5 grid holds four
 # buried items sized by footprint; each landing grants 3 digs (reveal one cell

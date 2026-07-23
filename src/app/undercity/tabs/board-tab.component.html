@@ -640,37 +640,17 @@
         <img class="modal-art" [src]="tradingKeeper.art" alt="" />
         <h3><mat-icon class="mi">swap_horiz</mat-icon> Trading Post</h3>
         <p class="shop-quote">“{{ tradingKeeper.quote }}”</p>
-        <p class="modal-sub">
-          Leave a consumable, a piece of gear, or a grimoire — take one another player left behind.
-        </p>
-
-        <div class="shop-section">Your items — tap one to offer</div>
-        @if (tradeOffers().length === 0) {
-          <p class="trade-empty">You have nothing to trade yet.</p>
+        @if (umoriTraded()) {
+          <p class="modal-sub">
+            You've already bartered with Umori this stop. Come back after it wanders on for another slot.
+          </p>
         } @else {
-          <div class="trade-bag">
-            @for (o of tradeOffers(); track o.id) {
-              <button
-                class="trade-chip"
-                [class.selected]="giveItem() === o.id"
-                [attr.data-rarity]="o.rarity"
-                (click)="giveItem.set(o.id)"
-              >
-                @if (o.kind === 'gear') {
-                  <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + o.slot"></mat-icon>
-                } @else {
-                  <mat-icon class="mi">{{ o.icon }}</mat-icon>
-                }
-                {{ o.label }}
-                @if (o.rarity) {
-                  <span class="rarity-badge {{ o.rarity }}">{{ o.rarityLabel }}</span>
-                }
-              </button>
-            }
-          </div>
+          <p class="modal-sub">
+            One upgrade per stop — pick a piece, then hand over one of yours of the same slot.
+          </p>
         }
 
-        <div class="shop-section">Offered — take one (leaves your selected item here)</div>
+        <div class="shop-section">Umori is offering</div>
         @for (s of tradingStock(); track $index) {
           @let d = tradeStockDetail(s.item);
           <div class="shop-row" [attr.data-rarity]="d.rarity">
@@ -684,16 +664,58 @@
               @if (d.rarity) {
                 <span class="rarity-badge {{ d.rarity }}">{{ d.rarityLabel }}</span>
               }
-              <em>{{ d.sub }} — found by {{ s.foundBy }}</em>
+              <em>{{ d.sub }}</em>
             </span>
             <button
               class="uc-btn shop-buy"
-              [disabled]="busy() || !giveItem() || !canTakeStock(s.item)"
-              (click)="trade($index)"
+              [disabled]="busy() || !canTradeFor(s.item)"
+              (click)="pickStock($index)"
             >
-              Take
+              Trade for this
             </button>
           </div>
+
+          @if (selectedStock() === $index) {
+            @let gives = qualifyingGiveOffers(s.item);
+            <div class="trade-give-picker">
+              <div class="shop-section">Hand over one — tap to select</div>
+              @if (gives.length === 0) {
+                <p class="trade-empty">You have nothing of that slot to trade.</p>
+              } @else {
+                <div class="trade-bag">
+                  @for (o of gives; track $index) {
+                    <button
+                      class="trade-chip"
+                      [class.selected]="giveItem() === o.id"
+                      [attr.data-rarity]="o.rarity"
+                      [disabled]="!canUseGive(s.item, o)"
+                      (click)="giveItem.set(o.id)"
+                    >
+                      @if (o.kind === 'gear') {
+                        <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + o.slot"></mat-icon>
+                      } @else {
+                        <mat-icon class="mi">{{ o.icon }}</mat-icon>
+                      }
+                      {{ o.label }}
+                      @if (o.equipped) {
+                        <span class="rarity-badge equipped">Equipped</span>
+                      }
+                      @if (o.rarity) {
+                        <span class="rarity-badge {{ o.rarity }}">{{ o.rarityLabel }}</span>
+                      }
+                    </button>
+                  }
+                </div>
+                <button
+                  class="uc-btn shop-buy confirm-trade"
+                  [disabled]="busy() || !giveItem()"
+                  (click)="trade($index)"
+                >
+                  Hand it over
+                </button>
+              }
+            </div>
+          }
         }
         <button class="uc-btn close-btn" (click)="closeFacilities()">Leave</button>
       </div>

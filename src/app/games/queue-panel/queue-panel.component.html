@@ -12,7 +12,15 @@
       class="queue-card"
       [class.ready]="isReady(entry.gameId)"
     >
-      <div class="queue-card-thumb">
+      <div
+        class="queue-card-thumb"
+        role="button"
+        tabindex="0"
+        [attr.aria-label]="'View details for ' + entry.gameTitle"
+        (click)="openDetails(entry.gameId)"
+        (keydown.enter)="openDetails(entry.gameId)"
+        (keydown.space)="openDetails(entry.gameId)"
+      >
         <img
           *ngIf="imageFor(entry.gameId) as img"
           class="thumb-img"

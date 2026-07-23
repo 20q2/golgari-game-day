@@ -984,6 +984,7 @@
   &.common { color: #9aa7a0; }
   &.rare { color: #5fd18a; }
   &.legendary { color: #fbbf24; }
+  &.equipped { color: #7fd0ff; }
 }
 
 // Rare biome "black-market" T3 line — illicit-but-premium (violet + gold).
@@ -1103,6 +1104,16 @@
   color: #9aa79a;
   font-style: italic;
   margin: 4px 0;
+}
+
+.trade-give-picker {
+  margin: 4px 0 12px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(255, 255, 255, 0.12);
+}
+
+.confirm-trade {
+  margin-top: 8px;
 }
 
 .bet-row {

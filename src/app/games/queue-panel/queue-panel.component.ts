@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
+import { ActivatedRoute, Router } from '@angular/router';
 import { QueueService } from '../../services/queue.service';
 import { UserService } from '../../services/user.service';
 import { GamesService } from '../../services/games.service';
@@ -36,6 +37,8 @@ export class QueuePanelComponent implements OnInit, OnDestroy {
   private readonly userService = inject(UserService);
   private readonly gamesService = inject(GamesService);
   private readonly dialog = inject(MatDialog);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   ngOnInit(): void {
     this.queue.startPolling();
@@ -47,6 +50,18 @@ export class QueuePanelComponent implements OnInit, OnDestroy {
 
   imageFor(gameId: string): string | undefined {
     return this.gamesService.getGameById(gameId)?.imageUrl;
+  }
+
+  /** Open the game-details dialog for a lobby's game. Mirrors
+   * GamesComponent.onOpenGame — push `?game=<id>` and let the games page's
+   * queryParamMap subscription open the dialog (keeps back-gesture behaviour). */
+  openDetails(gameId: string): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { game: gameId },
+      queryParamsHandling: 'merge',
+      state: { gameDialogPush: true },
+    });
   }
 
   joinedCount(gameId: string): number {

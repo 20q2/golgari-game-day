@@ -230,8 +230,9 @@ export interface GameState {
   snares: string[];
   /** Trading post node id -> its 3 shared stock slots. */
   tradingPosts?: Record<string, TradeStockItem[]>;
-  /** The wandering trading post's current node + when it next hops (ISO, UTC no suffix). */
-  umori?: { node: string; movesAt: string };
+  /** The wandering trading post's current node + when it next hops (ISO, UTC no suffix).
+   *  `traded` is true once the requesting player has spent this rotation's one barter. */
+  umori?: { node: string; movesAt: string; traded?: boolean };
   /** Shop node id -> its current shared stock and restock clock. */
   bazaars?: Record<string, BazaarView>;
   /** Player Market — priced gear listings (mirrors undercity_db MARKET# records). */
@@ -404,6 +405,8 @@ export interface TradeOffer {
   rarityLabel?: string;
   label: string;
   sub: string;
+  /** For a same-slot gear offer: this is the piece currently worn (badged in UI). */
+  equipped?: boolean;
 }
 
 /** One stocked line in a bazaar tab (grimoires carry no qty). */

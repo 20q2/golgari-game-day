@@ -83,16 +83,19 @@ def _umori_node(window):
 
 
 def _umori_stock(window):
-    """Fresh T3 barter seed for a window: distinct-slot T3 gear + T3 grimoires."""
+    """Fresh T3 barter seed for a window: one T3 gear per slot (fixed order) +
+    UMORI_STOCK_SPEC['grimoire'] T3 grimoires. Deterministic per window."""
     rng = random.Random(zlib.crc32(f'umori-stock:{window}'.encode()))
     by_slot = {}
     for gid, g in data.GEAR.items():
         if g['tier'] == 3:
             by_slot.setdefault(g['slot'], []).append(gid)
-    slots = list(by_slot)
-    rng.shuffle(slots)
-    picks = [rng.choice(by_slot[s]) for s in slots[:data.UMORI_STOCK_SPEC['gear']]]
-    tomes = [gid for gid, gr in data.GRIMOIRES.items() if gr['tier'] == 3]
+    picks = []
+    for slot in data.UMORI_GEAR_SLOTS:
+        pool = sorted(by_slot.get(slot, []))
+        if pool:
+            picks.append(rng.choice(pool))
+    tomes = sorted(gid for gid, gr in data.GRIMOIRES.items() if gr['tier'] == 3)
     rng.shuffle(tomes)
     picks += tomes[:data.UMORI_STOCK_SPEC['grimoire']]
     return [{'item': i, 'foundBy': 'the Swarm'} for i in picks]
@@ -1204,7 +1207,8 @@ def handle_state(table, query_params):
         'players': players,
         'snares': snares,
         'tradingPosts': posts,
-        'umori': {'node': umori_node, 'movesAt': _umori_window_end(umori_win)},
+        'umori': {'node': umori_node, 'movesAt': _umori_window_end(umori_win),
+                  'traded': bool(you and you.get('umoriTradedWindow') == umori_win)},
         'bazaars': bazaars,
         'market': market,
         'excavations': excavations,
@@ -4166,13 +4170,18 @@ def _item_name(item_id):
 
 
 def _trade(table, sid, doc, payload):
-    """Swap one owned gear piece or grimoire for one of Umori's stock items. The
-    item you leave becomes the next visitor's stock (this window), tagged with
-    your name. Only valid while standing on Umori's current wandering node."""
+    """Barter one owned item for one of Umori's stock lines. Match rule: a gear
+    line wants a gear piece of the *same slot* (equipped or stashed); the grimoire
+    line wants a grimoire. One barter per rotation. The item you leave fills that
+    stock slot for the rest of the window; the taken gear lands in your stash."""
     node = doc.get('position')
     win = _umori_window()
     if node != _umori_node(win):
         return _err('Umori is not here.', 409)
+    if doc.get('umoriTradedWindow') == win:
+        return _err("You've already bartered with Umori this stop — "
+                    'catch it after it wanders on.', 409)
+
     give = payload.get('give')
     take_index = payload.get('takeIndex')
     give_kind = _item_kind(give)
@@ -4181,74 +4190,88 @@ def _trade(table, sid, doc, payload):
     if give_kind == 'consumable':
         return _err('Umori only trades in gear and grimoires.', 409)
 
-    bag = doc.get('bag') or []
-    gear = doc.get('gear') or {}
-    grimoires = doc.get('grimoires') or []
-
-    if give_kind == 'consumable' and give not in bag:
-        return _err("You don't have that item to trade.", 409)
-    if give_kind == 'gear' and gear.get(data.GEAR[give]['slot']) != give:
-        return _err("You don't have that piece equipped.", 409)
-    if give_kind == 'grimoire' and give not in grimoires:
-        return _err("You don't own that grimoire.", 409)
-
     stock = _umori_barter_stock(table, sid, win)
     if not isinstance(take_index, int) or not (0 <= take_index < len(stock)):
         return _err('Pick something to take.', 409)
-
     taken = stock[take_index]
     take_kind = _item_kind(taken['item'])
-    if take_kind == 'consumable':
-        effective_bag_len = len(bag) - (1 if give_kind == 'consumable' else 0)
-        if effective_bag_len >= data.BAG_SIZE:
-            return _err('Your bag is full (3 slots).', 409)
+
+    # Match rule — one slot at a time.
+    if take_kind == 'gear':
+        if give_kind != 'gear' or data.GEAR[give]['slot'] != data.GEAR[taken['item']]['slot']:
+            slot = data.GEAR[taken['item']]['slot']
+            return _err(f'Umori wants the same slot — offer a {slot} for that {slot}.', 409)
+    elif take_kind == 'grimoire':
+        if give_kind != 'grimoire':
+            return _err('Umori wants a grimoire for that grimoire.', 409)
+
+    gear = doc.get('gear') or {}
+    grimoires = doc.get('grimoires') or []
+    stash = doc.get('gearStash') or []
+
+    # Give-side ownership: gear may come from the equipped slot OR the stash.
+    give_from_stash = False
+    if give_kind == 'gear':
+        slot = data.GEAR[give]['slot']
+        if gear.get(slot) == give:
+            give_from_stash = False
+        elif give in stash:
+            give_from_stash = True
+        else:
+            return _err("You don't have that piece to trade.", 409)
+    elif give_kind == 'grimoire' and give not in grimoires:
+        return _err("You don't own that grimoire.", 409)
+
+    # Take-side guards.
     if take_kind == 'grimoire' and taken['item'] in grimoires:
         return _err('You already own that grimoire.', 409)
-    if take_kind == 'gear' and len(doc.get('gearStash') or []) >= data.GEAR_STASH_SIZE:
-        return _err('Your gear stash is full — salvage a piece at the Plaza first.', 409)
+    if take_kind == 'gear':
+        effective_stash = len(stash) - (1 if give_from_stash else 0)
+        if effective_stash >= data.GEAR_STASH_SIZE:
+            return _err('Your gear stash is full — salvage a piece at the Plaza first.', 409)
 
-    # Remove the given item.
-    if give_kind == 'consumable':
-        bag = list(bag)
-        bag.remove(give)
-        doc['bag'] = bag
-    elif give_kind == 'gear':
-        gear = dict(gear)
-        del gear[data.GEAR[give]['slot']]
-        doc['gear'] = gear
+    # Remove the given item from wherever it lives.
+    if give_kind == 'gear':
+        if give_from_stash:
+            stash = list(stash)
+            stash.remove(give)
+            doc['gearStash'] = stash
+        else:
+            gear = dict(gear)
+            del gear[data.GEAR[give]['slot']]
+            doc['gear'] = gear
     elif give_kind == 'grimoire':
-        grimoires = [g for g in grimoires if g != give]
-        doc['grimoires'] = grimoires
+        doc['grimoires'] = [g for g in grimoires if g != give]
         if doc.get('equippedGrimoire') == give:
             doc['equippedGrimoire'] = None
 
     # Apply the taken item.
-    if take_kind == 'consumable':
-        doc.setdefault('bag', []).append(taken['item'])
-    elif take_kind == 'gear':
-        # No auto-equip: the bartered piece lands in the stash to equip at the Plaza.
+    if take_kind == 'gear':
         doc.setdefault('gearStash', []).append(taken['item'])
     elif take_kind == 'grimoire':
         doc.setdefault('grimoires', []).append(taken['item'])
         if not doc.get('equippedGrimoire'):
             doc['equippedGrimoire'] = taken['item']
 
+    # Leave the given piece in that stock slot for the rest of the window.
     stock = list(stock)
     stock[take_index] = {'item': give, 'foundBy': doc.get('username', 'someone')}
 
-    conflict = _save_or_conflict(table, doc)  # guard the player write first
+    doc['umoriTradedWindow'] = win                       # spend the rotation's barter
+
+    conflict = _save_or_conflict(table, doc)             # guard the player write first
     if conflict:
         return conflict
-    table.put_item(Item={'pk': _season_pk(sid),      # then the shared window stock
+    table.put_item(Item={'pk': _season_pk(sid),          # then the shared window stock
                          'sk': f'POST#UMORI#{win}', 'stock': stock})
 
     give_name = _item_name(give)
     take_name = _item_name(taken['item'])
     _event(table, sid, 'trade',
-           f"{doc['username']} traded a {give_name} for {take_name} "
-           f"(left by {taken['foundBy']}) at the trading post.", actor=doc['userId'])
-    return _ok(doc, text=f"You leave your {give_name} and take {take_name} "
-               f"(found by {taken['foundBy']}).", node=node, stock=stock)
+           f"{doc['username']} bartered a {give_name} for {take_name} at Umori's stall.",
+           actor=doc['userId'])
+    return _ok(doc, text=f"You hand over your {give_name} and take {take_name}.",
+               node=node, stock=stock)
 
 
 # ── Excavation dig sites ──────────────────────────────────────────────────────

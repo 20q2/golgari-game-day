@@ -177,6 +177,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly showTradingPost = signal(false);
   protected readonly tradingStock = signal<TradeStockItem[]>([]);
   protected readonly giveItem = signal<string | null>(null);
+  /** Index of the stock line whose trade-in picker is open (take-first flow). */
+  protected readonly selectedStock = signal<number | null>(null);
+  /** True once the player has spent this rotation's single barter. */
+  protected readonly umoriTraded = computed(() => !!this.store.umori()?.traded);
   /** Top-right focus picker: pick any player (or Umori) to center the camera on. */
   protected readonly showFocusMenu = signal(false);
   protected readonly showExcavation = signal(false);
@@ -419,27 +423,42 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     charm: 'auto_awesome',
   };
 
-  protected tradeOffers(): TradeOffer[] {
+  /** Owned items that qualify as a trade-in for a given stock line — same-slot
+   *  gear (equipped + stashed, equipped flagged) or, for the grimoire line, owned
+   *  grimoires. Mirror of the server match rule. */
+  protected qualifyingGiveOffers(stockItem: string): TradeOffer[] {
     const you = this.store.you();
     if (!you) return [];
-    const offers: TradeOffer[] = [];
-    for (const id of you.bag ?? []) {
-      const c = CONSUMABLE_MAP[id];
-      if (c) offers.push({ id, kind: 'consumable', icon: c.icon, label: c.name, sub: c.desc });
-    }
-    for (const [, id] of Object.entries(you.gear ?? {})) {
-      const g = GEAR_MAP[id];
-      if (g) {
+    const gear = GEAR_MAP[stockItem];
+    if (gear) {
+      const slot = gear.slot;
+      const offers: TradeOffer[] = [];
+      const equippedId = (you.gear ?? {})[slot];
+      if (equippedId && GEAR_MAP[equippedId]) {
+        const g = GEAR_MAP[equippedId];
         const r = tierRarity(g.tier);
-        offers.push({ id, kind: 'gear', icon: '', slot: g.slot, rarity: r.key,
-                      rarityLabel: r.label, label: g.name, sub: g.desc });
+        offers.push({ id: equippedId, kind: 'gear', icon: '', slot, rarity: r.key,
+                      rarityLabel: r.label, label: g.name, sub: g.desc, equipped: true });
       }
+      for (const id of you.gearStash ?? []) {
+        const g = GEAR_MAP[id];
+        if (g && g.slot === slot) {
+          const r = tierRarity(g.tier);
+          offers.push({ id, kind: 'gear', icon: '', slot, rarity: r.key,
+                        rarityLabel: r.label, label: g.name, sub: g.desc });
+        }
+      }
+      return offers;
     }
-    for (const id of you.grimoires ?? []) {
-      const g = GRIMOIRE_MAP[id];
-      if (g) offers.push({ id, kind: 'grimoire', icon: 'menu_book', label: g.name, sub: this.grimoireSpellList(g) });
+    const gr = GRIMOIRE_MAP[stockItem];
+    if (gr) {
+      return (you.grimoires ?? []).map((id) => {
+        const t = GRIMOIRE_MAP[id];
+        return { id, kind: 'grimoire' as const, icon: 'menu_book',
+                 label: t?.name ?? id, sub: t ? this.grimoireSpellList(t) : '' };
+      });
     }
-    return offers;
+    return [];
   }
 
   /** Display detail for a stock line — same icon/rarity vocabulary as the Bazaar
@@ -458,19 +477,33 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return { id, kind: 'consumable', icon: 'help', label: id, sub: '' };
   }
 
-  /** Client-side mirror of the server's take-side guards, so blocked takes read as a disabled button. */
-  protected canTakeStock(item: string): boolean {
+  /** Whether a stock line's "Trade for this" button is live — mirrors the three
+   *  server disable conditions. */
+  protected canTradeFor(stockItem: string): boolean {
+    if (this.umoriTraded()) return false;
+    const gives = this.qualifyingGiveOffers(stockItem);
+    if (gives.length === 0) return false;
+    // Taking gear grows the stash by one; if it's full and the only trade-in is the
+    // equipped piece (also net +1), there's no room. A stashed give is net-zero.
+    if (GEAR_MAP[stockItem] && this.stashFull() && !gives.some((o) => !o.equipped)) {
+      return false;
+    }
     const you = this.store.you();
-    if (!you) return false;
-    if (CONSUMABLE_MAP[item]) {
-      const givingConsumable = !!CONSUMABLE_MAP[this.giveItem() ?? ''];
-      const effectiveBagLen = (you.bag?.length ?? 0) - (givingConsumable ? 1 : 0);
-      return effectiveBagLen < 3;
-    }
-    if (GRIMOIRE_MAP[item]) {
-      return !(you.grimoires ?? []).includes(item);
-    }
+    if (GRIMOIRE_MAP[stockItem] && (you?.grimoires ?? []).includes(stockItem)) return false;
     return true;
+  }
+
+  /** Within the trade-in picker, whether this specific give can be handed over: an
+   *  equipped gear give overflows a full stash (net +1); a stashed give is net-zero. */
+  protected canUseGive(stockItem: string, give: TradeOffer): boolean {
+    if (GEAR_MAP[stockItem] && give.equipped && this.stashFull()) return false;
+    return true;
+  }
+
+  /** Tap a stock line: open its trade-in picker (clear any prior selection). */
+  protected pickStock(index: number): void {
+    this.selectedStock.set(index);
+    this.giveItem.set(null);
   }
 
   // ── Bazaar (rotating limited stock) ──────────────────────────────────────
@@ -1561,11 +1594,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const pos = this.store.you()?.position ?? '';
     this.tradingStock.set(stock ?? this.store.tradingPosts()[pos] ?? []);
     this.giveItem.set(null);
+    this.selectedStock.set(null);
     this.showTradingPost.set(true);
     this.store.openFacility.set({ kind: 'tradingPost' });
   }
 
-  /** Swap the selected bag item for stock slot `takeIndex`. */
+  /** Hand over the selected give item for stock slot `takeIndex`. */
   async trade(takeIndex: number): Promise<void> {
     const give = this.giveItem();
     if (!give) return;
@@ -1573,6 +1607,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       const resp = await this.store.action('trade', { give, takeIndex });
       if (resp.stock) this.tradingStock.set(resp.stock);
       this.giveItem.set(null);
+      this.selectedStock.set(null);
       this.showToast(resp.text ?? 'Traded.');
     });
   }
@@ -2039,6 +2074,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.showOssuary.set(false);
     this.showTradingPost.set(false);
     this.giveItem.set(null);
+    this.selectedStock.set(null);
     this.showExcavation.set(false);
     this.excavationGrid.set(null);
     this.showFlowPuzzle.set(false);

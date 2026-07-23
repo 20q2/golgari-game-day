@@ -912,6 +912,10 @@ def _t3_tome():
     return next(g for g, v in data.GRIMOIRES.items() if v['tier'] == 3)
 
 
+def _t3_carapace():
+    return next(g for g, v in data.GEAR.items() if v['tier'] == 3 and v['slot'] == 'carapace')
+
+
 def test_umori_pre_seeds_t3_stock(table):
     sid, doc, node = _stand_on_umori(table)
     ev = db._resolve_space(table, sid, doc, node, 'somewhere')
@@ -979,6 +983,85 @@ def test_umori_rejects_out_of_range_take(table):
     db._put_player(table, doc)
     status, _ = act(table, 'trade', give='rusted_fang', takeIndex=9)
     assert status == 409  # take index out of range
+
+
+def test_umori_rejects_cross_slot_gear(table):
+    sid, doc, node = _stand_on_umori(table)
+    win = db._umori_window()
+    take = _t3_carapace()
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'POST#UMORI#{win}',
+                         'stock': [{'item': take, 'foundBy': 'the Swarm'}]})
+    doc['gear'] = {'fang': 'rusted_fang'}                       # a fang, not a carapace
+    db._put_player(table, doc)
+    status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
+    assert status == 409 and 'same slot' in resp['error']
+
+
+def test_umori_rejects_cross_kind(table):
+    sid, doc, node = _stand_on_umori(table)
+    win = db._umori_window()
+    take = _t3_tome()                                          # a grimoire line
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'POST#UMORI#{win}',
+                         'stock': [{'item': take, 'foundBy': 'the Swarm'}]})
+    doc['gear'] = {'fang': 'rusted_fang'}                      # offering gear for a grimoire
+    db._put_player(table, doc)
+    status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
+    assert status == 409 and 'grimoire' in resp['error']
+
+
+def test_umori_gives_from_stash(table):
+    sid, doc, node = _stand_on_umori(table)
+    win = db._umori_window()
+    take = _t3_fang()
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'POST#UMORI#{win}',
+                         'stock': [{'item': take, 'foundBy': 'the Swarm'}]})
+    doc['gear'] = {}                                           # nothing equipped
+    doc['gearStash'] = ['rusted_fang']                         # a stashed fang qualifies
+    db._put_player(table, doc)
+    status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
+    assert status == 200
+    assert 'rusted_fang' not in (resp['you'].get('gearStash') or [])  # removed from stash
+    assert take in resp['you']['gearStash']                    # legendary stashed
+    assert resp['stock'][0] == {'item': 'rusted_fang', 'foundBy': 'Alex'}
+
+
+def test_state_reports_umori_traded_flag(table):
+    sid, doc, node = _stand_on_umori(table)
+    win = db._umori_window()
+    # Before trading: traded is False.
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert state['umori']['traded'] is False
+    # After marking this window traded: True.
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['umoriTradedWindow'] = win
+    db._put_player(table, doc)
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert state['umori']['traded'] is True
+
+
+def test_umori_one_barter_per_rotation(table):
+    sid, doc, node = _stand_on_umori(table)
+    win = db._umori_window()
+    take = _t3_fang()
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'POST#UMORI#{win}',
+                         'stock': [{'item': take, 'foundBy': 'the Swarm'}]})
+    doc['gear'] = {'fang': 'rusted_fang'}
+    db._put_player(table, doc)
+    status, _ = act(table, 'trade', give='rusted_fang', takeIndex=0)
+    assert status == 200
+    # second trade this window is blocked
+    d2 = db._get_player(table, sid, 'user-alex')
+    d2['gear'] = {'fang': 'bloodfang'}
+    db._put_player(table, d2)
+    status, resp = act(table, 'trade', give='bloodfang', takeIndex=0)
+    assert status == 409 and 'already bartered' in resp['error']
+    # a later window lets them barter again
+    d3 = db._get_player(table, sid, 'user-alex')
+    d3['umoriTradedWindow'] = win - 1                          # simulate an older stop
+    d3['gear'] = {'fang': 'bloodfang'}
+    db._put_player(table, d3)
+    status, _ = act(table, 'trade', give='bloodfang', takeIndex=0)
+    assert status == 200
 
 
 def test_dig_grid_generation():
@@ -2141,14 +2224,17 @@ def test_umori_node_is_deterministic_wilderness():
 def test_umori_stock_is_all_t3_and_deterministic():
     for w in range(0, 30):
         stock = db._umori_stock(w)
-        assert len(stock) == data.UMORI_STOCK_SPEC['gear'] + data.UMORI_STOCK_SPEC['grimoire']
+        assert len(stock) == (
+            len(data.UMORI_GEAR_SLOTS) * data.UMORI_STOCK_SPEC['gear_per_slot']
+            + data.UMORI_STOCK_SPEC['grimoire']
+        )
         gears = [s['item'] for s in stock if s['item'] in data.GEAR]
         tomes = [s['item'] for s in stock if s['item'] in data.GRIMOIRES]
-        assert len(gears) == data.UMORI_STOCK_SPEC['gear']
+        # one gear per slot, covering every slot exactly once
+        assert sorted(data.GEAR[g]['slot'] for g in gears) == sorted(data.UMORI_GEAR_SLOTS)
         assert len(tomes) == data.UMORI_STOCK_SPEC['grimoire']
         assert all(data.GEAR[g]['tier'] == 3 for g in gears)
         assert all(data.GRIMOIRES[t]['tier'] == 3 for t in tomes)
-        assert len({data.GEAR[g]['slot'] for g in gears}) == len(gears)  # distinct slots
     assert db._umori_stock(5) == db._umori_stock(5)
 
 
