@@ -1220,6 +1220,7 @@ def _public_player(p):
         'pvpWins': p.get('pvpWins', 0), 'wildWins': p.get('wildWins', 0),
         'composts': p.get('composts', 0), 'sigils': _sigil_count(p),
         'paint': p.get('paint'), 'hat': p.get('hat'),
+        'shiny': p.get('shiny', False),
         'isBot': p.get('isBot', False),
         'status': p.get('status', ''),
         'renown': data.compute_renown(p),
@@ -1736,6 +1737,9 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'pvpWins': 0, 'wildWins': 0, 'composts': 0, 'bossDamage': 0,
         'paint': {'body': body_hue, 'belly': 50, 'stripes': body_hue},
         'hat': None, 'joinedAt': _now(), 'ver': 0,
+        # Cosmetic-only shiny, rolled once at hatch; rides through evolutions
+        # (same doc). Client draws a gold sparkle over shiny sprites.
+        'shiny': _rng.random() < data.SHINY_HATCH_CHANCE,
     }
     # ── Home-biome hatch perks ──────────────────────────────────────────────
     if home == 'bone':
@@ -1883,10 +1887,11 @@ def _join(table, sid, user_id, username, payload):
     biome = data.BIOMES[home]
     named = f" named {doc['creatureName']}" if doc['creatureName'] != s['name'] else ''
     brave = f" Bravery earns +{data.BRAVERY_BONUS_ROLLS} roll!" if bravery else ''
+    shiny = " ✨ It hatched SHINY!" if doc.get('shiny') else ''
     _event(table, sid, 'hatch',
            f"{doc['username']}'s egg cracks open in {biome['name']} — "
            f"a {s['name']}{named} skitters out! ({biome['perkName']}: {biome['perkBlurb']})"
-           f"{brave}",
+           f"{brave}{shiny}",
            actor=user_id)
     return _ok(doc)
 
@@ -2646,6 +2651,38 @@ def _set_lair_state(table, sid, node, hp, slain, buffs=None):
     if buffs:
         item['buffs'] = buffs
     table.put_item(Item=item)
+
+
+# ── World Event ("The Great Beast") shared state ─────────────────────────────
+
+def _world_event(table, sid):
+    """The live world-event record, or None if it never spawned."""
+    return _get(table, _season_pk(sid), 'WORLDEVENT')
+
+
+def _set_world_event(table, sid, rec):
+    item = dict(rec)
+    item['pk'] = _season_pk(sid)
+    item['sk'] = 'WORLDEVENT'
+    table.put_item(Item=item)
+
+
+def _pick_world_event_run(nodes):
+    """A length-3 connected chain of wilderness nodes: [flank, center, flank].
+    Picks a center that has >=2 wilderness neighbours. Returns None if the map
+    has no such run (shouldn't happen on the real board)."""
+    centers = []
+    for nid, n in nodes.items():
+        if n.get('region') != 'wilderness':
+            continue
+        wnb = [m for m in n.get('neighbors', [])
+               if nodes.get(m, {}).get('region') == 'wilderness']
+        if len(wnb) >= 2:
+            centers.append((nid, wnb))
+    if not centers:
+        return None
+    center, wnb = _rng.choice(centers)
+    return [wnb[0], center, wnb[1]]
 
 
 def _lair(table, sid, doc, node):
