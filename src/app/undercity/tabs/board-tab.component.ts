@@ -15,7 +15,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
-import { BoardCanvas, BoardMap, NodeInfo } from '../engine/board-canvas';
+import { BoardCanvas, BoardMap, NodeInfo, SpellCastFx } from '../engine/board-canvas';
 import { legalSteps, boardDistance, nodesWithin } from '../engine/board-movement';
 import {
   AwayEvent,
@@ -23,6 +23,7 @@ import {
   BattleResume,
   BattleStatus,
   BazaarView,
+  CastResult,
   CombatEntry,
   CombatFlee,
   CombatRound,
@@ -39,7 +40,7 @@ import {
 } from '../services/undercity-models';
 import { VAULT_POT_SEED } from '../data/vein-vault';
 import {
-  BIOME_SPELLS,
+  innateSpellIds,
   GRIMOIRE_MAP,
   GRIMOIRE_CAPACITY,
   GrimoireInfo,
@@ -138,6 +139,30 @@ const BUFF_TINT: Record<string, [string, string]> = {
   glowveil: ['#8ff0e6', '#25c9b8'], // +SPD — cyan
 };
 const DEFAULT_BUFF_TINT: [string, string] = ['#ffd76a', '#f2a900']; // gold
+
+/** Spell effect → board-canvas cast-FX shape (self_buff handled separately). */
+const FX_SHAPE: Record<string, SpellCastFx['shape']> = {
+  self_heal: 'heal',
+  field_damage: 'damage',
+  field_curse: 'curse',
+  teleport: 'teleport',
+  recall: 'recall',
+  fate_die: 'fate',
+  boss_strike: 'boss',
+  wish: 'wish',
+};
+
+/** Spell effect → cast-FX [fill, glow] palette. */
+const FX_TINT: Record<string, [string, string]> = {
+  self_heal: ['#7fe6a0', '#3ecf6a'], // green
+  field_damage: ['#ff7a4a', '#ff3b2f'], // ember red
+  field_curse: ['#c77dff', '#7b2ff7'], // hex purple
+  teleport: ['#7fd4ff', '#2f9bff'], // blink blue
+  recall: ['#7ff0d0', '#1fbfa0'], // teal
+  fate_die: ['#ffe27a', '#f2a900'], // gold shimmer
+  boss_strike: ['#ffd76a', '#ff5a2f'], // gold-into-fire
+  wish: ['#ffb3f0', '#a54cff'], // prismatic
+};
 
 @Component({
   selector: 'app-undercity-board-tab',
@@ -293,8 +318,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const you = this.store.you();
     if (!you) return [];
     const ids: string[] = [];
-    const innate = BIOME_SPELLS[you.homeBiome ?? ''];
-    if (innate) ids.push(innate);
+    for (const id of innateSpellIds(you.homeBiome, you.species)) {
+      if (!ids.includes(id)) ids.push(id);
+    }
     const book = you.equippedGrimoire ? GRIMOIRE_MAP[you.equippedGrimoire] : null;
     if (book) for (const s of book.spells) if (!ids.includes(s)) ids.push(s);
     // Calamity Beast knows Wish regardless of loadout.
@@ -457,7 +483,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       ? 'wish'
       : isScroll
         ? 'scroll'
-        : BIOME_SPELLS[you?.homeBiome ?? ''] === spell.id
+        : innateSpellIds(you?.homeBiome, you?.species).includes(spell.id)
           ? 'innate'
           : 'grimoire';
     if (isWish) extra = { wishSpellId: spell.id, ...extra };
@@ -465,10 +491,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     await this.run(async () => {
       const resp = await this.store.action('cast', { spellId, source, ...extra });
       this.closeSpellPickers();
-      if (resp.cast && spell.effect === 'self_buff') {
-        const [fill, glow] = BUFF_TINT[spell.id] ?? DEFAULT_BUFF_TINT;
-        this.board?.burstBuff(fill, glow);
-      }
+      if (resp.cast) this.playCastFx(spell, resp.cast, extra);
       if (resp.cast?.text) this.showToast(resp.cast.text);
       if (resp.spaceEvent) {
         if (resp.you) this.board?.centerOn(resp.you.position);
@@ -476,6 +499,49 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         this.routeSpaceEvent(resp.spaceEvent, preHp);
       }
     });
+  }
+
+  /** Fire the board animation for a resolved cast: a tinted burst for self-buffs,
+   *  else a per-category bolt/puff aimed at the target token or node. For a Wish,
+   *  `spell` is the underlying chosen spell, so it animates as that effect. */
+  private playCastFx(spell: SpellInfo, cast: CastResult, extra: Record<string, unknown>): void {
+    const me = this.store.you()?.userId;
+    if (!me || !this.board) return;
+    if (spell.effect === 'self_buff') {
+      const [fill, glow] = BUFF_TINT[spell.id] ?? DEFAULT_BUFF_TINT;
+      this.board.burstBuff(fill, glow);
+      return;
+    }
+    const shape = FX_SHAPE[spell.effect];
+    if (!shape) return;
+    const rawTarget = typeof extra['target'] === 'string' ? (extra['target'] as string) : undefined;
+    // field spells target a player's userId; boss/teleport target a node.
+    const targetId = rawTarget && rawTarget !== 'boss' && spell.effect !== 'teleport' ? rawTarget : undefined;
+    const targetNode =
+      spell.effect === 'boss_strike'
+        ? this.map.boss
+        : spell.effect === 'teleport'
+          ? rawTarget
+          : undefined;
+    const [color, glow] = FX_TINT[spell.effect] ?? DEFAULT_BUFF_TINT;
+    this.board.playSpellCast({
+      shape,
+      casterId: me,
+      targetId,
+      targetNode,
+      color,
+      glow,
+      dmg: cast.dodged ? undefined : cast.dmg,
+      dodged: cast.dodged,
+    });
+  }
+
+  /** Flash your own token when a spell landed on you (an away-note arrived). */
+  private playHitFx(e: AwayEvent): void {
+    const me = this.store.you()?.userId;
+    if (!me || !this.board) return;
+    if (e.kind === 'spell_hit') this.board.playSpellHit({ targetId: me, dmg: e.dmg });
+    else if (e.kind === 'spell_dodged') this.board.playSpellHit({ targetId: me, dodged: true });
   }
 
   protected closeSpellPickers(): void {
@@ -966,7 +1032,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         return;
       }
       if (events.length > this.awaySeenCount && !this.awayModal()) {
+        const fresh = events.slice(this.awaySeenCount);
         this.showToast(this.awayText(events[events.length - 1]));
+        for (const e of fresh) this.playHitFx(e);
         void this.store.action('ack-events');
       }
       this.awaySeenCount = events.length;
