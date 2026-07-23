@@ -238,7 +238,12 @@ export interface MarketListing {
   id: string;
   sellerId: string;
   sellerName: string;
-  gearId: string;
+  /** Absent on legacy rows written before kinds existed → treat as 'gear'. */
+  kind?: 'gear' | 'consumable' | 'scroll';
+  /** Absent on legacy rows → fall back to `gearId`. */
+  itemId?: string;
+  /** Legacy field, still emitted by old rows. */
+  gearId?: string;
   price: number;
 }
 
