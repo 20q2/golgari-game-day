@@ -279,6 +279,7 @@ export const SPACE_ICONS: Record<string, string> = {
   rest: 'hotel',
   trove: 'auto_awesome',
   tunnel: 'route',
+  world_event: 'pest_control_rodent',
   // Event-only types (never drawn on the board)
   wild_warp: 'cyclone',
   boss_sealed: 'visibility_off',
@@ -435,4 +436,5 @@ export const SPACE_NAMES: Record<string, string> = {
   cache: 'Hidden Trove',
   ladder: 'Rusted Ladder',
   tunnel: 'Tunnel',
+  world_event: 'The Great Beast',
 };

@@ -59,6 +59,7 @@ import {
   tierRarity,
 } from '../data/items';
 import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome } from '../data/dungeons';
+import { WORLD_EVENT } from '../data/world-event';
 import { formName } from '../data/forms';
 import { formSprite } from '../data/species';
 import { getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
@@ -258,6 +259,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Blade indices for the Spore Mound grass-rustle banner. */
   protected readonly grassBlades = [0, 1, 2, 3, 4, 5, 6];
+  /** Round cap shown on the World Event "Engage" button. */
+  protected readonly worldEventRoundCap = WORLD_EVENT.roundCap;
 
   protected readonly isShielded = isShielded;
 
@@ -1281,6 +1284,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           position,
           shielded: isShielded(p),
           hat: p.hat,
+          shiny: p.shiny,
           illuminated: p.userId === ownId ? this.illuminated() : false,
           darkvision: p.userId === ownId ? you?.homeBiome === 'cavern' : false,
           tier: p.userId === ownId ? (you?.tier ?? p.tier) : p.tier,
@@ -1292,6 +1296,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.board.setUmori(this.store.umori());
     this.board.setBarriersOpen(this.store.barriersOpen());
     this.board.setGuardianPools(this.store.guardians());
+    this.board.setWorldEvent(this.store.worldEvent());
     const here = step ? stepPos(step) : null;
     const choices = step ? this.stepChoices(step) : [];
     const tele = this.castTeleport();
@@ -1341,7 +1346,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       this.openLiveBattle(ev, preHp);
       return;
     }
-    const fightTypes = ['wild', 'elite', 'barrier', 'lair', 'boss'];
+    const fightTypes = ['wild', 'elite', 'barrier', 'lair', 'boss', 'world'];
     if (fightTypes.includes(ev.type) && ev.battle && ev.npc) {
       this.battleView.set({
         battle: ev.battle,
@@ -1395,6 +1400,20 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       this.reelSymbol.set(this.mysterySymbol(ev));
     } else {
       this.spaceModal.set(ev);
+    }
+  }
+
+  /** Wade into the wilderness World Event: a bounded skirmish that chips its
+   *  shared pool. The server returns a battle_start (kind 'world'), which routes
+   *  straight into the interactive battle UI. */
+  async engageWorldEvent(): Promise<void> {
+    const preHp = this.store.you()?.hp ?? 0;
+    this.spaceModal.set(null);
+    try {
+      const resp = await this.store.action('world-engage', {});
+      if (resp.spaceEvent) this.routeSpaceEvent(resp.spaceEvent, preHp);
+    } catch {
+      /* store surfaces the error toast */
     }
   }
 
@@ -1655,6 +1674,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Battle-card art path per foe class (missing files fall back to icons). */
   private npcSpriteUrl(evType: string, npcId: string): string {
     if (evType === 'wild' || evType === 'elite') return `undercity/enemies/${npcId}.png`;
+    // The wilderness World Event beast lives in its own art folder.
+    if (evType === 'world') return `undercity/sigil_boss/${npcId}.png`;
     // Barriers, lair mini-bosses, and the island boss all share the guardians folder.
     return `undercity/guardians/${npcId}.png`;
   }
@@ -1883,7 +1904,14 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // A first-kill lair boss reports the sigil it drops — remember it so the
     // sunburst fanfare can fire once the player dismisses the victory screen.
     this.pendingSigilBiome = outcome === 'attacker' && ev.sigil ? ev.sigil : null;
-    this.liveB?.finish(outcome, you?.hp ?? 0, npcHp, ev.text ?? '', this.buildRewards(ev), entries);
+    let text = ev.text ?? '';
+    if (ev.worldKill && ev.reward) {
+      text +=
+        ` (${ev.reward.bracket} bracket: +${ev.reward.spores} Spores` +
+        (ev.reward.renown ? `, +${ev.reward.renown} Renown` : '') +
+        ')';
+    }
+    this.liveB?.finish(outcome, you?.hp ?? 0, npcHp, text, this.buildRewards(ev), entries);
   }
 
   async closeLiveBattle(): Promise<void> {

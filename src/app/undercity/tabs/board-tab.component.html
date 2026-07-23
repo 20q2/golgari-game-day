@@ -336,7 +336,16 @@
             }
           </div>
         }
-        <button class="uc-btn uc-btn-primary" (click)="closeSpaceModal()">OK</button>
+        @if (ev.type === 'world_event') {
+          <div class="event-actions">
+            <button class="uc-btn uc-btn-primary" (click)="engageWorldEvent()">
+              Engage ({{ worldEventRoundCap }} rounds)
+            </button>
+            <button class="uc-btn" (click)="closeSpaceModal()">Back off</button>
+          </div>
+        } @else {
+          <button class="uc-btn uc-btn-primary" (click)="closeSpaceModal()">OK</button>
+        }
       </div>
     </div>
   }
