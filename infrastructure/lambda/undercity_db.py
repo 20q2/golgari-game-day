@@ -684,8 +684,8 @@ def _creature_label(doc):
     return doc.get('creatureName') or _form_name(doc)
 
 
-ONE_BATTLE_BUFFS = ('rot_surge', 'bone_chill', 'glowveil', 'harden_shell', 'weaken_hex',
-                    'savage_roar', 'iron_hide', 'fleetfoot', 'warding_dance',
+ONE_BATTLE_BUFFS = ('rot_surge', 'acorn_fury', 'bone_chill', 'glowveil', 'harden_shell',
+                    'weaken_hex', 'savage_roar', 'iron_hide', 'fleetfoot', 'warding_dance',
                     'sap_vigor', 'rust_curse')
 
 
@@ -1021,7 +1021,7 @@ def _market_list(table, sid, doc, payload):
 
 def _market_buy(table, sid, doc, payload):
     """Buy a listing: claim it (conditional delete so two buyers can't both take
-    it), pay the seller, and receive the gear into your stash."""
+    it), pay the seller, and receive the item into the matching inventory."""
     listing_id = payload.get('listingId')
     pk = _season_pk(sid)
     listing = _get(table, pk, f'MARKET#{listing_id}')
@@ -1029,12 +1029,15 @@ def _market_buy(table, sid, doc, payload):
         return _err('That listing is gone.', 409)
     if listing['sellerId'] == doc['userId']:
         return _err('That is your own listing — cancel it instead.', 409)
+    kind, item_id = _market_kind(listing)
+    spec = _MARKET_KINDS.get(kind)
+    if not spec:
+        return _err('That listing is gone.', 409)
     price = int(listing['price'])
-    gid = listing['gearId']
     if doc.get('spores', 0) < price:
         return _err('Not enough Spores.', 409)
-    if len(doc.get('gearStash') or []) >= data.GEAR_STASH_SIZE:
-        return _err('Your stash is full — make room first.', 409)
+    if len(doc.get(spec['field']) or []) >= spec['cap']:
+        return _err(f"Your {_MARKET_FULL_LABEL[kind]} is full — make room first.", 409)
     try:
         table.delete_item(Key={'pk': pk, 'sk': f'MARKET#{listing_id}'},
                           ConditionExpression='attribute_exists(sk)')
@@ -1043,19 +1046,19 @@ def _market_buy(table, sid, doc, payload):
             return _err('That listing just sold.', 409)
         raise
     doc['spores'] = doc.get('spores', 0) - price
-    doc.setdefault('gearStash', []).append(gid)
+    doc.setdefault(spec['field'], []).append(item_id)
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
     _credit_market_seller(table, sid, listing['sellerId'], price, {
         'kind': 'market', 'at': _now(),
         'text': f"{doc.get('username', 'Someone')} bought your "
-                f"{data.GEAR[gid]['name']} for {price} Spores."})
-    return _ok(doc, text=f"Bought {data.GEAR[gid]['name']} for {price} Spores.")
+                f"{spec['name'](item_id)} for {price} Spores."})
+    return _ok(doc, text=f"Bought {spec['name'](item_id)} for {price} Spores.")
 
 
 def _market_cancel(table, sid, doc, payload):
-    """Reclaim your own listing back into your stash."""
+    """Reclaim your own listing back into the matching inventory."""
     listing_id = payload.get('listingId')
     pk = _season_pk(sid)
     listing = _get(table, pk, f'MARKET#{listing_id}')
@@ -1063,8 +1066,12 @@ def _market_cancel(table, sid, doc, payload):
         return _err('That listing is gone.', 409)
     if listing['sellerId'] != doc['userId']:
         return _err('That is not your listing.', 409)
-    if len(doc.get('gearStash') or []) >= data.GEAR_STASH_SIZE:
-        return _err('Your stash is full — make room first.', 409)
+    kind, item_id = _market_kind(listing)
+    spec = _MARKET_KINDS.get(kind)
+    if not spec:
+        return _err('That listing is gone.', 409)
+    if len(doc.get(spec['field']) or []) >= spec['cap']:
+        return _err(f"Your {_MARKET_FULL_LABEL[kind]} is full — make room first.", 409)
     try:
         table.delete_item(Key={'pk': pk, 'sk': f'MARKET#{listing_id}'},
                           ConditionExpression='attribute_exists(sk)')
@@ -1072,11 +1079,11 @@ def _market_cancel(table, sid, doc, payload):
         if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
             return _err('That listing just sold.', 409)
         raise
-    doc.setdefault('gearStash', []).append(listing['gearId'])
+    doc.setdefault(spec['field'], []).append(item_id)
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
-    return _ok(doc, text=f"Reclaimed {data.GEAR[listing['gearId']]['name']}.")
+    return _ok(doc, text=f"Reclaimed {spec['name'](item_id)}.")
 
 
 def cutpurse_bonus(doc, feint_won, won):

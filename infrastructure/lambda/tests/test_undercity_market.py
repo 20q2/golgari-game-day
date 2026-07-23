@@ -131,3 +131,60 @@ def test_market_list_rejects_unknown_kind(table):
     sid, seller = _player_at(table, 'city_r0')
     seller['gearStash'] = ['bark_hide']
     assert db._market_list(table, sid, seller, {'kind': 'grimoire', 'index': 0, 'price': 45})[0] == 400
+
+
+def test_market_buy_consumable_to_bag(table):
+    sid, seller, buyer = _two_players(table)
+    seller['bag'] = ['healing_moss']
+    _, body = db._market_list(table, sid, seller, {'kind': 'consumable', 'index': 0, 'price': 12})
+    buyer['spores'] = 50
+    buyer['bag'] = []
+    status, _ = db._market_buy(table, sid, buyer, {'listingId': body['listingId']})
+    assert status == 200
+    assert buyer['bag'] == ['healing_moss'] and buyer['spores'] == 38
+    assert db._get_player(table, sid, 'user-alex')['spores'] == 12
+
+
+def test_market_buy_scroll_to_satchel(table):
+    sid, seller, buyer = _two_players(table)
+    seller['scrolls'] = ['spore_bolt']
+    _, body = db._market_list(table, sid, seller, {'kind': 'scroll', 'index': 0, 'price': 15})
+    buyer['spores'] = 50
+    buyer['scrolls'] = []
+    status, _ = db._market_buy(table, sid, buyer, {'listingId': body['listingId']})
+    assert status == 200
+    assert buyer['scrolls'] == ['spore_bolt']
+
+
+def test_market_buy_rejects_full_bag(table):
+    sid, seller, buyer = _two_players(table)
+    seller['bag'] = ['healing_moss']
+    _, body = db._market_list(table, sid, seller, {'kind': 'consumable', 'index': 0, 'price': 12})
+    buyer['spores'] = 50
+    buyer['bag'] = ['loaded_die', 'smoke_spore', 'snare']   # BAG_SIZE = 3, full
+    status, _ = db._market_buy(table, sid, buyer, {'listingId': body['listingId']})
+    assert status == 409
+
+
+def test_market_cancel_returns_consumable(table):
+    sid, seller = _player_at(table, 'city_r0')
+    seller['bag'] = ['healing_moss']
+    _, body = db._market_list(table, sid, seller, {'kind': 'consumable', 'index': 0, 'price': 12})
+    seller = db._get_player(table, sid, 'user-alex')       # fresh optimistic-lock version
+    status, _ = db._market_cancel(table, sid, seller, {'listingId': body['listingId']})
+    assert status == 200
+    assert seller['bag'] == ['healing_moss']
+
+
+def test_market_buy_legacy_gear_row(table):
+    """A pre-existing listing written before `kind` existed (gearId only) still buys."""
+    sid, seller, buyer = _two_players(table)
+    pk = db._season_pk(sid)
+    table.put_item(Item={'pk': pk, 'sk': 'MARKET#legacy01', 'id': 'legacy01',
+                         'sellerId': 'user-alex', 'sellerName': 'Alex',
+                         'gearId': 'bark_hide', 'price': 45, 'createdAt': db._now()})
+    buyer['spores'] = 100
+    buyer['gearStash'] = []
+    status, _ = db._market_buy(table, sid, buyer, {'listingId': 'legacy01'})
+    assert status == 200
+    assert buyer['gearStash'] == ['bark_hide']
