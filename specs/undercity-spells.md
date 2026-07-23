@@ -2,7 +2,7 @@
 
 A living reference for the Dokapon-style spell system: what it does for players, how it works under the hood, and how to extend it. The approved design rationale lives in [2026-07-10-undercity-spells-design.md](2026-07-10-undercity-spells-design.md); this document tracks what is actually shipped.
 
-**Status:** Phase 1 (core casting) is live. Scrolls (phase 2), tier-II/III book acquisition (phase 3), and the spell-shrine space (phase 4) are not built yet — see [Roadmap](#roadmap).
+**Status:** Core casting, scrolls, and the Sedgemoor Witch are all live. Tier-II/III spells are reachable today via scroll drops; dedicated tier-II/III *book* acquisition is still data-only (not yet dropped in the world) — see [Roadmap](#roadmap).
 
 ---
 
@@ -65,6 +65,19 @@ Every spell that hits (or fizzles against) you lands in your inbox:
 | Spore Burst | III | 30 damage | 8 | 30 min |
 | Deep Step | III | Teleport | 6 | 30 min |
 | Queen's Bane | III | 15 damage to Savra or a lair pool, from anywhere | ∞ | 60 min |
+| Ember Fleck | I | 10 damage | 4 | 15 min |
+| Necrotic Lance | II | 16 damage | 9 | 28 min |
+| Withering Gout | III | 26 damage | 6 | 26 min |
+| Renewing Bloom | II | Self-heal 20 HP | — | 25 min |
+| Deep Mend | III | Self-heal 34 HP | — | 30 min |
+| Shadowstep | II | Teleport | 3 | 25 min |
+| Savage Roar | II | Self: +5 ATK next battle | — | 25 min |
+| Iron Hide | II | Self: +4 DEF next battle | — | 25 min |
+| Fleetfoot Draught | II | Self: +3 SPD next battle | — | 25 min |
+| Warding Dance | III | Self: +3 DEF & +3 SPD next battle | — | 30 min |
+| Sap Vigor | II | Curse: −3 SPD next battle | 6 | 25 min |
+| Rust Curse | III | Curse: −4 DEF next battle | 6 | 28 min |
+| Sear the Throne | III | 22 damage to Savra or a lair pool, from anywhere | ∞ | 60 min |
 
 ### Spell power scales with level
 
@@ -82,10 +95,23 @@ shows the live scaled number).
 | Moldering Folio | I | 25 | Spore Bolt | Any bazaar; rare mystery drop |
 | Gardener's Primer | I | 30 | Mend Flesh, Harden Shell | Any bazaar; rare mystery drop |
 | Vagrant's Chapbook | I | 30 | Skitter Step | Any bazaar; rare mystery drop |
+| Warcaster's Screed | I | 35 | Rot Surge, Spore Bolt | Any bazaar; rare mystery drop |
+| Hexweaver's Codex | I | 35 | Bone Chill, Bog Snare | Any bazaar; rare mystery drop |
+| Nightrunner's Ledger | I | 32 | Glowveil, Skitter Step | Any bazaar; rare mystery drop |
+| Tinker's Manual | I | 30 | Harden Shell, Scrap Toss | Any bazaar; rare mystery drop |
+| Skirmisher's Notes | I | 32 | Ember Fleck | Any bazaar; rare mystery drop |
 | Kraul Warcodex | II | 70 | Rot Bolt, Weaken Hex | *Phase 3 (not yet obtainable)* |
 | Wayfarer's Atlas | II | 70 | Mycelial Recall, Fate Die, Skitter Step | *Phase 3 (not yet obtainable)* |
+| Bulwark Breviary | II | 70 | Iron Hide, Renewing Bloom | *Phase 3 (not yet obtainable)* |
+| Sniper's Folio | II | 70 | Necrotic Lance, Fleetfoot Draught | *Phase 3 (not yet obtainable)* |
+| Saboteur's Libram | II | 70 | Sap Vigor, Shadowstep | *Phase 3 (not yet obtainable)* |
+| Berserker's Roll | II | 72 | Savage Roar, Ember Fleck | *Phase 3 (not yet obtainable)* |
 | Queensbane Grimoire | III | 150 | Queen's Bane, Spore Burst | *Phase 3 (not yet obtainable)* |
 | Tome of the Deep Roads | III | 150 | Deep Step, Fate Die, Mycelial Recall | *Phase 3 (not yet obtainable)* |
+| Throneburner Codex | III | 150 | Sear the Throne, Withering Gout, Rust Curse | *Phase 3 (not yet obtainable)* |
+| Warding Tome | III | 150 | Warding Dance, Deep Mend | *Phase 3 (not yet obtainable)* |
+
+Tier-II/III books above are defined in the data model but not yet dropped by phase-3 acquisition. In the meantime their spells are reachable through **scrolls** — the Sedgemoor Witch sells them and reward sources drop them by tier — which can be cast one-shot or inscribed into a grimoire.
 
 Mystery spaces: when the d12 lands on a "free item" outcome, there's a 25% chance it upgrades to a tier-I grimoire you don't own yet.
 
@@ -103,11 +129,12 @@ Mystery spaces: when the d12 lands on a "free item" outcome, there's a 25% chanc
 
 | Concern | File |
 | --- | --- |
-| Spell/grimoire/balance tables (source of truth) | `infrastructure/lambda/undercity_data.py` — `SPELLS`, `GRIMOIRES`, `BIOME_SPELLS`, `SPELL_DODGE_*`, `AWAY_EVENTS_CAP`, `GRIMOIRE_DUPLICATE_SPORES`, `MYSTERY_GRIMOIRE_CHANCE` |
+| Spell/grimoire/balance tables (source of truth) | `infrastructure/lambda/undercity_data.py` — `SPELLS`, `GRIMOIRES`, `BIOME_SPELLS`, `SPELL_DODGE_*`, `AWAY_EVENTS_CAP`, `GRIMOIRE_DUPLICATE_SPORES`, `MYSTERY_GRIMOIRE_CHANCE`. Each `SPELLS` entry also carries the client `icon` + `desc` (server ignores them at runtime; the generator ships them to the client) |
+| Client mirror generator | `infrastructure/lambda/sync_spells.py` — renders `src/app/undercity/data/spells.generated.ts` from the Python tables. `tests/test_spells_generated.py` fails while the committed file is stale |
 | Pure math (BFS range, dodge %) | `infrastructure/lambda/undercity_engine.py` — `board_distance()`, `spell_dodge_chance()`; spell buff kinds in `effective_stats()` |
 | Cast resolution + persistence | `infrastructure/lambda/undercity_db.py` — "Spells" section: `_cast`, `_cast_at_player`, `_cast_teleport`, `_cast_boss_strike`, `_equip_grimoire`, `_ack_events`, plus `_grant_grimoire` (acquisition) and the grimoire branches in `_buy` / `_mystery` |
 | Tests | `infrastructure/lambda/tests/test_undercity_spells.py` (in-memory FakeTable suite) |
-| Client display mirror | `src/app/undercity/data/spells.ts` — `SPELLS`, `GRIMOIRES`, `BIOME_SPELLS`, `cooldownLeftMin()` |
+| Client display mirror | `src/app/undercity/data/spells.generated.ts` (GENERATED data arrays — do not hand-edit) + `src/app/undercity/data/spells.ts` (types, `SPELL_MAP`, helpers like `cooldownLeftMin()`, `spellPower()`, which re-exports the generated `SPELLS`/`GRIMOIRES`/`BIOME_SPELLS`) |
 | Client BFS mirror | `src/app/undercity/engine/board-movement.ts` — `boardDistance()`, `nodesWithin()` |
 | Client types | `src/app/undercity/services/undercity-models.ts` — `AwayEvent`, `CastResult`, spell fields on `YouDoc` |
 | Cast UI | `src/app/undercity/tabs/board-tab.component.*` (cast flow, away inbox, shop section) |
@@ -139,7 +166,7 @@ New players get all four seeded at join; older docs are handled with `.get()` de
 | `fate_die` | `maxValue?` | Payload `value` 1–`maxValue` (default 6; Skitter Step caps at 3) → sets `pendingLoadedDie` (rejected while a move is pending) |
 | `boss_strike` | `power` | Payload `target` = `'boss'` or a lair node id → chips the persistent pool, floors at 1 |
 
-One-battle buff kinds the engine consumes after any fight (`ONE_BATTLE_BUFFS` in `undercity_db.py`): `rot_surge` (+3 ATK), `bone_chill` (−2 ATK), `glowveil` (+2 SPD, +15 flee via `_combatant`), `harden_shell` (+2 DEF), `weaken_hex` (−3 ATK). `vines` (Bog Snare) is consumed by the next roll instead.
+One-battle buff kinds the engine consumes after any fight (`ONE_BATTLE_BUFFS` in `undercity_db.py`): `rot_surge` (+3 ATK), `bone_chill` (−2 ATK), `glowveil` (+2 SPD, +15 flee via `_combatant`), `harden_shell` (+2 DEF), `weaken_hex` (−3 ATK), `savage_roar` (+5 ATK), `iron_hide` (+4 DEF), `fleetfoot` (+3 SPD), `warding_dance` (+3 DEF & +3 SPD), `sap_vigor` (−3 SPD), `rust_curse` (−4 DEF). `vines` (Bog Snare) is consumed by the next roll instead. Each kind is one `elif` in `engine.effective_stats()`; self-buffs apply `* mult` (Squirrel Warrior doubling), curses use `max(1, …)` and ignore `mult`.
 
 ### Action contracts
 
@@ -167,10 +194,10 @@ Cross-doc concurrency: field spells write the victim's doc first (`_put_player`,
 
 ### Adding a spell or grimoire (checklist)
 
-1. Add the entry to `SPELLS` (and/or `GRIMOIRES` / `BIOME_SPELLS`) in `undercity_data.py`. Existing effect kinds need **no new code** — the data-integrity tests enforce the required fields per kind.
+1. Add the entry to `SPELLS` (and/or `GRIMOIRES` / `BIOME_SPELLS`) in `undercity_data.py` — including the client `icon` + `desc` (a data-integrity test enforces both). Existing effect kinds need **no new code** — the data-integrity tests enforce the required fields per kind.
 2. New *buff* kind? Wire it into `engine.effective_stats()` and add it to `ONE_BATTLE_BUFFS` (or give it an `until` and let `_expire_buffs` handle it). Flee-affecting buffs also touch `_combatant`.
-3. New *effect* kind? Add a branch in `_cast` (and a helper alongside `_cast_at_player` if it needs targeting), plus a test per behavior.
-4. Mirror the display entry in `src/app/undercity/data/spells.ts` (name, desc, icon, numbers — the Python↔TS duplication is deliberate, per CLAUDE.md).
+3. New *effect* kind? Add a branch in `_resolve_spell_effect` (and a helper alongside `_cast_field` if it needs targeting), plus a test per behavior.
+4. Regenerate the client mirror: `python infrastructure/lambda/sync_spells.py`. **Do not hand-edit `spells.generated.ts`** — the `test_spells_generated.py` guard fails while it is stale. Hand-written logic (types, maps, helpers) stays in `spells.ts`.
 5. Run `cd infrastructure/lambda && python -m pytest tests -q` and `npm run build`. Both must stay green.
 6. Backend changes need a `cdk deploy` before the live client can use them.
 
