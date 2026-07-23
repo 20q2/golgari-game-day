@@ -317,6 +317,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       level: p.level,
       paint: p.paint ?? {},
       hat: p.hat,
+      shiny: p.shiny,
       shielded: isShielded(p),
       evolveGlow: evolveGlowActive(p as { evolvedAt?: string }),
       status: p.status ?? '',

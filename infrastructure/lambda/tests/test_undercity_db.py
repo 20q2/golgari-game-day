@@ -367,6 +367,32 @@ def test_funded_tier2_stops_on_a_bridge_not_through_it(table):
         data.MAP_NODES, doc['position'], 2, closed, blocked)
 
 
+def test_funded_tier2_can_commit_a_bonk_stop_onto_a_bridge(table):
+    # Regression: a funded T2 that rolls MORE than the distance to a bridge
+    # mouth bonk-stops on the mouth (spending the rest of the roll). _roll
+    # offers the mouth as a destination (via _stop_nodes), so the move must
+    # also validate — the walk validator has to treat the bridge as a stop.
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['tier'] = 2
+    doc['spores'] = data.TUNNEL_TOLL[2]
+    doc['position'] = 'cavern_r2'
+    # A roll of 3 reaches the adjacent bridge mouth in 1 hop → a bonk stop.
+    closed = db._stop_nodes(table, sid, doc)
+    blocked = db._blocked_nodes(doc)
+    dests = engine.legal_destinations(data.MAP_NODES, 'cavern_r2', 3, closed, blocked)
+    assert 't_bone_cavern1' in dests   # offered by the roll
+    doc['pendingMove'] = {'value': 3, 'dests': sorted(dests)}
+    doc['rolls'] = 3
+    db._put_player(table, doc)
+    # Committing the 1-hop bonk walk to the mouth must succeed (it crosses,
+    # charging the toll, via _resolve_space on landing).
+    status, resp = act(table, 'move', to='t_bone_cavern1',
+                       path=['cavern_r2', 't_bone_cavern1'])
+    assert status == 200, resp
+
+
 def test_tier1_passes_through_a_bridge_freely(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)
@@ -421,6 +447,22 @@ def test_join_is_idempotent_and_veteran_egg_color(table):
                        starter='zombie', eggHue=270)
     assert resp['you']['rolls'] == data.JOIN_ROLLS
     assert resp['you']['paint']['body'] == 270
+
+
+def test_shiny_hatch(table, monkeypatch):
+    # Forced shiny: the stored doc carries the flag and it surfaces publicly.
+    monkeypatch.setattr(data, 'SHINY_HATCH_CHANCE', 1.0)
+    act(table, 'join', starter='pest')
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    assert doc['shiny'] is True
+    assert db._public_player(doc)['shiny'] is True
+
+    # Forced non-shiny: flag is present and false (never omitted for a fresh hatch).
+    monkeypatch.setattr(data, 'SHINY_HATCH_CHANCE', 0.0)
+    act(table, 'join', user='user-dull', name='Dull', starter='pest')
+    dull = db._get_player(table, _sid(table), 'user-dull')
+    assert dull['shiny'] is False
+    assert db._public_player(dull)['shiny'] is False
 
 
 def test_join_bravery_grants_bonus_roll(table):

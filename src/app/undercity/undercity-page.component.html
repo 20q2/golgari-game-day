@@ -108,6 +108,11 @@
               <app-undercity-log-tab />
             }
           }
+          @if (tab() === 'board' && currentBiome(); as biome) {
+            <div class="biome-chip" aria-live="polite">
+              <mat-icon class="mi">location_on</mat-icon>{{ biome }}
+            </div>
+          }
         </main>
 
         <nav class="tab-bar">

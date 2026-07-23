@@ -99,6 +99,17 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     return getRecoloredWithHatDataUrl(spr.sprite, you.paint ?? {}, spr.regions, you.hat);
   });
 
+  /** Display label of the biome the active player is standing in, read from the
+   * authoritative map.regions{} table (same source the board scenery uses).
+   * Null until the map + creature are loaded. */
+  protected readonly currentBiome = computed(() => {
+    const pos = this.store.you()?.position;
+    const map = this.map();
+    if (!pos || !map) return null;
+    const region = map.nodes.find((n) => n.id === pos)?.region ?? 'city';
+    return map.regions?.[region]?.label ?? null;
+  });
+
   /** True while a battle is in progress — the server tracks this independently
    * of which tab is mounted, via UndercityStateService.pendingBattle(). */
   protected readonly inBattle = computed(() => !!this.store.pendingBattle());

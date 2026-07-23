@@ -21,6 +21,8 @@ export interface PlazaCreature {
   level: number;
   paint: Record<string, number>;
   hat: string | null;
+  /** Cosmetic-only shiny — draws a steady gold sparkle over the sprite. */
+  shiny?: boolean;
   shielded: boolean;
   evolveGlow: boolean;
   /** Status-bubble text; '' or absent = no bubble. */
@@ -92,6 +94,16 @@ interface Particle {
   size: number;
 }
 
+/** Gold twinkle drifting up off a shiny creature — cosmetic only. */
+interface Sparkle {
+  x: number;
+  y: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+}
+
 interface Dino {
   partner: PlazaCreature;
   scale: number;
@@ -128,6 +140,8 @@ export class PlazaCanvas {
   private departingDinos: Dino[] = [];
   private pendingDropIns = new Set<string>();
   private particles: Particle[] = [];
+  private sparkles: Sparkle[] = [];
+  private shinyAccum = 0; // time since last shiny twinkle emission
   private rafId: number | null = null;
   private startTime = performance.now();
   private lastTs = this.startTime;
@@ -641,6 +655,37 @@ export class PlazaCanvas {
     }
   }
 
+  /** Emit a steady gold twinkle over every shiny creature, then age the pool.
+   *  Cosmetic only — mirrors the board canvas's shiny sparkle. */
+  private updateSparkles(dt: number): void {
+    this.shinyAccum += dt;
+    while (this.shinyAccum > 0.16) {
+      this.shinyAccum -= 0.16;
+      for (const d of this.dinos) {
+        if (!d.partner.shiny || d.dropIn > 0) continue;
+        const spriteH = (d.spriteCanvas?.height || 32) * BASE_SPRITE_SCALE * d.scale;
+        const ttl = 0.5 + Math.random() * 0.4;
+        this.sparkles.push({
+          x: d.worldX + (Math.random() - 0.5) * spriteH * 0.5,
+          y: d.worldY - spriteH * (0.2 + Math.random() * 0.5),
+          vy: -10 - Math.random() * 12,
+          life: ttl,
+          maxLife: ttl,
+          size: 1.5 + Math.random() * 2,
+        });
+      }
+    }
+    for (let i = this.sparkles.length - 1; i >= 0; i--) {
+      const s = this.sparkles[i];
+      s.life -= dt;
+      if (s.life <= 0) {
+        this.sparkles.splice(i, 1);
+        continue;
+      }
+      s.y += s.vy * dt;
+    }
+  }
+
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   start(): void {
@@ -730,6 +775,7 @@ export class PlazaCanvas {
       if (d.fadeOut <= 0) this.departingDinos.splice(i, 1);
     }
     this.updateParticles(dt);
+    this.updateSparkles(dt);
 
     const allDinos = [...this.dinos, ...this.departingDinos];
     allDinos.sort((a, b) => a.worldY - b.worldY);
@@ -745,6 +791,20 @@ export class PlazaCanvas {
     }
 
     allDinos.forEach((d) => this.drawDino(d, elapsed));
+
+    // Shiny twinkles ride above the sprites — gold with a soft glow.
+    for (const s of this.sparkles) {
+      const a = s.life / s.maxLife;
+      ctx.save();
+      ctx.globalAlpha = Math.sin(a * Math.PI) * 0.9; // twinkle in and out
+      ctx.fillStyle = '#ffe27a';
+      ctx.shadowColor = '#f2a900';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
     ctx.restore();
   }
 
