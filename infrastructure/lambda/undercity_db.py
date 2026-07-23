@@ -981,19 +981,24 @@ def _credit_market_seller(table, sid, seller_id, amount, entry):
 
 
 def _market_list(table, sid, doc, payload):
-    """List a stashed gear piece on the Player Market at a bounded Spore price."""
-    stash = doc.get('gearStash') or []
+    """List an inventory item (gear / bag consumable / spell scroll) on the Player
+    Market at a bounded Spore price."""
+    kind = payload.get('kind', 'gear')
+    spec = _MARKET_KINDS.get(kind)
+    if not spec:
+        return _err('You cannot sell that.')
+    inv = doc.get(spec['field']) or []
     try:
         index = int(payload.get('index'))
         price = int(payload.get('price'))
     except (TypeError, ValueError):
-        return _err('Pick a stash piece and a price.')
-    if index < 0 or index >= len(stash):
-        return _err('That stash slot is empty.', 409)
-    gid = stash[index]
-    lo, hi = _market_price_band(gid)
+        return _err('Pick an item and a price.')
+    if index < 0 or index >= len(inv):
+        return _err('That slot is empty.', 409)
+    item_id = inv[index]
+    lo, hi = _market_price_band(kind, item_id)
     if price < lo or price > hi:
-        return _err(f'Price must be {lo}–{hi} Spores for that piece.', 409)
+        return _err(f'Price must be {lo}–{hi} Spores for that item.', 409)
     pk = _season_pk(sid)
     active = table.query(
         KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
@@ -1001,16 +1006,16 @@ def _market_list(table, sid, doc, payload):
     if sum(1 for m in active if m.get('sellerId') == doc['userId']) >= data.MARKET_MAX_LISTINGS:
         return _err(f'You already have {data.MARKET_MAX_LISTINGS} listings — cancel one first.', 409)
     listing_id = '%08x' % _rng.getrandbits(32)
-    stash.pop(index)
-    doc['gearStash'] = stash
+    inv.pop(index)
+    doc[spec['field']] = inv
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
     table.put_item(Item={
         'pk': pk, 'sk': f'MARKET#{listing_id}', 'id': listing_id,
         'sellerId': doc['userId'], 'sellerName': doc.get('username', '?'),
-        'gearId': gid, 'price': price, 'createdAt': _now()})
-    return _ok(doc, text=f"Listed {data.GEAR[gid]['name']} for {price} Spores.",
+        'kind': kind, 'itemId': item_id, 'price': price, 'createdAt': _now()})
+    return _ok(doc, text=f"Listed {spec['name'](item_id)} for {price} Spores.",
                listingId=listing_id)
 
 

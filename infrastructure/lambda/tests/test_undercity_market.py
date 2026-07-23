@@ -99,3 +99,35 @@ def test_market_price_band_by_kind():
     assert db._market_price_band('gear', 'bark_hide') == (22, 90)          # cost 45
     assert db._market_price_band('consumable', 'healing_moss') == (6, 24)  # cost 12
     assert db._market_price_band('scroll', 'spore_bolt') == (5, 20)        # INSCRIBE_COST[1]=10
+
+
+def test_market_list_consumable(table):
+    sid, seller = _player_at(table, 'city_r0')
+    seller['bag'] = ['healing_moss']                       # cost 12, band 6..24
+    status, body = db._market_list(table, sid, seller, {'kind': 'consumable', 'index': 0, 'price': 12})
+    assert status == 200
+    assert seller['bag'] == []
+    listing = db._get(table, db._season_pk(sid), f"MARKET#{body['listingId']}")
+    assert listing['kind'] == 'consumable' and listing['itemId'] == 'healing_moss'
+
+
+def test_market_list_scroll(table):
+    sid, seller = _player_at(table, 'city_r0')
+    seller['scrolls'] = ['spore_bolt']                     # INSCRIBE_COST[1]=10, band 5..20
+    status, body = db._market_list(table, sid, seller, {'kind': 'scroll', 'index': 0, 'price': 15})
+    assert status == 200
+    assert seller['scrolls'] == []
+
+
+def test_market_list_consumable_rejects_out_of_band(table):
+    sid, seller = _player_at(table, 'city_r0')
+    seller['bag'] = ['healing_moss']
+    assert db._market_list(table, sid, seller, {'kind': 'consumable', 'index': 0, 'price': 1})[0] == 409
+    assert db._market_list(table, sid, seller, {'kind': 'consumable', 'index': 0, 'price': 999})[0] == 409
+    assert seller['bag'] == ['healing_moss']               # unchanged on reject
+
+
+def test_market_list_rejects_unknown_kind(table):
+    sid, seller = _player_at(table, 'city_r0')
+    seller['gearStash'] = ['bark_hide']
+    assert db._market_list(table, sid, seller, {'kind': 'grimoire', 'index': 0, 'price': 45})[0] == 400
