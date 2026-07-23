@@ -5,7 +5,11 @@
 
 Adds a fifth playable race — the **Squirrel**, a *caster* archetype built around a
 new **Acorn Stash** resource. Ships a T1 starter, two T2 evolutions, and one new
-T3 apex. No existing race, form, or balance number changes.
+T3 apex. It also carries a **magic-system revamp** (§2.5) that makes casting
+viable and fun for a dedicated caster: spell power now **scales with level**, and
+the squirrel can **cast during combat** by spending acorns. The revamp touches
+existing spell numbers (scaling is universal) but no existing *form* or combat
+balance number.
 
 ## 1. Why
 
@@ -31,12 +35,16 @@ A shared, per-creature charge pool. It exists only for creatures carrying the
 - **Regen:** **+1 acorn per board roll** (`_roll`), clamped to cap. Ties the
   stash to active play. Idle time does not refill it (unlike spell cooldowns).
 - **Starting acorns:** hatch with **1** (tunable).
-- **Spend:** casting normally starts the spell's cooldown as today. When a spell
-  is **still on cooldown**, a stash-holder may instead **spend 1 acorn** to cast
-  it anyway; the cooldown is then refreshed. This is the *only* thing acorns do —
-  they bypass cooldown so the squirrel can chain casts back-to-back.
-- Acorns never bypass any other validation (range, dodge, shield, spells-never-
-  kill). They only substitute for a ready cooldown.
+- **Spend — two uses:**
+  1. *On the board:* casting normally starts the spell's cooldown as today; when
+     a spell is **still on cooldown**, a stash-holder may instead **spend 1
+     acorn** to cast it anyway (cooldown then refreshed), chaining casts
+     back-to-back.
+  2. *In combat:* spend 1 acorn to cast a spell as an add-on to a stance (see
+     §2.5 pillar 2). This is the tactical payoff — the stash becomes the caster's
+     in-fight resource.
+- Board acorn-spends never bypass any other validation (range, dodge, shield,
+  and the board never-kill floor). They only substitute for a ready cooldown.
 
 ### Derived stash config
 
@@ -55,6 +63,77 @@ squirrel apex, the reachable combinations are only: `{stockpile}`,
 `{stockpile, acorn_hoarder}`, `{stockpile, acorn_warlock}`,
 `{stockpile, acorn_hoarder, acorn_archmage}`,
 `{stockpile, acorn_warlock, acorn_archmage}`.
+
+## 2.5 Magic-system revamp
+
+Two pillars make casting a real playstyle instead of an occasional board-side
+chip. Pillar 1 is universal; pillar 2 is the squirrel's signature (gated by the
+acorn resource, so it needs no per-race whitelist).
+
+### Pillar 1 — spells scale with level (universal)
+
+Every spell that carries a `power` field (damage, heal, boss-strike) resolves at
+**`base + SPELL_POWER_PER_LEVEL × level`** instead of a flat number. So a
+level-1 Scrap Toss lands for its printed 8, but a level-10 caster's lands for
+~18; magic keeps pace with growing HP pools instead of falling off.
+
+- Applies everywhere a `power` spell resolves: board `field_damage`,
+  `self_heal`, `boss_strike`, **and** in-combat casts (§2.5 pillar 2).
+- **Does not** touch `self_buff` / `field_curse` magnitudes — those are flat
+  stat shifts (e.g. Harden Shell +2 DEF) and stay flat; scaling them would
+  double-dip with the stat system.
+- One pure helper (e.g. `engine.spell_power(spell, doc)`) centralizes the math so
+  every resolution path and the client mirror agree.
+- `SPELL_POWER_PER_LEVEL` lives in `undercity_config.py` (tunable; start ~1.0).
+- **Never-kill floor is unchanged for board casting** — scaled board/field/boss
+  damage still floors targets at 1 HP.
+
+### Pillar 2 — cast during combat (squirrel-only, acorn-fueled)
+
+Inside the interactive PvE stance-triangle fight, a stash-holder may, **once per
+round, spend 1 acorn to cast a castable spell as an add-on to their stance**. The
+spell resolves, then the normal stance exchange happens.
+
+- **Castable in combat:** the same loadout (innate + open grimoire), restricted
+  to effects that make sense in a fight:
+  - `field_damage` → damage the enemy combatant (scaled by level).
+  - `self_heal` → heal yourself (scaled, capped at max HP).
+  - `self_buff` → apply the one-battle buff **immediately, to the current fight**
+    (not "next battle").
+  - `field_curse` → apply the debuff to the enemy combatant for this fight.
+  - `teleport` / `recall` / `fate_die` / `boss_strike` → **rejected in combat**
+    (no meaning inside a fight).
+- **Cost is the acorn only.** In-combat casting **ignores the spell's real-time
+  cooldown and does not start one** — otherwise you couldn't chain the same spell
+  across rounds, which would gut the stockpile fantasy. The acorn cap (3–5) is
+  the per-fight limiter (~3–5 casts, fewer than a fight's ~6 rounds).
+- **In-combat damage CAN land the killing blow.** You are present — an in-person
+  kill — so spell damage feeds the real battle HP and the existing combat death
+  logic resolves it normally. This is a deliberate, scoped exception to the
+  "spells never kill" invariant: it applies **only** to in-combat casting, never
+  to remote board/field/boss casting.
+- **Synergies fall out for free:** Overflow (Archmage) rolls its 35% no-consume
+  on the in-combat spend too; Warlock's `acorn_charge` (+2 ATK) fires on any
+  acorn spend, so an in-combat cast also buffs your swing that fight.
+- **Non-squirrels never cast in combat** — they have no acorns.
+- **PvE only.** Interactive combat is PvE; PvP stays the one-shot auto-resolver,
+  untouched.
+
+### Combat-cast action shape
+
+Extend the existing `combat-round` submission with an optional cast rather than
+adding a new action, so casting stays bundled to the round it modifies (mirrors
+how a combat consumable already rides on a stance):
+
+```
+{type: 'combat-round', payload: {stance, item?, castSpellId?, castSource?}}
+```
+
+The engine resolves the optional cast first (spend acorn → apply spell to
+combatants → check for a resulting death), then runs the stance exchange if the
+fight is still live. Rejections (no acorn, spell not castable in combat, spell
+not in loadout) return before any state change, exactly like the current cast
+validation.
 
 ## 3. Forms
 
@@ -124,12 +203,16 @@ Server is the source of truth; the client mirrors it for display (per CLAUDE.md)
 | Stash config helper | `undercity_engine.py` — new pure `acorn_config(passives)` (cap / overflow / spend_buff / has_stash) |
 | Warlock buff | `undercity_engine.effective_stats` (+ATK for `acorn_charge`) and `undercity_db.ONE_BATTLE_BUFFS` |
 | Regen | `undercity_db._roll` — if `has_stash`, `acorns = min(cap, acorns+1)` |
-| Spend / bypass | `undercity_db._cast` — when `_spell_cd_ready` is False, allow an acorn spend (respecting overflow + applying `acorn_charge` for Warlock) instead of the `spell_on_cooldown` error |
+| Spend / bypass (board) | `undercity_db._cast` — when `_spell_cd_ready` is False, allow an acorn spend (respecting overflow + applying `acorn_charge` for Warlock) instead of the `spell_on_cooldown` error |
+| Spell scaling (pillar 1) | `undercity_engine.spell_power(spell, doc)` — new pure `base + SPELL_POWER_PER_LEVEL × level`; call it from every `power` resolution (`_cast` field_damage/self_heal/boss_strike) |
+| In-combat cast (pillar 2) | `undercity_db._combat_round` — resolve an optional `castSpellId`/`castSource`: validate castable-in-combat, spend acorn (overflow/Warlock), apply spell to the battle `Combatant`s, check death, then run the exchange. Damage can kill. A small shared `_cast_in_combat` helper keeps it beside `_cast` |
+| Combat-cast contract | extend `combat-round` payload with `castSpellId`/`castSource` (both optional; absent = today's behavior) |
 | New-doc field | `undercity_db._new_player_doc` — seed `acorns` (1 for squirrels, else 0) |
 | Join validation | `undercity_db._join` — update the "Pick a starter" error string to include squirrel (validation is already `starter not in STARTERS`, so it works once the table entry exists) |
 | State surface | expose `acorns` + derived `acornCap` on the player's own `you` doc (like `perks`) so the client can render the stash |
-| Tunables | scalar knobs (`ACORN_CAP_BASE`, `ACORN_CAP_DEEP`, `ACORN_REGEN_PER_ROLL`, `ACORN_START`, `ACORN_OVERFLOW_CHANCE`, `ACORN_WARLOCK_ATK`) go in `undercity_config.py` |
-| Tests | `tests/` — starter/evo shape tests already sweep `ALL_FORMS`; add stash-behavior tests (regen on roll, cooldown-bypass spend, cap by passive, overflow no-consume via seeded RNG, Warlock buff applied and consumed). Keep the whole suite green. |
+| Tunables | scalar knobs (`ACORN_CAP_BASE`, `ACORN_CAP_DEEP`, `ACORN_REGEN_PER_ROLL`, `ACORN_START`, `ACORN_OVERFLOW_CHANCE`, `ACORN_WARLOCK_ATK`, `SPELL_POWER_PER_LEVEL`) go in `undercity_config.py` |
+| Spell reference | `specs/undercity-spells.md` — document level scaling, in-combat casting, and the scoped never-kill exception |
+| Tests | `tests/` — starter/evo shape tests already sweep `ALL_FORMS`; add stash-behavior tests (regen on roll, cooldown-bypass spend, cap by passive, overflow no-consume via seeded RNG, Warlock buff applied and consumed), scaling tests (power grows with level; buffs stay flat), and in-combat cast tests (damage feeds battle HP and can kill; heal/buff/curse apply this fight; traversal/boss rejected; acorn-gated; no acorn → normal round). Keep the whole suite green. |
 
 ### Client (`src/app/undercity/`)
 
@@ -139,6 +222,8 @@ Server is the source of truth; the client mirrors it for display (per CLAUDE.md)
 | Sprites | `data/species.ts` — `squirrel` → `squirrel` sprite (PLAYER_REGIONS; has `.hat`/`.mask`); `acorn_hoarder` → `squirrel_mage`, `acorn_warlock` → `squirrel_general` (both `regions: []`); `acorn_archmage` → `squirrel_mage` as placeholder until dedicated apex art exists |
 | Hatch UI | `hatch/hatch-flow.component.ts` — add `squirrel: 'Caster'` to `ARCHETYPES`; SPD 7 fits the existing `STAT_MAX.spd = 8` bars |
 | Stash display | `tabs/board-tab.component.*` (cast flow) + `tabs/creature-tab.component.*` (Grimoire card) — show current acorns / cap; when a spell is on cooldown and acorns > 0, offer "spend acorn to cast" instead of a disabled button |
+| Combat cast UI | `tabs/board-tab.component.*` (combat-round flow) — when in a battle with acorns > 0, offer a cast option (castable-in-combat spells only) alongside stance selection; send `castSpellId`/`castSource` on `combat-round` |
+| Spell scaling mirror | `data/spells.ts` — mirror `spellPower(base, level)` so tooltips/pickers show the scaled number, not the flat base |
 | Types | `services/undercity-models.ts` — add `acorns` / `acornCap` to `YouDoc` |
 
 Sprite assets already present: `squirrel.png` (+`.hat`/`.mask`), `squirrel_general.png`,
@@ -146,25 +231,39 @@ Sprite assets already present: `squirrel.png` (+`.hat`/`.mask`), `squirrel_gener
 until dedicated apex art is drawn. (`pest_2`/`saproling_2` assets in the tree are
 unrelated to this feature.)
 
-## 5. Invariants preserved
+## 5. Invariants — preserved, and the one scoped change
 
-- **Spells never kill.** Acorns only bypass a cooldown; every damage/heal path
-  keeps its existing floor. No new damage source.
-- **Loadouts are fixed bundles.** The stash changes *when* you cast, never *what*
-  — no custom spell composition is introduced.
-- **Cooldowns only start on a successful cast.** The acorn-spend path still runs
-  all validation (range/dodge/shield) before spending and before refreshing the
-  cooldown; a rejected cast spends no acorn.
-- **Combat balance untouched.** The squirrel's only combat footprint is its stat
-  line and the optional Warlock +2 ATK one-battle buff (same magnitude family as
-  Rot Surge). No `resolve_round` branch is added for the T1/T3 passives.
+- **Spells never kill — on the board.** Remote board/field/boss casting keeps
+  its 1-HP floor (players, Savra, lairs). You still can't snipe a rival or a boss
+  pool to death from across the map. Board acorn-spends only bypass a cooldown.
+- **The one deliberate exception: in-combat casting can kill.** Inside an
+  interactive PvE fight you are *present*, so a spell landing the killing blow is
+  an in-person kill, consistent with the rule's spirit ("killing blows must be
+  landed in person"). This is scoped strictly to in-combat casts; the spell
+  reference doc is updated to say so.
+- **Loadouts are fixed bundles.** Neither pillar lets you compose custom spell
+  sets — the stash changes *when* you cast and combat-casting changes *where*,
+  never *what*.
+- **Cooldowns only start on a successful cast** (board). The board acorn-spend
+  path still runs all validation (range/dodge/shield) before spending and before
+  refreshing the cooldown; a rejected cast spends no acorn. In-combat casts are
+  cooldown-independent by design (§2.5).
+- **Combat balance for existing races untouched.** Only squirrels can cast in
+  combat (acorn-gated), and level scaling raises every race's board spells
+  equally. No `resolve_round` branch is added for the T1/T3 passives; the only
+  new combat buff is the Warlock +2 ATK (same magnitude family as Rot Surge).
 - **Server ↔ client mirror.** Every number added to `undercity_data.py` /
-  `undercity_config.py` is mirrored in `data/forms.ts` for display.
+  `undercity_config.py` is mirrored in `data/forms.ts` / `data/spells.ts` for
+  display, including the scaling formula.
 
 ## 6. Out of scope
 
 - No new innate spell (innate comes from home biome, not species — the squirrel
   works with any biome).
 - No new grimoires, spaces, or enemies.
+- **Deferred revamp axes** (considered, not in this pass): broad cooldown
+  reduction / "cast more often" tuning, and species-granted magic (extra book
+  slot / signature spell). The two chosen pillars — level scaling and in-combat
+  casting — are what make the caster viable; the others can layer on later.
 - Revenge buffs / achievements / seal hats stay stubbed as elsewhere.
 - Dedicated T3 apex art (placeholder reuse for now).
