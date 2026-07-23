@@ -1398,7 +1398,8 @@ def handle_action(table, body):
     _prune_cooldowns(doc)
 
     handlers = {
-        'claim': _claim, 'roll': _roll, 'move': _move, 'battle': _battle,
+        'claim': _claim, 'roll': _roll, 'move': _move, 'ladder-cross': _ladder_cross,
+        'battle': _battle,
         'combat-round': _combat_round, 'combat-peek': _combat_peek,
         'combat-flee': _combat_flee,
         'set-stance': _set_stance, 'spend-stat': _spend_stat, 'evolve': _evolve,
@@ -2157,13 +2158,6 @@ def _roll(table, sid, doc, payload):
     else:
         dests = sorted(_legal(value))
 
-    # Post-boss escape climb: standing on an escape spur you've earned, offer the
-    # biome's surface mouth as a tap-to-climb destination (alongside walking back
-    # into the maze). _move relocates you there one-way; no graph edge exists.
-    pos = doc['position']
-    if pos in data.ESCAPE_LADDERS and data.ESCAPE_LADDERS[pos] in (doc.get('poiClaims') or []):
-        dests = sorted(set(dests) | {data.ESCAPE_EXITS[pos]})
-
     if not dests:
         # Dead-end corner case: refund the roll, let them try again.
         return _err('The tunnels shift — no path fits that roll. Try again.', 409)
@@ -2211,24 +2205,6 @@ def _move(table, sid, doc, payload):
     nodes = _season_map(table, sid)
     heal = None
 
-    # Post-boss escape climb: standing on an escape spur, spending the roll to
-    # haul one-way up to the biome's surface mouth. No graph edge exists between
-    # them, so this bypasses walk validation and does not chain-resolve the
-    # surface landing (matching the old teleport). _roll only offers this target
-    # when the lair is claimed, so reaching here already implies the earned exit.
-    if prev in data.ESCAPE_LADDERS and to == data.ESCAPE_EXITS[prev]:
-        doc['pendingMove'] = None
-        doc['position'] = to
-        doc['restsUsed'] = []                # you're on the surface now
-        conflict = _save_or_conflict(table, doc)
-        if conflict:
-            return conflict
-        occupants = _occupants(table, sid, doc['position'], doc['userId'])
-        return _ok(doc, spaceEvent={
-            'type': 'ladder',
-            'text': 'You haul yourself up the rusty escape ladder and out of '
-                    'the depths, back to the surface.'}, occupants=occupants)
-
     # Server-authoritative route: the client walks node-by-node and sends the
     # path it took. Validate it, then heal for passing THROUGH a gate (landing
     # on one still full-heals in _resolve_space below). A stale client that
@@ -2260,6 +2236,23 @@ def _move(table, sid, doc, payload):
 
     space_event = _resolve_space(table, sid, doc, to, prev)
 
+    # Ladders never end movement. Landing on one banks the leftover steps as a
+    # fresh pending move so the walk resumes after the crossing decision (the
+    # ladder-cross action, or just walking on this side). pm was captured at the
+    # top of _move, before pendingMove was cleared below.
+    if space_event.get('type') == 'ladder':
+        hops = (len(path) - 1) if path else pm['value']
+        allowed = [v for v in (pm.get('values') or [pm['value']]) if v >= hops]
+        value_used = min(allowed) if allowed else pm['value']
+        remaining = max(0, value_used - hops)
+        if remaining > 0:
+            doc['pendingMove'] = {
+                'value': remaining,
+                'dests': sorted(engine.legal_destinations(
+                    nodes, to, remaining,
+                    _stop_nodes(table, sid, doc), _blocked_nodes(doc))),
+            }
+
     # Landing on a gate full-heals inside _resolve_space; surface the amount so
     # the client floats heal numbers for it too (supersedes any pass-heal).
     if space_event.get('type') == 'gate':
@@ -2274,6 +2267,47 @@ def _move(table, sid, doc, payload):
     # occupants of where it actually ended up, not the pre-resolution target.
     occupants = _occupants(table, sid, doc['position'], doc['userId'])
     return _ok(doc, spaceEvent=space_event, occupants=occupants, heal=heal)
+
+
+def _ladder_cross(table, sid, doc, payload):
+    """Free ladder crossing: relocate to the ladder's far end, preserving any
+    banked movement so the walk continues on the other side. One-way and
+    claim-gated for escape spurs. Consequence-free: the far end's landing effect
+    does not resolve (so arriving on the twin ladder does not re-open the
+    dialog), mirroring the Nyx Weaver tunnel relocate."""
+    pos = doc['position']
+    nodes = _season_map(table, sid)
+    target = _ladder_target(nodes, pos)
+    if target is None:
+        return _err('You are not on a ladder.', 409)
+    if (pos in data.ESCAPE_LADDERS
+            and data.ESCAPE_LADDERS[pos] not in (doc.get('poiClaims') or [])):
+        return _err('That escape ladder is sealed until you clear its lair.', 409)
+
+    pm = doc.get('pendingMove')
+    remaining = int(pm['value']) if pm else 0
+    doc['position'] = target
+    # Surfacing resets normally live in _resolve_space, which this bypasses.
+    if nodes.get(target, {}).get('region') != 'depths':
+        doc['restsUsed'] = []
+        doc.pop('lastStandUsed', None)
+    if remaining > 0:
+        doc['pendingMove'] = {
+            'value': remaining,
+            'dests': sorted(engine.legal_destinations(
+                nodes, target, remaining,
+                _stop_nodes(table, sid, doc), _blocked_nodes(doc))),
+        }
+    else:
+        doc['pendingMove'] = None
+
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    occupants = _occupants(table, sid, doc['position'], doc['userId'])
+    return _ok(doc, occupants=occupants, spaceEvent={
+        'type': 'ladder_cross', 'to': target,
+        'text': 'You slip through to the far side of the ladder.'})
 
 
 def _respawn(table, sid, doc, payload):
@@ -2585,24 +2619,23 @@ def _resolve_space(table, sid, doc, node, prev):
         return _trove(table, sid, doc, node)
 
     if ntype == 'ladder':
-        if node in data.ESCAPE_LADDERS:
-            # Post-boss shortcut, two-step climb: landing here STOPS you on the
-            # spur (bonk) — no teleport. You climb out on a later roll by tapping
-            # the ladder, which offers the surface mouth as a move destination
-            # (see _roll / _move). Keeps it feeling like any other rusted ladder.
-            return {'type': 'ladder',
-                    'text': 'A rusty escape ladder bolts up out of the depths. '
-                            'Your next roll can carry you up and out.'}
-        biome = data.dungeon_biome(node)
-        if biome:
-            where = 'back up to the surface'
+        # A ladder is a free pause-point: landing STOPS you here (no relocate) and
+        # opens the crossing dialog. `to` is the far end a ladder-cross would take
+        # you to; `oneWay` marks the post-boss escape climb. _move banks any
+        # leftover roll so the walk continues after the decision.
+        nodes = _season_map(table, sid)
+        target = _ladder_target(nodes, node)
+        one_way = node in data.ESCAPE_LADDERS
+        if one_way:
+            text = ('A rusty escape ladder bolts up out of the depths. '
+                    'Climb out to the surface?')
+        elif data.dungeon_biome(node):
+            text = 'A rusted ladder leads back up to the surface. Climb it?'
         else:
             b = node.split('_')[0]
             dname = data.DUNGEONS.get(b, {}).get('name', 'the depths')
-            where = f'down into {dname}'
-        return {'type': 'ladder',
-                'text': f'A rusted ladder bolted into the rock leads {where}. '
-                        'Your next roll can carry you through.'}
+            text = f'A rusted ladder leads down into {dname}. Descend?'
+        return {'type': 'ladder', 'to': target, 'oneWay': one_way, 'text': text}
 
     if ntype == 'tunnel':
         # Fast path between biomes. Tier-1 crosses free; evolved units pay a

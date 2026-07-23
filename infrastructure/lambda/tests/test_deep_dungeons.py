@@ -297,42 +297,27 @@ def test_landing_escape_ladder_stops_without_teleport(table):
     assert doc['restsUsed'] == ['some_rest'] # still in the depths — rest intact
 
 
-def test_escape_ladder_roll_offers_climb_to_surface(table):
-    # Standing on a claimed escape spur, a roll offers the surface mouth as a
-    # tap-to-climb destination (in addition to walking back into the maze).
-    doc = _join(table)
-    doc['poiClaims'] = ['city_lair']
-    doc['position'] = 'city_esc'
-    doc['rolls'] = 3
-    db._roll(table, _sid(table), doc, {})
-    assert 'city_lt' in doc['pendingMove']['dests']
-
-
 def test_escape_ladder_climb_relocates_and_resets_rest(table):
-    # Tapping the spur (moving to the surface mouth) is the one-way climb out:
-    # it relocates you to <biome>_lt and resets per-descent rest.
+    # The escape climb now runs through ladder-cross: standing on a claimed spur,
+    # crossing relocates one-way to <biome>_lt and resets per-descent rest.
     doc = _join(table)
     doc['poiClaims'] = ['city_lair']
     doc['position'] = 'city_esc'
     doc['restsUsed'] = ['some_rest']
-    doc['rolls'] = 3
-    db._roll(table, _sid(table), doc, {})
-    doc = db._get_player(table, _sid(table), 'user-alex')  # reload, as handle() does
-    status, resp = db._move(table, _sid(table), doc, {'to': 'city_lt'})
+    status, resp = db._ladder_cross(table, _sid(table), doc, {})
     assert status == 200
     assert doc['position'] == 'city_lt'      # climbed out to the surface mouth
     assert doc['restsUsed'] == []            # left the depths — rest resets
-    assert resp['spaceEvent']['type'] == 'ladder'
 
 
 def test_escape_ladder_climb_not_offered_without_claim(table):
-    # The climb is gated on personally clearing the lair, mirroring the movement
-    # gate — no claim, no surface mouth on offer.
+    # The climb is gated on personally clearing the lair: no claim, ladder-cross
+    # is rejected and you stay on the spur.
     doc = _join(table)                        # no poiClaims
     doc['position'] = 'city_esc'
-    doc['rolls'] = 3
-    db._roll(table, _sid(table), doc, {})
-    assert 'city_lt' not in doc['pendingMove']['dests']
+    status, resp = db._ladder_cross(table, _sid(table), doc, {})
+    assert status == 409
+    assert doc['position'] == 'city_esc'
 
 
 def test_landing_normal_entrance_ladder_does_not_teleport(table):
@@ -377,3 +362,58 @@ def test_ladder_target_descent_and_escape():
     assert db._ladder_target(nodes, 'cavern_esc') == 'cavern_lt'
     # Non-ladder nodes have no target.
     assert db._ladder_target(nodes, 'cavern_lair') is None
+
+
+def test_landing_on_ladder_banks_remaining_roll(table):
+    # cavern_lt neighbours cavern_r5 (surface) and cavern_lb (depths twin).
+    # Stand on cavern_r5, hand-roll a 5, walk the single hop onto the ladder:
+    # it's a bonk landing (ladder is closed) that spends 1, banking 4.
+    doc = _join(table)
+    doc['position'] = 'cavern_r5'
+    doc['pendingMove'] = {'value': 5, 'dests': ['cavern_lt']}
+    status, resp = db._move(table, _sid(table), doc,
+                            {'to': 'cavern_lt', 'path': ['cavern_r5', 'cavern_lt']})
+    assert status == 200
+    ev = resp['spaceEvent']
+    assert ev['type'] == 'ladder'
+    assert ev['to'] == 'cavern_lb'
+    assert ev['oneWay'] is False
+    # Roll preserved (not cleared): 5 - 1 hop = 4 banked.
+    assert doc['position'] == 'cavern_lt'
+    assert doc['pendingMove']['value'] == 4
+
+
+def test_ladder_cross_descent_preserves_roll(table):
+    doc = _join(table)
+    doc['position'] = 'cavern_lt'
+    doc['pendingMove'] = {'value': 3, 'dests': ['cavern_lb']}
+    status, resp = db._ladder_cross(table, _sid(table), doc, {})
+    assert status == 200
+    assert doc['position'] == 'cavern_lb'          # crossed to the twin
+    assert doc['pendingMove']['value'] == 3        # roll fully preserved (free)
+
+
+def test_ladder_cross_zero_steps_ends_turn(table):
+    doc = _join(table)
+    doc['position'] = 'cavern_lt'
+    doc['pendingMove'] = None                      # 0 banked
+    status, resp = db._ladder_cross(table, _sid(table), doc, {})
+    assert status == 200
+    assert doc['position'] == 'cavern_lb'
+    assert doc.get('pendingMove') is None          # clean end, no lingering move
+
+
+def test_ladder_cross_escape_is_gated_and_one_way(table):
+    doc = _join(table)
+    doc['position'] = 'cavern_esc'
+    doc['pendingMove'] = None
+    # Unclaimed: rejected, position unchanged.
+    status, resp = db._ladder_cross(table, _sid(table), doc, {})
+    assert status == 409
+    assert 'error' in resp
+    assert doc['position'] == 'cavern_esc'
+    # Claimed: crosses one-way to the surface mouth.
+    doc['poiClaims'] = ['cavern_lair']
+    status, resp = db._ladder_cross(table, _sid(table), doc, {})
+    assert status == 200
+    assert doc['position'] == 'cavern_lt'
