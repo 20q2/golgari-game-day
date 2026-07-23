@@ -708,3 +708,76 @@ def test_effective_stats_buff_mult_doubles_delta():
     doubled = engine.effective_stats({'atk': 5, 'def': 5, 'spd': 5, 'maxHp': 25,
                                       'buffs': [{'kind': 'rot_surge', 'mult': 2}]})
     assert doubled['atk'] == 11    # +6
+
+
+def _set_passives(table, user, passives, home='garden'):
+    doc = db._get_player(table, _sid(table), user)
+    doc['passives'] = passives
+    assert db._put_player(table, doc)
+    return doc
+
+
+def test_spell_haste_halves_cooldown():
+    from datetime import datetime
+    base = {'passives': []}
+    db._start_spell_cooldown(base, 'rot_surge')            # 30 min base
+    hasted = {'passives': ['spell_haste']}
+    db._start_spell_cooldown(hasted, 'rot_surge')
+    now = datetime.utcnow()
+    base_min = (datetime.fromisoformat(base['spellCooldowns']['rot_surge']) - now).total_seconds() / 60
+    hasted_min = (datetime.fromisoformat(hasted['spellCooldowns']['rot_surge']) - now).total_seconds() / 60
+    assert 29 <= base_min <= 30
+    assert 14 <= hasted_min <= 15                          # halved
+
+
+def test_spell_warrior_doubles_self_buff(table):
+    act(table, 'join', starter='pest', home='garden')     # garden -> rot_surge innate
+    _set_passives(table, 'user-alex', ['spell_warrior'])
+    status, resp = act(table, 'cast', spellId='rot_surge', source='innate')
+    assert status == 200
+    buff = [b for b in resp['you']['buffs'] if b['kind'] == 'rot_surge'][0]
+    assert buff.get('mult') == 2
+    # effective ATK reflects the doubled +6 (base pest atk 5 -> 11)
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    assert engine.effective_stats(doc)['atk'] == 5 + 6
+
+
+def test_spell_warrior_doubles_self_heal(table):
+    act(table, 'join', starter='pest', home='garden')
+    give_book(table, 'user-alex', 'gardeners_primer')     # has mend_flesh (12)
+    _set_passives(table, 'user-alex', ['spell_warrior'])
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    doc['hp'] = 1
+    db._put_player(table, doc)
+    status, resp = act(table, 'cast', spellId='mend_flesh', source='grimoire')
+    assert status == 200
+    assert resp['cast']['hp'] == 24                        # 12 * 2 (level 1)
+
+
+def test_spell_mage_damage_and_dodge():
+    # dodge halved for a mage caster
+    mage = {'passives': ['spell_mage'], 'atk': 4, 'def': 4, 'spd': 5, 'maxHp': 25}
+    target = {'atk': 5, 'def': 5, 'spd': 5, 'maxHp': 25}
+    assert engine.spell_dodge_chance(5, 5) == 10
+    assert db._spell_dodge_pct(mage, target) == 5.0        # halved
+    # damage x1.5
+    assert db._spell_damage(data.SPELLS['scrap_toss'], mage) == 12   # round(8 * 1.5)
+    plain = {'passives': [], 'atk': 4, 'def': 4, 'spd': 5, 'maxHp': 25, 'level': 1}
+    assert db._spell_damage(data.SPELLS['scrap_toss'], plain) == 8
+
+
+def test_wish_casts_any_spell_and_uses_wish_cooldown(table):
+    act(table, 'join', starter='pest', home='garden')
+    _set_passives(table, 'user-alex', ['wish'])
+    status, resp = act(table, 'cast', spellId='wish', source='wish', wishSpellId='rot_surge')
+    assert status == 200
+    assert resp['cast']['wished'] == 'rot_surge'
+    assert {'kind': 'rot_surge'} in resp['you']['buffs']    # the wished effect happened
+    cds = resp['you']['spellCooldowns']
+    assert 'wish' in cds and 'rot_surge' not in cds         # only Wish cools
+
+
+def test_non_calamity_cannot_wish(table):
+    act(table, 'join', starter='pest', home='garden')      # no wish passive
+    status, resp = act(table, 'cast', spellId='wish', source='wish', wishSpellId='rot_surge')
+    assert status != 200 and resp['code'] == 'not_castable'

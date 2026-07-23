@@ -3786,34 +3786,22 @@ def _broadcast_away(table, sid, entry, exclude_user_id=None):
                 break
 
 
-def _cast(table, sid, doc, payload):
-    spell_id = payload.get('spellId')
-    source = payload.get('source', 'grimoire')
-    spell = data.SPELLS.get(spell_id)
-    if not spell:
-        return _spell_err('Unknown spell.', 'unknown_spell', 400)
-    if source == 'innate':
-        if data.BIOME_SPELLS.get(doc.get('homeBiome')) != spell_id:
-            return _spell_err("That is not your biome's gift.", 'not_castable')
-    elif source == 'grimoire':
-        book = data.GRIMOIRES.get(doc.get('equippedGrimoire') or '')
-        if not book or spell_id not in book['spells']:
-            return _spell_err('That spell is not in your open grimoire.', 'not_castable')
-    else:
-        return _spell_err('Scrolls come later — cast from your grimoire.',
-                          'not_castable', 400)
-    if not _spell_cd_ready(doc, spell_id):
-        return _spell_err(f"{spell['name']} is still recharging.",
-                          'spell_on_cooldown', 429)
-
+def _resolve_spell_effect(table, sid, doc, spell_id, spell, payload):
+    """Resolve one spell's effect against the caster `doc`. Returns
+    (result_dict, extra_dict) on success, or an error tuple (status:int, payload).
+    Shared by normal casts and by Wish (which delegates the chosen spell here).
+    Squirrel Warrior doubles the caster's self-buffs/self-heals."""
     effect = spell['effect']
     extra = {}
+    warrior = 'spell_warrior' in (doc.get('passives') or [])
     if effect == 'self_buff':
-        _apply_buff(doc, spell['buffKind'])
+        _apply_buff(doc, spell['buffKind'],
+                    mult=(data.SPELL_WARRIOR_MULT if warrior else 1))
         result = {'text': f"{spell['name']} takes hold. {spell['blurb']}"}
     elif effect == 'self_heal':
         eff = engine.effective_stats(doc)
-        heal = max(0, min(engine.spell_power(spell, doc), eff['maxHp'] - doc['hp']))
+        amount = engine.spell_power(spell, doc) * (data.SPELL_WARRIOR_MULT if warrior else 1)
+        heal = max(0, min(amount, eff['maxHp'] - doc['hp']))
         doc['hp'] += heal
         result = {'text': f'Torn flesh knits closed (+{heal} HP).', 'hp': heal}
     elif effect in ('field_damage', 'field_curse'):
@@ -3848,6 +3836,53 @@ def _cast(table, sid, doc, payload):
         result = out
     else:
         return _err('Unknown spell effect.')
+    return result, extra
+
+
+def _cast(table, sid, doc, payload):
+    spell_id = payload.get('spellId')
+    source = payload.get('source', 'grimoire')
+    spell = data.SPELLS.get(spell_id)
+    if not spell:
+        return _spell_err('Unknown spell.', 'unknown_spell', 400)
+    if source == 'innate':
+        if data.BIOME_SPELLS.get(doc.get('homeBiome')) != spell_id:
+            return _spell_err("That is not your biome's gift.", 'not_castable')
+    elif source == 'grimoire':
+        book = data.GRIMOIRES.get(doc.get('equippedGrimoire') or '')
+        if not book or spell_id not in book['spells']:
+            return _spell_err('That spell is not in your open grimoire.', 'not_castable')
+    elif source == 'wish':
+        # Only the Calamity Beast (wish passive) may cast Wish.
+        if spell_id != 'wish' or 'wish' not in (doc.get('passives') or []):
+            return _spell_err('You have not learned Wish.', 'not_castable')
+    else:
+        return _spell_err('Scrolls come later — cast from your grimoire.',
+                          'not_castable', 400)
+    if not _spell_cd_ready(doc, spell_id):
+        return _spell_err(f"{spell['name']} is still recharging.",
+                          'spell_on_cooldown', 429)
+
+    extra = {}
+    if spell['effect'] == 'wish':
+        # Wish selects ANY spell and casts it; the cooldown started is Wish's,
+        # not the chosen spell's. Caster passives still apply to the wished spell.
+        wish_id = payload.get('wishSpellId')
+        wished = data.SPELLS.get(wish_id)
+        if not wished or wish_id == 'wish':
+            return _spell_err('Choose a spell to Wish for.', 'invalid_target', 400)
+        out = _resolve_spell_effect(table, sid, doc, wish_id, wished, payload)
+        if isinstance(out[0], int):
+            return out
+        result, extra = out
+        result = {**result, 'wished': wish_id}
+        effect = 'wish'
+    else:
+        out = _resolve_spell_effect(table, sid, doc, spell_id, spell, payload)
+        if isinstance(out[0], int):
+            return out
+        result, extra = out
+        effect = spell['effect']
 
     _start_spell_cooldown(doc, spell_id)
     conflict = _save_or_conflict(table, doc)
