@@ -3521,16 +3521,23 @@ def _cache(table, sid, doc, node):
     if key in claims:
         return {'type': 'cache', 'text': 'The hollow stands empty — you plundered it already.'}
     claims.append(key)
+    is_first = _claim_first(table, sid, node, 'cache', doc)
+    mult = 1.0 if is_first else data.PLUNDERED_LOOT_MULT
     r = data.CACHE_REWARD
-    doc['spores'] = doc.get('spores', 0) + r['spores']
-    _grant_xp(table, sid, doc, r['xp'])
+    spores = int(r['spores'] * mult)
+    doc['spores'] = doc.get('spores', 0) + spores
+    _grant_xp(table, sid, doc, int(r['xp'] * mult))
     biome = data.dungeon_biome(node)
     dname = data.DUNGEONS[biome]['name'] if biome else 'the depths'
-    _event(table, sid, 'cache',
-           f"{doc['username']} plundered the treasure of {dname}!", actor=doc['userId'])
-    out = {'type': 'cache', 'spores': r['spores'],
-           'text': f"A hidden trove! +{r['spores']} Spores."}
-    _append_treasure_gear(doc, out)
+    if is_first:
+        _event(table, sid, 'cache',
+               f"{doc['username']} was first to plunder the treasure of {dname}!",
+               actor=doc['userId'])
+        text = f"A hidden trove! +{spores} Spores."
+    else:
+        text = f"Picked-over spoils remain — +{spores} Spores."
+    out = {'type': 'cache', 'spores': spores, 'text': text}
+    _append_treasure_gear(doc, out, mult)
     return out
 
 

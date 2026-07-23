@@ -48,3 +48,20 @@ def test_trove_first_full_later_reduced_then_empty(table, monkeypatch):
 
     rec = db._get(table, db._season_pk(sid), 'FIRST#city_trove')
     assert rec['by'] == 'Alice' and rec['kind'] == 'trove'
+
+
+def test_cache_first_full_later_reduced(table, monkeypatch):
+    _no_gear(monkeypatch)
+    sid = 'S'
+    alice = _treasure_doc('u1', 'Alice')
+    bob = _treasure_doc('u2', 'Bob')
+    full = data.CACHE_REWARD['spores']
+
+    r1 = db._cache(table, sid, alice, 'city_cache')
+    assert r1['spores'] == full
+
+    r2 = db._cache(table, sid, bob, 'city_cache')
+    assert r2['spores'] == int(full * data.PLUNDERED_LOOT_MULT)
+
+    rec = db._get(table, db._season_pk(sid), 'FIRST#city_cache')
+    assert rec['by'] == 'Alice' and rec['kind'] == 'cache'
