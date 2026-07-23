@@ -13,7 +13,7 @@ import {
 } from '../data/forms';
 import { GEAR_MAP, CONSUMABLE_MAP, tierRarity } from '../data/items';
 import {
-  BIOME_SPELLS,
+  innateSpellIds,
   GRIMOIRE_MAP,
   GRIMOIRES,
   GrimoireInfo,
@@ -211,10 +211,12 @@ export class CreatureTabComponent {
     }));
   }
 
-  /** Invested value on a track (base stat, gear excluded) — drives the "next at N". */
+  /** Value on a track counting toward perks: base stat + equipped gear (buffs
+   *  excluded) — mirrors the server's perk_stat() and drives the "next at N". */
   protected trackValue(track: PerkTrack): number {
     const you = this.store.you();
-    return you ? you[track] : 0;
+    if (!you) return 0;
+    return you[track] + (this.gearMods()[track] ?? 0);
   }
   protected readonly gearMap = GEAR_MAP;
   protected readonly tierRarity = tierRarity;
@@ -300,9 +302,12 @@ export class CreatureTabComponent {
     return (you.tier === 1 && you.level >= 5) || (you.tier === 2 && you.level >= 10);
   });
 
-  protected readonly innateSpell = computed<SpellInfo | null>(() => {
-    const biome = this.store.you()?.homeBiome;
-    return biome ? (SPELL_MAP[BIOME_SPELLS[biome]] ?? null) : null;
+  protected readonly innateSpells = computed<SpellInfo[]>(() => {
+    const you = this.store.you();
+    if (!you) return [];
+    return innateSpellIds(you.homeBiome, you.species)
+      .map((id) => SPELL_MAP[id])
+      .filter((sp): sp is SpellInfo => !!sp);
   });
 
   protected readonly equippedBook = computed<GrimoireInfo | null>(() => {

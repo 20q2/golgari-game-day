@@ -380,7 +380,7 @@
                 </div>
               }
               <div class="spell-rows">
-                @if (innateSpell(); as sp) {
+                @for (sp of innateSpells(); track sp.id) {
                   <div class="spell-row innate">
                     <span class="spell-name">
                       <mat-icon class="mi">{{ sp.icon }}</mat-icon>
