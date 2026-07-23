@@ -71,6 +71,19 @@ export type AwayEvent =
     }
   | { kind: 'reward'; game?: string | null; rolls: number; items: number; at: string }
   | { kind: 'boss'; by: string; name: string; at: string }
+  | {
+      kind: 'world_kill';
+      name: string;
+      bracket: 'vanquisher' | 'major' | 'minor' | 'participant';
+      spores: number;
+      xp: number;
+      renown: number;
+      gear?: { id: string; name: string; tier: number; ground?: boolean } | null;
+      leveledTo?: number | null;
+      roster: { name: string; bracket: string }[];
+      at: string;
+    }
+  | { kind: 'world_fallen'; name: string; at: string }
   | { kind: 'market'; text: string; at: string };
 
 /** Result payload of a `cast` action (mirrors undercity_db._cast). */
@@ -599,7 +612,16 @@ export interface SpaceEvent {
   /** world_event finish echo: this blow felled the beast (triggers payout). */
   worldKill?: boolean;
   /** world_event finish echo: this player's bracket payout. */
-  reward?: { bracket: string; spores: number; renown: number };
+  reward?: {
+    bracket: string;
+    spores: number;
+    renown: number;
+    xp: number;
+    gear?: { id: string; name: string; tier: number; ground?: boolean } | null;
+    leveledTo?: number | null;
+  };
+  /** world_event finish: the shared raid summary (present when worldKill). */
+  raid?: { name: string; roster: { name: string; bracket: string }[] };
   // battle_start (interactive PvE, Plan 2)
   kind?: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss' | 'world';
   telegraph?: Stance;
