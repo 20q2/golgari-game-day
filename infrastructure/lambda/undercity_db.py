@@ -3525,10 +3525,11 @@ def _cache(table, sid, doc, node):
     return out
 
 
-def _append_treasure_gear(doc, out):
-    """Big-ticket treasure spaces roll for a high-tier gear drop."""
+def _append_treasure_gear(doc, out, chance_mult=1.0):
+    """Big-ticket treasure spaces roll for a high-tier gear drop.
+    `chance_mult` thins the roll for already-plundered tiles."""
     chance, tiers = data.GEAR_DROP['treasure']
-    if _rng.random() < chance:
+    if _rng.random() < chance * chance_mult:
         drop = _roll_gear_drop(doc, tiers)
         if drop:
             out['gear'] = drop
