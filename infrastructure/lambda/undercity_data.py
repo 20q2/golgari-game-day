@@ -725,6 +725,18 @@ PAINT_MAP = {p['id']: p for p in PAINTS}
 HAT_PRICES = {'common': 50, 'uncommon': 120, 'legendary': 300}
 PAINT_PRICE = 40  # any non-default color
 
+# ── Special paints (animated whole-creature effects; Dino Party port) ─────────
+# Distinct from hue paints: a special paint sets a creature's `effect`, an
+# animated overlay drawn client-side on top of its hues. Bought/owned like hats.
+SPECIAL_PAINTS = [
+    {'id': 'prismatic', 'name': 'Prismatic'},
+    {'id': 'rainbow',   'name': 'Rainbow'},
+    {'id': 'metallic',  'name': 'Metallic'},
+    {'id': 'starry',    'name': 'Starry'},
+]
+SPECIAL_PAINT_MAP = {p['id']: p for p in SPECIAL_PAINTS}
+SPECIAL_PAINT_PRICE = 500  # renown, per special paint
+
 # Fixed one-night starter kit. Real ids grant from GEAR/CONSUMABLES; the
 # synthetic 'spore_pouch' just adds `amount` Spores. Costs are in Renown.
 RENOWN_SHOP_ITEMS = [
