@@ -35,6 +35,10 @@ export const PASSIVE_NAMES: Record<string, string> = {
   drain_life: 'Drain Life',
   rot_breath: 'Rot Breath',
   swarm: 'Swarm',
+  spell_haste: 'Spell Haste',
+  spell_warrior: 'Spell Warrior',
+  spell_mage: 'Spell Mage',
+  wish: 'Wish',
 };
 
 export const PASSIVE_BLURBS: Record<string, string> = {
@@ -58,6 +62,10 @@ export const PASSIVE_BLURBS: Record<string, string> = {
   drain_life: 'Heal for 50% of damage you deal.',
   rot_breath: 'Round-1 strike hits for double.',
   swarm: 'One extra strike every battle round.',
+  spell_haste: 'Your spell cooldowns are halved — cast twice as often.',
+  spell_warrior: 'Buffs and heals you cast on yourself are doubled.',
+  spell_mage: 'Your damaging spells deal +50% and are twice as likely to land.',
+  wish: 'Learn Wish: cast any spell in the world, from any list.',
 };
 
 export const STARTERS: FormInfo[] = [
@@ -81,6 +89,11 @@ export const STARTERS: FormInfo[] = [
     blurb: "Was somebody once; dead now, and it doesn't stay down.",
     stats: { hp: 25, atk: 5, def: 6, spd: 3 },
   },
+  {
+    id: 'squirrel', name: 'Squirrel', tier: 1, passive: 'spell_haste', passiveName: 'Spell Haste',
+    blurb: 'A twitchy little caster — spells recharge twice as fast.',
+    stats: { hp: 25, atk: 4, def: 4, spd: 7 },
+  },
 ];
 
 export const TIER2: FormInfo[] = [
@@ -93,13 +106,16 @@ export const TIER2: FormInfo[] = [
   { id: 'corpsejack_menace', name: 'Vinelash Reaper', tier: 2, line: 'saproling', passive: 'flurry', passiveName: 'Flurry', bonus: { spd: 2, atk: 2 }, blurb: 'Whirlwind (+SPD/+ATK).' },
   { id: 'shambling_shell', name: 'Shambling Shell', tier: 2, line: 'zombie', passive: 'rootwall', passiveName: 'Rootwall', bonus: { maxHp: 6, def: 2 }, blurb: 'Regrowing bulwark (+HP/+DEF).' },
   { id: 'deathrite_shaman', name: 'Deathrite Shaman', tier: 2, line: 'zombie', passive: 'soul_harvest', passiveName: 'Soul Harvest', bonus: { maxHp: 6, def: 2 }, blurb: 'Ritualist (+HP/+DEF).' },
+  { id: 'squirrel_warrior', name: 'Squirrel Warrior', tier: 2, line: 'squirrel', passive: 'spell_warrior', passiveName: 'Spell Warrior', bonus: { maxHp: 6, atk: 2 }, blurb: 'Spellblade — self-buffs doubled (+HP/+ATK).' },
+  { id: 'squirrel_mage', name: 'Squirrel Mage', tier: 2, line: 'squirrel', passive: 'spell_mage', passiveName: 'Spell Mage', bonus: { maxHp: 4, spd: 2 }, blurb: 'Battlemage — +50% spell damage (+HP/+SPD).' },
 ];
 
 export const APEX: (FormInfo & { from: string[] })[] = [
   { id: 'grave_titan', name: 'Grave Titan', tier: 3, passive: 'deathtouch_stomp', passiveName: 'Deathtouch Stomp', bonus: { maxHp: 6, def: 2 }, blurb: 'HP/DEF colossus.', from: ['brackish_trudge', 'shambling_shell', 'deathrite_shaman'] },
   { id: 'golgari_lich_lord', name: 'Golgari Lich Lord', tier: 3, passive: 'drain_life', passiveName: 'Drain Life', bonus: { atk: 2, maxHp: 6 }, blurb: 'ATK/HP sovereign of rot.', from: ['brackish_trudge', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman'] },
-  { id: 'swamp_dragon', name: 'Swamp Dragon', tier: 3, passive: 'rot_breath', passiveName: 'Rot Breath', bonus: { atk: 2, spd: 2 }, blurb: 'ATK/SPD terror of the deep tunnels.', from: ['stinkweed_imp', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace'] },
-  { id: 'izoni', name: 'Izoni, Thousand-Eyed', tier: 3, passive: 'swarm', passiveName: 'Swarm', bonus: { spd: 4 }, blurb: 'SPD incarnate — the swarm given a name.', from: ['stinkweed_imp', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace'] },
+  { id: 'swamp_dragon', name: 'Swamp Dragon', tier: 3, passive: 'rot_breath', passiveName: 'Rot Breath', bonus: { atk: 2, spd: 2 }, blurb: 'ATK/SPD terror of the deep tunnels.', from: ['stinkweed_imp', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior'] },
+  { id: 'izoni', name: 'Izoni, Thousand-Eyed', tier: 3, passive: 'swarm', passiveName: 'Swarm', bonus: { spd: 4 }, blurb: 'SPD incarnate — the swarm given a name.', from: ['stinkweed_imp', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage'] },
+  { id: 'calamity_beast', name: 'Calamity Beast', tier: 3, passive: 'wish', passiveName: 'Wish', bonus: { maxHp: 6, spd: 2 }, blurb: 'Learns Wish — cast ANY spell in the world.', from: ['squirrel_warrior', 'squirrel_mage', 'deathrite_shaman', 'stinkweed_imp', 'corpsejack_menace'] },
 ];
 
 export const ALL_FORMS: Record<string, FormInfo> = Object.fromEntries(

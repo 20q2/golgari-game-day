@@ -30,6 +30,9 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   kraul: { sprite: 'insect', regions: PLAYER_REGIONS.slice(0, 2), scale: 0.7 },
   saproling: { sprite: 'saproling', regions: PLAYER_REGIONS, scale: 0.7 },
   zombie: { sprite: 'zombie', regions: PLAYER_REGIONS, scale: 0.7 },
+  // Squirrel line — squirrel.png carries hat/mask recolor markers; the evolved
+  // art (squirrel_general/squirrel_mage/clamity_beast) has none (regions: []).
+  squirrel: { sprite: 'squirrel', regions: PLAYER_REGIONS, scale: 0.7 },
   // Tier 2 — same line sprite, grown up
   brackish_trudge: { sprite: 'brackish_trudge', regions: [], scale: 1.0 },
   stinkweed_imp: { sprite: 'stinkweed_imp', regions: [], scale: 0.9 },
@@ -47,6 +50,10 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   golgari_lich_lord: { sprite: 'golgari_lich_lord', regions: [], scale: 1.3 },
   swamp_dragon: { sprite: 'swamp_dragon', regions: [], scale: 1.3 },
   izoni: { sprite: 'diplo', regions: DINO_REGIONS, scale: 1.3 }, // still Dino Party placeholder
+  // Squirrel T2/T3
+  squirrel_warrior: { sprite: 'squirrel_general', regions: [], scale: 1.0 },
+  squirrel_mage: { sprite: 'squirrel_mage', regions: [], scale: 1.0 },
+  calamity_beast: { sprite: 'clamity_beast', regions: [], scale: 1.3 },
 };
 
 /** A selectable cosmetic look for a starter. `id` is the sprite key stored

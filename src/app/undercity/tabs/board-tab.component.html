@@ -907,6 +907,28 @@
     </div>
   }
 
+  <!-- Wish: choose any spell in the world -->
+  @if (wishPick()) {
+    <div class="uc-modal-backdrop" (click)="closeSpellPickers()">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">auto_awesome</mat-icon> Wish — cast anything</h3>
+        @for (sp of allSpellsForWish; track sp.id) {
+          <div class="shop-row">
+            <span class="shop-name">
+              <mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}
+              @if (spellPowerLabel(sp, playerLevel()); as pw) {
+                <span class="spell-power-chip">{{ pw }}</span>
+              }
+              <em>{{ sp.desc }}</em>
+            </span>
+            <button class="uc-btn shop-buy" [disabled]="busy()" (click)="pickWish(sp)">Wish</button>
+          </div>
+        }
+        <button class="uc-btn close-btn" (click)="closeSpellPickers()">Never mind</button>
+      </div>
+    </div>
+  }
+
   <!-- Field-spell target picker -->
   @if (spellTargetPick(); as sp) {
     <div class="uc-modal-backdrop" (click)="closeSpellPickers()">

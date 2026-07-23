@@ -8,7 +8,8 @@ export type SpellEffect =
   | 'teleport'
   | 'recall'
   | 'fate_die'
-  | 'boss_strike';
+  | 'boss_strike'
+  | 'wish';
 
 export interface SpellInfo {
   id: string;
@@ -49,6 +50,8 @@ export const SPELLS: SpellInfo[] = [
   { id: 'spore_burst', name: 'Spore Burst', category: 'field', tier: 3, cooldownMin: 30, effect: 'field_damage', range: 8, power: 30, desc: 'A detonation of spores at range.', icon: 'coronavirus' },
   { id: 'deep_step', name: 'Deep Step', category: 'traversal', tier: 3, cooldownMin: 30, effect: 'teleport', range: 6, desc: 'Blink to any space within 6 steps.', icon: 'alt_route' },
   { id: 'queens_bane', name: "Queen's Bane", category: 'boss', tier: 3, cooldownMin: 60, effect: 'boss_strike', power: 15, desc: 'Sear the Queen or a lair boss, from anywhere.', icon: 'gavel' },
+  // Calamity Beast innate — cast any spell in the world (see squirrel-simple design).
+  { id: 'wish', name: 'Wish', category: 'boss', tier: 3, cooldownMin: 60, effect: 'wish', desc: 'Cast any spell in existence, from any list.', icon: 'auto_awesome' },
 ];
 
 export const SPELL_MAP: Record<string, SpellInfo> = Object.fromEntries(

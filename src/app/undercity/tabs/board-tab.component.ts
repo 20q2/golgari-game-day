@@ -42,6 +42,7 @@ import {
   BIOME_SPELLS,
   GRIMOIRE_MAP,
   GrimoireInfo,
+  SPELLS,
   SPELL_MAP,
   SpellInfo,
   cooldownLeftMin,
@@ -253,6 +254,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly spellBossPick = signal<SpellInfo | null>(null);
   /** Teleport in progress: reachable nodes are highlighted on the canvas. */
   protected readonly castTeleport = signal<{ spell: SpellInfo; nodes: string[] } | null>(null);
+  /** Wish: the "choose any spell" list is open. */
+  protected readonly wishPick = signal(false);
+  /** Wish: the chosen spell being targeted — non-null routes the cast as a Wish. */
+  protected readonly wishSpell = signal<SpellInfo | null>(null);
   /** "While you were away" — populated once, from the first you-doc snapshot. */
   protected readonly awayModal = signal<AwayEvent[] | null>(null);
   private awayInitDone = false;
@@ -279,8 +284,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     if (innate) ids.push(innate);
     const book = you.equippedGrimoire ? GRIMOIRE_MAP[you.equippedGrimoire] : null;
     if (book) for (const s of book.spells) if (!ids.includes(s)) ids.push(s);
+    // Calamity Beast knows Wish regardless of loadout.
+    if ((you.passives ?? []).includes('wish') && !ids.includes('wish')) ids.push('wish');
     return ids.map((id) => SPELL_MAP[id]).filter(Boolean);
   });
+
+  /** Every spell Wish can become (all but Wish itself). */
+  protected readonly allSpellsForWish = SPELLS.filter((s) => s.id !== 'wish');
 
   protected cooldownLabel(spellId: string): string {
     const left = cooldownLeftMin(this.store.you()?.spellCooldowns, spellId);
@@ -358,6 +368,24 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Route a spell-picker tap to the right follow-up (target/value/node/cast). */
   pickSpell(spell: SpellInfo): void {
     if (!this.spellReady(spell.id)) return;
+    // Wish opens a second picker listing every spell (see pickWish).
+    if (spell.effect === 'wish') {
+      this.showSpells.set(false);
+      this.wishPick.set(true);
+      return;
+    }
+    this.routeSpellTargeting(spell);
+  }
+
+  /** Wish: a spell was chosen from the "any spell" list — target it like normal,
+   *  but the cast goes out as a Wish (wishSpell drives castSpell's routing). */
+  pickWish(spell: SpellInfo): void {
+    this.wishPick.set(false);
+    this.wishSpell.set(spell);
+    this.routeSpellTargeting(spell);
+  }
+
+  private routeSpellTargeting(spell: SpellInfo): void {
     switch (spell.effect) {
       case 'field_damage':
       case 'field_curse':
@@ -386,10 +414,19 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   async castSpell(spell: SpellInfo, extra: Record<string, unknown> = {}): Promise<void> {
     const you = this.store.you();
-    const source = BIOME_SPELLS[you?.homeBiome ?? ''] === spell.id ? 'innate' : 'grimoire';
+    const wished = this.wishSpell();
+    // A Wish casts the chosen spell but sends spellId 'wish' + wishSpellId.
+    const isWish = !!wished && wished.id === spell.id;
+    const spellId = isWish ? 'wish' : spell.id;
+    const source = isWish
+      ? 'wish'
+      : BIOME_SPELLS[you?.homeBiome ?? ''] === spell.id
+        ? 'innate'
+        : 'grimoire';
+    if (isWish) extra = { wishSpellId: spell.id, ...extra };
     const preHp = you?.hp ?? 0;
     await this.run(async () => {
-      const resp = await this.store.action('cast', { spellId: spell.id, source, ...extra });
+      const resp = await this.store.action('cast', { spellId, source, ...extra });
       this.closeSpellPickers();
       if (resp.cast && spell.effect === 'self_buff') {
         const [fill, glow] = BUFF_TINT[spell.id] ?? DEFAULT_BUFF_TINT;
@@ -410,6 +447,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.spellValuePick.set(null);
     this.spellBossPick.set(null);
     this.castTeleport.set(null);
+    this.wishPick.set(false);
+    this.wishSpell.set(null);
     this.syncBoard();
   }
 
