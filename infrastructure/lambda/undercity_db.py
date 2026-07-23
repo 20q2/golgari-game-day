@@ -3473,18 +3473,27 @@ def _trove(table, sid, doc, node):
         return {'type': 'trove',
                 'text': 'The strongroom hangs open and empty — your work, last time.'}
     claims.append(key)
+    is_first = _claim_first(table, sid, node, 'trove', doc)
+    mult = 1.0 if is_first else data.PLUNDERED_LOOT_MULT
     r = data.TROVE_REWARD
-    doc['spores'] = doc.get('spores', 0) + r['spores']
-    _grant_xp(table, sid, doc, r['xp'])
-    out = {'type': 'trove', 'spores': r['spores'],
-           'text': f"A sealed strongroom cracks open — +{r['spores']} Spores!"}
-    drop = _roll_gear_drop(doc, data.TROVE_GEAR_TIERS)
-    if drop:
-        out['gear'] = drop
-        out['text'] += f" A glimmering relic within — {_drop_phrase(drop)}!"
-    _event(table, sid, 'trove',
-           f"{doc['username']} cracked a hidden trove in the deep dark!",
-           actor=doc['userId'])
+    spores = int(r['spores'] * mult)
+    doc['spores'] = doc.get('spores', 0) + spores
+    _grant_xp(table, sid, doc, int(r['xp'] * mult))
+    if is_first:
+        text = f"A sealed strongroom cracks open — +{spores} Spores!"
+    else:
+        text = f"You pick through a plundered strongroom — +{spores} Spores."
+    out = {'type': 'trove', 'spores': spores, 'text': text}
+    # First conqueror: guaranteed relic. Later players: a coin-flip at the mult.
+    if is_first or _rng.random() < data.PLUNDERED_LOOT_MULT:
+        drop = _roll_gear_drop(doc, data.TROVE_GEAR_TIERS)
+        if drop:
+            out['gear'] = drop
+            out['text'] += f" A glimmering relic within — {_drop_phrase(drop)}!"
+    if is_first:
+        _event(table, sid, 'trove',
+               f"{doc['username']} was first to crack a hidden trove in the deep dark!",
+               actor=doc['userId'])
     return out
 
 
