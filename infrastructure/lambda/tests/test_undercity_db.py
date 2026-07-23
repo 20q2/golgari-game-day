@@ -2683,6 +2683,80 @@ def test_rejoin_does_not_double_charge(table):
     assert 'top_hat' not in db._get_perm(table, 'user-alex')['hats']
 
 
+def test_new_perm_has_effects_and_creature_effect_defaults(table):
+    status, resp = act(table, 'join', starter='pest', home='city')
+    assert status == 200
+    assert resp['you']['effect'] is None
+    assert db._get_perm(table, 'user-alex')['effects'] == []
+
+
+def test_buy_and_equip_special_paint_via_shop(table):
+    _fund(table, 'user-alex', 600)
+    status, resp = act(table, 'join', starter='pest', home='city',
+                       buyEffects=['metallic'], equipEffect='metallic')
+    assert status == 200, resp
+    assert resp['you']['effect'] == 'metallic'
+    perm = db._get_perm(table, 'user-alex')
+    assert 'metallic' in perm['effects']
+    assert perm['renown'] == 600 - data.SPECIAL_PAINT_PRICE
+
+
+def test_buy_special_paint_insufficient_renown_rejected(table):
+    _fund(table, 'user-alex', 300)  # under the 500 price
+    status, resp = act(table, 'join', starter='pest', home='city',
+                       buyEffects=['starry'])
+    assert status == 409
+    assert 'Renown' in resp['error']
+    perm = db._get_perm(table, 'user-alex')
+    assert perm['renown'] == 300 and perm['effects'] == []
+
+
+def test_buy_unknown_special_paint_rejected(table):
+    _fund(table, 'user-alex', 600)
+    status, resp = act(table, 'join', starter='pest', home='city',
+                       buyEffects=['nope'])
+    assert status == 400
+    assert db._get_perm(table, 'user-alex')['effects'] == []
+
+
+def test_join_rejects_equipping_unowned_special_paint(table):
+    _fund(table, 'user-alex', 600)
+    status, resp = act(table, 'join', starter='pest', home='city',
+                       equipEffect='rainbow')  # never bought
+    assert status == 409
+    assert 'own' in resp['error']
+
+
+def test_customize_equip_and_clear_special_paint(table):
+    act(table, 'join', starter='pest', home='city')
+    perm = db._get_perm(table, 'user-alex')
+    perm['effects'] = ['prismatic']
+    table.put_item(Item=perm)
+    status, resp = act(table, 'customize', effect='prismatic', hat='')
+    assert status == 200, resp
+    assert resp['you']['effect'] == 'prismatic'
+    status, resp = act(table, 'customize', effect='', hat='')
+    assert status == 200
+    assert resp['you']['effect'] is None
+
+
+def test_customize_equip_unowned_special_paint_rejected(table):
+    act(table, 'join', starter='pest', home='city')
+    status, resp = act(table, 'customize', effect='rainbow', hat='')
+    assert status == 409
+    assert 'own' in resp['error']
+
+
+def test_effect_surfaced_in_state_and_wardrobe(table):
+    _fund(table, 'user-alex', 600)
+    act(table, 'join', starter='pest', home='city',
+        buyEffects=['rainbow'], equipEffect='rainbow')
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200
+    assert state['you']['effect'] == 'rainbow'
+    assert 'rainbow' in state['wardrobe']['effects']
+
+
 def test_collapse_enabled_for_every_fight_kind(table, monkeypatch):
     # Sudden death: the collapse is on for EVERY kind, including the persistent-
     # pool lair/boss (they linger on a player loss, not on a timeout).

@@ -381,9 +381,11 @@ def _get_perm(table, user_id):
     if not doc:
         doc = {'pk': f'UNDERCITYUSER#{user_id}', 'sk': 'META',
                'seals': 0, 'hats': [], 'paints': list(data.DEFAULT_PAINTS),
+               'effects': [],
                'nights': 0, 'lifetimePvpWins': 0, 'apexReached': 0,
                'renown': data.SHOP_START_RENOWN}
     doc.setdefault('renown', data.SHOP_START_RENOWN)  # backfill existing perm docs
+    doc.setdefault('effects', [])                     # backfill existing perm docs
     for p in data.DEFAULT_PAINTS:
         if p not in doc['paints']:
             doc['paints'].append(p)
@@ -1225,6 +1227,7 @@ def handle_state(table, query_params):
     if user_id:
         perm = _get_perm(table, user_id)
         out['wardrobe'] = {'hats': perm['hats'], 'paints': perm['paints'],
+                           'effects': perm['effects'],
                            'seals': perm['seals'], 'nights': perm.get('nights', 0),
                            'renown': perm.get('renown', 0)}
     if config.get('status') == 'ended':
@@ -1250,7 +1253,7 @@ def _public_player(p):
         'spores': p.get('spores', 0), 'rolls': p.get('rolls', 0),
         'pvpWins': p.get('pvpWins', 0), 'wildWins': p.get('wildWins', 0),
         'composts': p.get('composts', 0), 'sigils': _sigil_count(p),
-        'paint': p.get('paint'), 'hat': p.get('hat'),
+        'paint': p.get('paint'), 'hat': p.get('hat'), 'effect': p.get('effect'),
         'shiny': p.get('shiny', False),
         'isBot': p.get('isBot', False),
         'status': p.get('status', ''),
@@ -1709,7 +1712,7 @@ def _archive_season(table, sid, config):
             'species': p.get('species'),
             'pvpWins': p.get('pvpWins', 0), 'wildWins': p.get('wildWins', 0),
             'spores': p.get('spores', 0), 'paint': p.get('paint'),
-            'hat': p.get('hat'),
+            'hat': p.get('hat'), 'effect': p.get('effect'),
         })
         # Lifetime stats onto the permanent doc.
         perm = _get_perm(table, p['userId'])
@@ -1772,7 +1775,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'lastFinishedClaim': None, 'taughtClaims': 0, 'pokesReceived': 0,
         'pvpWins': 0, 'wildWins': 0, 'composts': 0, 'bossDamage': 0,
         'paint': {'body': body_hue, 'belly': 50, 'stripes': body_hue},
-        'hat': None, 'joinedAt': _now(), 'ver': 0,
+        'hat': None, 'effect': None, 'joinedAt': _now(), 'ver': 0,
         # Cosmetic-only shiny, rolled once at hatch; rides through evolutions
         # (same doc). Client draws a gold sparkle over shiny sprites.
         'shiny': _rng.random() < data.SHINY_HATCH_CHANCE,
@@ -1817,8 +1820,10 @@ def _apply_shop_purchases(perm, doc, payload):
     buy_hats = list(dict.fromkeys(payload.get('buyHats') or []))
     buy_paints = list(dict.fromkeys(payload.get('buyPaints') or []))
     buy_items = list(payload.get('buyItems') or [])
+    buy_effects = list(dict.fromkeys(payload.get('buyEffects') or []))
     equip_hat = payload.get('equipHat') or None
     equip_paint = payload.get('equipPaint') or None
+    equip_effect = payload.get('equipEffect') or None
 
     total = 0
     for hid in buy_hats:
@@ -1834,6 +1839,12 @@ def _apply_shop_purchases(perm, doc, payload):
         if pid in perm['paints']:
             return _err('You already own that color.')
         total += data.PAINT_PRICE
+    for eid in buy_effects:
+        if eid not in data.SPECIAL_PAINT_MAP:
+            return _err(f'Unknown special paint: {eid}')
+        if eid in perm['effects']:
+            return _err('You already own that special paint.')
+        total += data.SPECIAL_PAINT_PRICE
     grants = []
     for iid in buy_items:
         it = data.RENOWN_SHOP_ITEMS_MAP.get(iid)
@@ -1851,15 +1862,19 @@ def _apply_shop_purchases(perm, doc, payload):
 
     owned_hats = set(perm['hats']) | set(buy_hats)
     owned_paints = set(perm['paints']) | set(buy_paints)
+    owned_effects = set(perm['effects']) | set(buy_effects)
     if equip_hat and equip_hat not in owned_hats:
         return _err('You do not own that hat.', 409)
     if equip_paint and equip_paint not in owned_paints:
         return _err('You do not own that color.', 409)
+    if equip_effect and equip_effect not in owned_effects:
+        return _err('You do not own that special paint.', 409)
 
     # ── All validated — commit. ──────────────────────────────────────────────
     perm['renown'] = perm.get('renown', 0) - total
     perm['hats'] = perm['hats'] + buy_hats
     perm['paints'] = perm['paints'] + buy_paints
+    perm['effects'] = perm['effects'] + buy_effects
     for it in grants:
         if it['kind'] == 'consumable':
             doc['bag'].append(it['id'])
@@ -1873,6 +1888,8 @@ def _apply_shop_purchases(perm, doc, payload):
     if equip_paint:
         hue = data.PAINT_MAP[equip_paint]['hue']
         doc['paint'] = {'body': hue, 'belly': doc['paint'].get('belly', 50), 'stripes': hue}
+    if equip_effect:
+        doc['effect'] = equip_effect
     return None
 
 
@@ -4863,6 +4880,14 @@ def _customize(table, sid, doc, payload):
                 return _err('You do not own that paint.', 409)
         doc['paint'] = {r: int(paint.get(r, doc['paint'].get(r, 130)))
                         for r in ('body', 'belly', 'stripes')}
+    effect = payload.get('effect')
+    if effect is not None:
+        if effect == '':
+            doc['effect'] = None
+        elif effect not in perm['effects']:
+            return _err('You do not own that special paint.', 409)
+        else:
+            doc['effect'] = effect
     doc['hat'] = hat or None
     conflict = _save_or_conflict(table, doc)
     if conflict:
