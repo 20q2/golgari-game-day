@@ -69,9 +69,9 @@ def test_every_grimoire_spell_exists():
 
 def test_tier1_grimoire_pool_enriched():
     tier1 = [gid for gid, g in data.GRIMOIRES.items() if g['tier'] == 1]
-    assert len(tier1) == 7, tier1
+    assert len(tier1) == 8, tier1
     for gid in ('warcasters_screed', 'hexweavers_codex',
-                'nightrunners_ledger', 'tinkers_manual'):
+                'nightrunners_ledger', 'tinkers_manual', 'skirmishers_notes'):
         g = data.GRIMOIRES[gid]
         assert g['tier'] == 1 and 1 <= len(g['spells']) <= 3
         for sp in g['spells']:

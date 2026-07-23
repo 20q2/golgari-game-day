@@ -47,6 +47,13 @@ export const GRIMOIRES: GrimoireInfo[] = [
   { id: "wayfarers_atlas", name: "Wayfarer's Atlas", tier: 2, cost: 70, spells: ["mycelial_recall", "fate_die", "skitter_step"], desc: "Every tunnel, and several that should not exist." },
   { id: "queensbane_grimoire", name: "Queensbane Grimoire", tier: 3, cost: 150, spells: ["queens_bane", "spore_burst"], desc: "Heretical rites that wound what cannot be reached." },
   { id: "tome_of_deep_roads", name: "Tome of the Deep Roads", tier: 3, cost: 150, spells: ["deep_step", "fate_die", "mycelial_recall"], desc: "The mycelium remembers every road." },
+  { id: "skirmishers_notes", name: "Skirmisher's Notes", tier: 1, cost: 32, spells: ["ember_fleck"], desc: "Hit-and-run scribbles for the light-footed." },
+  { id: "bulwark_breviary", name: "Bulwark Breviary", tier: 2, cost: 70, spells: ["iron_hide", "renewing_bloom"], desc: "Stand firm, then knit what breaks through." },
+  { id: "snipers_folio", name: "Sniper's Folio", tier: 2, cost: 70, spells: ["necrotic_lance", "fleetfoot_draught"], desc: "Reach out and touch them, from across the dark." },
+  { id: "saboteurs_libram", name: "Saboteur's Libram", tier: 2, cost: 70, spells: ["sap_vigor", "shadowstep"], desc: "Slow them down, then slip away." },
+  { id: "berserkers_roll", name: "Berserker's Roll", tier: 2, cost: 72, spells: ["savage_roar", "ember_fleck"], desc: "Work yourself into a froth, then swing." },
+  { id: "throneburner_codex", name: "Throneburner Codex", tier: 3, cost: 150, spells: ["sear_throne", "withering_gout", "rust_curse"], desc: "Rites to unmake thrones and titans alike." },
+  { id: "warding_tome", name: "Warding Tome", tier: 3, cost: 150, spells: ["warding_dance", "deep_mend"], desc: "Deep wards and deeper mending." },
 ];
 
 export const BIOME_SPELLS: Record<string, string> = {

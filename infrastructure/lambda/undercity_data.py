@@ -634,6 +634,28 @@ GRIMOIRES = {
     'tome_of_deep_roads':  {'name': 'Tome of the Deep Roads', 'tier': 3, 'cost': 150,
                             'spells': ['deep_step', 'fate_die', 'mycelial_recall'],
                             'blurb': 'The mycelium remembers every road.'},
+    # ── Expansion 2026-07-23 books ──
+    'skirmishers_notes': {'name': "Skirmisher's Notes", 'tier': 1, 'cost': 32,
+                          'spells': ['ember_fleck'],
+                          'blurb': 'Hit-and-run scribbles for the light-footed.'},
+    'bulwark_breviary': {'name': 'Bulwark Breviary', 'tier': 2, 'cost': 70,
+                         'spells': ['iron_hide', 'renewing_bloom'],
+                         'blurb': 'Stand firm, then knit what breaks through.'},
+    'snipers_folio':    {'name': "Sniper's Folio", 'tier': 2, 'cost': 70,
+                         'spells': ['necrotic_lance', 'fleetfoot_draught'],
+                         'blurb': 'Reach out and touch them, from across the dark.'},
+    'saboteurs_libram': {'name': "Saboteur's Libram", 'tier': 2, 'cost': 70,
+                         'spells': ['sap_vigor', 'shadowstep'],
+                         'blurb': 'Slow them down, then slip away.'},
+    'berserkers_roll':  {'name': "Berserker's Roll", 'tier': 2, 'cost': 72,
+                         'spells': ['savage_roar', 'ember_fleck'],
+                         'blurb': 'Work yourself into a froth, then swing.'},
+    'throneburner_codex': {'name': 'Throneburner Codex', 'tier': 3, 'cost': 150,
+                           'spells': ['sear_throne', 'withering_gout', 'rust_curse'],
+                           'blurb': 'Rites to unmake thrones and titans alike.'},
+    'warding_tome':     {'name': 'Warding Tome', 'tier': 3, 'cost': 150,
+                         'spells': ['warding_dance', 'deep_mend'],
+                         'blurb': 'Deep wards and deeper mending.'},
 }
 
 # ── Spell scrolls (design 2026-07-23 bog-witch-scrolls) ──────────────────────
