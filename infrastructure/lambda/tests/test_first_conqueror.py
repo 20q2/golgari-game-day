@@ -1,7 +1,7 @@
 import undercity_data as data
 import undercity_db as db
 
-from tests.test_undercity_db import table  # noqa: F401  (pytest fixture)
+from tests.test_undercity_db import table, act, _sid  # noqa: F401  (pytest fixtures/helpers)
 
 
 def test_claim_first_is_idempotent(table):
@@ -97,3 +97,14 @@ def test_finish_lair_stamps_first(table, monkeypatch):
     db._finish_lair(table, sid, doc, rec_battle, result)
     rec = db._get(table, db._season_pk(sid), 'FIRST#city_lair')
     assert rec['by'] == 'Alice' and rec['kind'] == 'lair'
+
+
+def test_firsts_surfaced_in_state(table):
+    act(table, 'join', starter='pest')          # creates an active season + player
+    sid = _sid(table)
+    doc = {'userId': 'x', 'username': 'Zed'}
+    db._claim_first(table, sid, 'bog_lair', 'lair', doc)
+    status, out = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200
+    assert out['firsts']['bog_lair']['by'] == 'Zed'
+    assert out['firsts']['bog_lair']['kind'] == 'lair'

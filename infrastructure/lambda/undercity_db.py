@@ -1143,6 +1143,15 @@ def handle_state(table, query_params):
                'gearId': m['gearId'], 'price': int(m['price'])}
               for m in (_clean(i) for i in mk['Items'])]
 
+    # Season-global first-conqueror records. FIRST# sorts before PLAYER#, so it
+    # is NOT covered by the sk >= 'PLAYER#' range query above — it needs its own.
+    fr = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': pk, ':sk': 'FIRST#'})
+    firsts = {i['sk'].replace('FIRST#', ''):
+              {'by': i.get('by'), 'at': i.get('at'), 'kind': i.get('kind')}
+              for i in (_clean(x) for x in fr['Items'])}
+
     players, you, snares, result, posts, sites = [], None, [], None, {}, {}
     veins, vaults, shops = {}, {}, {}
     now = _now()
@@ -1235,6 +1244,7 @@ def handle_state(table, query_params):
         'vaults': vaults,
         'barriersOpen': sorted(_open_barriers(table, sid)),
         'boss': {'hp': _boss_hp(table, sid), 'maxHp': data.ROT_SOVEREIGN['hp']},
+        'firsts': firsts,
         'worldEvent': _world_event_public(table, sid),
         'guardians': _guardian_pools(table, sid),
         'events': [{k: v for k, v in e.items() if k not in ('pk', 'sk')} for e in events],
