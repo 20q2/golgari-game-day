@@ -196,3 +196,9 @@ WORLD_EVENT_REWARDS = {
 # the committed depths in map.json. Off = the committed board, exactly as before.
 # See specs/2026-07-20-undercity-procedural-dungeons-design.md.
 PROCEDURAL_DUNGEONS = True
+
+# ── Spell scaling (design 2026-07-22, §2.5 pillar 1) ─────────────────────────
+# Every power-carrying spell (damage/heal/boss-strike) gains this much magnitude
+# per character level above 1: effective = base + round(PER_LEVEL * (level - 1)).
+# Level-1 casts still land for the printed base. Buffs/curses stay flat.
+SPELL_POWER_PER_LEVEL = 1.0
