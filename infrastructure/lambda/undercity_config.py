@@ -45,6 +45,11 @@ HP_REGEN_INTERVAL_MIN = 10
 GATE_PASS_HEAL_FRACTION = 0.5  # fraction of max HP restored for passing THROUGH a gate (landing still full-heals)
 COMPOST_SHIELD_MIN = 15
 COMPOST_RESPAWN_PCT = 0.5
+
+# A treasure tile (trove/cache/vault) already plundered by its season-global
+# first conqueror yields this fraction of spores/XP — and half its gear CHANCE —
+# to every later first-time visitor. The first conqueror always gets the full haul.
+PLUNDERED_LOOT_MULT = 0.5
 PVP_SPORE_STEAL = 0.25
 PVP_SPORE_STEAL_DEFEND = 0.10
 DEATHRITE_STEAL_MULT = 1.5
