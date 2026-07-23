@@ -3,8 +3,22 @@
  *  spells.generated.ts — do not hand-edit them; run `python
  *  infrastructure/lambda/sync_spells.py`. This file holds the types + helpers. */
 
-import { SPELLS, GRIMOIRES, BIOME_SPELLS } from './spells.generated';
-export { SPELLS, GRIMOIRES, BIOME_SPELLS };
+import { SPELLS, GRIMOIRES, BIOME_SPELLS, SPECIES_SPELLS } from './spells.generated';
+export { SPELLS, GRIMOIRES, BIOME_SPELLS, SPECIES_SPELLS };
+
+/** Every always-castable innate spell id for a creature: biome innate plus any
+ *  species signature (squirrels get Acorn Fury). Order: biome first. */
+export function innateSpellIds(
+  homeBiome: string | undefined,
+  species: string | undefined,
+): string[] {
+  const ids: string[] = [];
+  const biome = BIOME_SPELLS[homeBiome ?? ''];
+  if (biome) ids.push(biome);
+  const sig = SPECIES_SPELLS[species ?? ''];
+  if (sig && !ids.includes(sig)) ids.push(sig);
+  return ids;
+}
 
 export type SpellEffect =
   | 'self_buff'
