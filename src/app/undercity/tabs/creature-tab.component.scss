@@ -1283,6 +1283,58 @@
       opacity: 0.55;
     }
   }
+
+  .book-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+
+    &.expanded .book-chip {
+      border-color: var(--accent-color, #9ac26e);
+    }
+  }
+
+  .book-chip .chip-badge.chev {
+    opacity: 0.6;
+    font-weight: 700;
+  }
+
+  .book-detail {
+    padding: 0.1rem 0.2rem 0.4rem 0.6rem;
+    border-left: 2px solid var(--accent-color, #9ac26e);
+
+    .spell-rows {
+      margin-bottom: 0.5rem;
+    }
+  }
+
+  .book-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+
+    .locked-note {
+      font-size: 0.8rem;
+      opacity: 0.7;
+    }
+  }
+
+  .book-confirm {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+
+    .confirm-q {
+      font-size: 0.82rem;
+      opacity: 0.85;
+    }
+  }
+}
+
+.grimoire-cost {
+  margin-top: 0.6rem;
 }
 
 .hero-status {

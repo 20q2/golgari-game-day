@@ -349,6 +349,8 @@ export class CreatureTabComponent {
       const resp = await this.store.action('equip-grimoire', { grimoireId: id });
       this.showToast(resp.text ?? 'Done.');
     });
+    this.confirmOpen.set(null);
+    this.expandedBook.set(null);
   }
 
   protected readonly evolveChoices = computed<FormInfo[]>(() => {
@@ -425,6 +427,29 @@ export class CreatureTabComponent {
     if (item === 'smoke_spore') return 'passive';
     if (CONSUMABLE_MAP[item]?.inBattle) return 'battle';
     return 'use';
+  }
+
+  /** Which owned grimoire's spell list is expanded for reading (null = none). */
+  protected readonly expandedBook = signal<string | null>(null);
+  /** Which grimoire has its "locks swapping for 30 min" confirm prompt live. */
+  protected readonly confirmOpen = signal<string | null>(null);
+
+  /** Expand/collapse a book for reading. The open book is never expandable —
+   *  its spells already render in the top loadout panel. */
+  toggleBook(id: string): void {
+    if (this.store.you()?.equippedGrimoire === id) return;
+    this.confirmOpen.set(null);
+    this.expandedBook.set(this.expandedBook() === id ? null : id);
+  }
+
+  /** Show the swap-confirm prompt for a book. */
+  askOpen(id: string): void {
+    this.confirmOpen.set(id);
+  }
+
+  /** Back out of the swap-confirm prompt, leaving the book expanded to read. */
+  cancelOpen(): void {
+    this.confirmOpen.set(null);
   }
 
   /** Index of the bag row awaiting drop confirmation (null = none). */

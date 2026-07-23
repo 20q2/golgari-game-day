@@ -414,31 +414,68 @@
                 <div class="book-list">
                   @for (g of ownedBooks(); track g.id) {
                     @let isOpen = you.equippedGrimoire === g.id;
-                    @let locked = grimoireSwapLeft() > 0 && !isOpen;
-                    <button
-                      class="uc-btn book-chip"
-                      [class.selected]="isOpen"
-                      [class.locked]="locked"
-                      [disabled]="busy() || locked"
-                      (click)="equipBook(g.id)"
-                    >
-                      <span class="chip-title"><mat-icon class="mi">menu_book</mat-icon> {{ g.name }}</span>
-                      @if (isOpen) {
-                        <span class="chip-badge open">✓ OPEN</span>
-                      } @else if (locked) {
-                        <span class="chip-badge lock">🔒 {{ grimoireSwapLeft() }}m</span>
-                      } @else {
-                        <span class="chip-badge hint">Tap to open</span>
+                    @let expanded = expandedBook() === g.id && !isOpen;
+                    <div class="book-item" [class.selected]="isOpen" [class.expanded]="expanded">
+                      <button
+                        type="button"
+                        class="uc-btn book-chip"
+                        [class.selected]="isOpen"
+                        [disabled]="busy()"
+                        (click)="toggleBook(g.id)"
+                      >
+                        <span class="chip-title"><mat-icon class="mi">menu_book</mat-icon> {{ g.name }}</span>
+                        @if (isOpen) {
+                          <span class="chip-badge open">✓ OPEN</span>
+                        } @else {
+                          <span class="chip-badge chev">{{ expanded ? '▾' : '▸' }}</span>
+                        }
+                      </button>
+
+                      @if (expanded) {
+                        <div class="book-detail">
+                          <div class="spell-rows">
+                            @for (sp of bookSpells(g); track sp.id) {
+                              <div class="spell-row">
+                                <span class="spell-name">
+                                  <mat-icon class="mi">{{ sp.icon }}</mat-icon>
+                                  {{ sp.name }} <em>{{ sp.desc }}</em>
+                                </span>
+                              </div>
+                            }
+                          </div>
+                          <div class="book-actions">
+                            @if (grimoireSwapLeft() > 0) {
+                              <span class="locked-note">🔒 Locked · {{ grimoireSwapLeft() }}m</span>
+                            } @else if (confirmOpen() === g.id) {
+                              <span class="book-confirm">
+                                <span class="confirm-q">
+                                  Opening locks swapping for 30 min. Open <strong>{{ g.name }}</strong>?
+                                </span>
+                                <button class="uc-btn use-btn" [disabled]="busy()" (click)="equipBook(g.id)">
+                                  Open
+                                </button>
+                                <button class="uc-btn use-btn ghost" [disabled]="busy()" (click)="cancelOpen()">
+                                  Cancel
+                                </button>
+                              </span>
+                            } @else {
+                              <button class="uc-btn use-btn" [disabled]="busy()" (click)="askOpen(g.id)">
+                                Open this book
+                              </button>
+                            }
+                          </div>
+                        </div>
                       }
-                    </button>
+                    </div>
                   }
                 </div>
-                @if (grimoireSwapLeft() > 0) {
-                  <p class="muted bag-empty">
-                    Swapping books starts a 30-min cooldown — you carry one loadout at a time.
+
+                <p class="muted bag-empty grimoire-cost">
+                  One loadout at a time — opening a different book locks swapping for 30 min.
+                  @if (grimoireSwapLeft() > 0) {
                     {{ grimoireSwapLeft() }} min until you can open a different book.
-                  </p>
-                }
+                  }
+                </p>
               }
             </section>
           }
