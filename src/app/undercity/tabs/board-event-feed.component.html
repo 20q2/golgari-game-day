@@ -1,0 +1,8 @@
+<div class="event-feed" aria-live="polite">
+  @for (row of rows(); track row.id) {
+    <div class="feed-pill" [class.leaving]="row.leaving">
+      <mat-icon class="mi">{{ row.icon }}</mat-icon>
+      <span class="pill-text">{{ row.text }}</span>
+    </div>
+  }
+</div>

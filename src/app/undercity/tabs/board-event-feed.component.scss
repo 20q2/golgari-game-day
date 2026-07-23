@@ -1,0 +1,94 @@
+.event-feed {
+  position: absolute;
+  left: 10px;
+  bottom: 80px; // clear of the bottom tab bar, matches .board-toast
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: min(260px, 62vw);
+  pointer-events: none; // display-only: never intercept board taps (mobile)
+}
+
+.feed-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(20, 18, 14, 0.95);
+  border: 1px solid rgba(74, 124, 89, 0.5);
+  color: #d8f3dc;
+  padding: 6px 10px;
+  border-radius: 9px;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  animation: feed-in 0.22s ease both;
+
+  .mi {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    flex: none;
+    opacity: 0.9;
+  }
+
+  .pill-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &.leaving {
+    animation: feed-out 0.24s ease both;
+  }
+}
+
+@keyframes feed-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes feed-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-pill {
+    animation: feed-fade-in 0.15s ease both;
+  }
+  .feed-pill.leaving {
+    animation: feed-fade-out 0.2s ease both;
+  }
+}
+
+@keyframes feed-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes feed-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
