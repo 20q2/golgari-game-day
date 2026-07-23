@@ -55,3 +55,42 @@ def test_world_event_state_round_trip():
     db._set_world_event(table, sid, rec)
     got = db._world_event(table, sid)
     assert got['hp'] == 200 and got['nodes'] == ['a', 'x', 'b']
+
+
+# ── Task 4: spawn on first sigil-lair kill ────────────────────────────────────
+
+def test_spawn_world_event_shape_and_idempotent():
+    table = _started_table()
+    sid = _sid(table)
+    assert db._world_event(table, sid) is None
+
+    db._spawn_world_event(table, sid)
+    ev = db._world_event(table, sid)
+    assert ev is not None
+    assert ev['spawned'] is True and ev['dead'] is False
+    assert ev['node'] in ev['nodes'] and len(ev['nodes']) == 3
+    assert ev['hp'] == ev['maxHp'] == data.WORLD_EVENT_HP
+    assert ev['dmg'] == {}
+
+    # Idempotent: a second spawn call does not reset or move it.
+    ev['hp'] = 50
+    db._set_world_event(table, sid, ev)
+    db._spawn_world_event(table, sid)
+    again = db._world_event(table, sid)
+    assert again['hp'] == 50 and again['nodes'] == ev['nodes']
+
+
+def test_finish_lair_first_kill_spawns_event():
+    """The _finish_lair 'attacker + not slain' path must spawn the beast."""
+    table = _started_table()
+    sid = _sid(table)
+    _join(table, 'user-alex', 'Alex')
+    doc = db._get_player(table, sid, 'user-alex')
+    node = next(iter(data.LAIR_BOSSES))
+    rec = {'kind': 'lair', 'node': node,
+           'npc': {'maxHp': data.LAIR_BOSSES[node]['hp']},
+           'npcMeta': {'name': data.LAIR_BOSSES[node]['name']},
+           'ctx': {'slain': False, 'vestMax': data.LAIR_BOSSES[node]['hp'] // 2}}
+    result = {'outcome': 'attacker', 'attackerHp': 20, 'defenderHp': 0, 'strikes': []}
+    db._finish_lair(table, sid, doc, rec, result)
+    assert db._world_event(table, sid) is not None

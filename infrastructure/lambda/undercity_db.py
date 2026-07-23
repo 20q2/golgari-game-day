@@ -2685,6 +2685,30 @@ def _pick_world_event_run(nodes):
     return [wnb[0], center, wnb[1]]
 
 
+def _spawn_world_event(table, sid, actor_id=None):
+    """Idempotently spawn the season's one World Event. No-op if it already
+    exists (spawned or dead). Picks a 3-node wilderness footprint, seeds the
+    shared HP pool, and announces it to everyone. `actor_id` is excluded from the
+    away-event fan-out so a mid-action spawn never clobbers the actor's own doc
+    (they learn of it inline / via the news feed)."""
+    if _world_event(table, sid) is not None:
+        return
+    nodes = _season_map(table, sid)
+    run = _pick_world_event_run(nodes)
+    if not run:
+        return
+    rec = {'spawned': True, 'node': run[1], 'nodes': run,
+           'hp': data.WORLD_EVENT_HP, 'maxHp': data.WORLD_EVENT_HP,
+           'dmg': {}, 'dead': False}
+    _set_world_event(table, sid, rec)
+    _event(table, sid, 'boss',
+           f"A {data.WORLD_EVENT['name']} has emerged in the wilderness — "
+           'rally and bring it down together!')
+    _broadcast_away(table, sid,
+                    {'kind': 'world_spawn', 'name': data.WORLD_EVENT['name'],
+                     'at': _now()}, actor_id)
+
+
 def _lair(table, sid, doc, node):
     """
     Lair bosses share one persistent HP pool per season (like Savra): wounds
@@ -3039,6 +3063,10 @@ def _finish_lair(table, sid, doc, rec, result):
     out = {'type': 'lair', 'npc': {'name': display, 'maxHp': npc_max}, 'battle': result}
     if result['outcome'] == 'attacker':
         _set_lair_state(table, sid, node, vest_max, True)
+        if not slain:
+            # Season-global first kill of ANY lair — wake the wilderness beast.
+            # Spawn is idempotent, so only the very first lair actually spawns it.
+            _spawn_world_event(table, sid, actor_id=doc['userId'])
         claims = doc.setdefault('poiClaims', [])
         personal_first = node not in claims
         if personal_first:
