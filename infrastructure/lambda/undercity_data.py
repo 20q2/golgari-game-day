@@ -63,6 +63,17 @@ STARTERS = {
     },
 }
 
+# Cosmetic-only alternate sprite per starter. Client mirror: FORM_VARIANTS in
+# src/app/undercity/data/species.ts. Value = the alt sprite keys the client may
+# request; the base look needs no entry. Stored on the player doc as
+# `spriteVariant` and echoed in public state like paint/hat.
+STARTER_VARIANTS = {
+    'pest': ['pest_2'],
+    'saproling': ['saproling_2'],
+    'zombie': ['zombie_2'],
+    'kraul': ['insect_2'],
+}
+
 # Tier 2 forms (level 5). `bonus` is applied on evolution (maxHp values already
 # ×3 relative to a stat point). Creatures keep their line passive AND gain the
 # form passive (Rootwall upgrades Regrowth rather than stacking).

@@ -1225,6 +1225,23 @@ def test_state_payloads_carry_creature_name(table):
     assert by_id['user-sam']['creatureName'] == 'Puffcap'
 
 
+def test_join_stores_and_exposes_valid_sprite_variant(table):
+    status, resp = act(table, 'join', starter='pest', home='city', spriteVariant='pest_2')
+    assert status == 200
+    assert resp['you']['spriteVariant'] == 'pest_2'
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    pub = {p['userId']: p for p in state['players']}['user-alex']
+    assert pub['spriteVariant'] == 'pest_2'
+
+
+def test_join_rejects_unknown_sprite_variant(table):
+    # A variant that isn't this starter's alt falls back to the base look:
+    # the field is not stored.
+    status, resp = act(table, 'join', starter='zombie', spriteVariant='pest_2')
+    assert status == 200
+    assert resp['you'].get('spriteVariant') is None
+
+
 def test_public_player_exposes_gear_and_effective_stats(table):
     """The spectator/TV broadcast reads gear + atk/def/spd from public state."""
     act(table, 'join', starter='pest')

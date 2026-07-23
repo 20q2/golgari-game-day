@@ -1254,6 +1254,7 @@ def _public_player(p):
         'pvpWins': p.get('pvpWins', 0), 'wildWins': p.get('wildWins', 0),
         'composts': p.get('composts', 0), 'sigils': _sigil_count(p),
         'paint': p.get('paint'), 'hat': p.get('hat'), 'effect': p.get('effect'),
+        'spriteVariant': p.get('spriteVariant'),
         'shiny': p.get('shiny', False),
         'isBot': p.get('isBot', False),
         'status': p.get('status', ''),
@@ -1713,6 +1714,7 @@ def _archive_season(table, sid, config):
             'pvpWins': p.get('pvpWins', 0), 'wildWins': p.get('wildWins', 0),
             'spores': p.get('spores', 0), 'paint': p.get('paint'),
             'hat': p.get('hat'), 'effect': p.get('effect'),
+            'spriteVariant': p.get('spriteVariant'),
         })
         # Lifetime stats onto the permanent doc.
         perm = _get_perm(table, p['userId'])
@@ -1743,7 +1745,8 @@ def _archive_season(table, sid, config):
 # ── Join / hatch ─────────────────────────────────────────────────────────────
 
 def _new_player_doc(sid, user_id, username, starter, home, *,
-                    seals_before=0, egg_hue=None, creature_name='', is_bot=False):
+                    seals_before=0, egg_hue=None, creature_name='',
+                    sprite_variant=None, is_bot=False):
     """Build a fresh, fully-valid season player doc. Shared by human `join`
     and admin `bot-add` so the two can never drift. Perm-record bookkeeping
     (seals/nights) stays in `_join`; bots skip it (they have no account)."""
@@ -1794,6 +1797,10 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         if t1:
             gid = random.Random(zlib.crc32(f'cityrat:{user_id}'.encode())).choice(t1)
             doc.setdefault('gearStash', []).append(gid)
+    # Cosmetic starter look; only stored when a non-base alt was chosen so the
+    # base look leaves no field (see STARTER_VARIANTS).
+    if sprite_variant:
+        doc['spriteVariant'] = sprite_variant
     if is_bot:
         doc['isBot'] = True
     return doc
@@ -1904,6 +1911,9 @@ def _join(table, sid, user_id, username, payload):
     if home not in data.BIOMES:
         return _err('Pick a home biome: ' + ', '.join(data.BIOMES) + '.')
     creature_name = str(payload.get('creatureName') or '').strip()[:16]
+    sprite_variant = payload.get('spriteVariant')
+    if sprite_variant not in data.STARTER_VARIANTS.get(starter, []):
+        sprite_variant = None
 
     perm = _get_perm(table, user_id)
     seals_before = perm.get('seals', 0)
@@ -1914,7 +1924,7 @@ def _join(table, sid, user_id, username, payload):
     doc = _new_player_doc(
         sid, user_id, username, starter, home,
         seals_before=seals_before, egg_hue=payload.get('eggHue'),
-        creature_name=creature_name,
+        creature_name=creature_name, sprite_variant=sprite_variant,
     )
     # Start their bank where the night is, not at zero-hour — a latecomer gets
     # the rolls they'd have regenerated so far (capped), before any bonuses.
