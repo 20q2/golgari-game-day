@@ -15,7 +15,7 @@ import {
   SPECIAL_PAINT_SWATCH,
 } from '../data/cosmetics';
 import { getRecoloredDataUrl } from '../engine/sprite-engine';
-import { formSprite } from '../data/species';
+import { formSprite, FORM_VARIANTS, FormVariant } from '../data/species';
 import { randomCreatureName } from '../data/names';
 import { IntroCutsceneComponent } from './intro-cutscene.component';
 
@@ -93,6 +93,20 @@ export class HatchFlowComponent {
 
   /** True when the creature was rolled by Bravery — grants a bonus starting roll. */
   protected readonly bravery = signal(false);
+
+  /** Chosen cosmetic look for the showcased creature; null = base sprite. */
+  protected readonly chosenVariant = signal<string | null>(null);
+
+  /** Variants for the currently showcased form (empty when it has only one). */
+  protected readonly showcaseVariants = computed<FormVariant[]>(() => {
+    const id = this.showcaseId();
+    const v = id ? FORM_VARIANTS[id] : undefined;
+    return v && v.length > 1 ? v : [];
+  });
+
+  pickVariant(id: string): void {
+    this.chosenVariant.set(id);
+  }
 
   /** Chosen home biome, held while the player names the creature. */
   protected readonly chosenBiome = signal<string | null>(null);
@@ -183,8 +197,8 @@ export class HatchFlowComponent {
     this.eggHue.set(hue);
   }
 
-  spriteUrl(starter: FormInfo): string | null {
-    const spr = formSprite(starter.id);
+  spriteUrl(starter: FormInfo, variant?: string | null): string | null {
+    const spr = formSprite(starter.id, variant ?? this.chosenVariant());
     return getRecoloredDataUrl(
       spr.sprite,
       { body: this.eggHue(), belly: 50, stripes: this.eggHue(), spines: 50, spines_dark: this.eggHue() },
@@ -239,6 +253,7 @@ export class HatchFlowComponent {
   /** Step 1a: open a creature's showcase from the lineup. */
   openShowcase(starter: FormInfo): void {
     this.braveryReveal.set(false);
+    this.chosenVariant.set(null);
     this.showcaseId.set(starter.id);
   }
 
@@ -261,6 +276,7 @@ export class HatchFlowComponent {
     const pick = this.starters[Math.floor(Math.random() * this.starters.length)];
     this.braveryConfirm.set(false);
     this.braveryReveal.set(true);
+    this.chosenVariant.set(null);
     this.showcaseId.set(pick.id);
   }
 
@@ -289,6 +305,7 @@ export class HatchFlowComponent {
     this.showcaseId.set(null);
     this.braveryReveal.set(false);
     this.bravery.set(false);
+    this.chosenVariant.set(null);
   }
 
   /** Step 2: pick a home biome, then advance to naming. */
@@ -388,6 +405,7 @@ export class HatchFlowComponent {
         equipPaint: this.equipPaint(),
         equipEffect: this.equipEffect(),
         bravery: this.bravery(),
+        spriteVariant: this.chosenVariant(),
       });
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Could not hatch');

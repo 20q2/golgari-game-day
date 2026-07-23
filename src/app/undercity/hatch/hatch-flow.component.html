@@ -233,6 +233,25 @@
         }
       </div>
 
+      @if (showcaseVariants().length) {
+        <div class="variant-picker" role="group" aria-label="Choose a look">
+          @for (v of showcaseVariants(); track v.id) {
+            <button
+              type="button"
+              class="variant-chip"
+              [class.selected]="(chosenVariant() ?? showcaseVariants()[0].id) === v.id"
+              (click)="pickVariant(v.id)"
+              [disabled]="joining()"
+            >
+              @if (spriteUrl(form, v.id); as vurl) {
+                <img class="variant-thumb" [src]="vurl" [alt]="v.name" />
+              }
+              <span class="variant-label">{{ v.name }}</span>
+            </button>
+          }
+        </div>
+      }
+
       <h1 class="showcase-name">{{ form.name }}</h1>
       <p class="showcase-archetype">{{ archetype(form) }}</p>
 
