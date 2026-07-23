@@ -8,7 +8,7 @@
  * WebSocket events → poll-delta driven (updatePartners diffing), owner photos
  * and play-together removed, Compost-Shield bubbles and evolution glow added.
  */
-import { getRecolored, getPlazaBackground, hatPlacement } from './sprite-engine';
+import { getRecolored, getPlazaBackground, hatPlacement, drawCreatureEffect } from './sprite-engine';
 import { formSprite } from '../data/species';
 import { ALL_FORMS } from '../data/forms';
 
@@ -23,6 +23,8 @@ export interface PlazaCreature {
   hat: string | null;
   /** Cosmetic-only shiny — draws a steady gold sparkle over the sprite. */
   shiny?: boolean;
+  /** Animated special paint — an overlay drawn over the sprite's silhouette. */
+  effect?: string | null;
   shielded: boolean;
   evolveGlow: boolean;
   /** Status-bubble text; '' or absent = no bubble. */
@@ -142,6 +144,7 @@ export class PlazaCanvas {
   private particles: Particle[] = [];
   private sparkles: Sparkle[] = [];
   private shinyAccum = 0; // time since last shiny twinkle emission
+  private effectClock = 0; // ms, monotonic; drives special-paint overlays
   private rafId: number | null = null;
   private startTime = performance.now();
   private lastTs = this.startTime;
@@ -658,6 +661,7 @@ export class PlazaCanvas {
   /** Emit a steady gold twinkle over every shiny creature, then age the pool.
    *  Cosmetic only — mirrors the board canvas's shiny sparkle. */
   private updateSparkles(dt: number): void {
+    this.effectClock += dt * 1000; // drives special-paint overlays
     this.shinyAccum += dt;
     while (this.shinyAccum > 0.16) {
       this.shinyAccum -= 0.16;
@@ -877,6 +881,19 @@ export class PlazaCanvas {
     ctx.translate(x, y + hopY + dropOffsetY);
     ctx.scale(d.facingLeft ? squishScaleX : -squishScaleX, squishScaleY);
     ctx.drawImage(d.spriteCanvas, -halfW, -halfH, spriteW, spriteH);
+    // Animated special paint over the silhouette, in the same transformed space.
+    if (d.partner.effect) {
+      drawCreatureEffect(
+        ctx,
+        formSprite(d.partner.form).sprite,
+        d.partner.effect,
+        -halfW,
+        -halfH,
+        spriteW,
+        spriteH,
+        this.effectClock,
+      );
+    }
     ctx.imageSmoothingEnabled = true;
     ctx.restore();
 
