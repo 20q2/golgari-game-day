@@ -2890,6 +2890,11 @@ def test_cancel_loot_puzzle_forfeits(table):
     assert resp['you']['spores'] == 0           # nothing awarded
 
 
+def test_flow_spore_tunables_present():
+    assert data.FLOW_SPORE_PER_CELL == 0.5
+    assert data.FLOW_SPORE_CAP == 10
+
+
 # ── Multi-solution loot rewards ──────────────────────────────────────────────
 
 def test_place_loot_rewards_distinct_valid_cells():

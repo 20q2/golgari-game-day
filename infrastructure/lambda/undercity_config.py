@@ -33,6 +33,14 @@ GRIMOIRE_SWAP_COOLDOWN_MIN = 30  # opening a different grimoire is gated for N m
                              # (stowing your open book is always free) — client
                              # mirror in src/app/undercity/data/spells.ts
 
+# ── Overgrown Cache (loot Flow puzzle) ───────────────────────────────────────
+# The cache is a routing puzzle: connect the green start to the amber goal by
+# any path. Every tile crossed grants spores, capped so the space stays economy-
+# fair (~old forage floor of ~10). Client mirror lives at the top of
+# src/app/undercity/tabs/flow-puzzle.component.ts.
+FLOW_SPORE_PER_CELL = 0.5    # spores per tile crossed (path length)
+FLOW_SPORE_CAP = 10          # hard ceiling on a single cache's movement spores
+
 # ── HP / death / PvP ─────────────────────────────────────────────────────────
 # Passive time-based HP regen is DISABLED (0). HP is restored ONLY by: a spell
 # (e.g. Mend Flesh), a level-up / evolution, stopping at a gate (full heal), or
