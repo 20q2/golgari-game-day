@@ -273,3 +273,28 @@ def test_killing_blow_pays_killer_inline_and_marks_dead(monkeypatch):
     assert db._world_event(table, sid)['dead'] is True
     after = db._get_player(table, sid, 'user-alex')['spores']
     assert after == before + ev['reward']['spores']
+
+
+# ── Task 8: state payload ────────────────────────────────────────────────────
+
+def test_state_exposes_world_event_block():
+    table = _started_table()
+    sid = _sid(table)
+    _join(table, 'user-alex', 'Alex')
+    we = _place_live_event(table, sid)
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200
+    block = state['worldEvent']
+    assert block['nodes'] == we['nodes']
+    assert block['center'] == we['node']
+    assert block['dead'] is False
+    assert block['spriteId'] == data.WORLD_EVENT['spriteId']
+    assert block['maxHp'] == data.WORLD_EVENT_HP
+
+
+def test_state_world_event_absent_before_spawn():
+    table = _started_table()
+    _join(table, 'user-alex', 'Alex')
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200
+    assert state['worldEvent'] is None

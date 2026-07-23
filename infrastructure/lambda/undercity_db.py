@@ -1194,6 +1194,7 @@ def handle_state(table, query_params):
         'vaults': vaults,
         'barriersOpen': sorted(_open_barriers(table, sid)),
         'boss': {'hp': _boss_hp(table, sid), 'maxHp': data.ROT_SOVEREIGN['hp']},
+        'worldEvent': _world_event_public(table, sid),
         'guardians': _guardian_pools(table, sid),
         'events': [{k: v for k, v in e.items() if k not in ('pk', 'sk')} for e in events],
         'result': result if config.get('status') == 'ended' else None,
@@ -2690,6 +2691,17 @@ def _set_world_event(table, sid, rec):
     item['pk'] = _season_pk(sid)
     item['sk'] = 'WORLDEVENT'
     table.put_item(Item=item)
+
+
+def _world_event_public(table, sid):
+    """Client-facing world-event block, or None if it never spawned."""
+    we = _world_event(table, sid)
+    if not we:
+        return None
+    return {'nodes': we['nodes'], 'center': we['node'],
+            'hp': we['hp'], 'maxHp': we['maxHp'],
+            'name': data.WORLD_EVENT['name'], 'spriteId': data.WORLD_EVENT['spriteId'],
+            'dead': bool(we.get('dead'))}
 
 
 def _pick_world_event_run(nodes):
