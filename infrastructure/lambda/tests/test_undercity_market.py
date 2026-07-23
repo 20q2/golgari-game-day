@@ -88,11 +88,23 @@ def test_market_buy_requires_spores(table):
 
 def test_market_listing_appears_in_state(table):
     sid, seller = _player_at(table, 'city_r0')
-    seller['gearStash'] = ['bark_hide']
-    db._market_list(table, sid, seller, {'index': 0, 'price': 45})
+    seller['bag'] = ['healing_moss']
+    db._market_list(table, sid, seller, {'kind': 'consumable', 'index': 0, 'price': 12})
     status, state = db.handle_state(table, {'userId': 'user-alex'})
     assert status == 200
-    assert any(l['gearId'] == 'bark_hide' and l['price'] == 45 for l in state['market'])
+    assert any(l['kind'] == 'consumable' and l['itemId'] == 'healing_moss' and l['price'] == 12
+               for l in state['market'])
+
+
+def test_market_legacy_row_in_state_defaults_gear(table):
+    sid, seller = _player_at(table, 'city_r0')
+    pk = db._season_pk(sid)
+    table.put_item(Item={'pk': pk, 'sk': 'MARKET#legacy01', 'id': 'legacy01',
+                         'sellerId': 'user-alex', 'sellerName': 'Alex',
+                         'gearId': 'bark_hide', 'price': 45, 'createdAt': db._now()})
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    row = next(l for l in state['market'] if l['id'] == 'legacy01')
+    assert row['kind'] == 'gear' and row['itemId'] == 'bark_hide'
 
 
 def test_market_price_band_by_kind():
