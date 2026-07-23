@@ -36,6 +36,8 @@ export interface PublicPlayer {
   sigils: number;
   paint: Record<string, number>;
   hat: string | null;
+  /** Chosen cosmetic starter look (alt sprite key); absent = base look. */
+  spriteVariant?: string | null;
   /** Animated special paint — an overlay drawn over the creature's silhouette. */
   effect?: string | null;
   /** Cosmetic-only shiny (5% at hatch): draws a gold sparkle over the sprite. */
@@ -158,6 +160,8 @@ export interface YouDoc {
   poiClaims?: string[];
   paint: Record<string, number>;
   hat: string | null;
+  /** Chosen cosmetic starter look (alt sprite key); absent = base look. */
+  spriteVariant?: string | null;
   /** Animated special paint — an overlay drawn over the creature's silhouette. */
   effect?: string | null;
   evolvedAt?: string;
@@ -185,6 +189,8 @@ export interface Standing {
   spores: number;
   paint: Record<string, number>;
   hat: string | null;
+  /** Chosen cosmetic starter look (alt sprite key); absent = base look. */
+  spriteVariant?: string | null;
   effect?: string | null;
 }
 
