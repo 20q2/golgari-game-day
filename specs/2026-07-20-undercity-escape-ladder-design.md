@@ -1,7 +1,45 @@
 # Undercity — Post-boss escape ladder
 
-**Date:** 2026-07-20
-**Status:** Design approved, pending implementation plan
+**Date:** 2026-07-20 (revised 2026-07-22)
+**Status:** Implemented; revised to a two-step climb (see "Revision" below)
+
+## Revision (2026-07-22): two-step climb, not teleport-on-land
+
+The original "teleport-on-land" behavior (below) made the stairwell behave
+unlike every other rusted ladder: the instant you set foot on the spur you were
+whisked to the surface, so players never got to *stand* on it and deliberately
+leave — it read as inaccessible. The escape ladder now works like any other
+rusted ladder: a **two-step climb**.
+
+1. **Land / stop.** Bonk-stopping onto the escape spur (already a `closed` stop —
+   reachable on any roll from the lair) just **stops** you there. `_resolve_space`
+   no longer relocates; it returns a "you've reached the escape ladder" event and
+   your `position` stays on `<biome>_esc`.
+2. **Tap to climb.** On a later turn you roll, the escape spur lights up as a move
+   choice, and tapping it hauls you out — **consuming that roll**, exactly like
+   crossing a normal ladder pair.
+
+Mechanics (no new graph edge, so edge symmetry and the one-way invariant hold):
+- **`_roll`:** when your `position` is an escape ladder whose lair is in your
+  `poiClaims`, add the biome's surface mouth `<biome>_lt` to `pendingMove.dests`
+  as the climb target — alongside the normal "walk back into the maze"
+  destinations (going back down stays legal).
+- **`_move`:** if `prev` is an escape ladder and `to` is its mapped surface mouth
+  (`data.ESCAPE_EXITS[prev]`), treat it as the climb: relocate to `<biome>_lt`,
+  reset `restsUsed`, return the climb-out event, and skip `_resolve_space` (no
+  chain-resolve, matching the old teleport). This is the *only* way to reach
+  `<biome>_lt` from the spur, so exit stays strictly one-way.
+- **Data:** add `ESCAPE_EXITS = {b + '_esc': b + '_lt' for b in BIOMES}`.
+- **Client (`board-canvas`):** register each escape spur's `ladderPartner` as its
+  surface mouth `<biome>_lt`. The existing tap-a-ladder-whose-partner-is-a-choice
+  logic and disc-lighting then light the spur on the climb turn and send the
+  climb move — no other client change.
+
+The rest of the original design (per-player gating via `poiClaims`, hidden until
+claimed, one-way, excluded `lair_titan`, wild-warp exclusion) is unchanged. The
+sections below describe the original teleport-on-land approach for history.
+
+---
 
 ## Problem
 

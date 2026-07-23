@@ -241,11 +241,13 @@ export class CreatureTabComponent {
     return you ? xpToNext(you.level) : 0;
   });
 
-  /** Troll Hide is the only gear that raises max HP (mirrors the HUD header). */
+  /** The server already reports the effective max (base + every +Max HP gear
+   * piece + the Carapace Grind perk) on both the state fetch and every action
+   * response, so trust it directly (mirrors the HUD header). */
   protected readonly effectiveMaxHp = computed(() => {
     const you = this.store.you();
     if (!you) return 1;
-    return you.maxHp + (you.gear?.['carapace'] === 'troll_hide' ? 6 : 0);
+    return you.maxHp;
   });
 
   protected readonly hpPct = computed(() => {

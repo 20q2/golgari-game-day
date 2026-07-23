@@ -295,6 +295,47 @@ def test_fleetfoot_offers_optional_reroll_of_a_one(table, monkeypatch):
     assert not resp['roll'].get('canReroll')   # only one reroll offered
 
 
+def test_pathfinder_still_offers_fleetfoot_reroll_on_a_one(table, monkeypatch):
+    # A creature at SPD 12 has BOTH Fleetfoot (6) and Pathfinder (12). Advantage
+    # must not silently strip the reroll: a 1 on the primary die still offers it.
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 12
+    db._put_player(table, doc)
+    vals = iter([1, 5])   # primary die is a 1, advantage die is a 5
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: next(vals))
+    status, resp = act(table, 'roll')
+    assert status == 200
+    assert sorted(resp['roll']['values']) == [1, 5]
+    assert resp['roll'].get('canReroll') is True
+    rolls_after_first = db._get_player(table, sid, 'user-alex')['rolls']
+    # Rerolling produces a fresh advantage roll and spends no banked roll.
+    vals2 = iter([3, 6])
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: next(vals2))
+    status, resp = act(table, 'roll', reroll=True)
+    assert status == 200 and sorted(resp['roll']['values']) == [3, 6]
+    assert db._get_player(table, sid, 'user-alex')['rolls'] == rolls_after_first
+    assert not resp['roll'].get('canReroll')   # only one reroll offered
+
+
+def test_pathfinder_reroll_when_only_advantage_die_is_one(table, monkeypatch):
+    # The 1 can land on the SECOND (advantage) die — the reroll must still fire.
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 12
+    db._put_player(table, doc)
+    vals = iter([5, 1])   # primary die 5, advantage die 1
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: next(vals))
+    status, resp = act(table, 'roll')
+    assert status == 200
+    assert sorted(resp['roll']['values']) == [1, 5]
+    assert resp['roll'].get('canReroll') is True
+    vals2 = iter([2, 4])
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: next(vals2))
+    status, resp = act(table, 'roll', reroll=True)
+    assert status == 200 and sorted(resp['roll']['values']) == [2, 4]
+
+
 def test_blink_chosen_one_offers_no_reroll(table):
     # A Blink user (SPD-18, also has Fleetfoot) who deliberately picks 1 must NOT
     # be nagged to reroll it — the reroll is only for random 1s.

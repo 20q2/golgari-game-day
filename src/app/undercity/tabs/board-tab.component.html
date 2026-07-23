@@ -96,6 +96,23 @@
       </div>
     }
 
+    <!-- Pathfinder: advantage rolled two faces — pick which one to move. -->
+    @if (!rolling() && !canReroll() && pathfinderPick(); as pick) {
+      <div class="reroll-prompt">
+        <div class="reroll-prompt-msg">
+          <img class="die-icon" src="undercity/icons/die.png" alt="" />
+          <em>Pathfinder</em> — keep either die.
+        </div>
+        <div class="reroll-prompt-actions">
+          @for (v of pick; track v) {
+            <button class="uc-btn uc-btn-primary" [disabled]="busy()" (click)="chooseDie(v)">
+              Move {{ v }}
+            </button>
+          }
+        </div>
+      </div>
+    }
+
     @if (!rolling() && !store.you()?.pendingMove && castableSpells().length) {
       <button class="uc-btn cast-btn" [disabled]="busy()" (click)="showSpells.set(true)">
         <mat-icon class="mi">auto_fix_high</mat-icon> Cast
@@ -263,10 +280,19 @@
     </div>
   }
 
-  <!-- Rolling die overlay -->
+  <!-- Rolling die overlay. Pathfinder (SPD-10) rolls with advantage — a second
+       die appears beside the first and you may move to either's destinations. -->
   @if (rolling()) {
     <div class="dice-overlay">
-      <app-undercity-dice-roll [value]="rolledValue()" (settled)="onDiceSettled()" />
+      <div class="dice-pair" [class.advantage]="rolledValue2() !== null">
+        <app-undercity-dice-roll [value]="rolledValue()" (settled)="onDiceSettled()" />
+        @if (rolledValue2() !== null) {
+          <app-undercity-dice-roll [value]="rolledValue2()" (settled)="onDiceSettled()" />
+        }
+      </div>
+      @if (rolledValue2() !== null) {
+        <div class="dice-advantage-label">Advantage — keep either</div>
+      }
     </div>
   }
 
@@ -898,7 +924,7 @@
         <h3><mat-icon class="mi">casino</mat-icon> {{ sp.name }}</h3>
         <p class="modal-sub">Choose the value of your next roll.</p>
         <div class="choice-grid">
-          @for (v of [1, 2, 3, 4, 5, 6]; track v) {
+          @for (v of dieFaces(sp); track v) {
             <button class="uc-btn" [disabled]="busy()" (click)="castSpell(sp, { value: v })">
               {{ v }}
             </button>

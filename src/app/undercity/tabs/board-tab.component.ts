@@ -211,6 +211,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly gambleResult = signal<string | null>(null);
   protected readonly rolling = signal(false);
   protected readonly rolledValue = signal<number | null>(null);
+  /** Pathfinder (SPD-10): the advantage die shown alongside the primary one. */
+  protected readonly rolledValue2 = signal<number | null>(null);
 
   /** First-turn coach-mark: points a new player at the Roll button until they
    *  take their first roll. Persisted per device so it never returns. */
@@ -335,6 +337,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         out.push({ target: 'boss', name: 'Savra, the Queen', hp: boss.hp, maxHp: boss.maxHp, dist });
     }
     return out.sort((a, b) => a.dist - b.dist);
+  }
+
+  /** Value-picker faces for a fate_die spell: 1..maxValue (Fate Die = 6, Skitter Step = 3). */
+  protected dieFaces(spell: SpellInfo): number[] {
+    return Array.from({ length: spell.maxValue ?? 6 }, (_, i) => i + 1);
   }
 
   /** Route a spell-picker tap to the right follow-up (target/value/node/cast). */
@@ -733,8 +740,15 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         this.stepping.set(null);
       } else if (pm && !step && you && !this.canReroll()) {
         // A pending Fleetfoot reroll decision locks the board: don't begin the
-        // walk until the player keeps the 1 or rerolls.
-        this.stepping.set({ path: [you.position], left: pm.value });
+        // walk until the player keeps the 1 or rerolls. Likewise a Pathfinder
+        // advantage roll (two distinct faces) waits for the player to pick which
+        // die to move — seeding the walk with only pm.value would strand the
+        // second die's destinations (the exact-count walker can't reach them).
+        const vals = pm.values;
+        const needsPick = !!vals && vals.length === 2 && vals[0] !== vals[1];
+        if (!needsPick) {
+          this.stepping.set({ path: [you.position], left: pm.value });
+        }
       }
       this.syncBoard();
     });
@@ -952,6 +966,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.showRollPicker.set(false);
     this.canReroll.set(false);
     this.rolledValue.set(null);
+    this.rolledValue2.set(null);
     this.rolling.set(true);
     await this.run(async () => {
       const payload: Record<string, unknown> = {};
@@ -959,7 +974,14 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       if (opts?.blink) payload['blink'] = true;   // Blink: choose the value (production)
       if (opts?.reroll) payload['reroll'] = true; // Fleetfoot: discard a rolled 1
       const resp = await this.store.action('roll', payload);
-      this.rolledValue.set(resp.roll?.value ?? resp.you?.pendingMove?.value ?? null);
+      const primary = resp.roll?.value ?? resp.you?.pendingMove?.value ?? null;
+      this.rolledValue.set(primary);
+      // Pathfinder returns both faces; show the advantage die beside the primary.
+      const vals = resp.roll?.values ?? resp.you?.pendingMove?.values ?? null;
+      if (vals && vals.length === 2 && primary !== null) {
+        const idx = vals.indexOf(primary);
+        this.rolledValue2.set(vals[idx === 0 ? 1 : 0]);
+      }
       this.canReroll.set(!!resp.roll?.canReroll);
     });
     // Errored (or no value came back) — drop the die, the toast explains why.
@@ -979,6 +1001,24 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Fleetfoot: keep the rolled 1 — dismiss the prompt and begin the move. */
   keepRoll(): void {
     this.canReroll.set(false);
+  }
+
+  /** Pathfinder (SPD-10): the two advantage faces awaiting a pick, or null when
+   *  there's nothing to choose (single die, matched faces, or already walking). */
+  protected pathfinderPick(): number[] | null {
+    const vals = this.store.you()?.pendingMove?.values;
+    if (!vals || vals.length !== 2 || vals[0] === vals[1]) return null;
+    if (this.rolling() || this.canReroll() || this.stepping()) return null;
+    return vals;
+  }
+
+  /** Pathfinder: commit to one of the two faces — that value seeds the walk, so
+   *  only its destinations (a subset of the server's union dests) stay legal. */
+  chooseDie(value: number): void {
+    const you = this.store.you();
+    if (!you?.pendingMove || this.stepping()) return;
+    this.stepping.set({ path: [you.position], left: value });
+    this.syncBoard();
   }
 
   onDiceSettled(): void {
@@ -1014,6 +1054,22 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     if (!nodeId) {
       // Tapped empty tunnel — dismiss the space popover.
       this.hideInfo();
+      return;
+    }
+    // Post-boss escape climb: tapping the escape spur you're standing on (fresh
+    // roll, before walking) hauls you one-way up to the surface mouth. The exit
+    // is a teleport dest with no walkable edge, so the spur itself is the tap
+    // target (syncBoard lights it as a choice). Only at the walk start, so it
+    // never shadows retracing a step back onto the spur.
+    const climb = this.escapeClimbTarget();
+    const climbStep = this.stepping();
+    if (
+      climb &&
+      nodeId === this.store.you()?.position &&
+      !this.busy() &&
+      (!climbStep || climbStep.path.length === 1)
+    ) {
+      void this.move(climb);
       return;
     }
     const step = this.stepping();
@@ -1071,7 +1127,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // Evolved units (tier > 1) halt on a bridge mouth to pay the toll — a bonk
     // stop like a sealed barrier, so the move auto-commits on arrival.
     const bridgeStop = node?.type === 'tunnel' && (this.store.you()?.tier ?? 1) > 1;
-    if (step.left === 1 || sealedStop || bridgeStop) void this.move(nodeId);
+    // Post-boss escape spur: a degree-1 dead-end bonk stop (mirrors the server's
+    // _closed_barriers). You march up and HALT on it whatever the roll, so the
+    // move commits on arrival — no exact-count landing required. You then climb
+    // out on a later roll by tapping the spur (see the escape-climb handler).
+    const escapeStop = node?.type === 'ladder' && node.neighbors.length === 1;
+    if (step.left === 1 || sealedStop || bridgeStop || escapeStop) void this.move(nodeId);
   }
 
   // ── Ashen Wilds first-entry warning ─────────────────────────────────────────
@@ -1251,6 +1312,19 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return closed;
   }
 
+  /** The biome surface mouth a post-boss escape spur climbs out to, when the
+   *  server is currently offering it as a one-way climb (i.e. you're standing on
+   *  a claimed `<biome>_esc` and rolled) — else null. The exit is a teleport dest
+   *  with no walkable edge, so it can't be reached as a walk step; tapping the
+   *  spur itself commits the climb. */
+  private escapeClimbTarget(): string | null {
+    const you = this.store.you();
+    const pos = you?.position;
+    if (!pos || !pos.endsWith('_esc')) return null;
+    const exit = pos.split('_')[0] + '_lt';
+    return (you?.pendingMove?.dests ?? []).includes(exit) ? exit : null;
+  }
+
   private syncBoard(): void {
     if (!this.board) return;
     const step = this.stepping();
@@ -1299,6 +1373,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.board.setWorldEvent(this.store.worldEvent());
     const here = step ? stepPos(step) : null;
     const choices = step ? this.stepChoices(step) : [];
+    // Post-boss escape climb: light the escape spur you're standing on as a
+    // choice (fresh roll, before walking) so it reads as "tap to climb out". The
+    // exit itself is off on the surface layer, so the spur is the tap target.
+    if (step && step.path.length === 1 && here && this.escapeClimbTarget() && !choices.includes(here)) {
+      choices.push(here);
+    }
     const tele = this.castTeleport();
     this.board.setChoices(step ? choices : (tele?.nodes ?? null));
     this.board.setBackChoice(step ? stepPrev(step) : null);

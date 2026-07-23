@@ -179,23 +179,39 @@ def _assign_and_build(rng, biome):
     j_id = nid(j_cell)
     lr, lc = lair
     jr, jc = j_cell
-    midx = ox + (lc + jc) * SPACING / 2
-    midy = oy + (lr + jr) * SPACING / 2
-    for k, suf in enumerate(('lg1', 'lg2')):
+    # Keep the gates on the grid rhythm: J and the lair are adjacent cells, so
+    # offset each gate half a cell *perpendicular* to that edge, on opposite
+    # sides. The pair forms a grid-scaled diamond (gates land on grid vertices,
+    # a full SPACING apart) instead of piling up near the midpoint.
+    dr, dc = lr - jr, lc - jc                          # unit step along the edge
+    pr, pc = -dc, dr                                   # 90deg rotation -> perpendicular
+    mr, mc = (lr + jr) / 2, (lc + jc) / 2
+    for sign, suf in ((1, 'lg1'), (-1, 'lg2')):
         gid = f'{biome}_{suf}'
-        off = 40 if k == 0 else -40
+        gr, gc = mr + sign * pr * 0.5, mc + sign * pc * 0.5
         nodes[gid] = {
             'id': gid, 'type': 'wild',
-            'x': round(midx + off), 'y': round(midy - off),
+            'x': round(ox + gc * SPACING), 'y': round(oy + gr * SPACING),
             'region': 'depths', 'neighbors': sorted([j_id, lair_id]),
         }
         nodes[j_id]['neighbors'] = sorted(nodes[j_id]['neighbors'] + [gid])
         nodes[lair_id]['neighbors'] = sorted(nodes[lair_id]['neighbors'] + [gid])
 
-    # Escape spur off the lair (degree-1 'ladder'), just past it.
+    # Escape spur off the lair (degree-1 'ladder'): the first grid cell just
+    # outside the maze footprint (so it can't overlap another node) heading
+    # away from the junction — reads as the tunnel exiting past the boss and
+    # stays on the grid. Fallback: a grid vertex half a cell out (never a cell
+    # centre) if the lair is somehow boxed in on all sides.
+    cell_set = set(cells)
+    er, ec = lr + dr * 0.5, lc + dc * 0.5
+    for cr, cc in ((lr + dr, lc + dc), (lr + pr, lc + pc), (lr - pr, lc - pc),
+                   (lr + dr + pr, lc + dc + pc), (lr + dr - pr, lc + dc - pc)):
+        if (cr, cc) not in cell_set:
+            er, ec = cr, cc
+            break
     nodes[f'{biome}_esc'] = {
         'id': f'{biome}_esc', 'type': 'ladder',
-        'x': ox + lc * SPACING + 70, 'y': oy + lr * SPACING + 70,
+        'x': round(ox + ec * SPACING), 'y': round(oy + er * SPACING),
         'region': 'depths', 'neighbors': [lair_id],
     }
     nodes[lair_id]['neighbors'] = sorted(nodes[lair_id]['neighbors'] + [f'{biome}_esc'])

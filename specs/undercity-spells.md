@@ -56,7 +56,7 @@ Every spell that hits (or fizzles against) you lands in your inbox:
 | Spore Bolt | I | 12 damage | 6 | 20 min |
 | Mend Flesh | I | Self-heal 12 HP | — | 15 min |
 | Harden Shell | I | Self: +2 DEF next battle | — | 20 min |
-| Skitter Step | I | Teleport | 3 | 25 min |
+| Skitter Step | I | Choose next roll (1–3) | — | 25 min |
 | Rot Bolt | II | 20 damage | 7 | 25 min |
 | Weaken Hex | II | Curse: −3 ATK next battle | 6 | 25 min |
 | Mycelial Recall | II | Return to your home gate | — | 45 min |
@@ -126,7 +126,7 @@ New players get all four seeded at join; older docs are handled with `.get()` de
 | `field_damage` | `power`, `range` | Dodge roll, then damage floored at 1 HP |
 | `teleport` | `range` | Clears `pendingMove`, moves, runs `_resolve_space` like a normal landing |
 | `recall` | — | Returns to `HOME_GATES[homeBiome]`, no space resolution |
-| `fate_die` | — | Payload `value` 1–6 → sets `pendingLoadedDie` (rejected while a move is pending) |
+| `fate_die` | `maxValue?` | Payload `value` 1–`maxValue` (default 6; Skitter Step caps at 3) → sets `pendingLoadedDie` (rejected while a move is pending) |
 | `boss_strike` | `power` | Payload `target` = `'boss'` or a lair node id → chips the persistent pool, floors at 1 |
 
 One-battle buff kinds the engine consumes after any fight (`ONE_BATTLE_BUFFS` in `undercity_db.py`): `rot_surge` (+3 ATK), `bone_chill` (−2 ATK), `glowveil` (+2 SPD, +15 flee via `_combatant`), `harden_shell` (+2 DEF), `weaken_hex` (−3 ATK). `vines` (Bog Snare) is consumed by the next roll instead.

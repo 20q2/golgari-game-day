@@ -1031,11 +1031,29 @@ def _compost(table, sid, doc, cause_text):
     doc['pendingMove'] = None
 
     if died_biome:
-        # Died in the dark: crawl back to the dungeon mouth, no gate choice.
+        # Died in the dark: offer where to crawl back up — home, this biome's
+        # surface, or the dungeon mouth. Provisional position stays at the mouth
+        # so rolling without choosing keeps you in the dark (the old behavior).
         entrance = data.dungeon_entrance(died_biome)
         if entrance:
             doc['position'] = entrance
-        doc.pop('pendingRespawn', None)
+        # Dedup by node: home may sit in the dungeon's own biome, collapsing the
+        # home and surface gates into one option.
+        candidates = [
+            (home_gate, f"{data.BIOMES[home_biome]['name']} (home)"),
+            (data.HOME_GATES.get(died_biome),
+             f"{data.BIOMES[died_biome]['name']} (surface)"),
+            (entrance, f"{data.DUNGEONS[died_biome]['name']} (mouth)"),
+        ]
+        options, seen = [], set()
+        for gate, label in candidates:
+            if gate and gate not in seen:
+                seen.add(gate)
+                options.append({'gate': gate, 'label': label})
+        if len(options) > 1:
+            doc['pendingRespawn'] = {'options': options}
+        else:
+            doc.pop('pendingRespawn', None)
     else:
         # Offer a respawn choice when the last biome you stood in differs from
         # home, else just wake at the home gate. Labels for the UI.
@@ -1351,6 +1369,10 @@ def _ok(doc, **extra):
     you = {k: v for k, v in doc.items() if k not in ('pk', 'sk')}
     you.update(_roll_meta(doc))
     you['perks'] = sorted(engine.attribute_perks(doc))
+    # Report the EFFECTIVE max HP (base + gear + perks), not the raw base. hp is
+    # always healed/clamped to the effective max, so echoing base maxHp made a
+    # full-HP creature read as "hp over max" on the client. Match _public_player.
+    you['maxHp'] = engine.effective_stats(doc)['maxHp']
     return 200, {'ok': True, 'you': you, **extra}
 
 
@@ -1951,7 +1973,11 @@ def _roll(table, sid, doc, payload):
     reroll = bool(payload.get('reroll')) if payload else False
     _pm = doc.get('pendingMove')
     is_reroll = False
-    if (reroll and _pm and _pm.get('value') == 1 and not _pm.get('rerolled')
+    # A 1 can sit on either die under Pathfinder's advantage roll, so check the
+    # whole pending face set, not just the primary value.
+    _pm_showed_one = bool(_pm) and (
+        _pm.get('value') == 1 or 1 in (_pm.get('values') or []))
+    if (reroll and _pm and _pm_showed_one and not _pm.get('rerolled')
             and 'fleetfoot' in engine.attribute_perks(doc)):
         doc['pendingMove'] = None
         is_reroll = True
@@ -2012,6 +2038,13 @@ def _roll(table, sid, doc, payload):
     else:
         dests = sorted(_legal(value))
 
+    # Post-boss escape climb: standing on an escape spur you've earned, offer the
+    # biome's surface mouth as a tap-to-climb destination (alongside walking back
+    # into the maze). _move relocates you there one-way; no graph edge exists.
+    pos = doc['position']
+    if pos in data.ESCAPE_LADDERS and data.ESCAPE_LADDERS[pos] in (doc.get('poiClaims') or []):
+        dests = sorted(set(dests) | {data.ESCAPE_EXITS[pos]})
+
     if not dests:
         # Dead-end corner case: refund the roll, let them try again.
         return _err('The tunnels shift — no path fits that roll. Try again.', 409)
@@ -2037,9 +2070,11 @@ def _roll(table, sid, doc, payload):
         roll['values'] = values
     if used_blink:
         roll['blink'] = True
-    # Offer a one-time Fleetfoot reroll on a fresh, randomly-rolled (not chosen
-    # via Blink, not pathfinder) 1.
-    if (value == 1 and random_roll and not values and not is_reroll
+    # Offer a one-time Fleetfoot reroll on a fresh, randomly-rolled 1 (not one
+    # chosen via Blink). Under Pathfinder a 1 on either die still qualifies, so
+    # the two perks stack instead of the higher one masking the lower.
+    showed_one = (1 in values) if values else (value == 1)
+    if (showed_one and random_roll and not is_reroll
             and 'fleetfoot' in perks):
         roll['canReroll'] = True
     return _ok(doc, roll=roll)
@@ -2056,6 +2091,24 @@ def _move(table, sid, doc, payload):
     prev = doc['position']
     nodes = _season_map(table, sid)
     heal = None
+
+    # Post-boss escape climb: standing on an escape spur, spending the roll to
+    # haul one-way up to the biome's surface mouth. No graph edge exists between
+    # them, so this bypasses walk validation and does not chain-resolve the
+    # surface landing (matching the old teleport). _roll only offers this target
+    # when the lair is claimed, so reaching here already implies the earned exit.
+    if prev in data.ESCAPE_LADDERS and to == data.ESCAPE_EXITS[prev]:
+        doc['pendingMove'] = None
+        doc['position'] = to
+        doc['restsUsed'] = []                # you're on the surface now
+        conflict = _save_or_conflict(table, doc)
+        if conflict:
+            return conflict
+        occupants = _occupants(table, sid, doc['position'], doc['userId'])
+        return _ok(doc, spaceEvent={
+            'type': 'ladder',
+            'text': 'You haul yourself up the rusty escape ladder and out of '
+                    'the depths, back to the surface.'}, occupants=occupants)
 
     # Server-authoritative route: the client walks node-by-node and sends the
     # path it took. Validate it, then heal for passing THROUGH a gate (landing
@@ -2409,14 +2462,13 @@ def _resolve_space(table, sid, doc, node, prev):
 
     if ntype == 'ladder':
         if node in data.ESCAPE_LADDERS:
-            # Post-boss shortcut: haul up to the surface mouth, one-way. No edge
-            # back down exists, so this can never be used to skip into the lair.
-            biome = data.dungeon_biome(node)
-            doc['position'] = biome + '_lt'
-            doc['restsUsed'] = []            # you're on the surface now
+            # Post-boss shortcut, two-step climb: landing here STOPS you on the
+            # spur (bonk) — no teleport. You climb out on a later roll by tapping
+            # the ladder, which offers the surface mouth as a move destination
+            # (see _roll / _move). Keeps it feeling like any other rusted ladder.
             return {'type': 'ladder',
-                    'text': 'You haul yourself up the rusty escape ladder and '
-                            'out of the depths, back to the surface.'}
+                    'text': 'A rusty escape ladder bolts up out of the depths. '
+                            'Your next roll can carry you up and out.'}
         biome = data.dungeon_biome(node)
         if biome:
             where = 'back up to the surface'
@@ -3672,9 +3724,10 @@ def _cast(table, sid, doc, payload):
         doc.pop('pendingRespawn', None)
         result = {'text': 'Mycelial threads drag you home through the dark.', 'to': gate}
     elif effect == 'fate_die':
+        hi = spell.get('maxValue', 6)
         value = payload.get('value')
-        if not isinstance(value, int) or not 1 <= value <= 6:
-            return _err('Pick a value 1–6.')
+        if not isinstance(value, int) or not 1 <= value <= hi:
+            return _err(f'Pick a value 1–{hi}.')
         if doc.get('pendingMove'):
             return _err('Resolve your current move first.', 409)
         doc['pendingLoadedDie'] = value

@@ -450,8 +450,8 @@ SPELLS = {
                      'effect': 'self_buff', 'buffKind': 'harden_shell',
                      'blurb': '+2 DEF in your next battle.'},
     'skitter_step': {'name': 'Skitter Step', 'category': 'traversal', 'tier': 1,
-                     'cooldownMin': 25, 'effect': 'teleport', 'range': 3,
-                     'blurb': 'Blink to any space within 3 steps.'},
+                     'cooldownMin': 25, 'effect': 'fate_die', 'maxValue': 3,
+                     'blurb': 'Skitter ahead: choose your next roll (1–3).'},
     # Tier II (rare books — acquisition lands in phase 3)
     'rot_bolt':    {'name': 'Rot Bolt', 'category': 'field', 'tier': 2, 'cooldownMin': 25,
                     'effect': 'field_damage', 'power': 20, 'range': 7,
@@ -1027,11 +1027,16 @@ SIGILS_REQUIRED = 3
 
 # Post-boss escape ladders: one dead-end 'ladder' spur off each sigil lair,
 # revealed per-player once you hold that lair's claim (its node in poiClaims).
-# Maps escape-node id -> its lair-node id. Landing on one teleports you one-way
-# up to the biome's surface mouth (<biome>_lt); there is no edge back down, so it
-# can never be used to skip into the lair. See
+# Maps escape-node id -> its lair-node id. Two-step climb (2026-07-22): landing
+# STOPS you on the spur; a later roll offers the surface mouth as a tap-to-climb
+# destination that hauls you one-way up to <biome>_lt. There is no edge back down,
+# so it can never be used to skip into the lair. See
 # specs/2026-07-20-undercity-escape-ladder-design.md.
 ESCAPE_LADDERS = {b + '_esc': b + '_lair' for b in BIOMES}
+
+# Escape spur -> the biome's surface mouth it climbs out to (the one-way relocate
+# target; no graph edge exists between them, so the climb bypasses walk rules).
+ESCAPE_EXITS = {b + '_esc': b + '_lt' for b in BIOMES}
 
 # The island boss: one persistent HP pool per season. Anyone with enough
 # sigils can chip at it; whoever lands the killing blow takes the kill, then

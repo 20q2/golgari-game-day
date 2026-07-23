@@ -49,6 +49,8 @@ export interface PublicPlayer {
 export interface PendingMove {
   value: number;
   dests: string[];
+  /** Pathfinder (SPD-10): both rolled faces when the move came from an advantage roll. */
+  values?: number[];
 }
 
 /** Something that hit you (or missed) while your phone was down. */

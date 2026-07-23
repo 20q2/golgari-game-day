@@ -2834,3 +2834,19 @@ def test_solve_rejects_incomplete_path(table, monkeypatch):
         table, sid, doc, {'path': puzzle['solution'][:3]})
     assert status == 409
     assert doc['pendingLoot'] is not None
+
+
+def test_ok_reports_effective_maxhp_not_base():
+    # Regression: hp is always healed/clamped to the EFFECTIVE max (base + gear
+    # + perks), but action responses (_ok) used to echo the raw base maxHp. Any
+    # +maxHp gear then made a full-HP creature read as "hp over max" after every
+    # action — the reported over-max bug. _ok must agree with the state endpoint
+    # (_public_player), which reports effective maxHp.
+    doc = {'atk': 1, 'def': 1, 'spd': 1, 'maxHp': 30, 'hp': 50, 'level': 1,
+           'username': 'Alex', 'userId': 'user-alex',
+           'gear': {'carapace': 'leviathan_hide'}}   # +20 Max HP
+    eff = engine.effective_stats(doc)['maxHp']
+    assert eff == 50                                 # 30 base + 20 gear; hp is full
+    you = db._ok(doc)[1]['you']
+    assert you['maxHp'] == eff                        # not the base 30
+    assert you['hp'] <= you['maxHp']                  # no phantom over-max

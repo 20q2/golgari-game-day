@@ -93,18 +93,61 @@ def test_trove_pays_once_with_guaranteed_gear(table, monkeypatch):
     assert 'gear' not in ev2
 
 
-def test_compost_in_depths_respawns_at_entrance(table):
+def test_compost_in_depths_offers_respawn_choice(table):
+    # Home biome == the dungeon's biome: "home" and "surface" gates collapse.
     doc = _join(table, home='city')
     entrance = data.dungeon_entrance('city')
     assert entrance and data.MAP_NODES[entrance]['region'] == 'depths'
-    # Pretend the player died deep in the city dungeon.
+    deep = next(n for n, spec in data.MAP_NODES.items()
+                if data.dungeon_biome(n) == 'city' and n != entrance)
+    doc['position'] = deep
+    doc['hp'] = 1
+    db._compost(table, _sid(table), doc, 'test death')
+    # Provisional position is the mouth: rolling without choosing stays in the dark.
+    assert doc['position'] == entrance
+    pr = doc.get('pendingRespawn')
+    assert pr is not None
+    gates = {o['gate'] for o in pr['options']}
+    # City home + city dungeon → home & surface dedup to one → 2 options.
+    assert gates == {data.HOME_GATES['city'], entrance}
+    assert len(pr['options']) == 2
+
+
+def test_compost_in_foreign_depths_offers_three_gates(table):
+    # Home elsewhere: home, this biome's surface, and the mouth are all distinct.
+    doc = _join(table, home='garden')
+    entrance = data.dungeon_entrance('city')
     deep = next(n for n, spec in data.MAP_NODES.items()
                 if data.dungeon_biome(n) == 'city' and n != entrance)
     doc['position'] = deep
     doc['hp'] = 1
     db._compost(table, _sid(table), doc, 'test death')
     assert doc['position'] == entrance
-    assert 'pendingRespawn' not in doc          # no choice for a depths death
+    pr = doc.get('pendingRespawn')
+    assert pr is not None
+    gates = {o['gate'] for o in pr['options']}
+    assert gates == {data.HOME_GATES['garden'],   # home
+                     data.HOME_GATES['city'],      # this biome's surface
+                     entrance}                     # dungeon mouth
+    assert len(pr['options']) == 3
+
+
+def test_respawn_to_surface_from_depths(table):
+    # The respawn action accepts the surface gate offered after a depths death.
+    doc = _join(table, home='garden')
+    entrance = data.dungeon_entrance('city')
+    deep = next(n for n, spec in data.MAP_NODES.items()
+                if data.dungeon_biome(n) == 'city' and n != entrance)
+    doc['position'] = deep
+    doc['hp'] = 1
+    db._compost(table, _sid(table), doc, 'test death')
+    db._put_player(table, doc)
+    surface = data.HOME_GATES['city']
+    status, resp = act(table, 'respawn', gate=surface)
+    assert status == 200
+    you = db._get_player(table, _sid(table), 'user-alex')
+    assert you['position'] == surface
+    assert 'pendingRespawn' not in you
 
 
 def test_compost_on_surface_unchanged(table):
@@ -181,7 +224,8 @@ def test_lair_still_grants_the_sigil(biome):
 
 # ── Post-boss escape ladder (specs/2026-07-20-undercity-escape-ladder-*) ──────
 # A rusty escape ladder appears beside each sigil lair once you personally clear
-# it, teleporting you one-way up to the surface mouth.
+# it. Two-step climb: landing STOPS you on the spur; a later roll offers the
+# surface mouth as a tap-to-climb destination that hauls you one-way up and out.
 
 @pytest.mark.parametrize('biome', sorted(data.BIOMES))
 def test_escape_ladder_adjacent_to_each_sigil_lair(biome):
@@ -239,15 +283,56 @@ def test_escape_ladder_reachable_on_any_roll_from_the_lair(table, biome, roll):
     assert esc in dests
 
 
-def test_landing_escape_ladder_exits_to_surface_mouth(table):
+def test_landing_escape_ladder_stops_without_teleport(table):
+    # Two-step climb (2026-07-22 revision): landing on the spur STOPS you there
+    # (bonk) — it no longer teleports. You climb out on a later roll by tapping
+    # the ladder (see the climb tests below).
     doc = _join(table)
     doc['poiClaims'] = ['city_lair']
     doc['position'] = 'city_esc'
     doc['restsUsed'] = ['some_rest']         # left over from the descent
     ev = db._resolve_space(table, _sid(table), doc, 'city_esc', 'city_lair')
     assert ev['type'] == 'ladder'
-    assert doc['position'] == 'city_lt'      # teleported up to the surface mouth
-    assert doc['restsUsed'] == []            # leaving the depths resets rest
+    assert doc['position'] == 'city_esc'     # you stop on the spur, no teleport
+    assert doc['restsUsed'] == ['some_rest'] # still in the depths — rest intact
+
+
+def test_escape_ladder_roll_offers_climb_to_surface(table):
+    # Standing on a claimed escape spur, a roll offers the surface mouth as a
+    # tap-to-climb destination (in addition to walking back into the maze).
+    doc = _join(table)
+    doc['poiClaims'] = ['city_lair']
+    doc['position'] = 'city_esc'
+    doc['rolls'] = 3
+    db._roll(table, _sid(table), doc, {})
+    assert 'city_lt' in doc['pendingMove']['dests']
+
+
+def test_escape_ladder_climb_relocates_and_resets_rest(table):
+    # Tapping the spur (moving to the surface mouth) is the one-way climb out:
+    # it relocates you to <biome>_lt and resets per-descent rest.
+    doc = _join(table)
+    doc['poiClaims'] = ['city_lair']
+    doc['position'] = 'city_esc'
+    doc['restsUsed'] = ['some_rest']
+    doc['rolls'] = 3
+    db._roll(table, _sid(table), doc, {})
+    doc = db._get_player(table, _sid(table), 'user-alex')  # reload, as handle() does
+    status, resp = db._move(table, _sid(table), doc, {'to': 'city_lt'})
+    assert status == 200
+    assert doc['position'] == 'city_lt'      # climbed out to the surface mouth
+    assert doc['restsUsed'] == []            # left the depths — rest resets
+    assert resp['spaceEvent']['type'] == 'ladder'
+
+
+def test_escape_ladder_climb_not_offered_without_claim(table):
+    # The climb is gated on personally clearing the lair, mirroring the movement
+    # gate — no claim, no surface mouth on offer.
+    doc = _join(table)                        # no poiClaims
+    doc['position'] = 'city_esc'
+    doc['rolls'] = 3
+    db._roll(table, _sid(table), doc, {})
+    assert 'city_lt' not in doc['pendingMove']['dests']
 
 
 def test_landing_normal_entrance_ladder_does_not_teleport(table):

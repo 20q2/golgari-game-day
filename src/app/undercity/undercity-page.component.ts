@@ -76,8 +76,11 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   protected readonly effectiveMaxHp = computed(() => {
     const you = this.store.you();
     if (!you) return 1;
-    // Troll Hide is the only gear that raises max HP.
-    return you.maxHp + (you.gear?.['carapace'] === 'troll_hide' ? 6 : 0);
+    // The server already reports the effective max (base + every +Max HP gear
+    // piece + the Carapace Grind perk) on both the state fetch and every action
+    // response, so trust it directly. Re-deriving a single gear's bonus here
+    // used to double-count Troll Hide and miss all the other maxHp sources.
+    return you.maxHp;
   });
 
   protected readonly xpPct = computed(() => {

@@ -350,12 +350,12 @@ def test_victim_write_conflict_retries_once(table, monkeypatch):
 
 def test_teleport_moves_and_resolves_space(table):
     act(table, 'join', starter='pest', home='city')
-    give_book(table, 'user-alex', 'vagrants_chapbook')          # skitter_step, range 3
+    give_book(table, 'user-alex', 'tome_of_deep_roads')         # deep_step, range 6
     doc = db._get_player(table, _sid(table), 'user-alex')
     start = doc['position']
     # Any real node exactly 1 step away.
     dest = data.MAP_NODES[start]['neighbors'][0]
-    status, resp = act(table, 'cast', spellId='skitter_step', source='grimoire',
+    status, resp = act(table, 'cast', spellId='deep_step', source='grimoire',
                        target=dest)
     assert status == 200
     assert resp['spaceEvent']['type']                            # space resolved
@@ -365,17 +365,32 @@ def test_teleport_moves_and_resolves_space(table):
 
 def test_teleport_range_and_bogus_node(table):
     act(table, 'join', starter='pest', home='city')
-    give_book(table, 'user-alex', 'vagrants_chapbook')
+    give_book(table, 'user-alex', 'tome_of_deep_roads')
     doc = db._get_player(table, _sid(table), 'user-alex')
-    status, resp = act(table, 'cast', spellId='skitter_step', source='grimoire',
-                       target=far_node(doc['position'], 3))
+    status, resp = act(table, 'cast', spellId='deep_step', source='grimoire',
+                       target=far_node(doc['position'], 6))
     assert status == 409 and resp['code'] == 'out_of_range'
-    status, resp = act(table, 'cast', spellId='skitter_step', source='grimoire',
+    status, resp = act(table, 'cast', spellId='deep_step', source='grimoire',
                        target='no-such-node')
     assert status == 400 and resp['code'] == 'invalid_target'
-    status, resp = act(table, 'cast', spellId='skitter_step', source='grimoire',
+    status, resp = act(table, 'cast', spellId='deep_step', source='grimoire',
                        target=doc['position'])
     assert status == 400 and resp['code'] == 'invalid_target'
+
+
+def test_skitter_step_loads_die_capped_at_three(table):
+    act(table, 'join', starter='pest', home='city')
+    give_book(table, 'user-alex', 'vagrants_chapbook')          # skitter_step, 1–3
+    status, resp = act(table, 'cast', spellId='skitter_step', source='grimoire', value=3)
+    assert status == 200
+    assert resp['you']['pendingLoadedDie'] == 3
+    # Values above the cap are rejected (after clearing the cooldown).
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    doc['spellCooldowns'] = {}
+    del doc['pendingLoadedDie']
+    db._put_player(table, doc)
+    status, resp = act(table, 'cast', spellId='skitter_step', source='grimoire', value=4)
+    assert status == 400
 
 
 def test_recall_returns_home(table):

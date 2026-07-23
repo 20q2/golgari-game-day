@@ -18,6 +18,8 @@ export interface SpellInfo {
   cooldownMin: number;
   effect: SpellEffect;
   range?: number;
+  /** fate_die: highest face the value-picker offers (defaults to 6). */
+  maxValue?: number;
   desc: string;
   /** Material Icons ligature name. */
   icon: string;
@@ -34,7 +36,7 @@ export const SPELLS: SpellInfo[] = [
   { id: 'spore_bolt', name: 'Spore Bolt', category: 'field', tier: 1, cooldownMin: 20, effect: 'field_damage', range: 6, desc: 'A puff of caustic spores: 12 damage at range.', icon: 'flash_on' },
   { id: 'mend_flesh', name: 'Mend Flesh', category: 'buff', tier: 1, cooldownMin: 20, effect: 'self_heal', desc: 'Knit your wounds: restore 12 HP.', icon: 'healing' },
   { id: 'harden_shell', name: 'Harden Shell', category: 'buff', tier: 1, cooldownMin: 20, effect: 'self_buff', desc: '+2 DEF in your next battle.', icon: 'shield' },
-  { id: 'skitter_step', name: 'Skitter Step', category: 'traversal', tier: 1, cooldownMin: 25, effect: 'teleport', range: 3, desc: 'Blink to any space within 3 steps.', icon: 'directions_run' },
+  { id: 'skitter_step', name: 'Skitter Step', category: 'traversal', tier: 1, cooldownMin: 25, effect: 'fate_die', maxValue: 3, desc: 'Skitter ahead: choose your next roll (1–3).', icon: 'directions_run' },
   // Tier II
   { id: 'rot_bolt', name: 'Rot Bolt', category: 'field', tier: 2, cooldownMin: 25, effect: 'field_damage', range: 7, desc: 'A lance of concentrated rot: 20 damage at range.', icon: 'thunderstorm' },
   { id: 'weaken_hex', name: 'Weaken Hex', category: 'field', tier: 2, cooldownMin: 25, effect: 'field_curse', range: 6, desc: 'Curse a rival: −3 ATK in their next battle.', icon: 'heart_broken' },

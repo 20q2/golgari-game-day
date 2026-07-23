@@ -155,6 +155,35 @@ def test_lair_landable_from_junction_both_parities(biome, salt):
 
 
 @pytest.mark.parametrize('biome', sorted(BIOMES))
+@pytest.mark.parametrize('salt', range(8))
+def test_antechamber_gates_sit_on_the_grid(biome, salt):
+    """The two gates form a grid-scaled diamond straddling the J->lair edge:
+    each offset perpendicular to that edge by half a cell (SPACING/2), on
+    opposite sides -> they land on grid vertices and stay SPACING apart,
+    instead of piling up near the midpoint."""
+    nodes = gen.generate_depths(gen._seed_int(f'grid-{salt}', biome), biome)
+    ids = {n['id'] for n in nodes}
+    by = _by_id(nodes)
+
+    lair = by[f'{biome}_lair']
+    j = (set(_in_pocket_neighbors(by[f'{biome}_lg1'], ids)) - {f'{biome}_lair'}).pop()
+    jn = by[j]
+    lg1, lg2 = by[f'{biome}_lg1'], by[f'{biome}_lg2']
+
+    ex, ey = lair['x'] - jn['x'], lair['y'] - jn['y']        # J -> lair edge vector
+    edge = (ex ** 2 + ey ** 2) ** 0.5
+    assert edge == gen.SPACING                                # J and lair are adjacent cells
+    mx, my = (lair['x'] + jn['x']) / 2, (lair['y'] + jn['y']) / 2
+
+    for g in (lg1, lg2):
+        dx, dy = g['x'] - mx, g['y'] - my
+        assert abs(ex * dx + ey * dy) < 1e-6                  # offset is perpendicular to the edge
+        assert abs((dx ** 2 + dy ** 2) ** 0.5 - gen.SPACING / 2) < 1.0   # half a cell out
+    # gates are on opposite sides of the edge, a full cell apart
+    assert (lg2['x'] - mx, lg2['y'] - my) == (-(lg1['x'] - mx), -(lg1['y'] - my))
+
+
+@pytest.mark.parametrize('biome', sorted(BIOMES))
 def test_generation_is_deterministic(biome):
     seed = gen._seed_int('same-night', biome)
     assert gen.generate_depths(seed, biome) == gen.generate_depths(seed, biome)
