@@ -91,6 +91,13 @@ export const GEAR: GearInfo[] = [
     desc: '+12 max HP, +1 DEF.' },
   { id: 'leviathan_hide', name: 'Leviathan Hide', slot: 'carapace', tier: 3, cost: 82, maxHp: 20, def: 2,
     desc: '+20 max HP, +2 DEF.' },
+  // Hybrid line (tier 2): two-stat, no rider — mirrors undercity_data.py.
+  { id: 'duelist_fang', name: 'Duelist Fang', slot: 'fang', tier: 2, cost: 46, atk: 3, spd: 2,
+    desc: '+3 ATK, +2 SPD. No rider — split stats bridge the Aggress and Feint tracks.' },
+  { id: 'warbrand_plate', name: 'Warbrand Plate', slot: 'carapace', tier: 2, cost: 46, def: 3, atk: 2,
+    desc: '+3 DEF, +2 ATK. No rider — split stats bridge the Guard and Aggress tracks.' },
+  { id: 'wardens_charm', name: "Warden's Charm", slot: 'charm', tier: 2, cost: 46, spd: 2, def: 2,
+    desc: '+2 SPD, +2 DEF. No rider — split stats bridge the Feint and Guard tracks.' },
   { id: 'quartz_charm', name: 'Quartz Charm', slot: 'charm', tier: 1, cost: 20, rider: 'trickster', spd: 1,
     desc: '+1 SPD · Trickster: a lost Feint punishes 50% less.' },
   { id: 'venom_charm', name: 'Venom Charm', slot: 'charm', tier: 1, cost: 25, rider: 'venomtrick', spd: 1,
