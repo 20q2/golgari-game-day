@@ -647,6 +647,18 @@ def spell_dodge_chance(caster_spd: int, target_spd: int) -> int:
     return max(data.SPELL_DODGE_MIN, min(data.SPELL_DODGE_MAX, raw))
 
 
+def spell_power(spell: dict, player: dict) -> int:
+    """Effective magnitude of a power-carrying spell, scaled by caster level.
+    `base + round(SPELL_POWER_PER_LEVEL * (level - 1))`; level-1 casts land for
+    the printed base. Spells with no 'power' return 0 (buffs/curses/traversal are
+    never routed here). Pure — no I/O."""
+    base = spell.get('power', 0)
+    if not base:
+        return base
+    level = player.get('level', 1)
+    return base + round(data.SPELL_POWER_PER_LEVEL * (level - 1))
+
+
 # ── Leveling ─────────────────────────────────────────────────────────────────
 
 def apply_level_ups(player: dict) -> int:

@@ -668,3 +668,17 @@ def test_state_exposes_guardian_pools(table):
     assert guardians['bar_e']['npcId'] == 'golgari_grave_troll'
     assert guardians['bar_e']['hp'] == data.BARRIER_GUARDIANS['bar_e']['hp']
     assert 'city_lair' in guardians and guardians['city_lair']['kind'] == 'lair'
+
+
+# ── Spell level-scaling (design 2026-07-22 §2.5 pillar 1) ────────────────────
+
+def test_spell_power_scales_with_level():
+    spell = {'power': 12}
+    assert engine.spell_power(spell, {'level': 1}) == 12      # base at level 1
+    assert engine.spell_power(spell, {'level': 6}) == 17      # 12 + round(1.0*5)
+    assert engine.spell_power(spell, {'level': 10}) == 21     # 12 + 9
+
+
+def test_spell_power_flat_for_powerless_spell():
+    assert engine.spell_power({'effect': 'self_buff'}, {'level': 10}) == 0
+    assert engine.spell_power({}, {}) == 0
