@@ -1241,10 +1241,12 @@ def handle_state(table, query_params):
     mk = table.query(
         KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
         ExpressionAttributeValues={':pk': pk, ':sk': 'MARKET#'})
-    market = [{'id': m['id'], 'sellerId': m['sellerId'],
-               'sellerName': m.get('sellerName', ''),
-               'gearId': m['gearId'], 'price': int(m['price'])}
-              for m in (_clean(i) for i in mk['Items'])]
+    market = []
+    for m in (_clean(i) for i in mk['Items']):
+        kind, item_id = _market_kind(m)
+        market.append({'id': m['id'], 'sellerId': m['sellerId'],
+                       'sellerName': m.get('sellerName', ''),
+                       'kind': kind, 'itemId': item_id, 'price': int(m['price'])})
 
     # Season-global first-conqueror records. FIRST# sorts before PLAYER#, so it
     # is NOT covered by the sk >= 'PLAYER#' range query above — it needs its own.
@@ -4002,8 +4004,10 @@ def _cast(table, sid, doc, payload):
     if not spell:
         return _spell_err('Unknown spell.', 'unknown_spell', 400)
     if source == 'innate':
-        if data.BIOME_SPELLS.get(doc.get('homeBiome')) != spell_id:
-            return _spell_err("That is not your biome's gift.", 'not_castable')
+        innate_ids = {data.BIOME_SPELLS.get(doc.get('homeBiome')),
+                      data.SPECIES_SPELLS.get(doc.get('species'))}
+        if spell_id not in innate_ids:
+            return _spell_err("That is not one of your innate gifts.", 'not_castable')
     elif source == 'grimoire':
         gid = doc.get('equippedGrimoire') or ''
         if gid not in (doc.get('grimoires') or []) or spell_id not in _book_spells(doc, gid):
