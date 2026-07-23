@@ -1220,11 +1220,13 @@ def test_gear_roster_doubled():
     # Full rarity ladders (gear-rarity Phase 2): every effect family spans
     # Common/Rare/Legendary. 48 combat pieces + 2 illuminating (Torchfang fang,
     # Glowspore charm) = 50, plus the 3-tier pure-HP Vital carapace line = 53.
-    assert len(data.GEAR) == 53
+    # Mythic (tier 4, craft-only) adds one piece per rider family: +5 fang,
+    # +5 carapace, +6 charm = 16 -> 69.
+    assert len(data.GEAR) == 69
     slots = {}
     for g in data.GEAR.values():
         slots[g['slot']] = slots.get(g['slot'], 0) + 1
-    assert slots == {'fang': 16, 'carapace': 18, 'charm': 19}
+    assert slots == {'fang': 21, 'carapace': 23, 'charm': 25}
 
 
 def test_battle_serde_persists_new_fields():

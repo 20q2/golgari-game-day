@@ -183,13 +183,50 @@ def test_upgrade_rare_to_legendary_needs_ichor(table):
     assert doc['materials']['ichor'] == 0
 
 
-def test_upgrade_legendary_is_max(table):
-    sid, doc = _player_at(table, 'city_r0', spores=100)
-    doc['gear'] = {'carapace': 'bramble_aegis'}         # tier-3, top rung
-    doc['materials'] = {'moltings': 99, 'ichor': 99}
+def test_upgrade_legendary_to_mythic_needs_3_ichor(table):
+    sid, doc = _player_at(table, 'city_r0', spores=data.UPGRADE_SPORES[4])
+    doc['gear'] = {'carapace': 'bramble_aegis'}        # tier-3 bramble (Legendary)
+    doc['materials'] = {'moltings': 0, 'ichor': 2}     # one short of 3
     status, _ = db._upgrade_gear(
         table, sid, doc, {'target': {'where': 'equipped', 'slot': 'carapace'}})
+    assert status == 409                               # blocked: not enough Ichor
+    assert doc['gear']['carapace'] == 'bramble_aegis'  # unchanged
+
+    doc['materials']['ichor'] = 3                      # now exactly enough
+    status, _ = db._upgrade_gear(
+        table, sid, doc, {'target': {'where': 'equipped', 'slot': 'carapace'}})
+    assert status == 200
+    assert doc['gear']['carapace'] == data.GEAR_FAMILY['bramble'][4]  # -> Mythic
+    assert doc['materials']['ichor'] == 0                            # 3 spent
+    assert doc['spores'] == 0                                        # UPGRADE_SPORES[4] spent
+
+
+def test_upgrade_mythic_is_max(table):
+    sid, doc = _player_at(table, 'city_r0', spores=999)
+    doc['gear'] = {'carapace': data.GEAR_FAMILY['bramble'][4]}  # tier-4, top rung
+    doc['materials'] = {'moltings': 99, 'ichor': 99}
+    status, body = db._upgrade_gear(
+        table, sid, doc, {'target': {'where': 'equipped', 'slot': 'carapace'}})
     assert status == 409
+    assert 'Mythic' in body.get('error', '')
+
+
+def test_mythic_gear_is_craft_only(table):
+    """No tier-4 piece is reachable by any find path (drop / bazaar / boss trove)."""
+    mythic = {gid for gid, g in data.GEAR.items() if g['tier'] == 4}
+    assert mythic                                       # sanity: Mythics exist
+    for src, (_chance, weights) in data.GEAR_DROP.items():
+        assert 4 not in weights, f"{src} can drop a tier-4 piece"
+    assert 4 not in data.BAZAAR_GEAR_TIERS              # never in the biome bazaar
+    assert 4 not in data.ISLAND_BAZAAR_GEAR_TIERS       # never in the island bazaar
+
+
+def test_mythic_readbonus_scales_seer_glint(table):
+    # Mythic seer/glint carry a readBonus above their Legendary rung.
+    seer = data.GEAR[data.GEAR_FAMILY['seer'][4]]['readBonus']
+    glint = data.GEAR[data.GEAR_FAMILY['glint'][4]]['readBonus']
+    assert seer > data.GEAR[data.GEAR_FAMILY['seer'][3]]['readBonus']
+    assert glint > data.GEAR[data.GEAR_FAMILY['glint'][3]]['readBonus']
 
 
 def test_upgrade_stash_piece(table):
