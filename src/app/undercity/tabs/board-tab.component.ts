@@ -1258,20 +1258,27 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       this.hideInfo();
       return;
     }
-    // Post-boss escape climb: tapping the escape spur you're standing on (fresh
-    // roll, before walking) hauls you one-way up to the surface mouth. The exit
-    // is a teleport dest with no walkable edge, so the spur itself is the tap
-    // target (syncBoard lights it as a choice). Only at the walk start, so it
-    // never shadows retracing a step back onto the spur.
-    const climb = this.escapeClimbTarget();
-    const climbStep = this.stepping();
+    // Standing on a ladder (paused here on an earlier roll, or parked at turn
+    // start): tapping it re-opens the crossing modal so you can Travel through.
+    // Only while you're still ON the ladder — once you've walked off it, a tap on
+    // the ladder retraces the step instead (handled below).
+    const stepNow = this.stepping();
+    const onLadder = !stepNow || (stepNow.path.length === 1 && stepPos(stepNow) === nodeId);
     if (
-      climb &&
+      onLadder &&
       nodeId === this.store.you()?.position &&
       !this.busy() &&
-      (!climbStep || climbStep.path.length === 1)
+      this.map.nodes.find((n) => n.id === nodeId)?.type === 'ladder'
     ) {
-      void this.move(climb);
+      const to = this.ladderTargetOf(nodeId);
+      this.spaceModal.set({
+        type: 'ladder',
+        to: to ?? undefined,
+        oneWay: nodeId.endsWith('_esc'),
+        text: to
+          ? 'A rusted ladder leads to the far side. Travel through?'
+          : 'A rusted ladder — sealed until you clear its lair.',
+      } as SpaceEvent);
       return;
     }
     const step = this.stepping();
@@ -1329,12 +1336,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // Evolved units (tier > 1) halt on a bridge mouth to pay the toll — a bonk
     // stop like a sealed barrier, so the move auto-commits on arrival.
     const bridgeStop = node?.type === 'tunnel' && (this.store.you()?.tier ?? 1) > 1;
-    // Post-boss escape spur: a degree-1 dead-end bonk stop (mirrors the server's
-    // _closed_barriers). You march up and HALT on it whatever the roll, so the
-    // move commits on arrival — no exact-count landing required. You then climb
-    // out on a later roll by tapping the spur (see the escape-climb handler).
-    const escapeStop = node?.type === 'ladder' && node.neighbors.length === 1;
-    if (step.left === 1 || sealedStop || bridgeStop || escapeStop) void this.move(nodeId);
+    // Any ladder is a bonk-stop: the walk halts on arrival and commits, so the
+    // server can bank the leftover steps and offer the crossing (see the ladder
+    // space-event modal). Replaces the old degree-1-only escape-spur stop.
+    const ladderStop = node?.type === 'ladder';
+    if (step.left === 1 || sealedStop || bridgeStop || ladderStop) void this.move(nodeId);
   }
 
   // ── Ashen Wilds first-entry warning ─────────────────────────────────────────
@@ -1507,24 +1513,45 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
    *  (those keep closedBarrierIds()). */
   private stepClosedIds(): string[] {
     const closed = this.closedBarrierIds();
+    // Every ladder halts a walk (bonk-stop), so a mover always lands ON a ladder
+    // and never corridors through — matching the server's _stop_nodes. Added to
+    // the WALKING set only; closedBarrierIds() (spell range) is left alone.
+    const ladders = this.map.nodes.filter((n) => n.type === 'ladder').map((n) => n.id);
+    const base = [...closed, ...ladders];
     if ((this.store.you()?.tier ?? 1) > 1) {
       const bridges = this.map.nodes.filter((n) => n.type === 'tunnel').map((n) => n.id);
-      return [...closed, ...bridges];
+      return [...base, ...bridges];
     }
-    return closed;
+    return base;
   }
 
-  /** The biome surface mouth a post-boss escape spur climbs out to, when the
-   *  server is currently offering it as a one-way climb (i.e. you're standing on
-   *  a claimed `<biome>_esc` and rolled) — else null. The exit is a teleport dest
-   *  with no walkable edge, so it can't be reached as a walk step; tapping the
-   *  spur itself commits the climb. */
-  private escapeClimbTarget(): string | null {
-    const you = this.store.you();
-    const pos = you?.position;
-    if (!pos || !pos.endsWith('_esc')) return null;
-    const exit = pos.split('_')[0] + '_lt';
-    return (you?.pendingMove?.dests ?? []).includes(exit) ? exit : null;
+  /** The far end a ladder crosses to, for display / button-gating (the server is
+   *  authoritative on the actual cross). Escape spurs go one-way to the biome
+   *  surface mouth, and only when you hold that lair's claim; a descent ladder
+   *  goes to its ladder-type neighbour. Null when there is no crossing. */
+  private ladderTargetOf(nodeId: string): string | null {
+    if (nodeId.endsWith('_esc')) {
+      const biome = nodeId.split('_')[0];
+      const claimed = (this.store.you()?.poiClaims ?? []).includes(biome + '_lair');
+      return claimed ? biome + '_lt' : null;
+    }
+    const node = this.map.nodes.find((n) => n.id === nodeId);
+    if (node?.type !== 'ladder') return null;
+    const partner = node.neighbors.find(
+      (nb) => this.map.nodes.find((m) => m.id === nb)?.type === 'ladder',
+    );
+    return partner ?? null;
+  }
+
+  /** Ladder modal "Travel through": free relocate to the far end. The server
+   *  preserves any banked steps as a fresh pendingMove, so the store effect
+   *  resumes the walk on the other side (or ends the turn if 0 remain). */
+  protected async travelLadder(): Promise<void> {
+    this.closeSpaceModal();
+    await this.run(async () => {
+      const resp = await this.store.action('ladder-cross', {});
+      if (resp.you) this.board?.centerOn(resp.you.position);
+    });
   }
 
   private syncBoard(): void {
@@ -1577,12 +1604,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.board.setWorldEvent(this.store.worldEvent());
     const here = step ? stepPos(step) : null;
     const choices = step ? this.stepChoices(step) : [];
-    // Post-boss escape climb: light the escape spur you're standing on as a
-    // choice (fresh roll, before walking) so it reads as "tap to climb out". The
-    // exit itself is off on the surface layer, so the spur is the tap target.
-    if (step && step.path.length === 1 && here && this.escapeClimbTarget() && !choices.includes(here)) {
-      choices.push(here);
-    }
     const tele = this.castTeleport();
     this.board.setChoices(step ? choices : (tele?.nodes ?? null));
     this.board.setBackChoice(step ? stepPrev(step) : null);
@@ -1627,6 +1648,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Open the right modal/animation for a landing event (move or teleport). */
   private routeSpaceEvent(ev: SpaceEvent, preHp: number): void {
+    if (ev.type === 'ladder_cross') return;   // silent free relocate, no modal
     if (ev.type === 'battle_start' && ev.npc) {
       this.openLiveBattle(ev, preHp);
       return;

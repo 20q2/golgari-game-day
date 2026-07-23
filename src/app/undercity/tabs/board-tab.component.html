@@ -377,6 +377,13 @@
             </button>
             <button class="uc-btn" (click)="closeSpaceModal()">Back off</button>
           </div>
+        } @else if (ev.type === 'ladder') {
+          <div class="event-actions">
+            @if (ev.to) {
+              <button class="uc-btn uc-btn-primary" (click)="travelLadder()">Travel through</button>
+            }
+            <button class="uc-btn" (click)="closeSpaceModal()">Close</button>
+          </div>
         } @else {
           <button class="uc-btn uc-btn-primary" (click)="closeSpaceModal()">OK</button>
         }

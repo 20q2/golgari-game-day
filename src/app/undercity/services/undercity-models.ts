@@ -547,6 +547,9 @@ export interface SpaceEvent {
   hat?: string;
   duplicate?: boolean;
   to?: string;
+  /** ladder: the post-boss escape climb (one-way to the surface) vs a two-way
+   *  descent pair. Used only to flavour the ladder crossing modal. */
+  oneWay?: boolean;
   options?: string[];
   node?: string;
   stock?: TradeStockItem[];

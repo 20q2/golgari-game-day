@@ -298,7 +298,6 @@ interface Layer {
 export class BoardCanvas {
   private ctx: CanvasRenderingContext2D;
   private nodeMap = new Map<string, BoardNode>();
-  private ladderPartner = new Map<string, string>();
   private players: BoardPlayer[] = [];
   private snares = new Set<string>();
   private barriersOpen = new Set<string>();
@@ -498,13 +497,6 @@ export class BoardCanvas {
     this.revealAll = !this.interactive;
     this.ctx = canvas.getContext('2d')!;
     for (const n of map.nodes) this.nodeMap.set(n.id, n);
-    // A ladder node's partner is its neighbor that is also a ladder — its
-    // twin on the other layer, tapped to descend/ascend.
-    for (const n of map.nodes) {
-      if (n.type !== 'ladder') continue;
-      const partner = n.neighbors.find((nb) => this.nodeMap.get(nb)?.type === 'ladder');
-      if (partner) this.ladderPartner.set(n.id, partner);
-    }
     this.layerSpecs = computeLayers(map);
     this.layerOf = layerIndex(this.layerSpecs);
     for (const spec of this.layerSpecs) {
@@ -1046,15 +1038,7 @@ export class BoardCanvas {
         bestDist = dist;
       }
     }
-    let tappedId = best?.id ?? null;
-    // If the tapped space is a ladder whose hidden-layer partner is a current
-    // move choice, treat the tap as choosing to cross (descend/ascend).
-    if (tappedId) {
-      const partner = this.ladderPartner.get(tappedId);
-      if (partner && this.choices.has(partner) && !this.choices.has(tappedId)) {
-        tappedId = partner;
-      }
-    }
+    const tappedId = best?.id ?? null;
     this.onTapNode(tappedId);
   }
 
@@ -1336,12 +1320,7 @@ export class BoardCanvas {
   /** One board space as a 3D "coin disc": side wall, lit top face, glyph, tells. */
   private drawSpace(n: BoardNode, elapsed: number): void {
     const ctx = this.ctx;
-    // A ladder whose hidden-layer partner is a live choice lights up the
-    // visible ladder disc so you can tap it to descend/ascend.
-    const partner = this.ladderPartner.get(n.id);
-    const isChoice =
-      this.choices.has(n.id) ||
-      (!!partner && this.choices.has(partner) && !this.inActive(partner));
+    const isChoice = this.choices.has(n.id);
     const isBack = n.id === this.backChoice;
     ctx.save();
     if (isChoice || isBack) {
