@@ -99,12 +99,12 @@ BLINK_COOLDOWN_ROLLS = 1
 # a piece up its rarity ladder.
 GEAR_STASH_SIZE = 6           # capped hold for gear you aren't wearing
 # Moltings (common material) yielded by grinding a piece of the given rarity.
-SALVAGE_MOLTINGS = {1: 1, 2: 2, 3: 4}
-SALVAGE_ICHOR = 1             # Chrysalis Ichor (rare material) from grinding a Legendary
+SALVAGE_MOLTINGS = {1: 1, 2: 2, 3: 4, 4: 6}
+SALVAGE_ICHOR = 1             # Chrysalis Ichor from grinding a Legendary OR Mythic (tier >= 3)
 # Blacksmith upgrade cost to reach the given tier (from the tier below).
-UPGRADE_SPORES = {2: 40, 3: 80}
-UPGRADE_MOLTINGS = {2: 3, 3: 6}
-UPGRADE_ICHOR = {2: 0, 3: 1}  # Rare->Legendary needs 1 Ichor (deep-content gate)
+UPGRADE_SPORES = {2: 40, 3: 80, 4: 150}
+UPGRADE_MOLTINGS = {2: 3, 3: 6, 4: 0}    # Mythic's gate is Ichor, not Moltings
+UPGRADE_ICHOR = {2: 0, 3: 1, 4: 3}  # Rare->Legendary needs 1 Ichor; Legendary->Mythic needs 3
 
 # ── Player Market (Plaza, priced) ────────────────────────────────────────────
 # List stashed gear at a Spore price bounded to a band around its base cost so
@@ -120,21 +120,21 @@ MARKET_MAX_LISTINGS = 5       # active listings per seller
 # riders that today share their T2 value (deep_biter/spiked/rabid/bulwark) so the
 # ladder is monotonic. seer/glint are NOT here — read-rate scales via gear readBonus.
 RIDER_SCALE = {
-    # rider          {1: common, 2: rare, 3: legendary}   # unit / anchor to today's value
-    'barbed':        {1: 1,    2: 2,    3: 3},     # rot stacks on Aggress (T1 today=1)
-    'bloodfang':     {1: 0.40, 2: 0.50, 3: 0.60},  # heal frac of Aggress-win dmg (T1 today=0.40)
-    'deep_biter':    {1: 0.35, 2: 0.50, 3: 0.70},  # +win MULTIPLIER (T2 today=0.50; T3 buffed)
-    'rabid':         {1: 1,    2: 2,    3: 3},      # +ATK ramp per Aggress win (T2 today=2; T3 buffed)
-    'gutcleaver':    {1: 0.35, 2: 0.50, 3: 0.70},  # +win multiplier vs <30% HP (T2 today=0.50)
-    'thick':         {1: 0.15, 2: 0.20, 3: 0.25},  # stall chip-through mult (T1 today=0.15)
-    'spiked':        {1: 1.3,  2: 1.5,  3: 1.8},    # guard-counter reflect mult (T2 today=1.5; T3 buffed)
-    'bramble':       {1: 2,    2: 3,    3: 4},      # flat reflect when struck (T1 today=2)
-    'bulwark':       {1: 1,    2: 1,    3: 2},      # +DEF per Guard round (T2 today=1; T3 buffed)
-    'mossback':      {1: 2,    2: 3,    3: 4},      # heal per Guard round (T2 today=3)
-    'trickster':     {1: 0.50, 2: 0.60, 3: 0.70},  # frac of lost-Feint punish negated (T1 today=0.50)
-    'serrated':      {1: 1,    2: 2,    3: 3},      # flat cut to foe next-round dmg (T2 today=2)
-    'venomtrick':    {1: 1,    2: 2,    3: 3},      # rot on a winning Feint (T1 today=1)
-    'cutpurse':      {1: 4,    2: 6,    3: 9},      # Spores after a won fight w/ Feint (T2 today=6)
+    # rider          {1: common, 2: rare, 3: legendary, 4: mythic}   # unit / anchor to today's value
+    'barbed':        {1: 1,    2: 2,    3: 3,    4: 4},     # rot stacks on Aggress (T1 today=1)
+    'bloodfang':     {1: 0.40, 2: 0.50, 3: 0.60, 4: 0.70},  # heal frac of Aggress-win dmg (T1 today=0.40)
+    'deep_biter':    {1: 0.35, 2: 0.50, 3: 0.70, 4: 0.90},  # +win MULTIPLIER (T2 today=0.50; T3 buffed)
+    'rabid':         {1: 1,    2: 2,    3: 3,    4: 4},      # +ATK ramp per Aggress win (T2 today=2; T3 buffed)
+    'gutcleaver':    {1: 0.35, 2: 0.50, 3: 0.70, 4: 0.90},  # +win multiplier vs <30% HP (T2 today=0.50)
+    'thick':         {1: 0.15, 2: 0.20, 3: 0.25, 4: 0.30},  # stall chip-through mult (T1 today=0.15)
+    'spiked':        {1: 1.3,  2: 1.5,  3: 1.8,  4: 2.0},    # guard-counter reflect mult (T2 today=1.5; T3 buffed)
+    'bramble':       {1: 2,    2: 3,    3: 4,    4: 5},      # flat reflect when struck (T1 today=2)
+    'bulwark':       {1: 1,    2: 1,    3: 2,    4: 3},      # +DEF per Guard round (T2 today=1; T3 buffed)
+    'mossback':      {1: 2,    2: 3,    3: 4,    4: 5},      # heal per Guard round (T2 today=3)
+    'trickster':     {1: 0.50, 2: 0.60, 3: 0.70, 4: 0.80},  # frac of lost-Feint punish negated (T1 today=0.50)
+    'serrated':      {1: 1,    2: 2,    3: 3,    4: 4},      # flat cut to foe next-round dmg (T2 today=2)
+    'venomtrick':    {1: 1,    2: 2,    3: 3,    4: 4},      # rot on a winning Feint (T1 today=1)
+    'cutpurse':      {1: 4,    2: 6,    3: 9,    4: 12},     # Spores after a won fight w/ Feint (T2 today=6)
 }
 
 # ── Movement ─────────────────────────────────────────────────────────────────
