@@ -135,6 +135,22 @@ Extend the existing suite:
 
 Run: `cd infrastructure/lambda && python -m pytest tests -q` — keep green.
 
+## 5. Blacksmith — tag equipped rows (small, related UI)
+
+The Blacksmith upgrade list (`plaza-tab.component.html`, the `b === 'blacksmith'`
+block) already distinguishes rows by `where: 'equipped' | 'stash'` and renders a
+`stash` tag for stash rows, but equipped rows carry no marker. Add a matching tag
+so players can see which upgrade candidates are the gear they're currently wearing:
+
+```html
+@if (row.where === 'stash') { <span class="forge-tag">stash</span> }
+@if (row.where === 'equipped') { <span class="forge-tag">equipped</span> }
+```
+
+Client-only, no backend or data changes. Scope note: this marks *equipped gear
+that still has a higher rung* (the only equipped gear the Blacksmith lists) — a
+full always-on loadout summary was considered and declined.
+
 ## Notes / invariants
 
 - No new balance scalars beyond reusing `MARKET_PRICE_MIN/MAX_PCT`.
