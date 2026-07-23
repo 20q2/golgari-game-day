@@ -710,6 +710,8 @@ def effective_stats(player: dict) -> dict:
         mult = buff.get('mult', 1)
         if kind == 'rot_surge':
             eff['atk'] += 3 * mult
+        elif kind == 'acorn_fury':
+            eff['atk'] += 2 * mult
         elif kind == 'cursed_idol':
             eff['atk'] = max(1, eff['atk'] - 1)
         elif kind == 'bone_chill':
@@ -743,13 +745,27 @@ def effective_stats(player: dict) -> dict:
 
 # ── Attribute perks (design 2026-07-21) ──────────────────────────────────────
 
+def perk_stat(player: dict, stat: str) -> int:
+    """Attribute value that counts toward perk thresholds: INVESTED base
+    (species base + level spends + evolution bonuses) PLUS equipped gear.
+    Temporary buffs are deliberately excluded — they flicker round to round and
+    would light/dim perks mid-fight. Reads gear directly rather than going
+    through effective_stats() to avoid the carapace_grind maxHp feedback loop."""
+    val = player.get(stat, 0)
+    for gear_id in (player.get('gear') or {}).values():
+        g = data.GEAR.get(gear_id)
+        if g:
+            val += g.get(stat, 0)
+    return val
+
+
 def attribute_perks(player: dict) -> frozenset:
-    """Perks unlocked by INVESTED attributes (base + spends + evolution bonuses).
-    Reads doc['atk'/'def'/'spd'] directly — gear/buffs never light a perk, so the
-    set is stable across gear swaps and needs no persistence."""
+    """Perks unlocked by base attributes + equipped gear (see perk_stat). Gear
+    can now bridge a creature up to a threshold, so equipping/swapping gear may
+    light or dim a perk; temporary buffs still never do. Derived, not persisted."""
     out = set()
     for stat, tiers in data.PERK_TRACKS.items():
-        val = player.get(stat, 0)
+        val = perk_stat(player, stat)
         for threshold, pid in tiers:
             if val >= threshold:
                 out.add(pid)
