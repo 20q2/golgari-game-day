@@ -9,8 +9,10 @@ import { CONSUMABLE_MAP } from '../data/items';
 interface CellVM {
   /** Not yet dug (still under dirt). */
   covered: boolean;
-  /** A buried find sits under/at this cell. */
+  /** A buried find's footprint includes this cell (any reveal state). */
   hasItem: boolean;
+  /** The find is dug out here — render this cell's slice of the big symbol. */
+  revealedFind: boolean;
   /** Material icon glyph for the find (spore cache or consumable). */
   icon: string | null;
   /** The find is a Spore cache (vs. an item). */
@@ -19,6 +21,15 @@ interface CellVM {
   collected: boolean;
   /** Accessible label / tooltip for the find. */
   label: string;
+  /** Footprint size in cells — the big symbol spans spanC×spanR cells. */
+  spanC: number;
+  spanR: number;
+  /** This cell's position within the footprint (0-based), used to offset the
+   * symbol so the cell clips to the correct slice. */
+  localC: number;
+  localR: number;
+  /** True only on the footprint's top-left cell — anchors the single ✓. */
+  anchor: boolean;
 }
 
 /**
@@ -49,18 +60,25 @@ interface CellVM {
                 class="cell"
                 [class.covered]="vm.covered"
                 [class.dug]="!vm.covered"
-                [class.buried]="vm.hasItem"
+                [class.buried]="vm.revealedFind"
                 [class.spores]="vm.spores"
                 [class.collected]="vm.collected"
-                [attr.title]="vm.hasItem ? vm.label : null"
-                [attr.aria-label]="vm.hasItem ? vm.label : 'rubble'"
+                [attr.title]="vm.revealedFind ? vm.label : null"
+                [attr.aria-label]="vm.revealedFind ? vm.label : 'rubble'"
                 [disabled]="busy || digsLeft < 1 || !vm.covered"
                 (click)="onCell(ri, ci)"
               >
-                @if (vm.hasItem) {
-                  <mat-icon class="find">{{ vm.icon }}</mat-icon>
+                @if (vm.revealedFind) {
+                  <mat-icon
+                    class="find"
+                    [style.--span-c]="vm.spanC"
+                    [style.--span-r]="vm.spanR"
+                    [style.--lc]="vm.localC"
+                    [style.--lr]="vm.localR"
+                    >{{ vm.icon }}</mat-icon
+                  >
                 }
-                @if (vm.collected) {
+                @if (vm.collected && vm.anchor) {
                   <span class="check">✓</span>
                 }
               </button>
@@ -113,8 +131,9 @@ interface CellVM {
         color: #e0c088;
       }
       .dig-grid {
+        --dig-gap: 4px;
         display: grid;
-        gap: 4px;
+        gap: var(--dig-gap);
         margin: 2px auto;
         width: 100%;
         max-width: 300px;
@@ -130,6 +149,7 @@ interface CellVM {
         align-items: center;
         justify-content: center;
         overflow: hidden;
+        container-type: size;
         transition: transform 0.08s ease, filter 0.12s ease;
       }
       .cell:disabled {
@@ -153,33 +173,30 @@ interface CellVM {
       .cell.dug.buried {
         background: radial-gradient(ellipse at center, #3a3120 0%, #262013 90%);
       }
-      .cell.spores.buried .find {
-        color: #e0c088;
-      }
-      /* The buried find icon. Faint + sunk under the dirt while covered; bright
-         once dug out. */
+      /* One symbol spans the whole footprint; each cell's overflow:hidden clips
+         it to this cell's slice. Offsets shift the symbol up/left by this cell's
+         position within the footprint (100% = one cell width/height + one gap). */
       .find {
-        width: 68%;
-        height: 68%;
-        font-size: 20px;
+        position: absolute;
+        overflow: visible;
+        width: calc(var(--span-c) * 100% + (var(--span-c) - 1) * var(--dig-gap));
+        height: calc(var(--span-r) * 100% + (var(--span-r) - 1) * var(--dig-gap));
+        left: calc(var(--lc) * -1 * (100% + var(--dig-gap)));
+        top: calc(var(--lr) * -1 * (100% + var(--dig-gap)));
+        /* Glyph fills the footprint height (cqh = cell height), +12% so corner
+           slices of a diagonal shape still carry recognizable form. */
+        font-size: calc(
+          (var(--span-r) * 100cqh + (var(--span-r) - 1) * var(--dig-gap)) * 1.12
+        );
         line-height: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #cdbfa6;
+        color: #6fae76;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
         z-index: 1;
       }
-      .cell.covered .find {
-        opacity: 0.42;
-        filter: blur(0.4px) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
-        transform: scale(0.9);
-      }
-      .cell.dug.buried .find {
-        opacity: 1;
-        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
-        color: #6fae76;
-      }
-      .cell.dug.buried.spores .find {
+      .cell.spores .find {
         color: #e0c088;
       }
       .cell.collected {
@@ -235,25 +252,48 @@ export class ExcavationModalComponent implements OnChanges {
   private buildView(): CellVM[][] {
     const g = this.grid;
     if (!g) return [];
-    // Map each occupied cell to the find that sits there.
+    // Map each occupied cell to the find that sits there, and precompute each
+    // find's footprint bounding box so one glyph can span it. All dig shapes
+    // are rectangles (1x1 / 1x2 / 2x2), so the bounding box is the footprint.
     const at: (DigItemView | null)[][] = Array.from({ length: g.h }, () =>
       Array<DigItemView | null>(g.w).fill(null),
     );
+    const box = new Map<
+      DigItemView,
+      { minR: number; minC: number; spanR: number; spanC: number }
+    >();
     for (const it of g.items) {
+      let minR = Infinity,
+        minC = Infinity,
+        maxR = -Infinity,
+        maxC = -Infinity;
       for (const [r, c] of it.cells ?? []) {
         if (r >= 0 && r < g.h && c >= 0 && c < g.w) at[r][c] = it;
+        if (r < minR) minR = r;
+        if (c < minC) minC = c;
+        if (r > maxR) maxR = r;
+        if (c > maxC) maxC = c;
       }
+      box.set(it, { minR, minC, spanR: maxR - minR + 1, spanC: maxC - minC + 1 });
     }
     return g.cells.map((row, r) =>
       row.map((code, c) => {
         const it = at[r][c];
+        const covered = code === this.COVERED;
+        const b = it ? box.get(it)! : null;
         return {
-          covered: code === this.COVERED,
+          covered,
           hasItem: !!it,
+          revealedFind: !!it && !covered,
           icon: it ? this.iconFor(it) : null,
           spores: it?.kind === 'spores',
           collected: !!it?.collected,
           label: it ? this.labelFor(it) : '',
+          spanC: b ? b.spanC : 1,
+          spanR: b ? b.spanR : 1,
+          localC: b ? c - b.minC : 0,
+          localR: b ? r - b.minR : 0,
+          anchor: !!b && r === b.minR && c === b.minC,
         };
       }),
     );
