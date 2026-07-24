@@ -11,7 +11,8 @@ import {
   formName,
   xpToNext,
 } from '../data/forms';
-import { GEAR_MAP, CONSUMABLE_MAP, tierRarity } from '../data/items';
+import { GEAR_MAP, CONSUMABLE_MAP, tierRarity, marketBand, MarketKind } from '../data/items';
+import { RIDER_AUGMENTS } from '../data/combat';
 import {
   innateSpellIds,
   GRIMOIRE_MAP,
@@ -56,6 +57,26 @@ function loadSubTab(): CreatureSubTab {
   return 'stats';
 }
 
+type ItemSource = 'equipped' | 'stash' | 'bag';
+
+/** A chip rendered in the item-detail popup. Stat chips have no blurb;
+ *  ability chips carry an expandable blurb explaining what they do. */
+interface ItemChip {
+  label: string;
+  blurb?: string;
+}
+
+/** The inventory item whose detail popup is open. `index` is the array index
+ *  used by market-list / equip-gear (stash or bag); -1 for equipped gear,
+ *  which is info-only (no unequip action exists). */
+interface SelectedItem {
+  source: ItemSource;
+  kind: MarketKind; // 'gear' for equipped/stash, 'consumable' for bag
+  id: string;
+  index: number;
+  slotLabel: string; // 'Fang' | 'Carapace' | 'Charm' | item type — header sub-label
+}
+
 @Component({
   selector: 'app-undercity-creature-tab',
   standalone: true,
@@ -70,6 +91,15 @@ export class CreatureTabComponent {
   protected readonly toast = signal<string | null>(null);
   protected readonly showEvolve = signal(false);
   protected readonly loadedDiePick = signal(false);
+
+  /** Which inventory item's detail popup is open (null = none). */
+  protected readonly selectedItem = signal<SelectedItem | null>(null);
+  /** Which ability chip inside the popup is expanded to show its blurb. */
+  protected readonly expandedChip = signal<number | null>(null);
+  /** Whether the popup's send-to-market price control is revealed. */
+  protected readonly listOpen = signal(false);
+  /** Current price typed into the send-to-market control (Spores). */
+  protected readonly listPrice = signal(0);
 
   /** Which sub-panel of the creature screen is showing below the pinned hero.
    *  Seeded from and persisted to localStorage so it survives leaving the tab. */
@@ -166,6 +196,98 @@ export class CreatureTabComponent {
       const resp = await this.store.action('equip-gear', { index });
       this.showToast(resp.text ?? 'Equipped.');
     });
+  }
+
+  // ── Item-detail popup ─────────────────────────────────────────────────────
+  protected readonly marketBand = marketBand;
+
+  /** Open the item-detail popup for an inventory item. */
+  protected selectItem(source: ItemSource, id: string, index: number, slotLabel: string): void {
+    if (!id) return;
+    const kind: MarketKind = source === 'bag' ? 'consumable' : 'gear';
+    this.expandedChip.set(null);
+    this.listOpen.set(false);
+    this.selectedItem.set({ source, kind, id, index, slotLabel });
+  }
+
+  /** Close the popup and reset its transient state. */
+  protected closeItem(): void {
+    this.selectedItem.set(null);
+    this.expandedChip.set(null);
+    this.listOpen.set(false);
+  }
+
+  /** Toggle an ability chip's blurb open/closed. */
+  protected toggleChip(i: number): void {
+    this.expandedChip.update((cur) => (cur === i ? null : i));
+  }
+
+  /** Stat chips (+2 ATK, +1 SPD, +3 max HP) for a gear item; empty for others. */
+  protected statChips(item: SelectedItem): ItemChip[] {
+    if (item.kind !== 'gear') return [];
+    const g = GEAR_MAP[item.id];
+    if (!g) return [];
+    const chips: ItemChip[] = [];
+    if (g.atk) chips.push({ label: `+${g.atk} ATK` });
+    if (g.def) chips.push({ label: `+${g.def} DEF` });
+    if (g.spd) chips.push({ label: `+${g.spd} SPD` });
+    if (g.maxHp) chips.push({ label: `+${g.maxHp} max HP` });
+    return chips;
+  }
+
+  /** Expandable ability chips: gear rider + illumination, or a consumable's effect. */
+  protected abilityChips(item: SelectedItem): ItemChip[] {
+    if (item.kind === 'consumable') {
+      const c = CONSUMABLE_MAP[item.id];
+      return c ? [{ label: 'Effect', blurb: c.desc }] : [];
+    }
+    const g = GEAR_MAP[item.id];
+    if (!g) return [];
+    const chips: ItemChip[] = [];
+    if (g.rider) {
+      const aug = RIDER_AUGMENTS[g.rider];
+      if (aug) chips.push({ label: aug.label, blurb: aug.blurb });
+    }
+    if (g.light === 'full') {
+      chips.push({ label: 'Illuminating', blurb: 'Reveals the whole dungeon while equipped.' });
+    }
+    return chips;
+  }
+
+  /** Reveal the price control, seeding the cheapest allowed price. */
+  protected beginList(item: SelectedItem): void {
+    this.listPrice.set(this.marketBand(item.kind, item.id).lo);
+    this.listOpen.set(true);
+  }
+
+  /** List the selected item on the Player Market at the typed price.
+   *  Reuses the shipped `market-list` action; band + listing-cap errors come
+   *  back as descriptive text and surface via the toast. */
+  protected async sendToMarket(item: SelectedItem, price: number): Promise<void> {
+    if (!Number.isFinite(price)) return;
+    await this.run(async () => {
+      const resp = await this.store.action('market-list', {
+        kind: item.kind,
+        index: item.index,
+        price: Math.round(price),
+      });
+      this.showToast(resp.text ?? 'Listed on the market.');
+      this.closeItem();
+    });
+  }
+
+  /** Equip a stash piece from the popup, then close it. */
+  protected async equipFromPopup(item: SelectedItem): Promise<void> {
+    await this.equipFromStash(item.index);
+    this.closeItem();
+  }
+
+  /** Use/plant a bag consumable from the popup, then close it.
+   *  loaded_die keeps its picker flow (useItem returns early), so only close
+   *  when the popup isn't handing off to the die picker. */
+  protected async useFromPopup(item: SelectedItem): Promise<void> {
+    await this.useItem(item.id);
+    if (item.id !== 'loaded_die') this.closeItem();
   }
 
   // ── Status bubble ───────────────────────────────────────────────────────────
