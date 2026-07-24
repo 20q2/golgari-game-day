@@ -152,6 +152,8 @@ export const STATUS_INFO: Record<string, StatusInfo> = {
     blurb: 'Cursed: -3 SPD this battle.' },
   rust_curse: { label: 'Rust Curse', icon: 'broken_image', tone: 'debuff',
     blurb: 'Cursed: -4 DEF this battle.' },
+  high_five: { label: 'High Five', icon: 'back_hand', tone: 'buff',
+    blurb: '+1 ATK/DEF/SPD this battle.' },
 };
 
 export interface StatusChip {
