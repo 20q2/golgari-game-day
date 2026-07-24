@@ -210,6 +210,14 @@ interface TokenAnim {
   hitMax?: number;
 }
 
+/** An in-flight two-creature high-five (ready → jump → clap → settle). */
+interface HighFiveAnim {
+  aId: string; // giver
+  bId: string; // recipient
+  start: number; // ts (ms) of the first frame; -1 until stamped by the draw loop
+  clapped: boolean; // impact burst fired once at the peak
+}
+
 /** An in-flight camera pan (+ optional zoom) tween. */
 interface CamGlide {
   fromX: number;
@@ -305,6 +313,7 @@ export interface SpellHitFx {
 // Movement/idle animation of the creature tokens.
 const HOP_COUNT = 2; // footfalls per node-to-node move
 const HOP_HEIGHT = 10; // px the sprite lifts at the peak of a hop
+const HIGH_FIVE_MS = 1000; // full ready→jump→clap→settle high-five
 const BREATH_SPEED = 2.2; // idle breathing rate
 const BREATH_AMT = 0.04; // idle vertical scale wobble (±4%)
 
@@ -384,6 +393,7 @@ export class BoardCanvas {
   // Spell effects queued from a cast/hit, resolved to live positions in draw().
   private pendingCast: SpellCastFx[] = [];
   private pendingHit: SpellHitFx[] = [];
+  private highFive: HighFiveAnim | null = null;
   private healPending = false;
   private sparkleAccum = 0; // time since last sparkle emission
   private shinyAccum = 0; // time since last shiny twinkle emission
@@ -1236,7 +1246,65 @@ export class BoardCanvas {
           }
           breath = 1 + Math.sin(elapsed * BREATH_SPEED + a.phase) * BREATH_AMT;
         }
-        placed.push({ p, x: a.x, y: a.y, hopY, breath });
+
+        // High-five override: converge the two participants, arc them up, squash
+        // on the wind-up and stretch at the peak, then settle back apart. Applied
+        // as a per-frame render offset (hfDx) so the tokens return home on their
+        // own once the animation ends.
+        let hfDx = 0;
+        const hf = this.highFive;
+        if (hf && (p.userId === hf.aId || p.userId === hf.bId)) {
+          if (hf.start < 0) hf.start = ts;
+          const ht = Math.min(1, (ts - hf.start) / HIGH_FIVE_MS);
+          const other = list.find(
+            (q) => q.userId === (p.userId === hf.aId ? hf.bId : hf.aId),
+          );
+          const oa = other ? this.tokenAnims.get(other.userId) : undefined;
+          if (oa) {
+            const mid = (a.x + oa.x) / 2;
+            const dir = a.x <= mid ? 1 : -1; // toward the midpoint
+            const gap = NODE_R * 0.35; // near-touching at the clap
+            const reach = Math.abs(a.x - mid);
+            if (ht < 0.25) {
+              const k = ht / 0.25; // ready: lean apart + crouch
+              hfDx = -6 * k;
+              breath = 1 - 0.15 * k;
+            } else if (ht < 0.55) {
+              const k = (ht - 0.25) / 0.3; // jump: converge, rise, stretch
+              hfDx = (reach - gap) * k;
+              hopY += -Math.sin(k * Math.PI) * HOP_HEIGHT * 1.8;
+              breath = 1 + 0.18 * Math.sin(k * Math.PI);
+            } else {
+              const k = (ht - 0.55) / 0.45; // settle: bounce back apart
+              hfDx = (reach - gap) * (1 - k);
+              hopY += -Math.abs(Math.sin((1 - k) * Math.PI * 0.5)) * HOP_HEIGHT * 0.4;
+            }
+            hfDx *= dir;
+            // Clap: one impact burst + dust at the peak (fired once).
+            if (!hf.clapped && ht >= 0.55) {
+              hf.clapped = true;
+              const cy = a.y - 6;
+              for (let s = 0; s < 18; s++) {
+                const ttl = 0.5 + Math.random() * 0.4;
+                const ang = Math.random() * Math.PI * 2;
+                this.sparkles.push({
+                  x: mid,
+                  y: cy,
+                  vx: Math.cos(ang) * (30 + Math.random() * 40),
+                  vy: Math.sin(ang) * (30 + Math.random() * 40) - 10,
+                  life: ttl,
+                  maxLife: ttl,
+                  size: 1.8 + Math.random() * 2.2,
+                  color: '#ffe27a',
+                  glow: '#f2a900',
+                });
+              }
+              this.spawnDust(mid, footY);
+            }
+          }
+          if (ht >= 1) this.highFive = null;
+        }
+        placed.push({ p, x: a.x + hfDx, y: a.y, hopY, breath });
       });
     }
     // Dust settles under the tokens; the gate-heal sparkle rides just above it.
@@ -2005,6 +2073,14 @@ export class BoardCanvas {
    * reads distinctly, versus the gate heal's steady green twinkle. A brighter,
    * faster pop than the sustained heal emitter.
    */
+  /** Register a two-creature high-five. Both tokens must be co-located (the
+   *  caller guarantees this); the placement loop overrides their x/hop/squash
+   *  for HIGH_FIVE_MS and fires an impact burst at the clap. `start` is stamped
+   *  from the first frame's `ts` so it shares the token-animation clock. */
+  playHighFive(giverId: string, recipientId: string): void {
+    this.highFive = { aId: giverId, bId: recipientId, start: -1, clapped: false };
+  }
+
   burstBuff(color = '#ffd76a', glow = '#f2a900'): void {
     const own = this.ownUserId ? this.tokenAnims.get(this.ownUserId) : undefined;
     if (!own) return;
