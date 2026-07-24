@@ -354,10 +354,9 @@
   }
 }
 
+// Standard uc-btn size so the board band matches the plaza/creature band height.
 .roll-btn {
-  font-size: 1.05rem;
-  padding: 12px 22px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
 }
 
 .shield-mi {

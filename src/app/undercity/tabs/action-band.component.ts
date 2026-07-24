@@ -13,8 +13,12 @@ import { Component } from '@angular/core';
   styles: [
     `
       :host {
-        display: block;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
         flex: none;
+        min-height: 58px;
+        box-sizing: border-box;
         padding: 9px 10px;
         background: #15170f;
         border-top: 1px solid rgba(103, 194, 128, 0.55);
