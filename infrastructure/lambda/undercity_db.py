@@ -708,7 +708,7 @@ def _creature_label(doc):
 
 ONE_BATTLE_BUFFS = ('rot_surge', 'acorn_fury', 'bone_chill', 'glowveil', 'harden_shell',
                     'weaken_hex', 'savage_roar', 'iron_hide', 'fleetfoot', 'warding_dance',
-                    'sap_vigor', 'rust_curse')
+                    'sap_vigor', 'rust_curse', 'high_five')
 
 
 def _consume_one_battle_buffs(doc):
@@ -2600,7 +2600,7 @@ def _resolve_space(table, sid, doc, node, prev):
                     'text': 'Something went wrong… WILD WARP!!! The spores '
                             'misfire and hurl you across the Undercity.',
                     'to': dest}
-        if _rng.random() < 0.20:
+        if _rng.random() < 0.10:
             dest = _wild_warp_dest(nodes, node)
             doc['position'] = dest
             return {'type': 'wild_warp', 'text': 'The mushroom convulses — a WILD warp!',

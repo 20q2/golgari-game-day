@@ -735,6 +735,10 @@ def effective_stats(player: dict) -> dict:
             eff['spd'] = max(1, eff['spd'] - 3)
         elif kind == 'rust_curse':
             eff['def'] = max(1, eff['def'] - 4)
+        elif kind == 'high_five':
+            eff['atk'] += 1 * mult
+            eff['def'] += 1 * mult
+            eff['spd'] += 1 * mult
     # Carapace Grind (DEF-12 perk): a flat Max HP bump while the perk is held.
     # Derived here (not persisted) so it appears in state and combat and vanishes
     # cleanly if the perk ever stops applying — same layer as gear maxHp.

@@ -1386,7 +1386,7 @@ def test_normal_warp_still_shows_picker(table, monkeypatch):
     other = data.WARP_NODES[1]
     sid, doc = _player_at(table, other)
     db._set_wild_warp_node(table, sid, wild)
-    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)  # miss the ambient 20%
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)  # miss the ambient 10%
     out = db._resolve_space(table, sid, doc, other, other)
     assert out['type'] == 'warp'
     assert 'options' in out and out['options']
@@ -1884,6 +1884,24 @@ def test_battle_status_reads_rot_and_buffs():
 def test_battle_status_defaults_empty():
     assert db._battle_status({}) == {
         'rot': 0, 'buffs': [], 'delta': {'atk': 0, 'def': 0, 'spd': 0}}
+
+
+def test_high_five_buff_adds_one_to_three_stats():
+    doc = {'atk': 5, 'def': 4, 'spd': 3, 'maxHp': 20, 'gear': {},
+           'buffs': [{'kind': 'high_five'}]}
+    eff = engine.effective_stats(doc)
+    base = engine.effective_stats({**doc, 'buffs': []})
+    assert eff['atk'] - base['atk'] == 1
+    assert eff['def'] - base['def'] == 1
+    assert eff['spd'] - base['spd'] == 1
+
+
+def test_high_five_is_consumed_after_one_battle():
+    doc = {'buffs': [{'kind': 'high_five'}, {'kind': 'cursed_idol'}]}
+    db._consume_one_battle_buffs(doc)
+    kinds = [b['kind'] for b in doc['buffs']]
+    assert 'high_five' not in kinds
+    assert 'cursed_idol' in kinds  # timed curse survives; only one-battle buffs clear
 
 
 def test_start_battle_includes_status(table, monkeypatch):
