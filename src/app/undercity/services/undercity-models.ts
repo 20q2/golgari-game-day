@@ -681,6 +681,8 @@ export interface ActionResponse {
   depth?: number;
   collapsed?: boolean;
   heartstone?: boolean;
+  /** Spores gained on a vein strike (includes the Heartstone bonus). */
+  spores?: number;
   strikesLeft?: number;
   vault?: VaultView;
   picksLeft?: number;

@@ -19,6 +19,8 @@ import { VeinCanvas } from '../engine/vein-canvas';
 export interface VeinEffect {
   kind: 'strike' | 'cave-in' | 'heartstone';
   seq: number;
+  /** Spores gained on this strike — drives the particle-burst count. */
+  spores?: number;
 }
 
 /**
@@ -36,8 +38,8 @@ export interface VeinEffect {
         <h3>💎 Crystal Vein</h3>
         <p class="vein-sub">
           Shaft depth <strong>{{ depth }}</strong> / {{ MAX }} ·
-          <strong>{{ strikesLeft }}</strong> strike{{ strikesLeft === 1 ? '' : 's' }} left this
-          visit
+          <strong>{{ strikesLeft }}</strong> strike{{ strikesLeft === 1 ? '' : 's' }} left ·
+          earned this visit: <strong #earnedEl class="earned">{{ earnedThisVisit }}</strong> 🍄
         </p>
 
         <div class="vein-stage">
@@ -71,8 +73,9 @@ export interface VeinEffect {
             ⛏️ Strike
           </button>
           <p class="vein-hint">
-            A cave-in hurts you and collapses the shaft for everyone. Walking away leaves the
-            depth for the next digger.
+            Every strike's Spores are yours to keep. Go deeper for bigger hits and the
+            Heartstone at level {{ MAX }} — a cave-in costs HP and ends your dig here, but
+            the shaft holds. Walking away leaves the depth for the next digger.
           </p>
         } @else {
           <p class="vein-hint out">Out of strikes — come back next time you land here.</p>
@@ -115,6 +118,10 @@ export interface VeinEffect {
       }
       .vein-sub strong {
         color: #8fd0dd;
+      }
+      .earned {
+        color: #b6ffbf;
+        display: inline-block;
       }
       .vein-stage {
         position: relative;
@@ -192,6 +199,8 @@ export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDe
   @Input() strikesLeft = 0;
   @Input() busy = false;
   @Input() log: string | null = null;
+  /** Spores banked from strikes so far this visit (parent-owned). */
+  @Input() earnedThisVisit = 0;
   /** Region biome wash painted behind the card (from the board tab). */
   @Input() washBg: string | null = null;
   /** Set by the parent after each strike response to trigger a wall animation. */
