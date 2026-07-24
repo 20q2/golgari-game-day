@@ -117,8 +117,8 @@
     },
     {
       "name": "vexing_pest",
-      "hasMask": false,
-      "hasHat": false
+      "hasMask": true,
+      "hasHat": true
     },
     {
       "name": "zombie",
