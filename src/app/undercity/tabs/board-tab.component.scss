@@ -186,15 +186,22 @@
   animation: uc-band-in 0.15s ease;
 }
 
-// Roll-regen cooldown: its own small status line at the top-left of the band,
-// above and separate from the centered action-button row.
+// Roll-regen cooldown: overlaid in the band's top-left corner (absolute, out of
+// flow) so it never adds a row — keeping the board band the same height as the
+// creature/plaza sub-nav bands. The action row is centred, leaving the left
+// gutter clear for this label; pointer-events off so it never blocks a tap.
 .band-status {
-  margin: 0 0 6px 2px;
-  font-size: 0.72rem;
+  position: absolute;
+  top: 4px;
+  left: 10px;
+  z-index: 2;
+  margin: 0;
+  font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  opacity: 0.7;
-  text-align: left;
+  color: #b7e4c7;
+  opacity: 0.85;
+  pointer-events: none;
 }
 
 // The current-space action is a round button so it reads as distinct from the

@@ -17,6 +17,7 @@ import { Component } from '@angular/core';
         flex-direction: column;
         justify-content: center;
         flex: none;
+        position: relative;
         min-height: 58px;
         box-sizing: border-box;
         padding: 9px 10px;
