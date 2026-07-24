@@ -51,6 +51,10 @@
   </div>
 
   <app-uc-action-band>
+    <!-- Roll-regen cooldown: its own small status line pinned to the band's top-left -->
+    @if (nextRollLabel(); as nrl) {
+      <div class="band-status">next roll in {{ nrl }}</div>
+    }
     <!-- PvP: someone shares your space — Battle stays available alongside Roll -->
     @if (occupantsHere().length && !store.you()?.pendingMove) {
       <div class="band-morph pvp-strip">
@@ -172,9 +176,6 @@
           }
           @if (!busy() && rollReason(); as r) {
             <span class="next-roll-hint block-reason">{{ r }}</span>
-          }
-          @if (nextRollLabel(); as nrl) {
-            <span class="next-roll-hint">next roll in {{ nrl }}</span>
           }
 
           @if (castableSpells().length || castableScrolls().length) {

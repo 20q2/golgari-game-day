@@ -175,6 +175,17 @@
   animation: uc-band-in 0.15s ease;
 }
 
+// Roll-regen cooldown: its own small status line at the top-left of the band,
+// above and separate from the centered action-button row.
+.band-status {
+  margin: 0 0 6px 2px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.7;
+  text-align: left;
+}
+
 .facility-btn {
   padding: 8px 12px;
 
