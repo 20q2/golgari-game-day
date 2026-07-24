@@ -1020,6 +1020,14 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return this.map?.nodes.find((n) => n.id === pos)?.type ?? null;
   });
 
+  /** Label of the biome the player stands in, from the authoritative
+   * map.regions table — used by the on-board biome chip. */
+  protected readonly currentBiome = computed(() => {
+    const pos = this.store.you()?.position;
+    const region = this.map?.nodes.find((n) => n.id === pos)?.region ?? 'city';
+    return this.map?.regions?.[region]?.label ?? null;
+  });
+
   /** Illuminated: any equipped gear carries the 'full' light property, which
    *  reveals the whole dungeon (client-side fog). Power traded for information. */
   protected readonly illuminated = computed(() =>

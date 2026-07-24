@@ -36,6 +36,18 @@
 
     <!-- Bottom-left recent-events ticker (display-only overlay) -->
     <app-undercity-event-feed />
+
+    @if (currentBiome(); as biome) {
+      <button
+        type="button"
+        class="biome-chip"
+        aria-live="polite"
+        title="Center camera on your creature"
+        (click)="focusSelf()"
+      >
+        <mat-icon class="mi">location_on</mat-icon>{{ biome }}
+      </button>
+    }
   </div>
 
   <app-uc-action-band>

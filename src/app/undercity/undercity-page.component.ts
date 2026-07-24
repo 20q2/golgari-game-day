@@ -2,7 +2,6 @@ import {
   Component,
   OnDestroy,
   OnInit,
-  ViewChild,
   computed,
   effect,
   inject,
@@ -50,15 +49,6 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   protected readonly userService = inject(UserService);
   protected readonly store = inject(UndercityStateService);
   private readonly api = inject(UndercityApiService);
-
-  /** The mounted board tab, when the board is the active tab — lets the biome
-   *  chip re-centre the camera on the player. */
-  @ViewChild(BoardTabComponent) private boardTab?: BoardTabComponent;
-
-  /** Snap the board camera back to the player's creature (biome-chip tap). */
-  protected focusSelf(): void {
-    this.boardTab?.focusSelf();
-  }
 
   protected readonly tab = signal<Tab>('board');
   protected readonly assetsReady = signal(false);
@@ -119,17 +109,6 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     if (!you) return null;
     const spr = formSprite(you.form, you.spriteVariant);
     return getRecoloredWithHatDataUrl(spr.sprite, you.paint ?? {}, spr.regions, you.hat);
-  });
-
-  /** Display label of the biome the active player is standing in, read from the
-   * authoritative map.regions{} table (same source the board scenery uses).
-   * Null until the map + creature are loaded. */
-  protected readonly currentBiome = computed(() => {
-    const pos = this.store.you()?.position;
-    const map = this.map();
-    if (!pos || !map) return null;
-    const region = map.nodes.find((n) => n.id === pos)?.region ?? 'city';
-    return map.regions?.[region]?.label ?? null;
   });
 
   /** Overworld buffs/curses carried into the next battle, mapped to HUD badges.

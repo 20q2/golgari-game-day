@@ -20,6 +20,51 @@
   display: block;
 }
 
+.biome-chip {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 24px);
+  padding: 5px 12px 5px 9px;
+  background: rgba(26, 24, 21, 0.82);
+  border: 1px solid rgba(74, 124, 89, 0.5);
+  border-radius: 16px;
+  color: #b7e4c7;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    transform 0.08s ease,
+    border-color 0.15s ease;
+
+  &:hover {
+    border-color: rgba(108, 174, 117, 0.85);
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+
+  .mi {
+    font-size: 1rem;
+    height: 1rem;
+    width: 1rem;
+    color: #6cae75;
+    flex-shrink: 0;
+  }
+}
+
 // Floating jump-to-Umori control (top-right, clear of the centered roll strip).
 .focus-picker {
   position: absolute;
