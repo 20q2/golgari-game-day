@@ -3306,6 +3306,11 @@ def _finish_battle(table, sid, doc, rec, result):
     _consume_one_battle_buffs(doc)
     kind = rec['kind']
     doc.pop('battle', None)
+    # Renown is derived from cumulative stats (wildWins / poiClaims / bossDamage),
+    # so the renown this fight earned is the delta the finisher works into them.
+    # Snapshot around the dispatch and surface it as a spoils line. (World kills
+    # pay bracket renown to the perm doc, not compute_renown — reported separately.)
+    renown_before = data.compute_renown(doc)
     if kind in ('wild', 'elite'):
         out = _finish_wild(table, sid, doc, rec, result)
     elif kind == 'barrier':
@@ -3316,6 +3321,9 @@ def _finish_battle(table, sid, doc, rec, result):
         out = _finish_world(table, sid, doc, rec, result)
     else:
         out = _finish_boss(table, sid, doc, rec, result)
+    renown_gained = data.compute_renown(doc) - renown_before
+    if renown_gained > 0:
+        out['renownGained'] = renown_gained
     bonus = cutpurse_bonus(doc, rec['player'].get('feint_won', False),
                            result['outcome'] == 'attacker')
     if bonus:

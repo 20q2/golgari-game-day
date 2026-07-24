@@ -563,6 +563,9 @@ export interface SpaceEvent {
   };
   xp?: number;
   levels?: number;
+  /** Renown this fight earned (marginal compute_renown delta): +wild win, +POI
+   * first-kill, +boss damage. Absent/0 when the fight moved no renown stat. */
+  renownGained?: number;
   hp?: number;
   roll?: number;
   paint?: string;

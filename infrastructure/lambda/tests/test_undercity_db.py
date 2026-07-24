@@ -189,6 +189,7 @@ def test_wild_win_surfaces_rewards(table, monkeypatch):
     assert se['spores'] >= 1                        # bounty
     assert se['xp'] == 10                           # per-NPC xp (normal tier)
     assert 'levels' not in se                       # 10 xp < first level-up cost
+    assert se['renownGained'] == data.RENOWN['per_wild_win']  # a composted wild = +renown
 
 
 def test_elite_battle_pulls_from_elite_pool(table, monkeypatch):

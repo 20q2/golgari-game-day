@@ -692,6 +692,7 @@
     }
     &.spores { color: #e8cda0; }
     &.xp { color: #9ad0ff; }
+    &.renown { color: #f6c76b; }
     // Item + gear + level-up are the exciting drops — bigger overshoot + gold glow.
     &.item { color: #c9a2ff; animation-name: uc-reward-pop-big; }
     &.levelup {

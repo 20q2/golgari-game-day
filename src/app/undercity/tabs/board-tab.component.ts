@@ -2230,11 +2230,17 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   private buildRewards(src: {
     spores?: number;
     xp?: number;
+    renownGained?: number;
     levels?: number;
     item?: string;
     gear?: SpaceEvent['gear'];
   }): BattleRewards {
-    const rewards: BattleRewards = { spores: src.spores, xp: src.xp, levels: src.levels };
+    const rewards: BattleRewards = {
+      spores: src.spores,
+      xp: src.xp,
+      renown: src.renownGained,
+      levels: src.levels,
+    };
     if (src.item) {
       const info = CONSUMABLE_MAP[src.item];
       rewards.itemName = info?.name ?? src.item;

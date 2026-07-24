@@ -125,6 +125,11 @@
               <mat-icon class="mi">auto_awesome</mat-icon> +{{ r.xp }} XP
             </span>
           }
+          @if (r.renown) {
+            <span class="reward-chip renown">
+              <mat-icon class="mi">military_tech</mat-icon> +{{ r.renown }} Renown
+            </span>
+          }
           @if (r.itemName) {
             <span class="reward-chip item">
               <mat-icon class="mi">{{ r.itemIcon ?? 'backpack' }}</mat-icon> {{ r.itemName }}
