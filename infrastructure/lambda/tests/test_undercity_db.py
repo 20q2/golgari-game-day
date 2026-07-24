@@ -138,15 +138,16 @@ def test_marrowborn_home_grants_max_hp(table):
 
 
 def test_city_rat_home_grants_random_t1_gear(table):
-    # The Undercity (city) home: City Rat hatches with a random T1 item in the
-    # stash (no auto-equip), and no longer grants starting Spores.
+    # The Undercity (city) home: City Rat hatches with a random T1 piece, which
+    # now auto-equips into its (empty) slot, and grants no starting Spores.
     status, resp = act(table, 'join', starter='pest', home='city')
     assert status == 200
     you = resp['you']
     assert you['spores'] == 0
-    assert not you.get('gear')
-    assert len(you['gearStash']) == 1
-    gid = you['gearStash'][0]
+    assert not you.get('gearStash')                    # auto-equipped, nothing stashed
+    gear = you.get('gear') or {}
+    assert len(gear) == 1
+    gid = next(iter(gear.values()))
     assert data.GEAR[gid]['tier'] == 1
 
 
@@ -833,13 +834,17 @@ def test_buy_gear_and_consumables(table):
     _seed_shop(table, sid, node,
                gear=[{'item': 'rusted_fang', 'qty': 2}, {'item': 'wurm_tooth', 'qty': 2}],
                consumables=[{'item': 'healing_moss', 'qty': 2}])
-    # Bought gear lands in the stash (no auto-equip) and never trades in the
-    # worn piece — the player equips it later at the Plaza.
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['gear'] = {}                                       # ignore any City Rat starter gear
+    db._put_player(table, doc)
+    # First fang → empty slot → auto-equipped (not stashed).
     status, resp = act(table, 'buy', itemId='rusted_fang')
-    assert status == 200 and 'rusted_fang' in resp['you']['gearStash']
-    assert not (resp['you'].get('gear') or {}).get('fang')
+    assert status == 200
+    assert (resp['you'].get('gear') or {}).get('fang') == 'rusted_fang'
+    assert 'rusted_fang' not in (resp['you'].get('gearStash') or [])
     assert resp['you']['spores'] == 180
-    status, resp = act(table, 'buy', itemId='wurm_tooth')  # no trade-in refund
+    # Second fang → slot now filled → stashed (never trades in the worn piece).
+    status, resp = act(table, 'buy', itemId='wurm_tooth')
     assert resp['you']['spores'] == 180 - 80
     assert 'wurm_tooth' in resp['you']['gearStash']
     status, resp = act(table, 'buy', itemId='healing_moss')
@@ -1010,8 +1015,8 @@ def test_umori_swap_gear(table):
     db._put_player(table, doc)
     status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
     assert status == 200
-    assert take in resp['you']['gearStash']                    # T3 fang stashed, not equipped
-    assert not (resp['you'].get('gear') or {}).get('fang')     # given piece left the slot
+    assert resp['you']['gear']['fang'] == take                 # gave worn fang → slot empty → auto-equipped
+    assert take not in (resp['you'].get('gearStash') or [])
     assert resp['stock'][0] == {'item': 'rusted_fang', 'foundBy': 'Alex'}  # old piece left
 
 
@@ -1095,7 +1100,7 @@ def test_umori_gives_from_stash(table):
     status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
     assert status == 200
     assert 'rusted_fang' not in (resp['you'].get('gearStash') or [])  # removed from stash
-    assert take in resp['you']['gearStash']                    # legendary stashed
+    assert resp['you']['gear']['fang'] == take                 # fang slot was empty → auto-equipped
     assert resp['stock'][0] == {'item': 'rusted_fang', 'foundBy': 'Alex'}
 
 
@@ -1922,20 +1927,24 @@ def test_combatant_carries_riders_and_buffs_from_gear(table):
     assert 'harden_shell' in c.buffs
 
 
-def test_buy_charm_stashes_not_equips(table):
+def test_buy_charm_auto_equips_empty_slot(table):
     sid, node = _at_shop(table, spores=500)
     _seed_shop(table, sid, node, gear=[{'item': 'quartz_charm', 'qty': 2}])
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['gear'] = {}                                    # ensure the charm slot is empty
+    db._put_player(table, doc)
     status, resp = act(table, 'buy', itemId='quartz_charm')
     assert status == 200, resp
     doc = db._get_player(table, sid, 'user-alex')
-    assert 'quartz_charm' in doc.get('gearStash', [])
-    assert not (doc.get('gear') or {}).get('charm')
+    assert (doc.get('gear') or {}).get('charm') == 'quartz_charm'
+    assert 'quartz_charm' not in (doc.get('gearStash') or [])
 
 
 def test_buy_gear_stalls_when_stash_full(table):
     sid, node = _at_shop(table, spores=500)
     _seed_shop(table, sid, node, gear=[{'item': 'rusted_fang', 'qty': 2}])
     doc = db._get_player(table, sid, 'user-alex')
+    doc['gear'] = {'fang': 'bloodfang'}                 # fang slot filled → buy must stash
     doc['gearStash'] = ['rusted_fang'] * data.GEAR_STASH_SIZE
     db._put_player(table, doc)
     before = db._get_player(table, sid, 'user-alex')['spores']
@@ -1943,6 +1952,18 @@ def test_buy_gear_stalls_when_stash_full(table):
     assert status == 409 and 'stash is full' in resp['error'].lower()
     # Stalled: no Spores spent, stock not depleted.
     assert db._get_player(table, sid, 'user-alex')['spores'] == before
+
+
+def test_buy_gear_auto_equips_empty_slot_even_with_full_stash(table):
+    sid, node = _at_shop(table, spores=500)
+    _seed_shop(table, sid, node, gear=[{'item': 'quartz_charm', 'qty': 2}])
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['gear'] = {}                                    # charm slot empty…
+    doc['gearStash'] = ['rusted_fang'] * data.GEAR_STASH_SIZE  # …but stash full
+    db._put_player(table, doc)
+    status, resp = act(table, 'buy', itemId='quartz_charm')
+    assert status == 200
+    assert (resp['you'].get('gear') or {}).get('charm') == 'quartz_charm'
 
 
 def test_battle_combatant_roundtrips_through_dict(table):
@@ -2866,9 +2887,13 @@ def test_join_grants_one_night_starter_items(table):
     assert status == 200, resp
     you = resp['you']
     assert 'healing_moss' in you['bag']
-    # Starter gear (and the City Rat piece) land in the stash — no auto-equip.
-    assert 'rusted_fang' in you['gearStash']
-    assert not (you.get('gear') or {}).get('fang')
+    # Starter gear (and the City Rat piece) now auto-equip into empty slots.
+    # rusted_fang is a fang; it equips unless the City Rat's random T1 piece
+    # already claimed the fang slot, in which case it stashes — so assert it is
+    # owned and the fang slot ends filled either way.
+    owned = set((you.get('gear') or {}).values()) | set(you.get('gearStash') or [])
+    assert 'rusted_fang' in owned
+    assert (you.get('gear') or {}).get('fang')
     assert you['spores'] == 15  # City Rat now grants gear, not spores; +15 from spore pouch
     perm = db._get_perm(table, 'user-alex')
     assert perm['renown'] == 100 - 20 - 25 - 15

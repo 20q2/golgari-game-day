@@ -1963,14 +1963,14 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         doc['maxHp'] += data.MARROWBORN_MAXHP
         doc['hp'] += data.MARROWBORN_MAXHP
     elif home == 'city':
-        # City Rat: hatch with a random Tier-1 piece of gear in the stash — no
-        # auto-equip; the player equips it at the Plaza. Seeded on the player id
-        # so the pick is stable (varies per player, but deterministic — no test
-        # flakiness, no re-roll on recompute).
+        # City Rat: hatch with a random Tier-1 piece of gear, auto-equipped into
+        # its empty slot. Seeded on the player id so the pick is stable (varies
+        # per player, but deterministic — no test flakiness, no re-roll on
+        # recompute).
         t1 = sorted(gid for gid, g in data.GEAR.items() if g.get('tier') == 1)
         if t1:
             gid = random.Random(zlib.crc32(f'cityrat:{user_id}'.encode())).choice(t1)
-            doc.setdefault('gearStash', []).append(gid)
+            _gain_gear(doc, gid)
     # Cosmetic starter look; only stored when a non-base alt was chosen so the
     # base look leaves no field (see STARTER_VARIANTS).
     if sprite_variant:
@@ -2060,8 +2060,8 @@ def _apply_shop_purchases(perm, doc, payload):
         if it['kind'] == 'consumable':
             doc['bag'].append(it['id'])
         elif it['kind'] == 'gear':
-            # No auto-equip: starter gear goes to the stash to equip at the Plaza.
-            doc.setdefault('gearStash', []).append(it['id'])
+            # Starter gear auto-equips into an empty slot, else stashes.
+            _gain_gear(doc, it['id'])
         elif it['kind'] == 'spores':
             doc['spores'] = doc.get('spores', 0) + it['amount']
     if equip_hat:
@@ -4569,16 +4569,16 @@ def _buy(table, sid, doc, payload):
         cost = g['cost']
         if doc.get('spores', 0) < cost:
             return _err('Not enough Spores.', 409)
-        # No auto-equip: purchased gear lands in the stash; equip it at the Plaza.
-        # If the stash is full we stall the sale rather than grinding the piece —
-        # the player clears room by salvaging at the Plaza first.
-        stash = doc.setdefault('gearStash', [])
-        if len(stash) >= data.GEAR_STASH_SIZE:
+        # Auto-equip into an empty slot; otherwise it needs stash room. We stall a
+        # sale that would overflow a full stash rather than grinding a paid piece.
+        slot_filled = bool((doc.get('gear') or {}).get(g['slot']))
+        if slot_filled and len(doc.get('gearStash') or []) >= data.GEAR_STASH_SIZE:
             return _err('Your gear stash is full — salvage a piece at the Plaza first.', 409)
         doc['spores'] = doc.get('spores', 0) - cost
-        stash.append(item_id)
+        got = _gain_gear(doc, item_id)
         deplete = line
-        text = f"Bought {g['name']} — stashed. Equip it at the Plaza."
+        text = (f"Bought {g['name']} — equipped!" if got['outcome'] == 'equipped'
+                else f"Bought {g['name']} — stashed. Equip it at the Plaza.")
     elif item_id in data.CONSUMABLES:
         line = next((e for e in stock['consumables'] if e['item'] == item_id), None)
         if not line:
@@ -4727,9 +4727,14 @@ def _trade(table, sid, doc, payload):
     if take_kind == 'grimoire' and taken['item'] in grimoires:
         return _err('You already own that grimoire.', 409)
     if take_kind == 'gear':
-        effective_stash = len(stash) - (1 if give_from_stash else 0)
-        if effective_stash >= data.GEAR_STASH_SIZE:
-            return _err('Your gear stash is full — salvage a piece at the Plaza first.', 409)
+        take_slot = data.GEAR[taken['item']]['slot']
+        # After the give, the taken piece auto-equips iff its slot is empty:
+        # true when we gave the worn piece of that slot, or the slot was empty.
+        taken_will_equip = (not give_from_stash) or not gear.get(take_slot)
+        if not taken_will_equip:
+            effective_stash = len(stash) - (1 if give_from_stash else 0)
+            if effective_stash >= data.GEAR_STASH_SIZE:
+                return _err('Your gear stash is full — salvage a piece at the Plaza first.', 409)
 
     # Remove the given item from wherever it lives.
     if give_kind == 'gear':
@@ -4746,9 +4751,10 @@ def _trade(table, sid, doc, payload):
         if doc.get('equippedGrimoire') == give:
             doc['equippedGrimoire'] = None
 
-    # Apply the taken item.
+    # Apply the taken item. The give-side removal above already updated
+    # doc['gear']/doc['gearStash'], so _gain_gear sees the post-give state.
     if take_kind == 'gear':
-        doc.setdefault('gearStash', []).append(taken['item'])
+        got = _gain_gear(doc, taken['item'])
     elif take_kind == 'grimoire':
         doc.setdefault('grimoires', []).append(taken['item'])
         if not doc.get('equippedGrimoire'):
@@ -4771,8 +4777,11 @@ def _trade(table, sid, doc, payload):
     _event(table, sid, 'trade',
            f"{doc['username']} bartered a {give_name} for {take_name} at Umori's stall.",
            actor=doc['userId'])
-    return _ok(doc, text=f"You hand over your {give_name} and take {take_name}.",
-               node=node, stock=stock)
+    if take_kind == 'gear' and got['outcome'] == 'equipped':
+        take_text = f"You hand over your {give_name} and equip {take_name}."
+    else:
+        take_text = f"You hand over your {give_name} and take {take_name}."
+    return _ok(doc, text=take_text, node=node, stock=stock)
 
 
 # ── Excavation dig sites ──────────────────────────────────────────────────────
