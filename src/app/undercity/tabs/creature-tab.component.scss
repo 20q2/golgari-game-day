@@ -1382,3 +1382,123 @@
   cursor: pointer;
   padding: 2px;
 }
+
+// ── Item-detail popup (bottom sheet) ────────────────────────────────────────
+.item-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(8, 6, 4, 0.6);
+}
+
+.item-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  background: rgba(20, 18, 14, 0.97);
+  border: 1px solid rgba(183, 228, 199, 0.28);
+  border-bottom: none;
+  border-radius: 16px 16px 0 0;
+  padding: 1.25rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+  animation: item-sheet-up 160ms ease-out;
+}
+
+@keyframes item-sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.item-sheet-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+.item-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+
+  .slot-mi { width: 32px; height: 32px; }
+}
+
+.item-sheet-title { display: flex; flex-direction: column; gap: 0.15rem; }
+.item-sheet-name { font-weight: 600; }
+.item-sheet-sub { font-size: 0.8rem; opacity: 0.7; text-transform: capitalize; }
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  border: 1px solid rgba(183, 228, 199, 0.3);
+}
+
+.chip--stat { background: rgba(255, 255, 255, 0.06); }
+
+.chip--ability {
+  cursor: pointer;
+  color: inherit;
+  background: rgba(74, 124, 89, 0.18);
+  border-color: rgba(154, 194, 110, 0.7);
+  &.open { background: rgba(74, 124, 89, 0.32); }
+  .chip-caret { font-size: 1rem; width: 1rem; height: 1rem; }
+}
+
+.chip-blurb {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.item-sheet-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+
+  &:empty { margin: 0; }
+}
+
+.item-sheet-hint { font-size: 0.85rem; }
+
+.item-sheet-market {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(183, 228, 199, 0.18);
+}
+
+.market-price {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  label { font-size: 0.8rem; opacity: 0.8; }
+  .price-input { width: 5rem; }
+  .band-note { font-size: 0.8rem; }
+}
+
+// Rows are now tap targets into the popup.
+.bag-row--tap { cursor: pointer; }
+.bag-chevron,
+.gear-chevron { opacity: 0.5; }
