@@ -1719,7 +1719,7 @@ def test_vein_landing_opens_without_striking(table, monkeypatch):
     assert rec is None                                     # nothing persisted on landing
 
 
-def test_vein_cave_in_hurts_and_resets(table, monkeypatch):
+def test_vein_cave_in_hurts_but_shaft_holds(table, monkeypatch):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     db._save_vein(table, sid, 'cavern', 9)                 # deep, dangerous shaft
@@ -1732,11 +1732,12 @@ def test_vein_cave_in_hurts_and_resets(table, monkeypatch):
     status, resp = act(table, 'strike')                    # the swing triggers the collapse
     assert status == 200
     assert resp['collapsed'] is True
+    assert resp['depth'] == 9                              # shaft holds at its prior depth
     doc = db._get_player(table, sid, 'user-alex')
     assert doc['hp'] == max(1, hp_before - 10 * data.VEIN_CAVE_IN_DMG_PER_LEVEL)
-    assert doc['veinStrikesLeft'] == 0                     # the visit ends under rubble
+    assert doc['veinStrikesLeft'] == 0                     # the visit still ends
     rec = db._get(table, db._season_pk(sid), 'VEIN#cavern')
-    assert rec['depth'] == 0                               # collapsed for everyone
+    assert rec['depth'] == 9                               # NOT reset — progress is kept
 
 
 def test_vein_strike_action_and_guards(table, monkeypatch):
@@ -1780,6 +1781,7 @@ def test_vein_heartstone_pays_and_resets(table, monkeypatch):
     assert resp['depth'] == 0                               # shaft refilled
     # 1 + level 12, plus the Heartstone bonus; the rare item goes to the bag.
     assert resp['you']['spores'] == spores_before + 13 + data.VEIN_HEARTSTONE_SPORES
+    assert resp['spores'] == 13 + data.VEIN_HEARTSTONE_SPORES   # level spores + bonus
     assert resp['you']['bag'] and resp['you']['bag'][0] in data.VEIN_RARE_ITEMS
     rec = db._get(table, db._season_pk(sid), 'VEIN#cavern')
     assert rec['depth'] == 0

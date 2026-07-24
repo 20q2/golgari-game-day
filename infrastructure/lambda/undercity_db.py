@@ -5051,14 +5051,17 @@ def _vein_strike_once(table, sid, doc):
         dmg = level * data.VEIN_CAVE_IN_DMG_PER_LEVEL
         doc['hp'] = max(1, doc['hp'] - dmg)
         doc['veinStrikesLeft'] = 0
-        _save_vein(table, sid, region, 0)
+        # The shaft HOLDS: a cave-in batters the digger and ends their visit, but
+        # no longer wipes the shared depth — so the vein ratchets up to the
+        # Heartstone over many visits instead of resetting to 0 every cave-in.
+        held = level - 1                                   # unchanged shared depth
         _event(table, sid, 'vein',
                f"{doc['username']} triggered a cave-in at level {level} of the "
-               'crystal vein — the shaft collapses to the surface!',
+               'crystal vein — battered by the rockfall, but the shaft holds.',
                actor=doc['userId'])
-        return {'collapsed': True, 'hp': -dmg, 'depth': 0,
-                'text': f'CAVE-IN at level {level}! You take {dmg} damage and '
-                        'the shaft slumps back to the surface.'}
+        return {'collapsed': True, 'hp': -dmg, 'depth': held,
+                'text': f'CAVE-IN at level {level}! A rockfall hits you for {dmg} '
+                        'damage — but the shaft holds.'}
 
     spores = 1 + level
     doc['spores'] = doc.get('spores', 0) + spores
@@ -5076,7 +5079,8 @@ def _vein_strike_once(table, sid, doc):
                f"{doc['username']} pried the Heartstone from the crystal vein "
                f'(+{data.VEIN_HEARTSTONE_SPORES} Spores)! The shaft refills.',
                actor=doc['userId'])
-        return {'depth': 0, 'heartstone': True, 'spores': spores, 'found': heart,
+        return {'depth': 0, 'heartstone': True,
+                'spores': spores + data.VEIN_HEARTSTONE_SPORES, 'found': heart,
                 'text': f'Level {level}: +{spores} Spores — and beneath it, THE '
                         f'HEARTSTONE! +{data.VEIN_HEARTSTONE_SPORES} Spores and a '
                         'prize. The shaft rumbles full again.'}
