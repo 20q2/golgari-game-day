@@ -1186,6 +1186,29 @@ def test_customize_validates_wardrobe(table):
     assert status == 409  # violet not owned
 
 
+def test_customize_allows_keeping_an_unowned_worn_hue(table):
+    # Simulate a player already wearing an un-owned shell hue (an old veteran who
+    # hatched via the ungated shell picker): body/stripes = violet(270), which is
+    # NOT in their owned paints (defaults forest+gold only).
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['paint'] = {'body': 270, 'belly': 50, 'stripes': 270}
+    table.put_item(Item=doc)
+
+    # Recolor body to an OWNED color; stripes stays 270 (unchanged) — must succeed.
+    status, resp = act(table, 'customize',
+                       paint={'body': 130, 'belly': 50, 'stripes': 270})
+    assert status == 200
+    assert resp['you']['paint']['body'] == 130
+    assert resp['you']['paint']['stripes'] == 270
+
+    # Switching a region TO a new un-owned color is still rejected.
+    status, resp = act(table, 'customize',
+                       paint={'body': 0, 'belly': 50, 'stripes': 270})
+    assert status == 409
+
+
 def test_join_stores_creature_name(table):
     status, resp = act(table, 'join', starter='pest', creatureName='  Mulch  ')
     assert status == 200

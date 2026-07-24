@@ -5374,9 +5374,17 @@ def _customize(table, sid, doc, payload):
     paint = payload.get('paint')
     if paint:
         owned_hues = {p['hue'] for p in data.PAINTS if p['id'] in perm['paints']}
+        cur = doc.get('paint') or {}
         for region in ('body', 'belly', 'stripes'):
             hue = paint.get(region)
-            if hue is not None and int(hue) not in owned_hues:
+            if hue is None:
+                continue
+            # You can always keep the color you're already wearing; only a change
+            # TO a new hue must be owned. This unblocks players whose hatch-assigned
+            # shell hue isn't in their owned set.
+            if int(hue) == int(cur.get(region, -999)):
+                continue
+            if int(hue) not in owned_hues:
                 return _err('You do not own that paint.', 409)
         doc['paint'] = {r: int(paint.get(r, doc['paint'].get(r, 130)))
                         for r in ('body', 'belly', 'stripes')}
