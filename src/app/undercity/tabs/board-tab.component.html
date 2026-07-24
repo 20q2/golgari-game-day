@@ -1,117 +1,74 @@
 <div class="board-tab">
-  <canvas #boardCanvas class="board-canvas"></canvas>
+  <div class="board-scene">
+    <canvas #boardCanvas class="board-canvas"></canvas>
 
-  <!-- Focus picker: jump the camera to any player (or the wandering Umori). -->
-  <div class="focus-picker">
-    <button
-      class="find-umori-btn"
-      [class.active]="showFocusMenu()"
-      (click)="showFocusMenu.set(!showFocusMenu())"
-      title="Focus a player"
-      aria-label="Focus a player"
-    >
-      <mat-icon class="mi">center_focus_strong</mat-icon>
-    </button>
-    @if (showFocusMenu()) {
-      <div class="focus-backdrop" (click)="showFocusMenu.set(false)"></div>
-      <div class="focus-menu">
-        @for (t of focusTargets(); track t.key) {
-          <button class="focus-row" [class.you]="t.isYou" (click)="focusTarget(t.node)">
-            @if (t.spriteUrl; as url) {
-              <img class="focus-sprite" [src]="url" alt="" />
-            } @else {
-              <mat-icon class="mi focus-sprite">person</mat-icon>
-            }
-            <span class="focus-label">{{ t.label }}</span>
-          </button>
+    <!-- Focus picker: jump the camera to any player (or the wandering Umori). -->
+    <div class="focus-picker">
+      <button
+        class="find-umori-btn"
+        [class.active]="showFocusMenu()"
+        (click)="showFocusMenu.set(!showFocusMenu())"
+        title="Focus a player"
+        aria-label="Focus a player"
+      >
+        <mat-icon class="mi">center_focus_strong</mat-icon>
+      </button>
+      @if (showFocusMenu()) {
+        <div class="focus-backdrop" (click)="showFocusMenu.set(false)"></div>
+        <div class="focus-menu">
+          @for (t of focusTargets(); track t.key) {
+            <button class="focus-row" [class.you]="t.isYou" (click)="focusTarget(t.node)">
+              @if (t.spriteUrl; as url) {
+                <img class="focus-sprite" [src]="url" alt="" />
+              } @else {
+                <mat-icon class="mi focus-sprite">person</mat-icon>
+              }
+              <span class="focus-label">{{ t.label }}</span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+    @if (toast(); as t) {
+      <div class="board-toast">{{ t }}</div>
+    }
+
+    <!-- Bottom-left recent-events ticker (display-only overlay) -->
+    <app-undercity-event-feed />
+  </div>
+
+  <app-uc-action-band>
+    <!-- PvP: someone shares your space — Battle stays available alongside Roll -->
+    @if (occupantsHere().length && !store.you()?.pendingMove) {
+      <div class="band-morph pvp-strip">
+        @for (o of occupantsHere(); track o.userId) {
+          <div class="pvp-row">
+            <span class="pvp-name">
+              {{ o.username }}'s {{ o.creatureName || o.formName }} (L{{ o.level }})
+              @if (o.shielded) {
+                <mat-icon class="mi shield-mi" title="Compost Shield">shield</mat-icon>
+              }
+            </span>
+            <button
+              class="uc-btn uc-btn-danger pvp-btn"
+              [disabled]="busy() || o.shielded"
+              (click)="attack(o)"
+            >
+              <mat-icon class="mi">sports_kabaddi</mat-icon> Battle
+            </button>
+            <button class="uc-btn pvp-btn" [disabled]="busy()" (click)="highFive(o)">
+              <mat-icon class="mi">back_hand</mat-icon> High Five
+            </button>
+          </div>
         }
       </div>
     }
-  </div>
 
-  <!-- Roll / pending banner -->
-  <div class="roll-strip">
-    <!-- While the overlay die is mid-tumble, keep the strip clear so the value
-         isn't spoiled. Once rolled, the steps-left die floats above the token
-         (Mario Party style) instead of a banner up here. -->
-    @if (!rolling() && !store.you()?.pendingMove) {
-      <!-- Blink (SPD-18) recharges over exactly one roll, so it alternates
-           blink / ordinary-roll turn-by-turn. Rather than a second button that
-           spends half its life greyed-out, the single primary button flips to
-           Blink on a ready turn and back to Roll while it recharges. -->
-      @if (blinkAllowed()) {
-        <button
-          class="uc-btn uc-btn-primary roll-btn blink-btn"
-          [disabled]="busy() || !!rollReason()"
-          (click)="showRollPicker.set(!showRollPicker())"
-        >
-          <mat-icon class="mi">bolt</mat-icon>
-          Blink ({{ debugMode() ? '∞' : rollsBanked() }})
-        </button>
-        <span class="next-roll-hint blink-note">Blink ready — choose your face</span>
-        @if (showRollPicker()) {
-          <div class="roll-picker">
-            @for (n of [1, 2, 3, 4, 5, 6]; track n) {
-              <button class="uc-btn pick-face" [disabled]="busy()" (click)="pickRoll(n)">{{ n }}</button>
-            }
-            <!-- Escape hatch: an ordinary roll keeps Blink ready and still gets
-                 Pathfinder advantage / a Fleetfoot reroll, which a chosen value can't. -->
-            <button
-              class="uc-btn pick-face pick-random"
-              [disabled]="busy()"
-              title="Roll at random — keeps Blink ready"
-              (click)="roll()"
-            >
-              <mat-icon class="mi">casino</mat-icon>
-            </button>
-          </div>
-        }
-      } @else {
-        <button
-          class="uc-btn uc-btn-primary roll-btn"
-          [disabled]="busy() || !!rollReason()"
-          (click)="roll()"
-        >
-          <img class="die-icon" src="undercity/icons/die.png" alt="" />
-          Roll ({{ debugMode() ? '∞' : rollsBanked() }})
-        </button>
-        @if (showCoach()) {
-          <div class="coach-pill" role="status">
-            <span>New here? Tap <strong>Roll</strong> to take your first turn.</span>
-            <button class="coach-close" (click)="dismissCoach()" aria-label="Dismiss">
-              <mat-icon class="mi">close</mat-icon>
-            </button>
-          </div>
-        }
-        @if (blinkRecharging()) {
-          <span class="next-roll-hint blink-note recharging">Blink recharges — ready next turn</span>
-        }
-        <!-- Dev-only pick-a-face stays a separate control on every turn. -->
-        @if (pickAllowed()) {
-          <button class="uc-btn pick-btn" [disabled]="busy()" (click)="showRollPicker.set(!showRollPicker())">
-            <mat-icon class="mi">casino</mat-icon> Pick
-          </button>
-          @if (showRollPicker()) {
-            <div class="roll-picker">
-              @for (n of [1, 2, 3, 4, 5, 6]; track n) {
-                <button class="uc-btn pick-face" [disabled]="busy()" (click)="pickRoll(n)">{{ n }}</button>
-              }
-            </div>
-          }
-        }
-      }
-      @if (!busy() && rollReason(); as r) {
-        <span class="next-roll-hint block-reason">{{ r }}</span>
-      }
-      @if (nextRollLabel(); as nrl) {
-        <span class="next-roll-hint">next roll in {{ nrl }}</span>
-      }
-    }
-
-    <!-- Fleetfoot: a rolled 1 pauses BEFORE the move — the board stays locked
-         until the player rerolls once or keeps the 1. -->
+    <!-- Pending decisions (reroll / pathfinder) take over; otherwise routine actions -->
     @if (!rolling() && store.you()?.pendingMove && canReroll()) {
-      <div class="reroll-prompt">
+      <!-- Fleetfoot: reroll a 1 before moving -->
+      <div class="band-morph reroll-prompt">
         <div class="reroll-prompt-msg">
           <img class="die-icon" src="undercity/icons/die.png" alt="" />
           You rolled a <strong>1</strong>. <em>Fleetfoot</em> lets you reroll once.
@@ -123,11 +80,10 @@
           <button class="uc-btn" [disabled]="busy()" (click)="keepRoll()">Keep the 1</button>
         </div>
       </div>
-    }
-
-    <!-- Pathfinder: advantage rolled two faces — pick which one to move. -->
-    @if (!rolling() && !canReroll() && pathfinderPick(); as pick) {
-      <div class="reroll-prompt">
+    } @else {
+      @if (!rolling() && !canReroll() && pathfinderPick(); as pick) {
+      <!-- Pathfinder: keep either die -->
+      <div class="band-morph reroll-prompt">
         <div class="reroll-prompt-msg">
           <img class="die-icon" src="undercity/icons/die.png" alt="" />
           <em>Pathfinder</em> — keep either die.
@@ -140,88 +96,124 @@
           }
         </div>
       </div>
-    }
-
-    @if (!rolling() && !store.you()?.pendingMove && (castableSpells().length || castableScrolls().length)) {
-      <button class="uc-btn cast-btn" [disabled]="busy()" (click)="showSpells.set(true)">
-        <mat-icon class="mi">auto_fix_high</mat-icon> Cast
-      </button>
-    }
-
-    <!-- Contextual facility buttons while parked on a special node -->
-    @if (!rolling() && !store.you()?.pendingMove) {
-      @switch (nodeType()) {
-        @case ('shop') {
-          <button class="uc-btn" (click)="showShop.set(true)">
-            <mat-icon class="mi">storefront</mat-icon> Bazaar
-          </button>
-        }
-        @case ('ossuary') {
-          <button class="uc-btn" (click)="showOssuary.set(true)">
-            <mat-icon class="mi">casino</mat-icon> The Casino
-          </button>
-        }
-        @case ('witch') {
-          <button class="uc-btn" (click)="showWitch.set(true)">
-            <mat-icon class="mi">auto_fix_high</mat-icon> The Witch
-          </button>
-        }
-        @case ('trading_post') {
-          <button class="uc-btn" (click)="openTradingPost()">
-            <mat-icon class="mi">swap_horiz</mat-icon> Trading Post
-          </button>
-        }
-        @case ('excavation') {
-          <button class="uc-btn" (click)="openExcavation()">
-            <mat-icon class="mi">grid_view</mat-icon> Dig Site
-          </button>
-        }
-        @case ('crystal_vein') {
-          <button class="uc-btn" (click)="openVein()">
-            <mat-icon class="mi">diamond</mat-icon> Crystal Vein
-          </button>
-        }
-        @case ('vault_lock') {
-          <button class="uc-btn" (click)="openVault()">
-            <mat-icon class="mi">dialpad</mat-icon> Guildvault
-          </button>
-        }
-      }
-    }
-  </div>
-
-  <!-- PvP prompt: someone shares your space -->
-  @if (occupantsHere().length && !store.you()?.pendingMove) {
-    <div class="pvp-strip">
-      @for (o of occupantsHere(); track o.userId) {
-        <div class="pvp-row">
-          <span class="pvp-name">
-            {{ o.username }}'s {{ o.creatureName || o.formName }} (L{{ o.level }})
-            @if (o.shielded) {
-              <mat-icon class="mi shield-mi" title="Compost Shield">shield</mat-icon>
+    } @else {
+      <!-- Routine turn actions -->
+      <div class="roll-strip">
+        @if (!rolling() && !store.you()?.pendingMove) {
+          @if (blinkAllowed()) {
+            <button
+              class="uc-btn uc-btn-primary roll-btn blink-btn"
+              [disabled]="busy() || !!rollReason()"
+              (click)="showRollPicker.set(!showRollPicker())"
+            >
+              <mat-icon class="mi">bolt</mat-icon>
+              Blink ({{ debugMode() ? '∞' : rollsBanked() }})
+            </button>
+            <span class="next-roll-hint blink-note">Blink ready — choose your face</span>
+            @if (showRollPicker()) {
+              <div class="roll-picker">
+                @for (n of [1, 2, 3, 4, 5, 6]; track n) {
+                  <button class="uc-btn pick-face" [disabled]="busy()" (click)="pickRoll(n)">{{ n }}</button>
+                }
+                <button
+                  class="uc-btn pick-face pick-random"
+                  [disabled]="busy()"
+                  title="Roll at random — keeps Blink ready"
+                  (click)="roll()"
+                >
+                  <mat-icon class="mi">casino</mat-icon>
+                </button>
+              </div>
             }
-          </span>
-          <button
-            class="uc-btn uc-btn-danger pvp-btn"
-            [disabled]="busy() || o.shielded"
-            (click)="attack(o)"
-          >
-            <mat-icon class="mi">sports_kabaddi</mat-icon> Battle
-          </button>
-          <button class="uc-btn pvp-btn" [disabled]="busy()" (click)="highFive(o)">
-            <mat-icon class="mi">back_hand</mat-icon> High Five
-          </button>
-        </div>
-      }
-    </div>
-  }
+          } @else {
+            <button
+              class="uc-btn uc-btn-primary roll-btn"
+              [disabled]="busy() || !!rollReason()"
+              (click)="roll()"
+            >
+              <img class="die-icon" src="undercity/icons/die.png" alt="" />
+              Roll ({{ debugMode() ? '∞' : rollsBanked() }})
+            </button>
+            @if (showCoach()) {
+              <div class="coach-pill" role="status">
+                <span>New here? Tap <strong>Roll</strong> to take your first turn.</span>
+                <button class="coach-close" (click)="dismissCoach()" aria-label="Dismiss">
+                  <mat-icon class="mi">close</mat-icon>
+                </button>
+              </div>
+            }
+            @if (blinkRecharging()) {
+              <span class="next-roll-hint blink-note recharging">Blink recharges — ready next turn</span>
+            }
+            @if (pickAllowed()) {
+              <button class="uc-btn pick-btn" [disabled]="busy()" (click)="showRollPicker.set(!showRollPicker())">
+                <mat-icon class="mi">casino</mat-icon> Pick
+              </button>
+              @if (showRollPicker()) {
+                <div class="roll-picker">
+                  @for (n of [1, 2, 3, 4, 5, 6]; track n) {
+                    <button class="uc-btn pick-face" [disabled]="busy()" (click)="pickRoll(n)">{{ n }}</button>
+                  }
+                </div>
+              }
+            }
+          }
+          @if (!busy() && rollReason(); as r) {
+            <span class="next-roll-hint block-reason">{{ r }}</span>
+          }
+          @if (nextRollLabel(); as nrl) {
+            <span class="next-roll-hint">next roll in {{ nrl }}</span>
+          }
 
-  @if (toast(); as t) {
-    <div class="board-toast">{{ t }}</div>
-  }
+          @if (castableSpells().length || castableScrolls().length) {
+            <button class="uc-btn cast-btn" [disabled]="busy()" (click)="showSpells.set(true)">
+              <mat-icon class="mi">auto_fix_high</mat-icon> Cast
+            </button>
+          }
 
-  <!-- Bottom-left recent-events ticker (display-only overlay) -->
-  <app-undercity-event-feed />
+          <!-- Facility: compact icon-only button; icon reflects the space -->
+          @switch (nodeType()) {
+            @case ('shop') {
+              <button class="uc-btn facility-btn" title="Bazaar" aria-label="Bazaar" (click)="showShop.set(true)">
+                <mat-icon class="mi">storefront</mat-icon>
+              </button>
+            }
+            @case ('ossuary') {
+              <button class="uc-btn facility-btn" title="The Casino" aria-label="The Casino" (click)="showOssuary.set(true)">
+                <mat-icon class="mi">casino</mat-icon>
+              </button>
+            }
+            @case ('witch') {
+              <button class="uc-btn facility-btn" title="The Witch" aria-label="The Witch" (click)="showWitch.set(true)">
+                <mat-icon class="mi">auto_fix_high</mat-icon>
+              </button>
+            }
+            @case ('trading_post') {
+              <button class="uc-btn facility-btn" title="Trading Post" aria-label="Trading Post" (click)="openTradingPost()">
+                <mat-icon class="mi">swap_horiz</mat-icon>
+              </button>
+            }
+            @case ('excavation') {
+              <button class="uc-btn facility-btn" title="Dig Site" aria-label="Dig Site" (click)="openExcavation()">
+                <mat-icon class="mi">grid_view</mat-icon>
+              </button>
+            }
+            @case ('crystal_vein') {
+              <button class="uc-btn facility-btn" title="Crystal Vein" aria-label="Crystal Vein" (click)="openVein()">
+                <mat-icon class="mi">diamond</mat-icon>
+              </button>
+            }
+            @case ('vault_lock') {
+              <button class="uc-btn facility-btn" title="Guildvault" aria-label="Guildvault" (click)="openVault()">
+                <mat-icon class="mi">dialpad</mat-icon>
+              </button>
+            }
+          }
+        }
+      </div>
+    }
+    }
+  </app-uc-action-band>
 
   <!-- Respawn gate choice (after a compost) -->
   @if (store.you()?.pendingRespawn; as pr) {
@@ -270,7 +262,11 @@
        dragons/lich lords (T3 → can't cross). -->
   @if (bridgePrompt()) {
     <div class="uc-modal-backdrop">
-      <div class="uc-modal" (click)="$event.stopPropagation()">
+      <div
+        class="uc-modal bridge-modal"
+        (click)="$event.stopPropagation()"
+        [style.background-image]="bridgeWashBg()"
+      >
         <h3><mat-icon class="mi">toll</mat-icon> The Nyx Weaver</h3>
         <img
           class="modal-art"

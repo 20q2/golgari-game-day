@@ -81,6 +81,7 @@ import { CrystalVeinModalComponent, VeinEffect } from './crystal-vein.component'
 import { GuildvaultModalComponent } from './guildvault.component';
 import { MysteryReelComponent } from './mystery-reel.component';
 import { BoardEventFeedComponent } from './board-event-feed.component';
+import { UcActionBandComponent } from './action-band.component';
 
 interface BattleView {
   battle: BattleResult;
@@ -181,6 +182,7 @@ const FX_TINT: Record<string, [string, string]> = {
     GuildvaultModalComponent,
     MysteryReelComponent,
     BoardEventFeedComponent,
+    UcActionBandComponent,
   ],
   templateUrl: './board-tab.component.html',
   styleUrls: ['./board-tab.component.scss'],
@@ -976,6 +978,21 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       `rgba(16, 14, 11, 0.62) 0%, ` +
       `rgba(16, 14, 11, 0.86) 100%), ` +
       `${this.regionBgUrl()}`
+    );
+  }
+
+  /**
+   * Bridge-crossing backdrop: the Nyx Weaver's silk roads slung across the misty
+   * biome gaps. Every tunnel joins two chambers, so instead of either biome's
+   * scenery the tollkeeper dialog shows the same between-worlds chasm — washed
+   * dark enough (with the modal's text-shadows) that her dialog stays legible.
+   */
+  protected bridgeWashBg(): string {
+    return (
+      `linear-gradient(to bottom, ` +
+      `rgba(16, 14, 11, 0.58) 0%, ` +
+      `rgba(16, 14, 11, 0.88) 100%), ` +
+      `url('undercity/silk_roads.png')`
     );
   }
 
