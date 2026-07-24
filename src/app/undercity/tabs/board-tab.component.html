@@ -938,7 +938,7 @@
                     <span class="bracket-badge">{{ bracketLabel(e.bracket) }}</span>
                     <span class="haul">
                       +{{ e.spores }} Spores · +{{ e.xp }} XP@if (e.gear) {
-                        · {{ e.gear.name }} (T{{ e.gear.tier }}){{ e.gear.ground ? ' — salvaged' : '' }}
+                        · {{ e.gear.name }} (T{{ e.gear.tier }}){{ e.gear.equipped ? ' — equipped' : e.gear.ground ? ' — salvaged' : '' }}
                       }@if (e.leveledTo) { · Level {{ e.leveledTo }}! }
                     </span>
                   </div>

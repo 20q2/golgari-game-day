@@ -78,7 +78,7 @@ export type AwayEvent =
       spores: number;
       xp: number;
       renown: number;
-      gear?: { id: string; name: string; tier: number; ground?: boolean } | null;
+      gear?: { id: string; name: string; tier: number; ground?: boolean; equipped?: boolean } | null;
       leveledTo?: number | null;
       roster: { name: string; bracket: string }[];
       at: string;
@@ -618,7 +618,7 @@ export interface SpaceEvent {
     spores: number;
     renown: number;
     xp: number;
-    gear?: { id: string; name: string; tier: number; ground?: boolean } | null;
+    gear?: { id: string; name: string; tier: number; ground?: boolean; equipped?: boolean } | null;
     leveledTo?: number | null;
   };
   /** world_event finish: the shared raid summary (present when worldKill). */
