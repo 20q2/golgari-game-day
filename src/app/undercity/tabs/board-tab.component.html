@@ -115,41 +115,83 @@
     } @else {
       <!-- Routine turn actions -->
       <div class="roll-strip">
-        <!-- Roll / Blink stays put through rolling + moving (disabled, not
-             hidden) so the band never collapses or jumps mid-turn. -->
-        @if (blinkAllowed()) {
-          <button
-            class="uc-btn uc-btn-primary roll-btn blink-btn"
-            [disabled]="busy() || rolling() || !!store.you()?.pendingMove || !!rollReason()"
-            (click)="showRollPicker.set(!showRollPicker())"
-          >
-            <mat-icon class="mi">bolt</mat-icon>
-            Blink ({{ debugMode() ? '∞' : rollsBanked() }})
-          </button>
-        } @else {
-          <button
-            class="uc-btn uc-btn-primary roll-btn"
-            [disabled]="busy() || rolling() || !!store.you()?.pendingMove || !!rollReason()"
-            (click)="roll()"
-          >
-            <img class="die-icon" src="undercity/icons/die.png" alt="" />
-            Roll ({{ debugMode() ? '∞' : rollsBanked() }})
-          </button>
-        }
+        <!-- Primary controls stay together on ONE line: Roll/Blink, Cast, and the
+             round current-space button. Roll/Cast persist (disabled) through
+             rolling + moving so the row never collapses or jumps mid-turn. -->
+        <div class="action-row">
+          @if (blinkAllowed()) {
+            <button
+              class="uc-btn uc-btn-primary roll-btn blink-btn"
+              [disabled]="busy() || rolling() || !!store.you()?.pendingMove || !!rollReason()"
+              (click)="showRollPicker.set(!showRollPicker())"
+            >
+              <mat-icon class="mi">bolt</mat-icon>
+              Blink ({{ debugMode() ? '∞' : rollsBanked() }})
+            </button>
+          } @else {
+            <button
+              class="uc-btn uc-btn-primary roll-btn"
+              [disabled]="busy() || rolling() || !!store.you()?.pendingMove || !!rollReason()"
+              (click)="roll()"
+            >
+              <img class="die-icon" src="undercity/icons/die.png" alt="" />
+              Roll ({{ debugMode() ? '∞' : rollsBanked() }})
+            </button>
+          }
 
-        <!-- Cast likewise stays put; disabled while a roll resolves or a move is pending. -->
-        @if (castableSpells().length || castableScrolls().length) {
-          <button
-            class="uc-btn cast-btn"
-            [disabled]="busy() || rolling() || !!store.you()?.pendingMove"
-            (click)="showSpells.set(true)"
-          >
-            <mat-icon class="mi">auto_fix_high</mat-icon> Cast
-          </button>
-        }
+          @if (castableSpells().length || castableScrolls().length) {
+            <button
+              class="uc-btn cast-btn"
+              [disabled]="busy() || rolling() || !!store.you()?.pendingMove"
+              (click)="showSpells.set(true)"
+            >
+              <mat-icon class="mi">auto_fix_high</mat-icon> Cast
+            </button>
+          }
 
-        <!-- Contextual extras (pickers, hints, coach, the current-space button)
-             show only while idle — mid-roll/mid-move they'd be noise. -->
+          <!-- Current-space (facility) round button — only while idle -->
+          @if (!rolling() && !store.you()?.pendingMove) {
+            @switch (nodeType()) {
+              @case ('shop') {
+                <button class="uc-btn facility-btn" title="Bazaar" aria-label="Bazaar" (click)="showShop.set(true)">
+                  <mat-icon class="mi">storefront</mat-icon>
+                </button>
+              }
+              @case ('ossuary') {
+                <button class="uc-btn facility-btn" title="The Casino" aria-label="The Casino" (click)="showOssuary.set(true)">
+                  <mat-icon class="mi">casino</mat-icon>
+                </button>
+              }
+              @case ('witch') {
+                <button class="uc-btn facility-btn" title="The Witch" aria-label="The Witch" (click)="showWitch.set(true)">
+                  <mat-icon class="mi">auto_fix_high</mat-icon>
+                </button>
+              }
+              @case ('trading_post') {
+                <button class="uc-btn facility-btn" title="Trading Post" aria-label="Trading Post" (click)="openTradingPost()">
+                  <mat-icon class="mi">swap_horiz</mat-icon>
+                </button>
+              }
+              @case ('excavation') {
+                <button class="uc-btn facility-btn" title="Dig Site" aria-label="Dig Site" (click)="openExcavation()">
+                  <mat-icon class="mi">grid_view</mat-icon>
+                </button>
+              }
+              @case ('crystal_vein') {
+                <button class="uc-btn facility-btn" title="Crystal Vein" aria-label="Crystal Vein" (click)="openVein()">
+                  <mat-icon class="mi">diamond</mat-icon>
+                </button>
+              }
+              @case ('vault_lock') {
+                <button class="uc-btn facility-btn" title="Guildvault" aria-label="Guildvault" (click)="openVault()">
+                  <mat-icon class="mi">dialpad</mat-icon>
+                </button>
+              }
+            }
+          }
+        </div>
+
+        <!-- Extras drop onto their own line(s) below the button row -->
         @if (!rolling() && !store.you()?.pendingMove) {
           @if (blinkAllowed()) {
             <span class="next-roll-hint blink-note">Blink ready — choose your face</span>
@@ -195,45 +237,6 @@
           }
           @if (!busy() && rollReason(); as r) {
             <span class="next-roll-hint block-reason">{{ r }}</span>
-          }
-
-          <!-- Facility: compact ROUND icon button; icon reflects the current space -->
-          @switch (nodeType()) {
-            @case ('shop') {
-              <button class="uc-btn facility-btn" title="Bazaar" aria-label="Bazaar" (click)="showShop.set(true)">
-                <mat-icon class="mi">storefront</mat-icon>
-              </button>
-            }
-            @case ('ossuary') {
-              <button class="uc-btn facility-btn" title="The Casino" aria-label="The Casino" (click)="showOssuary.set(true)">
-                <mat-icon class="mi">casino</mat-icon>
-              </button>
-            }
-            @case ('witch') {
-              <button class="uc-btn facility-btn" title="The Witch" aria-label="The Witch" (click)="showWitch.set(true)">
-                <mat-icon class="mi">auto_fix_high</mat-icon>
-              </button>
-            }
-            @case ('trading_post') {
-              <button class="uc-btn facility-btn" title="Trading Post" aria-label="Trading Post" (click)="openTradingPost()">
-                <mat-icon class="mi">swap_horiz</mat-icon>
-              </button>
-            }
-            @case ('excavation') {
-              <button class="uc-btn facility-btn" title="Dig Site" aria-label="Dig Site" (click)="openExcavation()">
-                <mat-icon class="mi">grid_view</mat-icon>
-              </button>
-            }
-            @case ('crystal_vein') {
-              <button class="uc-btn facility-btn" title="Crystal Vein" aria-label="Crystal Vein" (click)="openVein()">
-                <mat-icon class="mi">diamond</mat-icon>
-              </button>
-            }
-            @case ('vault_lock') {
-              <button class="uc-btn facility-btn" title="Guildvault" aria-label="Guildvault" (click)="openVault()">
-                <mat-icon class="mi">dialpad</mat-icon>
-              </button>
-            }
           }
         }
       </div>
