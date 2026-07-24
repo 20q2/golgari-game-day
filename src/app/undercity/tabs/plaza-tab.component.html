@@ -1,57 +1,64 @@
 <div class="plaza-tab">
-  <canvas #plazaCanvas class="plaza-canvas"></canvas>
-
-  @if (selected(); as sel) {
-    <div class="poke-card">
-      <span class="poke-name">
-        {{ sel.username }}'s {{ sel.creatureName || sel.formName }} (L{{ sel.level }})
-        @if (sel.shielded) {
-          <mat-icon class="mi shield-mi" title="Compost Shield">shield</mat-icon>
-        }
-      </span>
-      @if (sel.userId !== store.ownUserId) {
-        <button class="uc-btn uc-btn-primary" [disabled]="busy()" (click)="poke()">
-          <mat-icon class="mi">touch_app</mat-icon> Poke (gift a roll)
-        </button>
-      } @else {
-        <div class="status-editor">
-          <label class="status-label">Your status</label>
-          <input
-            class="status-input"
-            type="text"
-            [maxlength]="STATUS_MAX"
-            placeholder="Say something…"
-            [(ngModel)]="statusDraft"
-            (keyup.enter)="saveStatus()"
-          />
-          <div class="status-row">
-            <span class="status-count">{{ statusDraft().length }}/{{ STATUS_MAX }}</span>
-            <button class="uc-btn uc-btn-primary" [disabled]="busy()" (click)="saveStatus()">
-              <mat-icon class="mi">chat_bubble</mat-icon> Set status
-            </button>
-          </div>
-        </div>
-      }
-    </div>
-  }
-
-  <!-- Forge services (Salvage Yard · Blacksmith) — Plaza "town" layer. -->
-  <div class="forge-bar">
-    <button class="uc-btn forge-btn" (click)="openBuilding('salvage')">
-      <mat-icon class="mi">recycling</mat-icon> Salvage Yard
-      @if (stashRows().length) { <span class="forge-count">{{ stashRows().length }}</span> }
-    </button>
-    <button class="uc-btn forge-btn" (click)="openBuilding('blacksmith')">
-      <mat-icon class="mi">hardware</mat-icon> Blacksmith
-      @if (upgradeRows().length) { <span class="forge-count">{{ upgradeRows().length }}</span> }
-    </button>
-    <button class="uc-btn forge-btn" (click)="openBuilding('market')">
-      <mat-icon class="mi">storefront</mat-icon> Market
-      @if (marketRows().length) { <span class="forge-count">{{ marketRows().length }}</span> }
-    </button>
-    <span class="mat-chip mtl" title="Moltings"><mat-icon class="mi">grass</mat-icon> {{ materials().moltings }}</span>
-    <span class="mat-chip ich" title="Chrysalis Ichor"><mat-icon class="mi">science</mat-icon> {{ materials().ichor }}</span>
+  <div class="plaza-scene">
+    <canvas #plazaCanvas class="plaza-canvas"></canvas>
   </div>
+
+  <app-uc-action-band>
+    @if (selected(); as sel) {
+      <!-- Morph: a player (or you) is selected -->
+      <div class="poke-card">
+        <span class="poke-name">
+          {{ sel.username }}'s {{ sel.creatureName || sel.formName }} (L{{ sel.level }})
+          @if (sel.shielded) {
+            <mat-icon class="mi shield-mi" title="Compost Shield">shield</mat-icon>
+          }
+        </span>
+        @if (sel.userId !== store.ownUserId) {
+          <button class="uc-btn uc-btn-primary" [disabled]="busy()" (click)="poke()">
+            <mat-icon class="mi">touch_app</mat-icon> Poke (gift a roll)
+          </button>
+        } @else {
+          <div class="status-editor">
+            <label class="status-label">Your status</label>
+            <input
+              class="status-input"
+              type="text"
+              [maxlength]="STATUS_MAX"
+              placeholder="Say something…"
+              [(ngModel)]="statusDraft"
+              (keyup.enter)="saveStatus()"
+            />
+            <div class="status-row">
+              <span class="status-count">{{ statusDraft().length }}/{{ STATUS_MAX }}</span>
+              <button class="uc-btn uc-btn-primary" [disabled]="busy()" (click)="saveStatus()">
+                <mat-icon class="mi">chat_bubble</mat-icon> Set status
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <!-- Default: forge buildings as a sub-navbar + material chips -->
+      <div class="forge-bar">
+        <button class="uc-btn forge-btn" (click)="openBuilding('salvage')">
+          <mat-icon class="mi">recycling</mat-icon> Salvage
+          @if (stashRows().length) { <span class="forge-count">{{ stashRows().length }}</span> }
+        </button>
+        <button class="uc-btn forge-btn" (click)="openBuilding('blacksmith')">
+          <mat-icon class="mi">hardware</mat-icon> Smith
+          @if (upgradeRows().length) { <span class="forge-count">{{ upgradeRows().length }}</span> }
+        </button>
+        <button class="uc-btn forge-btn" (click)="openBuilding('market')">
+          <mat-icon class="mi">storefront</mat-icon> Market
+          @if (marketRows().length) { <span class="forge-count">{{ marketRows().length }}</span> }
+        </button>
+        <span class="forge-mats">
+          <span class="mat-chip mtl" title="Moltings"><mat-icon class="mi">grass</mat-icon> {{ materials().moltings }}</span>
+          <span class="mat-chip ich" title="Chrysalis Ichor"><mat-icon class="mi">science</mat-icon> {{ materials().ichor }}</span>
+        </span>
+      </div>
+    }
+  </app-uc-action-band>
 
   @if (building(); as b) {
     <div class="uc-modal-backdrop" (click)="closeBuilding()">

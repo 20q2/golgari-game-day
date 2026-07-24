@@ -1,6 +1,15 @@
 .plaza-tab {
   position: absolute;
   inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.plaza-scene {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
 }
 
 .plaza-canvas {
@@ -12,19 +21,12 @@
 }
 
 .poke-card {
-  position: absolute;
-  bottom: 14px;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: rgba(20, 18, 14, 0.94);
-  border: 1px solid rgba(74, 124, 89, 0.5);
-  border-radius: 12px;
-  padding: 10px 16px;
-  z-index: 5;
-  animation: uc-rise 0.2s ease;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  animation: uc-band-in 0.15s ease;
 
   .poke-name {
     display: inline-flex;
@@ -72,20 +74,26 @@
 
 // ── Forge services (Salvage Yard · Blacksmith) ───────────────────────────────
 .forge-bar {
-  position: absolute;
-  top: 12px;
-  left: 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  z-index: 5;
+  gap: 6px;
 }
 
 .forge-btn {
+  flex: 1;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
+}
+
+.forge-mats {
+  display: flex;
+  gap: 4px;
+  padding-left: 6px;
+  margin-left: 2px;
+  border-left: 1px solid rgba(74, 124, 89, 0.3);
+  flex: none;
 }
 
 .forge-count {

@@ -29,6 +29,7 @@ import {
 } from '../data/items';
 import { SPELL_MAP } from '../data/spells';
 import { affordReason, containerFullReason, materialReason } from '../data/block-reasons';
+import { UcActionBandComponent } from './action-band.component';
 
 /**
  * A run of the upgraded description. `same` is unchanged carry-over text; a change
@@ -133,7 +134,7 @@ function descDiff(a: string, b: string): DescSeg[] {
 @Component({
   selector: 'app-undercity-plaza-tab',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule, UcActionBandComponent],
   templateUrl: './plaza-tab.component.html',
   styleUrls: ['./plaza-tab.component.scss'],
 })
