@@ -176,7 +176,10 @@ interface CellVM {
       /* One symbol spans the whole footprint; each cell's overflow:hidden clips
          it to this cell's slice. Offsets shift the symbol up/left by this cell's
          position within the footprint (100% = one cell width/height + one gap). */
-      .find {
+      /* mat-icon.find (type + class) beats Angular Material's global .mat-icon
+         base rule, so our overflow/size/font-size win regardless of stylesheet
+         injection order — otherwise the glyph gets clipped to a 24px box. */
+      mat-icon.find {
         position: absolute;
         overflow: visible;
         width: calc(var(--span-c) * 100% + (var(--span-c) - 1) * var(--dig-gap));
