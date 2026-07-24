@@ -575,25 +575,6 @@ export class CreatureTabComponent {
     this.confirmOpen.set(null);
   }
 
-  /** Index of the bag row awaiting drop confirmation (null = none). */
-  protected readonly dropConfirm = signal<number | null>(null);
-
-  protected askDrop(index: number): void {
-    this.dropConfirm.set(index);
-  }
-
-  protected cancelDrop(): void {
-    this.dropConfirm.set(null);
-  }
-
-  async confirmDrop(item: string): Promise<void> {
-    await this.run(async () => {
-      const resp = await this.store.action('drop-item', { item });
-      this.dropConfirm.set(null);
-      this.showToast(resp.text ?? 'Dropped.');
-    });
-  }
-
   async useLoadedDie(value: number): Promise<void> {
     await this.run(async () => {
       const resp = await this.store.action('use-item', { item: 'loaded_die', value });
