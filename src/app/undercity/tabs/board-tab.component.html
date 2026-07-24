@@ -115,16 +115,43 @@
     } @else {
       <!-- Routine turn actions -->
       <div class="roll-strip">
+        <!-- Roll / Blink stays put through rolling + moving (disabled, not
+             hidden) so the band never collapses or jumps mid-turn. -->
+        @if (blinkAllowed()) {
+          <button
+            class="uc-btn uc-btn-primary roll-btn blink-btn"
+            [disabled]="busy() || rolling() || !!store.you()?.pendingMove || !!rollReason()"
+            (click)="showRollPicker.set(!showRollPicker())"
+          >
+            <mat-icon class="mi">bolt</mat-icon>
+            Blink ({{ debugMode() ? '∞' : rollsBanked() }})
+          </button>
+        } @else {
+          <button
+            class="uc-btn uc-btn-primary roll-btn"
+            [disabled]="busy() || rolling() || !!store.you()?.pendingMove || !!rollReason()"
+            (click)="roll()"
+          >
+            <img class="die-icon" src="undercity/icons/die.png" alt="" />
+            Roll ({{ debugMode() ? '∞' : rollsBanked() }})
+          </button>
+        }
+
+        <!-- Cast likewise stays put; disabled while a roll resolves or a move is pending. -->
+        @if (castableSpells().length || castableScrolls().length) {
+          <button
+            class="uc-btn cast-btn"
+            [disabled]="busy() || rolling() || !!store.you()?.pendingMove"
+            (click)="showSpells.set(true)"
+          >
+            <mat-icon class="mi">auto_fix_high</mat-icon> Cast
+          </button>
+        }
+
+        <!-- Contextual extras (pickers, hints, coach, the current-space button)
+             show only while idle — mid-roll/mid-move they'd be noise. -->
         @if (!rolling() && !store.you()?.pendingMove) {
           @if (blinkAllowed()) {
-            <button
-              class="uc-btn uc-btn-primary roll-btn blink-btn"
-              [disabled]="busy() || !!rollReason()"
-              (click)="showRollPicker.set(!showRollPicker())"
-            >
-              <mat-icon class="mi">bolt</mat-icon>
-              Blink ({{ debugMode() ? '∞' : rollsBanked() }})
-            </button>
             <span class="next-roll-hint blink-note">Blink ready — choose your face</span>
             @if (showRollPicker()) {
               <div class="roll-picker">
@@ -142,14 +169,6 @@
               </div>
             }
           } @else {
-            <button
-              class="uc-btn uc-btn-primary roll-btn"
-              [disabled]="busy() || !!rollReason()"
-              (click)="roll()"
-            >
-              <img class="die-icon" src="undercity/icons/die.png" alt="" />
-              Roll ({{ debugMode() ? '∞' : rollsBanked() }})
-            </button>
             @if (showCoach()) {
               <div class="coach-pill" role="status">
                 <span>New here? Tap <strong>Roll</strong> to take your first turn.</span>
@@ -178,13 +197,7 @@
             <span class="next-roll-hint block-reason">{{ r }}</span>
           }
 
-          @if (castableSpells().length || castableScrolls().length) {
-            <button class="uc-btn cast-btn" [disabled]="busy()" (click)="showSpells.set(true)">
-              <mat-icon class="mi">auto_fix_high</mat-icon> Cast
-            </button>
-          }
-
-          <!-- Facility: compact icon-only button; icon reflects the space -->
+          <!-- Facility: compact ROUND icon button; icon reflects the current space -->
           @switch (nodeType()) {
             @case ('shop') {
               <button class="uc-btn facility-btn" title="Bazaar" aria-label="Bazaar" (click)="showShop.set(true)">

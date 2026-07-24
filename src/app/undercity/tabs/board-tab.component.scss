@@ -186,8 +186,14 @@
   text-align: left;
 }
 
+// The current-space action is a round button so it reads as distinct from the
+// rectangular Roll / Cast buttons beside it.
 .facility-btn {
-  padding: 8px 12px;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  flex-shrink: 0;
 
   .mi {
     margin: 0;
