@@ -17,14 +17,14 @@ def _force_fang_drop(monkeypatch):
     monkeypatch.setattr(db._rng, 'choices', lambda seq, weights=None, k=1: [seq[0]])
 
 
-def test_drop_goes_to_stash(monkeypatch):
+def test_drop_auto_equips_into_empty_slot(monkeypatch):
     monkeypatch.setattr(db._rng, 'choice', lambda seq: seq[0])
     monkeypatch.setattr(db._rng, 'choices', lambda seq, weights=None, k=1: [seq[0]])
     doc = _doc(spores=0)
     res = db._roll_gear_drop(doc, {1: 1.0})
-    assert res['outcome'] == 'stashed'
-    assert doc['gearStash'] == [res['id']]
-    assert doc.get('gear') == {}          # never auto-equipped
+    assert res['outcome'] == 'equipped'
+    assert doc['gear'][res['slot']] == res['id']   # worn straight into the empty slot
+    assert not doc.get('gearStash')
 
 
 def test_drop_never_auto_equips_or_mulches(monkeypatch):
@@ -44,7 +44,7 @@ def test_stash_full_auto_grinds_to_materials(monkeypatch):
     monkeypatch.setattr(db._rng, 'choice',
                         lambda seq: 'fang' if 'fang' in seq else seq[0])
     monkeypatch.setattr(db._rng, 'choices', lambda seq, weights=None, k=1: [1])
-    doc = _doc(spores=0)
+    doc = _doc(gear={'fang': 'rusted_fang'}, spores=0)   # fang slot filled → can't auto-equip
     doc['gearStash'] = ['rusted_fang'] * data.GEAR_STASH_SIZE
     res = db._roll_gear_drop(doc, {1: 1.0})
     assert res['outcome'] == 'stash-full'
@@ -61,7 +61,7 @@ def test_wild_win_can_drop_gear(table, monkeypatch):
     _force_fang_drop(monkeypatch)
     se = _finish_started_battle(table, monkeypatch, doc, 'attacker')
     assert se['type'] == 'wild'
-    assert se['gear']['outcome'] in ('stashed', 'stash-full')
+    assert se['gear']['outcome'] in ('equipped', 'stashed', 'stash-full')
     assert se['gear']['slot'] == 'fang'
 
 

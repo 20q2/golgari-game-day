@@ -846,6 +846,23 @@ def test_buy_gear_and_consumables(table):
     assert status == 200 and 'healing_moss' in resp['you']['bag']
 
 
+def test_gain_gear_equips_empty_stashes_filled_grinds_when_full():
+    doc = {'gear': {}, 'gearStash': [], 'materials': {'moltings': 0, 'ichor': 0}}
+    # Empty slot → auto-equip, nothing stashed.
+    r = db._gain_gear(doc, 'rusted_fang')
+    assert r['outcome'] == 'equipped' and doc['gear']['fang'] == 'rusted_fang'
+    assert doc['gearStash'] == []
+    # Filled slot, room in stash → stash; never displaces the worn piece.
+    r = db._gain_gear(doc, 'bloodfang')
+    assert r['outcome'] == 'stashed' and 'bloodfang' in doc['gearStash']
+    assert doc['gear']['fang'] == 'rusted_fang'
+    # Filled slot, full stash → ground into materials (piece never lost).
+    doc['gearStash'] = ['bloodfang'] * data.GEAR_STASH_SIZE
+    r = db._gain_gear(doc, 'gutcleaver')
+    assert r['outcome'] == 'stash-full' and 'materials' in r
+    assert 'gutcleaver' not in doc['gearStash']
+
+
 def test_evolution_gates_and_bonuses(table):
     act(table, 'join', starter='saproling')
     status, resp = act(table, 'evolve', form='slitherhead')

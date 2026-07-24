@@ -779,6 +779,8 @@ def _grind_materials(doc, gid):
 
 def _drop_phrase(drop):
     """Past-tense phrase for how a fresh gear drop was disposed of."""
+    if drop['outcome'] == 'equipped':
+        return 'equipped'
     return 'stashed' if drop['outcome'] == 'stashed' else 'ground into materials'
 
 
@@ -800,21 +802,18 @@ def _roll_scroll_drop(doc, source):
     return spell_id
 
 
-def _roll_gear_drop(doc, tier_weights):
-    """Roll a gear piece per the tier profile and route it to the gear stash —
-    found gear is decided later at the Plaza (equip / salvage), no auto-equip or
-    auto-mulch. If the stash is full the piece is auto-ground into materials so
-    the find is never lost.
-    Returns {'id','slot','tier','outcome',...} or None. outcome is 'stashed' or
-    'stash-full' (the latter carries the 'materials' it was ground into)."""
-    slot = _rng.choice(data.GEAR_SLOTS)
-    tiers = list(tier_weights)
-    tier = _rng.choices(tiers, weights=[tier_weights[t] for t in tiers])[0]
-    pool = [gid for gid, g in data.GEAR.items()
-            if g['slot'] == slot and g['tier'] == tier]
-    if not pool:
-        return None
-    gid = _rng.choice(pool)
+def _gain_gear(doc, gid):
+    """Route a newly-acquired gear piece. Auto-equip it when its slot is empty
+    (fills the slot; never displaces an equipped piece); otherwise stash it, and
+    if the stash is full grind it into materials so the piece is never lost.
+    Returns {'id','slot','tier','outcome',...} where outcome is 'equipped',
+    'stashed', or 'stash-full' (the latter carries 'materials')."""
+    g = data.GEAR[gid]
+    slot, tier = g['slot'], g['tier']
+    gear = doc.setdefault('gear', {})
+    if not gear.get(slot):
+        gear[slot] = gid
+        return {'id': gid, 'slot': slot, 'tier': tier, 'outcome': 'equipped'}
     stash = doc.setdefault('gearStash', [])
     if len(stash) < data.GEAR_STASH_SIZE:
         stash.append(gid)
@@ -822,6 +821,23 @@ def _roll_gear_drop(doc, tier_weights):
     gained = _grind_materials(doc, gid)
     return {'id': gid, 'slot': slot, 'tier': tier,
             'outcome': 'stash-full', 'materials': gained}
+
+
+def _roll_gear_drop(doc, tier_weights):
+    """Roll a gear piece per the tier profile and route it via _gain_gear: found
+    gear auto-equips into an empty slot, else stashes (or grinds if the stash is
+    full so the find is never lost).
+    Returns {'id','slot','tier','outcome',...} or None. outcome is 'equipped',
+    'stashed', or 'stash-full' (the latter carries the 'materials' it was ground
+    into)."""
+    slot = _rng.choice(data.GEAR_SLOTS)
+    tiers = list(tier_weights)
+    tier = _rng.choices(tiers, weights=[tier_weights[t] for t in tiers])[0]
+    pool = [gid for gid, g in data.GEAR.items()
+            if g['slot'] == slot and g['tier'] == tier]
+    if not pool:
+        return None
+    return _gain_gear(doc, _rng.choice(pool))
 
 
 def _salvage_gear(table, sid, doc, payload):
@@ -3525,7 +3541,8 @@ def _gear_award_summary(drop):
         return None
     g = data.GEAR.get(drop['id'], {})
     return {'id': drop['id'], 'name': g.get('name', drop['id']),
-            'tier': drop['tier'], 'ground': drop['outcome'] == 'stash-full'}
+            'tier': drop['tier'], 'ground': drop['outcome'] == 'stash-full',
+            'equipped': drop['outcome'] == 'equipped'}
 
 
 def _world_event_payout(table, sid, killer_doc):

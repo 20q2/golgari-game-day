@@ -268,8 +268,8 @@ def test_payout_grants_xp_gear_and_roster_to_all():
     minor0 = db._get_player(table, sid, 'u_minor')
     top_prog0 = (top0['level'], top0['xp'])
     minor_prog0 = (minor0['level'], minor0['xp'])
-    top_stash0 = len(top0.get('gearStash') or [])
-    minor_stash0 = len(minor0.get('gearStash') or [])
+    top_owned0 = len(top0.get('gear') or {}) + len(top0.get('gearStash') or [])
+    minor_owned0 = len(minor0.get('gear') or {}) + len(minor0.get('gearStash') or [])
 
     rec = {'spawned': True, 'node': 'x', 'nodes': ['a', 'x', 'b'],
            'hp': 1, 'maxHp': 200, 'dmg': {'u_top': 150, 'u_minor': 25}, 'dead': False}
@@ -286,9 +286,10 @@ def test_payout_grants_xp_gear_and_roster_to_all():
     minor_doc = db._get_player(table, sid, 'u_minor')
     assert (top['level'], top['xp']) > top_prog0
     assert (minor_doc['level'], minor_doc['xp']) > minor_prog0
-    # One guaranteed gear piece each (stash grew by 1; small values never hit the cap here).
-    assert len(top.get('gearStash') or []) == top_stash0 + 1
-    assert len(minor_doc.get('gearStash') or []) == minor_stash0 + 1
+    # One guaranteed gear piece each — auto-equipped into an empty slot or stashed,
+    # so assert total owned gear (equipped + stash) grew by 1.
+    assert len(top.get('gear') or {}) + len(top.get('gearStash') or []) == top_owned0 + 1
+    assert len(minor_doc.get('gear') or {}) + len(minor_doc.get('gearStash') or []) == minor_owned0 + 1
     # Result rows carry the new fields + a full roster.
     assert by_uid['u_top']['gear'] is not None and by_uid['u_top']['xp'] > 0
     roster = by_uid['u_top']['roster']
