@@ -278,6 +278,20 @@ export const CONSUMABLE_MAP: Record<string, ConsumableInfo> = Object.fromEntries
 /** Scroll base cost by spell tier (mirrors INSCRIBE_COST in undercity_config.py). */
 export const INSCRIBE_COST: Record<number, number> = { 1: 10, 2: 20, 3: 30 };
 
+/** Witch tier-I scroll markup (mirrors WITCH_SCROLL_MARKUP in undercity_config.py). */
+export const WITCH_SCROLL_MARKUP = 1.6;
+
+/** Spore fee to inscribe a scroll of the given spell into a grimoire. */
+export function inscribeCost(spellId: string): number {
+  return INSCRIBE_COST[SPELL_MAP[spellId]?.tier ?? 1] ?? 0;
+}
+
+/** Price of a scroll on the witch's shelf (mirrors _witch_buy_scroll: inscribe
+ *  cost × markup, rounded). */
+export function witchScrollPrice(spellId: string): number {
+  return Math.round(inscribeCost(spellId) * WITCH_SCROLL_MARKUP);
+}
+
 export type MarketKind = 'gear' | 'consumable' | 'scroll';
 
 /** Base cost a market price band is derived from, per kind (mirrors _MARKET_KINDS). */
@@ -474,7 +488,7 @@ export const SPACE_BLURBS: Record<string, string> = {
   vault: 'A treasure hoard, deep behind a barrier. First visit pays big — once.',
   cache: 'A stashed treasure — a rich first-visit payout for every explorer.',
   ladder: 'A rusted ladder between the surface and the dungeon below.',
-  tunnel: 'A shortcut between biomes. Tier-1 units cross free; evolved units pay Spores to use it. Land on it to be carried across to the far side for free.',
+  tunnel: 'A shortcut between biomes. Tier-1 units cross free; evolved units pay Spores to use it. Land on it to be carried across to the far side for free — any leftover roll keeps going on the other side.',
 };
 
 export const SPACE_NAMES: Record<string, string> = {

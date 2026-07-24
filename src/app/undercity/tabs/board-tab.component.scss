@@ -1650,14 +1650,31 @@
 
 // ── The Sedgemoor Witch modal (design 2026-07-23 bog-witch-scrolls §7) ──────
 .witch-modal {
-  .witch-head {
-    background: linear-gradient(135deg, #2a4d3a, #4b2d5e);
-    color: #fff;
-    padding: 10px 14px;
-    border-radius: 8px 8px 0 0;
-    margin: -16px -16px 10px;
-    h3 { margin: 0; }
+  // The Sedgemoor scenery (swamp) is bound inline via regionWashBg(); cover it
+  // and lean on text-shadows so nothing sits black-on-black over the bog.
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  text-align: left;
+
+  h3,
+  .shop-quote,
+  .modal-sub { text-align: center; }
+
+  h3 { text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85); }
+  .shop-quote { text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9); }
+  .modal-sub { text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9); }
+
+  // Inline Spore coin used in prices, fees, and the confirm button.
+  .rot-coin {
+    height: 1.05em;
+    width: 1.05em;
+    vertical-align: -0.15em;
+    object-fit: contain;
+    image-rendering: pixelated;
   }
+
   .witch-seg {
     display: flex;
     gap: 6px;
@@ -1665,17 +1682,45 @@
     button {
       flex: 1;
       padding: 6px 8px;
-      border: 1px solid rgba(127, 127, 127, 0.35);
+      border: 1px solid rgba(183, 228, 199, 0.28);
       border-radius: 8px;
-      background: transparent;
-      color: inherit;
+      background: rgba(16, 14, 11, 0.55);
+      color: #e6efe6;
       cursor: pointer;
       font-weight: 600;
       &.active { background: var(--accent-color, #e91e63); color: #fff; border-color: transparent; }
     }
   }
-  .witch-hint { font-size: 0.82rem; opacity: 0.75; margin: 4px 0 8px; }
-  .witch-sub { margin: 12px 0 6px; font-size: 0.9rem; }
+
+  // Per-tier inscribe-cost legend — a readable band, not faint grey text.
+  .witch-costs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    margin: 0 0 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(16, 14, 11, 0.6);
+    border: 1px solid rgba(183, 228, 199, 0.18);
+    font-size: 0.76rem;
+    color: #cfe0cf;
+    .witch-cost { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+    .witch-cost b { color: #f0f4ee; }
+  }
+
+  .witch-hint {
+    font-size: 0.82rem;
+    margin: 4px 0 8px;
+    color: #cdddcd;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  }
+  .witch-sub {
+    margin: 12px 0 6px;
+    font-size: 0.9rem;
+    color: #e6efe6;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+  }
   .witch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
   .witch-card,
@@ -1686,10 +1731,11 @@
     gap: 3px;
     text-align: left;
     padding: 8px 10px;
-    border: 1px solid rgba(127, 127, 127, 0.25);
+    border: 1px solid rgba(183, 228, 199, 0.18);
     border-left: 3px solid transparent;
     border-radius: 8px;
-    background: rgba(127, 127, 127, 0.06);
+    // Solid-enough dark tile so every label reads over the swamp scenery.
+    background: rgba(14, 12, 10, 0.72);
     cursor: pointer;
     // Rarity (tier) palette — mirrors plaza-tab.component.scss.
     &[data-rarity='common'] { border-left-color: #9aa7a0; }
@@ -1697,8 +1743,25 @@
     &[data-rarity='legendary'] { border-left-color: #fbbf24; }
     &.picked { outline: 2px solid var(--accent-color, #e91e63); }
   }
-  .wc-name { font-weight: 700; font-size: 0.86rem; }
+  .wc-name { font-weight: 700; font-size: 0.86rem; color: #d8f3dc; }
   .wc-cat { font-size: 0.72rem; font-weight: 700; }
+  // Inscribe fee on a scroll card (witchy ink) / shop price (spore gold).
+  .wc-fee {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #d7c3e6;
+  }
+  .wc-price {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #fde68a;
+  }
   .rarity-badge {
     position: absolute; top: 6px; right: 8px;
     font-size: 0.62rem; font-weight: 700; text-transform: uppercase; opacity: 0.8;
@@ -1707,14 +1770,22 @@
     &.legendary { color: #fbbf24; }
   }
   .wc-pips { display: flex; gap: 2px; }
-  .wc-pip { font-size: 0.7rem; opacity: 0.3; &.filled { opacity: 1; color: #5fd18a; } }
+  .wc-pip { font-size: 0.7rem; color: #cdddcd; opacity: 0.35; &.filled { opacity: 1; color: #5fd18a; } }
   .wc-spells { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
   .wc-chip {
     font-size: 0.72rem; font-weight: 600;
     padding: 1px 6px; border-radius: 8px;
-    background: rgba(127, 127, 127, 0.14);
+    background: rgba(183, 228, 199, 0.16);
     &.doomed { text-decoration: line-through; color: var(--error, #f44336) !important; }
   }
   .wc-warn { font-size: 0.7rem; color: var(--warning, #ff9800); margin-top: 2px; }
-  .witch-confirm { width: 100%; margin-top: 10px; &:disabled { opacity: 0.5; } }
+  .witch-confirm {
+    width: 100%;
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    &:disabled { opacity: 0.5; }
+  }
 }

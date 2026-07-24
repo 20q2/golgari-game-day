@@ -69,6 +69,17 @@ each biome's depths is a dead-end loop back to itself).
   degree-2 spurs, "can't land" ⇒ "can't cross", and removing them for T2+ never
   disconnects a biome internally. Tier-1 units are unaffected.
 
+> **Update (2026-07-23) — crossing is now a bonk-stop that keeps walking.**
+> Superseding the "Tier-1 passes through freely" rule above (and folding in the
+> later toll design), a bridge mouth is now a **walk-stop for every tier**
+> (`_stop_nodes` always includes `TUNNEL_NODES`): a mover halts on the mouth and
+> is carried across on landing — nobody corridors through. Landing charges the
+> tier toll (T1 free, T2 pays, T3 barred by `_blocked_nodes`), relocates to the
+> far biome node consequence-free, **and banks any leftover roll as a fresh
+> `pendingMove` from the far side** (like a ladder crossing, see `_move`). So a
+> crossing costs no steps and no longer ends the move — the client tollkeeper's
+> "cross" button carries you over and the walk resumes on the other side.
+
 ### 2. Movement engine
 
 - Add a `blocked: frozenset = frozenset()` parameter to `legal_destinations` and

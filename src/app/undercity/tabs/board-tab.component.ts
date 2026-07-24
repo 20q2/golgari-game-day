@@ -64,6 +64,9 @@ import {
   GearInfo,
   ConsumableInfo,
   tierRarity,
+  INSCRIBE_COST,
+  inscribeCost,
+  witchScrollPrice,
 } from '../data/items';
 import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome } from '../data/dungeons';
 import { WORLD_EVENT } from '../data/world-event';
@@ -577,6 +580,25 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   // ── Sedgemoor Witch ────────────────────────────────────────────────────────
   protected readonly spellCategoryStyle = spellCategoryStyle;
   protected readonly witchStock = WITCH_SCROLL_STOCK;
+  /** Spore price of a scroll on the witch's shelf. */
+  protected scrollPrice(id: string): number {
+    return witchScrollPrice(id);
+  }
+  /** Spore fee to copy the scroll of `id` into a grimoire. */
+  protected inscribeFee(id: string): number {
+    return inscribeCost(id);
+  }
+  /** Inscribe fee for the scroll the player has picked (0 when none picked). */
+  protected pickedInscribeFee(): number {
+    const s = this.pickedScroll();
+    return s ? inscribeCost(s) : 0;
+  }
+  /** Per-tier inscribe-cost legend (spell level → Spores) shown in the modal. */
+  protected readonly inscribeTiers: { tier: number; roman: string; cost: number }[] = [
+    { tier: 1, roman: 'I', cost: INSCRIBE_COST[1] },
+    { tier: 2, roman: 'II', cost: INSCRIBE_COST[2] },
+    { tier: 3, roman: 'III', cost: INSCRIBE_COST[3] },
+  ];
   protected spellInfo(id: string): SpellInfo | undefined {
     return SPELL_MAP[id];
   }
@@ -903,6 +925,14 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly tradingKeeper = {
     art: 'undercity/map_events/shopkeeper3.png',
     quote: 'Ooh, what have you got? One of everything — that is Ooze’s motto. Leave a trinket, take a trinket.',
+  };
+
+  /** The Sedgemoor Witch — the scroll-inscribing crone (keeper 4). Her line
+   *  teaches the whole facility: scrolls copy into your grimoire for Spores. */
+  protected readonly witchKeeper = {
+    art: 'undercity/map_events/shopkeeper4.png',
+    quote:
+      'A scroll is a borrowed whisper, dearie — cast it once and it is gone. But bleed a few Spores on my ink and Baba will copy its spell into your grimoire, yours to chant forever.',
   };
 
   protected bazaarKeeper(): { art: string; quote: string } {
@@ -1494,9 +1524,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const node = this.map.nodes.find((n) => n.id === nodeId);
     const sealedStop =
       node?.type === 'barrier' && !this.store.barriersOpen().includes(nodeId);
-    // Evolved units (tier > 1) halt on a bridge mouth to pay the toll — a bonk
-    // stop like a sealed barrier, so the move auto-commits on arrival.
-    const bridgeStop = node?.type === 'tunnel' && (this.store.you()?.tier ?? 1) > 1;
+    // Every unit halts on a bridge mouth — a bonk stop like a sealed barrier, so
+    // the move auto-commits on arrival and the server carries you across (any
+    // leftover roll resumes on the far side). Evolved units also pay the toll.
+    const bridgeStop = node?.type === 'tunnel';
     // Any ladder is a bonk-stop: the walk halts on arrival and commits, so the
     // server can bank the leftover steps and offer the crossing (see the ladder
     // space-event modal). Replaces the old degree-1-only escape-spur stop.
@@ -1668,22 +1699,21 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Client walk-stop set: the shared sealed-barrier / escape-ladder stops
    *  (post-boss escape ladders are degree-1 dead-end spurs — bonk stops you
    *  march up to and halt on, so an exact-count landing isn't required; server
-   *  dests gate unclaimed ones out), plus every bridge for evolved units
-   *  (tier > 1) so their walk halts on the mouth. Mirrors undercity_db.
-   *  _stop_nodes. Scoped to walking only — NOT used for spell range / distance
-   *  (those keep closedBarrierIds()). */
+   *  dests gate unclaimed ones out), plus every bridge for all tiers so a walk
+   *  halts on the mouth and is carried across on landing (the leftover roll
+   *  then resumes on the far side). Mirrors undercity_db._stop_nodes. Scoped to
+   *  walking only — NOT used for spell range / distance (those keep
+   *  closedBarrierIds()). */
   private stepClosedIds(): string[] {
     const closed = this.closedBarrierIds();
-    // Every ladder halts a walk (bonk-stop), so a mover always lands ON a ladder
-    // and never corridors through — matching the server's _stop_nodes. Added to
-    // the WALKING set only; closedBarrierIds() (spell range) is left alone.
-    const ladders = this.map.nodes.filter((n) => n.type === 'ladder').map((n) => n.id);
-    const base = [...closed, ...ladders];
-    if ((this.store.you()?.tier ?? 1) > 1) {
-      const bridges = this.map.nodes.filter((n) => n.type === 'tunnel').map((n) => n.id);
-      return [...base, ...bridges];
-    }
-    return base;
+    // Ladders and bridges both halt a walk (bonk-stop), so a mover always lands
+    // ON them and never corridors through — matching the server's _stop_nodes.
+    // Added to the WALKING set only; closedBarrierIds() (spell range) is left
+    // alone.
+    const stops = this.map.nodes
+      .filter((n) => n.type === 'ladder' || n.type === 'tunnel')
+      .map((n) => n.id);
+    return [...closed, ...stops];
   }
 
   /** The far end a ladder crosses to, for display / button-gating (the server is
@@ -1809,7 +1839,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Open the right modal/animation for a landing event (move or teleport). */
   private routeSpaceEvent(ev: SpaceEvent, preHp: number): void {
-    if (ev.type === 'ladder_cross') return;   // silent free relocate, no modal
+    // Silent free relocates — no modal. The bridge tollkeeper already confirmed
+    // the crossing, so the carry-across just happens and the walk resumes on the
+    // far side (the store effect restarts it from any banked leftover roll).
+    if (ev.type === 'ladder_cross' || ev.type === 'tunnel') return;
     if (ev.type === 'battle_start' && ev.npc) {
       this.openLiveBattle(ev, preHp);
       return;
@@ -2026,14 +2059,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       this.closeFlowPuzzle();
       const ev = resp.spaceEvent;
       if (ev) this.routeSpaceEvent(ev, preHp); // 'loot' → the normal reward dialog
-    });
-  }
-
-  /** Player gave up — forfeit the reward, no penalty. */
-  async giveUpFlowPuzzle(): Promise<void> {
-    await this.run(async () => {
-      await this.store.action('cancel-loot-puzzle', {});
-      this.closeFlowPuzzle();
     });
   }
 

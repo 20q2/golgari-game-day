@@ -23,6 +23,7 @@ import { BoardAmbient } from './board-ambient';
 import {
   renderTerrain,
   drawDecals,
+  drawFlora,
   preloadDecalImages,
   FloorTextures,
   LandmarkTextures,
@@ -457,6 +458,7 @@ export class BoardCanvas {
         terrain: renderTerrain(this.map, this.floorTex, this.landmarkTex, spec, {
           cleared: !!biome && this.clearedDungeons.has(biome),
           resolution: TERRAIN_RES,
+          animateFlora: true,
         }),
       });
       if (old) {
@@ -559,7 +561,10 @@ export class BoardCanvas {
     for (const spec of this.layerSpecs) {
       this.layers.set(spec.id, {
         spec,
-        terrain: renderTerrain(map, undefined, undefined, spec, { resolution: TERRAIN_RES }),
+        terrain: renderTerrain(map, undefined, undefined, spec, {
+          resolution: TERRAIN_RES,
+          animateFlora: true,
+        }),
       });
     }
     // Dungeon fog-of-war: nodes you've stood on stay lit across sessions.
@@ -1188,6 +1193,15 @@ export class BoardCanvas {
       L.terrain.canvas.height / L.terrain.resolution,
     );
     this.drawGlows(elapsed);
+
+    // Soft flora (mushrooms, reeds, bog trees) lifted out of the static bake so
+    // they sway with an idle breeze — drawn here so they sit under discs/tokens.
+    drawFlora(ctx, L.terrain.flora, elapsed, {
+      x0: this.camX,
+      y0: this.camY,
+      x1: this.camX + this.viewW / this.zoom,
+      y1: this.camY + this.viewH / this.zoom,
+    });
 
     // Dungeon darkness: unexplored gloom with light holes at lit nodes.
     if (this.activeLayerId !== OVERWORLD) this.drawGloomVeil();

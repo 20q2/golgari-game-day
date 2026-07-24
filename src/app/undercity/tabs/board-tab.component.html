@@ -787,7 +787,6 @@
       [busy]="busy()"
       [washBg]="regionWashBg()"
       (solved)="solveFlowPuzzle($event)"
-      (gaveUp)="giveUpFlowPuzzle()"
     />
   }
 
@@ -1017,20 +1016,38 @@
   <!-- The Sedgemoor Witch: inscribe scrolls into books, or buy tier-I scrolls -->
   @if (showWitch()) {
     <div class="uc-modal-backdrop" (click)="closeWitch()">
-      <div class="uc-modal witch-modal" (click)="$event.stopPropagation()">
-        <header class="witch-head">
-          <h3><mat-icon class="mi">auto_fix_high</mat-icon> The Sedgemoor Witch</h3>
-        </header>
+      <div
+        class="uc-modal witch-modal"
+        (click)="$event.stopPropagation()"
+        [style.background-image]="regionWashBg()"
+      >
+        <img class="modal-art" [src]="witchKeeper.art" alt="" />
+        <h3><mat-icon class="mi">auto_fix_high</mat-icon> The Sedgemoor Witch</h3>
+        <p class="shop-quote">“{{ witchKeeper.quote }}”</p>
+        <p class="modal-sub">
+          You carry <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ store.you()?.spores }}
+        </p>
+
         <div class="witch-seg">
           <button [class.active]="witchSeg() === 'inscribe'" (click)="witchSeg.set('inscribe')">Inscribe</button>
           <button [class.active]="witchSeg() === 'buy'" (click)="witchSeg.set('buy')">Buy scrolls</button>
         </div>
 
         @if (witchSeg() === 'inscribe') {
+          <!-- Spore fee to copy a spell into a grimoire, by scroll tier. -->
+          <p class="witch-costs">
+            Copying into a grimoire costs by tier —
+            @for (t of inscribeTiers; track t.tier) {
+              <span class="witch-cost"
+                ><b>{{ t.roman }}</b>
+                <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />{{ t.cost }}</span
+              >
+            }
+          </p>
           @if (!(store.you()?.scrolls?.length)) {
             <p class="witch-hint">No scrolls yet — find them in the deep, or buy one.</p>
           } @else {
-            <p class="witch-hint">Pick a scroll, then a book to inscribe it into.</p>
+            <p class="witch-hint">Pick a scroll, then a book to copy it into.</p>
             <div class="witch-grid">
               @for (s of store.you()?.scrolls ?? []; track $index) {
                 @if (spellInfo(s); as sp) {
@@ -1045,6 +1062,9 @@
                       {{ spellCategoryStyle(sp).kind }}
                       @if (spellPowerLabel(sp, playerLevel()); as pw) { · {{ pw }} }
                     </span>
+                    <span class="wc-fee"
+                      ><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />{{ inscribeFee(s) }} to copy</span
+                    >
                     <span class="rarity-badge" [ngClass]="tierRarity(sp.tier).key">{{ tierRarity(sp.tier).label }}</span>
                   </button>
                 }
@@ -1085,18 +1105,21 @@
               }
             </div>
             <button class="uc-btn uc-btn-primary witch-confirm" [disabled]="busy() || !canInscribe()" (click)="inscribe()">
-              Inscribe
+              Inscribe · <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />{{ pickedInscribeFee() }}
             </button>
             @if (!busy() && inscribeReason(); as r) { <span class="block-reason">{{ r }}</span> }
           }
         } @else {
-          <p class="witch-hint">Fresh-brewed tier-I scrolls.</p>
+          <p class="witch-hint">Fresh-brewed tier-I scrolls — cast once, or copy them in.</p>
           <div class="witch-grid">
             @for (id of witchStock; track id) {
               @if (spellInfo(id); as sp) {
                 <div class="witch-card" [attr.data-rarity]="tierRarity(sp.tier).key">
                   <span class="wc-name">{{ sp.name }}</span>
                   <span class="wc-cat" [style.color]="spellCategoryStyle(sp).color">{{ spellCategoryStyle(sp).kind }}</span>
+                  <span class="wc-price"
+                    ><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />{{ scrollPrice(id) }}</span
+                  >
                   <button class="uc-btn shop-buy" [disabled]="busy()" (click)="buyScroll(id)">Buy</button>
                 </div>
               }

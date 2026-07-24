@@ -290,9 +290,15 @@ def test_pathfinder_rolls_two_and_unions_destinations(table, monkeypatch):
     status, resp = act(table, 'roll')
     assert status == 200
     assert sorted(resp['roll']['values']) == [2, 5]
-    pos = db._get_player(table, sid, 'user-alex')['position']
-    d2 = engine.legal_destinations(data.MAP_NODES, pos, 2, set(), set())
-    d5 = engine.legal_destinations(data.MAP_NODES, pos, 5, set(), set())
+    pos_doc = db._get_player(table, sid, 'user-alex')
+    pos = pos_doc['position']
+    # Compute the expected union with the SAME walk-stop / blocked sets the roll
+    # uses (bridges and ladders are bonk-stops), not empty sets — otherwise a
+    # bridge within range makes the two computations disagree.
+    closed = db._stop_nodes(table, sid, pos_doc)
+    blocked = db._blocked_nodes(pos_doc)
+    d2 = engine.legal_destinations(data.MAP_NODES, pos, 2, closed, blocked)
+    d5 = engine.legal_destinations(data.MAP_NODES, pos, 5, closed, blocked)
     assert set(resp['roll']['destinations']) == set(d2) | set(d5)
 
 

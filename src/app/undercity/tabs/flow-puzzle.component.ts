@@ -15,15 +15,16 @@ type Cell = [number, number];
  * goal. Coverage is NOT required — any connecting route works. Every tile crossed
  * is spores (shown live); the first item/gear pickup the route touches is redeemed.
  * Pure presentation — the parent owns the `solve-loot-puzzle` action. Emits
- * `solved` with the path on Claim, or `gaveUp` when the player bails.
+ * `solved` with the path on Claim. There is no bail-out: the route must be
+ * completed (Reset restarts a botched attempt).
  */
 @Component({
   selector: 'app-undercity-flow-puzzle',
   standalone: true,
   imports: [CommonModule, MatIconModule],
   template: `
-    <div class="flow-overlay" (click)="gaveUp.emit()">
-      <div class="flow-card" (click)="$event.stopPropagation()" [style.background-image]="washBg">
+    <div class="flow-overlay">
+      <div class="flow-card" [style.background-image]="washBg">
         <h3>🌿 Overgrown Cache</h3>
         <p class="flow-sub">
           Trace a vine from the <b class="lbl-start">green start</b> to the
@@ -53,6 +54,21 @@ type Cell = [number, number];
                 [class.claimed]="isClaimed(ri, ci)"
                 [class.faded]="isFaded(ri, ci)"
               >
+                @if (armsFor(ri, ci); as arms) {
+                  <span class="trail-hub"></span>
+                  @if (arms.up) {
+                    <span class="trail-arm up"></span>
+                  }
+                  @if (arms.down) {
+                    <span class="trail-arm down"></span>
+                  }
+                  @if (arms.left) {
+                    <span class="trail-arm left"></span>
+                  }
+                  @if (arms.right) {
+                    <span class="trail-arm right"></span>
+                  }
+                }
                 @if (rewardAt(ri, ci); as rw) {
                   <mat-icon class="reward-ic" [svgIcon]="iconFor(rw)"></mat-icon>
                 }
@@ -67,7 +83,6 @@ type Cell = [number, number];
         </p>
         <div class="flow-actions">
           <button class="uc-btn ghost" (click)="reset()" [disabled]="busy">Reset</button>
-          <button class="uc-btn ghost" (click)="gaveUp.emit()" [disabled]="busy">Give up</button>
           <button class="uc-btn" (click)="claim()" [disabled]="busy || !isConnected()">
             Claim
           </button>
@@ -114,8 +129,9 @@ type Cell = [number, number];
         color: #f2b04a;
       }
       .flow-grid {
+        --flow-gap: 4px;
         display: grid;
-        gap: 4px;
+        gap: var(--flow-gap);
         margin: 4px auto;
         width: 100%;
         max-width: 300px;
@@ -140,6 +156,58 @@ type Cell = [number, number];
       }
       .cell.tip {
         filter: brightness(1.25);
+      }
+      /* Connecting vine drawn through the route so the path is traceable. Arms
+       * reach half the grid gap past each edge to meet the neighbour's arm. */
+      .trail-hub,
+      .trail-arm {
+        position: absolute;
+        pointer-events: none;
+        z-index: 2;
+        background: #cdf7a6;
+        box-shadow: 0 0 6px rgba(124, 252, 107, 0.75), 0 0 0 1.5px rgba(8, 20, 8, 0.5);
+      }
+      .trail-hub {
+        top: 50%;
+        left: 50%;
+        width: 36%;
+        height: 36%;
+        transform: translate(-50%, -50%);
+        border-radius: 4px;
+      }
+      .trail-arm.up,
+      .trail-arm.down {
+        left: 50%;
+        width: 36%;
+        transform: translateX(-50%);
+      }
+      .trail-arm.left,
+      .trail-arm.right {
+        top: 50%;
+        height: 36%;
+        transform: translateY(-50%);
+      }
+      .trail-arm.up {
+        top: calc(var(--flow-gap) / -2);
+        bottom: 50%;
+      }
+      .trail-arm.down {
+        top: 50%;
+        bottom: calc(var(--flow-gap) / -2);
+      }
+      .trail-arm.left {
+        left: calc(var(--flow-gap) / -2);
+        right: 50%;
+      }
+      .trail-arm.right {
+        left: 50%;
+        right: calc(var(--flow-gap) / -2);
+      }
+      /* Brighten the leading tile so the current head of the vine stands out. */
+      .cell.tip .trail-hub {
+        background: #eaffd4;
+        transform: translate(-50%, -50%) scale(1.15);
+        box-shadow: 0 0 10px rgba(180, 255, 140, 0.95), 0 0 0 1.5px rgba(8, 20, 8, 0.5);
       }
       /* Start — vivid green, gently pulsing, with a solid centre pip. */
       .cell.start {
@@ -189,6 +257,8 @@ type Cell = [number, number];
         background: #2a2622;
       }
       .cell .reward-ic {
+        position: relative;
+        z-index: 3;
         width: 70%;
         height: 70%;
         color: #e0c088;
@@ -225,7 +295,6 @@ export class FlowPuzzleModalComponent {
   @Input() busy = false;
   @Input() washBg: string | null = null;
   @Output() solved = new EventEmitter<[number, number][]>();
-  @Output() gaveUp = new EventEmitter<void>();
 
   protected readonly path = signal<Cell[]>([]);
   private drawing = false;
@@ -252,6 +321,36 @@ export class FlowPuzzleModalComponent {
   protected isTip(r: number, c: number): boolean {
     const p = this.path();
     return p.length > 0 && p[p.length - 1][0] === r && p[p.length - 1][1] === c;
+  }
+
+  /** For each path cell, which orthogonal directions link to its route
+   * neighbours (previous/next step). Drives the connecting trail line so the
+   * player can trace the vine back to where they came from. */
+  private readonly trailMap = computed(() => {
+    const p = this.path();
+    const m = new Map<string, { up: boolean; down: boolean; left: boolean; right: boolean }>();
+    for (let i = 0; i < p.length; i++) {
+      const [r, c] = p[i];
+      const arms = { up: false, down: false, left: false, right: false };
+      for (const n of [p[i - 1], p[i + 1]]) {
+        if (!n) continue;
+        const [nr, nc] = n;
+        if (nr === r - 1 && nc === c) arms.up = true;
+        else if (nr === r + 1 && nc === c) arms.down = true;
+        else if (nr === r && nc === c - 1) arms.left = true;
+        else if (nr === r && nc === c + 1) arms.right = true;
+      }
+      m.set(`${r},${c}`, arms);
+    }
+    return m;
+  });
+
+  /** Trail arms for (r,c), or null when the cell is not on the route. */
+  protected armsFor(
+    r: number,
+    c: number,
+  ): { up: boolean; down: boolean; left: boolean; right: boolean } | null {
+    return this.trailMap().get(`${r},${c}`) ?? null;
   }
 
   /** Registry name of the SVG icon for each reward kind. */

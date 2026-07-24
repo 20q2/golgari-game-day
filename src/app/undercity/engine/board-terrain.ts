@@ -56,10 +56,26 @@ export interface GlowSpot {
   phase: number; // radians offset so pulses aren't synchronized
 }
 
+/**
+ * A soft-flora scatter prop lifted OUT of the static bake so BoardCanvas can
+ * redraw it each frame with an idle sway (see drawFlora). Populated only when
+ * renderTerrain is called with `animateFlora`; otherwise flora is baked and
+ * this list is empty. `seed` reproduces the identical cluster shape every frame
+ * via stampRand(seed).
+ */
+export interface FloraInstance {
+  kind: string; // STAMPS registry key (a SOFT_FLORA member)
+  x: number;
+  y: number;
+  seed: number;
+}
+
 export interface TerrainArt {
   canvas: HTMLCanvasElement;
   /** River shimmer + flora/window/portal glows, animated by BoardCanvas. */
   glowSpots: GlowSpot[];
+  /** Soft flora pulled out of the bake to sway per frame (empty if baked). */
+  flora: FloraInstance[];
   /** World-px per canvas-px the backing store was baked at (1 = full res). The
    *  renderer must scale the blit up by 1/resolution to cover the world. */
   resolution: number;
@@ -706,10 +722,17 @@ export function renderTerrain(
     omitLabels?: boolean;
     /** Bake at this fraction of world resolution (default 1 = full res). */
     resolution?: number;
+    /**
+     * Collect soft flora into TerrainArt.flora for a per-frame sway pass instead
+     * of baking it into the static image. Default false: every caller (notably
+     * the map editor, which has no per-frame loop) keeps the flora baked.
+     */
+    animateFlora?: boolean;
   },
 ): TerrainArt {
   const cleared = opts?.cleared ?? false;
   const resolution = opts?.resolution ?? 1;
+  const animateFlora = opts?.animateFlora ?? false;
   // A layer restricts what we draw to a node subset within a world-space
   // bounding box; default (no layer) draws the whole world (legacy behaviour).
   const bx = layer ? layer.bounds.x : 0;
@@ -964,6 +987,26 @@ export function renderTerrain(
   //    nodes/paths/river).
   const pathPts = curves.flatMap((c) => sampleCurve(c, 45));
 
+  // Soft flora is either baked (default) or collected here so BoardCanvas can
+  // sway it per frame. `emitScatter` is the single seam: rigid props keep their
+  // direct draw calls untouched below. In collect mode each flora instance gets
+  // its own seed and its glow is harvested once (off a throwaway canvas) into
+  // the same glowSpots list drawGlows already pulses, so un-baking loses no
+  // bioluminescence. The shared `rand` still advances deterministically, so the
+  // layout stays stable across reloads (it shifts once from the all-baked one).
+  const flora: FloraInstance[] = [];
+  let harvestCtx: CanvasRenderingContext2D | null = null;
+  const emitScatter = (kind: string, sx: number, sy: number): void => {
+    if (animateFlora && SOFT_FLORA.has(kind)) {
+      const seed = Math.floor(rand() * 0x100000000);
+      harvestCtx ??= document.createElement('canvas').getContext('2d')!;
+      STAMPS[kind](harvestCtx, sx, sy, stampRand(seed), glowSpots); // glow only
+      flora.push({ kind, x: sx, y: sy, seed });
+    } else {
+      STAMPS[kind](ctx, sx, sy, rand, glowSpots); // baked, exactly as before
+    }
+  };
+
   for (let i = 0; i < 140; i++) {
     // Keep clear of the stalagmite wall band on every side.
     const x = bx + 90 + rand() * (bw - 180);
@@ -995,9 +1038,9 @@ export function renderTerrain(
       else if (roll < 0.8) drawBoneMound(ctx, x, y, rand);
       else drawPillar(ctx, x, y, rand);
     } else if (nearKey === 'garden') {
-      if (roll < 0.55) drawMushrooms(ctx, x, y, rand, glowSpots);
-      else if (roll < 0.8) drawGiantMushroom(ctx, x, y, rand, glowSpots);
-      else drawReeds(ctx, x, y, rand);
+      if (roll < 0.55) emitScatter('mushrooms', x, y);
+      else if (roll < 0.8) emitScatter('giant_mushroom', x, y);
+      else emitScatter('reeds', x, y);
     } else if (nearKey === 'city' || nearKey === 'ruin') {
       if (roll < 0.35) drawPillar(ctx, x, y, rand);
       else if (roll < 0.6) drawRuinBlock(ctx, x, y, rand, glowSpots);
@@ -1006,28 +1049,28 @@ export function renderTerrain(
     } else if (nearKey === 'dungeon:city') {
       if (roll < 0.5) drawEggCluster(ctx, x, y, rand, glowSpots);
       else if (!cleared) drawWebStrand(ctx, x, y, rand);
-      else drawMushrooms(ctx, x, y, rand, glowSpots); // webs burned away
+      else emitScatter('mushrooms', x, y); // webs burned away
     } else if (nearKey === 'dungeon:cavern') {
-      if (roll < 0.5) drawGiantMushroom(ctx, x, y, rand, glowSpots);
-      else drawMushrooms(ctx, x, y, rand, glowSpots);
+      if (roll < 0.5) emitScatter('giant_mushroom', x, y);
+      else emitScatter('mushrooms', x, y);
     } else if (nearKey === 'dungeon:bog') {
       if (roll < 0.6) drawPool(ctx, x, y, rand, glowSpots);
-      else drawReeds(ctx, x, y, rand);
+      else emitScatter('reeds', x, y);
     } else if (nearKey === 'dungeon:bone') {
       if (roll < 0.5) drawBoneMound(ctx, x, y, rand);
       else drawSkullPile(ctx, x, y, rand);
     } else if (nearKey === 'dungeon:garden') {
       if (roll < 0.5) drawCompostHeap(ctx, x, y, rand, glowSpots);
-      else drawMushrooms(ctx, x, y, rand, glowSpots);
+      else emitScatter('mushrooms', x, y);
     } else if (nearKey === 'depths') {
-      if (roll < 0.5) drawMushrooms(ctx, x, y, rand, glowSpots);
+      if (roll < 0.5) emitScatter('mushrooms', x, y);
       else drawSkullPile(ctx, x, y, rand);
     } else if (nearKey === 'bog') {
       if (roll < 0.45) drawPool(ctx, x, y, rand, glowSpots);
-      else if (roll < 0.75) drawReeds(ctx, x, y, rand);
-      else drawBogTree(ctx, x, y, rand, glowSpots);
+      else if (roll < 0.75) emitScatter('reeds', x, y);
+      else emitScatter('bog_tree', x, y);
     } else {
-      if (roll < 0.6) drawMushrooms(ctx, x, y, rand, glowSpots);
+      if (roll < 0.6) emitScatter('mushrooms', x, y);
       else drawCrystal(ctx, x, y, rand, glowSpots);
     }
   }
@@ -1159,7 +1202,7 @@ export function renderTerrain(
   // dynamic layer (tokens, discs, highlights).
   drawDecals(ctx, map, 'under', layer, glowSpots);
 
-  return { canvas, glowSpots, resolution };
+  return { canvas, glowSpots, flora, resolution };
 }
 
 interface TerrainBlob {
@@ -2272,6 +2315,59 @@ export function drawStamp(
   ctx.translate(-x, -y);
   fn(ctx, x, y, stampRand(seed), glowSpots);
   ctx.restore();
+}
+
+// ── Flora sway ───────────────────────────────────────────────────────────────
+// Soft scatter props (the "bushrooms" and friends) get a gentle idle sway.
+// renderTerrain(..., { animateFlora: true }) collects these instead of baking
+// them; BoardCanvas calls drawFlora once per frame to redraw them alive.
+
+/** Scatter kinds that sway. Everything else (stone, bone, crystal) stays baked. */
+export const SOFT_FLORA = new Set<string>(['mushrooms', 'giant_mushroom', 'reeds', 'bog_tree']);
+
+/**
+ * Per-kind sway: `amp` radians of pivot at the base, at `speed` rad/s. Reeds are
+ * light and whip most; a bog tree's heavy trunk barely stirs. Tuned subtle — the
+ * pivot is at the prop's feet, so only the tops drift a few px.
+ */
+const FLORA_SWAY: Record<string, { amp: number; speed: number }> = {
+  reeds: { amp: 0.11, speed: 1.9 },
+  mushrooms: { amp: 0.06, speed: 1.5 },
+  giant_mushroom: { amp: 0.035, speed: 1.1 },
+  bog_tree: { amp: 0.028, speed: 0.9 },
+};
+
+/**
+ * Redraw the collected soft flora with an idle sway. Call each frame under the
+ * camera transform, after the terrain blit and glows but before discs/tokens so
+ * flora sits beneath them (where it was when baked). Culls to `view`. Glow that
+ * the stamp fns re-push is discarded into `glowSink` — the halos are already
+ * baked into terrain.glowSpots and pulsed by drawGlows.
+ */
+export function drawFlora(
+  ctx: CanvasRenderingContext2D,
+  flora: FloraInstance[],
+  elapsed: number,
+  view: { x0: number; y0: number; x1: number; y1: number },
+  glowSink: GlowSpot[] = [],
+): void {
+  for (const f of flora) {
+    if (f.x < view.x0 - 80 || f.x > view.x1 + 80 || f.y < view.y0 - 80 || f.y > view.y1 + 80) {
+      continue;
+    }
+    const fn = STAMPS[f.kind];
+    if (!fn) continue;
+    const cfg = FLORA_SWAY[f.kind] ?? { amp: 0.04, speed: 1.2 };
+    const phase = ((f.seed % 1000) / 1000) * Math.PI * 2; // per-instance desync
+    const sway = cfg.amp * Math.sin(elapsed * cfg.speed + phase);
+    ctx.save();
+    ctx.translate(f.x, f.y); // pivot at the feet so the base stays planted
+    ctx.rotate(sway);
+    ctx.translate(-f.x, -f.y);
+    fn(ctx, f.x, f.y, stampRand(f.seed), glowSink); // fresh RNG => stable shape
+    ctx.restore();
+  }
+  glowSink.length = 0;
 }
 
 // ── Decals ───────────────────────────────────────────────────────────────────

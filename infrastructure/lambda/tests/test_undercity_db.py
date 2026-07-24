@@ -393,17 +393,74 @@ def test_funded_tier2_can_commit_a_bonk_stop_onto_a_bridge(table):
     assert status == 200, resp
 
 
-def test_tier1_passes_through_a_bridge_freely(table):
+def test_tier1_stops_on_a_bridge_not_through_it(table):
+    # Tier-1 now halts on a bridge mouth (a bonk stop) and is carried across on
+    # landing, the same as an evolved unit — it no longer corridors through the
+    # spur into the far biome under its own steam.
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
     doc['tier'] = 1
     doc['position'] = 'cavern_r2'
-    closed = db._stop_nodes(table, sid, doc)   # Tier-1: bridges NOT added
+    closed = db._stop_nodes(table, sid, doc)   # Tier-1: bridges now added
     blocked = db._blocked_nodes(doc)
-    # A 2-roll walks straight through the spur to the paired mouth.
-    assert 't_bone_cavern0' in engine.legal_destinations(
+    # The near mouth is a valid STOP with a 2-roll (bonk)...
+    assert 't_bone_cavern1' in engine.legal_destinations(
         data.MAP_NODES, doc['position'], 2, closed, blocked)
+    # ...but the roll cannot corridor THROUGH it to its paired mouth.
+    assert 't_bone_cavern0' not in engine.legal_destinations(
+        data.MAP_NODES, doc['position'], 2, closed, blocked)
+
+
+def test_crossing_a_bridge_banks_the_leftover_roll(table):
+    # Cross-then-keep-walking: landing on a bridge with roll to spare carries you
+    # across for free AND resumes the unused steps on the far side (like a
+    # ladder), so a crossing no longer eats the rest of your move.
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['tier'] = 1
+    doc['position'] = 'cavern_r2'
+    closed = db._stop_nodes(table, sid, doc)
+    blocked = db._blocked_nodes(doc)
+    dests = engine.legal_destinations(data.MAP_NODES, 'cavern_r2', 3, closed, blocked)
+    assert 't_bone_cavern1' in dests          # near mouth offered as a bonk stop
+    doc['pendingMove'] = {'value': 3, 'dests': sorted(dests)}
+    doc['rolls'] = 3
+    db._put_player(table, doc)
+    # A 1-hop bonk walk onto the mouth: crosses for free, 2 steps to spare.
+    status, resp = act(table, 'move', to='t_bone_cavern1',
+                       path=['cavern_r2', 't_bone_cavern1'])
+    assert status == 200, resp
+    exit_node = data.TUNNEL_EXITS['t_bone_cavern1']
+    you = resp['you']
+    assert you['position'] == exit_node       # carried across for free
+    # 3-roll − 1 hop to the mouth → 2 steps resume on the far side, and the
+    # banked destinations are measured from the far node.
+    assert you['pendingMove'] is not None
+    assert you['pendingMove']['value'] == 2
+    assert set(you['pendingMove']['dests']) == set(engine.legal_destinations(
+        data.MAP_NODES, exit_node, 2, closed, blocked))
+
+
+def test_landing_exactly_on_a_bridge_ends_the_move(table):
+    # No leftover → no banked pendingMove; the crossing simply ends the turn.
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['tier'] = 1
+    doc['position'] = 'cavern_r2'
+    closed = db._stop_nodes(table, sid, doc)
+    blocked = db._blocked_nodes(doc)
+    dests = engine.legal_destinations(data.MAP_NODES, 'cavern_r2', 1, closed, blocked)
+    doc['pendingMove'] = {'value': 1, 'dests': sorted(dests)}
+    doc['rolls'] = 3
+    db._put_player(table, doc)
+    status, resp = act(table, 'move', to='t_bone_cavern1',
+                       path=['cavern_r2', 't_bone_cavern1'])
+    assert status == 200, resp
+    assert resp['you']['position'] == data.TUNNEL_EXITS['t_bone_cavern1']
+    assert resp['you'].get('pendingMove') is None
 
 
 def test_roll_picks_exact_face_in_debug(table, monkeypatch):

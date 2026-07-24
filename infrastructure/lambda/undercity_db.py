@@ -315,19 +315,17 @@ def _closed_barriers(table, sid):
 
 def _stop_nodes(table, sid, doc):
     """The engine `closed` set for THIS mover: the shared sealed-barrier /
-    escape-ladder stops from _closed_barriers, plus — for evolved units
-    (tier > TUNNEL_TIER_MAX) — every bridge (tunnel) node. An evolved unit must
-    STOP on a bridge mouth and pay the toll on landing; it can never corridor
-    through a bridge for free. Tier-1 units pass/warp through bridges freely, so
-    bridges are not added for them. (Bridges a unit can't afford / is too large
-    for are already removed by _blocked_nodes, which wins over closed.)
-    Every ladder (descent pairs + escape spurs) is a walk-stop too: a mover halts
-    ON a ladder and never corridors through — ladders are added to this WALKING
-    set only, not the spell set (_closed_barriers), so spell range is unchanged."""
-    closed = _closed_barriers(table, sid) | data.LADDER_NODES
-    if doc.get('tier', 1) > data.TUNNEL_TIER_MAX:
-        closed = closed | data.TUNNEL_NODES
-    return closed
+    escape-ladder stops from _closed_barriers, plus every bridge (tunnel) node.
+    A mover STOPS on a bridge mouth and is carried across on landing — nobody
+    corridors through a bridge for free. The leftover roll then resumes on the
+    far side (see the tunnel-banking branch in _move), so a crossing no longer
+    eats the rest of the move. (Bridges a unit can't afford / is too large for
+    are removed by _blocked_nodes, which wins over closed, so they never become
+    reachable stops.) Every ladder (descent pairs + escape spurs) is a walk-stop
+    too: a mover halts ON a ladder and never corridors through — ladders are
+    added to this WALKING set only, not the spell set (_closed_barriers), so
+    spell range is unchanged."""
+    return _closed_barriers(table, sid) | data.LADDER_NODES | data.TUNNEL_NODES
 
 
 def _ladder_target(nodes, node):
@@ -2331,6 +2329,24 @@ def _move(table, sid, doc, payload):
                     _stop_nodes(table, sid, doc), _blocked_nodes(doc))),
             }
 
+    # Bridges (tunnels) carry you across for free on landing — like a ladder,
+    # the leftover roll resumes on the far side rather than being eaten, so a
+    # crossing no longer ends your move. _resolve_space already relocated the
+    # unit to the far biome node (doc['position']); bank the rest from there so
+    # the store effect restarts the walk on the other side.
+    if space_event.get('type') == 'tunnel':
+        hops = (len(path) - 1) if path else pm['value']
+        allowed = [v for v in (pm.get('values') or [pm['value']]) if v >= hops]
+        value_used = min(allowed) if allowed else pm['value']
+        remaining = max(0, value_used - hops)
+        if remaining > 0:
+            doc['pendingMove'] = {
+                'value': remaining,
+                'dests': sorted(engine.legal_destinations(
+                    nodes, doc['position'], remaining,
+                    _stop_nodes(table, sid, doc), _blocked_nodes(doc))),
+            }
+
     # Landing on a gate full-heals inside _resolve_space; surface the amount so
     # the client floats heal numbers for it too (supersedes any pass-heal).
     if space_event.get('type') == 'gate':
@@ -2716,8 +2732,11 @@ def _resolve_space(table, sid, doc, node, prev):
     if ntype == 'tunnel':
         # Fast path between biomes. Tier-1 crosses free; evolved units pay a
         # tier toll (the movement gate already guaranteed they can afford it).
-        # Landing carries you fully across to the far biome node for FREE and
-        # is CONSEQUENCE-FREE — the far node's landing effect does not resolve.
+        # Landing carries you fully across to the far biome node for FREE, and
+        # arriving there is CONSEQUENCE-FREE — the far node's landing effect does
+        # not resolve. Any leftover roll then resumes on the far side (banked as
+        # a fresh pendingMove back in _move), so the crossing itself costs no
+        # steps but no longer ends the move.
         exit_node = data.TUNNEL_EXITS[node]
         tier = doc.get('tier', 1)
         toll = 0
