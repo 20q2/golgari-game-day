@@ -37,6 +37,7 @@ import { formSprite } from '../data/species';
 import { getRecoloredDataUrl, getRecoloredWithHatEffectDataUrl } from '../engine/sprite-engine';
 import { isShielded } from '../services/undercity-models';
 import { DUNGEONS, SIGILS_REQUIRED } from '../data/dungeons';
+import { UcActionBandComponent } from './action-band.component';
 
 type CreatureSubTab = 'stats' | 'gear' | 'wardrobe' | 'sigils';
 
@@ -58,7 +59,7 @@ function loadSubTab(): CreatureSubTab {
 @Component({
   selector: 'app-undercity-creature-tab',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatIconModule, UcActionBandComponent],
   templateUrl: './creature-tab.component.html',
   styleUrls: ['./creature-tab.component.scss'],
 })

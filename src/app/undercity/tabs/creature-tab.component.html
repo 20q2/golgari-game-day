@@ -1,6 +1,7 @@
 <div class="creature-tab">
   @if (store.you(); as you) {
-    <div class="creature-inner">
+    <div class="creature-scroll">
+      <div class="creature-inner">
       <!-- Hero: portrait + identity + HP/XP bars over the biome den -->
       <section
         class="hero"
@@ -73,25 +74,6 @@
           <mat-icon class="mi">auto_awesome</mat-icon> EVOLUTION AWAITS — choose your form
         </button>
       }
-
-      <!-- Sub-tabs: Stats / Gear / Wardrobe / Sigils -->
-      <nav class="subtab-bar">
-        <button type="button" [class.active]="subTab() === 'stats'" (click)="subTab.set('stats')">
-          <mat-icon class="mi">bar_chart</mat-icon> Stats
-          @if (you.statPoints > 0) {
-            <span class="subtab-badge">{{ you.statPoints }}</span>
-          }
-        </button>
-        <button type="button" [class.active]="subTab() === 'gear'" (click)="subTab.set('gear')">
-          <mat-icon class="mi">backpack</mat-icon> Gear
-        </button>
-        <button type="button" [class.active]="subTab() === 'wardrobe'" (click)="subTab.set('wardrobe')">
-          <mat-icon class="mi">checkroom</mat-icon> Wardrobe
-        </button>
-        <button type="button" [class.active]="subTab() === 'sigils'" (click)="subTab.set('sigils')">
-          <mat-icon class="mi">workspace_premium</mat-icon> Sigils
-        </button>
-      </nav>
 
       <div class="subtab-body">
         @switch (subTab()) {
@@ -579,7 +561,29 @@
           }
         }
       </div>
+      </div>
     </div>
+
+    <app-uc-action-band>
+      <!-- Sub-tabs: Stats / Gear / Wardrobe / Sigils -->
+      <nav class="subtab-bar">
+        <button type="button" [class.active]="subTab() === 'stats'" (click)="subTab.set('stats')">
+          <mat-icon class="mi">bar_chart</mat-icon> Stats
+          @if (you.statPoints > 0) {
+            <span class="subtab-badge">{{ you.statPoints }}</span>
+          }
+        </button>
+        <button type="button" [class.active]="subTab() === 'gear'" (click)="subTab.set('gear')">
+          <mat-icon class="mi">backpack</mat-icon> Gear
+        </button>
+        <button type="button" [class.active]="subTab() === 'wardrobe'" (click)="subTab.set('wardrobe')">
+          <mat-icon class="mi">checkroom</mat-icon> Wardrobe
+        </button>
+        <button type="button" [class.active]="subTab() === 'sigils'" (click)="subTab.set('sigils')">
+          <mat-icon class="mi">workspace_premium</mat-icon> Sigils
+        </button>
+      </nav>
+    </app-uc-action-band>
 
     @if (toast(); as t) {
       <div class="tab-toast">{{ t }}</div>
