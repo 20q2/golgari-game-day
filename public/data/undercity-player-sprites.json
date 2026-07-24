@@ -2,8 +2,8 @@
   "sprites": [
     {
       "name": "brackish_trudge",
-      "hasMask": false,
-      "hasHat": false
+      "hasMask": true,
+      "hasHat": true
     },
     {
       "name": "brackish_trudge_stinky",
@@ -27,18 +27,18 @@
     },
     {
       "name": "golgari_longlegs",
-      "hasMask": false,
-      "hasHat": false
+      "hasMask": true,
+      "hasHat": true
     },
     {
       "name": "grave_shell_scarab",
-      "hasMask": false,
-      "hasHat": false
+      "hasMask": true,
+      "hasHat": true
     },
     {
       "name": "grave_titan",
-      "hasMask": false,
-      "hasHat": false
+      "hasMask": true,
+      "hasHat": true
     },
     {
       "name": "insect",
