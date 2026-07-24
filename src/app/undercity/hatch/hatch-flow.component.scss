@@ -74,6 +74,24 @@
     border-color: #fbbf24;
     transform: scale(1.2);
   }
+
+  // Non-interactive during the spin: the wheel picks, the player doesn't.
+  &.highlight {
+    border-color: #fff;
+    transform: scale(1.25);
+  }
+  &.locked {
+    border-color: var(--accent-color, #a3e635);
+    transform: scale(1.2);
+  }
+}
+
+.shell-spin {
+  margin-top: 8px;
+}
+.shell-result {
+  margin-top: 8px;
+  font-size: 0.9rem;
 }
 
 .egg {

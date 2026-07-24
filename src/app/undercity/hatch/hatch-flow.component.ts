@@ -6,6 +6,7 @@ import { STARTERS, TIER2, FormInfo, PASSIVE_BLURBS } from '../data/forms';
 import {
   PAINTS,
   PAINT_MAP,
+  PaintInfo,
   HATS,
   HAT_MAP,
   HAT_PRICES,
@@ -69,6 +70,12 @@ export class HatchFlowComponent {
   protected readonly taps = signal(0);
   protected readonly hatched = computed(() => this.taps() >= 3);
   protected readonly eggHue = signal<number>(130);
+
+  /** Veteran shell-color roll: one locked spin lands on a catalog color. */
+  protected readonly spinning = signal(false);
+  protected readonly shellLocked = signal(false);
+  protected readonly spinHighlight = signal<number>(-1);
+  protected readonly rolledPaint = signal<PaintInfo | null>(null);
 
   /** Increments on every tap; drives the shake + debris-burst re-trigger. */
   protected readonly burst = signal(0);
@@ -229,8 +236,31 @@ export class HatchFlowComponent {
     this.burst.set(this.burst() + 1);
   }
 
-  pickShell(hue: number): void {
-    this.eggHue.set(hue);
+  /** One locked spin: cycle the highlight with an ease-out cadence, land on a
+   *  random catalog color, set the egg hue, and lock. No re-spins. */
+  spinShell(): void {
+    if (this.shellLocked() || this.spinning()) return;
+    this.spinning.set(true);
+    const n = this.paints.length;
+    const finalIdx = Math.floor(Math.random() * n);
+    const total = 28; // ticks before landing
+    let tick = 0;
+    const step = (): void => {
+      if (tick >= total) {
+        const paint = this.paints[finalIdx];
+        this.spinHighlight.set(finalIdx);
+        this.rolledPaint.set(paint);
+        this.eggHue.set(paint.hue);
+        this.shellLocked.set(true);
+        this.spinning.set(false);
+        return;
+      }
+      this.spinHighlight.set((this.spinHighlight() + 1 + n) % n);
+      tick++;
+      const delay = 40 + Math.round((tick / total) ** 2 * 220); // ease-out 40→260ms
+      setTimeout(step, delay);
+    };
+    step();
   }
 
   /** CSS background for a paint swatch (neutral-aware). */

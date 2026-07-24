@@ -8,18 +8,25 @@
   @if (!hatched()) {
     <h1>An egg waits in the mulch…</h1>
     @if (canPickShell()) {
-      <p class="shell-hint">Guild Seal perk: choose your shell color</p>
+      <p class="shell-hint">Guild Seal perk: spin for your shell color</p>
       <div class="shell-row">
-        @for (paint of paints; track paint.id) {
-          <button
+        @for (paint of paints; track paint.id; let i = $index) {
+          <span
             class="shell-swatch"
-            [class.selected]="eggHue() === paint.hue"
+            [class.highlight]="spinHighlight() === i"
+            [class.locked]="shellLocked() && rolledPaint()?.id === paint.id"
             [style.background]="swatchCss(paint.hue)"
             [title]="paint.name"
-            (click)="pickShell(paint.hue)"
-          ></button>
+          ></span>
         }
       </div>
+      @if (shellLocked()) {
+        <p class="shell-result">Your shell: <strong>{{ rolledPaint()?.name }}</strong></p>
+      } @else {
+        <button class="uc-btn shell-spin" [disabled]="spinning()" (click)="spinShell()">
+          {{ spinning() ? 'Spinning…' : 'Spin the wheel' }}
+        </button>
+      }
     }
     <button
       class="egg"
