@@ -548,6 +548,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     if (!me || !this.board) return;
     if (e.kind === 'spell_hit') this.board.playSpellHit({ targetId: me, dmg: e.dmg });
     else if (e.kind === 'spell_dodged') this.board.playSpellHit({ targetId: me, dodged: true });
+    else if (e.kind === 'high_five') {
+      const myPos = this.store.you()?.position;
+      const giver = this.store.players().find((p) => p.userId === e.fromId);
+      if (giver && giver.position === myPos) this.board.playHighFive(e.fromId, me);
+      else this.board.burstBuff('#ffd76a', '#f2a900');
+    }
   }
 
   protected closeSpellPickers(): void {
@@ -1117,6 +1123,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         return `${e.name} has fallen. The wilderness quiets.`;
       case 'world_kill':
         return `${e.name} has fallen — the spoils are shared out.`;
+      case 'high_five':
+        return `${e.from} high-fived you — +1 to all stats next fight!`;
       case 'market':
         return e.text;
     }
@@ -1138,6 +1146,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       case 'world_kill':
       case 'world_fallen':
         return 'whatshot';
+      case 'high_five':
+        return 'back_hand';
       case 'market':
         return 'storefront';
     }
@@ -1159,6 +1169,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       { label: 'Rewards', rows: of('reward') },
       { label: 'The Wilderness', rows: of('world_kill', 'world_fallen') },
       { label: 'News', rows: of('boss') },
+      { label: 'Friends', rows: of('high_five') },
       { label: 'Market', rows: of('market') },
     ].filter((g) => g.rows.length);
   });
@@ -1880,6 +1891,18 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         rewards: this.buildRewards({ spores: resp.stolen, xp: resp.xp, levels: resp.levels }),
       });
       this.occupants.set([]);
+    });
+  }
+
+  /** Friendly gesture: buff a creature sharing your space and notify them. */
+  async highFive(target: Occupant): Promise<void> {
+    await this.run(async () => {
+      await this.store.action('high-five', { targetUserId: target.userId });
+      const me = this.store.ownUserId;
+      if (me) this.board?.playHighFive(me, target.userId);
+      this.showToast(
+        `You high-fived ${target.username} — they'll fight the next battle buffed!`,
+      );
     });
   }
 
