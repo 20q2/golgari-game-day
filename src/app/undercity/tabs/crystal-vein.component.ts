@@ -209,6 +209,7 @@ export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDe
   @Output() closed = new EventEmitter<void>();
 
   @ViewChild('veinCanvas') private canvasRef?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('earnedEl') private earnedRef?: ElementRef<HTMLElement>;
 
   protected readonly MAX = VEIN_MAX_DEPTH;
   protected readonly levels = Array.from({ length: VEIN_MAX_DEPTH }, (_, i) => i + 1);
@@ -242,12 +243,32 @@ export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDe
 
   ngOnChanges(ch: SimpleChanges): void {
     if (ch['depth'] && this.ready) this.vein.setDepth(this.depth, this.MAX);
+    if (
+      ch['earnedThisVisit'] &&
+      !ch['earnedThisVisit'].firstChange &&
+      ch['earnedThisVisit'].currentValue > ch['earnedThisVisit'].previousValue
+    ) {
+      this.pulseEarned();
+    }
     if (ch['effect'] && this.ready && this.effect && this.effect.seq !== this.lastSeq) {
       this.lastSeq = this.effect.seq;
       if (this.effect.kind === 'cave-in') this.vein.playCaveIn();
-      else if (this.effect.kind === 'heartstone') this.vein.playHeartstone();
-      else this.vein.playStrike();
+      else if (this.effect.kind === 'heartstone') this.vein.playHeartstone(this.effect.spores);
+      else this.vein.playStrike(this.effect.spores);
     }
+  }
+
+  /** Scale + colour flash on the tally each time it climbs — the universal
+   *  "Spores gained" cue that also covers the no-WebGL fallback. */
+  private pulseEarned(): void {
+    this.earnedRef?.nativeElement.animate(
+      [
+        { transform: 'scale(1)', color: '#b6ffbf' },
+        { transform: 'scale(1.55)', color: '#ffffff' },
+        { transform: 'scale(1)', color: '#b6ffbf' },
+      ],
+      { duration: 420, easing: 'ease-out' },
+    );
   }
 
   ngOnDestroy(): void {

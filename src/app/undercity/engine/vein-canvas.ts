@@ -20,6 +20,14 @@ interface FallingRock {
   life: number;
 }
 
+interface SporeMote {
+  mesh: TN.Mesh;
+  vy: number;
+  vx: number;
+  life: number;
+  ttl: number;
+}
+
 export class VeinCanvas {
   private three!: ThreeModule;
   private renderer!: TN.WebGLRenderer;
@@ -28,7 +36,9 @@ export class VeinCanvas {
   private wall!: TN.Group;
   private crystals: TN.Mesh[] = [];
   private rocks: FallingRock[] = [];
+  private motes: SporeMote[] = [];
   private rockGeo!: TN.IcosahedronGeometry;
+  private sporeGeo!: TN.OctahedronGeometry;
   private rockMat!: TN.MeshStandardMaterial;
   private canvas!: HTMLCanvasElement;
   private raf = 0;
@@ -67,6 +77,7 @@ export class VeinCanvas {
     this.scene.add(glow);
 
     this.rockGeo = this.makeRockGeo();
+    this.sporeGeo = new T.OctahedronGeometry(1, 0);
     this.rockMat = new T.MeshStandardMaterial({
       color: 0x5a4a36,
       flatShading: true,
@@ -141,11 +152,12 @@ export class VeinCanvas {
     this.crystals.forEach((c, i) => (c.visible = i < show));
   }
 
-  /** A normal swing: light shake, a few boulders dislodge. */
-  playStrike(): void {
+  /** A normal swing: light shake, a few boulders dislodge, spores burst free. */
+  playStrike(spores = 0): void {
     if (this.disposed) return;
     this.shake = Math.max(this.shake, 0.25);
     for (let i = 0; i < 4; i++) this.spawnRock((Math.random() - 0.5) * 3, 2 + Math.random());
+    this.spawnSpores(Math.min(Math.max(spores, 3), 14));
   }
 
   /** A cave-in: hard shake, heavy cascade from the top. */
@@ -157,11 +169,42 @@ export class VeinCanvas {
     }
   }
 
-  /** Max-depth reward: light all crystals and a small shimmer shake. */
-  playHeartstone(): void {
+  /** Max-depth reward: light all crystals, a shimmer shake, a big spore burst. */
+  playHeartstone(spores = 0): void {
     if (this.disposed) return;
     this.crystals.forEach((c) => (c.visible = true));
     this.shake = Math.max(this.shake, 0.3);
+    this.spawnSpores(Math.min(Math.max(spores, 12), 24));
+  }
+
+  /** Emit glowing spore motes from the lit crystals that rise and fade — the
+   *  visible "you earned Spores" burst. Count scales with the payout. */
+  private spawnSpores(count: number): void {
+    const T = this.three;
+    const lit = this.crystals.filter((c) => c.visible);
+    const from = lit.length ? lit : this.crystals;
+    for (let i = 0; i < count; i++) {
+      const src = from[Math.floor(Math.random() * from.length)];
+      const mat = new T.MeshStandardMaterial({
+        color: 0x9be7a0,
+        emissive: 0x3f8f5a,
+        flatShading: true,
+        transparent: true,
+        opacity: 1,
+      });
+      const m = new T.Mesh(this.sporeGeo, mat);
+      const base = src ? src.position : { x: 0, y: 0 };
+      m.position.set(base.x + (Math.random() - 0.5) * 0.6, base.y + (Math.random() - 0.5) * 0.6, 0.9);
+      m.scale.setScalar(0.12 + Math.random() * 0.1);
+      this.wall.add(m);
+      this.motes.push({
+        mesh: m,
+        vy: 1.2 + Math.random() * 1.0,
+        vx: (Math.random() - 0.5) * 0.8,
+        life: 0,
+        ttl: 0.9 + Math.random() * 0.5,
+      });
+    }
   }
 
   private spawnRock(x: number, y: number, scale = 0.6 + Math.random() * 0.6): void {
@@ -213,6 +256,21 @@ export class VeinCanvas {
         this.rocks.splice(i, 1);
       }
     }
+    for (let i = this.motes.length - 1; i >= 0; i--) {
+      const p = this.motes[i];
+      p.life += dt;
+      p.vy -= 1.5 * dt; // gentle gravity so they arc up then settle
+      p.mesh.position.x += p.vx * dt;
+      p.mesh.position.y += p.vy * dt;
+      p.mesh.rotation.y += dt * 2;
+      const mat = p.mesh.material as TN.MeshStandardMaterial;
+      mat.opacity = Math.max(0, 1 - p.life / p.ttl);
+      if (p.life >= p.ttl) {
+        this.wall.remove(p.mesh);
+        mat.dispose();
+        this.motes.splice(i, 1);
+      }
+    }
     if (this.shake > 0) {
       this.shake = Math.max(0, this.shake - dt);
       this.camera.position.x = (Math.random() - 0.5) * this.shake;
@@ -228,6 +286,7 @@ export class VeinCanvas {
     this.disposed = true;
     if (this.raf) cancelAnimationFrame(this.raf);
     this.rocks = [];
+    this.motes = [];
     if (this.scene) {
       this.scene.traverse((o: TN.Object3D) => {
         const mesh = o as TN.Mesh;
