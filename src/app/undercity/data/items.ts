@@ -256,7 +256,7 @@ export const CONSUMABLES: ConsumableInfo[] = [
   { id: 'healing_moss', name: 'Healing Moss', cost: 12, desc: 'Restore 50% max HP.', icon: 'healing' },
   { id: 'smoke_spore', name: 'Smoke Spore', cost: 15, desc: 'Held: your next failed flee auto-succeeds.', icon: 'air' },
   { id: 'loaded_die', name: 'Loaded Die', cost: 25, desc: 'Choose your next roll’s value (1–6).', icon: 'casino' },
-  { id: 'snare', name: 'Snare', cost: 18, desc: 'Trap your current space for the next visitor.', icon: 'gps_fixed' },
+  { id: 'snare', name: 'Snare', cost: 18, desc: 'Trap your current space: the next visitor spills 20% of their Spores and skips the space event.', icon: 'gps_fixed' },
   // Listed in the battle item tray, but `effect: 'reveal'` makes it act on tap
   // (fires the `combat-peek` action) instead of arming for the next stance like
   // the three below — the battle component special-cases it.
@@ -480,7 +480,7 @@ export const SPACE_BLURBS: Record<string, string> = {
   witch: 'The Sedgemoor Witch inscribes scrolls into your grimoire — and sells tier-I scrolls for Spores.',
   hazard: 'Swamp gas, grasping vines, or choking spore clouds. It will cost you.',
   warp: 'A warp mushroom — step through to another cap, if it behaves.',
-  gate: 'The Gate of the Swarm. Entering mends you fully.',
+  gate: 'The Gate of the Swarm. Landing here mends you fully; passing through without stopping heals 50% of your max HP.',
   boss: 'The sealed boss lair. The Swarm stirs behind it. Savra is a brutal fight — be Level 10+ before you take her on.',
   ossuary: 'Serious Fun. Call high or low on the bone die — a win doubles your bet.',
   barrier: 'A guardian seals this passage. Beat it and the route opens for everyone.',
