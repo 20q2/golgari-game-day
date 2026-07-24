@@ -213,7 +213,8 @@
               </div>
 
               <div class="gear-tiles">
-                <div class="gear-tile" [class.empty]="!you.gear['fang']" [attr.data-rarity]="rarityKey(you.gear['fang'])">
+                <div class="gear-tile" [class.empty]="!you.gear['fang']" [attr.data-rarity]="rarityKey(you.gear['fang'])"
+                     (click)="you.gear['fang'] && selectItem('equipped', you.gear['fang']!, -1, 'Fang')">
                   <mat-icon class="mi slot-mi" svgIcon="uc-fang"></mat-icon>
                   <div class="gear-tile-body">
                     <span class="gear-tile-slot">Fang</span>
@@ -227,7 +228,8 @@
                     }
                   </div>
                 </div>
-                <div class="gear-tile" [class.empty]="!you.gear['carapace']" [attr.data-rarity]="rarityKey(you.gear['carapace'])">
+                <div class="gear-tile" [class.empty]="!you.gear['carapace']" [attr.data-rarity]="rarityKey(you.gear['carapace'])"
+                     (click)="you.gear['carapace'] && selectItem('equipped', you.gear['carapace']!, -1, 'Carapace')">
                   <mat-icon class="mi slot-mi" svgIcon="uc-carapace"></mat-icon>
                   <div class="gear-tile-body">
                     <span class="gear-tile-slot">Carapace</span>
@@ -241,7 +243,8 @@
                     }
                   </div>
                 </div>
-                <div class="gear-tile" [class.empty]="!you.gear['charm']" [attr.data-rarity]="rarityKey(you.gear['charm'])">
+                <div class="gear-tile" [class.empty]="!you.gear['charm']" [attr.data-rarity]="rarityKey(you.gear['charm'])"
+                     (click)="you.gear['charm'] && selectItem('equipped', you.gear['charm']!, -1, 'Charm')">
                   <mat-icon class="mi slot-mi" svgIcon="uc-charm"></mat-icon>
                   <div class="gear-tile-body">
                     <span class="gear-tile-slot">Charm</span>
@@ -267,7 +270,8 @@
               }
               <div class="gear-tiles">
                 @for (row of stashRows(); track row.index) {
-                  <div class="gear-tile" [attr.data-rarity]="tierRarity(row.info.tier).key">
+                  <div class="gear-tile" [attr.data-rarity]="tierRarity(row.info.tier).key"
+                       (click)="selectItem('stash', row.info.id, row.index, row.info.slot)">
                     <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + row.info.slot"></mat-icon>
                     <div class="gear-tile-body">
                       <span class="gear-tile-slot">{{ row.info.slot }}</span>
@@ -276,13 +280,7 @@
                       </span>
                       <span class="gear-tile-desc">{{ row.info.desc }}</span>
                     </div>
-                    <button
-                      class="uc-btn use-btn stash-equip"
-                      [disabled]="busy()"
-                      (click)="equipFromStash(row.index)"
-                    >
-                      Equip
-                    </button>
+                    <mat-icon class="mi gear-chevron">chevron_right</mat-icon>
                   </div>
                 }
               </div>
@@ -296,51 +294,22 @@
               }
               <div class="bag-rows">
                 @for (item of you.bag; track $index) {
-                  <div class="bag-row">
-                    <span class="bag-item" [title]="consumableMap[item].desc">
+                  <div class="bag-row bag-row--tap" (click)="selectItem('bag', item, $index, 'Bag item')">
+                    <span class="bag-item">
                       <mat-icon class="mi">{{ consumableMap[item].icon }}</mat-icon>
                       {{ consumableMap[item].name }}
                     </span>
-                    @if (dropConfirm() === $index) {
-                      <span class="bag-actions">
-                        <span class="drop-q">Drop it?</span>
-                        <button class="uc-btn use-btn danger" [disabled]="busy()" (click)="confirmDrop(item)">
-                          Drop
-                        </button>
-                        <button class="uc-btn use-btn ghost" [disabled]="busy()" (click)="cancelDrop()">
-                          Keep
-                        </button>
-                      </span>
-                    } @else {
-                      <span class="bag-actions">
-                        @switch (itemAction(item)) {
-                          @case ('plant') {
-                            <button class="uc-btn use-btn" [disabled]="busy()" (click)="useItem(item)">
-                              Plant here
-                            </button>
-                          }
-                          @case ('passive') {
-                            <span class="bag-tag" title="Triggers on its own when a flee fails.">Auto</span>
-                          }
-                          @case ('battle') {
-                            <span class="bag-tag" title="Used from your item tray during a fight.">Battle</span>
-                          }
-                          @default {
-                            <button class="uc-btn use-btn" [disabled]="busy()" (click)="useItem(item)">
-                              Use
-                            </button>
-                          }
+                    <span class="bag-actions">
+                      @switch (itemAction(item)) {
+                        @case ('passive') {
+                          <span class="bag-tag">Auto</span>
                         }
-                        <button
-                          class="drop-btn"
-                          title="Drop this item"
-                          [disabled]="busy()"
-                          (click)="askDrop($index)"
-                        >
-                          <mat-icon class="mi">delete_outline</mat-icon>
-                        </button>
-                      </span>
-                    }
+                        @case ('battle') {
+                          <span class="bag-tag">Battle</span>
+                        }
+                      }
+                      <mat-icon class="mi bag-chevron">chevron_right</mat-icon>
+                    </span>
                   </div>
                 }
               </div>
@@ -624,6 +593,101 @@
           }
         </div>
         <button class="uc-btn" (click)="loadedDiePick.set(false)">Cancel</button>
+      </div>
+    }
+
+    <!-- Item-detail popup (tap any inventory item) -->
+    @if (selectedItem(); as item) {
+      <div class="item-sheet-backdrop" (click)="closeItem()">
+        <div class="item-sheet" (click)="$event.stopPropagation()">
+          <button class="item-sheet-close" (click)="closeItem()" aria-label="Close">
+            <mat-icon class="mi">close</mat-icon>
+          </button>
+
+          <header class="item-sheet-head">
+            @if (item.kind === 'gear') {
+              <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + gearMap[item.id].slot"></mat-icon>
+              <div class="item-sheet-title">
+                <span class="item-sheet-name">{{ gearMap[item.id].name }}
+                  <span class="rarity-badge {{ tierRarity(gearMap[item.id].tier).key }}">{{ tierRarity(gearMap[item.id].tier).label }}</span>
+                </span>
+                <span class="item-sheet-sub">{{ item.slotLabel }}</span>
+              </div>
+            } @else {
+              <mat-icon class="mi slot-mi">{{ consumableMap[item.id].icon }}</mat-icon>
+              <div class="item-sheet-title">
+                <span class="item-sheet-name">{{ consumableMap[item.id].name }}</span>
+                <span class="item-sheet-sub">Bag item</span>
+              </div>
+            }
+          </header>
+
+          @if (statChips(item).length) {
+            <div class="chip-row">
+              @for (chip of statChips(item); track chip.label) {
+                <span class="chip chip--stat">{{ chip.label }}</span>
+              }
+            </div>
+          }
+
+          @if (abilityChips(item).length) {
+            <div class="chip-row">
+              @for (chip of abilityChips(item); track chip.label; let i = $index) {
+                <button class="chip chip--ability" [class.open]="expandedChip() === i" (click)="toggleChip(i)">
+                  {{ chip.label }}
+                  <mat-icon class="mi chip-caret">{{ expandedChip() === i ? 'expand_less' : 'expand_more' }}</mat-icon>
+                </button>
+              }
+            </div>
+            @if (expandedChip() !== null && abilityChips(item)[expandedChip()!]; as chip) {
+              <p class="chip-blurb">{{ chip.blurb }}</p>
+            }
+          }
+
+          <div class="item-sheet-actions">
+            @switch (item.source) {
+              @case ('stash') {
+                <button class="uc-btn" [disabled]="busy()" (click)="equipFromPopup(item)">Equip</button>
+              }
+              @case ('bag') {
+                @if (itemAction(item.id) === 'plant') {
+                  <button class="uc-btn" [disabled]="busy()" (click)="useFromPopup(item)">Plant here</button>
+                } @else if (itemAction(item.id) === 'use') {
+                  <button class="uc-btn" [disabled]="busy()" (click)="useFromPopup(item)">Use</button>
+                }
+              }
+              @case ('equipped') {
+                <span class="item-sheet-hint muted">Equipped. To sell it, equip another piece first.</span>
+              }
+            }
+          </div>
+
+          @if (item.source !== 'equipped') {
+            <div class="item-sheet-market">
+              @if (!listOpen()) {
+                <button class="uc-btn ghost" [disabled]="busy()" (click)="beginList(item)">
+                  <mat-icon class="mi">storefront</mat-icon> Send to market
+                </button>
+              } @else {
+                <div class="market-price">
+                  <label>Price (Spores)</label>
+                  <input
+                    #mp
+                    type="number"
+                    class="price-input"
+                    [value]="listPrice()"
+                    [min]="marketBand(item.kind, item.id).lo"
+                    [max]="marketBand(item.kind, item.id).hi"
+                  />
+                  <span class="band-note muted">
+                    {{ marketBand(item.kind, item.id).lo }}–{{ marketBand(item.kind, item.id).hi }}
+                  </span>
+                  <button class="uc-btn" [disabled]="busy()" (click)="sendToMarket(item, mp.valueAsNumber)">List</button>
+                </div>
+              }
+            </div>
+          }
+        </div>
       </div>
     }
   }
