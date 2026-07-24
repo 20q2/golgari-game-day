@@ -1209,6 +1209,36 @@ def test_customize_allows_keeping_an_unowned_worn_hue(table):
     assert status == 409
 
 
+def test_join_grants_veteran_rolled_shell_color_as_owned(table):
+    # A veteran (1+ seals) hatches with a rolled shell hue; that catalog color is
+    # granted as an owned paint, so they can recolor to/from it freely.
+    perm = db._get_perm(table, 'user-vet')
+    perm['seals'] = 2
+    table.put_item(Item=perm)
+
+    status, resp = act(table, 'join', user='user-vet', name='Vet',
+                       starter='zombie', eggHue=270)  # 270 = violet
+    assert status == 200
+    assert resp['you']['paint']['body'] == 270
+
+    perm2 = db._get_perm(table, 'user-vet')
+    assert 'violet' in perm2['paints']  # rolled color now owned
+
+    # And they can recolor stripes to that owned violet.
+    status, resp = act(table, 'customize', user='user-vet', name='Vet',
+                       paint={'body': 270, 'belly': 50, 'stripes': 270})
+    assert status == 200
+    assert resp['you']['paint']['stripes'] == 270
+
+
+def test_join_non_veteran_grants_no_shell_color(table):
+    # A first-time player hatches forest(130, a default) and gets no extra grant.
+    act(table, 'join', user='user-new', name='New', starter='pest', eggHue=270)
+    perm = db._get_perm(table, 'user-new')
+    # Only the defaults — the eggHue was ignored for a non-veteran, no bonus paint.
+    assert set(perm['paints']) == set(data.DEFAULT_PAINTS)
+
+
 def test_join_stores_creature_name(table):
     status, resp = act(table, 'join', starter='pest', creatureName='  Mulch  ')
     assert status == 200

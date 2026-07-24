@@ -2086,6 +2086,13 @@ def _join(table, sid, user_id, username, payload):
         seals_before=seals_before, egg_hue=payload.get('eggHue'),
         creature_name=creature_name, sprite_variant=sprite_variant,
     )
+    # A veteran's rolled shell color is theirs to keep — grant it as an owned
+    # paint so they can recolor to/from it without hitting the ownership gate.
+    # Resolved from the hatched body hue (a catalog hue for any rolled color).
+    if seals_before >= 1:
+        shell_pid = data.HUE_TO_PAINT.get(int(doc['paint'].get('body', 130)))
+        if shell_pid and shell_pid not in perm['paints']:
+            perm['paints'] = perm['paints'] + [shell_pid]
     # Start their bank where the night is, not at zero-hour — a latecomer gets
     # the rolls they'd have regenerated so far (capped), before any bonuses.
     _seed_night_rolls(table, sid, doc)

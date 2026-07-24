@@ -921,6 +921,10 @@ DEFAULT_PAINTS = ['forest', 'gold']  # everyone owns these from their first hatc
 HAT_MAP = {h['id']: h for h in HATS}
 PAINT_MAP = {p['id']: p for p in PAINTS}
 
+# Reverse lookup for granting a rolled shell color as an owned paint (hues are
+# unique across PAINTS, so this is unambiguous). Mirror: undercity_db._join.
+HUE_TO_PAINT = {p['hue']: p['id'] for p in PAINTS}
+
 # ── Renown shop (pre-spawn) prices ───────────────────────────────────────────
 HAT_PRICES = {'common': 50, 'uncommon': 120, 'legendary': 300}
 PAINT_PRICE = 40  # any non-default color
