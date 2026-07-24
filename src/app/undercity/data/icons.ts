@@ -81,6 +81,18 @@ export const UC_CHEST_SVG =
   'A1.4 1.4 0 0 1 3.4 18.2 Z M10.8 12 h2.4 v3.2 h-2.4 Z"/>' +
   '</svg>';
 
+/** Duffel — the Gear tab. A kit bag: capsule body with two carry hoops, a
+ *  zipper seam and end panels. (Replaces the brick-like Material `backpack`.) */
+export const UC_DUFFEL_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">' +
+  '<path d="M7.2 10 C7.2 5.2 11.6 5.2 11.6 10 L10.2 10 C10.2 6.9 8.6 6.9 8.6 10 Z"/>' +
+  '<path d="M12.4 10 C12.4 5.2 16.8 5.2 16.8 10 L15.4 10 C15.4 6.9 13.8 6.9 13.8 10 Z"/>' +
+  '<path d="M7.5 9.2 h9 a4.4 4.4 0 0 1 0 8.8 h-9 a4.4 4.4 0 0 1 0-8.8 Z ' +
+  'M6.6 12.4 h10.8 v1.1 h-10.8 Z ' +
+  'M8.2 10.3 v6.6 h0.9 v-6.6 Z ' +
+  'M14.9 10.3 v6.6 h0.9 v-6.6 Z"/>' +
+  '</svg>';
+
 /** All Undercity SVG icons keyed by their `uc-…` registry name. */
 export const UC_SVG_ICONS: Record<string, string> = {
   'uc-sword': UC_SWORD_SVG,
@@ -92,4 +104,5 @@ export const UC_SVG_ICONS: Record<string, string> = {
   'uc-spore': UC_SPORE_SVG,
   'uc-pouch': UC_POUCH_SVG,
   'uc-chest': UC_CHEST_SVG,
+  'uc-duffel': UC_DUFFEL_SVG,
 };
