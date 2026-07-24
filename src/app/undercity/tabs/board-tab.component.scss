@@ -237,22 +237,42 @@
   font-weight: 700;
 }
 
-// Blink is spent and paces itself: a muted, non-interactive "recharging" state
-// so it's obvious why the value picker isn't available this roll.
-.pick-btn.recharging {
-  opacity: 0.55;
-  font-style: italic;
-  cursor: not-allowed;
+// The random-roll escape hatch in the Blink picker: same footprint as a face
+// tile, but the die icon marks it as "let the die decide" rather than a value.
+.pick-random .mi {
+  font-size: 1.15rem;
+  height: 1.15rem;
+  width: 1.15rem;
+}
+
+// Blink turn: the primary button swaps the die art for the SPD "bolt" and a
+// cool cast-glow so it reads as a different action from an ordinary roll.
+.blink-btn {
+  background: linear-gradient(135deg, #2f9bff, #7fd4ff);
+  color: #06263f;
+  box-shadow: 0 4px 16px rgba(47, 155, 255, 0.5);
 
   .mi {
-    animation: uc-blink-recharge 1.4s ease-in-out infinite;
+    animation: uc-blink-ready 1.6s ease-in-out infinite;
   }
 }
 
-@keyframes uc-blink-recharge {
+// The turn-by-turn note under the button (ready this turn / recharging).
+.blink-note {
+  flex-basis: 100%;
+  text-align: center;
+  color: #9ad4ff;
+
+  &.recharging {
+    color: inherit;
+    font-style: italic;
+  }
+}
+
+@keyframes uc-blink-ready {
   0%,
   100% {
-    opacity: 0.5;
+    opacity: 0.7;
   }
   50% {
     opacity: 1;
@@ -958,6 +978,15 @@
   margin-top: 2px;
   color: var(--accent-color);
   font-weight: 600;
+}
+
+// Muted "why is this greyed out?" line under a disabled action. Mirrors .shop-warn.
+.block-reason {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #9a8fa6);
 }
 
 .shop-empty {

@@ -110,16 +110,40 @@
                 @if (row.where === 'equipped') { <span class="forge-tag">equipped</span> }
                 <em class="forge-diff">@for (seg of row.diff; track $index) {@if (seg.same !== undefined) {<span>{{ seg.same }}</span>} @else {<span class="diff-chg">@if (seg.from) {<s class="diff-old">{{ seg.from }}</s> }<span class="diff-new">{{ seg.to }}</span></span>}{{ ' ' }}}</em>
               </span>
-              <button class="uc-btn forge-upgrade" [disabled]="busy() || !canAfford(row.cost)" (click)="upgrade(row)">
+              <button class="uc-btn forge-upgrade" [disabled]="busy() || !!upgradeReason(row.cost)" (click)="upgrade(row)">
                 {{ row.cost.spores }}<img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                 · {{ row.cost.moltings }}<mat-icon class="mi tiny">grass</mat-icon>@if (row.cost.ichor) {&nbsp;· {{ row.cost.ichor }}<mat-icon class="mi tiny">science</mat-icon>}
               </button>
+              @if (!busy() && upgradeReason(row.cost); as r) { <span class="block-reason">{{ r }}</span> }
             </div>
           } @empty {
             <div class="forge-empty">Nothing to upgrade yet — find or stash gear that has a rarer rung.</div>
           }
         } @else {
-          <p class="forge-hint">Buy what other players listed, or list your own gear, bag items, or scrolls for Spores.</p>
+          <div class="market-tabs" role="tablist">
+            <button
+              class="market-tab"
+              role="tab"
+              [class.active]="marketTab() === 'buy'"
+              [attr.aria-selected]="marketTab() === 'buy'"
+              (click)="marketTab.set('buy')"
+            >
+              <mat-icon class="mi">shopping_cart</mat-icon> Buy
+              @if (marketRows().length) { <span class="market-tab-count">{{ marketRows().length }}</span> }
+            </button>
+            <button
+              class="market-tab"
+              role="tab"
+              [class.active]="marketTab() === 'sell'"
+              [attr.aria-selected]="marketTab() === 'sell'"
+              (click)="marketTab.set('sell')"
+            >
+              <mat-icon class="mi">sell</mat-icon> Sell
+            </button>
+          </div>
+
+          @if (marketTab() === 'buy') {
+          <p class="forge-hint">Buy what other players listed for Spores.</p>
           <h4 class="forge-subhead">On the market</h4>
           @for (l of marketRows(); track l.id) {
             <div class="forge-row" [attr.data-rarity]="l.view!.rarity?.key ?? 'common'">
@@ -137,15 +161,17 @@
               @if (l.own) {
                 <button class="uc-btn" [disabled]="busy()" (click)="marketCancel(l.id)">Cancel</button>
               } @else {
-                <button class="uc-btn forge-upgrade" [disabled]="busy() || !canBuy(l)" (click)="marketBuy(l.id)">
+                <button class="uc-btn forge-upgrade" [disabled]="busy() || !!buyReason(l)" (click)="marketBuy(l.id)">
                   {{ l.price }}<img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                 </button>
+                @if (!busy() && buyReason(l); as r) { <span class="block-reason">{{ r }}</span> }
               }
             </div>
           } @empty {
             <div class="forge-empty">No listings yet. Be the first to sell something.</div>
           }
-
+          } @else {
+          <p class="forge-hint">List your own gear, bag items, or scrolls for Spores.</p>
           <h4 class="forge-subhead">Sell gear</h4>
           @for (row of stashRows(); track row.index) {
             <div class="forge-row" [attr.data-rarity]="tierRarity(row.info.tier).key">
@@ -197,6 +223,7 @@
             </div>
           } @empty {
             <div class="forge-empty">No scrolls in your satchel.</div>
+          }
           }
         }
       </div>

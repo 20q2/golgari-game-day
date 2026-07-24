@@ -3,7 +3,10 @@
     <!-- Name / HP plates (above the arena where the action plays) -->
     <div class="plates">
       <div class="plate">
-        <span class="side-name">You</span>
+        <div class="name-row">
+          <span class="side-name">You</span>
+          @if (attacker.level != null) { <span class="foe-level" title="Your power level">Lv {{ attacker.level }}</span> }
+        </div>
         <div class="hp-track">
           <div class="hp-fill" [class.low]="hpPct('attacker') <= 50" [class.crit]="hpPct('attacker') <= 25" [style.width.%]="hpPct('attacker')"></div>
         </div>
@@ -181,8 +184,10 @@
       }
     </div>
 
-    <!-- Compact telegraph caption (the icon over the foe carries the intent) -->
-    @if (!done() && !resolving() && introDone()) {
+    <!-- Compact telegraph caption (the icon over the foe carries the intent).
+         Stays mounted through the exchange so it doesn't pop in/out and jog the
+         dialog height each round. -->
+    @if (!done() && introDone()) {
       <div class="tele-section">
         <div class="tele-caption">
           <span class="tell">{{ defender.name }} is {{ tellText() }}</span>

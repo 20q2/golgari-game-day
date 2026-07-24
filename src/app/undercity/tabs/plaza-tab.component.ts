@@ -28,6 +28,7 @@ import {
   GearInfo,
 } from '../data/items';
 import { SPELL_MAP } from '../data/spells';
+import { affordReason, containerFullReason, materialReason } from '../data/block-reasons';
 
 /**
  * A run of the upgraded description. `same` is unchanged carry-over text; a change
@@ -153,6 +154,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
   protected readonly gearMap = GEAR_MAP;
   protected readonly tierRarity = tierRarity;
   protected readonly building = signal<'salvage' | 'blacksmith' | 'market' | null>(null);
+  protected readonly marketTab = signal<'buy' | 'sell'>('buy');
   protected readonly marketBand = marketBand;
 
   protected readonly materials = computed(
@@ -207,10 +209,16 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
   protected sellSpores(info: GearInfo): number {
     return Math.floor(info.cost * GEAR_SELL_BACK);
   }
-  protected canAfford(cost: { spores: number; moltings: number; ichor: number }): boolean {
+  /** Why a Blacksmith upgrade is blocked (Spores first, then materials), or null
+   *  when it can be forged. */
+  protected upgradeReason(cost: { spores: number; moltings: number; ichor: number }): string | null {
     const you = this.store.you();
+    if (!you) return 'Unavailable';
     const m = this.materials();
-    return !!you && you.spores >= cost.spores && m.moltings >= cost.moltings && m.ichor >= cost.ichor;
+    return (
+      affordReason(you.spores, cost.spores) ??
+      materialReason(m.moltings, m.ichor, cost.moltings, cost.ichor)
+    );
   }
 
   private marketView(kind: MarketKind, id: string): MarketView | null {
@@ -248,17 +256,24 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       .filter((r) => !!r.view),
   );
 
-  protected canBuy(l: { price: number; own: boolean; kind: MarketKind }): boolean {
+  /** Why a market Buy is blocked (destination-full first, then affordability),
+   *  or null when it can be bought. Own listings never reach here (Cancel shows
+   *  instead). */
+  protected buyReason(l: { price: number; own: boolean; kind: MarketKind }): string | null {
     const you = this.store.you();
-    if (!you || l.own) return false;
+    if (!you || l.own) return 'Unavailable';
     const held =
       l.kind === 'consumable' ? you.bag : l.kind === 'scroll' ? you.scrolls : you.gearStash;
     const cap = l.kind === 'consumable' ? 3 : 6; // BAG_SIZE=3; gearStash/scrolls=6
-    const full = (held?.length ?? 0) >= cap;
-    return you.spores >= l.price && !full;
+    const label =
+      l.kind === 'consumable' ? 'Bag' : l.kind === 'scroll' ? 'Scroll satchel' : 'Stash';
+    return (
+      containerFullReason(held?.length ?? 0, cap, label) ?? affordReason(you.spores, l.price)
+    );
   }
 
   protected openBuilding(b: 'salvage' | 'blacksmith' | 'market'): void {
+    if (b === 'market') this.marketTab.set('buy');
     this.building.set(b);
   }
   protected closeBuilding(): void {

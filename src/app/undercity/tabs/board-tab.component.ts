@@ -73,6 +73,7 @@ import { getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
 import { BattlePlaybackComponent, BattleSide, BattleRewards } from './battle-playback.component';
 import { InteractiveBattleComponent, BattleItem, CombatStats } from './interactive-battle.component';
 import { computeStanceAugments, StanceAugment } from '../data/combat';
+import { affordReason, containerFullReason } from '../data/block-reasons';
 import { DiceRollComponent } from './dice-roll.component';
 import { ExcavationModalComponent } from './excavation.component';
 import { FlowPuzzleModalComponent } from './flow-puzzle.component';
@@ -602,12 +603,18 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.burnTarget.set(null);
   }
   /** Inscribe requires a burn target only when the chosen book is full. */
-  protected canInscribe(): boolean {
+  /** Why the inscribe confirm is blocked (pick both → duplicate → book full), or
+   *  null when ready. */
+  protected inscribeReason(): string | null {
     const s = this.pickedScroll();
     const b = this.pickedBook();
-    if (!s || !b) return false;
-    if (this.bookSpells(b).includes(s)) return false;
-    return !this.bookFull(b) || !!this.burnTarget();
+    if (!s || !b) return 'Pick a scroll and a book';
+    if (this.bookSpells(b).includes(s)) return 'Already in this book';
+    if (this.bookFull(b) && !this.burnTarget()) return 'Book full — pick one to overwrite';
+    return null;
+  }
+  protected canInscribe(): boolean {
+    return this.inscribeReason() === null;
   }
   async inscribe(): Promise<void> {
     const scrollSpellId = this.pickedScroll();
@@ -706,20 +713,26 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return { id, kind: 'consumable', icon: 'help', label: id, sub: '' };
   }
 
-  /** Whether a stock line's "Trade for this" button is live — mirrors the three
-   *  server disable conditions. */
-  protected canTradeFor(stockItem: string): boolean {
-    if (this.umoriTraded()) return false;
+  /** Why a stock line's "Trade for this" is blocked (mirrors the server disable
+   *  conditions, in prose), or null when the trade is live. */
+  protected tradeReason(stockItem: string): string | null {
+    if (this.umoriTraded()) return 'Already traded here';
     const gives = this.qualifyingGiveOffers(stockItem);
-    if (gives.length === 0) return false;
+    if (gives.length === 0) return 'Nothing to trade for this';
     // Taking gear grows the stash by one; if it's full and the only trade-in is the
     // equipped piece (also net +1), there's no room. A stashed give is net-zero.
     if (GEAR_MAP[stockItem] && this.stashFull() && !gives.some((o) => !o.equipped)) {
-      return false;
+      return containerFullReason(this.GEAR_STASH_SIZE, this.GEAR_STASH_SIZE, 'Stash');
     }
     const you = this.store.you();
-    if (GRIMOIRE_MAP[stockItem] && (you?.grimoires ?? []).includes(stockItem)) return false;
-    return true;
+    if (GRIMOIRE_MAP[stockItem] && (you?.grimoires ?? []).includes(stockItem)) return 'Already owned';
+    return null;
+  }
+
+  /** Whether a stock line's "Trade for this" button is live — the null-check of
+   *  tradeReason() so the button and its reason line never drift. */
+  protected canTradeFor(stockItem: string): boolean {
+    return this.tradeReason(stockItem) === null;
   }
 
   /** Within the trade-in picker, whether this specific give can be handed over: an
@@ -817,9 +830,25 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     () => (this.store.you()?.gearStash?.length ?? 0) >= this.GEAR_STASH_SIZE,
   );
 
-  /** Whether the player can cover a straight Spore price. */
-  protected canAfford(cost: number): boolean {
-    return (this.store.you()?.spores ?? 0) >= cost;
+  /** Why a shop GEAR line can't be bought (out of stock → stash full → price),
+   *  or null when buyable. */
+  protected shopGearReason(info: GearInfo, qty: number): string | null {
+    if (qty <= 0) return 'Out of stock';
+    if (this.stashFull())
+      return containerFullReason(this.GEAR_STASH_SIZE, this.GEAR_STASH_SIZE, 'Stash');
+    return affordReason(this.store.you()?.spores ?? 0, info.cost);
+  }
+
+  /** Why a shop CONSUMABLE line can't be bought (out of stock → price). */
+  protected shopConsumableReason(info: ConsumableInfo, qty: number): string | null {
+    if (qty <= 0) return 'Out of stock';
+    return affordReason(this.store.you()?.spores ?? 0, info.cost);
+  }
+
+  /** Why a GRIMOIRE line can't be bought (already owned → price). */
+  protected shopGrimoireReason(g: GrimoireInfo): string | null {
+    if (this.ownsGrimoire(g.id)) return 'Already owned';
+    return affordReason(this.store.you()?.spores ?? 0, g.cost);
   }
 
   protected shopConsumableRows(): { info: ConsumableInfo; qty: number }[] {
@@ -1145,6 +1174,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   async dismissAway(): Promise<void> {
     this.awayModal.set(null);
+    this.maybeReleaseLevelUp();
     try {
       await this.store.action('ack-events');
     } catch {
@@ -1214,6 +1244,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.board?.stop();
     this.board = null;
     if (this.sigilTimer) clearTimeout(this.sigilTimer);
+    // Don't leave the page's level-up fanfare stuck deferred if we're torn down
+    // mid-celebration (the sigil auto-dismiss timer won't fire its release).
+    this.store.levelUpHold.set(false);
   }
 
   // ── Roll & move ────────────────────────────────────────────────────────────
@@ -1236,12 +1269,14 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Blink (SPD-15): choose your die value — a real perk, live in production.
    * Ready only when the perk is owned and not recharging. */
   protected readonly blinkAllowed = computed(() => this.hasBlink() && !this.blinkRecharging());
-  /** Dev-pick, a ready Blink, or a recharging Blink all keep the face control on
-   * screen — recharging shows a disabled "recharging" state so it's not a mystery. */
-  protected readonly canPickFace = computed(
-    () => this.pickAllowed() || this.blinkAllowed() || this.blinkRecharging(),
-  );
   protected readonly rollsBanked = computed(() => this.store.you()?.rolls ?? 0);
+
+  /** Why the roll button is blocked, or null. Debug builds roll freely. The
+   *  timing of the next regen roll is shown separately by nextRollLabel(). */
+  protected rollReason(): string | null {
+    if (this.debugMode()) return null;
+    return this.rollsBanked() < 1 ? 'No rolls left' : null;
+  }
 
   /** Minute-granularity countdown to the next timed roll (null at cap / in debug).
    * Re-evaluated on state polls, same approach as bazaarRestockLabel(). */
@@ -1860,7 +1895,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Spore price of a single shrine blessing (mirrors SHRINE_BLESSING_COST). */
   protected readonly SHRINE_COST = 15;
 
-  /** Whether the player can afford a blessing — gates the shrine cards. */
+  /** Whether the player can afford a blessing — gates the shrine cards. The
+   *  shrine template already shows a "You need N spores" note when this is false,
+   *  so no separate block-reason line is needed there. */
   protected readonly canBless = computed(() => (this.store.you()?.spores ?? 0) >= this.SHRINE_COST);
 
   async shrine(choice: string): Promise<void> {
@@ -2193,6 +2230,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         spriteUrl: this.youSpriteUrl(),
         startHp: preHp,
         maxHp: you?.maxHp ?? preHp,
+        level: you?.level,
       },
       defender: {
         name: ev.npc!.name,
@@ -2236,6 +2274,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         spriteUrl: this.youSpriteUrl(),
         startHp: pb.playerHp,
         maxHp: you?.maxHp ?? pb.playerHp,
+        level: you?.level,
       },
       defender: {
         name: pb.npc.name,
@@ -2365,10 +2404,22 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.pendingSigilBiome = null;
     const raid = this.pendingRaidSummary;
     this.pendingRaidSummary = null;
+    // Defer the page's level-up fanfare past these celebrations. Set BEFORE the
+    // refresh, which flips `inBattle` false and would otherwise let the fanfare
+    // fire on top of the sigil / raid summary we're about to open.
+    if (biome || raid) this.store.levelUpHold.set(true);
     this.liveBattle.set(null);
     await this.store.refresh(); // so poiClaims / stash reflect the just-won loot
     if (raid) this.awayModal.set([raid]);
     if (biome) this.openSigilCelebration(biome);
+  }
+
+  /** Release the level-up hold once every higher-priority celebration is gone,
+   * letting the page flush any banked level-up fanfare. */
+  private maybeReleaseLevelUp(): void {
+    if (!this.awayModal() && !this.sigilCelebration()) {
+      this.store.levelUpHold.set(false);
+    }
   }
 
   /** Pop the auto-dismissing "Guild Sigil claimed!" fanfare for a biome. */
@@ -2395,6 +2446,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       this.sigilTimer = null;
     }
     this.sigilCelebration.set(null);
+    this.maybeReleaseLevelUp();
   }
 
   closeSpaceModal(): void {

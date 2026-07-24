@@ -79,6 +79,12 @@ export class UndercityStateService {
    * being torn down and rebuilt when the player switches tabs. */
   readonly openFacility = signal<OpenFacility | null>(null);
 
+  /** Held true by the board tab while a higher-priority post-battle celebration
+   * (Guild Sigil fanfare, world-boss raid summary) is queued or showing, so the
+   * always-mounted page defers its level-up fanfare until those are dismissed.
+   * A store signal so it survives BoardTabComponent teardown. */
+  readonly levelUpHold = signal(false);
+
   /** Monotonic pulse asking the mounted board canvas to re-center on the
    * player's own creature (e.g. tapping the HUD portrait). Bumped, not toggled,
    * so repeat taps keep firing. */

@@ -35,44 +35,73 @@
          isn't spoiled. Once rolled, the steps-left die floats above the token
          (Mario Party style) instead of a banner up here. -->
     @if (!rolling() && !store.you()?.pendingMove) {
-      <button
-        class="uc-btn uc-btn-primary roll-btn"
-        [disabled]="busy() || (!debugMode() && rollsBanked() < 1)"
-        (click)="roll()"
-      >
-        <img class="die-icon" src="undercity/icons/die.png" alt="" />
-        Roll ({{ debugMode() ? '∞' : rollsBanked() }})
-      </button>
-      @if (showCoach()) {
-        <div class="coach-pill" role="status">
-          <span>New here? Tap <strong>Roll</strong> to take your first turn.</span>
-          <button class="coach-close" (click)="dismissCoach()" aria-label="Dismiss">
-            <mat-icon class="mi">close</mat-icon>
-          </button>
-        </div>
-      }
-      @if (canPickFace()) {
+      <!-- Blink (SPD-18) recharges over exactly one roll, so it alternates
+           blink / ordinary-roll turn-by-turn. Rather than a second button that
+           spends half its life greyed-out, the single primary button flips to
+           Blink on a ready turn and back to Roll while it recharges. -->
+      @if (blinkAllowed()) {
         <button
-          class="uc-btn pick-btn"
-          [class.recharging]="blinkRecharging()"
-          [disabled]="busy() || blinkRecharging()"
-          [title]="blinkRecharging() ? 'Blink recharges after one ordinary roll' : ''"
+          class="uc-btn uc-btn-primary roll-btn blink-btn"
+          [disabled]="busy() || !!rollReason()"
           (click)="showRollPicker.set(!showRollPicker())"
         >
-          <mat-icon class="mi">{{ blinkRecharging() ? 'hourglass_empty' : 'casino' }}</mat-icon>
-          @if (blinkRecharging()) {
-            Blink recharging
-          } @else {
-            {{ blinkAllowed() ? 'Blink' : 'Pick' }}
-          }
+          <mat-icon class="mi">bolt</mat-icon>
+          Blink ({{ debugMode() ? '∞' : rollsBanked() }})
         </button>
-        @if (showRollPicker() && !blinkRecharging()) {
+        <span class="next-roll-hint blink-note">Blink ready — choose your face</span>
+        @if (showRollPicker()) {
           <div class="roll-picker">
             @for (n of [1, 2, 3, 4, 5, 6]; track n) {
               <button class="uc-btn pick-face" [disabled]="busy()" (click)="pickRoll(n)">{{ n }}</button>
             }
+            <!-- Escape hatch: an ordinary roll keeps Blink ready and still gets
+                 Pathfinder advantage / a Fleetfoot reroll, which a chosen value can't. -->
+            <button
+              class="uc-btn pick-face pick-random"
+              [disabled]="busy()"
+              title="Roll at random — keeps Blink ready"
+              (click)="roll()"
+            >
+              <mat-icon class="mi">casino</mat-icon>
+            </button>
           </div>
         }
+      } @else {
+        <button
+          class="uc-btn uc-btn-primary roll-btn"
+          [disabled]="busy() || !!rollReason()"
+          (click)="roll()"
+        >
+          <img class="die-icon" src="undercity/icons/die.png" alt="" />
+          Roll ({{ debugMode() ? '∞' : rollsBanked() }})
+        </button>
+        @if (showCoach()) {
+          <div class="coach-pill" role="status">
+            <span>New here? Tap <strong>Roll</strong> to take your first turn.</span>
+            <button class="coach-close" (click)="dismissCoach()" aria-label="Dismiss">
+              <mat-icon class="mi">close</mat-icon>
+            </button>
+          </div>
+        }
+        @if (blinkRecharging()) {
+          <span class="next-roll-hint blink-note recharging">Blink recharges — ready next turn</span>
+        }
+        <!-- Dev-only pick-a-face stays a separate control on every turn. -->
+        @if (pickAllowed()) {
+          <button class="uc-btn pick-btn" [disabled]="busy()" (click)="showRollPicker.set(!showRollPicker())">
+            <mat-icon class="mi">casino</mat-icon> Pick
+          </button>
+          @if (showRollPicker()) {
+            <div class="roll-picker">
+              @for (n of [1, 2, 3, 4, 5, 6]; track n) {
+                <button class="uc-btn pick-face" [disabled]="busy()" (click)="pickRoll(n)">{{ n }}</button>
+              }
+            </div>
+          }
+        }
+      }
+      @if (!busy() && rollReason(); as r) {
+        <span class="next-roll-hint block-reason">{{ r }}</span>
       }
       @if (nextRollLabel(); as nrl) {
         <span class="next-roll-hint">next roll in {{ nrl }}</span>
@@ -439,17 +468,12 @@
                   <em>{{ r.info.desc }}</em></span>
                 <button
                   class="uc-btn shop-buy"
-                  [disabled]="busy() || r.qty <= 0 || stashFull() || !canAfford(r.info.cost)"
+                  [disabled]="busy() || !!shopGearReason(r.info, r.qty)"
                   (click)="buy(r.info)"
                 >
-                  @if (r.qty <= 0) {
-                    Sold out
-                  } @else if (stashFull()) {
-                    Stash full
-                  } @else {
-                    {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-                  }
+                  {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                 </button>
+                @if (!busy() && shopGearReason(r.info, r.qty); as reason) { <span class="block-reason">{{ reason }}</span> }
               </div>
             } @empty {
               <div class="shop-empty">The gear racks are bare. Check back after the restock.</div>
@@ -462,13 +486,10 @@
                 <span class="shop-name">
                   <mat-icon class="mi">{{ r.info.icon }}</mat-icon> {{ r.info.name }} <em>{{ r.info.desc }}</em>
                 </span>
-                <button class="uc-btn shop-buy" [disabled]="busy() || r.qty <= 0 || !canAfford(r.info.cost)" (click)="buy(r.info)">
-                  @if (r.qty <= 0) {
-                    Sold out
-                  } @else {
-                    {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-                  }
+                <button class="uc-btn shop-buy" [disabled]="busy() || !!shopConsumableReason(r.info, r.qty)" (click)="buy(r.info)">
+                  {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                 </button>
+                @if (!busy() && shopConsumableReason(r.info, r.qty); as reason) { <span class="block-reason">{{ reason }}</span> }
               </div>
             } @empty {
               <div class="shop-empty">No consumables in stock. Check back after the restock.</div>
@@ -481,13 +502,10 @@
                 <span class="shop-name">
                   <mat-icon class="mi">menu_book</mat-icon> {{ g.name }} <em>{{ grimoireSpellList(g) }}</em>
                 </span>
-                <button class="uc-btn shop-buy" [disabled]="busy() || ownsGrimoire(g.id) || !canAfford(g.cost)" (click)="buy(g)">
-                  @if (ownsGrimoire(g.id)) {
-                    Owned
-                  } @else {
-                    {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-                  }
+                <button class="uc-btn shop-buy" [disabled]="busy() || !!shopGrimoireReason(g)" (click)="buy(g)">
+                  {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                 </button>
+                @if (!busy() && shopGrimoireReason(g); as reason) { <span class="block-reason">{{ reason }}</span> }
               </div>
             } @empty {
               <div class="shop-empty">No tomes on the shelf right now.</div>
@@ -688,6 +706,7 @@
             >
               Trade for this
             </button>
+            @if (!busy() && tradeReason(s.item); as r) { <span class="block-reason">{{ r }}</span> }
           </div>
 
           @if (selectedStock() === $index) {
@@ -1056,6 +1075,7 @@
             <button class="uc-btn uc-btn-primary witch-confirm" [disabled]="busy() || !canInscribe()" (click)="inscribe()">
               Inscribe
             </button>
+            @if (!busy() && inscribeReason(); as r) { <span class="block-reason">{{ r }}</span> }
           }
         } @else {
           <p class="witch-hint">Fresh-brewed tier-I scrolls.</p>

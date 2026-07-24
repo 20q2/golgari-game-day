@@ -295,6 +295,52 @@
   color: #b7e4c7;
 }
 
+.market-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 10px;
+}
+
+.market-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: #9aa79a;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+
+  .mi {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &.active {
+    color: #d8f3dc;
+    border-color: var(--accent-color);
+    background: rgba(0, 0, 0, 0.42);
+  }
+}
+
+.market-tab-count {
+  min-width: 18px;
+  padding: 0 5px;
+  font-size: 0.72rem;
+  line-height: 17px;
+  text-align: center;
+  border-radius: 9px;
+  background: var(--accent-color);
+  color: #0d1a12;
+}
+
 .price-input {
   width: 58px;
   padding: 3px 6px;
@@ -335,4 +381,14 @@
 .status-count {
   font-size: 0.7rem;
   opacity: 0.6;
+}
+
+// Muted "why is this greyed out?" line under a disabled action. Mirrors the
+// board tab's .shop-warn treatment so blockers read the same across the game.
+.block-reason {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #9a8fa6);
 }

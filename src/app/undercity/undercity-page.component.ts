@@ -182,9 +182,15 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
         this.pendingLevels += you.level - this.prevLevel;
         this.prevLevel = you.level;
       }
-      // Hold the fanfare until we're clear of battle and nothing else is
-      // already showing, then flush the banked levels into one card.
-      if (this.pendingLevels > 0 && !inBattle && !this.levelUpCelebration()) {
+      // Hold the fanfare until we're clear of battle, no higher-priority
+      // post-battle celebration (sigil / raid summary) is queued or showing, and
+      // nothing else is already up — then flush the banked levels into one card.
+      if (
+        this.pendingLevels > 0 &&
+        !inBattle &&
+        !this.store.levelUpHold() &&
+        !this.levelUpCelebration()
+      ) {
         this.levelUpCelebration.set({ level: this.prevLevel, gained: this.pendingLevels });
         this.pendingLevels = 0;
       }

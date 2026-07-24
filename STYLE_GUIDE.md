@@ -10,6 +10,7 @@
 - **Content-Focused**: Clean, minimal interface that highlights games and photos
 - **Community-Driven**: Encourages interaction through comments, ratings, and photo sharing
 - **Performance-Optimized**: Fast loading with PWA capabilities for offline use
+- **Scannable, Not Scrolly**: Prefer tabs and progressive disclosure over one tall stack — group related actions into tabbed sections so a phone-sized panel stays short and readable
 
 ---
 
@@ -361,6 +362,9 @@ $xlarge: 1440px;    // Extra large screens
 
 ## 📱 Mobile-First Guidelines
 
+### Tabs Over Tall Stacks
+When a panel or modal holds more than a couple of distinct sections (e.g. Buy vs. Sell, or Gear/Consumables/Grimoires), split them into tabs rather than stacking every section vertically. On a phone, a long scroll buries the actions at the bottom and hides context above the fold; tabs keep each view short, put related actions together, and make the panel's scope obvious at a glance. Established patterns to reuse: the Shop's `.shop-tabs`/`.shop-tab` and the Market's `.market-tabs`/`.market-tab` (a flex row of equal-width pills, accent border on `.active`, optional count badge).
+
 ### Layout Patterns
 ```scss
 // Container Queries for Components
@@ -404,6 +408,71 @@ $xlarge: 1440px;    // Extra large screens
   }
 }
 ```
+
+---
+
+## 🎮 Mobile Game Design
+
+Best practices for the phone-first sub-games (the Undercity board game and anything like it). These extend the Mobile-First Guidelines above with rules specific to real-time-ish, canvas-driven, network-backed play.
+
+### The core loop lives on one screen
+- The primary action of the moment — roll, move, confirm, attack — must be reachable **without scrolling**. If the player has to hunt for the button, the loop is broken.
+- Keep persistent state (rolls left, Spores, HP) always visible in a fixed HUD, not buried in a menu. Players make decisions against these numbers every turn.
+- Prove the single-player loop feels good before layering on social/PvP surface area — depth is added *inside* the loop, not stacked *beside* it.
+
+### Design for the thumb
+- Put the frequent, safe actions in the **bottom third** (thumb arc); push rare or destructive actions to the top or behind a confirm. Never place "Salvage" or "Swap" next to "Roll".
+- Touch targets: **48px minimum** on interactive board/game elements (bigger than the 44px web baseline — play is faster and less precise than browsing). Space rows so a mis-tap doesn't fire the neighbor.
+- Respect device safe areas (notch, home indicator) so a HUD button never sits under the system gesture bar.
+
+```scss
+// Fixed action bar in the thumb zone, clear of the home indicator
+.game-action-bar {
+  position: sticky;
+  bottom: 0;
+  padding: var(--spacing-sm);
+  padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom));
+  display: flex;
+  gap: var(--spacing-sm);
+
+  .primary-action { flex: 1; min-height: 52px; } // roll / confirm — big and central
+}
+```
+
+### Immediate feedback on every tap ("juice")
+- Every action gets an instant, visible response: a toast (`.plaza-toast`), a sprite reaction (the `boingDino` bounce), a roll animation, a number ticking. Silence reads as "it didn't work" and triggers rage-taps.
+- Feedback is **local and optimistic** — don't wait on the server to acknowledge before showing the result. Mutations update the in-memory cache immediately (see `DataAggregationService` / the `store.action` handlers) and reconcile later.
+- Gate juice behind `prefers-reduced-motion` — the loop must stay fully playable with animations off.
+
+```scss
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-in, .sprite-boing { animation: none; }
+}
+```
+
+### Hide latency, never expose it
+The backend is a live AWS Lambda round-trip; treat every action as if the network is slow and flaky:
+- Set a `busy()` signal while an action is in flight, disable the triggering control, and **guard against double-submit** (`if (this.busy()) return;`) — a double-tapped "Buy" must not buy twice.
+- Show optimistic results instantly; on failure, surface a plain-language toast (`e.message`) and roll back. Failures are normal on mobile, not exceptional.
+- Turn-based/async play is a feature on phones: sessions are short and interrupted. State is authoritative server-side, so a player can close the app mid-turn and resume cleanly — never punish an interruption with lost progress.
+
+### Modals for decisions, tabs for sections
+- Use dismissible bottom-sheet-style modals for transient choices (shop, combat stance, target picker); tap-the-backdrop to close. Don't send players down a nav stack they have to back out of.
+- Split a busy panel into tabs rather than one tall scroll (see **Tabs Over Tall Stacks**). Each tab groups related actions so the visible screen stays short.
+- Confirm costly or irreversible actions (gear swaps, salvage, spending a limited resource) — the 30-minute swap confirm is the model. One tap should never silently burn something the player can't get back.
+
+### State must always be legible
+- **Disable with a reason, don't hide.** A greyed "Buy" with "Stash full — salvage a piece first" teaches the system; a missing button just confuses.
+- Give every list an **empty state** that says how to fill it (the `.forge-empty` / `@empty` pattern: "Gear you find in the dark lands here").
+- Never encode meaning in **color alone** — pair it with a label or icon (rarity is a colored border *and* a text badge). This survives colorblindness, glare, and dark rooms.
+
+### Canvas & performance
+- Keep the render loop at 60fps and **stop it when it's not visible** — cancel the RAF loop in `ngOnDestroy` and when a full-screen modal covers the board, to save battery.
+- Put text UI (names, HP, buttons) in the **DOM overlay**, not baked into the canvas — DOM text scales crisply, is selectable/accessible, and reflows for safe areas. The canvas draws sprites and board; HTML draws words.
+- Optimize for **portrait**; the board and HUD should be designed for a tall, narrow viewport first, with landscape as a nicety, not a requirement.
+
+### Onboarding without a manual
+- The first turn should be obvious from the layout — highlight the roll, gate advanced facilities until they're relevant. Mobile players won't read a rulebook; the UI is the tutorial.
 
 ---
 
