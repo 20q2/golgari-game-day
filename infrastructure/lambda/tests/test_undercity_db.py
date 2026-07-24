@@ -1904,6 +1904,52 @@ def test_high_five_is_consumed_after_one_battle():
     assert 'cursed_idol' in kinds  # timed curse survives; only one-battle buffs clear
 
 
+def _colocate(table, sid, host='user-alex', guest='user-sam'):
+    """Move `guest` onto `host`'s node and return that node id."""
+    h = db._get_player(table, sid, host)
+    g = db._get_player(table, sid, guest)
+    g['position'] = h['position']
+    db._put_player(table, g)
+    return h['position']
+
+
+def test_high_five_grants_buff_same_space(table):
+    act(table, 'join', starter='pest')                      # user-alex
+    act(table, 'join', user='user-sam', name='Sam', starter='zombie')
+    sid = _sid(table)
+    _colocate(table, sid)
+    status, resp = act(table, 'high-five', targetUserId='user-sam')
+    assert status == 200
+    sam = db._get_player(table, sid, 'user-sam')
+    assert any(b['kind'] == 'high_five' for b in sam['buffs'])
+    assert any(e['kind'] == 'high_five' and e['fromId'] == 'user-alex'
+               for e in sam['awayEvents'])
+
+
+def test_high_five_off_space_rejected(table):
+    act(table, 'join', starter='pest')
+    act(table, 'join', user='user-sam', name='Sam', starter='zombie')
+    sid = _sid(table)
+    sam = db._get_player(table, sid, 'user-sam')
+    sam['position'] = 'NOWHERE'   # any node != the giver's exercises the reject path
+    db._put_player(table, sam)
+    status, resp = act(table, 'high-five', targetUserId='user-sam')
+    assert status == 400
+    assert 'space' in resp['error']
+
+
+def test_high_five_same_target_on_cooldown(table):
+    act(table, 'join', starter='pest')
+    act(table, 'join', user='user-sam', name='Sam', starter='zombie')
+    sid = _sid(table)
+    _colocate(table, sid)
+    status, _ = act(table, 'high-five', targetUserId='user-sam')
+    assert status == 200
+    status, resp = act(table, 'high-five', targetUserId='user-sam')
+    assert status == 429
+    assert 'min left' in resp['error']
+
+
 def test_start_battle_includes_status(table, monkeypatch):
     monkeypatch.setattr(db, '_rng', _ZeroRng())
     act(table, 'join', starter='kraul')

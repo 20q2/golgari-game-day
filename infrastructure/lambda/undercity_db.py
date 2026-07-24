@@ -728,6 +728,8 @@ def _prune_cooldowns(doc):
     doc['spellCooldowns'] = {k: v for k, v in cds.items() if v > now}
     pcds = doc.get('pokeCooldowns') or {}
     doc['pokeCooldowns'] = {k: v for k, v in pcds.items() if v > now}
+    hfcds = doc.get('highFiveCooldowns') or {}
+    doc['highFiveCooldowns'] = {k: v for k, v in hfcds.items() if v > now}
 
 
 def _add_rolls(doc, n):
@@ -1473,7 +1475,7 @@ def handle_action(table, body):
         'combat-flee': _combat_flee,
         'set-stance': _set_stance, 'spend-stat': _spend_stat, 'evolve': _evolve,
         'buy': _buy, 'use-item': _use_item, 'shrine': _shrine, 'warp': _warp,
-        'gamble': _gamble, 'poke': _poke, 'customize': _customize,
+        'gamble': _gamble, 'poke': _poke, 'high-five': _high_five, 'customize': _customize,
         'set-status': _set_status,
         'drop-item': _drop_item,
         'attack-boss': _attack_boss, 'world-engage': _world_engage,
@@ -1932,7 +1934,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'pendingMove': None, 'buffs': [],
         'grimoires': [], 'equippedGrimoire': None,
         'scrolls': [], 'grimoireSpells': {},
-        'spellCooldowns': {}, 'pokeCooldowns': {}, 'awayEvents': [],
+        'spellCooldowns': {}, 'pokeCooldowns': {}, 'highFiveCooldowns': {}, 'awayEvents': [],
         'lastFinishedClaim': None, 'taughtClaims': 0, 'pokesReceived': 0,
         'pvpWins': 0, 'wildWins': 0, 'composts': 0, 'bossDamage': 0,
         'paint': {'body': body_hue, 'belly': 50, 'stripes': body_hue},
@@ -5331,6 +5333,37 @@ def _poke(table, sid, doc, payload):
            + (f' (+{granted} roll!)' if granted else ''),
            actor=doc['userId'])
     return _ok(doc, granted=granted)
+
+
+def _high_five(table, sid, doc, payload):
+    target_id = payload.get('targetUserId')
+    if not target_id or target_id == doc['userId']:
+        return _err('High-five someone else.')
+    target = _get_player(table, sid, target_id)
+    if not target:
+        return _err('Target not found.', 404)
+    # Same-space only: you high-five someone you're passing on the board.
+    if target.get('position') != doc.get('position'):
+        return _err('You can only high-five someone on your space.')
+    # Per-target cooldown: can't re-high-five the same creature until it expires.
+    cds = doc.get('highFiveCooldowns') or {}
+    until = cds.get(target_id)
+    if until and until > _now():
+        wait = int((datetime.fromisoformat(until) - datetime.utcnow()).total_seconds() // 60) + 1
+        return _err(f'You already high-fived {target["username"]} — {wait} min left.', 429)
+    # Gift the recipient a one-battle +1/+1/+1 buff (refresh-don't-stack).
+    _apply_buff(target, 'high_five')
+    _push_away_event(target, {'kind': 'high_five', 'from': doc['username'],
+                              'fromId': doc['userId'], 'at': _now()})
+    if not _put_player(table, target):
+        return _err('The crowd jostles — try again.', 409)
+    cds[target_id] = (datetime.utcnow() + timedelta(minutes=data.HIGH_FIVE_COOLDOWN_MIN)).isoformat(timespec='seconds')
+    doc['highFiveCooldowns'] = cds
+    _put_player(table, doc)
+    _event(table, sid, 'high-five',
+           f"{doc['username']} high-fived {target['username']}'s {_creature_label(target)}",
+           actor=doc['userId'])
+    return _ok(doc)
 
 
 def _customize(table, sid, doc, payload):
