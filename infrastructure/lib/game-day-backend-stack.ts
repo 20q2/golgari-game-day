@@ -2,6 +2,8 @@ import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 import { join } from 'path';
 
@@ -96,6 +98,20 @@ export class GameDayBackendStack extends cdk.Stack {
 
     // 🔐 GRANT DYNAMODB PERMISSIONS TO LAMBDA
     gameDayTable.grantReadWriteData(gameDayApi);
+
+    // ⏰ ROLL-REFILL NUDGE HEARTBEAT — a single cheap poll emulates a per-player
+    // timer. Every 5 minutes EventBridge invokes the same Lambda with a marker
+    // input; lambda_handler routes {task:'roll-refill-sweep'} to the sweep, which
+    // pushes idle players whose rolls have regenerated back to a playable amount.
+    // Well inside the free tier (~288 invocations/day). The rule wires the
+    // invoke permission automatically.
+    const rollRefillSweep = new events.Rule(this, 'RollRefillSweep', {
+      ruleName: 'undercity-roll-refill-sweep',
+      schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
+    });
+    rollRefillSweep.addTarget(new targets.LambdaFunction(gameDayApi, {
+      event: events.RuleTargetInput.fromObject({ task: 'roll-refill-sweep' }),
+    }));
 
     // 📊 OUTPUTS - Important URLs and info
     new cdk.CfnOutput(this, 'TableName', {
