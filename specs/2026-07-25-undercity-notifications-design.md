@@ -32,6 +32,9 @@ We want the Undercity game to fire real browser notifications for:
    everyone).
 6. **Your Player Market item sold** — someone buys an item you listed (personal,
    to the seller — who is often offline).
+7. **You got poked** — another player pokes your creature (personal, to the
+   poked player — poke works remotely, so they are usually offline; often comes
+   with +1 roll).
 
 ## Constraints
 
@@ -100,7 +103,7 @@ already the norm and is not circular.
 > `push_db` is acceptable (undercity_db is the lower layer). The implementation
 > plan should confirm no import cycle results (push_db → undercity_db only).
 
-### 3. Hook the six events
+### 3. Hook the seven events
 
 Each event already writes to the Grapevine (`_event`) and/or away
 (`_push_away_event` / `_broadcast_away`) feed. The push call sits immediately
@@ -114,6 +117,7 @@ beside the existing feed write, using the same target set:
 | Raid boss falls | world-event finish (`"…has fallen!"`, ~L3656) | all but the killer | `broadcast(exclude=killer)` |
 | Savra awakens | `_boss_awaken` (~L1716) | everyone | `broadcast(exclude=None)` |
 | Player Market item sold | `_credit_market_seller` (~L1038) | the seller | `send_to_user` |
+| You got poked | `_poke` (~L5487, after target `_put_player` succeeds) | the poked player | `send_to_user` |
 
 Notification copy is short and phone-glanceable, e.g.:
 - reward: `"+N rolls from {game} — come spend them!"`
@@ -123,10 +127,14 @@ Notification copy is short and phone-glanceable, e.g.:
 - Savra: `"THE ROT-WARDS FALL — Savra stirs. Storm her lair!"`
 - market sale: reuse the existing away-event text, `"{buyer} bought your {item}
   for {price} Spores."`
+- poke: `"{poker} poked your {creature}!"` + `" (+1 roll!)"` when a roll was
+  granted.
 
-All six moments are naturally idempotent or once-per-night (season-global first
-kill, idempotent world-event spawn, one-way boss awaken, per-close reward,
-per-sale credit), so no additional dedupe/rate-limiting is required.
+All seven moments are naturally idempotent, once-per-night, or per-action with a
+built-in cooldown (season-global first kill, idempotent world-event spawn,
+one-way boss awaken, per-close reward, per-sale credit, per-target poke cooldown
+of `POKE_COOLDOWN_MIN`), so no additional dedupe/rate-limiting is required — the
+existing poke cooldown already bounds how often that push can arrive.
 
 **Market-sale gotcha:** `_credit_market_seller` retries past optimistic-lock
 conflicts in a loop, calling `_push_away_event` each pass (only the successful
