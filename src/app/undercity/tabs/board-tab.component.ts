@@ -1172,6 +1172,19 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       const pos = untracked(() => this.store.you()?.position);
       if (pos) this.board?.spectateOn(pos);
     });
+    // First time this run you drop below half HP, surface the healing coach.
+    // Held back during a live battle so it lands once the fight resolves; the
+    // season-keyed flag guarantees it fires at most once per run.
+    effect(() => {
+      const you = this.store.you();
+      const seasonId = this.store.season()?.seasonId;
+      if (!you || !seasonId || this.liveBattle()) return;
+      if (you.hp <= 0 || you.maxHp <= 0 || you.hp >= you.maxHp * 0.5) return;
+      const key = BoardTabComponent.HP_TIP_KEY + seasonId;
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, '1');
+      this.showHpTip.set(true);
+    });
   }
 
   /** One-line prose for a welcome-back note, per kind. */

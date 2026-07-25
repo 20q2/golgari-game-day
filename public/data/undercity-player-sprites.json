@@ -87,8 +87,8 @@
     },
     {
       "name": "shambling_shell",
-      "hasMask": false,
-      "hasHat": false
+      "hasMask": true,
+      "hasHat": true
     },
     {
       "name": "slitherhead",

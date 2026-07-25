@@ -342,6 +342,37 @@
     </div>
   }
 
+  <!-- First-time low-HP coach. Fires once per run the first time you drop below
+       half health; recommends healing at a gate or with a consumable.
+       Button-only dismissal. -->
+  @if (showHpTip()) {
+    <div class="uc-modal-backdrop">
+      <div class="uc-modal hp-tip-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">favorite</mat-icon> Careful — you're below half health!</h3>
+        <p class="modal-sub">Top yourself up before your next fight goes badly:</p>
+        <ul class="hp-tip-list">
+          <li>
+            <mat-icon class="mi">shield</mat-icon>
+            <span><strong>Land on a Gate</strong> to fully heal.</span>
+          </li>
+          <li>
+            <mat-icon class="mi">login</mat-icon>
+            <span><strong>Pass through a Gate</strong> to restore 50% of your HP.</span>
+          </li>
+          <li>
+            <mat-icon class="mi">science</mat-icon>
+            <span><strong>Use a healing consumable</strong> from your pack.</span>
+          </li>
+        </ul>
+        <div class="choice-grid">
+          <button class="uc-btn uc-btn-primary" (click)="dismissHpTip()">
+            <mat-icon class="mi">check</mat-icon> Got it
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- Rolling die overlay. Pathfinder (SPD-10) rolls with advantage — a second
        die appears beside the first and you may move to either's destinations. -->
   @if (rolling()) {
