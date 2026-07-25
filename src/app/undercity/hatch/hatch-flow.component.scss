@@ -730,6 +730,49 @@
   margin-top: 8px;
 }
 
+// Home showcase — the biome's board art rendered as a hero banner (no sprite),
+// with the same legibility gradient + per-biome tint the lineup cards use.
+.biome-hero {
+  position: relative;
+  height: 150px;
+  padding: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background-image: var(--biome-bg);
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(103, 194, 128, 0.3);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+  animation: hero-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(
+        to top,
+        rgba(8, 10, 8, 0.85) 0%,
+        rgba(8, 10, 8, 0.2) 62%,
+        rgba(8, 10, 8, 0.05) 100%
+      ),
+      var(--biome-tint, transparent);
+  }
+}
+
+// "Starting perk" / "Starting spell" label pushed to the right of a card head.
+.ability-tag {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(154, 176, 160, 0.4);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ab0a0;
+}
+
 .fate-banner {
   display: inline-flex;
   align-items: center;

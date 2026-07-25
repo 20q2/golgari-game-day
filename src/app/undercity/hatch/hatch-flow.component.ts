@@ -18,6 +18,7 @@ import {
 } from '../data/cosmetics';
 import { getRecoloredDataUrl } from '../engine/sprite-engine';
 import { formSprite, FORM_VARIANTS, FormVariant } from '../data/species';
+import { SPELLS, BIOME_SPELLS } from '../data/spells';
 import { randomCreatureName } from '../data/names';
 import { IntroCutsceneComponent } from './intro-cutscene.component';
 
@@ -217,16 +218,64 @@ export class HatchFlowComponent {
    */
   protected readonly biomes = [
     { id: 'city', name: 'The Undercity', bg: 'undercity/undercity_background.png', tint: 'rgba(38, 120, 110, 0.35)',
-      perk: 'City Rat', blurb: 'Hatch with a random Tier-1 item, equipped.' },
+      perk: 'City Rat', blurb: 'Hatch with a random Tier-1 item, equipped.',
+      lore: 'A warren of crooked tunnels and black-market stalls beneath the palace. ' +
+        'If it can be bought, stolen, or pried loose, it changes hands down here.',
+      feature: { name: 'The Guildvault', desc: 'Crack the tumbler lock — read the sigils right to walk off with a fat prize.' } },
     { id: 'cavern', name: 'Mosslight Cavern', bg: 'undercity/cavern_background.png', tint: 'rgba(70, 96, 190, 0.35)',
-      perk: 'Darkvision', blurb: 'See 2 spaces away in dungeons.' },
+      perk: 'Darkvision', blurb: 'See 2 spaces away in dungeons.',
+      lore: 'Deep galleries lit by glowing moss and seams of raw crystal. ' +
+        'The dark keeps few secrets from those born to it.',
+      feature: { name: 'Crystal Veins', desc: 'Mine glittering gems straight from the cavern walls.' } },
     { id: 'bog', name: 'The Sedgemoor', bg: 'undercity/swamp_background.png', tint: 'rgba(52, 110, 60, 0.32)',
-      perk: 'Mirefoot', blurb: 'Hazards cost you half.' },
+      perk: 'Mirefoot', blurb: 'Hazards cost you half.',
+      lore: 'A drowned expanse of reeking sedge and sunken paths, presided over by an old ' +
+        'witch who trades in stranger currencies than Spores.',
+      feature: { name: 'The Sedgemoor Witch', desc: 'Buy spell scrolls, or inscribe them into a grimoire of your own.' } },
     { id: 'bone', name: 'Ossuary Fields', bg: 'undercity/palace_background.png', tint: 'rgba(150, 150, 130, 0.30)',
-      perk: 'Marrowborn', blurb: '+8 Max HP.' },
+      perk: 'Marrowborn', blurb: '+8 Max HP.',
+      lore: 'Endless drifts of bleached bone — the palace’s dead, and older things beneath them. ' +
+        'Good digging, if you’re not squeamish.',
+      feature: { name: 'Excavation Sites', desc: 'Dig through buried plots to unearth long-lost gear.' } },
     { id: 'garden', name: 'The Rot-Gardens', bg: 'undercity/swamp_background.png', tint: 'rgba(140, 170, 40, 0.34)',
-      perk: 'Composter', blurb: '+2 Spores from every loot space.' },
+      perk: 'Composter', blurb: '+2 Spores from every loot space.',
+      lore: 'Terraced beds of glorious decay where the Golgari cycle turns fastest — ' +
+        'death feeding growth feeding death.',
+      feature: { name: 'The Spore Shrine', desc: 'Offer your Spores to permanently raise an attribute.' } },
   ];
+
+  /** Biome-id -> its innate starting spell display (name/icon/desc), resolved
+   *  from the generated spell catalogue so the home showcase never duplicates
+   *  spell copy. Null if a biome somehow has no mapped innate. */
+  private readonly spellById = new Map(SPELLS.map((s) => [s.id, s]));
+  biomeSpell(biomeId: string): (typeof SPELLS)[number] | null {
+    return this.spellById.get(BIOME_SPELLS[biomeId]) ?? null;
+  }
+
+  /** Step 2a: which home's showcase is open (null = browse the lineup). Mirrors
+   *  the creature step's `showcaseId`. */
+  protected readonly showcaseBiomeId = signal<string | null>(null);
+  protected readonly showcasedBiome = computed(
+    () => this.biomes.find((b) => b.id === this.showcaseBiomeId()) ?? null,
+  );
+
+  /** Open a home's showcase from the lineup. */
+  openBiomeShowcase(id: string): void {
+    this.showcaseBiomeId.set(id);
+    this.error.set(null);
+  }
+
+  /** Close the showcase, back to the home lineup. */
+  backToBiomeBrowse(): void {
+    this.showcaseBiomeId.set(null);
+  }
+
+  /** From the naming step, return to browse the home lineup (not the last-viewed
+   *  showcase), so "pick a different biome" always lands on the full grid. */
+  changeBiome(): void {
+    this.chosenBiome.set(null);
+    this.showcaseBiomeId.set(null);
+  }
 
   protected readonly canPickShell = computed(() => (this.store.wardrobe()?.seals ?? 0) >= 1);
 
@@ -378,6 +427,7 @@ export class HatchFlowComponent {
     this.braveryReveal.set(false);
     this.bravery.set(false);
     this.chosenVariant.set(null);
+    this.showcaseBiomeId.set(null);
   }
 
   /** Step 2: pick a home biome, then advance to naming. */

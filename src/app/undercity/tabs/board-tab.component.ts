@@ -280,6 +280,15 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.showCoach.set(false);
   }
 
+  /** First-time low-HP coach: the first time you drop below half health in a
+   *  run, recommend healing at a gate or with a consumable. Keyed to the season
+   *  so it re-arms each host reset (a fresh run), not once-per-device forever. */
+  private static readonly HP_TIP_KEY = 'uc.hpTipSeen:';
+  protected readonly showHpTip = signal(false);
+  protected dismissHpTip(): void {
+    this.showHpTip.set(false);
+  }
+
   /** Fleetfoot (SPD-5): the last roll came up 1 and may be rerolled once. */
   protected readonly canReroll = signal(false);
   protected readonly gambleRolling = signal(false);

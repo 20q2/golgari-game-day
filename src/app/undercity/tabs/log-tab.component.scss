@@ -88,15 +88,24 @@
   }
 
   .lb-stats {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 0.78rem;
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    column-gap: 8px;
+    row-gap: 1px;
+    font-size: 0.68rem;
     color: #9aa79a;
     flex-shrink: 0;
 
+    .lb-stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+
     .mi {
-      margin-left: 5px;
+      font-size: 13px;
+      width: 13px;
+      height: 13px;
     }
   }
 

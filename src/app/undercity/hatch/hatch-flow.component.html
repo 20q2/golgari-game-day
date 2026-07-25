@@ -170,48 +170,100 @@
       <button class="hatch-btn" (click)="enterShop()" [disabled]="joining() || !nameValid()">
         Next: Renown Shop →
       </button>
-      <button class="biome-back" (click)="chosenBiome.set(null)" [disabled]="joining()">
+      <button class="biome-back" (click)="changeBiome()" [disabled]="joining()">
         ← pick a different biome
       </button>
     }
   } @else if (chosenStarter()) {
     @if (chosenStarter(); as chosen) {
-      <h1>Where does {{ chosen.name }} call home?</h1>
-      @if (bravery()) {
-        <p class="bravery-note">
-          <mat-icon class="mi">casino</mat-icon>
-          Fate dealt you a {{ chosen.name }} — and a bonus roll for your nerve.
-        </p>
-      }
-      <p class="choose-hint">Your home biome grants a permanent perk — it's where you start and respawn.</p>
-      @if (error(); as err) {
-        <p class="error-text">{{ err }}</p>
-      }
-      <div class="biome-grid">
-        @for (biome of biomes; track biome.id) {
-          <button
-            class="biome-card"
+      @if (showcasedBiome(); as biome) {
+        <!-- Step 2b: full-screen home showcase (mirrors the creature showcase) -->
+        <div class="showcase biome-showcase">
+          <button class="showcase-back" (click)="backToBiomeBrowse()" [disabled]="joining()">
+            <mat-icon class="mi">arrow_back</mat-icon> back
+          </button>
+
+          <div
+            class="showcase-hero biome-hero"
             [style.--biome-bg]="'url(' + biome.bg + ')'"
             [style.--biome-tint]="biome.tint"
-            (click)="chooseBiome(biome.id)"
-            [disabled]="joining()"
           >
-            <span class="biome-art" aria-hidden="true"></span>
             @if (biome.id === 'city') {
               <span class="biome-firsttag">Good first home</span>
             }
-            <span class="biome-body">
-              <span class="biome-name">{{ biome.name }}</span>
-              <span class="biome-perk-name">{{ biome.perk }}</span>
-              <span class="biome-blurb">{{ biome.blurb }}</span>
+          </div>
+
+          <h1 class="showcase-name">{{ biome.name }}</h1>
+          <p class="showcase-blurb">{{ biome.lore }}</p>
+
+          <div class="ability-card">
+            <span class="ability-head">
+              <mat-icon class="mi">place</mat-icon> {{ biome.feature.name }}
             </span>
+            <span class="ability-desc">{{ biome.feature.desc }}</span>
+          </div>
+
+          <div class="ability-card">
+            <span class="ability-head">
+              <mat-icon class="mi">auto_awesome</mat-icon> {{ biome.perk }}
+              <span class="ability-tag">Starting perk</span>
+            </span>
+            <span class="ability-desc">{{ biome.blurb }}</span>
+          </div>
+
+          @if (biomeSpell(biome.id); as spell) {
+            <div class="ability-card">
+              <span class="ability-head">
+                <mat-icon class="mi">{{ spell.icon }}</mat-icon> {{ spell.name }}
+                <span class="ability-tag">Starting spell</span>
+              </span>
+              <span class="ability-desc">{{ spell.desc }}</span>
+            </div>
+          }
+
+          <button class="hatch-btn" (click)="chooseBiome(biome.id)" [disabled]="joining()">
+            Make {{ biome.name }} home →
+          </button>
+        </div>
+      } @else {
+        <!-- Step 2a: browse the home lineup -->
+        <h1>Where does {{ chosen.name }} call home?</h1>
+        @if (bravery()) {
+          <p class="bravery-note">
+            <mat-icon class="mi">casino</mat-icon>
+            Fate dealt you a {{ chosen.name }} — and a bonus roll for your nerve.
+          </p>
+        }
+        <p class="choose-hint">Tap a home to see its landmark, perk, and starting spell.</p>
+        @if (error(); as err) {
+          <p class="error-text">{{ err }}</p>
+        }
+        <div class="biome-grid">
+          @for (biome of biomes; track biome.id) {
+            <button
+              class="biome-card"
+              [style.--biome-bg]="'url(' + biome.bg + ')'"
+              [style.--biome-tint]="biome.tint"
+              (click)="openBiomeShowcase(biome.id)"
+              [disabled]="joining()"
+            >
+              <span class="biome-art" aria-hidden="true"></span>
+              @if (biome.id === 'city') {
+                <span class="biome-firsttag">Good first home</span>
+              }
+              <span class="biome-body">
+                <span class="biome-name">{{ biome.name }}</span>
+                <span class="biome-perk-name">{{ biome.perk }}</span>
+                <span class="biome-blurb">{{ biome.blurb }}</span>
+              </span>
+            </button>
+          }
+        </div>
+        @if (!bravery()) {
+          <button class="biome-back" (click)="resetCreatureChoice()" [disabled]="joining()">
+            ← pick a different creature
           </button>
         }
-      </div>
-      @if (!bravery()) {
-        <button class="biome-back" (click)="resetCreatureChoice()" [disabled]="joining()">
-          ← pick a different creature
-        </button>
       }
     }
   } @else {

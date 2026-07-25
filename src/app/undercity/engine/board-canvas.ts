@@ -1091,12 +1091,17 @@ export class BoardCanvas {
   private handleTap(screenX: number, screenY: number): void {
     const wx = this.camX + screenX / this.zoom;
     const wy = this.camY + screenY / this.zoom;
+    // Catch radius in world units, but floored to a finger-sized target on
+    // screen. NODE_R * 1.6 is ~9 px at MIN_ZOOM, so zoomed-out spaces become
+    // un-tappable without this floor.
+    const MIN_TAP_PX = 24;
+    const catchR = Math.max(NODE_R * 1.6, MIN_TAP_PX / this.zoom);
     let best: BoardNode | null = null;
     let bestDist = Infinity;
     for (const n of this.map.nodes) {
       if (!this.inActive(n.id) || this.isHiddenEscape(n.id)) continue; // hidden-layer / unclaimed-escape nodes aren't tappable
       const dist = Math.hypot(n.x - wx, n.y - wy);
-      if (dist < NODE_R * 1.6 && dist < bestDist) {
+      if (dist < catchR && dist < bestDist) {
         best = n;
         bestDist = dist;
       }
