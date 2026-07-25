@@ -25,6 +25,7 @@ from decimal import Decimal
 
 from botocore.exceptions import ClientError
 
+import push_db
 import undercity_data as data
 import undercity_engine as engine
 import undercity_mapgen as mapgen
@@ -4160,6 +4161,23 @@ def _season_players(table, sid):
         KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
         ExpressionAttributeValues={':pk': _season_pk(sid), ':sk': 'PLAYER#'})
     return [_clean(i) for i in resp['Items']]
+
+
+_UNDERCITY_TITLE = 'The Undercity'
+_UNDERCITY_URL = '/golgari-game-day/undercity'  # tapping a push opens the game
+
+
+def _push_user(table, user_id, body):
+    """Personal browser push to one player. Best-effort (see push_db)."""
+    push_db.send_to_user(table, user_id, _UNDERCITY_TITLE, body, _UNDERCITY_URL)
+
+
+def _push_broadcast(table, sid, body, exclude_user_id=None):
+    """Browser push to every creature in the season, optionally excluding one
+    (usually the actor who already knows). Mirrors _broadcast_away's targeting."""
+    ids = [p['userId'] for p in _season_players(table, sid)
+           if p.get('userId') and p['userId'] != exclude_user_id]
+    push_db.broadcast(table, ids, _UNDERCITY_TITLE, body, _UNDERCITY_URL)
 
 
 def _broadcast_away(table, sid, entry, exclude_user_id=None, skip_user_ids=None):
