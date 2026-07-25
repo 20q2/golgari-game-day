@@ -479,6 +479,13 @@ export class HatchFlowComponent {
         bravery: this.bravery(),
         spriteVariant: this.chosenVariant(),
       });
+      // Hatched: forget the per-night "intro seen" flag. Its only job is to stop
+      // the cutscene replaying while you sit on the egg screen this night — once
+      // you have a creature it's moot. Clearing it means that if a host Full
+      // Reset later sends this same browser back to the egg (new player server-
+      // side, same seasonId), the opening cutscene replays instead of being
+      // suppressed by the now-stale localStorage flag.
+      localStorage.removeItem(HatchFlowComponent.INTRO_SEASON_KEY);
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Could not hatch');
       this.joining.set(false);
