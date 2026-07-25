@@ -12,12 +12,13 @@ const VAPID_PUBLIC_KEY = 'BEocE_ztntFaa9MVGr_8QznPX_Ivqj2YuBttw2MOZ-e3a5FYwTL6yX
 const OPT_OUT_STORAGE_KEY = 'gameday-queue-push-opt-out';
 
 /**
- * Wraps SwPush so QueueService doesn't need to know about subscription
- * bookkeeping. Subscribing triggers the browser's native permission prompt —
- * that prompt IS the user-facing "get notified?" ask, no custom UI needed.
+ * Wraps SwPush so callers don't need to know about subscription bookkeeping.
+ * Subscribing triggers the browser's native permission prompt — that prompt IS
+ * the user-facing "get notified?" ask, no custom UI needed. Shared by the queue
+ * and the Undercity sub-game.
  */
 @Injectable({ providedIn: 'root' })
-export class QueuePushService {
+export class PushService {
   private readonly swPush = inject(SwPush);
   private readonly api = inject(QueueApiService);
 

@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { UserService } from './user.service';
 import { QueueApiService } from './queue-api.service';
-import { QueuePushService } from './queue-push.service';
+import { PushService } from './push.service';
 import { CloseResult, QueueEntry, QueueState } from './queue-models';
 
 const POLL_INTERVAL_MS = 20_000;
@@ -10,13 +10,13 @@ const POLL_INTERVAL_MS = 20_000;
  * Signal store for tonight's queue. Polls while mounted and the tab is
  * visible; join/leave apply their response optimistically and the next poll
  * reconciles. Real-time "someone joined" awareness comes from push
- * notifications (QueuePushService), not from tight polling.
+ * notifications (PushService), not from tight polling.
  */
 @Injectable({ providedIn: 'root' })
 export class QueueService {
   private readonly api = inject(QueueApiService);
   private readonly userService = inject(UserService);
-  private readonly push = inject(QueuePushService);
+  private readonly push = inject(PushService);
 
   private readonly _state = signal<QueueState>({ seasonId: null, entries: [] });
   private readonly _loading = signal(false);

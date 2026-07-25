@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { UserService } from '../../services/user.service';
+import { PushService } from '../../services/push.service';
 import { UndercityApiService, UndercityApiError } from './undercity-api.service';
 import { ActionResponse, GameState, PublicPlayer, YouDoc } from './undercity-models';
 
@@ -43,6 +44,8 @@ export interface OpenFacility {
 export class UndercityStateService {
   private readonly api = inject(UndercityApiService);
   private readonly userService = inject(UserService);
+  private readonly push = inject(PushService);
+  private pushPrompted = false;
 
   private readonly _state = signal<GameState | null>(null);
   private readonly _loading = signal(false);
@@ -136,6 +139,13 @@ export class UndercityStateService {
       }
       this.computeDiff(this._state()?.players ?? [], next.players ?? []);
       this._state.set(next);
+      if (next.you && !this.pushPrompted) {
+        // Once the player has a creature they're committed to tonight — ask to
+        // enable notifications (no-op if already subscribed or opted out). This
+        // covers both the post-hatch case and reopening with a creature.
+        this.pushPrompted = true;
+        void this.push.ensureSubscribed();
+      }
       this._error.set(null);
     } catch (e) {
       this._error.set(e instanceof Error ? e.message : 'Network error');
