@@ -107,4 +107,16 @@
       </button>
     </div>
   </section>
+
+  <section class="admin-section">
+    <h2>Danger zone</h2>
+    <p class="hint">
+      Wipes ALL players: deletes every creature this night, clears first-clears,
+      and resets everyone's Renown + profile to a blank slate. Cannot be undone.
+    </p>
+    <button class="danger" (click)="resetAll()" [disabled]="busy() || !hostKey.trim()">
+      <mat-icon class="mi">delete_forever</mat-icon>
+      {{ confirmReset() ? 'Tap again to confirm — wipe everything' : 'Full reset (all players)' }}
+    </button>
+  </section>
 </div>

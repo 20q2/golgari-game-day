@@ -1859,6 +1859,36 @@ def _admin_kick(table, sid, payload):
     return 200, {'ok': True, 'removed': target}
 
 
+def _admin_reset_all(table, sid, payload):
+    """Full fresh start (destructive): delete every player's creature this
+    season, clear the season's first-conqueror records, and wipe every permanent
+    user record back to defaults. Host-gated via _admin. Single-page query/scan
+    mirrors the no-pagination convention elsewhere here (the table is tiny)."""
+    pk = _season_pk(sid)
+    # Creatures + first-conqueror records live under the season partition.
+    players = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': pk, ':sk': 'PLAYER#'})['Items']
+    firsts = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': pk, ':sk': 'FIRST#'})['Items']
+    for it in players + firsts:
+        table.delete_item(Key={'pk': it['pk'], 'sk': it['sk']})
+    # Permanent user records (renown, cosmetics, lifetime stats) are keyed per
+    # user, not per season — scan them out. Deleting resets them: _get_perm
+    # rebuilds a fresh default doc (renown = SHOP_START_RENOWN) on next access.
+    perms = table.scan(
+        FilterExpression='sk = :meta AND begins_with(pk, :u)',
+        ExpressionAttributeValues={':meta': 'META', ':u': 'UNDERCITYUSER#'})['Items']
+    for it in perms:
+        table.delete_item(Key={'pk': it['pk'], 'sk': it['sk']})
+    _event(table, sid, 'host',
+           f'Host wiped all player data — {len(players)} creatures, '
+           f'{len(firsts)} first-clears, {len(perms)} profiles reset to a blank slate.')
+    return 200, {'ok': True, 'players': len(players),
+                 'firsts': len(firsts), 'perms': len(perms)}
+
+
 _ADMIN_CMDS = {
     'broadcast': _admin_broadcast,
     'bot-add': _admin_bot_add,
@@ -1867,6 +1897,7 @@ _ADMIN_CMDS = {
     'teleport': _admin_teleport,
     'bot-step': _admin_bot_step,
     'kick': _admin_kick,
+    'reset-all': _admin_reset_all,
 }
 
 

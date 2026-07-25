@@ -82,6 +82,20 @@ class FakeTable:
             out = out[:Limit]
         return {'Items': _ddb_copy(out)}
 
+    def scan(self, FilterExpression=None, ExpressionAttributeValues=None):
+        """Subset used by the reset-all admin cmd: filter on sk == a literal and
+        begins_with(pk, prefix). Pattern-matches the expression like query()."""
+        vals = ExpressionAttributeValues or {}
+        out = []
+        for (ipk, isk), item in self.items.items():
+            if FilterExpression:
+                if 'begins_with(pk' in FilterExpression and not ipk.startswith(vals.get(':u', '')):
+                    continue
+                if 'sk = :meta' in FilterExpression and isk != vals.get(':meta'):
+                    continue
+            out.append(item)
+        return {'Items': _ddb_copy(out)}
+
 
 def act(table, atype, user='user-alex', name='Alex', **payload):
     status, resp = db.handle_action(table, {
@@ -3297,3 +3311,32 @@ def test_squirrel_line_and_calamity_beast_wired():
     assert 'calamity_beast' in data.apex_options('vexing_pest')
     assert data.APEX['calamity_beast']['passive'] == 'wish'
     assert data.SPELLS['wish']['effect'] == 'wish'
+
+
+def test_admin_reset_all_wipes_players_firsts_and_perms(table):
+    """reset-all deletes every creature + first-clear this season and resets all
+    permanent user records (renown / perks) to their defaults."""
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = db._active_season(table)[0]
+    # An earned-renown perm doc and a season first-conqueror record.
+    perm = db._get_perm(table, 'user-alex')
+    perm['renown'] = 999
+    perm['seals'] = 3
+    table.put_item(Item=perm)
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': 'FIRST#cavern_lair',
+                         'by': 'Alex', 'uid': 'user-alex', 'kind': 'lair'})
+
+    # Wrong passphrase is refused (no wipe).
+    status, _ = act(table, 'admin', hostKey='nope', cmd='reset-all')
+    assert status == 403
+    assert db._get_player(table, sid, 'user-alex')  # creature still there
+
+    status, resp = act(table, 'admin', hostKey='swampking', cmd='reset-all')
+    assert status == 200 and resp['ok']
+    assert resp['players'] >= 1 and resp['firsts'] == 1 and resp['perms'] >= 1
+
+    # Creature gone, first-clear gone, perm doc reset to the default renown.
+    assert not db._get_player(table, sid, 'user-alex')
+    assert 'Item' not in table.get_item(
+        Key={'pk': db._season_pk(sid), 'sk': 'FIRST#cavern_lair'})
+    assert db._get_perm(table, 'user-alex')['renown'] == data.SHOP_START_RENOWN

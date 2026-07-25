@@ -40,6 +40,8 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
   protected readonly busy = signal(false);
   protected readonly message = signal<string | null>(null);
   protected readonly nodes = signal<MapNode[]>([]);
+  /** Two-tap guard for the destructive full reset. */
+  protected readonly confirmReset = signal(false);
 
   // Add-bot form state.
   protected readonly speciesList = ['random', 'pest', 'kraul', 'saproling', 'zombie'];
@@ -138,6 +140,23 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     if (!text) return;
     void this.admin('broadcast', { text }).then(() => {
       this.broadcastText = '';
+    });
+  }
+
+  /**
+   * Destructive full reset (all players): first tap arms it, second tap fires.
+   * Deletes every creature this night, clears first-clears, and resets every
+   * player's Renown + profile to a blank slate. The server verifies the
+   * passphrase and the admin() helper reports any failure.
+   */
+  protected resetAll(): void {
+    if (!this.confirmReset()) {
+      this.confirmReset.set(true);
+      return;
+    }
+    this.confirmReset.set(false);
+    void this.admin('reset-all', {}).then(() => {
+      if (!this.message()) this.message.set('All player data wiped — blank slate.');
     });
   }
 }
