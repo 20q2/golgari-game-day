@@ -9,18 +9,21 @@ Queue entries are keyed to the currently active Undercity season (via
 undercity_db.get_active_season), so a fresh night starts with an empty
 queue and there is no separate queue lifecycle to manage.
 """
-import hashlib
 import json
 import time
 
+import push_db
 import undercity_db
 
 from botocore.exceptions import ClientError
 
-# NOTE: `push` (and its pywebpush/cryptography dependency) is imported lazily
-# inside _notify_others, never at module load. A broken or missing web-push
-# dependency must only degrade notifications — it must never crash Lambda init
-# and take down the core game/comments/likes endpoints that share this handler.
+# Push subscription storage + delivery live in `push_db` (shared with Undercity).
+# push_db keeps its pywebpush/cryptography dependency behind a lazy import so a
+# broken or missing web-push dependency only degrades notifications — it never
+# crashes Lambda init and takes down the core game endpoints that share this
+# handler.
+
+_QUEUE_URL = '/golgari-game-day/'  # tapping a queue push focuses/opens the app
 
 
 def _queue_pk(sid):
@@ -136,24 +139,12 @@ def _notify_others(table, entry, joiner_id, joiner_name):
     others = [m['userId'] for m in entry['joined'] if m['userId'] != joiner_id]
     if not others:
         return
-    # Best-effort: a web-push problem (missing dependency, bad VAPID key,
-    # network error) must never fail the join that triggered it. Import lazily
-    # so a broken pywebpush only affects this path, not module load.
-    try:
-        import push
-    except Exception:
-        return
     who = joiner_name or joiner_id
-    message = f'{who} wants to play {entry["gameTitle"]} too'
+    body = f'{who} wants to play {entry["gameTitle"]} too'
+    # Best-effort delivery (dead-subscription cleanup + error swallowing) lives in
+    # push_db — a web-push problem must never fail the join that triggered it.
     for user_id in others:
-        for sub in _subscriptions_for(table, user_id):
-            try:
-                push.send(sub, message, entry['gameId'])
-            except push.PushGone:
-                table.delete_item(Key={'pk': sub['pk'], 'sk': sub['sk']})
-            except Exception:
-                # Swallow any other send error — notifications are optional.
-                pass
+        push_db.send_to_user(table, user_id, 'Game Queue', body, _QUEUE_URL)
 
 
 def _leave(table, sid, user_id, payload):
@@ -271,56 +262,3 @@ def _close(table, sid, user_id, payload):
                                               winner_type, winner_names))
     table.delete_item(Key={'pk': pk, 'sk': sk})
     return _ok(closed=True, granted=len(summary['granted']), banked=len(summary['banked']))
-
-
-def _pushsub_pk(user_id):
-    return f'PUSHSUB#{user_id}'
-
-
-def _endpoint_hash(endpoint):
-    return hashlib.sha256(endpoint.encode('utf-8')).hexdigest()[:16]
-
-
-def _subscriptions_for(table, user_id):
-    resp = table.query(
-        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
-        ExpressionAttributeValues={':pk': _pushsub_pk(user_id), ':sk': 'SUB#'},
-    )
-    return resp.get('Items', [])
-
-
-def handle_push_subscribe(table, body):
-    try:
-        req = json.loads(body) if isinstance(body, str) else body
-    except (json.JSONDecodeError, TypeError):
-        return _err('Invalid JSON')
-    user_id = req.get('userId')
-    subscription = req.get('subscription') or {}
-    endpoint = subscription.get('endpoint')
-    keys = subscription.get('keys') or {}
-    if not user_id or not endpoint or not keys.get('p256dh') or not keys.get('auth'):
-        return _err('userId and a valid subscription are required')
-
-    table.put_item(Item={
-        'pk': _pushsub_pk(user_id),
-        'sk': f'SUB#{_endpoint_hash(endpoint)}',
-        'userId': user_id,
-        'endpoint': endpoint,
-        'keys': {'p256dh': keys['p256dh'], 'auth': keys['auth']},
-        'createdAt': _now_ts(),
-    })
-    return _ok()
-
-
-def handle_push_unsubscribe(table, body):
-    try:
-        req = json.loads(body) if isinstance(body, str) else body
-    except (json.JSONDecodeError, TypeError):
-        return _err('Invalid JSON')
-    user_id = req.get('userId')
-    endpoint = req.get('endpoint')
-    if not user_id or not endpoint:
-        return _err('userId and endpoint are required')
-
-    table.delete_item(Key={'pk': _pushsub_pk(user_id), 'sk': f'SUB#{_endpoint_hash(endpoint)}'})
-    return _ok()

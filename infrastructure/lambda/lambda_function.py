@@ -8,6 +8,7 @@ from decimal import Decimal
 
 import undercity_db
 import queue_db
+import push_db
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
@@ -235,10 +236,10 @@ def handle_queue(method: str, path_parts: List[str], body: str, query_params: Di
     if sub == 'push' and len(path_parts) > 2 and method == 'POST':
         push_sub = path_parts[2]
         if push_sub == 'subscribe':
-            status, payload = queue_db.handle_push_subscribe(table, body)
+            status, payload = push_db.handle_push_subscribe(table, body)
             return create_response(status, payload)
         if push_sub == 'unsubscribe':
-            status, payload = queue_db.handle_push_unsubscribe(table, body)
+            status, payload = push_db.handle_push_unsubscribe(table, body)
             return create_response(status, payload)
     return create_response(404, {'error': 'Unknown queue endpoint'})
 

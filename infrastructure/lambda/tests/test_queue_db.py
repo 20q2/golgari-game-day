@@ -5,6 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import push
+import push_db
 import queue_db as q
 from test_undercity_db import FakeTable, act as uc_act, _sid
 
@@ -139,12 +140,12 @@ def _subscription(endpoint='https://push.example/abc123'):
 
 def test_push_subscribe_stores_subscription():
     t = FakeTable()
-    status, body = q.handle_push_subscribe(t, {
+    status, body = push_db.handle_push_subscribe(t, {
         'userId': 'user-alex', 'subscription': _subscription(),
     })
     assert status == 200 and body['ok']
 
-    subs = q._subscriptions_for(t, 'user-alex')
+    subs = push_db._subscriptions_for(t, 'user-alex')
     assert len(subs) == 1
     assert subs[0]['endpoint'] == 'https://push.example/abc123'
     assert subs[0]['keys']['p256dh'] == 'fake-p256dh'
@@ -152,7 +153,7 @@ def test_push_subscribe_stores_subscription():
 
 def test_push_subscribe_rejects_incomplete_subscription():
     t = FakeTable()
-    status, body = q.handle_push_subscribe(t, {
+    status, body = push_db.handle_push_subscribe(t, {
         'userId': 'user-alex', 'subscription': {'endpoint': 'https://push.example/abc123'},
     })
     assert status == 400
@@ -160,24 +161,24 @@ def test_push_subscribe_rejects_incomplete_subscription():
 
 def test_push_unsubscribe_removes_subscription():
     t = FakeTable()
-    q.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
-    status, body = q.handle_push_unsubscribe(t, {
+    push_db.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
+    status, body = push_db.handle_push_unsubscribe(t, {
         'userId': 'user-alex', 'endpoint': 'https://push.example/abc123',
     })
     assert status == 200
-    assert q._subscriptions_for(t, 'user-alex') == []
+    assert push_db._subscriptions_for(t, 'user-alex') == []
 
 
 def test_join_notifies_other_lobby_members(monkeypatch):
     sent = []
-    monkeypatch.setattr(push, 'send', lambda sub, message, game_id: sent.append(
-        (sub['endpoint'], message, game_id)))
+    monkeypatch.setattr(push, 'send', lambda sub, title, body, url: sent.append(
+        (sub['endpoint'], title, body, url)))
 
     t = FakeTable()
     start_night(t)
     q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
                          'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
-    q.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
+    push_db.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
 
     assert sent == []  # first join: no one else in the lobby yet
 
@@ -185,21 +186,21 @@ def test_join_notifies_other_lobby_members(monkeypatch):
                                         'payload': {'gameId': 'catan'}})
     assert status == 200
     assert len(sent) == 1
-    endpoint, message, game_id = sent[0]
+    endpoint, title, message, url = sent[0]
     assert endpoint == 'https://push.example/abc123'  # sent to Alex, not the joiner (Sam)
     assert 'Sam' in message and 'Catan' in message
-    assert game_id == 'catan'
+    assert url == '/golgari-game-day/'  # tapping opens the app
 
 
 def test_rejoin_does_not_renotify(monkeypatch):
     sent = []
-    monkeypatch.setattr(push, 'send', lambda sub, message, game_id: sent.append(1))
+    monkeypatch.setattr(push, 'send', lambda sub, title, body, url: sent.append(1))
 
     t = FakeTable()
     start_night(t)
     q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
                          'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
-    q.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
+    push_db.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
     q.handle_action(t, {'type': 'join', 'userId': 'user-sam', 'username': 'Sam',
                          'payload': {'gameId': 'catan'}})
     assert len(sent) == 1
@@ -210,7 +211,7 @@ def test_rejoin_does_not_renotify(monkeypatch):
 
 
 def test_dead_subscription_is_deleted_on_push_failure(monkeypatch):
-    def fake_send(sub, message, game_id):
+    def fake_send(sub, title, body, url):
         raise push.PushGone()
     monkeypatch.setattr(push, 'send', fake_send)
 
@@ -218,18 +219,18 @@ def test_dead_subscription_is_deleted_on_push_failure(monkeypatch):
     start_night(t)
     q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
                          'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
-    q.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
+    push_db.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
 
     status, body = q.handle_action(t, {'type': 'join', 'userId': 'user-sam', 'username': 'Sam',
                                         'payload': {'gameId': 'catan'}})
     assert status == 200  # the join itself still succeeds
-    assert q._subscriptions_for(t, 'user-alex') == []  # but the dead subscription is gone
+    assert push_db._subscriptions_for(t, 'user-alex') == []  # but the dead subscription is gone
 
 
 def test_join_survives_broken_push_send(monkeypatch):
     """A web-push send that raises an unexpected error (bad VAPID key, network
     failure, etc.) must not fail the join — notifications are best-effort."""
-    def fake_send(sub, message, game_id):
+    def fake_send(sub, title, body, url):
         raise RuntimeError('boom')
     monkeypatch.setattr(push, 'send', fake_send)
 
@@ -237,13 +238,13 @@ def test_join_survives_broken_push_send(monkeypatch):
     start_night(t)
     q.handle_action(t, {'type': 'join', 'userId': 'user-alex', 'username': 'Alex',
                          'payload': {'gameId': 'catan', 'gameTitle': 'Catan'}})
-    q.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
+    push_db.handle_push_subscribe(t, {'userId': 'user-alex', 'subscription': _subscription()})
 
     status, body = q.handle_action(t, {'type': 'join', 'userId': 'user-sam', 'username': 'Sam',
                                         'payload': {'gameId': 'catan'}})
     assert status == 200  # join succeeds despite the send blowing up
     # The still-valid subscription is left alone (only PushGone deletes it).
-    assert len(q._subscriptions_for(t, 'user-alex')) == 1
+    assert len(push_db._subscriptions_for(t, 'user-alex')) == 1
 
 
 def test_new_entry_is_lobby_status():
