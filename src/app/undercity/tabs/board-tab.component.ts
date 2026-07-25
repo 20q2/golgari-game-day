@@ -69,7 +69,7 @@ import {
   witchScrollPrice,
 } from '../data/items';
 import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome } from '../data/dungeons';
-import { WORLD_EVENT } from '../data/world-event';
+import { WORLD_EVENT, WORLD_EVENT_SPRITE } from '../data/world-event';
 import { formName } from '../data/forms';
 import { formSprite } from '../data/species';
 import { getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
@@ -799,9 +799,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return this.islandBazaar() ? "The Witch's Cauldron" : 'Rot-Farm Bazaar';
   }
 
-  /** Rows for the top-right focus picker: every player on the board (you first,
-   * marked "(You)") plus Umori while it's wandering. Sprites reuse the recolor
-   * cache, so rebuilding this on each player diff is cheap. */
+  /** Rows for the focus picker: every player on the board (you first, marked
+   * "(You)"), Umori while it's wandering, and the wilderness raid boss (the
+   * Great Beast) while it's alive. Sprites reuse the recolor cache, so rebuilding
+   * this on each player diff is cheap. */
   protected readonly focusTargets = computed<FocusTarget[]>(() => {
     const youId = this.store.you()?.userId;
     const rows: FocusTarget[] = this.store.players().map((p) => {
@@ -823,6 +824,18 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         label: 'Umori',
         spriteUrl: 'undercity/map_events/shopkeeper3.png',
         node: u.node,
+        isYou: false,
+      });
+    }
+    // A live wilderness raid boss (the Great Beast) squats on the map — offer it
+    // as a focus target, centred on its middle tile, so players can watch the raid.
+    const we = this.store.worldEvent();
+    if (we && !we.dead) {
+      rows.push({
+        key: 'world-event',
+        label: we.name,
+        spriteUrl: WORLD_EVENT_SPRITE,
+        node: we.center,
         isYou: false,
       });
     }
