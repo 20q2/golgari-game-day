@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { BattleSide, BattleRewards, CoinParticle, buildCoinParticles } from './battle-playback.component';
 import { CombatEntry, Stance, BattleStatus } from '../services/undercity-models';
-import { STANCES, STANCE_MAP, PERSONALITY_TELL, StanceAugment, COUNTER, StatusChip, StatusInfo, STATUS_INFO, statusChips } from '../data/combat';
+import { STANCES, STANCE_MAP, PERSONALITY_TELL, StanceAugment, COUNTER, StatusChip, StatusInfo, STATUS_INFO, statusChips, FRENZY_RAMP } from '../data/combat';
 
 /** A held combat consumable the player may fire this round. */
 export interface BattleItem {
@@ -189,6 +189,16 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     if (r >= this.frenzyFrom) return 'active';
     if (r + 1 >= this.frenzyFrom) return 'imminent';
     return null;
+  }
+
+  /** The escalation multiplier now applied to every swing, formatted for display
+   *  (e.g. "1.2"). Null until the ramp is live — mirrors engine `ramp = 1 +
+   *  FRENZY_RAMP * (round - frenzyFrom + 1)`. */
+  protected frenzyMult(): string | null {
+    if (this.frenzyFrom == null) return null;
+    const r = this.round();
+    if (r < this.frenzyFrom) return null;
+    return (1 + FRENZY_RAMP * (r - this.frenzyFrom + 1)).toFixed(1);
   }
   protected stanceOf(side: Side): Stance | undefined {
     return this.stanceAnim()[side];

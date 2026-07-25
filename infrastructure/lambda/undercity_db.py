@@ -5597,8 +5597,27 @@ def _high_five(table, sid, doc, payload):
     target = _get_player(table, sid, target_id)
     if not target:
         return _err('Target not found.', 404)
-    # Same-space only: you high-five someone you're passing on the board.
-    if target.get('position') != doc.get('position'):
+    # Same-space only: you high-five someone you're passing on the board. Mid-walk
+    # the giver's server position lags at the walk origin (the client walks locally
+    # and only commits on `move`), so an optional `atNode` names the node being
+    # passed through. Validate the target is really on it AND it's reachable within
+    # this roll — otherwise a client could gift a buff to a distant friend.
+    at_node = payload.get('atNode')
+    here = doc.get('position')
+    if at_node and at_node != here:
+        pm = doc.get('pendingMove')
+        if not pm:
+            return _err('You can only high-five someone on your space.')
+        if target.get('position') != at_node:
+            return _err('You can only high-five someone on your space.')
+        nodes = _season_map(table, sid)
+        reach = max(pm.get('values') or [pm['value']])
+        closed = _stop_nodes(table, sid, doc)
+        blocked = _blocked_nodes(doc)
+        if at_node not in nodes or engine.board_distance(
+                nodes, here, at_node, reach, closed, blocked) is None:
+            return _err('You can only high-five someone on your space.')
+    elif target.get('position') != here:
         return _err('You can only high-five someone on your space.')
     # Per-target cooldown: can't re-high-five the same creature until it expires.
     cds = doc.get('highFiveCooldowns') or {}

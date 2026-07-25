@@ -296,7 +296,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly gambleWon = signal<boolean | null>(null);
   private pendingGambleText: string | null = null;
   private pendingGambleWon: boolean | null = null;
-  private readonly stepping = signal<StepState | null>(null);
+  protected readonly stepping = signal<StepState | null>(null);
   /** Node id of the wilderness step held pending the danger notice, or null. */
   protected readonly wildsPrompt = signal<string | null>(null);
   /** Node id of a bridge (tunnel) mouth whose tollkeeper dialog is open, or
@@ -1118,6 +1118,28 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       }));
   });
 
+  /** Creatures sharing the space you're currently standing on *mid-walk* — keyed
+   *  off the LOCAL walked node (`stepPos`), not the lagging server position. Empty
+   *  unless a walk is in progress; drives the High-Five-only passing strip. */
+  protected readonly occupantsPassing = computed<Occupant[]>(() => {
+    const step = this.stepping();
+    const you = this.store.you();
+    if (!step || !you) return [];
+    const here = stepPos(step);
+    return this.store
+      .players()
+      .filter((p) => p.userId !== you.userId && p.position === here)
+      .map((p) => ({
+        userId: p.userId,
+        username: p.username,
+        formName: p.formName,
+        creatureName: p.creatureName,
+        level: p.level,
+        shielded: isShielded(p),
+        stance: p.stance,
+      }));
+  });
+
   constructor() {
     // Keep the canvas (and the local walk) in sync with the polled store.
     effect(() => {
@@ -1301,6 +1323,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       if (rite) this.showToast(rite);
     });
     this.syncBoard();
+    // Restore the zoom the player left at (before start()'s first-frame focus,
+    // so your creature re-centers at that zoom rather than the 0.8 default).
+    const savedZoom = this.store.boardZoom();
+    if (savedZoom != null) this.board.restoreZoom(savedZoom);
     this.board.start();
     this.restoreOpenFacility();
   }
@@ -1345,6 +1371,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Remember the zoom so switching tabs and returning keeps the player's view.
+    if (this.board) this.store.boardZoom.set(this.board.getZoom());
     this.board?.stop();
     this.board = null;
     if (this.sigilTimer) clearTimeout(this.sigilTimer);
@@ -2006,8 +2034,15 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Friendly gesture: buff a creature sharing your space and notify them. */
   async highFive(target: Occupant): Promise<void> {
+    // Mid-walk the server position lags at the walk origin, so tell it which node
+    // we're passing through (the local walked node). Omitted when standing still.
+    const step = this.stepping();
+    const atNode = step ? stepPos(step) : undefined;
     await this.run(async () => {
-      await this.store.action('high-five', { targetUserId: target.userId });
+      await this.store.action('high-five', {
+        targetUserId: target.userId,
+        ...(atNode ? { atNode } : {}),
+      });
       const me = this.store.ownUserId;
       if (me) this.board?.playHighFive(me, target.userId);
       this.showToast(

@@ -82,6 +82,11 @@ export class UndercityStateService {
    * being torn down and rebuilt when the player switches tabs. */
   readonly openFacility = signal<OpenFacility | null>(null);
 
+  /** Last board camera zoom, remembered so it's restored when the player leaves
+   * the Board tab and comes back (the board tab is destroyed on tab switch).
+   * Null until the board has been shown once. */
+  readonly boardZoom = signal<number | null>(null);
+
   /** Held true by the board tab while a higher-priority post-battle celebration
    * (Guild Sigil fanfare, world-boss raid summary) is queued or showing, so the
    * always-mounted page defers its level-up fanfare until those are dismissed.

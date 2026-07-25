@@ -80,6 +80,22 @@
         }
       </div>
     }
+    <!-- Mid-walk: pass a creature on a shared space and high-five them (free
+         action, walk untouched). Battle stays landing-only, so no Battle here. -->
+    @if (stepping() && occupantsPassing().length) {
+      <div class="band-morph pvp-strip">
+        @for (o of occupantsPassing(); track o.userId) {
+          <div class="pvp-row">
+            <span class="pvp-name">
+              {{ o.username }}'s {{ o.creatureName || o.formName }} (L{{ o.level }})
+            </span>
+            <button class="uc-btn pvp-btn" [disabled]="busy()" (click)="highFive(o)">
+              <mat-icon class="mi">back_hand</mat-icon> High Five
+            </button>
+          </div>
+        }
+      </div>
+    }
 
     <!-- Pending decisions (reroll / pathfinder) take over; otherwise routine actions -->
     @if (!rolling() && store.you()?.pendingMove && canReroll()) {

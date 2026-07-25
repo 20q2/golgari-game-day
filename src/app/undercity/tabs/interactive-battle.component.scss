@@ -539,6 +539,21 @@
   &:disabled { opacity: 0.4; cursor: default; }
 }
 
+// Frenzy multiplier — red readout parked between Help (left) and Flee (right),
+// centered by their auto margins. Warns that every swing is ramping up.
+.frenzy-mult {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ff4d3d;
+  text-shadow: 0 0 8px rgba(255, 50, 30, 0.55);
+
+  .mi { font-size: 1.05rem; width: 1.05rem; height: 1.05rem; }
+}
+
 // Inventory button — parked in the middle of the stance triangle.
 .inv-btn {
   position: absolute;

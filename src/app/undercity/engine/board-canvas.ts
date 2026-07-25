@@ -863,6 +863,19 @@ export class BoardCanvas {
     this.focusOn(nodeId, undefined, animate);
   }
 
+  /** Current camera zoom — persisted by the board tab so it survives a tab
+   *  switch (the tab, and this canvas, are destroyed while away). */
+  getZoom(): number {
+    return this.zoom;
+  }
+
+  /** Seed the zoom before `start()`'s initial focus runs, so returning to the
+   *  Board tab re-centers on your creature at the zoom you left. Clamped on the
+   *  next `centerOn`/`clampCamera`, so an out-of-range value self-corrects. */
+  restoreZoom(zoom: number): void {
+    this.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
+  }
+
   /**
    * Pan — and optionally zoom — the camera to center a node. The spectator
    * broadcast drives this between scenes: a hero beat pushes in with a high
@@ -2440,9 +2453,9 @@ export class BoardCanvas {
    */
   private tokenHeight(isOwn: boolean, tier = 1): number {
     const base = isOwn ? 72 : this.interactive ? 56 : 68;
-    // Evolved units (Tier 2+) loom 50% larger on the board so their upgrade
+    // Evolved units (Tier 2+) loom larger on the board so their upgrade
     // reads at a glance.
-    return tier >= 2 ? base * 1.5 : base;
+    return tier >= 2 ? base * 1.35 : base;
   }
 
   private drawToken(

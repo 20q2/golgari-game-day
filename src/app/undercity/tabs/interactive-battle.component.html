@@ -293,6 +293,11 @@
         <button class="util-btn help-btn" (click)="toggleHelp()" [title]="showHelp() ? 'Close' : 'Effects & how to fight'">
           <mat-icon class="mi">{{ showHelp() ? 'close' : 'help_outline' }}</mat-icon>
         </button>
+        @if (frenzyMult(); as mult) {
+          <span class="frenzy-mult" title="Frenzy: every swing hits this much harder this round, and it climbs each round.">
+            <mat-icon class="mi">local_fire_department</mat-icon>×{{ mult }}
+          </span>
+        }
         @if (canFlee) {
           <button
             class="util-btn flee-btn"

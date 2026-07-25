@@ -2163,6 +2163,74 @@ def test_high_five_same_target_on_cooldown(table):
     assert 'min left' in resp['error']
 
 
+def _set_pending_move(table, sid, value, user='user-alex'):
+    """Give the giver a mid-walk pending move of `value` steps."""
+    doc = db._get_player(table, sid, user)
+    doc['pendingMove'] = {'value': value, 'dests': []}
+    db._put_player(table, doc)
+
+
+def _place(table, sid, node, user='user-sam'):
+    p = db._get_player(table, sid, user)
+    p['position'] = node
+    db._put_player(table, p)
+
+
+def test_high_five_mid_walk_at_node(table):
+    """Passing a creature mid-walk: an atNode within the roll grants the buff even
+    though the giver's server position lags at the walk origin."""
+    act(table, 'join', starter='pest')
+    act(table, 'join', user='user-sam', name='Sam', starter='zombie')
+    sid = _sid(table)
+    alex = db._get_player(table, sid, 'user-alex')
+    origin = alex['position']
+    nodes = db._season_map(table, sid)
+    neighbor = nodes[origin]['neighbors'][0]
+    _place(table, sid, neighbor)            # Sam is one step up the walk
+    _set_pending_move(table, sid, 2)        # Alex is mid-roll, can reach it
+    status, resp = act(table, 'high-five', targetUserId='user-sam', atNode=neighbor)
+    assert status == 200
+    sam = db._get_player(table, sid, 'user-sam')
+    assert any(b['kind'] == 'high_five' for b in sam['buffs'])
+
+
+def test_high_five_at_node_target_not_there_rejected(table):
+    """atNode names a node the target isn't standing on → rejected."""
+    act(table, 'join', starter='pest')
+    act(table, 'join', user='user-sam', name='Sam', starter='zombie')
+    sid = _sid(table)
+    alex = db._get_player(table, sid, 'user-alex')
+    origin = alex['position']
+    nodes = db._season_map(table, sid)
+    neighbor = nodes[origin]['neighbors'][0]
+    # Sam stays put at origin; we claim to be passing `neighbor`.
+    _place(table, sid, origin)
+    _set_pending_move(table, sid, 2)
+    status, resp = act(table, 'high-five', targetUserId='user-sam', atNode=neighbor)
+    assert status == 400
+    assert 'space' in resp['error']
+
+
+def test_high_five_at_node_out_of_reach_rejected(table):
+    """atNode beyond the roll's reach → rejected even if the target is on it."""
+    act(table, 'join', starter='pest')
+    act(table, 'join', user='user-sam', name='Sam', starter='zombie')
+    sid = _sid(table)
+    alex = db._get_player(table, sid, 'user-alex')
+    origin = alex['position']
+    nodes = db._season_map(table, sid)
+    # Find a node at least 3 hops away, then hand out a 1-step roll.
+    far = next(
+        nid for nid in nodes
+        if (d := engine.board_distance(nodes, origin, nid, 6)) is not None and d >= 3
+    )
+    _place(table, sid, far)
+    _set_pending_move(table, sid, 1)
+    status, resp = act(table, 'high-five', targetUserId='user-sam', atNode=far)
+    assert status == 400
+    assert 'space' in resp['error']
+
+
 def test_start_battle_includes_status(table, monkeypatch):
     monkeypatch.setattr(db, '_rng', _ZeroRng())
     act(table, 'join', starter='kraul')

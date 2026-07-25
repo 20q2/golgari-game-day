@@ -159,3 +159,60 @@ signature change**.
 - `src/app/undercity/tabs/board-tab.component.html` — High Five button.
 - `src/app/undercity/data/combat.ts` — `STATUS_INFO` entry.
 - `src/app/undercity/engine/board-canvas.ts` — `playHighFive` + animation.
+
+## Addendum (2026-07-25) — mid-walk high fives
+
+The original feature only surfaces the High Five button **after a move resolves** —
+the occupants strip is gated on `!pendingMove`, so while you're walking a roll it is
+hidden. This addendum lets you high-five a creature you're **passing** mid-walk, while
+keeping PvP strictly landing-only.
+
+### Behaviour
+
+- While a walk is in progress, whenever your token is standing on a space another
+  creature also occupies, a **High Five–only strip** appears in the action band (same
+  look as the landed occupants strip, but no Battle button). It updates as you step:
+  walk onto a shared space → the button appears; step off (or step back) → it's gone.
+- Tapping it is a **free action** — steps-left and the walk are untouched, so you
+  high-five and keep walking. No per-walk cap; the existing per-target cooldown already
+  bounds spam.
+- PvP/Battle is unchanged: still landing-only, still shown by the `!pendingMove` strip.
+
+### Why a server change is needed
+
+During a walk the client tracks the route **locally** (`stepping`); the player's
+server-side `position` stays at the walk origin until `move` commits. So a mid-walk
+high-five's giver position ≠ the shared node, and the existing strict same-space guard
+(`target.position == doc.position`) would reject it. The client must tell the server
+which node it is passing through, and the server must validate against that.
+
+### Client (`board-tab.component`)
+
+- New computed `occupantsPassing` — active only while `stepping()` is live; returns
+  other players whose `position` equals the **local** walked node (`stepPos(step)`),
+  not the server position. Shaped like `occupantsHere`.
+- New band strip gated on `stepping()` + `occupantsPassing().length`, rendering only
+  the High Five button per row. The existing full strip stays gated on `!pendingMove`,
+  so the two never overlap (mid-walk `pendingMove` is truthy).
+- `highFive(target)` passes the current walked node as `atNode` when mid-walk (omitted
+  otherwise). `playHighFive` already keys the clap off the local walked position, so
+  the animation plays correctly between the two co-located tokens.
+
+### Server (`undercity_db.py` `_high_five`)
+
+- Accept an optional `atNode`. When present and it differs from the giver's server
+  position, require an active `pendingMove` and validate:
+  1. `target.position == atNode` (they really are on the node you're passing), and
+  2. `atNode` is reachable within the roll — `engine.board_distance(nodes, doc.position,
+     atNode, max(pm.values or [pm.value]), closed, blocked) is not None`, reusing
+     `_stop_nodes` / `_blocked_nodes` like `_move`. This stops a client claiming to be
+     next to a distant friend.
+- When `atNode` is absent, behaviour is byte-for-byte the landed case (target must be on
+  the giver's server position). Cooldown, buff, notification, ticker line: all unchanged.
+
+### Tests (`test_undercity_db.py`)
+
+- Mid-walk high-five with a valid `atNode` (target on it, within the roll) grants the
+  buff and returns ok.
+- An `atNode` the target isn't standing on is rejected.
+- An `atNode` outside the roll's reach is rejected.
