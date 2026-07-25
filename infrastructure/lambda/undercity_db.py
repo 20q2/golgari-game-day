@@ -1732,6 +1732,8 @@ def _boss_awaken(table, sid, config, payload):
     _event(table, sid, 'boss',
            'THE ROT-WARDS FALL! Savra, Queen of the Golgari, stirs atop the '
            'floating island — every creature may now storm her lair.')
+    _push_broadcast(table, sid,
+                    'THE ROT-WARDS FALL — Savra, Queen of the Golgari, stirs. Storm her lair!')
     return 200, {'ok': True}
 
 
@@ -3151,6 +3153,10 @@ def _spawn_world_event(table, sid, actor_id=None):
     _broadcast_away(table, sid,
                     {'kind': 'world_spawn', 'name': data.WORLD_EVENT['name'],
                      'at': _now()}, actor_id)
+    _push_broadcast(table, sid,
+                    f"A {data.WORLD_EVENT['name']} has emerged in the wilderness — "
+                    "rally and bring it down!",
+                    exclude_user_id=actor_id)
 
 
 def _lair(table, sid, doc, node):
@@ -3564,6 +3570,10 @@ def _finish_lair(table, sid, doc, rec, result):
                    actor=doc['userId'])
             _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
                                          'name': display, 'at': _now()}, doc['userId'])
+            _push_broadcast(table, sid,
+                            f"{doc['username']} cleared the {biome_name} dungeon "
+                            f"and claimed a Guild Sigil!",
+                            exclude_user_id=doc['userId'])
         else:
             out['text'] = (f"The {display} falls! +{reward['spores']} Spores."
                            + ('' if slain else ' A legendary first kill!'))
@@ -3670,6 +3680,8 @@ def _world_event_payout(table, sid, killer_doc):
     killer_uid = killer_doc['userId']
     if not dmg:
         _event(table, sid, 'boss', f"The {data.WORLD_EVENT['name']} has fallen!")
+        _push_broadcast(table, sid, f"The {data.WORLD_EVENT['name']} has fallen!",
+                        exclude_user_id=killer_uid)
         return []
     top_uid = max(dmg, key=lambda u: (dmg[u], u))  # deterministic tiebreak
 
@@ -3711,6 +3723,9 @@ def _world_event_payout(table, sid, killer_doc):
     _broadcast_away(table, sid, {'kind': 'world_fallen',
                                  'name': data.WORLD_EVENT['name'], 'at': _now()},
                     killer_uid, skip_user_ids=set(dmg))
+    _push_broadcast(table, sid,
+                    f"The {data.WORLD_EVENT['name']} has fallen! The wilderness quiets.",
+                    exclude_user_id=killer_uid)
     return results
 
 

@@ -90,3 +90,77 @@ def test_poke_pushes_to_target(monkeypatch):
     uid, body = calls[0]
     assert uid == 'user-sam'
     assert 'poked' in body.lower()
+
+
+# ── Broadcast hooks (Task 6) ─────────────────────────────────────────────────
+
+def _sigil_node():
+    return next(iter(data.SIGIL_LAIRS))
+
+
+def test_sigil_kill_broadcasts_except_slayer(monkeypatch):
+    t = _table()
+    _join(t, 'user-alex', 'Alex')
+    _join(t, 'user-sam', 'Sam')
+    sid = _sid(t)
+    sent = []
+    monkeypatch.setattr(db.push_db, 'broadcast',
+                        lambda table, ids, title, body, url: sent.append((set(ids), body)))
+    doc = db._get_player(t, sid, 'user-alex')
+    node = _sigil_node()
+    rec = {'kind': 'lair', 'node': node,
+           'npc': {'maxHp': data.LAIR_BOSSES[node]['hp']},
+           'npcMeta': {'name': data.LAIR_BOSSES[node]['name']},
+           'ctx': {'slain': False, 'vestMax': data.LAIR_BOSSES[node]['hp'] // 2}}
+    result = {'outcome': 'attacker', 'attackerHp': 20, 'defenderHp': 0, 'strikes': []}
+    db._finish_lair(t, sid, doc, rec, result)
+    sigil_pushes = [s for s in sent if 'Sigil' in s[1]]
+    assert len(sigil_pushes) == 1
+    ids, body = sigil_pushes[0]
+    assert 'user-alex' not in ids and 'user-sam' in ids
+
+
+def test_raid_spawn_broadcasts_except_actor(monkeypatch):
+    t = _table()
+    _join(t, 'user-alex', 'Alex')
+    _join(t, 'user-sam', 'Sam')
+    sid = _sid(t)
+    sent = []
+    monkeypatch.setattr(db.push_db, 'broadcast',
+                        lambda table, ids, title, body, url: sent.append((set(ids), body)))
+    db._spawn_world_event(t, sid, actor_id='user-alex')
+    assert len(sent) == 1
+    ids, body = sent[0]
+    assert 'user-alex' not in ids and 'user-sam' in ids
+    assert data.WORLD_EVENT['name'] in body
+
+
+def test_raid_fall_broadcasts_except_killer(monkeypatch):
+    t = _table()
+    _join(t, 'u_top', 'Top')
+    _join(t, 'u_minor', 'Minor')
+    sid = _sid(t)
+    rec = {'spawned': True, 'node': 'x', 'nodes': ['a', 'x', 'b'],
+           'hp': 1, 'maxHp': 200, 'dmg': {'u_top': 150, 'u_minor': 25}, 'dead': False}
+    db._set_world_event(t, sid, rec)
+    sent = []
+    monkeypatch.setattr(db.push_db, 'broadcast',
+                        lambda table, ids, title, body, url: sent.append((set(ids), body)))
+    killer = db._get_player(t, sid, 'u_top')
+    db._world_event_payout(t, sid, killer)
+    fall = [s for s in sent if 'fallen' in s[1].lower()]
+    assert len(fall) == 1
+    ids, _ = fall[0]
+    assert 'u_top' not in ids and 'u_minor' in ids
+
+
+def test_savra_awaken_broadcasts_to_everyone(monkeypatch):
+    t = _table()
+    _join(t, 'user-alex', 'Alex')
+    _join(t, 'user-sam', 'Sam')
+    sent = []
+    monkeypatch.setattr(db.push_db, 'broadcast',
+                        lambda table, ids, title, body, url: sent.append(set(ids)))
+    status, _ = act(t, 'boss-awaken', hostKey='swampking')
+    assert status == 200
+    assert sent == [{'user-alex', 'user-sam'}]
