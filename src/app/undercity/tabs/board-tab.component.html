@@ -122,7 +122,7 @@
           @if (blinkAllowed()) {
             <button
               class="uc-btn uc-btn-primary roll-btn blink-btn"
-              [disabled]="busy() || rolling() || !!store.you()?.pendingMove || !!rollReason()"
+              [disabled]="busy() || rolling() || !!store.you()?.pendingMove || rollBlocked()"
               (click)="showRollPicker.set(!showRollPicker())"
             >
               <mat-icon class="mi">bolt</mat-icon>
@@ -131,7 +131,7 @@
           } @else {
             <button
               class="uc-btn uc-btn-primary roll-btn"
-              [disabled]="busy() || rolling() || !!store.you()?.pendingMove || !!rollReason()"
+              [disabled]="busy() || rolling() || !!store.you()?.pendingMove || rollBlocked()"
               (click)="roll()"
             >
               <img class="die-icon" src="undercity/icons/die.png" alt="" />

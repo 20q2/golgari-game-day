@@ -1352,11 +1352,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly blinkAllowed = computed(() => this.hasBlink() && !this.blinkRecharging());
   protected readonly rollsBanked = computed(() => this.store.you()?.rolls ?? 0);
 
-  /** Why the roll button is blocked, or null. Debug builds roll freely. The
-   *  timing of the next regen roll is shown separately by nextRollLabel(). */
-  protected rollReason(): string | null {
-    if (this.debugMode()) return null;
-    return this.rollsBanked() < 1 ? 'No rolls left' : null;
+  /** True when the roll button should be disabled (out of rolls). Debug builds
+   *  roll freely. No user-facing text — the disabled button + the next-roll
+   *  countdown (nextRollLabel()) already convey "out of rolls". */
+  protected rollBlocked(): boolean {
+    if (this.debugMode()) return false;
+    return this.rollsBanked() < 1;
   }
 
   /** Minute-granularity countdown to the next timed roll (null at cap / in debug).

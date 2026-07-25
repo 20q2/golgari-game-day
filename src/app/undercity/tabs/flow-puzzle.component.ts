@@ -78,7 +78,7 @@ type Cell = [number, number];
         </div>
 
         <p class="flow-hint" [class.win]="isConnected()">
-          <span class="spore-tally">🌱 Spores: {{ sporesSoFar() }} / {{ sporeCap }}</span>
+          <span class="spore-tally">🌱 Spores collected: {{ sporesSoFar() }}</span>
           {{ isConnected() ? '— route complete, claim your find!' : '— connect 🌱 to 🌾.' }}
         </p>
         <div class="flow-actions">
@@ -406,7 +406,6 @@ export class FlowPuzzleModalComponent {
   protected readonly sporesSoFar = computed(() =>
     Math.min(Math.floor(this.path().length * FLOW_SPORE_PER_CELL), FLOW_SPORE_CAP),
   );
-  protected readonly sporeCap = FLOW_SPORE_CAP;
 
   protected reset(): void {
     this.path.set([]);
