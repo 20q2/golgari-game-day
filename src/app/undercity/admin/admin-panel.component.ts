@@ -159,4 +159,36 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
       if (!this.message()) this.message.set('All player data wiped — blank slate.');
     });
   }
+
+  /**
+   * Download the full session dataset as JSON — every player's end-state + per-
+   * player metric counters, plus the complete event log — for offline balance
+   * analysis. Read-only; talks to the API directly to keep the raw payload.
+   */
+  protected async exportData(): Promise<void> {
+    if (this.busy() || !this.hostKey.trim()) return;
+    this.busy.set(true);
+    this.message.set(null);
+    try {
+      this.rememberKey();
+      const data = (await this.api.action('admin', {
+        hostKey: this.hostKey,
+        cmd: 'export',
+      })) as unknown as { season?: string; players?: unknown[]; events?: unknown[] };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `undercity-session-${data.season ?? 'export'}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      this.message.set(
+        `Exported ${data.players?.length ?? 0} players, ${data.events?.length ?? 0} events.`,
+      );
+    } catch (e) {
+      this.message.set(e instanceof UndercityApiError ? e.message : 'Export failed');
+    } finally {
+      this.busy.set(false);
+    }
+  }
 }

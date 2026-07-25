@@ -109,6 +109,18 @@
   </section>
 
   <section class="admin-section">
+    <h2>Session data</h2>
+    <p class="hint">
+      Download the whole session as JSON — every player's end-state stats +
+      metric counters (rolls, spaces, battles, damage, XP, deaths) and the
+      complete event log — for offline balance analysis.
+    </p>
+    <button (click)="exportData()" [disabled]="busy() || !hostKey.trim()">
+      <mat-icon class="mi">download</mat-icon> Export session data
+    </button>
+  </section>
+
+  <section class="admin-section">
     <h2>Danger zone</h2>
     <p class="hint">
       Wipes ALL players: deletes every creature this night, clears first-clears,

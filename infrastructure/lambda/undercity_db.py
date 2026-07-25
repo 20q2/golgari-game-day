@@ -215,6 +215,15 @@ def _event(table, sid, etype, text, actor=None, extra=None):
     table.put_item(Item=item)
 
 
+def _metric(doc, key, n=1):
+    """Bump a per-player metrics counter in place, for post-session balance
+    analysis. Counters live on the player doc under `metrics`; dotted keys group
+    families (e.g. 'space.wild', 'battle.elite.win'). Purely observational —
+    never read back into gameplay — and surfaced by the host `export` admin cmd."""
+    m = doc.setdefault('metrics', {})
+    m[key] = m.get(key, 0) + n
+
+
 def _claim_first(table, sid, node, kind, doc):
     """Idempotently stamp the season-global first conqueror of a landmark.
     Returns True iff THIS call won the race (this player is the global first).
@@ -740,6 +749,7 @@ def _add_rolls(doc, n):
 
 def _grant_xp(table, sid, doc, amount):
     doc['xp'] = doc.get('xp', 0) + amount
+    _metric(doc, 'xpGained', amount)
     gained = engine.apply_level_ups(doc)
     if gained:
         _event(table, sid, 'level', f"{doc['username']}'s {_creature_label(doc)} reached level {doc['level']}!",
@@ -1184,6 +1194,7 @@ def _compost(table, sid, doc, cause_text):
                    f"{doc['username']}'s {_creature_label(doc)} refuses to die! (Undying)",
                    actor=doc['userId'])
             return False
+    _metric(doc, 'deaths')
     died_at = doc.get('position')
     died_biome = data.dungeon_biome(died_at)
     home_biome = doc.get('homeBiome')
@@ -1889,6 +1900,28 @@ def _admin_reset_all(table, sid, payload):
                  'firsts': len(firsts), 'perms': len(perms)}
 
 
+def _admin_export(table, sid, payload):
+    """Read-only full session dump for offline balance analysis: every player doc
+    (end-state stats + per-player `metrics` counters), the complete append-only
+    event log, and the first-conqueror records. Single-page queries mirror the
+    no-pagination convention here (the table is tiny)."""
+    pk = _season_pk(sid)
+
+    def _all(prefix):
+        return [_clean(i) for i in table.query(
+            KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+            ExpressionAttributeValues={':pk': pk, ':sk': prefix})['Items']]
+
+    return 200, {
+        'ok': True,
+        'season': sid,
+        'exportedAt': _now(),
+        'players': _all('PLAYER#'),
+        'events': _all('EVENT#'),
+        'firsts': _all('FIRST#'),
+    }
+
+
 _ADMIN_CMDS = {
     'broadcast': _admin_broadcast,
     'bot-add': _admin_bot_add,
@@ -1898,6 +1931,7 @@ _ADMIN_CMDS = {
     'bot-step': _admin_bot_step,
     'kick': _admin_kick,
     'reset-all': _admin_reset_all,
+    'export': _admin_export,
 }
 
 
@@ -2298,6 +2332,9 @@ def _roll(table, sid, doc, payload):
     if is_reroll:
         pm['rerolled'] = True    # Fleetfoot spent — the fresh face stands
     doc['pendingMove'] = pm
+    _metric(doc, 'rerolls' if is_reroll else 'rolls')
+    if used_blink:
+        _metric(doc, 'blinks')
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
@@ -2585,6 +2622,8 @@ def _resolve_space(table, sid, doc, node, prev):
     """Apply the landing event for `node`, mutating doc. Returns event dict."""
     nodes = _season_map(table, sid)
     ntype = nodes[node]['type']
+    _metric(doc, 'spaces')
+    _metric(doc, f'space.{ntype}')
 
     # Remember the last home-biome you stood in — a death here (or later, on the
     # isle/in the depths) offers this biome's gate as a respawn option. Set
@@ -3336,6 +3375,16 @@ def _finish_battle(table, sid, doc, rec, result):
     doc['hpUpdatedAt'] = _now()
     _consume_one_battle_buffs(doc)
     kind = rec['kind']
+    # Per-player combat metrics for post-session balance analysis (win/loss by
+    # enemy kind + damage traded). Observational only.
+    _metric(doc, 'battles')
+    _bm_outcome = {'attacker': 'win', 'defender': 'loss'}.get(
+        result.get('outcome'), result.get('outcome') or 'timeout')
+    _metric(doc, f'battle.{kind}.{_bm_outcome}')
+    _metric(doc, 'dmgDealt', sum(int(s.get('dmg') or 0)
+            for s in (result.get('strikes') or []) if s.get('by') == 'attacker'))
+    _metric(doc, 'dmgTaken', sum(int(s.get('dmg') or 0)
+            for s in (result.get('strikes') or []) if s.get('by') == 'defender'))
     doc.pop('battle', None)
     # Renown is derived from cumulative stats (wildWins / poiClaims / bossDamage),
     # so the renown this fight earned is the delta the finisher works into them.

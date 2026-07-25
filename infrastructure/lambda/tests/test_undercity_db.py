@@ -3340,3 +3340,28 @@ def test_admin_reset_all_wipes_players_firsts_and_perms(table):
     assert 'Item' not in table.get_item(
         Key={'pk': db._season_pk(sid), 'sk': 'FIRST#cavern_lair'})
     assert db._get_perm(table, 'user-alex')['renown'] == data.SHOP_START_RENOWN
+
+
+def test_metrics_recorded_and_exported(table):
+    """Rolling + moving records per-player metric counters, and the export admin
+    cmd returns the full dataset (players with metrics + the event log)."""
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = db._active_season(table)[0]
+
+    _, resp = act(table, 'roll')
+    act(table, 'move', to=resp['roll']['destinations'][0])
+
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['metrics']['rolls'] >= 1
+    assert doc['metrics']['spaces'] >= 1
+    assert any(k.startswith('space.') for k in doc['metrics'])
+
+    # Export dumps every player (with metrics) plus the append-only event log.
+    status, out = act(table, 'admin', hostKey='swampking', cmd='export')
+    assert status == 200 and out['ok'] and out['season'] == sid
+    assert isinstance(out['events'], list)
+    exp = next(p for p in out['players'] if p['userId'] == 'user-alex')
+    assert exp['metrics']['rolls'] >= 1
+
+    # Wrong passphrase exports nothing.
+    assert act(table, 'admin', hostKey='nope', cmd='export')[0] == 403
