@@ -30,6 +30,8 @@ We want the Undercity game to fire real browser notifications for:
 4. **Raid boss falls** — the world-event boss is killed (broadcast).
 5. **Savra (the Queen) awakens** — the host triggers the finale (broadcast to
    everyone).
+6. **Your Player Market item sold** — someone buys an item you listed (personal,
+   to the seller — who is often offline).
 
 ## Constraints
 
@@ -98,7 +100,7 @@ already the norm and is not circular.
 > `push_db` is acceptable (undercity_db is the lower layer). The implementation
 > plan should confirm no import cycle results (push_db → undercity_db only).
 
-### 3. Hook the five events
+### 3. Hook the six events
 
 Each event already writes to the Grapevine (`_event`) and/or away
 (`_push_away_event` / `_broadcast_away`) feed. The push call sits immediately
@@ -111,6 +113,7 @@ beside the existing feed write, using the same target set:
 | Raid boss spawns | `_spawn_world_event` (~L3132) | all but the spawner | `broadcast(exclude=actor)` |
 | Raid boss falls | world-event finish (`"…has fallen!"`, ~L3656) | all but the killer | `broadcast(exclude=killer)` |
 | Savra awakens | `_boss_awaken` (~L1716) | everyone | `broadcast(exclude=None)` |
+| Player Market item sold | `_credit_market_seller` (~L1038) | the seller | `send_to_user` |
 
 Notification copy is short and phone-glanceable, e.g.:
 - reward: `"+N rolls from {game} — come spend them!"`
@@ -118,10 +121,18 @@ Notification copy is short and phone-glanceable, e.g.:
 - raid spawn: `"A {boss name} has surfaced in the Undercity!"`
 - raid fall: `"The {boss name} has fallen!"`
 - Savra: `"THE ROT-WARDS FALL — Savra stirs. Storm her lair!"`
+- market sale: reuse the existing away-event text, `"{buyer} bought your {item}
+  for {price} Spores."`
 
-All five moments are naturally idempotent or once-per-night (season-global first
-kill, idempotent world-event spawn, one-way boss awaken, per-close reward), so
-no additional dedupe/rate-limiting is required.
+All six moments are naturally idempotent or once-per-night (season-global first
+kill, idempotent world-event spawn, one-way boss awaken, per-close reward,
+per-sale credit), so no additional dedupe/rate-limiting is required.
+
+**Market-sale gotcha:** `_credit_market_seller` retries past optimistic-lock
+conflicts in a loop, calling `_push_away_event` each pass (only the successful
+`_put_player` persists it). The browser push must fire **once, after** the loop
+succeeds (gated on the `True` return / `_put_player` success), not inside the
+loop — otherwise a conflict-retry would send duplicate pushes.
 
 ### 4. Subscribe Undercity players
 
