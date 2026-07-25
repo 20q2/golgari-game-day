@@ -2825,8 +2825,8 @@ def test_banked_rewards_applied_on_join():
 # ── Renown shop (pre-spawn) ──────────────────────────────────────────────────
 
 def test_renown_shop_price_tables_are_sane():
-    # Seed lets a brand-new player buy exactly one common hat OR one plain color.
-    assert data.SHOP_START_RENOWN == 50
+    # Seed lets a brand-new player buy two common hats, or a common hat + a plain color.
+    assert data.SHOP_START_RENOWN == 100
     assert data.HAT_PRICES == {'common': 50, 'uncommon': 120, 'legendary': 300}
     assert data.PAINT_PRICE == 40
     # Every hat/paint id resolves through the new maps.
@@ -2858,7 +2858,7 @@ def test_archive_banks_each_players_renown(table):
     status, resp = act(table, 'season-end', hostKey='swampking')
     assert status == 200
     perm = db._get_perm(table, 'user-alex')
-    # Seed (50) + this night's earned renown (6).
+    # Seed (SHOP_START_RENOWN) + this night's earned renown (6).
     assert perm['renown'] == data.SHOP_START_RENOWN + 6
 
 
@@ -2884,14 +2884,15 @@ def test_join_buys_and_equips_permanent_cosmetics(table):
 
 
 def test_join_rejects_unaffordable_cart_without_charging(table):
-    # Seed 50 can't cover a common hat (50) AND a paint (40) = 90.
+    # A wallet of 80 can't cover a common hat (50) AND a paint (40) = 90.
+    _fund(table, 'user-alex', 80)
     status, resp = act(table, 'join', starter='pest', home='city',
                        buyHats=['party_hat'], buyPaints=['crimson'])
     assert status == 409
     assert 'Renown' in resp['error']
-    # No player doc, no perm mutation: a retry must still see the full seed.
+    # No player doc, no perm mutation: a retry must still see the full wallet.
     perm = db._get_perm(table, 'user-alex')
-    assert perm['renown'] == data.SHOP_START_RENOWN
+    assert perm['renown'] == 80
     assert perm['hats'] == [] and 'crimson' not in perm['paints']
 
 

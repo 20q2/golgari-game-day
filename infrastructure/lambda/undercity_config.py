@@ -179,7 +179,7 @@ SNARE_SPILL_PCT = 0.20
 MARROWBORN_MAXHP = 8   # Ossuary Fields (bone) home: flat +Max HP, applied at hatch
 
 # ── Renown shop (pre-spawn) ──────────────────────────────────────────────────
-SHOP_START_RENOWN = 50       # seed for a brand-new player: one common hat OR one plain color
+SHOP_START_RENOWN = 100      # seed for a brand-new player: e.g. two common hats or a plain color + hat
 
 # ── World Event ("The Great Beast") ──────────────────────────────────────────
 # A season-shared co-op boss that spawns in the wilderness once the first sigil
