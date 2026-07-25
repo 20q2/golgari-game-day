@@ -750,14 +750,17 @@ UMORI_STOCK_SPEC = {'gear_per_slot': 1, 'grimoire': 1}
 UMORI_GEAR_SLOTS = ['fang', 'carapace', 'charm']
 
 # Excavation dig sites (Ossuary Fields focus). A shared 5x5 grid holds four
-# buried items sized by footprint; each landing grants 3 digs (reveal one cell
+# buried items sized by footprint; each landing grants 6 digs (reveal one cell
 # each), refilled per visit like the Ossuary. Revealing an item's last cell
 # collects it for whoever dug it; clearing the final item resets the grid and
 # pays the finder a Spore bonus. Loot scales with footprint (see _roll_dig_loot
-# in undercity_db). Partial reveals persist for the next player.
-EXCAVATION_DIGS_PER_VISIT = 4
+# in undercity_db). Partial reveals persist for the next player. No 1x1 finds —
+# a single buried cell is too hard to hit blind, so every find is 1x2 or larger.
+# If the digger's bag is full, the find is auto-listed on the Player Market at a
+# fair mid price instead of being lost.
+EXCAVATION_DIGS_PER_VISIT = 6
 EXCAVATION_GRID = (5, 5)                     # (width, height)
-EXCAVATION_ITEMS = ['1x1', '1x1', '1x2', '2x2']  # shapes buried per site
+EXCAVATION_ITEMS = ['1x2', '1x2', '1x2', '2x2']  # shapes buried per site
 EXCAVATION_CLEAR_BONUS = 25                  # Spores for clearing the last item
 
 # Crystal Veins (Mosslight Cavern focus). One shared vein per region: a depth

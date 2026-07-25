@@ -27,6 +27,7 @@ import {
   CombatEntry,
   CombatFlee,
   CombatRound,
+  DigFound,
   DigGrid,
   FlowPuzzleView,
   Occupant,
@@ -2096,14 +2097,27 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     await this.run(async () => {
       const resp = await this.store.action('dig', { r: cell.r, c: cell.c });
       if (resp.grid) this.excavationGrid.set(resp.grid); // fresh board on clear
+      // Fully uncovering a find pops a little confirmation toast (what you got,
+      // and where it went) even when this same dig also clears the whole site.
+      if (resp.found) this.showFoundToast(resp.found, resp.text);
       if (resp.cleared) {
         // The site is picked clean: celebrate the clean-up bonus in a popup;
         // the board underneath has already reset to a fresh dig.
         this.digCleared.set(resp.bonus ?? 0);
-      } else if (resp.found) {
-        this.showToast(resp.text ?? 'You dig…');
       }
     });
+  }
+
+  /** Little pop-up confirming a fully-uncovered find and where it landed. */
+  private showFoundToast(found: DigFound, fallback?: string): void {
+    const name = found.item ? (CONSUMABLE_MAP[found.item]?.name ?? 'a relic') : '';
+    if (found.kind === 'item') {
+      this.showToast(`🎒 ${name} added to your bag!`);
+    } else if (found.kind === 'listed') {
+      this.showToast(`🎒 Bag full — ${name} auto-listed on the Market for ${found.price} Spores.`);
+    } else {
+      this.showToast(fallback ?? 'You dig…');
+    }
   }
 
   /** Dismiss the "site cleared" popup — the fresh board is already in place. */

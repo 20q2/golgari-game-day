@@ -1199,6 +1199,53 @@ def test_excavation_dig_reveals_and_collects(table):
     assert resp['you']['spores'] >= data.EXCAVATION_CLEAR_BONUS
 
 
+def test_excavation_full_bag_auto_lists_find(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    site = {'w': 5, 'h': 5, 'revealed': [],
+            'items': [{'shape': '1x2', 'cells': [[0, 0], [0, 1]],
+                       'loot': {'kind': 'item', 'item': 'healing_moss'},
+                       'collected': False, 'by': None}]}
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'bone_i0'
+    doc['excavationDigsLeft'] = data.EXCAVATION_DIGS_PER_VISIT
+    doc['bag'] = ['snare', 'snare', 'snare']          # BAG_SIZE = 3 → full
+    db._put_player(table, doc)
+    db._save_dig_site(table, sid, 'bone_i0', site)
+
+    act(table, 'dig', r=0, c=0)                        # partial
+    status, resp = act(table, 'dig', r=0, c=1)         # completes → bag full
+    assert status == 200
+    # The find is auto-listed, not dropped into the (full) bag.
+    assert resp['found']['kind'] == 'listed'
+    assert resp['found']['item'] == 'healing_moss'
+    assert resp['found']['price'] == data.CONSUMABLES['healing_moss']['cost']  # mid = base cost
+    assert resp['you']['bag'] == ['snare', 'snare', 'snare']  # bag untouched
+    assert db._market_listing_count(table, sid, 'user-alex') == 1
+
+
+def test_excavation_full_bag_salvages_when_market_full(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    site = {'w': 5, 'h': 5, 'revealed': [],
+            'items': [{'shape': '1x2', 'cells': [[0, 0], [0, 1]],
+                       'loot': {'kind': 'item', 'item': 'healing_moss'},
+                       'collected': False, 'by': None}]}
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'bone_i0'
+    doc['excavationDigsLeft'] = data.EXCAVATION_DIGS_PER_VISIT
+    doc['bag'] = ['snare', 'snare', 'snare']
+    db._put_player(table, doc)
+    db._save_dig_site(table, sid, 'bone_i0', site)
+    for _ in range(data.MARKET_MAX_LISTINGS):          # no market room left
+        db._create_market_listing(table, sid, doc, 'consumable', 'snare', 5)
+
+    act(table, 'dig', r=0, c=0)
+    status, resp = act(table, 'dig', r=0, c=1)
+    assert status == 200
+    assert resp['found']['kind'] == 'spores' and resp['found']['bagFull'] is True
+
+
 def test_excavation_guards(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)

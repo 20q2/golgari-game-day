@@ -39,8 +39,40 @@ export class LogTabComponent {
     void preloadAll().then(() => this.assetsReady.set(true));
   }
 
+  protected readonly busy = signal(false);
+  protected readonly toast = signal<string | null>(null);
+
   eventIcon(type: string): string {
     return EVENT_ICONS[type] ?? 'spa';
+  }
+
+  /** True while your poke of `userId` is still on cooldown (poked recently). */
+  pokedRecently(userId: string): boolean {
+    return !!this.store.you()?.pokeCooldowns?.[userId];
+  }
+
+  /** Poke a player straight from the leaderboard — same gift-a-roll action as
+   *  the plaza, no need to find their creature on the canvas first. */
+  async poke(userId: string, username: string): Promise<void> {
+    if (this.busy() || userId === this.store.ownUserId) return;
+    this.busy.set(true);
+    try {
+      const resp = await this.store.action('poke', { targetUserId: userId });
+      this.showToast(
+        resp.granted ? `You poked ${username} — they gained a roll!` : `You poked ${username}.`,
+      );
+    } catch (e) {
+      this.showToast(e instanceof Error ? e.message : 'Poke failed');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  private showToast(text: string): void {
+    this.toast.set(text);
+    setTimeout(() => {
+      if (this.toast() === text) this.toast.set(null);
+    }, 3000);
   }
 
   /** Players ranked by renown, each carrying its recolored + hatted portrait. */

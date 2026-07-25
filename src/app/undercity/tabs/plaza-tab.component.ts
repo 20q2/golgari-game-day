@@ -370,6 +370,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
   constructor() {
     effect(() => {
       const players = this.store.players();
+      this.store.you(); // track poke-cooldown changes so the poked badge refreshes
       if (!this.plaza) return;
       this.plaza.updatePartners(players.map((p) => this.toCreature(p)));
     });
@@ -398,7 +399,13 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       shielded: isShielded(p),
       evolveGlow: evolveGlowActive(p as { evolvedAt?: string }),
       status: p.status ?? '',
+      pokedRecently: this.pokedRecently(p.userId),
     };
+  }
+
+  /** True while your poke of `userId` is still on cooldown (i.e. poked recently). */
+  private pokedRecently(userId: string): boolean {
+    return !!this.store.you()?.pokeCooldowns?.[userId];
   }
 
   ngAfterViewInit(): void {

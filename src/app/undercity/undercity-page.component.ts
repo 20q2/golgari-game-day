@@ -122,6 +122,22 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
       .sort((a, b) => Number(a.info.tone === 'debuff') - Number(b.info.tone === 'debuff'));
   });
 
+  /** Collapsed HUD pill caps at this many badges so a stack of buffs (e.g. a
+   * Squirrel Warrior mid-spree) stays a compact chip instead of ballooning into
+   * a multi-row pill over the board. The overflow rolls into a `+N` badge; the
+   * tap-to-expand detail panel still lists every effect (it scrolls). */
+  private static readonly MAX_HUD_BADGES = 6;
+
+  /** Badges to render in the collapsed pill, plus how many are hidden behind the
+   * `+N` overflow chip. Shows everything when it fits; otherwise reserves the
+   * last slot for the counter so the pill never exceeds MAX_HUD_BADGES chips. */
+  protected readonly hudBadges = computed(() => {
+    const all = this.activeBuffs();
+    const max = UndercityPageComponent.MAX_HUD_BADGES;
+    if (all.length <= max) return { shown: all, overflow: 0 };
+    return { shown: all.slice(0, max - 1), overflow: all.length - (max - 1) };
+  });
+
   /** Whether the floating buff detail panel (tap-to-expand) is open. */
   protected readonly showBuffDetails = signal(false);
 

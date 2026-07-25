@@ -392,6 +392,14 @@
     border-color: rgba(224, 108, 108, 0.6);
     color: #f2b8b8;
   }
+
+  // Overflow counter when the collapsed pill can't show every buff. Tap the row
+  // to expand the full (scrollable) detail panel.
+  &.buff-badge-more {
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(74, 124, 89, 0.32);
+  }
 }
 
 // ── Tab body + bar ───────────────────────────────────────────────────────────

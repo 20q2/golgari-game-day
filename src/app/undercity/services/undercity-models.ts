@@ -169,6 +169,9 @@ export interface YouDoc {
   lastGrimoireSwap?: string | null;
   /** spellId -> ISO time it comes off cooldown (server clock, no trailing Z). */
   spellCooldowns?: Record<string, string>;
+  /** targetUserId -> ISO time you can poke that creature again. While present
+   *  (server prunes expired keys), it means you poked them recently. */
+  pokeCooldowns?: Record<string, string>;
   awayEvents?: AwayEvent[];
   taughtClaims: number;
   lastFinishedClaim?: string | null;
@@ -518,10 +521,12 @@ export interface VaultView {
 
 /** What a dig turned up (mirrors the server's `_award_dig_loot`). */
 export interface DigFound {
-  kind: 'spores' | 'item';
+  kind: 'spores' | 'item' | 'listed';
   spores?: number;
   item?: string;
   bagFull?: boolean;
+  /** For `listed`: the Spore price the full-bag find was auto-listed at. */
+  price?: number;
 }
 
 /** A reward symbol placed on a loot-puzzle cell. The first one the drawn path

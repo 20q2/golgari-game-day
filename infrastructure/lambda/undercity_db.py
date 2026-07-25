@@ -1015,6 +1015,26 @@ def _market_price_band(kind, item_id):
     return lo, hi
 
 
+def _create_market_listing(table, sid, doc, kind, item_id, price):
+    """Write one MARKET# row selling `item_id` for `price` on behalf of `doc`.
+    Shared by the manual list action and the dig-site auto-list; the caller owns
+    removing the item from inventory (or, for digs, the item never entered it)."""
+    listing_id = '%08x' % _rng.getrandbits(32)
+    table.put_item(Item={
+        'pk': _season_pk(sid), 'sk': f'MARKET#{listing_id}', 'id': listing_id,
+        'sellerId': doc['userId'], 'sellerName': doc.get('username', '?'),
+        'kind': kind, 'itemId': item_id, 'price': int(price), 'createdAt': _now()})
+    return listing_id
+
+
+def _market_listing_count(table, sid, seller_id):
+    """How many active listings `seller_id` currently has on the market."""
+    active = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': _season_pk(sid), ':sk': 'MARKET#'})['Items']
+    return sum(1 for m in active if m.get('sellerId') == seller_id)
+
+
 def _credit_market_seller(table, sid, seller_id, amount, entry):
     """Add sale proceeds to a (possibly offline) seller's doc + notify them,
     retrying past the optimistic-lock conflict. Returns True if credited."""
@@ -1048,22 +1068,14 @@ def _market_list(table, sid, doc, payload):
     lo, hi = _market_price_band(kind, item_id)
     if price < lo or price > hi:
         return _err(f'Price must be {lo}–{hi} Spores for that item.', 409)
-    pk = _season_pk(sid)
-    active = table.query(
-        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
-        ExpressionAttributeValues={':pk': pk, ':sk': 'MARKET#'})['Items']
-    if sum(1 for m in active if m.get('sellerId') == doc['userId']) >= data.MARKET_MAX_LISTINGS:
+    if _market_listing_count(table, sid, doc['userId']) >= data.MARKET_MAX_LISTINGS:
         return _err(f'You already have {data.MARKET_MAX_LISTINGS} listings — cancel one first.', 409)
-    listing_id = '%08x' % _rng.getrandbits(32)
     inv.pop(index)
     doc[spec['field']] = inv
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
-    table.put_item(Item={
-        'pk': pk, 'sk': f'MARKET#{listing_id}', 'id': listing_id,
-        'sellerId': doc['userId'], 'sellerName': doc.get('username', '?'),
-        'kind': kind, 'itemId': item_id, 'price': price, 'createdAt': _now()})
+    listing_id = _create_market_listing(table, sid, doc, kind, item_id, price)
     return _ok(doc, text=f"Listed {spec['name'](item_id)} for {price} Spores.",
                listingId=listing_id)
 
@@ -4976,14 +4988,28 @@ def _dig_view(rec):
             'remaining': sum(1 for it in rec['items'] if not it['collected'])}
 
 
-def _award_dig_loot(doc, loot):
+def _dig_list_price(item_id):
+    """Mid price for auto-listing a dug consumable the bag can't hold: the item's
+    base cost, clamped into the market's allowed band."""
+    lo, hi = _market_price_band('consumable', item_id)
+    return min(hi, max(lo, data.CONSUMABLES[item_id]['cost']))
+
+
+def _award_dig_loot(doc, loot, table=None, sid=None):
     if loot['kind'] == 'spores':
         amount = _scrounge(doc, loot['spores'])
         doc['spores'] = doc.get('spores', 0) + amount
         return {'kind': 'spores', 'spores': amount}
     item_id = loot['item']
     if len(doc.get('bag') or []) >= data.BAG_SIZE:
-        doc['spores'] = doc.get('spores', 0) + 5  # bag full → salvage for Spores
+        # Bag full: rather than lose the find, auto-list it on the Player Market
+        # at a fair mid price so the digger still profits when it sells. The row
+        # is written by _dig after the player save commits (see _dig). Fall back
+        # to a small Spore salvage only if there's no market room to list.
+        if table is not None and \
+                _market_listing_count(table, sid, doc['userId']) < data.MARKET_MAX_LISTINGS:
+            return {'kind': 'listed', 'item': item_id, 'price': _dig_list_price(item_id)}
+        doc['spores'] = doc.get('spores', 0) + 5  # no market room → salvage for Spores
         return {'kind': 'spores', 'spores': 5, 'bagFull': True, 'item': item_id}
     doc.setdefault('bag', []).append(item_id)
     return {'kind': 'item', 'item': item_id}
@@ -4992,6 +5018,9 @@ def _award_dig_loot(doc, loot):
 def _dig_text(found, cleared, bonus):
     if not found:
         parts = ['Rubble and grit — nothing buried here.']
+    elif found['kind'] == 'listed':
+        parts = [f"You unearth a {data.CONSUMABLES[found['item']]['name']}, but your bag is full — "
+                 f"it's auto-listed on the Player Market for {found['price']} Spores."]
     elif found['kind'] == 'spores' and found.get('bagFull'):
         parts = [f"You unearth a {data.CONSUMABLES[found['item']]['name']}, but your bag is full — "
                  f"you salvage it for {found['spores']} Spores."]
@@ -5033,7 +5062,7 @@ def _dig(table, sid, doc, payload):
         if key in cellset and cellset <= revealed:
             it['collected'] = True
             it['by'] = doc.get('username', 'someone')
-            found = _award_dig_loot(doc, it['loot'])
+            found = _award_dig_loot(doc, it['loot'], table, sid)
             break
 
     cleared = all(it['collected'] for it in site['items'])
@@ -5047,6 +5076,11 @@ def _dig(table, sid, doc, payload):
     if conflict:
         return conflict
     _save_dig_site(table, sid, node, site)
+
+    # Bag was full: the find is put up for sale only now that the dig committed,
+    # so a lost optimistic-lock race can't leave an orphan listing behind.
+    if found and found.get('kind') == 'listed':
+        _create_market_listing(table, sid, doc, 'consumable', found['item'], found['price'])
 
     if cleared:
         _event(table, sid, 'excavation',

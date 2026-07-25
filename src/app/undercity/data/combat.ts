@@ -130,6 +130,8 @@ export const STATUS_INFO: Record<string, StatusInfo> = {
     blurb: '+2 DEF for this battle.' },
   rot_surge: { label: 'Rot Surge', icon: 'local_fire_department', tone: 'buff',
     blurb: '+3 ATK; Aggress applies rot to the foe.' },
+  acorn_fury: { label: 'Acorn Fury', icon: 'park', tone: 'buff',
+    blurb: '+2 ATK for this battle.' },
   glowveil: { label: 'Glowveil', icon: 'flare', tone: 'buff',
     blurb: '+2 SPD and easier to flee this battle.' },
   bone_chill: { label: 'Bone Chill', icon: 'ac_unit', tone: 'debuff',

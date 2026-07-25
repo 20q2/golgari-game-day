@@ -22,10 +22,28 @@
             <mat-icon class="mi">workspace_premium</mat-icon>{{ p.sigils }}
           </span>
           <span class="lb-renown">{{ p.renown }}</span>
+          @if (p.userId !== store.ownUserId) {
+            <button
+              class="lb-poke"
+              [class.poked]="pokedRecently(p.userId)"
+              [disabled]="busy() || pokedRecently(p.userId)"
+              [title]="pokedRecently(p.userId) ? 'Poked recently' : 'Poke — gift a roll'"
+              [attr.aria-label]="'Poke ' + p.username"
+              (click)="poke(p.userId, p.username)"
+            >
+              <mat-icon class="mi">touch_app</mat-icon>
+            </button>
+          } @else {
+            <span class="lb-poke-spacer"></span>
+          }
         </div>
       }
     </div>
   </section>
+
+  @if (toast(); as t) {
+    <div class="lb-toast">{{ t }}</div>
+  }
 
   <!-- The Grapevine -->
   <section class="card">

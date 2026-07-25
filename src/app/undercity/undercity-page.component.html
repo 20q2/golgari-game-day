@@ -103,10 +103,13 @@
                 [attr.aria-expanded]="showBuffDetails()"
                 (click)="showBuffDetails.set(!showBuffDetails())"
               >
-                @for (b of activeBuffs(); track b.kind) {
+                @for (b of hudBadges().shown; track b.kind) {
                   <span class="buff-badge" [class.debuff]="b.info.tone === 'debuff'">
                     <mat-icon class="mi">{{ b.info.icon }}</mat-icon>
                   </span>
+                }
+                @if (hudBadges().overflow) {
+                  <span class="buff-badge buff-badge-more">+{{ hudBadges().overflow }}</span>
                 }
               </button>
               @if (showBuffDetails()) {

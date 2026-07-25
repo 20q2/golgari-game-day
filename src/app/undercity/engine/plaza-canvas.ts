@@ -31,6 +31,9 @@ export interface PlazaCreature {
   evolveGlow: boolean;
   /** Status-bubble text; '' or absent = no bubble. */
   status?: string;
+  /** You poked this creature recently (poke still on cooldown) — draws a small
+   *  badge so you can see at a glance who you've already greeted. */
+  pokedRecently?: boolean;
 }
 
 const BASE_SPRITE_SCALE = 1.25;
@@ -986,7 +989,41 @@ export class PlazaCanvas {
       this.drawStatusBubble(x, headTop, d.partner.status, d.scale, isOwnDino);
     }
 
+    // "You poked them recently" badge — a small amber hand tucked at the
+    // creature's top-right so you can tell at a glance who you've greeted.
+    if (d.partner.pokedRecently) {
+      this.drawPokedBadge(x + halfW * 0.62, y - halfH * 0.78 + hopY, d.scale, elapsed, d.hopPhase);
+    }
+
     this.drawNameplate(d, x, y + halfH * 0.85 + 10, d.nameplateScale);
+  }
+
+  /** Small amber "poked" badge (a hand icon in a disc) with a gentle bob. */
+  private drawPokedBadge(
+    cx: number,
+    cy: number,
+    scale: number,
+    elapsed: number,
+    phase: number,
+  ): void {
+    const ctx = this.ctx;
+    const r = Math.max(4, 6 * scale);
+    const bob = Math.sin(elapsed * 2 + phase) * r * 0.12;
+    const y = cy + bob;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#f2a900';
+    ctx.strokeStyle = 'rgba(26, 20, 8, 0.85)';
+    ctx.lineWidth = Math.max(0.6, r * 0.14);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#1a1408';
+    ctx.font = `${Math.round(r * 1.35)}px 'Material Icons'`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('touch_app', cx, y + r * 0.06);
+    ctx.restore();
   }
 
   private drawStatusBubble(
