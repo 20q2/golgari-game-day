@@ -1046,6 +1046,7 @@ def _credit_market_seller(table, sid, seller_id, amount, entry):
         seller['spores'] = seller.get('spores', 0) + amount
         _push_away_event(seller, entry)
         if _put_player(table, seller):
+            _push_user(table, seller_id, entry.get('text', 'One of your listings sold!'))
             return True
     return False
 
@@ -1616,6 +1617,8 @@ def _grant_to_player(table, sid, user_id, is_winner, game_name=None):
         _push_away_event(doc, {'kind': 'reward', 'game': game_name,
                                'rolls': rolls, 'items': items, 'at': _now()})
         if _put_player(table, doc):
+            from_game = f' from {game_name}' if game_name else ''
+            _push_user(table, user_id, f'+{rolls} rolls{from_game} — come spend them!')
             return True
     return False
 
@@ -5528,6 +5531,10 @@ def _poke(table, sid, doc, payload):
            f"{doc['username']} poked {target['username']}'s {_creature_label(target)}"
            + (f' (+{granted} roll!)' if granted else ''),
            actor=doc['userId'])
+    poke_body = f"{doc['username']} poked your {_creature_label(target)}!"
+    if granted:
+        poke_body += f' (+{granted} roll!)'
+    _push_user(table, target_id, poke_body)
     return _ok(doc, granted=granted)
 
 

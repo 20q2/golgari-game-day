@@ -48,3 +48,45 @@ def test_push_broadcast_none_reaches_everyone(monkeypatch):
                         lambda table, ids, title, body, url: sent.append(set(ids)))
     db._push_broadcast(t, _sid(t), 'everyone')
     assert sent == [{'user-alex', 'user-sam'}]
+
+
+# ── Personal hooks (Task 5) ──────────────────────────────────────────────────
+
+def test_board_reward_pushes_rolls_to_recipient(monkeypatch):
+    t = _table()
+    _join(t, 'user-sam', 'Sam')
+    calls = []
+    monkeypatch.setattr(db.push_db, 'send_to_user',
+                        lambda table, uid, title, body, url: calls.append((uid, body)))
+    db._grant_to_player(t, _sid(t), 'user-sam', is_winner=False, game_name='Catan')
+    assert len(calls) == 1
+    uid, body = calls[0]
+    assert uid == 'user-sam'
+    assert 'roll' in body.lower() and 'Catan' in body
+
+
+def test_market_sale_pushes_to_seller(monkeypatch):
+    t = _table()
+    _join(t, 'user-sam', 'Sam')
+    calls = []
+    monkeypatch.setattr(db.push_db, 'send_to_user',
+                        lambda table, uid, title, body, url: calls.append((uid, body)))
+    entry = {'kind': 'market', 'at': db._now(),
+             'text': 'Alex bought your Rusty Blade for 10 Spores.'}
+    assert db._credit_market_seller(t, _sid(t), 'user-sam', 10, entry) is True
+    assert calls == [('user-sam', 'Alex bought your Rusty Blade for 10 Spores.')]
+
+
+def test_poke_pushes_to_target(monkeypatch):
+    t = _table()
+    _join(t, 'user-alex', 'Alex')
+    _join(t, 'user-sam', 'Sam')
+    calls = []
+    monkeypatch.setattr(db.push_db, 'send_to_user',
+                        lambda table, uid, title, body, url: calls.append((uid, body)))
+    status, _ = act(t, 'poke', user='user-alex', name='Alex', targetUserId='user-sam')
+    assert status == 200
+    assert len(calls) == 1
+    uid, body = calls[0]
+    assert uid == 'user-sam'
+    assert 'poked' in body.lower()
