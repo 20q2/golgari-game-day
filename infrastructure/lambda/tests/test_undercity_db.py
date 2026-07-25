@@ -910,21 +910,34 @@ def test_evolution_gates_and_bonuses(table):
     assert status == 200 and resp['you']['tier'] == 3
 
 
-def test_poke_grants_rolls_capped(table):
+def test_every_poke_grants_a_roll(table):
     act(table, 'join', user='user-sam', name='Sam', starter='zombie')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-sam')
     doc['rolls'] = 0
     db._put_player(table, doc)
-    # Four DIFFERENT pokers each poke Sam once (per-target cooldown blocks
-    # repeat pokes from the same person). Only the first 3 grant a roll.
+    # No per-creature reward cap: four DIFFERENT pokers each grant Sam a roll
+    # (the per-target cooldown only blocks repeat pokes from the same person).
     for i in range(4):
         act(table, 'join', user=f'user-p{i}', name=f'P{i}', starter='pest')
         status, resp = act(table, 'poke', user=f'user-p{i}', targetUserId='user-sam')
         assert status == 200
     sam = db._get_player(table, sid, 'user-sam')
-    assert sam['rolls'] == 3  # only first 3 pokes grant rolls
+    assert sam['rolls'] == 4  # every poke grants a roll now
     assert sam['pokesReceived'] == 4
+
+
+def test_poke_still_capped_at_roll_cap(table):
+    act(table, 'join', user='user-sam', name='Sam', starter='zombie')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-sam')
+    doc['rolls'] = data.ROLL_CAP  # already full
+    db._put_player(table, doc)
+    act(table, 'join', user='user-p0', name='P0', starter='pest')
+    status, resp = act(table, 'poke', user='user-p0', targetUserId='user-sam')
+    assert status == 200
+    sam = db._get_player(table, sid, 'user-sam')
+    assert sam['rolls'] == data.ROLL_CAP  # a poke can't push past the cap
 
 
 def test_poke_same_target_on_cooldown(table):

@@ -5570,9 +5570,9 @@ def _poke(table, sid, doc, payload):
     if until and until > _now():
         wait = int((datetime.fromisoformat(until) - datetime.utcnow()).total_seconds() // 60) + 1
         return _err(f'You already poked {target["username"]} — {wait} min left.', 429)
-    granted = 0
-    if target.get('pokesReceived', 0) < data.POKE_ROLL_LIMIT:
-        granted, _lost = _add_rolls(target, 1)
+    # No per-creature reward cap — every poke grants a roll (still bounded by the
+    # ROLL_CAP in _add_rolls and the per-target cooldown below).
+    granted, _lost = _add_rolls(target, 1)
     target['pokesReceived'] = target.get('pokesReceived', 0) + 1
     if not _put_player(table, target):
         return _err('The plaza is crowded — try again.', 409)

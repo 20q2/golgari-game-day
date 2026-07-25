@@ -29,8 +29,8 @@ CLAIM_WON_SPORES = 10
 CLAIM_FINISHED_COOLDOWN_MIN = 15
 CLAIM_TAUGHT_ROLLS = 1
 CLAIM_TAUGHT_MAX = 2
-POKE_ROLL_LIMIT = 3          # first N pokes received per night grant +1 roll
 POKE_COOLDOWN_MIN = 30       # a player can re-poke the SAME creature only every N min
+                             # (every poke grants +1 roll — no per-creature reward cap)
 HIGH_FIVE_COOLDOWN_MIN = 30  # a player can re-high-five the SAME creature only every N min
 GRIMOIRE_SWAP_COOLDOWN_MIN = 30  # opening a different grimoire is gated for N min
                              # (stowing your open book is always free) — client
