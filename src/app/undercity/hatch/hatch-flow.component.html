@@ -48,7 +48,7 @@
     <p class="tap-hint">Tap the egg… ({{ taps() }}/3)</p>
   } @else if (inShop()) {
     <h1>The Renown Shop</h1>
-    <p class="choose-hint">Spend banked Renown before you spawn. Items last one night; hats &amp; colors are yours forever.</p>
+    <p class="choose-hint">Spend banked Renown before you spawn. Hats &amp; colors are yours forever.</p>
     <p class="renown-bal">
       <mat-icon class="mi">military_tech</mat-icon>
       @if (cartCost() > 0) {
@@ -67,7 +67,7 @@
       </div>
     }
 
-    <h2 class="shop-head">Looks <span class="shop-sub">optional</span></h2>
+    <h2 class="shop-head">Color your creature <span class="shop-sub">optional</span></h2>
     <div class="shop-grid">
       @for (paint of paints; track paint.id) {
         <button

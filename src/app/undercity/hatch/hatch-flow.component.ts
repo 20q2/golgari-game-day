@@ -409,6 +409,7 @@ export class HatchFlowComponent {
       }
     } else if (!this.ownsHat(id) && this.canAfford(this.hatPrice(id))) {
       this.cartHats.set([...cart, id]);
+      this.equipHat.set(id); // auto-wear a freshly bought hat on spawn
     }
   }
 
@@ -421,6 +422,7 @@ export class HatchFlowComponent {
       }
     } else if (!this.ownsPaint(id) && this.canAfford(this.paintPrice)) {
       this.cartPaints.set([...cart, id]);
+      this.equipPaint.set(id); // auto-wear a freshly bought color on spawn
     }
   }
 
@@ -433,6 +435,7 @@ export class HatchFlowComponent {
       }
     } else if (!this.ownsEffect(id) && this.canAfford(this.specialPaintPrice)) {
       this.cartEffects.set([...cart, id]);
+      this.equipEffect.set(id); // auto-wear a freshly bought special paint on spawn
     }
   }
 
