@@ -524,21 +524,21 @@ export class IntroCutsceneComponent implements AfterViewInit, OnDestroy {
   private static readonly RAW: Panel[] = [
     {
       kind: 'gate',
-      text: 'Deep under the table lies the Undercity, where the Swarm Queen sleeps behind a sealed gate. Grow the greatest legend by dawn — the most Renown — and the night is yours.',
+      text: 'Welcome to the Undercity. This is a race: whoever earns the most Renown before dawn wins the night. The Swarm Queen sleeps behind a sealed gate at its heart.',
     },
     {
       kind: 'renown',
-      text: "You'll roam the dark, hatch your strength, and clash with wild things and rival hatchlings alike. Every victory writes your legend.",
+      text: 'You earn Renown by exploring the board, fighting monsters, and beating rival players. Roll to move, level up your creature, and gear up along the way.',
     },
     {
       kind: 'guardians',
-      text: 'Five guardians prowl the deep biomes, each holding a Guild Sigil. Strike one down and the Sigil is yours.',
+      text: 'Five guardians wait in lairs across the biomes, and each one drops a Guild Sigil when you defeat it. Seek out their lairs to collect Sigils.',
     },
     {
       kind: 'seals',
-      text: "Gather three Sigils and the Queen's gate grinds open. Stand against her, and glory goes to the boldest.",
+      text: "Collect three Sigils to unlock the Queen's gate. Whoever holds the most Renown when dawn breaks — or slays the Queen — takes the crown.",
     },
-    { kind: 'egg', text: "But first — you're still in your egg. Tap to crack it." },
+    { kind: 'egg', text: "First things first: you're still in your egg. Tap to hatch." },
   ];
 
   /** Panels with pre-split words for the staggered word-by-word reveal. */
