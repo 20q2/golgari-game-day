@@ -1481,7 +1481,9 @@ export class BoardCanvas {
     // sealed behind an unbroken barrier render grey so it's clear they can't
     // be visited yet — a colour change, not a dimming veil.
     const sealed = n.type === 'barrier' && !this.barriersOpen.has(n.id);
-    drawSpaceDisc(ctx, n, { sealed, locked: this.lockedIds.has(n.id) });
+    // A live raid boss claims its footprint: corrupt those tiles' colour + glyph.
+    const bossHere = !!this.worldEvent && this.worldEvent.nodes.includes(n.id);
+    drawSpaceDisc(ctx, n, { sealed, locked: this.lockedIds.has(n.id), corrupted: bossHere });
 
     // A sealed barrier is held by the area's guardian creature, standing across
     // the route; it's drawn no more the moment someone breaks the barrier.

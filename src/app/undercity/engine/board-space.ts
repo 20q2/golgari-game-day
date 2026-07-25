@@ -111,11 +111,21 @@ export interface SpaceDiscOpts {
    * whole space out.
    */
   locked?: boolean;
+  /**
+   * A live wilderness raid boss squats on this tile — the coin renders in a
+   * corrupted necrotic crimson with a skull glyph so the beast's footprint reads
+   * at a glance, distinct from the tile's normal type colour and icon.
+   */
+  corrupted?: boolean;
 }
 
 // Muted stone-grey for locked spaces — top face + darker side wall.
 const LOCKED_COLOR = '#6a7069';
 const LOCKED_SIDE = scaleHex(LOCKED_COLOR, 0.55);
+
+// Necrotic crimson for tiles a raid boss has claimed (matches the red pulse ring).
+const CORRUPT_COLOR = '#6b2233';
+const CORRUPT_SIDE = scaleHex(CORRUPT_COLOR, 0.55);
 
 /**
  * Halo, ground shadow, coin side + top face, sheen, outline, and the space's
@@ -135,9 +145,17 @@ export function drawSpaceDisc(
   ctx.ellipse(n.x, n.y + 11, NODE_R + 5, DISC_RY + 3, 0, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.fill();
-  // Locked spaces render in grey instead of their type colour.
-  const topColor = opts.locked ? LOCKED_COLOR : (TYPE_COLORS[n.type] ?? '#444');
-  const sideColor = opts.locked ? LOCKED_SIDE : (TYPE_SIDE_COLORS[n.type] ?? 'rgb(37, 37, 37)');
+  // Boss-corrupted tiles go crimson; locked spaces go grey; else the type colour.
+  const topColor = opts.corrupted
+    ? CORRUPT_COLOR
+    : opts.locked
+      ? LOCKED_COLOR
+      : (TYPE_COLORS[n.type] ?? '#444');
+  const sideColor = opts.corrupted
+    ? CORRUPT_SIDE
+    : opts.locked
+      ? LOCKED_SIDE
+      : (TYPE_SIDE_COLORS[n.type] ?? 'rgb(37, 37, 37)');
   ctx.beginPath();
   ctx.ellipse(n.x, n.y + DISC_THICK, NODE_R, DISC_RY, 0, 0, Math.PI * 2);
   ctx.fillStyle = sideColor;
@@ -161,7 +179,7 @@ export function drawSpaceDisc(
 
   // A locked space fades its icon too, so the whole coin reads as inactive.
   if (opts.locked) ctx.globalAlpha = 0.4;
-  if (n.type === 'boss' || n.type === 'lair') {
+  if (n.type === 'boss' || n.type === 'lair' || opts.corrupted) {
     drawSkull(ctx, n.x, n.y);
   } else {
     const glyph =
