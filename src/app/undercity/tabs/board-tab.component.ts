@@ -1651,6 +1651,19 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         body: `A rare T3 barter — but Umori oozes on in ${t}. Trade while you can.`,
       };
     }
+    // A live wilderness raid boss squats on this tile — describe the beast and how
+    // the shared fight works, overriding the generic wilderness space blurb.
+    const we = this.store.worldEvent();
+    if (we && !we.dead && we.nodes.includes(nodeId)) {
+      return {
+        nodeId,
+        title: we.name,
+        body:
+          `A season-shared raid boss straddling the Ashen Wilds (${we.hp}/${we.maxHp} HP). ` +
+          `Everyone hacks at one shared pool — land on it and Engage to burst it over ` +
+          `${this.worldEventRoundCap} rounds; when it falls, all who struck split the bounty by the damage they dealt.`,
+      };
+    }
     const node = this.map?.nodes.find((n) => n.id === nodeId);
     if (!node) return null;
     let title = this.spaceName(node.type);
