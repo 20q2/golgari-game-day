@@ -1506,6 +1506,7 @@ def handle_action(table, body):
     engine.regen_rolls(doc, _now())
     _expire_buffs(doc)
     _prune_cooldowns(doc)
+    doc['lastActionAt'] = _now()  # idle signal for the roll-refill nudge sweep
 
     handlers = {
         'claim': _claim, 'roll': _roll, 'move': _move, 'ladder-cross': _ladder_cross,
@@ -4196,6 +4197,42 @@ def _push_broadcast(table, sid, body, exclude_user_id=None):
     ids = [p['userId'] for p in _season_players(table, sid)
            if p.get('userId') and p['userId'] != exclude_user_id]
     push_db.broadcast(table, ids, _UNDERCITY_TITLE, body, _UNDERCITY_URL)
+
+
+def _acted_within(doc, minutes):
+    """True if the player took an action within the last `minutes`. A doc with no
+    lastActionAt (never acted / pre-existing) counts as NOT recently active."""
+    last = doc.get('lastActionAt')
+    if not last:
+        return False
+    delta = datetime.utcnow() - engine._parse_iso(last)
+    return delta < timedelta(minutes=minutes)
+
+
+def sweep_roll_refills(table):
+    """Scheduled heartbeat (invoked ~every 5 min by EventBridge): nudge idle
+    players whose rolls have regenerated back up to a playable amount, so they
+    come spend them. One poll emulates a per-player timer at near-zero cost — it
+    only writes a doc on an actual nudge-state transition, never on plain regen.
+    Best-effort throughout; a broken push or a lost write never matters."""
+    sid, config = _active_season(table)
+    if not sid or not config or config.get('status') != 'active':
+        return
+    now = _now()
+    for doc in _season_players(table, sid):
+        engine.regen_rolls(doc, now)
+        rolls = doc.get('rolls', 0)
+        nudged = doc.get('rollNudged', False)
+        if (rolls >= data.ROLL_NUDGE_THRESHOLD and not nudged
+                and not _acted_within(doc, data.ROLL_NUDGE_IDLE_MIN)):
+            _push_user(table, doc['userId'],
+                       f"You've got {rolls} rolls waiting — come take a turn!")
+            doc['rollNudged'] = True
+            _put_player(table, doc)  # best-effort; a lost race means they're active
+        elif rolls < data.ROLL_NUDGE_THRESHOLD and nudged:
+            doc['rollNudged'] = False
+            _put_player(table, doc)
+        # else: no state change — discard the in-memory regen (recomputed on read)
 
 
 def _broadcast_away(table, sid, entry, exclude_user_id=None, skip_user_ids=None):

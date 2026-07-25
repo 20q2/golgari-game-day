@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import lambda_function
+import undercity_db
 from tests.test_undercity_db import FakeTable
 
 
@@ -20,6 +21,17 @@ def _event(method, path, body=None, query=None):
 def _call(method, path, body=None, query=None):
     resp = lambda_function.lambda_handler(_event(method, path, body, query), None)
     return resp['statusCode'], json.loads(resp['body']) if resp['body'] else None
+
+
+def test_scheduled_sweep_event_routes_to_sweep(monkeypatch):
+    fake = FakeTable()
+    monkeypatch.setattr(lambda_function, 'table', fake)
+    called = []
+    monkeypatch.setattr(undercity_db, 'sweep_roll_refills', lambda table: called.append(table))
+
+    resp = lambda_function.lambda_handler({'task': 'roll-refill-sweep'}, None)
+    assert resp['statusCode'] == 200
+    assert called == [fake]  # the sweep ran, no HTTP parsing attempted
 
 
 def test_game_endpoints_through_handler(monkeypatch):

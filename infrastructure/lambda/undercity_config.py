@@ -21,6 +21,8 @@ SHINY_HATCH_CHANCE = 0.05    # chance a hatched creature is shiny — purely cos
                              # (a gold sparkle over its sprite + a hatch-log call-out)
 ROLL_REGEN_MINUTES = 30      # regen tick length in minutes, up to ROLL_CAP
 ROLLS_PER_REGEN = 3          # rolls banked each tick (3 rolls every 30 minutes)
+ROLL_NUDGE_THRESHOLD = 3     # push "rolls ready" when idle rolls regen up to this
+ROLL_NUDGE_IDLE_MIN = 10     # ...but not if the player acted within this many minutes
 CLAIM_FINISHED_ROLLS = 2
 CLAIM_WON_BONUS_ROLLS = 1
 CLAIM_WON_SPORES = 10

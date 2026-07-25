@@ -31,7 +31,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     🎯 MAIN HANDLER - Routes all requests
     """
     print(f'Event received: {json.dumps(event, default=str, indent=2)}')
-    
+
+    # Scheduled EventBridge heartbeat (no requestContext/rawPath) — route to the
+    # background task before any HTTP parsing.
+    if event.get('task') == 'roll-refill-sweep':
+        undercity_db.sweep_roll_refills(table)
+        return create_response(200, {'ok': True})
+
     try:
         # Handle different event sources (API Gateway vs Function URL)
         http_method = event.get('requestContext', {}).get('http', {}).get('method') or event.get('httpMethod', '')
