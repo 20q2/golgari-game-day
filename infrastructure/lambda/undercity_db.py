@@ -1871,33 +1871,33 @@ def _admin_kick(table, sid, payload):
 
 
 def _admin_reset_all(table, sid, payload):
-    """Full fresh start (destructive): delete every player's creature this
-    season, clear the season's first-conqueror records, and wipe every permanent
-    user record back to defaults. Host-gated via _admin. Single-page query/scan
-    mirrors the no-pagination convention elsewhere here (the table is tiny)."""
-    pk = _season_pk(sid)
-    # Creatures + first-conqueror records live under the season partition.
-    players = table.query(
-        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
-        ExpressionAttributeValues={':pk': pk, ':sk': 'PLAYER#'})['Items']
-    firsts = table.query(
-        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
-        ExpressionAttributeValues={':pk': pk, ':sk': 'FIRST#'})['Items']
-    for it in players + firsts:
-        table.delete_item(Key={'pk': it['pk'], 'sk': it['sk']})
-    # Permanent user records (renown, cosmetics, lifetime stats) are keyed per
-    # user, not per season — scan them out. Deleting resets them: _get_perm
-    # rebuilds a fresh default doc (renown = SHOP_START_RENOWN) on next access.
+    """Reset + fresh night (host-gated). Archives the running season and opens a
+    new one — fresh board, empty roster, fresh first-clears — then wipes every
+    permanent profile (renown / cosmetics / lifetime stats) back to defaults so
+    no progression carries over. The finished night's player docs + event log are
+    archived under their own seasonId (NOT deleted), so a pre-reset export still
+    holds the completed session for balance analysis."""
+    # Open the new night first: this archives the current (still-populated)
+    # season — which banks its Renown into the perm docs — and mints a fresh
+    # seasonId + board. Archiving an empty roster is handled gracefully.
+    status, start_out = _season_start(table, payload)
+    if status != 200:
+        return status, start_out
+    new_sid = start_out['seasonId']
+    # Reset every permanent profile. This runs AFTER the archive above (which just
+    # banked the old night's Renown), so the wipe wins and everyone starts the new
+    # night from scratch. Deleting a perm doc regenerates it as a fresh default
+    # (renown = SHOP_START_RENOWN) on next access. Single-page scan mirrors the
+    # no-pagination convention elsewhere here (the table is tiny).
     perms = table.scan(
         FilterExpression='sk = :meta AND begins_with(pk, :u)',
         ExpressionAttributeValues={':meta': 'META', ':u': 'UNDERCITYUSER#'})['Items']
     for it in perms:
         table.delete_item(Key={'pk': it['pk'], 'sk': it['sk']})
-    _event(table, sid, 'host',
-           f'Host wiped all player data — {len(players)} creatures, '
-           f'{len(firsts)} first-clears, {len(perms)} profiles reset to a blank slate.')
-    return 200, {'ok': True, 'players': len(players),
-                 'firsts': len(firsts), 'perms': len(perms)}
+    _event(table, new_sid, 'host',
+           f'Host reset all progression and opened a fresh night — '
+           f'{len(perms)} profiles wiped to a blank slate.')
+    return 200, {'ok': True, 'perms': len(perms), 'seasonId': new_sid}
 
 
 def _admin_export(table, sid, payload):

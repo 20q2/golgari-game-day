@@ -1,6 +1,7 @@
 """Integration tests for the action dispatcher against an in-memory table."""
 import random
 import sys
+import time
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -3314,33 +3315,36 @@ def test_squirrel_line_and_calamity_beast_wired():
     assert data.SPELLS['wish']['effect'] == 'wish'
 
 
-def test_admin_reset_all_wipes_players_firsts_and_perms(table):
-    """reset-all deletes every creature + first-clear this season and resets all
-    permanent user records (renown / perks) to their defaults."""
+def test_admin_reset_all_opens_fresh_night_and_wipes_profiles(table):
+    """reset-all archives the running night, opens a fresh one (new seasonId,
+    empty roster, fresh first-clears), and wipes every permanent profile
+    (renown / perks) to defaults. The finished night's creature is preserved
+    (archived under its old seasonId), not deleted."""
     act(table, 'join', starter='saproling', home='cavern')
-    sid = db._active_season(table)[0]
-    # An earned-renown perm doc and a season first-conqueror record.
+    old_sid = db._active_season(table)[0]
     perm = db._get_perm(table, 'user-alex')
     perm['renown'] = 999
-    perm['seals'] = 3
     table.put_item(Item=perm)
-    table.put_item(Item={'pk': db._season_pk(sid), 'sk': 'FIRST#cavern_lair',
-                         'by': 'Alex', 'uid': 'user-alex', 'kind': 'lair'})
 
-    # Wrong passphrase is refused (no wipe).
+    # Wrong passphrase is refused — no reset, no new night.
     status, _ = act(table, 'admin', hostKey='nope', cmd='reset-all')
     assert status == 403
-    assert db._get_player(table, sid, 'user-alex')  # creature still there
+    assert db._active_season(table)[0] == old_sid
 
+    # seasonId is a whole-second timestamp; wait a beat so the fresh night gets a
+    # distinct id from the fixture's (real hosts never reset within one second).
+    time.sleep(1.1)
     status, resp = act(table, 'admin', hostKey='swampking', cmd='reset-all')
     assert status == 200 and resp['ok']
-    assert resp['players'] >= 1 and resp['firsts'] == 1 and resp['perms'] >= 1
 
-    # Creature gone, first-clear gone, perm doc reset to the default renown.
-    assert not db._get_player(table, sid, 'user-alex')
-    assert 'Item' not in table.get_item(
-        Key={'pk': db._season_pk(sid), 'sk': 'FIRST#cavern_lair'})
+    # A fresh night is active (new seasonId), empty of players.
+    new_sid = db._active_season(table)[0]
+    assert new_sid != old_sid and resp['seasonId'] == new_sid
+    assert not db._get_player(table, new_sid, 'user-alex')
+
+    # Renown reset to the default; the old night's creature is preserved.
     assert db._get_perm(table, 'user-alex')['renown'] == data.SHOP_START_RENOWN
+    assert db._get_player(table, old_sid, 'user-alex')  # archived, not deleted
 
 
 def test_metrics_recorded_and_exported(table):

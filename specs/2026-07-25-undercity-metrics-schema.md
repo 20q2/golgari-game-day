@@ -115,5 +115,9 @@ race/pacing analysis — how fast the field cleared each objective.
 - **One-shot payload:** the export is a single JSON response. Fine for a normal
   night; a very long session with a huge event log could approach Lambda's
   ~6 MB response limit, at which point we'd add paging.
-- **`reset-all` wipes it:** the host Full-Reset admin cmd deletes player docs
-  (and thus their `metrics`) and the event log for the season — export first.
+- **`reset-all` starts a fresh night:** the host Reset admin cmd archives the
+  current night — its player docs, `metrics`, and event log are preserved under
+  that night's own seasonId — then opens a new empty night and wipes all
+  permanent profiles. The export targets the **active** season, so **export
+  before resetting** to grab the finished night's JSON; afterwards the active
+  season is the new, empty night.

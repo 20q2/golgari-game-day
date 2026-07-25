@@ -156,7 +156,7 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     }
     this.confirmReset.set(false);
     void this.admin('reset-all', {}).then(() => {
-      if (!this.message()) this.message.set('All player data wiped — blank slate.');
+      if (!this.message()) this.message.set('Reset done — a fresh night has begun.');
     });
   }
 
