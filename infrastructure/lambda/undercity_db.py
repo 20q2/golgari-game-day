@@ -734,8 +734,6 @@ def _prune_cooldowns(doc):
     now = _now()
     cds = doc.get('spellCooldowns') or {}
     doc['spellCooldowns'] = {k: v for k, v in cds.items() if v > now}
-    pcds = doc.get('pokeCooldowns') or {}
-    doc['pokeCooldowns'] = {k: v for k, v in pcds.items() if v > now}
     hfcds = doc.get('highFiveCooldowns') or {}
     doc['highFiveCooldowns'] = {k: v for k, v in hfcds.items() if v > now}
 
@@ -1456,6 +1454,10 @@ def _public_player(p):
         'status': p.get('status', ''),
         'renown': data.compute_renown(p),
         'perks': sorted(engine.attribute_perks(p)),
+        # True while this creature's poke timer is running (poked recently by
+        # anyone) — the client dims the poke button and shows "Poked recently".
+        'pokedRecently': bool(p.get('pokeCooldownUntil')
+                              and p['pokeCooldownUntil'] > _now()),
     }
 
 
@@ -2032,7 +2034,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'pendingMove': None, 'buffs': [],
         'grimoires': [], 'equippedGrimoire': None,
         'scrolls': [], 'grimoireSpells': {},
-        'spellCooldowns': {}, 'pokeCooldowns': {}, 'highFiveCooldowns': {}, 'awayEvents': [],
+        'spellCooldowns': {}, 'highFiveCooldowns': {}, 'awayEvents': [],
         'lastFinishedClaim': None, 'taughtClaims': 0, 'pokesReceived': 0,
         'pvpWins': 0, 'wildWins': 0, 'composts': 0, 'bossDamage': 0,
         'paint': {'body': body_hue, 'belly': 50, 'stripes': body_hue},
@@ -5564,21 +5566,20 @@ def _poke(table, sid, doc, payload):
     target = _get_player(table, sid, target_id)
     if not target:
         return _err('Target not found.', 404)
-    # Per-target cooldown: can't re-poke the same creature until it expires.
-    cds = doc.get('pokeCooldowns') or {}
-    until = cds.get(target_id)
+    # The timer lives on the TARGET: a creature can be poked once every
+    # POKE_COOLDOWN_MIN, by anyone. While it's running, nobody can poke them.
+    until = target.get('pokeCooldownUntil')
     if until and until > _now():
         wait = int((datetime.fromisoformat(until) - datetime.utcnow()).total_seconds() // 60) + 1
-        return _err(f'You already poked {target["username"]} — {wait} min left.', 429)
-    # No per-creature reward cap — every poke grants a roll (still bounded by the
-    # ROLL_CAP in _add_rolls and the per-target cooldown below).
+        return _err(f'{target["username"]} was poked recently — {wait} min left.', 429)
+    # Every poke grants the target a roll (still bounded by ROLL_CAP in _add_rolls).
     granted, _lost = _add_rolls(target, 1)
     target['pokesReceived'] = target.get('pokesReceived', 0) + 1
+    target['pokeCooldownUntil'] = (
+        datetime.utcnow() + timedelta(minutes=data.POKE_COOLDOWN_MIN)).isoformat(timespec='seconds')
     if not _put_player(table, target):
         return _err('The plaza is crowded — try again.', 409)
-    cds[target_id] = (datetime.utcnow() + timedelta(minutes=data.POKE_COOLDOWN_MIN)).isoformat(timespec='seconds')
-    doc['pokeCooldowns'] = cds
-    _put_player(table, doc)
+    _put_player(table, doc)  # persist the poker's lastActionAt (idle-nudge guard)
     _event(table, sid, 'poke',
            f"{doc['username']} poked {target['username']}'s {_creature_label(target)}"
            + (f' (+{granted} roll!)' if granted else ''),

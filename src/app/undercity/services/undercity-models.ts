@@ -47,6 +47,9 @@ export interface PublicPlayer {
   renown: number;
   /** Attribute-threshold perks (server-derived); public for the spectator card. */
   perks?: string[];
+  /** True while this creature's poke timer is running (poked recently by anyone),
+   *  so nobody can poke them yet. Server-computed each state fetch. */
+  pokedRecently?: boolean;
   isBot?: boolean;
 }
 
@@ -169,9 +172,6 @@ export interface YouDoc {
   lastGrimoireSwap?: string | null;
   /** spellId -> ISO time it comes off cooldown (server clock, no trailing Z). */
   spellCooldowns?: Record<string, string>;
-  /** targetUserId -> ISO time you can poke that creature again. While present
-   *  (server prunes expired keys), it means you poked them recently. */
-  pokeCooldowns?: Record<string, string>;
   awayEvents?: AwayEvent[];
   taughtClaims: number;
   lastFinishedClaim?: string | null;

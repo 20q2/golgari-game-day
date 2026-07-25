@@ -46,9 +46,10 @@ export class LogTabComponent {
     return EVENT_ICONS[type] ?? 'spa';
   }
 
-  /** True while your poke of `userId` is still on cooldown (poked recently). */
+  /** True while this creature's poke timer is running (poked recently by anyone),
+   *  so nobody can poke them yet. */
   pokedRecently(userId: string): boolean {
-    return !!this.store.you()?.pokeCooldowns?.[userId];
+    return this.store.players().find((p) => p.userId === userId)?.pokedRecently ?? false;
   }
 
   /** Poke a player straight from the leaderboard — same gift-a-roll action as

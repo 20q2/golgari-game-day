@@ -910,45 +910,56 @@ def test_evolution_gates_and_bonuses(table):
     assert status == 200 and resp['you']['tier'] == 3
 
 
-def test_every_poke_grants_a_roll(table):
+def test_poke_grants_roll_and_starts_target_timer(table):
+    act(table, 'join', starter='pest')  # poker = user-alex
     act(table, 'join', user='user-sam', name='Sam', starter='zombie')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-sam')
     doc['rolls'] = 0
     db._put_player(table, doc)
-    # No per-creature reward cap: four DIFFERENT pokers each grant Sam a roll
-    # (the per-target cooldown only blocks repeat pokes from the same person).
-    for i in range(4):
-        act(table, 'join', user=f'user-p{i}', name=f'P{i}', starter='pest')
-        status, resp = act(table, 'poke', user=f'user-p{i}', targetUserId='user-sam')
-        assert status == 200
+    status, resp = act(table, 'poke', targetUserId='user-sam')
+    assert status == 200 and resp['granted'] == 1
     sam = db._get_player(table, sid, 'user-sam')
-    assert sam['rolls'] == 4  # every poke grants a roll now
-    assert sam['pokesReceived'] == 4
+    assert sam['rolls'] == 1
+    assert sam.get('pokeCooldownUntil')  # the timer now lives on the target
+
+
+def test_target_timer_blocks_every_poker(table):
+    # The cooldown is on the TARGET: once Sam is poked, nobody (not even a
+    # different player) can poke him until it expires.
+    act(table, 'join', starter='pest')  # user-alex
+    act(table, 'join', user='user-sam', name='Sam', starter='zombie')
+    act(table, 'join', user='user-bo', name='Bo', starter='pest')
+    status, _ = act(table, 'poke', user='user-alex', name='Alex', targetUserId='user-sam')
+    assert status == 200
+    status, resp = act(table, 'poke', user='user-bo', name='Bo', targetUserId='user-sam')
+    assert status == 429
+    assert 'min left' in resp['error']
 
 
 def test_poke_still_capped_at_roll_cap(table):
+    act(table, 'join', starter='pest')  # user-alex
     act(table, 'join', user='user-sam', name='Sam', starter='zombie')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-sam')
     doc['rolls'] = data.ROLL_CAP  # already full
     db._put_player(table, doc)
-    act(table, 'join', user='user-p0', name='P0', starter='pest')
-    status, resp = act(table, 'poke', user='user-p0', targetUserId='user-sam')
+    status, resp = act(table, 'poke', targetUserId='user-sam')
     assert status == 200
     sam = db._get_player(table, sid, 'user-sam')
     assert sam['rolls'] == data.ROLL_CAP  # a poke can't push past the cap
 
 
-def test_poke_same_target_on_cooldown(table):
-    act(table, 'join', starter='pest')
+def test_public_player_exposes_poke_timer(table):
+    act(table, 'join', starter='pest')  # user-alex
     act(table, 'join', user='user-sam', name='Sam', starter='zombie')
-    status, _ = act(table, 'poke', targetUserId='user-sam')
-    assert status == 200
-    # Immediate re-poke of the same creature is blocked by the cooldown.
-    status, resp = act(table, 'poke', targetUserId='user-sam')
-    assert status == 429
-    assert 'min left' in resp['error']
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    sam = next(p for p in state['players'] if p['userId'] == 'user-sam')
+    assert sam['pokedRecently'] is False
+    act(table, 'poke', targetUserId='user-sam')
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    sam = next(p for p in state['players'] if p['userId'] == 'user-sam')
+    assert sam['pokedRecently'] is True
 
 
 def test_drop_item_removes_one(table):
