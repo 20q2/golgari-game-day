@@ -18,15 +18,29 @@ class PushGone(Exception):
     """Raised when the push service reports the subscription is dead (404/410)."""
 
 
-def send(sub, message, game_id):
+def send(sub, title, body, url):
+    """Deliver one Web Push. The payload is the shape Angular's ngsw-worker
+    expects: a top-level `notification` object (so the SW auto-displays it) whose
+    `data.onActionClick.default` routes a tap to `url`."""
     subscription_info = {
         'endpoint': sub['endpoint'],
         'keys': {'p256dh': sub['keys']['p256dh'], 'auth': sub['keys']['auth']},
     }
+    payload = {
+        'notification': {
+            'title': title,
+            'body': body,
+            'data': {
+                'onActionClick': {
+                    'default': {'operation': 'focusLastFocusedOrOpen', 'url': url},
+                },
+            },
+        },
+    }
     try:
         webpush(
             subscription_info=subscription_info,
-            data=json.dumps({'title': 'Game Queue', 'body': message, 'gameId': game_id}),
+            data=json.dumps(payload),
             vapid_private_key=VAPID_PRIVATE_KEY,
             vapid_claims={'sub': VAPID_SUBJECT},
         )

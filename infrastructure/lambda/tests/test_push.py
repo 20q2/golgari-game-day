@@ -1,4 +1,5 @@
 """Unit tests for the Web Push send wrapper — no network calls, webpush() is mocked."""
+import json
 import sys
 from pathlib import Path
 
@@ -22,16 +23,22 @@ SUB = {
 }
 
 
-def test_send_calls_webpush_with_subscription_and_message(monkeypatch):
+def test_send_wraps_notification_and_click_url(monkeypatch):
     calls = []
     monkeypatch.setattr(push, 'webpush', lambda **kwargs: calls.append(kwargs))
-    push.send(SUB, 'Alex wants to play Catan too', 'catan')
+    push.send(SUB, 'The Undercity', 'A raid boss appeared!',
+              '/golgari-game-day/undercity')
 
     assert len(calls) == 1
     assert calls[0]['subscription_info']['endpoint'] == SUB['endpoint']
     assert calls[0]['subscription_info']['keys'] == SUB['keys']
-    assert 'Alex wants to play Catan too' in calls[0]['data']  # message passed through verbatim
-    assert '"gameId": "catan"' in calls[0]['data']
+    payload = json.loads(calls[0]['data'])
+    note = payload['notification']
+    assert note['title'] == 'The Undercity'
+    assert note['body'] == 'A raid boss appeared!'
+    click = note['data']['onActionClick']['default']
+    assert click['operation'] == 'focusLastFocusedOrOpen'
+    assert click['url'] == '/golgari-game-day/undercity'
 
 
 def test_send_raises_push_gone_on_410(monkeypatch):
@@ -40,7 +47,7 @@ def test_send_raises_push_gone_on_410(monkeypatch):
     monkeypatch.setattr(push, 'webpush', fake_webpush)
 
     with pytest.raises(push.PushGone):
-        push.send(SUB, 'hello', 'catan')
+        push.send(SUB, 'Title', 'body', '/golgari-game-day/undercity')
 
 
 def test_send_reraises_other_webpush_errors(monkeypatch):
@@ -49,4 +56,4 @@ def test_send_reraises_other_webpush_errors(monkeypatch):
     monkeypatch.setattr(push, 'webpush', fake_webpush)
 
     with pytest.raises(WebPushException):
-        push.send(SUB, 'hello', 'catan')
+        push.send(SUB, 'Title', 'body', '/golgari-game-day/undercity')
