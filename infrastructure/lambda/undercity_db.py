@@ -1488,6 +1488,16 @@ def handle_action(table, body):
         return _season_start(table, payload)
 
     sid, config = _active_season(table)
+
+    # The read-only host export must still work after the night has ended —
+    # reviewing the finished night's data is exactly when the host wants it. It
+    # needs the season to exist (any status) but not to be active; every other
+    # admin cmd and all gameplay stay gated by the active-status check below.
+    if atype == 'admin' and payload.get('cmd') == 'export':
+        if not sid or not config:
+            return _err('No season to export yet.', 409)
+        return _admin(table, sid, config, payload)
+
     if not sid or not config or config.get('status') != 'active':
         return _err('No active season. Ask the host to start the night.', 409)
 
@@ -3526,67 +3536,79 @@ def _finish_barrier(table, sid, doc, rec, result):
     return out
 
 
+def _award_lair_kill(table, sid, doc, node, slain, out):
+    """Grant the full lair-slain payout onto `doc`/`out`: the pool reforms as a
+    half-HP Vestige, the first true kill wakes the wilderness beast and claims
+    the Guild Sigil, and spores/XP/gear/scroll land. Announces the fall itself
+    (sigil claim or Vestige stir). Shared by the in-person finale (_finish_lair)
+    and the lethal Sear-the-Throne strike (_cast_boss_strike)."""
+    b = data.LAIR_BOSSES[node]
+    vest_max = b['hp'] // 2
+    display = f"Vestige of {b['name']}" if slain else b['name']
+    _set_lair_state(table, sid, node, vest_max, True)
+    if not slain:
+        # Season-global first kill of ANY lair — wake the wilderness beast.
+        # Spawn is idempotent, so only the very first lair actually spawns it.
+        _spawn_world_event(table, sid, actor_id=doc['userId'])
+        # Season-global first kill of THIS lair — stamp the gate name-plate.
+        _claim_first(table, sid, node, 'lair', doc)
+    claims = doc.setdefault('poiClaims', [])
+    personal_first = node not in claims
+    if personal_first:
+        claims.append(node)
+    reward = b['repeat'] if slain else b['first']
+    doc['spores'] = doc.get('spores', 0) + reward['spores']
+    doc['wildWins'] = doc.get('wildWins', 0) + 1
+    levels = _grant_xp(table, sid, doc, reward['xp'])
+    out['spores'] = reward['spores']
+    out['xp'] = reward['xp']
+    if levels:
+        out['levels'] = levels
+    chance, tiers = data.GEAR_DROP['lair']
+    if _rng.random() < chance:
+        drop = _roll_gear_drop(doc, tiers)
+        if drop:
+            out['gear'] = drop
+    sigil_biome = data.SIGIL_LAIRS.get(node)
+    if personal_first and sigil_biome:
+        have = len([c for c in claims if c in data.SIGIL_LAIRS])
+        biome_name = data.BIOMES[sigil_biome]['name']
+        out['sigil'] = sigil_biome
+        out['text'] = (f"The {display} falls! +{reward['spores']} Spores — "
+                       f"you claim the {biome_name} Guild Sigil! "
+                       f"({have}/{data.SIGILS_REQUIRED} unlocks the island)")
+        _event(table, sid, 'sigil',
+               f"{doc['username']} cleared the {biome_name} dungeon and claimed "
+               f"its Guild Sigil ({have}/{data.SIGILS_REQUIRED})!",
+               actor=doc['userId'])
+        _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
+                                     'name': display, 'at': _now()}, doc['userId'])
+        _push_broadcast(table, sid,
+                        f"{doc['username']} cleared the {biome_name} dungeon "
+                        f"and claimed a Guild Sigil!",
+                        exclude_user_id=doc['userId'])
+    else:
+        out['text'] = (f"The {display} falls! +{reward['spores']} Spores."
+                       + ('' if slain else ' A legendary first kill!'))
+        if not slain:
+            _event(table, sid, 'lair',
+                   f"{doc['username']} slew the {b['name']} — "
+                   'its Vestige stirs in the lair!', actor=doc['userId'])
+            _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
+                                         'name': b['name'], 'at': _now()}, doc['userId'])
+    _append_scroll(doc, out, 'lair')
+    return reward
+
+
 def _finish_lair(table, sid, doc, rec, result):
     node = rec['node']
     b = data.LAIR_BOSSES[node]
     slain = rec['ctx'].get('slain', False)
-    vest_max = rec['ctx'].get('vestMax', b['hp'] // 2)
     display = rec['npcMeta']['name']
     npc_max = rec['npc']['maxHp']
     out = {'type': 'lair', 'npc': {'name': display, 'maxHp': npc_max}, 'battle': result}
     if result['outcome'] == 'attacker':
-        _set_lair_state(table, sid, node, vest_max, True)
-        if not slain:
-            # Season-global first kill of ANY lair — wake the wilderness beast.
-            # Spawn is idempotent, so only the very first lair actually spawns it.
-            _spawn_world_event(table, sid, actor_id=doc['userId'])
-            # Season-global first kill of THIS lair — stamp the gate name-plate.
-            _claim_first(table, sid, node, 'lair', doc)
-        claims = doc.setdefault('poiClaims', [])
-        personal_first = node not in claims
-        if personal_first:
-            claims.append(node)
-        reward = b['repeat'] if slain else b['first']
-        doc['spores'] = doc.get('spores', 0) + reward['spores']
-        doc['wildWins'] = doc.get('wildWins', 0) + 1
-        levels = _grant_xp(table, sid, doc, reward['xp'])
-        out['spores'] = reward['spores']
-        out['xp'] = reward['xp']
-        if levels:
-            out['levels'] = levels
-        chance, tiers = data.GEAR_DROP['lair']
-        if _rng.random() < chance:
-            drop = _roll_gear_drop(doc, tiers)
-            if drop:
-                out['gear'] = drop
-        sigil_biome = data.SIGIL_LAIRS.get(node)
-        if personal_first and sigil_biome:
-            have = len([c for c in claims if c in data.SIGIL_LAIRS])
-            biome_name = data.BIOMES[sigil_biome]['name']
-            out['sigil'] = sigil_biome
-            out['text'] = (f"The {display} falls! +{reward['spores']} Spores — "
-                           f"you claim the {biome_name} Guild Sigil! "
-                           f"({have}/{data.SIGILS_REQUIRED} unlocks the island)")
-            _event(table, sid, 'sigil',
-                   f"{doc['username']} cleared the {biome_name} dungeon and claimed "
-                   f"its Guild Sigil ({have}/{data.SIGILS_REQUIRED})!",
-                   actor=doc['userId'])
-            _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
-                                         'name': display, 'at': _now()}, doc['userId'])
-            _push_broadcast(table, sid,
-                            f"{doc['username']} cleared the {biome_name} dungeon "
-                            f"and claimed a Guild Sigil!",
-                            exclude_user_id=doc['userId'])
-        else:
-            out['text'] = (f"The {display} falls! +{reward['spores']} Spores."
-                           + ('' if slain else ' A legendary first kill!'))
-            if not slain:
-                _event(table, sid, 'lair',
-                       f"{doc['username']} slew the {b['name']} — "
-                       'its Vestige stirs in the lair!', actor=doc['userId'])
-                _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
-                                             'name': b['name'], 'at': _now()}, doc['userId'])
-        _append_scroll(doc, out, 'lair')
+        _award_lair_kill(table, sid, doc, node, slain, out)
     elif result['outcome'] == 'defender':
         _set_lair_state(table, sid, node, max(1, result['defenderHp']), slain)
         _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
@@ -3761,6 +3783,37 @@ def _pay_world_reward_retry(table, sid, uid, reward, bracket, roster):
     return results
 
 
+def _award_boss_kill(table, sid, doc, node, out):
+    """Grant the full Queen-slain payout — the pool reforms at full strength for
+    the season, the first-kill is claimed, and spores/XP/gear land on `doc`/`out`
+    — then announce her fall to everyone else. Shared by the in-person finale
+    (_finish_boss) and the lethal Sear-the-Throne strike (_cast_boss_strike);
+    each caller supplies its own flavor `text`, scroll roll, and news event so
+    the phrasing fits the context. Returns the reward table used."""
+    boss = data.ROT_SOVEREIGN
+    _set_boss_hp(table, sid, boss['hp'])
+    _claim_first(table, sid, node, 'boss', doc)
+    claims = doc.setdefault('poiClaims', [])
+    first = 'boss' not in claims
+    reward = boss['first'] if first else boss['repeat']
+    if first:
+        claims.append('boss')
+    doc['spores'] = doc.get('spores', 0) + reward['spores']
+    levels = _grant_xp(table, sid, doc, reward['xp'])
+    out['spores'] = reward['spores']
+    out['xp'] = reward['xp']
+    if levels:
+        out['levels'] = levels
+    chance, tiers = data.GEAR_DROP['boss']
+    if _rng.random() < chance:
+        drop = _roll_gear_drop(doc, tiers)
+        if drop:
+            out['gear'] = drop
+    _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
+                                 'name': boss['name'], 'at': _now()}, doc['userId'])
+    return reward
+
+
 def _finish_boss(table, sid, doc, rec, result):
     node = rec['node']
     boss = data.ROT_SOVEREIGN
@@ -3770,32 +3823,13 @@ def _finish_boss(table, sid, doc, rec, result):
     dealt = max(0, hp_before - result['defenderHp'])
     doc['bossDamage'] = doc.get('bossDamage', 0) + dealt
     if result['outcome'] == 'attacker':
-        _set_boss_hp(table, sid, boss['hp'])
-        _claim_first(table, sid, node, 'boss', doc)
-        claims = doc.setdefault('poiClaims', [])
-        first = 'boss' not in claims
-        reward = boss['first'] if first else boss['repeat']
-        if first:
-            claims.append('boss')
-        doc['spores'] = doc.get('spores', 0) + reward['spores']
-        levels = _grant_xp(table, sid, doc, reward['xp'])
-        out['spores'] = reward['spores']
-        out['xp'] = reward['xp']
-        if levels:
-            out['levels'] = levels
-        chance, tiers = data.GEAR_DROP['boss']
-        if _rng.random() < chance:
-            drop = _roll_gear_drop(doc, tiers)
-            if drop:
-                out['gear'] = drop
+        reward = _award_boss_kill(table, sid, doc, node, out)
         out['text'] = (f'SAVRA, QUEEN OF THE GOLGARI FALLS! +{reward["spores"]} Spores. '
                        'Her husk collapses — and already the rot begins to knit anew…')
         _append_scroll(doc, out, 'boss')
         _event(table, sid, 'boss',
                f"{doc['username']} struck down SAVRA, QUEEN OF THE GOLGARI! "
                'The island trembles as she reforms.', actor=doc['userId'])
-        _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
-                                     'name': boss['name'], 'at': _now()}, doc['userId'])
     elif result['outcome'] == 'defender':
         _set_boss_hp(table, sid, result['defenderHp'])
         _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
@@ -4538,15 +4572,30 @@ def _cast_teleport(table, sid, doc, spell, to):
 
 
 def _cast_boss_strike(table, sid, doc, spell, target):
-    """Chip a persistent HP pool (Savra or a lair) from anywhere. Pools floor
-    at 1 — the killing blow must be landed in person."""
+    """Chip a persistent HP pool (Savra or a lair) from anywhere. Pools floor at
+    1 — the killing blow must be landed in person — UNLESS the spell is flagged
+    `lethal` (Sear the Throne), which alone may slay a boss at range and reap the
+    full in-person kill reward."""
+    lethal = bool(spell.get('lethal'))
+    floor = 0 if lethal else 1
     if target == 'boss':
         hp = _boss_hp(table, sid)
-        new_hp = max(1, hp - _spell_damage(spell, doc))
+        new_hp = max(floor, hp - _spell_damage(spell, doc))
         dealt = hp - new_hp
-        _set_boss_hp(table, sid, new_hp)
         doc['bossDamage'] = doc.get('bossDamage', 0) + dealt
         name = data.ROT_SOVEREIGN['name']
+        if lethal and new_hp <= 0:
+            out = {'dmg': dealt, 'targetName': name}
+            reward = _award_boss_kill(table, sid, doc, data.BOSS_NODE, out)
+            out['text'] = (f'{spell["name"]} sears clean through — SAVRA, QUEEN OF THE '
+                           f'GOLGARI, FALLS! +{reward["spores"]} Spores. She reforms anew…')
+            _append_scroll(doc, out, 'boss')
+            _event(table, sid, 'boss',
+                   f"{doc['username']}'s {spell['name']} struck down SAVRA, QUEEN OF THE "
+                   'GOLGARI, from afar! The island trembles as she reforms.',
+                   actor=doc['userId'])
+            return out
+        _set_boss_hp(table, sid, new_hp)
         if dealt:
             _event(table, sid, 'spell',
                    f"{doc['username']}'s {spell['name']} sears {name} from afar "
@@ -4557,11 +4606,18 @@ def _cast_boss_strike(table, sid, doc, spell, target):
         return {'dmg': dealt, 'targetName': name, 'text': text}
     if target in data.LAIR_BOSSES:
         hp, slain, _ = _lair_state(table, sid, target)
-        new_hp = max(1, hp - _spell_damage(spell, doc))
+        new_hp = max(floor, hp - _spell_damage(spell, doc))
         dealt = hp - new_hp
-        _set_lair_state(table, sid, target, new_hp, slain)
         name = data.LAIR_BOSSES[target]['name']
         display = f'Vestige of {name}' if slain else name
+        if lethal and new_hp <= 0:
+            out = {'dmg': dealt, 'targetName': display}
+            _award_lair_kill(table, sid, doc, target, slain, out)
+            _event(table, sid, 'spell',
+                   f"{doc['username']}'s {spell['name']} unmade the {display} from afar!",
+                   actor=doc['userId'])
+            return out
+        _set_lair_state(table, sid, target, new_hp, slain)
         if dealt:
             _event(table, sid, 'spell',
                    f"{doc['username']}'s {spell['name']} wounds the {display} from afar!",

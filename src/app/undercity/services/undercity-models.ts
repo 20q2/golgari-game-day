@@ -315,18 +315,13 @@ export interface WorldEventState {
   dead: boolean;
 }
 
-export interface BattleStrike {
-  round: number;
-  by: 'attacker' | 'defender';
-  dmg: number;
-  miss?: boolean;
-  heal?: number;
-  retaliation?: boolean;
-}
-
 export interface BattleResult {
   outcome: 'attacker' | 'defender' | 'timeout' | 'fled';
-  strikes: BattleStrike[];
+  // The engine emits a rich combat log (round headers, decisive blows, rot
+  // ticks, heals, …) — the same `CombatEntry` shape the interactive PvE battle
+  // consumes, not a flat list of damage strikes. Playback must skip the
+  // non-strike entries (see BattlePlaybackComponent.applyStrike).
+  strikes: CombatEntry[];
   attackerHp: number;
   defenderHp: number;
   smokeSporeUsed?: boolean;

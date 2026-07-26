@@ -20,7 +20,7 @@ A living reference for the Dokapon-style spell system: what it does for players,
 - **Cooldowns**, not mana: each spell has a real-time cooldown (15–60 min). Cooldowns keep ticking while your phone is down.
 - **Range**: targeted spells reach N board spaces, measured as shortest-path distance over the tunnels (sealed barriers block the path). Teleports use the same rule.
 - **Dodge**: spells aimed at players can be dodged. Chance = `10% + 3% × (target SPD − caster SPD)`, clamped to 5–40%, using effective stats (gear + buffs count). A dodged spell still burns your cooldown.
-- **No spell can kill.** Player damage floors at 1 HP; boss/lair HP pools floor at 1. Killing blows must be landed in person. Casting a spell never composts anyone.
+- **Almost no spell can kill.** Player damage floors at 1 HP; boss/lair HP pools floor at 1. Killing blows must be landed in person. Casting a spell never composts anyone. **The one exception is Sear the Throne** (`sear_throne`, the only spell carrying `'lethal': True`): it alone may slay the Queen or a lair boss at range, reaping the full in-person kill reward (`_award_boss_kill` / `_award_lair_kill`). Player-vs-player damage is never lethal, even for a lethal spell.
 - Freshly composted players are **shield-protected** and cannot be targeted (and a rejected cast never starts your cooldown).
 - Casting is independent of movement, except teleport/recall (they cancel any pending move and relocate you — teleports resolve the destination space exactly like landing on it).
 
@@ -169,7 +169,7 @@ New players get all four seeded at join; older docs are handled with `.get()` de
 | `teleport` | `range` | Clears `pendingMove`, moves, runs `_resolve_space` like a normal landing |
 | `recall` | — | Returns to `HOME_GATES[homeBiome]`, no space resolution |
 | `fate_die` | `maxValue?` | Payload `value` 1–`maxValue` (default 6; Skitter Step caps at 3) → sets `pendingLoadedDie` (rejected while a move is pending) |
-| `boss_strike` | `power` | Payload `target` = `'boss'` or a lair node id → chips the persistent pool, floors at 1 |
+| `boss_strike` | `power`, `lethal?` | Payload `target` = `'boss'` or a lair node id → chips the persistent pool, floors at 1. A `lethal` spell (Sear the Throne) instead floors at 0 and, on reaching 0, grants the full kill reward |
 
 One-battle buff kinds the engine consumes after any fight (`ONE_BATTLE_BUFFS` in `undercity_db.py`): `rot_surge` (+3 ATK), `bone_chill` (−2 ATK), `glowveil` (+2 SPD, +15 flee via `_combatant`), `harden_shell` (+2 DEF), `weaken_hex` (−3 ATK), `savage_roar` (+5 ATK), `iron_hide` (+4 DEF), `fleetfoot` (+3 SPD), `warding_dance` (+3 DEF & +3 SPD), `sap_vigor` (−3 SPD), `rust_curse` (−4 DEF). `vines` (Bog Snare) is consumed by the next roll instead. Each kind is one `elif` in `engine.effective_stats()`; self-buffs apply `* mult` (Squirrel Warrior doubling), curses use `max(1, …)` and ignore `mult`.
 
@@ -208,7 +208,7 @@ Cross-doc concurrency: field spells write the victim's doc first (`_put_player`,
 
 ### Design invariants (don't break these)
 
-- **Spells never kill** — every damage path floors at 1 (players, Savra, lairs).
+- **Spells never kill, except Sear the Throne** — every damage path floors at 1 (players, Savra, lairs). The sole carve-out is a `'lethal': True` `boss_strike` spell (Sear the Throne), which may land the killing blow on Savra or a lair boss; player-vs-player damage still always floors at 1.
 - **Cooldowns only start on a successful cast** — validation errors and shielded/out-of-range targets must return before `_start_spell_cooldown`.
 - **A dodge still costs the cooldown and still notifies the victim.**
 - **The grimoire collection is permanent** — nothing removes entries from `grimoires`.

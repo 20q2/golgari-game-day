@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-import { BattleResult, BattleStrike } from '../services/undercity-models';
+import { BattleResult, CombatEntry } from '../services/undercity-models';
 
 export interface BattleSide {
   name: string;
@@ -211,36 +211,54 @@ export class BattlePlaybackComponent implements OnInit, OnDestroy {
     this.applyStrike(strike, true);
   }
 
-  private applyStrike(s: BattleStrike, animate: boolean): void {
-    const target = s.by === 'attacker' ? 'defender' : 'attacker';
+  private applyStrike(s: CombatEntry, animate: boolean): void {
+    // The engine emits a rich combat log: round headers (no actor) and
+    // status-only ticks (e.g. rotApplied) carry no HP effect — they are neither
+    // animated nor logged. Only entries that damage, heal, miss, or ward do
+    // anything. (Mirrors interactive-battle's animateEntry.)
+    if (!(s.dmg || s.heal || s.miss || s.negated)) return;
 
-    if (animate) {
-      this.lunge.set(s.by);
+    // rot / legacy frenzy DoT: `by` is the side TAKING the damage → it IS the
+    // target. Every other strike: `by` is the dealer → the target is the other
+    // side. The narrative "dealer" (who the log row is attributed to) is the
+    // opposite: whoever inflicted the blow.
+    const dot = !!s.rot || !!s.frenzy;
+    const target: 'attacker' | 'defender' =
+      dot ? (s.by as 'attacker' | 'defender') : s.by === 'attacker' ? 'defender' : 'attacker';
+    const dealer: 'attacker' | 'defender' =
+      target === 'attacker' ? 'defender' : 'attacker';
+
+    if (animate && !dot) {
+      this.lunge.set(dealer);
       setTimeout(() => this.lunge.set(null), 300);
     }
 
-    if (s.miss) {
-      if (animate) this.popup.set({ side: target, text: 'miss' });
-    } else {
+    if (s.dmg) {
       if (target === 'defender') this.defenderHp.set(Math.max(0, this.defenderHp() - s.dmg));
       else this.attackerHp.set(Math.max(0, this.attackerHp() - s.dmg));
-      if (s.heal) {
-        if (s.by === 'attacker')
-          this.attackerHp.set(Math.min(this.attacker.maxHp, this.attackerHp() + s.heal));
-        else this.defenderHp.set(Math.min(this.defender.maxHp, this.defenderHp() + s.heal));
-      }
       if (animate) {
         this.hit.set(target);
         this.popup.set({ side: target, text: `-${s.dmg}` });
         setTimeout(() => this.hit.set(null), 300);
       }
+    } else if ((s.miss || s.negated) && animate) {
+      this.popup.set({ side: target, text: s.negated ? 'ward' : 'miss' });
     }
+
+    if (s.heal) {
+      // A heal always restores the actor (`by`), never the struck side.
+      const healer: 'attacker' | 'defender' = s.by as 'attacker' | 'defender';
+      if (healer === 'attacker')
+        this.attackerHp.set(Math.min(this.attacker.maxHp, this.attackerHp() + s.heal));
+      else this.defenderHp.set(Math.min(this.defender.maxHp, this.defenderHp() + s.heal));
+    }
+
     this.entries.set([
       ...this.entries(),
       {
         round: s.round,
-        by: s.by,
-        miss: !!s.miss,
+        by: dealer,
+        miss: !!(s.miss || s.negated),
         retaliation: !!s.retaliation,
         dmg: s.dmg ?? 0,
         heal: s.heal ?? 0,

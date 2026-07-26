@@ -534,6 +534,59 @@ def test_boss_strike_bad_target(table):
     assert status == 400 and resp['code'] == 'invalid_target'
 
 
+# ── cast: Sear the Throne — the lethal exception ─────────────────────────────
+
+def test_sear_throne_can_slay_savra_and_pays_full_reward(table):
+    """Sear the Throne alone may land the killing blow on the Queen from afar —
+    it grants the full in-person kill payout and reforms the pool for the season."""
+    act(table, 'join', starter='pest', home='city')
+    give_book(table, 'user-alex', 'throneburner_codex')
+    db._set_boss_hp(table, _sid(table), 5)          # a finishing-blow range
+    status, resp = act(table, 'cast', spellId='sear_throne', source='grimoire',
+                       target='boss')
+    assert status == 200
+    assert db._boss_hp(table, _sid(table)) == data.ROT_SOVEREIGN['hp']   # reforms full
+    you = resp['you']
+    assert 'boss' in you['poiClaims']                                    # first-kill claim
+    assert resp['cast']['spores'] == data.ROT_SOVEREIGN['first']['spores']
+    assert resp['cast']['xp'] == data.ROT_SOVEREIGN['first']['xp']
+    assert you['bossDamage'] == 5                                        # only the chip counts
+
+
+def test_sear_throne_slays_lair_boss(table):
+    act(table, 'join', starter='pest', home='city')
+    give_book(table, 'user-alex', 'throneburner_codex')
+    lair = next(iter(data.LAIR_BOSSES))
+    db._set_lair_state(table, _sid(table), lair, 5, False)
+    status, resp = act(table, 'cast', spellId='sear_throne', source='grimoire',
+                       target=lair)
+    assert status == 200
+    hp, slain, _ = db._lair_state(table, _sid(table), lair)
+    assert slain is True
+    assert hp == data.LAIR_BOSSES[lair]['hp'] // 2   # reforms as a half-HP Vestige
+    assert resp['cast']['spores'] == data.LAIR_BOSSES[lair]['first']['spores']
+    assert resp['you']['wildWins'] == 1
+
+
+def test_queens_bane_still_floors_and_cannot_kill(table):
+    """The lethal exception is Sear-the-Throne-only; Queen's Bane still floors at 1."""
+    act(table, 'join', starter='pest', home='city')
+    give_book(table, 'user-alex', 'queensbane_grimoire')
+    db._set_boss_hp(table, _sid(table), 5)
+    status, resp = act(table, 'cast', spellId='queens_bane', source='grimoire',
+                       target='boss')
+    assert status == 200
+    assert db._boss_hp(table, _sid(table)) == 1                  # floored, not slain
+    assert 'boss' not in (resp['you'].get('poiClaims') or [])
+
+
+def test_non_lethal_damage_spells_note_the_floor():
+    """Every damaging spell that cannot kill says so in its player-facing desc."""
+    for sid_, sp in data.SPELLS.items():
+        if sp['effect'] in ('field_damage', 'boss_strike') and not sp.get('lethal'):
+            assert 'below 1' in sp['desc'].lower(), f'{sid_} desc omits the floor note'
+
+
 # ── equip-grimoire / ack-events ──────────────────────────────────────────────
 
 def test_equip_grimoire_owned_only(table):

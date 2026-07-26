@@ -231,10 +231,17 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     this.levelUpCelebration.set(null);
   }
 
-  /** "Upgrade Stats" — close the fanfare and jump to the Creature tab, where
-   * stat points are spent. */
+  /** "Upgrade Stats" — close the fanfare and jump to the Creature tab, landing
+   * on the Stats sub-screen (where points are spent) regardless of which
+   * creature sub-tab was last open. The creature tab is recreated on switch and
+   * seeds its sub-tab from this localStorage key, so writing it first pins it. */
   goUpgradeStats(): void {
     this.levelUpCelebration.set(null);
+    try {
+      localStorage.setItem('uc-creature-subtab', 'stats');
+    } catch {
+      /* storage blocked — fall back to whatever sub-tab loads */
+    }
     this.tab.set('creature');
   }
 }

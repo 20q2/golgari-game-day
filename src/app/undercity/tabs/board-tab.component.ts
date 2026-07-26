@@ -2562,7 +2562,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // the accumulated strike list (rich CombatEntry dicts). Hand them to finish()
     // so the last exchange animates before the outcome banner drops, instead of
     // the fight snapping straight to VICTORY.
-    const entries = (ev.battle?.strikes ?? []) as unknown as CombatEntry[];
+    const entries: CombatEntry[] = ev.battle?.strikes ?? [];
     // A first-kill lair boss reports the sigil it drops — remember it so the
     // sunburst fanfare can fire once the player dismisses the victory screen.
     this.pendingSigilBiome = outcome === 'attacker' && ev.sigil ? ev.sigil : null;

@@ -186,7 +186,7 @@
           </span>
           @if (e.miss) {
             <span class="log-badge miss-badge"><mat-icon class="mi">air</mat-icon> miss</span>
-          } @else {
+          } @else if (e.dmg) {
             <span class="log-badge dmg-badge">
               @if (e.retaliation) {
                 <mat-icon class="mi">bolt</mat-icon>

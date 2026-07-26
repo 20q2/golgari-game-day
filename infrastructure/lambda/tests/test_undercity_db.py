@@ -3509,3 +3509,24 @@ def test_metrics_recorded_and_exported(table):
 
     # Wrong passphrase exports nothing.
     assert act(table, 'admin', hostKey='nope', cmd='export')[0] == 403
+
+
+def test_export_works_after_the_night_ends(table):
+    """The read-only host export must still run once the night is over — reviewing
+    the finished night's data is exactly when the host wants it. Every other admin
+    cmd stays gated behind an active season."""
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = db._active_season(table)[0]
+
+    status, _ = act(table, 'season-end', hostKey='swampking')
+    assert status == 200
+    assert db._active_season(table)[1]['status'] == 'ended'
+
+    # Export still returns the finished night's dataset.
+    status, out = act(table, 'admin', hostKey='swampking', cmd='export')
+    assert status == 200 and out['ok'] and out['season'] == sid
+    assert any(p['userId'] == 'user-alex' for p in out['players'])
+
+    # A mutating admin cmd is still refused once the night is over.
+    status, _ = act(table, 'admin', hostKey='swampking', cmd='broadcast', text='hi')
+    assert status == 409
