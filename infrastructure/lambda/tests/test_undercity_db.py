@@ -3913,3 +3913,16 @@ def test_mystery_event_always_carries_a_valid_outcome(table, monkeypatch):
         seen.add(ev['outcome'])
     # Across the whole d12 we should see clearly more than one face.
     assert len(seen) >= 5
+
+
+def test_compute_renown_uses_pvp_renown_wins():
+    base = data.compute_renown({'pvpWins': 0, 'pvpRenownWins': 0})
+    gated = data.compute_renown({'pvpWins': 5, 'pvpRenownWins': 2})
+    assert gated - base == 2 * data.RENOWN['per_pvp_win']
+
+
+def test_compute_renown_grandfathers_legacy_pvp_wins():
+    # A player from before the split (no pvpRenownWins key) keeps renown for
+    # their existing pvpWins.
+    legacy = data.compute_renown({'pvpWins': 3})
+    assert legacy == 3 * data.RENOWN['per_pvp_win']

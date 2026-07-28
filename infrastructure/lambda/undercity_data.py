@@ -1354,7 +1354,11 @@ RENOWN = {
 
 
 def compute_renown(player: dict) -> int:
-    return (RENOWN['per_pvp_win'] * player.get('pvpWins', 0)
+    # PvP renown is gated to wins against equal-or-higher-level foes, tracked in
+    # pvpRenownWins. Players from before the split fall back to their raw pvpWins
+    # so their already-earned renown is grandfathered in.
+    pvp_renown_wins = player.get('pvpRenownWins', player.get('pvpWins', 0))
+    return (RENOWN['per_pvp_win'] * pvp_renown_wins
             + RENOWN['per_wild_win'] * player.get('wildWins', 0)
             + RENOWN['per_poi'] * len(player.get('poiClaims', []))
             + player.get('bossDamage', 0) // RENOWN['boss_damage_per_point'])
