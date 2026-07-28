@@ -12,7 +12,7 @@
  * with the Python if the ladder ever changes.
  */
 import type { BoardMap, BoardNode } from './board-canvas';
-import { NODE_R, DISC_RY } from './board-space';
+import { DISC_RY } from './board-space';
 import { DUNGEONS } from '../data/dungeons';
 
 export type EnemyTier = 1 | 2 | 3;
@@ -25,14 +25,16 @@ export const TIER_COLORS: Record<EnemyTier, string> = {
 };
 
 /**
- * A small "T1/T2/T3" pill floated just above a wild/elite coin, colour-graded by
- * danger, so the difficulty of a red space reads at a glance. Shared by the game
- * board and the map editor so both render it identically.
+ * The "T1/T2/T3" difficulty label stamped in white directly onto the lower face
+ * of a wild/elite coin (below its centre enemy glyph), so the difficulty of a
+ * red space reads at a glance without a floating pill. A dark outline keeps the
+ * letters legible against the red coin. Shared by the game board and the map
+ * editor so both render it identically.
  *
  * The caller's canvas is scaled by `zoom` (world -> screen), so we counter-scale
- * the pill by `1/zoom`: the badge holds a constant *on-screen* size and stays
- * legible whether you're zoomed into your token in-game or looking at the whole
- * board in the editor. Its position stays pinned in world space to the disc.
+ * the text by `1/zoom`: it holds a constant *on-screen* size and stays legible
+ * whether you're zoomed into your token in-game or looking at the whole board in
+ * the editor. Its position stays pinned in world space to the disc.
  */
 export function drawTierBadge(
   ctx: CanvasRenderingContext2D,
@@ -41,26 +43,20 @@ export function drawTierBadge(
   zoom = 1,
 ): void {
   const label = `T${tier}`;
-  const color = TIER_COLORS[tier];
   const k = 1 / zoom; // world units per on-screen px at the current zoom
-  const h = 15 * k;
   const cx = n.x;
-  const cy = n.y - DISC_RY - 2 * k - h / 2; // bottom edge sits just above the disc
+  const cy = n.y + DISC_RY * 0.5; // lower face of the coin, clear of the centre glyph
 
   ctx.save();
-  ctx.font = `bold ${11 * k}px sans-serif`;
+  ctx.font = `900 ${13 * k}px sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const w = ctx.measureText(label).width + 10 * k;
-  ctx.beginPath();
-  ctx.roundRect(cx - w / 2, cy - h / 2, w, h, 5 * k);
-  ctx.fillStyle = 'rgba(14, 12, 12, 0.85)';
-  ctx.fill();
-  ctx.lineWidth = 1.3 * k;
-  ctx.strokeStyle = color;
-  ctx.stroke();
-  ctx.fillStyle = color;
-  ctx.fillText(label, cx, cy + 0.5 * k);
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 3 * k;
+  ctx.strokeStyle = 'rgba(12, 8, 8, 0.85)';
+  ctx.strokeText(label, cx, cy);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(label, cx, cy);
   ctx.restore();
 }
 

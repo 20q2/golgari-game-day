@@ -483,6 +483,7 @@ SPELL_DODGE_BASE = 10        # %
 SPELL_DODGE_PER_SPD = 3      # % per point of (target SPD − caster SPD)
 SPELL_DODGE_MIN = 5
 SPELL_DODGE_MAX = 40
+MIREFOOT_SPELL_DODGE = 12    # flat +dodge% vs field spells for bog natives (Mirefoot perk)
 AWAY_EVENTS_CAP = 20
 GRIMOIRE_DUPLICATE_SPORES = 15
 MYSTERY_GRIMOIRE_CHANCE = 0.25  # mystery "free item" upgrades to an unowned book
@@ -528,6 +529,11 @@ SPELLS = {
                      'cooldownMin': 25, 'effect': 'fate_die', 'maxValue': 3,
                      'icon': 'directions_run', 'desc': 'Skitter ahead: choose your next roll (1–3).',
                      'blurb': 'Skitter ahead: choose your next roll (1–3).'},
+    'sinkstep':    {'name': 'Sinkstep', 'category': 'traversal', 'tier': 1,
+                    'cooldownMin': 25, 'effect': 'fate_die', 'maxValue': 1,
+                    'icon': 'directions_walk',
+                    'desc': 'Plant one sure step in the mire — your next roll is a guaranteed 1.',
+                    'blurb': 'Your next roll is a guaranteed 1 — land exactly where you mean to.'},
     # Tier II (rare books — acquisition lands in phase 3)
     'rot_bolt':    {'name': 'Rot Bolt', 'category': 'field', 'tier': 2, 'cooldownMin': 25,
                     'effect': 'field_damage', 'power': 20, 'range': 7,
@@ -644,7 +650,7 @@ FORM_SPELLS = {
 BIOME_SPELLS = {
     'garden': 'rot_surge',    # The Rot-Gardens (Composter)
     'bone':   'bone_chill',   # Ossuary Fields (Marrowborn)
-    'bog':    'bog_snare',    # The Sedgemoor (Mirefoot)
+    'bog':    'sinkstep',     # The Sedgemoor (Mirefoot) — self-utility fate step (bog_snare stays in its grimoire)
     'cavern': 'glowveil',     # Mosslight Cavern (Darkvision)
     'city':   'scrap_toss',   # The Undercity (City Rat)
 }
@@ -1301,7 +1307,7 @@ BIOMES = {
     # Wide, low oblong — a sprawling moor.
     'bog': {'name': 'The Sedgemoor', 'center': (2700, 520),
             'rx': 440, 'ry': 190, 'sq': 2.0, 'perk': 'mirefoot',
-            'perkName': 'Mirefoot', 'perkBlurb': 'Hazards cost you half.'},
+            'perkName': 'Mirefoot', 'perkBlurb': 'Hazards cost you half, and rival spells more often miss you.'},
     # Angular diamond of overgrowth.
     'garden': {'name': 'The Rot-Gardens', 'center': (3000, 1650),
                'rx': 300, 'ry': 285, 'sq': 1.45, 'perk': 'composter',

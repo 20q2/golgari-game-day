@@ -4235,9 +4235,12 @@ def _spell_damage(spell, doc):
 
 
 def _spell_dodge_pct(caster_doc, target_doc):
-    """Dodge % against a caster's field spell; halved for a Squirrel Mage."""
+    """Dodge % against a caster's field spell; boosted for bog natives (Mirefoot
+    perk) and halved against a Squirrel Mage."""
     chance = engine.spell_dodge_chance(engine.effective_stats(caster_doc)['spd'],
                                        engine.effective_stats(target_doc)['spd'])
+    if target_doc.get('homeBiome') == 'bog':            # Mirefoot: hard to curse
+        chance += data.MIREFOOT_SPELL_DODGE
     if 'spell_mage' in (caster_doc.get('passives') or []):
         chance *= data.SPELL_MAGE_DODGE_MULT
     return chance

@@ -228,7 +228,7 @@ export class HatchFlowComponent {
         'The dark keeps few secrets from those born to it.',
       feature: { name: 'Crystal Veins', desc: 'Mine glittering gems straight from the cavern walls.' } },
     { id: 'bog', name: 'The Sedgemoor', bg: 'undercity/swamp_background.png', tint: 'rgba(52, 110, 60, 0.32)',
-      perk: 'Mirefoot', blurb: 'Hazards cost you half.',
+      perk: 'Mirefoot', blurb: 'Hazards cost you half, and rival spells more often miss you.',
       lore: 'A drowned expanse of reeking sedge and sunken paths, presided over by an old ' +
         'witch who trades in stranger currencies than Spores.',
       feature: { name: 'The Sedgemoor Witch', desc: 'Buy spell scrolls, or inscribe them into a grimoire of your own.' } },

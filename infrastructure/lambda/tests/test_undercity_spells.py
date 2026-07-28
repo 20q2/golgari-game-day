@@ -270,6 +270,38 @@ def test_cast_source_validation(table):
     assert status == 409 and resp['code'] == 'not_castable'   # not your biome
     status, resp = act(table, 'cast', spellId='spore_bolt', source='grimoire')
     assert status == 409 and resp['code'] == 'not_castable'   # no book equipped
+
+
+# ── Sedgemoor (bog) buff: Sinkstep innate + Mirefoot spell-dodge (2026-07-28) ─
+
+def test_bog_innate_is_sinkstep():
+    assert data.BIOME_SPELLS['bog'] == 'sinkstep'             # replaced Bog Snare
+    s = data.SPELLS['sinkstep']
+    assert s['effect'] == 'fate_die' and s['maxValue'] == 1   # a guaranteed 1
+    assert 'bog_snare' in data.SPELLS                         # curse still exists (grimoire)
+
+
+def test_sinkstep_forces_a_one(table):
+    act(table, 'join', starter='pest', home='bog')            # bog -> sinkstep innate
+    status, resp = act(table, 'cast', spellId='sinkstep', source='innate', value=1)
+    assert status == 200
+    assert db._get_player(table, _sid(table), 'user-alex')['pendingLoadedDie'] == 1
+
+
+def test_sinkstep_rejects_values_above_one(table):
+    act(table, 'join', starter='pest', home='bog')
+    status, _ = act(table, 'cast', spellId='sinkstep', source='innate', value=2)
+    assert status == 400                                      # maxValue 1
+
+
+def test_mirefoot_boosts_spell_dodge(table):
+    act(table, 'join', starter='pest', home='bog')
+    sid = _sid(table)
+    caster = db._get_player(table, sid, 'user-alex')
+    target = db._get_player(table, sid, 'user-alex')   # same statline (independent copy)
+    with_perk = db._spell_dodge_pct(caster, target)    # target is a bog native → Mirefoot
+    target['homeBiome'] = 'city'                        # toggle ONLY the perk, SPD held constant
+    assert with_perk == db._spell_dodge_pct(caster, target) + data.MIREFOOT_SPELL_DODGE
     status, resp = act(table, 'cast', spellId='nonsense', source='innate')
     assert status == 400 and resp['code'] == 'unknown_spell'
     status, resp = act(table, 'cast', spellId='spore_bolt', source='scroll')
