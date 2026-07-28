@@ -715,58 +715,74 @@ def test_roll_cap_reports_lost(table):
     assert resp['granted'] == 3 and resp['lostToCap'] == 0
 
 
-def test_pvp_battle_and_compost(table):
+def test_pvp_duel_win_steals_but_leaves_target_alive(table, monkeypatch):
+    # New model (design 2026-07-27): PvP is an interactive duel vs a full-HP AI
+    # clone. Winning steals spores from the LIVE target but never composts them
+    # or touches their HP.
     act(table, 'join', starter='kraul', home='cavern')
     act(table, 'join', user='user-sam', name='Sam', starter='saproling', home='cavern')
-    # Put both on the same node and make Sam nearly dead.
     alex = db._get_player(table, _sid(table), 'user-alex')
     sam = db._get_player(table, _sid(table), 'user-sam')
     alex['position'] = sam['position'] = 'city_r2'
     alex['atk'] = 50
-    sam['hp'] = 5
     sam['spores'] = 100
+    sam_hp_before = sam['hp']
     db._put_player(table, alex)
     db._put_player(table, sam)
 
     status, resp = act(table, 'battle', targetUserId='user-sam')
     assert status == 200
-    assert resp['winner'] == 'user-alex'
-    assert resp['stolen'] == 25
-    assert resp['you']['spores'] == 25
-    assert resp['you']['pvpWins'] == 1
-
-    sam = db._get_player(table, _sid(table), 'user-sam')
-    assert sam['position'] == 'cavern_r0'    # composted → home gate
-    assert sam['shieldUntil'] > db._now()    # compost shield
-    assert sam['spores'] == 75
-
-    # Shielded player can't be attacked again.
+    assert resp['spaceEvent']['kind'] == 'pvp'
     alex = db._get_player(table, _sid(table), 'user-alex')
-    alex['position'] = 'city_r2'
+    se = _finish_started_battle(table, monkeypatch, alex, 'attacker')
+    assert se['type'] == 'pvp'
+    assert se['spores'] == 25                 # 25% of Sam's 100
+
+    alex = db._get_player(table, _sid(table), 'user-alex')
+    sam = db._get_player(table, _sid(table), 'user-sam')
+    assert alex['spores'] == 25 and alex['pvpWins'] == 1
+    assert sam['spores'] == 75                # lost the stolen spores
+    assert sam['hp'] == sam_hp_before         # HP untouched
+    assert sam['position'] == 'city_r2'       # NOT composted to the gate
+    assert not sam.get('shieldUntil')         # no compost shield — was never killed
+
+
+def test_pvp_cannot_start_a_second_fight_while_in_one(table):
+    # You can't open a duel while already mid-battle.
+    act(table, 'join', starter='kraul', home='cavern')
+    act(table, 'join', user='user-sam', name='Sam', starter='saproling', home='cavern')
+    alex = db._get_player(table, _sid(table), 'user-alex')
+    sam = db._get_player(table, _sid(table), 'user-sam')
+    alex['position'] = sam['position'] = 'city_r2'
     db._put_player(table, alex)
-    status, resp = act(table, 'battle', targetUserId='user-sam')
+    db._put_player(table, sam)
+    status, _ = act(table, 'battle', targetUserId='user-sam')
+    assert status == 200
+    status, _ = act(table, 'battle', targetUserId='user-sam')
     assert status == 409
 
 
-def test_pvp_notifies_the_victim(table):
-    """The loser gets a welcome-back note naming the attacker and the loot."""
+def test_pvp_notifies_the_victim(table, monkeypatch):
+    """A beaten player gets a welcome-back note naming the attacker and the loot
+    — and it makes clear the creature survived (outcome 'beaten', not composted)."""
     act(table, 'join', starter='kraul', home='cavern')
     act(table, 'join', user='user-sam', name='Sam', starter='saproling', home='cavern')
     alex = db._get_player(table, _sid(table), 'user-alex')
     sam = db._get_player(table, _sid(table), 'user-sam')
     alex['position'] = sam['position'] = 'city_r2'
     alex['atk'] = 50
-    sam['hp'] = 5
     sam['spores'] = 100
     db._put_player(table, alex)
     db._put_player(table, sam)
 
     act(table, 'battle', targetUserId='user-sam')
+    alex = db._get_player(table, _sid(table), 'user-alex')
+    _finish_started_battle(table, monkeypatch, alex, 'attacker')
 
     sam = db._get_player(table, _sid(table), 'user-sam')
     note = sam['awayEvents'][-1]
     assert note['kind'] == 'pvp'
-    assert note['outcome'] == 'composted'
+    assert note['outcome'] == 'beaten'
     assert note['from'] == 'Alex'
     assert note['spores'] == 25
     # The attacker isn't spammed with a note about their own assault.
@@ -3942,3 +3958,87 @@ def test_npc_combatant_defaults_empty_for_plain_monsters():
     c = db._npc_combatant({'name': 'Grub', 'hp': 20, 'atk': 5, 'def': 2, 'spd': 3})
     assert c.perks == frozenset()
     assert c.riders == frozenset()
+
+
+def test_pvp_starts_interactive_clone_battle(table):
+    act(table, 'join', starter='kraul', home='cavern')
+    act(table, 'join', user='user-sam', name='Sam', starter='saproling', home='cavern')
+    sid = _sid(table)
+    alex = db._get_player(table, sid, 'user-alex')
+    sam = db._get_player(table, sid, 'user-sam')
+    alex['position'] = sam['position'] = 'city_r2'
+    sam['maxHp'] = 40
+    sam['hp'] = 15          # PvE-damaged; clone should still fight at full HP
+    sam['spores'] = 100
+    db._put_player(table, alex)
+    db._put_player(table, sam)
+
+    status, resp = act(table, 'battle', targetUserId='user-sam')
+    assert status == 200, resp
+    ev = resp['spaceEvent']
+    assert ev['type'] == 'battle_start'
+    assert ev['kind'] == 'pvp'
+    assert ev['npc']['hp'] == 40                       # full HP, not current 15
+    assert resp['you']['battle']['kind'] == 'pvp'      # attacker is mid-fight now
+
+    # The real target was NOT touched by starting the duel.
+    sam = db._get_player(table, sid, 'user-sam')
+    assert sam['hp'] == 15
+    assert sam['spores'] == 100
+    assert not sam.get('battle')
+
+
+def _seed_pvp_pair(table, atk_fields=None, tgt_fields=None):
+    """Two players on the same node, ready for a duel. Returns (sid, alex, sam)."""
+    act(table, 'join', starter='kraul', home='cavern')
+    act(table, 'join', user='user-sam', name='Sam', starter='saproling', home='cavern')
+    sid = _sid(table)
+    alex = db._get_player(table, sid, 'user-alex')
+    sam = db._get_player(table, sid, 'user-sam')
+    alex['position'] = sam['position'] = 'city_r2'
+    alex.update(atk_fields or {})
+    sam.update(tgt_fields or {})
+    db._put_player(table, alex)
+    db._put_player(table, sam)
+    return sid, alex, sam
+
+
+def test_pvp_win_grants_renown_when_target_equal_or_higher_level(table, monkeypatch):
+    sid, _, _ = _seed_pvp_pair(table,
+                               atk_fields={'level': 3, 'atk': 50, 'spores': 0},
+                               tgt_fields={'level': 5, 'spores': 100})
+    act(table, 'battle', targetUserId='user-sam')
+    alex = db._get_player(table, sid, 'user-alex')
+    _finish_started_battle(table, monkeypatch, alex, 'attacker')
+    alex = db._get_player(table, sid, 'user-alex')
+    assert alex['pvpWins'] == 1
+    assert alex['pvpRenownWins'] == 1                  # target level >= attacker
+
+
+def test_pvp_win_against_lower_level_grants_no_renown(table, monkeypatch):
+    sid, _, _ = _seed_pvp_pair(table,
+                               atk_fields={'level': 8, 'atk': 50, 'spores': 0},
+                               tgt_fields={'level': 2, 'spores': 100})
+    act(table, 'battle', targetUserId='user-sam')
+    alex = db._get_player(table, sid, 'user-alex')
+    _finish_started_battle(table, monkeypatch, alex, 'attacker')
+    alex = db._get_player(table, sid, 'user-alex')
+    assert alex['pvpWins'] == 1
+    assert alex.get('pvpRenownWins', 0) == 0           # gank -> no renown
+
+
+def test_pvp_loss_composts_attacker_and_leaves_target_intact(table, monkeypatch):
+    sid, _, sam0 = _seed_pvp_pair(
+        table,
+        atk_fields={'level': 3, 'spores': 50},
+        tgt_fields={'level': 3, 'spores': 100})
+    sam_hp = sam0['hp']
+    act(table, 'battle', targetUserId='user-sam')
+    alex = db._get_player(table, sid, 'user-alex')
+    _finish_started_battle(table, monkeypatch, alex, 'defender', defender_hp=99)
+    alex = db._get_player(table, sid, 'user-alex')
+    sam = db._get_player(table, sid, 'user-sam')
+    assert alex['spores'] == 50                         # NO spore transfer on loss
+    assert alex['position'] == 'cavern_r0'              # composted to the home gate
+    assert sam['spores'] == 100 and sam['hp'] == sam_hp  # target fully intact
+    assert sam['awayEvents'][-1]['outcome'] == 'defended'

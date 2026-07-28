@@ -3767,6 +3767,8 @@ def _finish_battle(table, sid, doc, rec, result):
         out = _finish_world(table, sid, doc, rec, result)
     elif kind == 'enraged':
         out = _finish_enraged(table, sid, doc, rec, result)
+    elif kind == 'pvp':
+        out = _finish_pvp(table, sid, doc, rec, result)
     else:
         out = _finish_boss(table, sid, doc, rec, result)
     renown_gained = data.compute_renown(doc) - renown_before
@@ -3789,6 +3791,70 @@ def _finish_battle(table, sid, doc, rec, result):
     if conflict:
         return conflict
     return _ok(doc, spaceEvent=out)
+
+
+def _finish_pvp(table, sid, doc, rec, result):
+    """Resolve a clone duel (design 2026-07-27). Attacker win: steal spores from
+    the LIVE target, symmetric XP, level-gated renown, 'beaten' away-event.
+    Attacker loss: compost the attacker, XP, 'defended' away-event. Flee/timeout:
+    no transfer. The target's HP/creature are never touched by the duel."""
+    ctx = rec.get('ctx') or {}
+    target_id = ctx.get('targetId')
+    target = _get_player(table, sid, target_id) if target_id else None
+    tname = rec['npcMeta'].get('name', 'their creature')
+    out = {'type': 'pvp',
+           'npc': {'name': tname, 'id': rec['npcMeta'].get('id')},
+           'battle': result}
+    outcome = result['outcome']
+    away = {'kind': 'pvp', 'from': doc.get('username', '?'), 'at': _now()}
+
+    if outcome == 'attacker':
+        # Attacker beat the clone. Steal from the target's LIVE pile.
+        stolen = 0
+        if target:
+            stolen = engine.pvp_spore_steal(target.get('spores', 0), 'fight',
+                                            _passives(doc))
+            target['spores'] = max(0, target.get('spores', 0) - stolen)
+        doc['spores'] = doc.get('spores', 0) + stolen
+        doc['pvpWins'] = doc.get('pvpWins', 0) + 1
+        # Level gate: renown only for beating an equal-or-higher-level foe.
+        if int(ctx.get('targetLevel', 1)) >= int(doc.get('level', 1)):
+            doc['pvpRenownWins'] = doc.get('pvpRenownWins',
+                                           doc['pvpWins'] - 1) + 1
+        win_levels = _grant_xp(table, sid, doc, data.XP_REWARDS['pvp_win'])
+        out['spores'] = stolen
+        out['xp'] = data.XP_REWARDS['pvp_win']
+        if win_levels:
+            out['levels'] = win_levels
+        out['text'] = f"You beat {tname} and loot {stolen} Spores!"
+        away['outcome'] = 'beaten'
+        away['spores'] = stolen
+        if target:
+            _grant_xp(table, sid, target, data.XP_REWARDS['pvp_loss'])
+    elif outcome == 'defender':
+        # Attacker lost — composted. No spore transfer. Target defends untouched.
+        _grant_xp(table, sid, doc, data.XP_REWARDS['pvp_loss'])
+        _compost(table, sid, doc,
+                 f"{doc['username']}'s {_creature_label(doc)} was driven off by "
+                 f"{tname}. The swarm remembers.")
+        out['text'] = f"{tname} drives you off and grinds you into the mulch…"
+        away['outcome'] = 'defended'
+        if target:
+            _grant_xp(table, sid, target, data.XP_REWARDS['pvp_win'])
+    elif outcome == 'fled':
+        out['text'] = 'You slip away into the fungus.'
+        away['outcome'] = 'fled'
+    else:  # timeout
+        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
+        out['text'] = f"You and {tname} scrap to a standstill."
+        away['outcome'] = 'timeout'
+        if target:
+            _grant_xp(table, sid, target, data.XP_REWARDS['timeout'])
+
+    if target:
+        _push_away_event(target, away)
+        _put_player(table, target)   # persist steal / XP / notification
+    return out
 
 
 def _finish_wild(table, sid, doc, rec, result):
@@ -4467,10 +4533,42 @@ def _world_engage(table, sid, doc, payload):
     return _ok(doc, spaceEvent=event)
 
 
+def _build_clone(target):
+    """A full-HP snapshot NPC that copies the target's gear-inclusive stats,
+    passives, perks, and riders. Transient buffs are stripped so the clone is a
+    fair, representative fighter; personality is themed from the stat spread
+    (design 2026-07-27)."""
+    eff = engine.effective_stats({**target, 'buffs': []})  # base+gear, no temp buffs
+    personality = engine.clone_personality(eff['atk'], eff['def'], eff['spd'])
+    level = int(target.get('level', 1))
+    return {
+        'name': f"{target.get('username', '?')}'s {_creature_label(target)}",
+        'id': f"pvp:{target['userId']}",
+        'hp': int(eff['maxHp']), 'maxHp': int(eff['maxHp']),
+        'atk': int(eff['atk']), 'def': int(eff['def']), 'spd': int(eff['spd']),
+        'passives': sorted(_passives(target)),
+        'perks': sorted(engine.attribute_perks(target)),
+        'riders': sorted(_riders(target)),
+        'rider_mag': dict(_rider_mags(target)),
+        'personality': personality,
+        'bluff': data.clone_bluff(level),
+        # Sprite descriptor so the client can draw the target's own creature as
+        # the foe (survives into the finisher and battle reloads via npcMeta).
+        'form': target.get('form'), 'paint': target.get('paint') or {},
+        'hat': target.get('hat'), 'spriteVariant': target.get('spriteVariant'),
+    }
+
+
 def _battle(table, sid, doc, payload):
+    """Attacking a player spawns an interactive duel against a full-HP AI clone
+    of them (design 2026-07-27). The real target is never touched here — rewards
+    (spore steal, XP, gated renown, away-event) resolve in _finish_pvp when the
+    fight ends; attacker-only stakes mean only the attacker risks HP/death."""
     target_id = payload.get('targetUserId')
     if not target_id or target_id == doc['userId']:
         return _err('Pick a target.')
+    if doc.get('battle'):
+        return _err('You are already in a fight.', 409)
     target = _get_player(table, sid, target_id)
     if not target:
         return _err('Target not found.', 404)
@@ -4478,85 +4576,15 @@ def _battle(table, sid, doc, payload):
         return _err('They slipped away — not on your space anymore.', 409)
     if _shielded(target):
         return _err('They are protected by a Compost Shield.', 409)
-    engine.regen_hp(target, _now())
-    _expire_buffs(target)
     doc['shieldUntil'] = None  # attacking drops your own shield
 
-    atk_c = _combatant(doc)
-    atk_c.stance = 'fight'
-    def_c = _combatant(target)
-    # PvP stays one-shot (auto stances via the back-compat resolver) — the
-    # interactive round-by-round machine is PvE-only this iteration (spec §7).
-    result = engine.resolve_battle(atk_c, def_c, _rng)
-
-    doc['hp'] = result['attackerHp']
-    target['hp'] = result['defenderHp']
-    doc['hpUpdatedAt'] = _now()
-    target['hpUpdatedAt'] = _now()
-    _consume_one_battle_buffs(doc)
-    _consume_one_battle_buffs(target)
-    if result['smokeSporeUsed'] and 'smoke_spore' in (target.get('bag') or []):
-        target['bag'].remove('smoke_spore')
-
-    out = {'ok': True, 'battle': result,
-           'target': {'userId': target_id, 'username': target.get('username'),
-                      'formName': _form_name(target),
-                      'creatureName': target.get('creatureName') or _form_name(target)}}
-
-    if result['outcome'] == 'fled':
-        _event(table, sid, 'pvp',
-               f"{target['username']}'s {_creature_label(target)} slipped away from "
-               f"{doc['username']} in the dark.", actor=doc['userId'])
-        out['text'] = 'They vanish into the fungus before you can strike.'
-    elif result['outcome'] == 'timeout':
-        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
-        _grant_xp(table, sid, target, data.XP_REWARDS['timeout'])
-        _event(table, sid, 'pvp',
-               f"{doc['username']} and {target['username']} brawl to a standstill.",
-               actor=doc['userId'])
-        out['text'] = 'Six rounds of scrabbling — no compost today.'
-    else:
-        winner, loser = (doc, target) if result['outcome'] == 'attacker' else (target, doc)
-        stolen = engine.pvp_spore_steal(loser.get('spores', 0),
-                                        loser.get('stance', 'fight') if loser is target else 'fight',
-                                        _passives(winner))
-        loser['spores'] = max(0, loser.get('spores', 0) - stolen)
-        winner['spores'] = winner.get('spores', 0) + stolen
-        winner['pvpWins'] = winner.get('pvpWins', 0) + 1
-        win_levels = _grant_xp(table, sid, winner, data.XP_REWARDS['pvp_win'])
-        lose_levels = _grant_xp(table, sid, loser, data.XP_REWARDS['pvp_loss'])
-        _compost(table, sid, loser,
-                 f"{loser['username']}'s {_creature_label(loser)} was composted by "
-                 f"{winner['username']}'s {_creature_label(winner)}. The swarm remembers.")
-        out['stolen'] = stolen
-        out['winner'] = winner['userId']
-        # Reward deltas for the acting player's victory popup.
-        out['xp'] = data.XP_REWARDS['pvp_win'] if winner is doc else data.XP_REWARDS['pvp_loss']
-        doc_levels = win_levels if winner is doc else lose_levels
-        if doc_levels:
-            out['levels'] = doc_levels
-        if winner is doc:
-            out['spores'] = stolen
-        out['text'] = (f"You compost {target['username']} and loot {stolen} Spores!"
-                       if winner is doc else
-                       f"{target['username']} composts you and shakes {stolen} Spores loose…")
-
-    # Notify the victim: any PvP initiated on them shows on their next return.
-    victim_outcome = {'attacker': 'composted', 'defender': 'defended',
-                      'fled': 'fled', 'timeout': 'timeout'}[result['outcome']]
-    away = {'kind': 'pvp', 'from': doc.get('username', '?'),
-            'outcome': victim_outcome, 'at': _now()}
-    if victim_outcome == 'composted':
-        away['spores'] = stolen
-    _push_away_event(target, away)
-
-    if not _put_player(table, target):
-        return _err('They moved mid-fight — try again.', 409)
+    npc = _build_clone(target)
+    ctx = {'targetId': target_id, 'targetLevel': int(target.get('level', 1))}
+    event = _start_battle(table, sid, doc, 'pvp', npc, node=doc['position'], ctx=ctx)
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
-    you = {k: v for k, v in doc.items() if k not in ('pk', 'sk')}
-    return 200, {**out, 'you': you}
+    return _ok(doc, spaceEvent=event)
 
 
 def _attack_boss(table, sid, doc, payload):
