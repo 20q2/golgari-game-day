@@ -9,7 +9,7 @@ import undercity_db as db
 from undercity_engine import (
     Combatant, resolve_battle, legal_destinations, validate_walk, board_distance,
     roll_mystery, roll_fog, apply_level_ups, spend_stat, effective_stats, regen_hp,
-    regen_rolls, pick_npc, pvp_spore_steal,
+    regen_rolls, pick_npc, pvp_spore_steal, clone_personality,
 )
 
 
@@ -1568,3 +1568,15 @@ def test_mystery_outcome_numeric_deltas():
 
 def test_mystery_outcome_defensive_fallback():
     assert mystery_outcome(_res(roll=3), {}) == 'mystery'
+
+
+def test_clone_personality_dominant_stats():
+    assert clone_personality(20, 8, 8) == 'brute'      # ATK dominant
+    assert clone_personality(8, 20, 8) == 'turtle'     # DEF dominant
+    assert clone_personality(8, 8, 20) == 'trickster'  # SPD dominant
+
+
+def test_clone_personality_flat_spread_is_balanced():
+    # Top within the dominance margin of the runner-up -> balanced.
+    assert clone_personality(11, 10, 10) == 'balanced'
+    assert clone_personality(10, 10, 10) == 'balanced'

@@ -65,6 +65,15 @@ PLUNDERED_LOOT_MULT = 0.5
 PVP_SPORE_STEAL = 0.25
 PVP_SPORE_STEAL_DEFEND = 0.10
 DEATHRITE_STEAL_MULT = 1.5
+# PvP clone duel (design 2026-07-27): attacking a player fights a full-HP AI
+# clone of them. The clone's stance-AI personality is themed from its
+# gear-inclusive stat spread — the top stat must exceed the runner-up by at
+# least this fraction to lock in a theme, else the clone is 'balanced'.
+CLONE_DOMINANCE_MARGIN = 0.20
+# Higher-level clones read/bluff harder (mirrors elites vs fodder), capped so it
+# never feels random. bluff = min(CLONE_BLUFF_CAP, CLONE_BLUFF_BY_LEVEL × level).
+CLONE_BLUFF_BY_LEVEL = 0.02
+CLONE_BLUFF_CAP = 0.30
 SCROUNGER_MULT = 1.25     # Pest passive: ×Spores from all loot (forage/dig/mystery)
                           # and combat bounties. A % (not a flat +2) so the pest
                           # stays the economy specialist as bounties scale — client

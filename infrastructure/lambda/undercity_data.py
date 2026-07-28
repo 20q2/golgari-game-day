@@ -493,6 +493,12 @@ STANCE_PERSONALITIES = {
 NPC_DEFAULT_PERSONALITY = 'balanced'
 NPC_DEFAULT_BLUFF = 0.0   # overworld fodder never bluffs; elites/bosses do
 
+
+def clone_bluff(level: int) -> float:
+    """PvP clone bluff rate: scales with the target's level, capped. Scalars
+    (CLONE_BLUFF_BY_LEVEL / CLONE_BLUFF_CAP) come from undercity_config."""
+    return min(CLONE_BLUFF_CAP, max(0.0, CLONE_BLUFF_BY_LEVEL * level))
+
 # ── Spells & grimoires ───────────────────────────────────────────────────────
 # The spell system (specs/2026-07-10-undercity-spells-design.md). Innate biome
 # spells are always castable; grimoire spells require the book equipped — you

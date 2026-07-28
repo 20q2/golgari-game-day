@@ -107,6 +107,22 @@ def pick_stance(personality: str, rng) -> str:
     return data.STANCES[-1]
 
 
+_STAT_PERSONALITY = {'atk': 'brute', 'dfn': 'turtle', 'spd': 'trickster'}
+
+
+def clone_personality(atk: float, dfn: float, spd: float) -> str:
+    """Pick a stance-AI personality from a PvP clone's gear-inclusive stat
+    spread: the dominant stat themes the clone (ATK->brute, DEF->turtle,
+    SPD->trickster) only if it clears the runner-up by CLONE_DOMINANCE_MARGIN;
+    an even spread yields 'balanced'."""
+    stats = sorted([('atk', atk), ('dfn', dfn), ('spd', spd)],
+                   key=lambda kv: kv[1], reverse=True)
+    (top_key, top), (_, second) = stats[0], stats[1]
+    if second <= 0 or top >= second * (1 + data.CLONE_DOMINANCE_MARGIN):
+        return _STAT_PERSONALITY[top_key]
+    return 'balanced'
+
+
 def telegraph(actual: str, bluff: float, rng) -> str:
     """What the monster SHOWS for its upcoming stance — the truth, unless it
     bluffs (rng.random() < bluff), in which case it shows one of the other two."""
