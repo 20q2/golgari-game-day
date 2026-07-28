@@ -673,7 +673,10 @@ def _npc_combatant(npc):
     return engine.Combatant(
         name=npc['name'], hp=npc['hp'], max_hp=npc.get('maxHp', npc['hp']),
         atk=npc['atk'], dfn=npc['def'], spd=npc['spd'],
-        passives=frozenset(npc.get('passives') or []))
+        passives=frozenset(npc.get('passives') or []),
+        perks=frozenset(npc.get('perks') or []),
+        riders=frozenset(npc.get('riders') or []),
+        rider_mag={k: float(v) for k, v in (npc.get('rider_mag') or {}).items()})
 
 
 def _read_chance(doc):

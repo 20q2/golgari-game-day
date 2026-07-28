@@ -3926,3 +3926,19 @@ def test_compute_renown_grandfathers_legacy_pvp_wins():
     # their existing pvpWins.
     legacy = data.compute_renown({'pvpWins': 3})
     assert legacy == 3 * data.RENOWN['per_pvp_win']
+
+
+def test_npc_combatant_carries_perks_and_riders():
+    npc = {'name': 'Clone', 'hp': 40, 'maxHp': 40, 'atk': 10, 'def': 5, 'spd': 6,
+           'passives': ['deathrite'], 'perks': ['carapace_grind'],
+           'riders': ['bramble'], 'rider_mag': {'bramble': 3.0}}
+    c = db._npc_combatant(npc)
+    assert 'carapace_grind' in c.perks
+    assert 'bramble' in c.riders
+    assert c.rider_mag.get('bramble') == 3.0
+
+
+def test_npc_combatant_defaults_empty_for_plain_monsters():
+    c = db._npc_combatant({'name': 'Grub', 'hp': 20, 'atk': 5, 'def': 2, 'spd': 3})
+    assert c.perks == frozenset()
+    assert c.riders == frozenset()
