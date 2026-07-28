@@ -68,7 +68,9 @@ export type AwayEvent =
   | {
       kind: 'pvp';
       from: string;
-      outcome: 'composted' | 'defended' | 'fled' | 'timeout';
+      // 'composted' stays for any queued legacy events; new clone duels emit
+      // 'beaten' (you lost but your creature survived).
+      outcome: 'composted' | 'beaten' | 'defended' | 'fled' | 'timeout';
       spores?: number;
       at: string;
     }
@@ -424,7 +426,7 @@ export interface CombatPeek {
 
 /** Client-safe snapshot of a pending battle, so a refresh can reopen it. */
 export interface BattleResume {
-  kind: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss' | 'world';
+  kind: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss' | 'world' | 'pvp';
   round: number;
   telegraph: Stance | null;
   frenzyFrom?: number | null;
@@ -641,6 +643,12 @@ export interface SpaceEvent {
     level?: number;
     bounty?: number;
     personality?: string;
+    /** PvP clone-duel only: sprite descriptor so the client can draw the
+     * target's own creature as the foe. */
+    form?: string;
+    paint?: Record<string, number>;
+    hat?: string | null;
+    spriteVariant?: string | null;
   };
   battle?: BattleResult;
   sporesLost?: number;
@@ -669,8 +677,8 @@ export interface SpaceEvent {
   };
   /** world_event finish: the shared raid summary (present when worldKill). */
   raid?: { name: string; roster: { name: string; bracket: string }[] };
-  // battle_start (interactive PvE, Plan 2)
-  kind?: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss' | 'world';
+  // battle_start (interactive PvE, Plan 2; PvP clone duel, 2026-07-27)
+  kind?: 'wild' | 'elite' | 'barrier' | 'lair' | 'boss' | 'world' | 'pvp';
   telegraph?: Stance;
   round?: number;
   frenzyFrom?: number | null;

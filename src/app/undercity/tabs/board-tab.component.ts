@@ -1297,8 +1297,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         switch (e.outcome) {
           case 'composted':
             return `${e.from} composted your creature and looted ${e.spores ?? 0} Spores.`;
+          case 'beaten':
+            return `${e.from} beat your creature in a duel and looted ${e.spores ?? 0} Spores. (Your creature survived.)`;
           case 'defended':
-            return `${e.from} jumped you — and you composted them!`;
+            return `${e.from} jumped you — and you drove them off!`;
           case 'fled':
             return `${e.from} tried to jump you, but slipped away in the dark.`;
           default:
@@ -1347,7 +1349,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** True for notes that cost you something — rendered with the alert accent. */
   protected awayIsHit(e: AwayEvent): boolean {
-    return e.kind === 'spell_hit' || (e.kind === 'pvp' && e.outcome === 'composted');
+    return (
+      e.kind === 'spell_hit' ||
+      (e.kind === 'pvp' && (e.outcome === 'composted' || e.outcome === 'beaten'))
+    );
   }
 
   /** The modal's notes split into labelled sections (empty groups dropped). */
@@ -2110,31 +2115,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   // ── PvP ────────────────────────────────────────────────────────────────────
 
   async attack(target: Occupant): Promise<void> {
+    // PvP is now an interactive duel vs a full-HP AI clone of the target
+    // (design 2026-07-27). The server returns a battle_start spaceEvent — the
+    // same one PvE uses — which routeSpaceEvent opens as the live combat modal.
     const preHp = this.store.you()?.hp ?? 0;
-    const targetPublic = this.store.players().find((p) => p.userId === target.userId);
     await this.run(async () => {
       const resp = await this.store.action('battle', { targetUserId: target.userId });
-      if (!resp.battle) return;
-      this.battleView.set({
-        battle: resp.battle,
-        attacker: {
-          name: this.youBattleName(),
-          spriteUrl: this.youSpriteUrl(),
-          startHp: preHp,
-          maxHp: this.store.you()?.maxHp ?? preHp,
-        },
-        defender: {
-          name: `${target.username}'s ${target.creatureName || target.formName}`,
-          spriteUrl: targetPublic
-            ? this.spriteUrl(targetPublic.form, targetPublic.paint, targetPublic.hat, targetPublic.spriteVariant)
-            : null,
-          icon: 'pets',
-          startHp: targetPublic?.hp ?? 30,
-          maxHp: targetPublic?.maxHp ?? 30,
-        },
-        resultText: resp.text ?? '',
-        rewards: this.buildRewards({ spores: resp.stolen, xp: resp.xp, levels: resp.levels }),
-      });
+      if (resp.spaceEvent) this.routeSpaceEvent(resp.spaceEvent, preHp);
       this.occupants.set([]);
     });
   }
@@ -2548,8 +2535,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       },
       defender: {
         name: ev.npc!.name,
-        spriteUrl: this.npcSpriteUrl(ev.kind!, ev.npc!.id),
-        icon: NPC_ICONS[ev.npc!.id] ?? 'bug_report',
+        // A PvP clone draws the target's own creature from the sprite descriptor
+        // the server sends; PvE foes use their art-folder sprite by id.
+        spriteUrl:
+          ev.kind === 'pvp' && ev.npc!.form
+            ? this.spriteUrl(ev.npc!.form, ev.npc!.paint ?? {}, ev.npc!.hat, ev.npc!.spriteVariant)
+            : this.npcSpriteUrl(ev.kind!, ev.npc!.id),
+        icon: ev.kind === 'pvp' ? 'pets' : (NPC_ICONS[ev.npc!.id] ?? 'bug_report'),
         startHp: ev.npc!.hp,
         maxHp: ev.npc!.maxHp ?? ev.npc!.hp,
         level: ev.npc!.level,
