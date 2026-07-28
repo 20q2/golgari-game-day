@@ -20,9 +20,11 @@ import {
   TerrainArt,
   FloorTextures,
   LandmarkTextures,
+  TERRAIN_RES,
 } from '../engine/board-terrain';
 import { drawSpaceDisc, NODE_R, DISC_RY } from '../engine/board-space';
 import { computeLayers, LayerSpec, OVERWORLD } from '../engine/board-layers';
+import { computeEnemyTiers, drawTierBadge } from '../engine/board-enemy-tier';
 
 export type EditorPick =
   | { kind: 'node'; id: string }
@@ -120,7 +122,13 @@ export class EditorCanvas {
     this.raf = 0;
   }
 
-  /** Doc changed: rebuild the layer partition + every layer's terrain. */
+  /**
+   * Doc changed: rebuild the layer partition, then bake ONLY the active layer.
+   * The frame loop only ever draws the active layer, so baking all of them up
+   * front (and holding every full-res canvas alive) was pure memory waste — the
+   * overworld bake alone is tens of MB. We bake the visible layer on demand and
+   * free the rest, exactly like the game board does on layer switch.
+   */
   invalidate(): void {
     if (!this.doc) return;
     this.dragNodes = new Set();
@@ -128,14 +136,37 @@ export class EditorCanvas {
     preloadDecalImages(this.doc, () => this.invalidate());
     this.layers = computeLayers(this.doc);
     if (!this.layers.some((l) => l.id === this.layerId)) this.layerId = OVERWORLD;
-    this.terrain.clear();
-    for (const spec of this.layers) {
-      // Labels stay out of the baked art — drawn live every frame instead.
-      this.terrain.set(
-        spec.id,
-        renderTerrain(this.doc, this.floorTex, this.landmarkTex, spec, { omitLabels: true }),
-      );
+    this.freeTerrain();
+    this.bakeLayer(this.activeLayer());
+  }
+
+  /** Release every cached terrain canvas' backing store immediately (not just
+   * drop the reference — zeroing width/height frees the pixels synchronously). */
+  private freeTerrain(): void {
+    for (const art of this.terrain.values()) {
+      art.canvas.width = 0;
+      art.canvas.height = 0;
     }
+    this.terrain.clear();
+  }
+
+  /** Bake one layer's terrain at the same reduced resolution the game board
+   * uses, freeing any prior bake of that same layer first. Labels stay out of
+   * the baked art — drawn live every frame instead. */
+  private bakeLayer(spec: LayerSpec, extra?: { omitEdgesOf?: string | ReadonlySet<string> }): void {
+    const prev = this.terrain.get(spec.id);
+    if (prev) {
+      prev.canvas.width = 0;
+      prev.canvas.height = 0;
+    }
+    this.terrain.set(
+      spec.id,
+      renderTerrain(this.doc, this.floorTex, this.landmarkTex, spec, {
+        omitLabels: true,
+        resolution: TERRAIN_RES,
+        ...extra,
+      }),
+    );
   }
 
   /**
@@ -151,14 +182,7 @@ export class EditorCanvas {
   /** Same as beginNodeDrag, but for a whole moving group of nodes. */
   beginGroupDrag(ids: ReadonlySet<string>): void {
     this.dragNodes = ids;
-    const layer = this.activeLayer();
-    this.terrain.set(
-      layer.id,
-      renderTerrain(this.doc, this.floorTex, this.landmarkTex, layer, {
-        omitEdgesOf: ids,
-        omitLabels: true,
-      }),
-    );
+    this.bakeLayer(this.activeLayer(), { omitEdgesOf: ids });
   }
 
   layerIds(): string[] {
@@ -183,6 +207,10 @@ export class EditorCanvas {
 
   setLayer(id: string): void {
     this.layerId = id;
+    // Hold only the layer we're viewing: free the outgoing bake, make the new
+    // one. Pockets are small; the overworld is only baked while it's on screen.
+    this.freeTerrain();
+    this.bakeLayer(this.activeLayer());
     this.fitView();
   }
 
@@ -360,7 +388,15 @@ export class EditorCanvas {
 
     if (art) {
       // renderTerrain pads by its margin and is cropped to the layer bounds.
-      ctx.drawImage(art.canvas, layer.bounds.x - 200, layer.bounds.y - 200);
+      // The bake is now at art.resolution (< 1) to keep the backing store small,
+      // so scale the blit back up to world size — same as the game board.
+      ctx.drawImage(
+        art.canvas,
+        layer.bounds.x - 200,
+        layer.bounds.y - 200,
+        art.canvas.width / art.resolution,
+        art.canvas.height / art.resolution,
+      );
     }
 
     // Snap grid, faint and dotted, clipped to the layer's neighborhood.
@@ -436,10 +472,15 @@ export class EditorCanvas {
     const nodes = this.doc.nodes
       .filter((n) => layer.nodeIds.has(n.id))
       .sort((a, b) => a.y - b.y);
+    // Enemy-space difficulty badges (T1/T2/T3), same as the live board so an
+    // editor can see at a glance what a wild/elite space will spawn.
+    const tiers = computeEnemyTiers(this.doc);
     for (const n of nodes) {
       drawSpaceDisc(ctx, n, {
         selected: n.id === o.selectedNode || !!o.selectedNodes?.has(n.id),
       });
+      const tier = tiers.get(n.id);
+      if (tier) drawTierBadge(ctx, n, tier, this.zoom);
     }
     // Pulse on the primary selection: a soft gold breath over the ring.
     if (o.selectedNode) {

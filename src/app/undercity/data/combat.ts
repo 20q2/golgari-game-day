@@ -156,6 +156,8 @@ export const STATUS_INFO: Record<string, StatusInfo> = {
     blurb: 'Cursed: -4 DEF this battle.' },
   high_five: { label: 'High Five', icon: 'back_hand', tone: 'buff',
     blurb: '+1 ATK/DEF/SPD this battle.' },
+  trophy: { label: 'Soul Trophy', icon: 'military_tech', tone: 'buff',
+    blurb: 'A trophy from the slain: +[foe level] to a chosen stat this battle.' },
 };
 
 export interface StatusChip {

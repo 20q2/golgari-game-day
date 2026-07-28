@@ -228,25 +228,6 @@ def test_elite_space_resolves_to_elite_battle(table, monkeypatch):
     assert ev['npc']['id'] in {'fetid_imp', 'rot_shambler'}
 
 
-def test_wilderness_wild_space_uses_wilderness_pool(table):
-    act(table, 'join', starter='pest')
-    sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex')
-    ids = {n['id'] for n in data.WILDERNESS_NPCS}
-    ev = db._wild_battle(table, sid, doc, elite=False, region='wilderness')
-    assert ev['type'] == 'battle_start'
-    assert ev['npc']['id'] in ids
-
-
-def test_wilderness_elite_space_uses_wilderness_elite_pool(table):
-    act(table, 'join', starter='pest')
-    sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex')
-    ids = {n['id'] for n in data.WILDERNESS_ELITE_NPCS}
-    ev = db._wild_battle(table, sid, doc, elite=True, region='wilderness')
-    assert ev['npc']['id'] in ids
-
-
 def test_non_wilderness_battle_still_uses_base_pools(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)
@@ -260,6 +241,30 @@ def test_wilderness_monsters_are_tougher_than_base_elites(table):
     base_max_hp = max(n['hp'] for n in data.ELITE_NPCS)
     assert min(n['hp'] for n in data.WILDERNESS_NPCS) > max(n['hp'] for n in data.NPCS)
     assert min(n['hp'] for n in data.WILDERNESS_ELITE_NPCS) >= base_max_hp
+
+
+# ── Depths difficulty ladder (design 2026-07-26) ─────────────────────────────
+
+def test_depths_ladder_hp_is_monotonic():
+    """Each rung of the ladder is strictly tougher than the last — no cliffs, no
+    inversions (the malformed roster this change fixes)."""
+    rungs = [max(n['hp'] for n in data.DUNGEON_NPCS.values()),
+             min(n['hp'] for n in data.DEPTHS_MID),
+             min(n['hp'] for n in data.DEPTHS_DEEP),
+             min(n['hp'] for n in data.DEPTHS_ABYSS),
+             min(n['hp'] for n in data.ISLE_APEX)]
+    assert rungs == sorted(rungs) and len(set(rungs)) == len(rungs), rungs
+    # every rung fields all four AI personalities' worth of variety (≥3 distinct)
+    for pool in (data.DEPTHS_MID, data.DEPTHS_DEEP):
+        assert len({n['personality'] for n in pool}) >= 3
+
+
+def test_node_depth_zero_at_mouth_and_grows_inward(table):
+    sid = _sid(table)
+    dm = db._season_depth_map(table, sid)
+    assert dm['city_lb'] == 0                       # the mouth is depth 0
+    assert max(dm.values()) >= 10                   # the dungeon runs genuinely deep
+    assert db._node_depth(table, sid, 'wild_core_n') == 0   # non-depths → 0
 
 
 def test_tier1_tunnel_landing_hops_across_for_free(table):
@@ -636,6 +641,28 @@ def test_landing_on_gate_heals_full(table):
     assert status == 200, resp
     assert resp['heal'] == {'amount': max_hp - 1, 'hp': max_hp, 'kind': 'gate_land'}
     assert resp['you']['hp'] == max_hp
+
+
+def test_get_state_you_reports_effective_maxhp(table):
+    """Regression: getState's `you` must echo the EFFECTIVE maxHp (base + gear +
+    perks) just like the action response (`_ok`) and `_public_player`. When it
+    echoed the raw base maxHp instead, a routine poll landed right after an action
+    and yanked the client's max HP down — below current hp when gear/perks are on
+    (worst right after a level-up heal to full)."""
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['gear'] = {'carapace': 'troll_hide'}          # +6 maxHp over base
+    eff_max = engine.effective_stats(doc)['maxHp']
+    assert eff_max > doc['maxHp']                       # gear really lifts the max
+    doc['hp'] = eff_max                                 # hp healed/clamped to eff max
+    db._put_player(table, doc)
+
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200, state
+    you = state['you']
+    assert you['maxHp'] == eff_max                      # effective, not raw base
+    assert you['maxHp'] >= you['hp']                    # max never below current hp
 
 
 def test_start_on_gate_does_not_heal(table):
@@ -1221,6 +1248,10 @@ def test_excavation_dig_reveals_and_collects(table):
     assert 'healing_moss' in resp['you']['bag']
     assert resp['cleared'] is True                    # last item → reset + bonus
     assert resp['you']['spores'] >= data.EXCAVATION_CLEAR_BONUS
+    # Clearing a dig site pays a crafting-material cache (the ichor/molting tap).
+    assert resp['materials'] == {'ichor': data.EXCAVATION_CLEAR_ICHOR,
+                                 'moltings': data.EXCAVATION_CLEAR_MOLTINGS}
+    assert resp['you']['materials']['ichor'] >= data.EXCAVATION_CLEAR_ICHOR
 
 
 def test_excavation_full_bag_auto_lists_find(table):
@@ -1539,12 +1570,13 @@ def _player_at(table, node, **fields):
     return sid, doc
 
 
-def test_dungeon_wild_is_the_biome_fauna(table, monkeypatch):
-    sid, doc = _player_at(table, 'city_d1')  # a Broodwarrens wild space
+def test_depths_wild_is_tier2(table, monkeypatch):
+    sid, doc = _player_at(table, 'city_d1')  # a depths (dungeon) wild space
     ev = db._wild_battle(table, sid, doc)
-    assert ev['type'] == 'battle_start' and ev['npc']['id'] == 'broodling'
+    assert ev['type'] == 'battle_start'
+    assert ev['npc']['id'] in {n['id'] for n in data.DEPTHS_MID}
     se = _finish_started_battle(table, monkeypatch, doc, 'attacker')
-    assert se['spores'] >= data.DUNGEON_NPCS['city']['bounty']
+    assert se['spores'] >= min(n['bounty'] for n in data.DEPTHS_MID)
 
 
 def test_bone_chill_consumed_by_next_battle(table, monkeypatch):
@@ -1865,6 +1897,9 @@ def test_vein_strike_action_and_guards(table, monkeypatch):
     assert status == 200
     assert resp['depth'] == 4 and resp['strikesLeft'] == 1
     assert resp['you']['spores'] >= 5                       # 1 + level 4
+    # Every strike pays Moltings; ichor is a roll (random()==1.0 here → none).
+    assert resp['moltings'] == data.VEIN_MOLTINGS_PER_STRIKE and resp['ichor'] == 0
+    assert db._materials(db._get_player(table, sid, 'user-alex'))['moltings'] >= 1
 
     doc = db._get_player(table, sid, 'user-alex')
     doc['veinStrikesLeft'] = 0
@@ -1892,8 +1927,29 @@ def test_vein_heartstone_pays_and_resets(table, monkeypatch):
     assert resp['you']['spores'] == spores_before + 13 + data.VEIN_HEARTSTONE_SPORES
     assert resp['spores'] == 13 + data.VEIN_HEARTSTONE_SPORES   # level spores + bonus
     assert resp['you']['bag'] and resp['you']['bag'][0] in data.VEIN_RARE_ITEMS
+    # The Heartstone pays its Ichor jackpot (random()==1.0 → strike roll adds 0).
+    assert resp['ichor'] == data.VEIN_HEARTSTONE_ICHOR
+    assert db._materials(db._get_player(table, sid, 'user-alex'))['ichor'] >= data.VEIN_HEARTSTONE_ICHOR
     rec = db._get(table, db._season_pk(sid), 'VEIN#cavern')
     assert rec['depth'] == 0
+
+
+def test_vein_strike_rolls_ichor_on_a_hit(table, monkeypatch):
+    """A surviving strike rolls a Gemstone (internal key 'ichor'), scaling with depth. Entering
+    level 6 the cave-in threshold is 0.24 and the ichor threshold 0.74, so a
+    constant random()==0.5 both survives the shaft and grants the ichor."""
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'cavern_r3'
+    doc['veinStrikesLeft'] = 1
+    db._put_player(table, doc)
+    db._save_vein(table, sid, 'cavern', 5)                 # entering level 6
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.5)
+    status, resp = act(table, 'strike')
+    assert status == 200 and not resp.get('collapsed')
+    assert resp['ichor'] == 1 and resp['moltings'] == data.VEIN_MOLTINGS_PER_STRIKE
+    assert db._materials(db._get_player(table, sid, 'user-alex'))['ichor'] >= 1
 
 
 def test_vault_landing_refills_picks_and_hides_combo(table):
@@ -2361,6 +2417,9 @@ def test_combat_consumable_auto_win(table, monkeypatch):
 
 def test_all_battle_specs_have_valid_personality():
     specs = list(data.NPCS) + list(data.ELITE_NPCS) + list(data.DUNGEON_NPCS.values()) \
+        + list(data.WILDERNESS_NPCS) + list(data.WILDERNESS_ELITE_NPCS) \
+        + list(data.DEPTHS_MID) + list(data.DEPTHS_DEEP) + list(data.DEPTHS_ABYSS) \
+        + list(data.ISLE_APEX) \
         + list(data.BARRIER_GUARDIANS.values()) + list(data.LAIR_BOSSES.values()) \
         + [data.ROT_SOVEREIGN]
     for s in specs:
@@ -3530,3 +3589,153 @@ def test_export_works_after_the_night_ends(table):
     # A mutating admin cmd is still refused once the night is over.
     status, _ = act(table, 'admin', hostKey='swampking', cmd='broadcast', text='hi')
     assert status == 409
+
+
+
+# ── Soul Trophy (Deathrite Shaman): post-win stat-choice buff ─────────────────
+
+def _make_deathrite(table, user='user-alex'):
+    doc = db._get_player(table, _sid(table), user)
+    doc['form'] = 'deathrite_shaman'
+    doc['tier'] = 2
+    doc['passives'] = ['regrowth', 'soul_trophy']
+    assert db._put_player(table, doc)
+    return db._get_player(table, _sid(table), user)
+
+
+def test_soul_trophy_win_offers_menu(table, monkeypatch):
+    act(table, 'join', starter='zombie')
+    doc = _make_deathrite(table)
+    db._wild_battle(table, _sid(table), doc)          # mutates doc in place
+    npc = doc['battle']['npc']
+    expected = data.enemy_level(npc['atk'], npc['dfn'], npc['spd'], npc['maxHp'])
+    se = _finish_started_battle(table, monkeypatch, doc, 'attacker')
+    assert se['trophy'] == {'amount': expected}
+    assert db._get_player(table, _sid(table), 'user-alex')['pendingTrophy'] == {'amount': expected}
+
+
+def test_trophy_choose_applies_one_battle_buff(table, monkeypatch):
+    act(table, 'join', starter='zombie')
+    doc = _make_deathrite(table)
+    db._wild_battle(table, _sid(table), doc)
+    npc = doc['battle']['npc']
+    amount = data.enemy_level(npc['atk'], npc['dfn'], npc['spd'], npc['maxHp'])
+    _finish_started_battle(table, monkeypatch, doc, 'attacker')
+
+    status, resp = act(table, 'trophy-choose', stat='atk')
+    assert status == 200, resp
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    assert {'kind': 'trophy', 'stat': 'atk', 'amount': amount} in doc['buffs']
+    assert not doc.get('pendingTrophy')
+    base = engine.effective_stats({**doc, 'buffs': []})['atk']
+    assert engine.effective_stats(doc)['atk'] == base + amount
+
+
+def test_trophy_buff_consumed_after_next_fight(table, monkeypatch):
+    act(table, 'join', starter='zombie')
+    doc = _make_deathrite(table)
+    db._wild_battle(table, _sid(table), doc)
+    _finish_started_battle(table, monkeypatch, doc, 'attacker')
+    act(table, 'trophy-choose', stat='spd')
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    assert any(b.get('kind') == 'trophy' for b in doc['buffs'])
+    # Fight again: the trophy buff should be consumed as a one-battle buff.
+    db._wild_battle(table, _sid(table), doc)
+    _finish_started_battle(table, monkeypatch, doc, 'attacker')
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    assert not any(b.get('kind') == 'trophy' for b in doc['buffs'])
+
+
+def test_trophy_choose_rejects_without_pending(table):
+    act(table, 'join', starter='zombie')
+    _make_deathrite(table)
+    status, resp = act(table, 'trophy-choose', stat='atk')
+    assert status == 409, resp
+
+
+def test_trophy_choose_rejects_bad_stat(table, monkeypatch):
+    act(table, 'join', starter='zombie')
+    doc = _make_deathrite(table)
+    db._wild_battle(table, _sid(table), doc)
+    _finish_started_battle(table, monkeypatch, doc, 'attacker')
+    status, resp = act(table, 'trophy-choose', stat='maxHp')
+    assert status == 400, resp
+
+
+def test_non_deathrite_win_offers_no_trophy(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    db._wild_battle(table, sid, doc)
+    se = _finish_started_battle(table, monkeypatch, doc, 'attacker')
+    assert 'trophy' not in se
+    assert not db._get_player(table, sid, 'user-alex').get('pendingTrophy')
+
+
+# ── Region-gated enemy tiers (design 2026-07-26-region-tier) ──────────────────
+
+def test_region_tier_mapping():
+    assert data.region_tier('city') == 1
+    assert data.region_tier('garden') == 1 and data.region_tier('bog') == 1
+    assert data.region_tier('ruin') == 2 and data.region_tier('depths') == 2
+    assert data.region_tier('wilderness') == 3 and data.region_tier('isle') == 3
+    assert data.region_tier('anything_else') == 1   # safe default
+    assert data.region_tier(None) == 1
+
+
+def test_tier_pools_compose_existing_rosters():
+    t = data.TIER_NPCS
+    assert t[1]['wild'] is data.NPCS and t[1]['elite'] is data.ELITE_NPCS
+    assert t[2]['wild'] is data.DEPTHS_MID and t[2]['elite'] is data.WILDERNESS_NPCS
+    assert {n['id'] for n in t[3]['wild']} == (
+        {n['id'] for n in data.DEPTHS_DEEP} | {n['id'] for n in data.WILDERNESS_ELITE_NPCS})
+    assert {n['id'] for n in t[3]['elite']} == (
+        {n['id'] for n in data.DEPTHS_ABYSS} | {n['id'] for n in data.ISLE_APEX})
+
+
+def test_tier_wild_hp_ceilings_ascend():
+    hp = lambda pool: max(n['hp'] for n in pool)
+    assert hp(data.TIER_NPCS[1]['wild']) < hp(data.TIER_NPCS[2]['wild']) < hp(data.TIER_NPCS[3]['wild'])
+
+
+def test_city_wild_and_elite_use_tier1(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    wild = db._wild_battle(table, sid, doc, region='city')
+    assert wild['npc']['id'] in {n['id'] for n in data.NPCS}
+    elite = db._wild_battle(table, sid, doc, region='city', elite=True)
+    assert elite['npc']['id'] in {n['id'] for n in data.ELITE_NPCS}
+
+
+def test_ruin_is_tier2_not_tier1(table):
+    """The bug this fixes: the Ruinways used to fall through to tier-1 NPCS."""
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    ev = db._wild_battle(table, sid, doc, region='ruin')
+    assert ev['npc']['id'] in {n['id'] for n in data.DEPTHS_MID}
+    assert ev['npc']['id'] not in {n['id'] for n in data.NPCS}
+
+
+def test_depths_is_flat_tier2_regardless_of_depth(table):
+    """No more depth ladder: a shallow AND a deep depths node both pull tier 2."""
+    sid = _sid(table)
+    mid_ids = {n['id'] for n in data.DEPTHS_MID}
+    for node in ('city_lb', 'city_d1'):           # both region='depths'
+        _, doc = _player_at(table, node)
+        ids = {db._wild_battle(table, sid, doc)['npc']['id'] for _ in range(20)}
+        assert ids and ids <= mid_ids, (node, ids)
+
+
+def test_wilderness_and_isle_use_tier3(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    t3_wild = {n['id'] for n in data.DEPTHS_DEEP} | {n['id'] for n in data.WILDERNESS_ELITE_NPCS}
+    t3_elite = {n['id'] for n in data.DEPTHS_ABYSS} | {n['id'] for n in data.ISLE_APEX}
+    for region in ('wilderness', 'isle'):
+        w = {db._wild_battle(table, sid, doc, region=region)['npc']['id'] for _ in range(30)}
+        assert w and w <= t3_wild, (region, w)
+        e = {db._wild_battle(table, sid, doc, region=region, elite=True)['npc']['id'] for _ in range(30)}
+        assert e and e <= t3_elite, (region, e)

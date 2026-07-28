@@ -55,6 +55,14 @@ Every spell that hits (or fizzles against) you lands in your inbox:
 > with two innate spells (doubled to +4 by a Squirrel Warrior, and its cooldown is
 > halved by `spell_haste`). Keyed by `SPECIES_SPELLS` in `undercity_data.py`.
 
+> **Form innate:** a *form* can also grant an innate spell via `FORM_SPELLS` in
+> `undercity_data.py` (keyed by the form's passive). The **Shambling Shell** (passive
+> `rootwall`) always knows **Mend Flesh** (self-heal +12, 20 min). Because passives
+> accumulate through evolution, the form's apexes (Grave Titan / Golgari Lich Lord)
+> keep it, and existing live creatures gain it with no migration. Server gathers all
+> three sources in `_innate_spell_ids(doc)`; the client mirror is `FORM_SPELLS` +
+> `innateSpellIds(homeBiome, species, passives)` in `spells.ts`.
+
 ### Grimoire spells
 
 | Spell | Tier | Effect | Range | Cooldown |
@@ -134,7 +142,7 @@ Mystery spaces: when the d12 lands on a "free item" outcome, there's a 25% chanc
 
 | Concern | File |
 | --- | --- |
-| Spell/grimoire/balance tables (source of truth) | `infrastructure/lambda/undercity_data.py` — `SPELLS`, `GRIMOIRES`, `BIOME_SPELLS`, `SPELL_DODGE_*`, `AWAY_EVENTS_CAP`, `GRIMOIRE_DUPLICATE_SPORES`, `MYSTERY_GRIMOIRE_CHANCE`. Each `SPELLS` entry also carries the client `icon` + `desc` (server ignores them at runtime; the generator ships them to the client) |
+| Spell/grimoire/balance tables (source of truth) | `infrastructure/lambda/undercity_data.py` — `SPELLS`, `GRIMOIRES`, `BIOME_SPELLS`, `SPECIES_SPELLS`, `FORM_SPELLS`, `SPELL_DODGE_*`, `AWAY_EVENTS_CAP`, `GRIMOIRE_DUPLICATE_SPORES`, `MYSTERY_GRIMOIRE_CHANCE`. Each `SPELLS` entry also carries the client `icon` + `desc` (server ignores them at runtime; the generator ships them to the client) |
 | Client mirror generator | `infrastructure/lambda/sync_spells.py` — renders `src/app/undercity/data/spells.generated.ts` from the Python tables. `tests/test_spells_generated.py` fails while the committed file is stale |
 | Pure math (BFS range, dodge %) | `infrastructure/lambda/undercity_engine.py` — `board_distance()`, `spell_dodge_chance()`; spell buff kinds in `effective_stats()` |
 | Cast resolution + persistence | `infrastructure/lambda/undercity_db.py` — "Spells" section: `_cast`, `_cast_at_player`, `_cast_teleport`, `_cast_boss_strike`, `_equip_grimoire`, `_ack_events`, plus `_grant_grimoire` (acquisition) and the grimoire branches in `_buy` / `_mystery` |

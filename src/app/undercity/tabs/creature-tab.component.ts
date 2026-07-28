@@ -428,7 +428,7 @@ export class CreatureTabComponent {
   protected readonly innateSpells = computed<SpellInfo[]>(() => {
     const you = this.store.you();
     if (!you) return [];
-    return innateSpellIds(you.homeBiome, you.species)
+    return innateSpellIds(you.homeBiome, you.species, you.passives)
       .map((id) => SPELL_MAP[id])
       .filter((sp): sp is SpellInfo => !!sp);
   });

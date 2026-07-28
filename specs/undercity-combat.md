@@ -93,9 +93,13 @@ Combat consumables map to three general one-round modifiers on `resolve_round`:
 
 ## 3. Add an enemy
 
-1. **Pick the table** in `undercity_data.py`: overworld fodder → `NPCS`;
-   elite spaces → `ELITE_NPCS`; a dungeon's themed wild → `DUNGEON_NPCS[biome]`;
-   a barrier → `BARRIER_GUARDIANS[node]`; a lair mini-boss → `LAIR_BOSSES[node]`.
+1. **Pick the table** in `undercity_data.py`. Wild/elite spaces are chosen by
+   **region tier** (see below), so add a foe to the pool for the tier you want it
+   at: tier 1 → `NPCS`/`ELITE_NPCS`, tier 2 → `DEPTHS_MID`/`WILDERNESS_NPCS`,
+   tier 3 → `DEPTHS_DEEP`+`WILDERNESS_ELITE_NPCS` / `DEPTHS_ABYSS`+`ISLE_APEX`.
+   A barrier → `BARRIER_GUARDIANS[node]`; a lair mini-boss → `LAIR_BOSSES[node]`.
+   (`DUNGEON_NPCS[biome]` is no longer used for combat selection — see the region
+   note below.)
 2. **Add the spec** (template):
    ```python
    {'id': 'my_beast', 'name': 'My Beast',
@@ -115,6 +119,25 @@ Combat consumables map to three general one-round modifiers on `resolve_round`:
 4. **Test:** `test_all_battle_specs_have_valid_personality` covers the shape; add
    a flow test with `_finish_started_battle` if the kind is new. Keep
    `test_balance_good_play_beats_fodder` green.
+
+### Region-gated tiers (design 2026-07-26-region-tier)
+
+Wild/elite difficulty is decided by **which region** a space sits in — flat
+within a region, no depth scaling. `_wild_battle` resolves the node's region,
+then picks `region → data.region_tier() → data.TIER_NPCS[tier]['wild'|'elite']`:
+
+| Tier | Regions | Wild pool | Elite pool |
+|---|---|---|---|
+| 1 | `city`, `garden`, `bone`, `cavern`, `bog` | `NPCS` | `ELITE_NPCS` |
+| 2 | `ruin`, `depths` | `DEPTHS_MID` | `WILDERNESS_NPCS` |
+| 3 | `wilderness`, `isle` | `DEPTHS_DEEP`+`WILDERNESS_ELITE_NPCS` | `DEPTHS_ABYSS`+`ISLE_APEX` |
+
+An unknown region defaults to tier 1. Elites are the *same tier's* tougher pool
+(they never jump a tier). This replaced the depth-gated ladder (`_depths_enemy`,
+removed): difficulty now comes from travelling into a harder region, not from
+digging deeper. `_node_depth` and `DUNGEON_NPCS` remain defined (map contract)
+but are unused by combat. See
+[2026-07-26-undercity-region-tier-enemies-design.md](2026-07-26-undercity-region-tier-enemies-design.md).
 
 ## 4. Add equipment
 
@@ -157,6 +180,23 @@ a Mythic = one tier-4 `GEAR` entry (auto-indexes into `GEAR_FAMILY[rider][4]`) +
   `auto_win`/`double_punish`/`negate`. A genuinely new mechanic needs a new
   optional modifier arg on `engine.resolve_round` + an engine test. Reveal-style
   effects go through `combat-peek`, not `combat-round`.
+
+### Soul Trophy — a variable-amount one-battle buff
+
+The Deathrite Shaman's `soul_trophy` passive is the one buff whose magnitude is
+*dynamic*. Where every other buff resolves to a fixed delta keyed by `kind`, a
+trophy buff carries its numbers on the entry itself:
+`{'kind': 'trophy', 'stat': 'atk'|'def'|'spd', 'amount': N}`. `effective_stats`
+reads `stat`/`amount` off the buff; `kind` is in `ONE_BATTLE_BUFFS` so it clears
+after the next fight.
+
+Flow: on any won fight (`outcome == 'attacker'`) `_finish_battle` sets
+`doc['pendingTrophy'] = {'amount': foe level}` (via `data.enemy_level`) and echoes
+`spaceEvent.trophy`. The client shows a stat menu and posts the **`trophy-choose`**
+`{stat}` action, which banks the buff and clears `pendingTrophy`. A later win
+overwrites an unclaimed trophy; only one is ever live because winning the next
+fight consumes it. Client menu lives in `board-tab` (`pendingTrophy` signal +
+`chooseTrophy`), chip label in `combat.ts STATUS_INFO['trophy']`.
 
 ## 6. Invariants
 

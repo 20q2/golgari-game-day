@@ -38,13 +38,12 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   woodwraith_strangler: { sprite: 'myconid_sporetender', regions: MASK_REGIONS, scale: 1.05 },
   shambling_shell: { sprite: 'shambling_shell', regions: MASK_REGIONS, scale: 1.0 },
   corpsejack_menace: { sprite: 'corpsejack_menace', regions: MASK_REGIONS, scale: 0.95 },
-  // Deathrite Shaman has no dedicated art yet — reuse the zombie pawn as placeholder.
-  deathrite_shaman: { sprite: 'zombie', regions: MASK_REGIONS, scale: 1.0 },
+  deathrite_shaman: { sprite: 'deathrite_shaman', regions: MASK_REGIONS, scale: 1.0 },
   // Apexes
   grave_titan: { sprite: 'grave_titan', regions: MASK_REGIONS, scale: 1.25 },
   golgari_lich_lord: { sprite: 'golgari_lich_lord', regions: MASK_REGIONS, scale: 1.3 },
   swamp_dragon: { sprite: 'swamp_dragon', regions: MASK_REGIONS, scale: 1.3 },
-  izoni: { sprite: 'diplo', regions: MASK_REGIONS, scale: 1.3 }, // still Dino Party placeholder
+  izoni: { sprite: 'daemogoth', regions: MASK_REGIONS, scale: 1.3 },
   // Squirrel T2/T3
   squirrel_warrior: { sprite: 'squirrel_general', regions: MASK_REGIONS, scale: 1.0 },
   squirrel_mage: { sprite: 'squirrel_mage', regions: MASK_REGIONS, scale: 1.0 },

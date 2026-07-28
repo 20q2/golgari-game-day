@@ -59,7 +59,7 @@
         </button>
         <span class="forge-mats">
           <span class="mat-chip mtl" title="Moltings"><mat-icon class="mi">grass</mat-icon> {{ materials().moltings }}</span>
-          <span class="mat-chip ich" title="Chrysalis Ichor"><mat-icon class="mi">science</mat-icon> {{ materials().ichor }}</span>
+          <span class="mat-chip ich" title="Gemstone"><mat-icon class="mi">diamond</mat-icon> {{ materials().ichor }}</span>
         </span>
       </div>
     }
@@ -81,7 +81,7 @@
           <span class="forge-mats">
             @if (b !== 'market') {
               <span class="mat-chip mtl" title="Moltings"><mat-icon class="mi">grass</mat-icon> {{ materials().moltings }}</span>
-              <span class="mat-chip ich" title="Chrysalis Ichor"><mat-icon class="mi">science</mat-icon> {{ materials().ichor }}</span>
+              <span class="mat-chip ich" title="Gemstone"><mat-icon class="mi">diamond</mat-icon> {{ materials().ichor }}</span>
             }
             @if (b === 'blacksmith' || b === 'market') {
               <span class="mat-chip spore"><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ store.you()?.spores ?? 0 }}</span>
@@ -102,7 +102,7 @@
               <span class="forge-actions">
                 <button class="uc-btn" [disabled]="busy()" (click)="equip(row.index)">Equip</button>
                 <button class="uc-btn" [disabled]="busy()" (click)="salvage(row.index, 'grind')">
-                  Grind +{{ salvageYield(row.info.tier).moltings }}<mat-icon class="mi tiny">grass</mat-icon>@if (salvageYield(row.info.tier).ichor) {&nbsp;+{{ salvageYield(row.info.tier).ichor }}<mat-icon class="mi tiny">science</mat-icon>}
+                  Grind +{{ salvageYield(row.info.tier).moltings }}<mat-icon class="mi tiny">grass</mat-icon>@if (salvageYield(row.info.tier).ichor) {&nbsp;+{{ salvageYield(row.info.tier).ichor }}<mat-icon class="mi tiny">diamond</mat-icon>}
                 </button>
                 <button class="uc-btn" [disabled]="busy()" (click)="salvage(row.index, 'sell')">Sell +{{ sellSpores(row.info) }}</button>
               </span>
@@ -124,7 +124,7 @@
               </span>
               <button class="uc-btn forge-upgrade" [disabled]="busy() || !!upgradeReason(row.cost)" (click)="upgrade(row)">
                 {{ row.cost.spores }}<img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-                · {{ row.cost.moltings }}<mat-icon class="mi tiny">grass</mat-icon>@if (row.cost.ichor) {&nbsp;· {{ row.cost.ichor }}<mat-icon class="mi tiny">science</mat-icon>}
+                · {{ row.cost.moltings }}<mat-icon class="mi tiny">grass</mat-icon>@if (row.cost.ichor) {&nbsp;· {{ row.cost.ichor }}<mat-icon class="mi tiny">diamond</mat-icon>}
               </button>
               @if (!busy() && upgradeReason(row.cost); as r) { <span class="block-reason">{{ r }}</span> }
             </div>

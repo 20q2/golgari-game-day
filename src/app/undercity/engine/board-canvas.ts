@@ -32,6 +32,7 @@ import {
   TERRAIN_RES,
 } from './board-terrain';
 import { computeLayers, layerIndex, OVERWORLD, LayerSpec } from './board-layers';
+import { computeEnemyTiers, drawTierBadge, EnemyTier } from './board-enemy-tier';
 import { WORLD_EVENT_SPRITE } from '../data/world-event';
 import { WorldEventState } from '../services/undercity-models';
 
@@ -363,6 +364,8 @@ export class BoardCanvas {
   private lockedIds = new Set<string>();
   /** Own token's evolution tier; > 1 greys out the Tier-1-only tunnels. */
   private ownTier = 1;
+  /** {wild/elite node id -> difficulty tier} for the T1/T2/T3 space badges. */
+  private enemyTiers = new Map<string, EnemyTier>();
   // Real transparent guardian art, lazily loaded from undercity/guardians/<id>.png.
   // Missing files (the folder is a placeholder for now) fall back to a token sprite.
   private guardianTex = new Map<string, HTMLImageElement>();
@@ -556,6 +559,7 @@ export class BoardCanvas {
     this.revealAll = !this.interactive;
     this.ctx = canvas.getContext('2d')!;
     for (const n of map.nodes) this.nodeMap.set(n.id, n);
+    this.enemyTiers = computeEnemyTiers(map);
     this.layerSpecs = computeLayers(map);
     this.layerOf = layerIndex(this.layerSpecs);
     for (const spec of this.layerSpecs) {
@@ -1552,6 +1556,12 @@ export class BoardCanvas {
       ctx.stroke();
       ctx.setLineDash([]);
     }
+
+    // Enemy spaces wear a small T1/T2/T3 badge grading how tough a foe spawns
+    // here (mirrors the server enemy-pool ladder — see board-enemy-tier.ts).
+    const tier = this.enemyTiers.get(n.id);
+    if (tier && !sealed && !this.lockedIds.has(n.id)) drawTierBadge(ctx, n, tier, this.zoom);
+
     ctx.restore();
   }
 

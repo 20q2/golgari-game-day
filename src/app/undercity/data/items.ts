@@ -141,7 +141,7 @@ export const GEAR: GearInfo[] = [
     desc: '+1 ATK · Illuminated: reveals the entire dungeon while equipped.' },
   { id: 'glowspore_charm', name: 'Glowspore Charm', slot: 'charm', tier: 1, cost: 30, light: 'full',
     desc: 'Bioluminescent: reveals the entire dungeon while equipped.' },
-  // Mythic (tier 4) — craft-only; forge a Legendary at the Blacksmith for 3 Chrysalis Ichor.
+  // Mythic (tier 4) — craft-only; forge a Legendary at the Blacksmith for 3 Gemstones.
   { id: 'wyrm_godtooth', name: 'Wyrm Godtooth', slot: 'fang', tier: 4, cost: 150, rider: 'barbed', atk: 8, spd: 1,
     desc: '+8 ATK, +1 SPD · Barbed: Aggress applies rot even on a loss.' },
   { id: 'sanguine_leviathan', name: 'Sanguine Leviathan', slot: 'fang', tier: 4, cost: 150, rider: 'bloodfang', atk: 8, spd: 1,
@@ -471,9 +471,10 @@ export const SPACE_BLURBS: Record<string, string> = {
   mystery: 'Roll the d12 mystery table — fortune, junk, or misfortune.',
   shop: 'Buy gear and consumables for Spores.',
   trading_post: 'Swap one of your consumables for one left here by another player.',
-  excavation: 'A dig site — buried finds show through the dirt; dig out each one to claim it. 4 digs per visit.',
+  excavation:
+    'A dig site — buried finds show through the dirt; dig each one out to claim it. Clear the whole grid for a Spore bonus plus Gemstones & Moltings — the materials that upgrade your gear. 6 digs per visit.',
   crystal_vein:
-    'A shared mineshaft — every strike digs the whole region deeper. Loot and cave-in risk climb together. First swing is mandatory; 3 per visit.',
+    'A shared mineshaft — every strike digs the region deeper for Spores, Moltings, and Gemstones (deeper strikes pay more) — the materials for gear upgrades. Cave-in risk climbs with depth; the Heartstone at the bottom is the jackpot. First swing is mandatory; 3 per visit.',
   vault_lock:
     'The Guildvault: crack the hidden 3-sigil combination. Every failed pick is public intel on the wall — and fattens the pot. 3 picks per visit.',
   shrine: 'Spend 15 Spores for a lasting blessing: +1 ATK, DEF, or SPD, or a full heal.',

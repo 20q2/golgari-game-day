@@ -739,6 +739,12 @@ def effective_stats(player: dict) -> dict:
             eff['atk'] += 1 * mult
             eff['def'] += 1 * mult
             eff['spd'] += 1 * mult
+        elif kind == 'trophy':
+            # Soul Trophy (Deathrite Shaman): a variable +N to a chosen stat for
+            # one battle. The amount + stat ride on the buff entry itself.
+            stat = buff.get('stat')
+            if stat in ('atk', 'def', 'spd'):
+                eff[stat] += int(buff.get('amount', 0))
     # Carapace Grind (DEF-12 perk): a flat Max HP bump while the perk is held.
     # Derived here (not persisted) so it appears in state and combat and vanishes
     # cleanly if the perk ever stops applying — same layer as gear maxHp.

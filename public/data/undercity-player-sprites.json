@@ -12,8 +12,8 @@
     },
     {
       "name": "clamity_beast",
-      "hasMask": false,
-      "hasHat": false
+      "hasMask": true,
+      "hasHat": true
     },
     {
       "name": "corpsejack_menace",
@@ -21,9 +21,19 @@
       "hasHat": false
     },
     {
+      "name": "daemogoth",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
+      "name": "deathrite_shaman",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
       "name": "golgari_lich_lord",
-      "hasMask": false,
-      "hasHat": false
+      "hasMask": true,
+      "hasHat": true
     },
     {
       "name": "golgari_longlegs",

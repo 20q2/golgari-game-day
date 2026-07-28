@@ -251,6 +251,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
    *  result closes — synthesized into a world_kill note so it reuses the away
    *  modal's raid rendering. */
   private pendingRaidSummary: AwayEvent | null = null;
+  /** Soul Trophy amount (foe level) captured on a won fight, held until the
+   *  victory screen is dismissed, then surfaced via `pendingTrophy`. */
+  private pendingTrophyAmount: number | null = null;
+  /** Drives the Soul Trophy stat-choice modal; null = closed. */
+  protected readonly pendingTrophy = signal<number | null>(null);
   private sigilTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly showVein = signal(false);
   protected readonly veinDepth = signal(0);
@@ -1952,6 +1957,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         resultText: ev.text,
         rewards: this.buildRewards(ev),
       });
+      this.pendingTrophyAmount =
+        ev.battle?.outcome === 'attacker' && ev.trophy ? ev.trophy.amount : null;
     } else if (ev.type === 'warp' && ev.options) {
       this.showWarp.set(ev.options);
       this.store.openFacility.set({ kind: 'warp', warpOptions: ev.options });
@@ -2356,6 +2363,28 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   closeBattle(): void {
     this.battleView.set(null);
     void this.store.refresh();
+    this.openPendingTrophy();
+  }
+
+  /** Surface a captured Soul Trophy once the victory screen has closed. */
+  private openPendingTrophy(): void {
+    if (this.pendingTrophyAmount != null) {
+      this.pendingTrophy.set(this.pendingTrophyAmount);
+      this.pendingTrophyAmount = null;
+    }
+  }
+
+  /** Claim the Soul Trophy: bank +amount into the chosen stat for the next fight. */
+  async chooseTrophy(stat: 'atk' | 'def' | 'spd'): Promise<void> {
+    this.pendingTrophy.set(null);
+    await this.run(async () => {
+      await this.store.action('trophy-choose', { stat });
+    });
+  }
+
+  /** Walk away from the trophy (forfeit the buff). */
+  dismissTrophy(): void {
+    this.pendingTrophy.set(null);
   }
 
   // ── Interactive PvE battle (Plan 3) ──────────────────────────────────────────
@@ -2566,6 +2595,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // A first-kill lair boss reports the sigil it drops — remember it so the
     // sunburst fanfare can fire once the player dismisses the victory screen.
     this.pendingSigilBiome = outcome === 'attacker' && ev.sigil ? ev.sigil : null;
+    this.pendingTrophyAmount =
+      outcome === 'attacker' && ev.trophy ? ev.trophy.amount : null;
     const text = ev.text ?? '';
     if (ev.worldKill && ev.reward && ev.raid) {
       this.pendingRaidSummary = {
@@ -2597,6 +2628,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     await this.store.refresh(); // so poiClaims / stash reflect the just-won loot
     if (raid) this.awayModal.set([raid]);
     if (biome) this.openSigilCelebration(biome);
+    this.openPendingTrophy();
   }
 
   /** Release the level-up hold once every higher-priority celebration is gone,

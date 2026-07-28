@@ -50,11 +50,11 @@
 @keyframes uc-rise {
   from {
     opacity: 0;
-    transform: translate(-50%, 8px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
 }
 
@@ -136,13 +136,19 @@
   vertical-align: middle;
 }
 
-.forge-modal {
+.uc-modal-backdrop {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.forge-modal {
   width: min(92vw, 460px);
-  max-height: 80vh;
+  max-height: 100%;
   overflow-y: auto;
   background: rgba(18, 20, 16, 0.98);
   border: 1px solid rgba(74, 124, 89, 0.5);

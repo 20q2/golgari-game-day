@@ -272,6 +272,44 @@ def _season_map(table, sid):
     return cached
 
 
+_season_depth_cache = {}   # sid -> {depths node id -> hops from its biome mouth}
+
+
+def _season_depth_map(table, sid):
+    """Hop-distance of every depths node from its biome's ladder mouth
+    (`<biome>_lb`), BFS'd once per night and cached. No longer drives enemy
+    difficulty (that is region-gated now — see `data.region_tier`); retained as a
+    general depth utility (`_node_depth`) and its test. Works for both procedural
+    and committed boards without stamping — mapgen already guarantees the mouth
+    reaches every pocket node."""
+    cached = _season_depth_cache.get(sid)
+    if cached is not None:
+        return cached
+    nodes = _season_map(table, sid)
+    depth = {}
+    for biome in data.BIOMES:
+        mouth = f'{biome}_lb'
+        if mouth not in nodes:
+            continue
+        depth[mouth] = 0
+        queue, i = [mouth], 0
+        while i < len(queue):
+            cur = queue[i]
+            i += 1
+            for nb in nodes.get(cur, {}).get('neighbors', []):
+                n = nodes.get(nb)
+                if n and n.get('region') == 'depths' and nb not in depth:
+                    depth[nb] = depth[cur] + 1
+                    queue.append(nb)
+    _season_depth_cache[sid] = depth
+    return depth
+
+
+def _node_depth(table, sid, node_id):
+    """Depth (hops from the biome mouth) of a depths node; 0 for anything else."""
+    return _season_depth_map(table, sid).get(node_id, 0)
+
+
 def _active_season(table):
     meta = _get(table, META_PK, 'CURRENT')
     if not meta:
@@ -445,6 +483,19 @@ def _get_perm(table, user_id):
 
 def _passives(doc):
     return frozenset(doc.get('passives') or [])
+
+
+def _innate_spell_ids(doc):
+    """Every always-castable innate spell id: home-biome innate, starter-species
+    signature, and any FORM_SPELLS granted by a form passive the creature holds
+    (persists through evolution because passives accumulate)."""
+    ids = {data.BIOME_SPELLS.get(doc.get('homeBiome')),
+           data.SPECIES_SPELLS.get(doc.get('species'))}
+    for p in _passives(doc):
+        if p in data.FORM_SPELLS:
+            ids.add(data.FORM_SPELLS[p])
+    ids.discard(None)
+    return ids
 
 
 def _blocked_nodes(doc):
@@ -716,7 +767,7 @@ def _creature_label(doc):
 
 ONE_BATTLE_BUFFS = ('rot_surge', 'acorn_fury', 'bone_chill', 'glowveil', 'harden_shell',
                     'weaken_hex', 'savage_roar', 'iron_hide', 'fleetfoot', 'warding_dance',
-                    'sap_vigor', 'rust_curse', 'high_five')
+                    'sap_vigor', 'rust_curse', 'high_five', 'trophy')
 
 
 def _consume_one_battle_buffs(doc):
@@ -784,6 +835,15 @@ def _grind_materials(doc, gid):
     m['moltings'] += gained['moltings']
     m['ichor'] += gained['ichor']
     return gained
+
+
+def _mine_materials(doc, ichor=0, moltings=0):
+    """Award crafting materials from mining (vein / excavation) into the player's
+    counters, the same path salvage uses. Returns the amounts gained."""
+    m = _materials(doc)
+    m['moltings'] += moltings
+    m['ichor'] += ichor
+    return {'moltings': moltings, 'ichor': ichor}
 
 
 def _drop_phrase(drop):
@@ -877,7 +937,7 @@ def _salvage_gear(table, sid, doc, payload):
         if gained['moltings']:
             parts.append(f"{gained['moltings']} Moltings")
         if gained['ichor']:
-            parts.append(f"{gained['ichor']} Chrysalis Ichor")
+            parts.append(f"{gained['ichor']} Gemstones")
         text = f"Ground {g['name']} into " + ' + '.join(parts) + '.'
         result = {'id': gid, 'mode': 'grind', 'materials': gained}
     conflict = _save_or_conflict(table, doc)
@@ -956,7 +1016,7 @@ def _upgrade_gear(table, sid, doc, payload):
     if m['moltings'] < moltings_cost:
         return _err('Not enough Moltings.', 409)
     if m['ichor'] < ichor_cost:
-        return _err('Not enough Chrysalis Ichor.', 409)
+        return _err('Not enough Gemstones.', 409)
     doc['spores'] = doc.get('spores', 0) - spores_cost
     m['moltings'] -= moltings_cost
     m['ichor'] -= ichor_cost
@@ -1333,6 +1393,11 @@ def handle_state(table, query_params):
                 you = {k: v for k, v in item.items() if k not in ('pk', 'sk')}
                 you.update(_roll_meta(item))
                 you['perks'] = sorted(engine.attribute_perks(item))
+                # Report EFFECTIVE max HP (base + gear + perks), matching `_ok`
+                # and `_public_player`. Echoing the raw base here made a poll land
+                # right after an action and yank the client's max HP down below
+                # current hp (hp is always clamped to the effective max).
+                you['maxHp'] = engine.effective_stats(item)['maxHp']
         elif item['sk'].startswith('SPACE#'):
             snares.append(item['sk'].replace('SPACE#', ''))
         elif item['sk'].startswith('POST#'):
@@ -1526,6 +1591,7 @@ def handle_action(table, body):
         'combat-round': _combat_round, 'combat-peek': _combat_peek,
         'combat-flee': _combat_flee,
         'set-stance': _set_stance, 'spend-stat': _spend_stat, 'evolve': _evolve,
+        'trophy-choose': _trophy_choose,
         'buy': _buy, 'use-item': _use_item, 'shrine': _shrine, 'warp': _warp,
         'gamble': _gamble, 'poke': _poke, 'high-five': _high_five, 'customize': _customize,
         'set-status': _set_status,
@@ -3015,15 +3081,26 @@ def _dungeon_hazard(table, sid, doc, node, biome, mire):
 
 def _wild_battle(table, sid, doc, elite=False, region=None):
     """Landing on a wild/elite space STARTS an interactive battle (Plan 2).
-    In the 'wilderness' region both wild AND elite spaces pull from the tougher
-    T2+ wilderness pools."""
-    biome = data.dungeon_biome(doc.get('position', ''))
-    if biome:
-        spec = data.DUNGEON_NPCS[biome]          # dungeon fauna, themed per pocket
-    elif region == 'wilderness':
-        spec = _rng.choice(data.WILDERNESS_ELITE_NPCS if elite else data.WILDERNESS_NPCS)
-    else:
-        spec = _rng.choice(data.ELITE_NPCS if elite else data.NPCS)
+    Difficulty is zone-gated (design 2026-07-26): depths pockets rung by depth,
+    the 'wilderness' frontier pulls its own tough pools, and the 'isle' boss
+    approach is apex ground. Never scaled to the player — leveling stays a power
+    fantasy; you travel into danger deliberately."""
+    position = doc.get('position', '')
+    # Resolve the node's region from the night's map (or the passed hint). Keying
+    # off region + node id — not just data.dungeon_biome, which only knows the
+    # committed board — makes the depths ladder fire for procedural pockets like
+    # `city_g0_2`, instead of dropping through to base NPCS as they did before.
+    # dungeon_biome (committed-only, read inside undercity_data) is the fallback
+    # for canonical ids a caller passes that aren't in the procedural season map.
+    node = _season_map(table, sid).get(position)
+    node_region = region or (node.get('region') if node else None)
+    if node_region is None and data.dungeon_biome(position):
+        node_region = 'depths'
+    # Difficulty is region-gated: region -> tier -> (wild|elite) pool. Flat within
+    # a region — no depth scaling (design 2026-07-26-region-tier).
+    tier = data.region_tier(node_region)
+    pool = data.TIER_NPCS[tier]['elite' if elite else 'wild']
+    spec = _rng.choice(pool)
     npc = engine.npc_from_spec(spec)
     npc['personality'] = spec.get('personality', data.NPC_DEFAULT_PERSONALITY)
     npc['bluff'] = spec.get('bluff', data.NPC_DEFAULT_BLUFF)
@@ -3445,6 +3522,13 @@ def _finish_battle(table, sid, doc, rec, result):
         doc['spores'] = doc.get('spores', 0) + bonus
         out['spores'] = out.get('spores', 0) + bonus
         out['cutpurse'] = bonus
+    # Soul Trophy (Deathrite Shaman): a win lets the player take a trophy from
+    # the slain — +[foe level] to a chosen stat next battle. Latest kill wins.
+    if result['outcome'] == 'attacker' and 'soul_trophy' in _passives(doc):
+        npc = rec['npc']
+        amount = data.enemy_level(npc['atk'], npc['dfn'], npc['spd'], npc['maxHp'])
+        doc['pendingTrophy'] = {'amount': amount}
+        out['trophy'] = {'amount': amount}
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
@@ -3459,8 +3543,6 @@ def _finish_wild(table, sid, doc, rec, result):
            'battle': result}
     if result['outcome'] == 'attacker':
         bounty = _scrounge(doc, npc['bounty'])
-        if 'soul_harvest' in _passives(doc):
-            bounty = round(bounty * data.SOUL_HARVEST_MULT)
         doc['spores'] = doc.get('spores', 0) + bounty
         doc['wildWins'] = doc.get('wildWins', 0) + 1
         levels = _grant_xp(table, sid, doc, npc['xp'])
@@ -4350,9 +4432,7 @@ def _cast(table, sid, doc, payload):
     if not spell:
         return _spell_err('Unknown spell.', 'unknown_spell', 400)
     if source == 'innate':
-        innate_ids = {data.BIOME_SPELLS.get(doc.get('homeBiome')),
-                      data.SPECIES_SPELLS.get(doc.get('species'))}
-        if spell_id not in innate_ids:
+        if spell_id not in _innate_spell_ids(doc):
             return _spell_err("That is not one of your innate gifts.", 'not_castable')
     elif source == 'grimoire':
         gid = doc.get('equippedGrimoire') or ''
@@ -4727,6 +4807,24 @@ def _set_stance(table, sid, doc, payload):
     if stance not in ('fight', 'defend', 'flee'):
         return _err('Stance must be fight, defend, or flee.')
     doc['stance'] = stance
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc)
+
+
+def _trophy_choose(table, sid, doc, payload):
+    """Claim a pending Soul Trophy: bank +amount to a chosen stat as a one-battle
+    buff. The amount was set to the slain foe's level in _finish_battle."""
+    pending = doc.get('pendingTrophy')
+    if not pending:
+        return _err('You have no trophy to claim.', 409)
+    stat = payload.get('stat')
+    if stat not in ('atk', 'def', 'spd'):
+        return _err('Choose ATK, DEF, or SPD.', 400)
+    doc.setdefault('buffs', []).append(
+        {'kind': 'trophy', 'stat': stat, 'amount': int(pending['amount'])})
+    doc['pendingTrophy'] = None
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
@@ -5198,9 +5296,12 @@ def _dig(table, sid, doc, payload):
 
     cleared = all(it['collected'] for it in site['items'])
     bonus = 0
+    clear_mats = None
     if cleared:
         bonus = data.EXCAVATION_CLEAR_BONUS
         doc['spores'] = doc.get('spores', 0) + bonus
+        clear_mats = _mine_materials(doc, ichor=data.EXCAVATION_CLEAR_ICHOR,
+                                     moltings=data.EXCAVATION_CLEAR_MOLTINGS)
         site = _gen_dig_grid()  # reset for the next digger
 
     conflict = _save_or_conflict(table, doc)  # guard the player write first
@@ -5215,12 +5316,14 @@ def _dig(table, sid, doc, payload):
 
     if cleared:
         _event(table, sid, 'excavation',
-               f"{doc['username']} unearthed the last relic at a dig site (+{bonus} Spores)! "
-               'Fresh finds lie buried anew.', actor=doc['userId'])
+               f"{doc['username']} unearthed the last relic at a dig site "
+               f"(+{bonus} Spores, +{data.EXCAVATION_CLEAR_ICHOR} Gemstones, "
+               f"+{data.EXCAVATION_CLEAR_MOLTINGS} Moltings)! Fresh finds lie buried anew.",
+               actor=doc['userId'])
 
     return _ok(doc, node=node, grid=_dig_view(site), digsLeft=doc['excavationDigsLeft'],
                found=found, cleared=cleared, bonus=(bonus if cleared else None),
-               text=_dig_text(found, cleared, bonus))
+               materials=clear_mats, text=_dig_text(found, cleared, bonus))
 
 
 # ── Flow loot puzzle ──────────────────────────────────────────────────────────
@@ -5349,25 +5452,39 @@ def _vein_strike_once(table, sid, doc):
     if item:
         found = _award_dig_loot(doc, {'kind': 'item', 'item': item})
 
+    # Mining pays crafting materials — the vein is the primary Chrysalis Ichor
+    # tap that makes gear-upgrades reachable. Moltings drop every strike; Ichor
+    # is a level-scaling roll, so the deep shaft pays the risk back in Ichor.
+    ichor = 1 if _rng.random() < min(
+        1.0, data.VEIN_ICHOR_BASE + level * data.VEIN_ICHOR_PER_LEVEL) else 0
+    moltings = data.VEIN_MOLTINGS_PER_STRIKE
+    _mine_materials(doc, ichor=ichor, moltings=moltings)
+
     if level >= data.VEIN_MAX_DEPTH:
         doc['spores'] += data.VEIN_HEARTSTONE_SPORES
+        _mine_materials(doc, ichor=data.VEIN_HEARTSTONE_ICHOR)   # Heartstone bonus
+        ichor += data.VEIN_HEARTSTONE_ICHOR
         heart = _award_dig_loot(doc, {'kind': 'item',
                                       'item': _rng.choice(data.VEIN_RARE_ITEMS)})
         _save_vein(table, sid, region, 0)
         _event(table, sid, 'vein',
                f"{doc['username']} pried the Heartstone from the crystal vein "
-               f'(+{data.VEIN_HEARTSTONE_SPORES} Spores)! The shaft refills.',
-               actor=doc['userId'])
+               f'(+{data.VEIN_HEARTSTONE_SPORES} Spores, +{data.VEIN_HEARTSTONE_ICHOR} Gemstones)! '
+               'The shaft refills.', actor=doc['userId'])
         return {'depth': 0, 'heartstone': True,
                 'spores': spores + data.VEIN_HEARTSTONE_SPORES, 'found': heart,
+                'ichor': ichor, 'moltings': moltings,
                 'text': f'Level {level}: +{spores} Spores — and beneath it, THE '
-                        f'HEARTSTONE! +{data.VEIN_HEARTSTONE_SPORES} Spores and a '
+                        f'HEARTSTONE! +{data.VEIN_HEARTSTONE_SPORES} Spores, '
+                        f'+{data.VEIN_HEARTSTONE_ICHOR} Gemstones and a '
                         'prize. The shaft rumbles full again.'}
 
     _save_vein(table, sid, region, level)
     return {'depth': level, 'spores': spores, 'found': found,
-            'text': f'You cut into level {level}: +{spores} Spores.'
-                    + _vein_found_text(found)}
+            'ichor': ichor, 'moltings': moltings,
+            'text': f'You cut into level {level}: +{spores} Spores'
+                    + (f', +{ichor} Gemstones' if ichor else '')
+                    + f', +{moltings} Moltings.' + _vein_found_text(found)}
 
 
 # ── The Guildvault ────────────────────────────────────────────────────────────

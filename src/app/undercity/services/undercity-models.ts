@@ -604,6 +604,9 @@ export interface SpaceEvent {
   };
   battle?: BattleResult;
   sporesLost?: number;
+  /** Soul Trophy (Deathrite Shaman): a won fight offers +amount to a chosen stat
+   * next battle. Present only on wins for that form. */
+  trophy?: { amount: number };
   /** Biome key of a Guild Sigil just claimed by clearing its lair boss (first
    * kill only). Drives the sigil-claimed celebration overlay. */
   sigil?: string;

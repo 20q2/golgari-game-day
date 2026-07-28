@@ -1124,3 +1124,43 @@ def test_non_squirrel_cannot_cast_acorn_fury(table):
     act(table, 'join', starter='pest', home='garden')
     status, resp = act(table, 'cast', spellId='acorn_fury', source='innate')
     assert status == 409 and resp['code'] == 'not_castable'
+
+
+# ── Form-passive innate spells: Shambling Shell learns Mend Flesh ─────────────
+
+def _become(table, form, passives, tier=2, hp=None, user='user-alex'):
+    """Force a player into a given form with an explicit passive list (single
+    save — re-fetch first so the optimistic version guard is satisfied)."""
+    doc = db._get_player(table, _sid(table), user)
+    doc['form'] = form
+    doc['tier'] = tier
+    doc['passives'] = list(passives)
+    if hp is not None:
+        doc['hp'] = hp
+    assert db._put_player(table, doc)
+    return doc
+
+
+def test_shambling_shell_casts_mend_flesh_innate(table):
+    act(table, 'join', starter='zombie', home='cavern')
+    _become(table, 'shambling_shell', ['regrowth', 'rootwall'], hp=5)
+    status, resp = act(table, 'cast', spellId='mend_flesh', source='innate')
+    assert status == 200, resp
+    assert db._get_player(table, _sid(table), 'user-alex')['hp'] == 17  # 5 + 12
+
+
+def test_shambling_shell_apex_keeps_mend_flesh(table):
+    # A Grave Titan that came up through Shambling Shell still has rootwall in its
+    # accumulated passives, so Mend Flesh stays castable.
+    act(table, 'join', starter='zombie', home='cavern')
+    _become(table, 'grave_titan',
+            ['regrowth', 'rootwall', 'deathtouch_stomp'], tier=3, hp=5)
+    status, resp = act(table, 'cast', spellId='mend_flesh', source='innate')
+    assert status == 200, resp
+
+
+def test_non_rootwall_form_cannot_cast_mend_flesh_innate(table):
+    act(table, 'join', starter='zombie', home='cavern')
+    _become(table, 'deathrite_shaman', ['regrowth', 'soul_trophy'])
+    status, resp = act(table, 'cast', spellId='mend_flesh', source='innate')
+    assert status == 409 and resp['code'] == 'not_castable', resp

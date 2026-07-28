@@ -6,17 +6,30 @@
 import { SPELLS, GRIMOIRES, BIOME_SPELLS, SPECIES_SPELLS } from './spells.generated';
 export { SPELLS, GRIMOIRES, BIOME_SPELLS, SPECIES_SPELLS };
 
-/** Every always-castable innate spell id for a creature: biome innate plus any
- *  species signature (squirrels get Acorn Fury). Order: biome first. */
+/** Form passive -> extra innate spell it grants. Mirror of FORM_SPELLS in
+ *  infrastructure/lambda/undercity_data.py (NOT part of the sync_spells payload —
+ *  keep in sync by hand). Persists through evolution because passives accumulate. */
+export const FORM_SPELLS: Record<string, string> = {
+  rootwall: 'mend_flesh', // Shambling Shell (+ its apexes)
+};
+
+/** Every always-castable innate spell id for a creature: biome innate, species
+ *  signature (squirrels get Acorn Fury), plus any FORM_SPELLS granted by a
+ *  passive the creature carries. Order: biome first. */
 export function innateSpellIds(
   homeBiome: string | undefined,
   species: string | undefined,
+  passives: string[] = [],
 ): string[] {
   const ids: string[] = [];
   const biome = BIOME_SPELLS[homeBiome ?? ''];
   if (biome) ids.push(biome);
   const sig = SPECIES_SPELLS[species ?? ''];
   if (sig && !ids.includes(sig)) ids.push(sig);
+  for (const p of passives) {
+    const spell = FORM_SPELLS[p];
+    if (spell && !ids.includes(spell)) ids.push(spell);
+  }
   return ids;
 }
 

@@ -33,6 +33,14 @@ def enemy_registry():
         reg[spec['id']] = ('wild+', spec)
     for spec in data.WILDERNESS_ELITE_NPCS:
         reg[spec['id']] = ('elite+', spec)
+    for spec in data.DEPTHS_MID:
+        reg[spec['id']] = ('depths_mid', spec)
+    for spec in data.DEPTHS_DEEP:
+        reg[spec['id']] = ('depths_deep', spec)
+    for spec in data.DEPTHS_ABYSS:
+        reg[spec['id']] = ('depths_abyss', spec)
+    for spec in data.ISLE_APEX:
+        reg[spec['id']] = ('isle_apex', spec)
     reg['rot_sovereign'] = ('boss', data.ROT_SOVEREIGN)
     return reg
 

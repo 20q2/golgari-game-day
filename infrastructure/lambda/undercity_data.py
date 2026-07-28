@@ -52,7 +52,7 @@ STARTERS = {
         'blurb': 'Glass-cannon insect. First Bite: always strikes first in round 1.',
     },
     'saproling': {
-        'name': 'Saproling', 'hp': 25, 'atk': 4, 'def': 5, 'spd': 6,
+        'name': 'Saproling', 'hp': 25, 'atk': 5, 'def': 5, 'spd': 6,
         'passive': 'drift',
         'blurb': 'Quick, expendable plant token — the swarm made flesh. Endless Ranks: +15% flee chance; bad mystery events reroll once.',
     },
@@ -62,7 +62,7 @@ STARTERS = {
         'blurb': 'Was somebody once; dead now, and it doesn\'t stay down. Regrowth: heal 20% max HP after any battle.',
     },
     'squirrel': {
-        'name': 'Squirrel', 'hp': 25, 'atk': 4, 'def': 4, 'spd': 7,
+        'name': 'Squirrel', 'hp': 25, 'atk': 5, 'def': 4, 'spd': 7,
         'passive': 'spell_haste',
         'blurb': 'A twitchy little caster. Spell Haste: your spell cooldowns are halved — cast twice as often as anyone else.',
     },
@@ -126,8 +126,9 @@ TIER2 = {
     },
     'deathrite_shaman': {
         'name': 'Deathrite Shaman', 'line': 'zombie', 'bonus': {'maxHp': 6, 'def': 2},
-        'passive': 'soul_harvest',
-        'blurb': 'Durable ritualist. Soul Harvest: +50% Spores from wild & elite battle wins.',
+        'passive': 'soul_trophy',
+        'blurb': 'Grave ritualist. Soul Trophy: after any won fight, take a trophy — '
+                 '+[foe level] to a stat you choose, for your next battle.',
     },
     'squirrel_warrior': {
         'name': 'Squirrel Warrior', 'line': 'squirrel', 'bonus': {'maxHp': 6, 'atk': 2},
@@ -162,7 +163,7 @@ APEX = {
         'blurb': 'Rot Breath: round-1 strike hits for double.',
     },
     'izoni': {
-        'name': 'Izoni, Thousand-Eyed', 'bonus': {'spd': 4},
+        'name': 'Daemogoth Titan', 'bonus': {'spd': 4},
         'passive': 'swarm',
         'from': ['vexing_pest', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage'],
         'blurb': 'Swarm: one extra strike every battle round.',
@@ -631,6 +632,14 @@ SPELLS = {
                      'blurb': '+2 ATK in your next battle.'},
 }
 
+# Form passive -> an extra innate spell that form grants. Because passives
+# accumulate through evolution (see _evolve), a form's apexes keep the spell,
+# and existing live creatures gain it with no migration. Mirror: FORM_SPELLS in
+# src/app/undercity/data/spells.ts + innateSpellIds().
+FORM_SPELLS = {
+    'rootwall': 'mend_flesh',   # Shambling Shell (+ its apexes) knit their wounds
+}
+
 # Home biome -> innate spell (always castable, no grimoire needed).
 BIOME_SPELLS = {
     'garden': 'rot_surge',    # The Rot-Gardens (Composter)
@@ -772,6 +781,12 @@ EXCAVATION_DIGS_PER_VISIT = 6
 EXCAVATION_GRID = (5, 5)                     # (width, height)
 EXCAVATION_ITEMS = ['1x2', '1x2', '1x2', '2x2']  # shapes buried per site
 EXCAVATION_CLEAR_BONUS = 25                  # Spores for clearing the last item
+# Mining is the crafting-material tap (design 2026-07-27): the vein + excavation
+# pay Chrysalis Ichor + Moltings so gear-upgrades (the big Spore sink) are
+# actually reachable. Sim-tuned so a dedicated miner takes ~2-3 pieces to Mythic
+# a night (4 Ichor each). Clearing a whole dig site pays a materials cache:
+EXCAVATION_CLEAR_ICHOR = 1
+EXCAVATION_CLEAR_MOLTINGS = 2
 
 # Crystal Veins (Mosslight Cavern focus). One shared vein per region: a depth
 # counter every player advances. Landing grants up to 3 strikes and the FIRST
@@ -785,6 +800,12 @@ VEIN_CAVE_IN_PCT_PER_LEVEL = 0.04    # cave-in chance = level entered * this
 VEIN_CAVE_IN_DMG_PER_LEVEL = 2       # damage = level entered * this
 VEIN_HEARTSTONE_SPORES = 40
 VEIN_RARE_ITEMS = ['loaded_die', 'smoke_spore']
+# Materials per successful (non-cave-in) strike: always some Moltings, plus Ichor
+# on a level-scaling roll (deeper shafts pay better — the risk/reward payoff).
+VEIN_MOLTINGS_PER_STRIKE = 1
+VEIN_ICHOR_BASE = 0.5                 # ichor chance at level 1
+VEIN_ICHOR_PER_LEVEL = 0.04           # + per level entered (≈0.98 at max depth)
+VEIN_HEARTSTONE_ICHOR = 4             # bonus Ichor for prying the Heartstone
 
 # The Guildvault (Undercity focus). One shared Mastermind lock per region:
 # a hidden combination of 3 DISTINCT sigils from the 6 below. Landing grants
@@ -866,6 +887,91 @@ WILDERNESS_ELITE_NPCS = [
      'hp': 60, 'atk': 18, 'def': 7, 'spd': 12, 'bounty': 34, 'xp': 52,
      'itemChance': 0.40, 'personality': 'trickster', 'bluff': 0.25},
 ]
+
+# ── Mid / deep / abyss enemy pools ───────────────────────────────────────────
+# These are the mid-and-up rosters. They now feed the REGION_TIER model (below):
+# MID is the tier-2 wild pool, DEEP joins tier-3 wild, ABYSS joins tier-3 elite.
+# Threat comes from HP + ATK, never DEF walls (which just cause 6-round timeouts).
+# Every pool fields ≥3 personalities. HP bands ascend so the tiers stay monotonic.
+# Roster origin + sim results: specs/2026-07-26-undercity-enemy-ladder-design.md;
+# region-tier selection: specs/2026-07-26-undercity-region-tier-enemies-design.md.
+DEPTHS_MID = [
+    {'id': 'glutton_maw', 'name': 'Glutton Maw',
+     'hp': 44, 'atk': 13, 'def': 4, 'spd': 6, 'bounty': 26, 'xp': 42,
+     'itemChance': 0.20, 'personality': 'brute', 'bluff': 0.10},
+    {'id': 'chittering_swarm', 'name': 'Chittering Swarm',
+     'hp': 42, 'atk': 12, 'def': 3, 'spd': 9, 'bounty': 26, 'xp': 42,
+     'itemChance': 0.20, 'personality': 'trickster', 'bluff': 0.20},
+    {'id': 'bonemortar_golem', 'name': 'Bonemortar Golem',
+     'hp': 56, 'atk': 11, 'def': 6, 'spd': 3, 'bounty': 28, 'xp': 45,
+     'itemChance': 0.25, 'personality': 'turtle', 'bluff': 0.10},
+    {'id': 'rotwing_harrier', 'name': 'Rotwing Harrier',
+     'hp': 48, 'atk': 13, 'def': 5, 'spd': 7, 'bounty': 28, 'xp': 45,
+     'itemChance': 0.25, 'personality': 'balanced', 'bluff': 0.15},
+]
+
+DEPTHS_DEEP = [
+    {'id': 'gravemaw_lurker', 'name': 'Gravemaw Lurker',
+     'hp': 66, 'atk': 17, 'def': 6, 'spd': 6, 'bounty': 36, 'xp': 54,
+     'itemChance': 0.30, 'personality': 'brute', 'bluff': 0.15},
+    {'id': 'hollow_warden', 'name': 'Hollow Warden',
+     'hp': 80, 'atk': 14, 'def': 9, 'spd': 3, 'bounty': 40, 'xp': 58,
+     'itemChance': 0.35, 'personality': 'turtle', 'bluff': 0.15},
+    {'id': 'shade_weaver', 'name': 'Shade Weaver',
+     'hp': 62, 'atk': 16, 'def': 6, 'spd': 10, 'bounty': 38, 'xp': 56,
+     'itemChance': 0.35, 'personality': 'trickster', 'bluff': 0.25},
+    {'id': 'carrion_behemoth', 'name': 'Carrion Behemoth',
+     'hp': 74, 'atk': 15, 'def': 7, 'spd': 5, 'bounty': 40, 'xp': 58,
+     'itemChance': 0.30, 'personality': 'balanced', 'bluff': 0.15},
+]
+
+DEPTHS_ABYSS = [
+    {'id': 'abyssal_devourer', 'name': 'Abyssal Devourer',
+     'hp': 108, 'atk': 23, 'def': 7, 'spd': 7, 'bounty': 50, 'xp': 70,
+     'itemChance': 0.40, 'personality': 'brute', 'bluff': 0.20},
+    {'id': 'sunless_colossus', 'name': 'Sunless Colossus',
+     'hp': 116, 'atk': 19, 'def': 10, 'spd': 3, 'bounty': 55, 'xp': 75,
+     'itemChance': 0.45, 'personality': 'turtle', 'bluff': 0.15},
+    {'id': 'dread_mantis', 'name': 'Dread Mantis',
+     'hp': 104, 'atk': 22, 'def': 7, 'spd': 11, 'bounty': 52, 'xp': 72,
+     'itemChance': 0.45, 'personality': 'trickster', 'bluff': 0.30},
+]
+
+ISLE_APEX = [
+    {'id': 'rotborn_titan', 'name': 'Rotborn Titan',
+     'hp': 130, 'atk': 26, 'def': 9, 'spd': 6, 'bounty': 65, 'xp': 90,
+     'itemChance': 0.50, 'personality': 'brute', 'bluff': 0.25},
+    {'id': 'sigil_sentinel', 'name': 'Sigil Sentinel',
+     'hp': 150, 'atk': 22, 'def': 12, 'spd': 4, 'bounty': 75, 'xp': 100,
+     'itemChance': 0.50, 'personality': 'turtle', 'bluff': 0.20},
+    {'id': 'wraithqueen_herald', 'name': 'Wraithqueen Herald',
+     'hp': 120, 'atk': 25, 'def': 9, 'spd': 12, 'bounty': 70, 'xp': 95,
+     'itemChance': 0.55, 'personality': 'trickster', 'bluff': 0.35},
+]
+
+
+# ── Region-gated enemy tiers (design 2026-07-26-region-tier) ─────────────────
+# Difficulty is WHERE you are, not how deep you dig. Region -> tier -> (wild,
+# elite) pool. Wild = the tier's baseline; elite = the tougher members of the
+# SAME tier (elites never jump a tier). Pools are composed from the existing
+# rosters by reference — nothing is deleted, so sim/ and roster tests are intact.
+REGION_TIER = {
+    'city': 1, 'garden': 1, 'bone': 1, 'cavern': 1, 'bog': 1,
+    'ruin': 2, 'depths': 2,
+    'wilderness': 3, 'isle': 3,
+}
+
+TIER_NPCS = {
+    1: {'wild': NPCS,       'elite': ELITE_NPCS},
+    2: {'wild': DEPTHS_MID, 'elite': WILDERNESS_NPCS},
+    3: {'wild': DEPTHS_DEEP + WILDERNESS_ELITE_NPCS,
+        'elite': DEPTHS_ABYSS + ISLE_APEX},
+}
+
+
+def region_tier(region):
+    """Difficulty tier (1-3) for a board region; unknown/None -> 1 (safe)."""
+    return REGION_TIER.get(region or '', 1)
 
 
 # ── Derived opponent level (battle UI) ───────────────────────────────────────

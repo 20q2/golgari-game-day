@@ -32,7 +32,7 @@ POCKET_ORIGIN = {
     'bone':   (450, 1950),
     'garden': (2850, 2050),
 }
-SPACING = 120
+SPACING = 150   # grid pitch between adjacent dungeon spaces (was 120; +25%)
 MIN_NODES = 24
 LAIR_MIN_HOPS = 6
 FILLER_ELITE = 2

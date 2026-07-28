@@ -274,6 +274,31 @@
     </div>
   }
 
+  <!-- Soul Trophy (Deathrite Shaman): pick a stat to carry into the next fight.
+       Dismissable — walking away forfeits the trophy. -->
+  @if (pendingTrophy(); as amt) {
+    <div class="uc-modal-backdrop" (click)="dismissTrophy()">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">military_tech</mat-icon> Soul Trophy</h3>
+        <p class="modal-sub">
+          You harvest a trophy from the slain &mdash; <strong>+{{ amt }}</strong> to
+          one stat for your next battle.
+        </p>
+        <div class="choice-grid">
+          <button class="uc-btn" [disabled]="busy()" (click)="chooseTrophy('atk')">
+            <mat-icon class="mi">colorize</mat-icon> +{{ amt }} ATK
+          </button>
+          <button class="uc-btn" [disabled]="busy()" (click)="chooseTrophy('def')">
+            <mat-icon class="mi">shield</mat-icon> +{{ amt }} DEF
+          </button>
+          <button class="uc-btn" [disabled]="busy()" (click)="chooseTrophy('spd')">
+            <mat-icon class="mi">bolt</mat-icon> +{{ amt }} SPD
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- First-entry warning for the Ashen Wilds (wilderness frontier). No
        backdrop-click dismissal: this is a decision, so a button must be tapped. -->
   @if (wildsPrompt()) {

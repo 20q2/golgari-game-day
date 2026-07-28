@@ -30,6 +30,6 @@ export function materialReason(
 ): string | null {
   const short: string[] = [];
   if (haveMoltings < needMoltings) short.push(`${needMoltings - haveMoltings} moltings`);
-  if (haveIchor < needIchor) short.push(`${needIchor - haveIchor} ichor`);
+  if (haveIchor < needIchor) short.push(`${needIchor - haveIchor} gemstones`);
   return short.length ? `Need ${short.join(', ')}` : null;
 }

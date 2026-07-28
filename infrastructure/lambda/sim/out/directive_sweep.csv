@@ -1,0 +1,11 @@
+lens,directive,renown,level,tier,spores,sigils,deaths,boss_rate,spaces
+glass,balanced,30,4,1,366,0,0,0.0,shop:5.2
+glass,rush_boss,28,4,1,142,0,4,0.0,"ladder:9.8, shop:2.1, shrine:0.2, warp:0.1"
+glass,farm_mobs,34,4,1,164,0,2,0.0,"ladder:6.9, shop:1.8, shrine:0.1"
+glass,shopper,31,2,1,16,0,0,0.0,"shop:13.8, dig:9.4, warp:0.3, ladder:0.1"
+glass,explorer,9,3,1,205,0,0,0.0,"dig:54.2, vault:12.2, vein:3.8, shop:1.1, witch:0.6, ladder:0.2, warp:0.1"
+tank,balanced,27,4,1,355,0,1,0.0,shop:6.5
+tank,rush_boss,6,3,1,162,0,7,0.0,"ladder:8.1, shop:2.6, warp:0.1"
+tank,farm_mobs,3,2,1,74,0,7,0.0,"ladder:8.2, shop:1.5, dig:0.4, shrine:0.3, warp:0.1"
+tank,shopper,32,2,1,21,0,1,0.0,"shop:13.7, dig:7.9, warp:0.3, ladder:0.2"
+tank,explorer,8,2,1,276,0,0,0.0,"dig:53.4, vault:11.1, vein:3.8, shop:0.9, witch:0.8, ladder:0.4, warp:0.1"
