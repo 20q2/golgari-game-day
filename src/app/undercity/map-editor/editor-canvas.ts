@@ -24,7 +24,7 @@ import {
 } from '../engine/board-terrain';
 import { drawSpaceDisc, NODE_R, DISC_RY } from '../engine/board-space';
 import { computeLayers, LayerSpec, OVERWORLD } from '../engine/board-layers';
-import { computeEnemyTiers, drawTierBadge } from '../engine/board-enemy-tier';
+import { computeEnemyTiers, drawTierBadge, EnemyTier } from '../engine/board-enemy-tier';
 
 export type EditorPick =
   | { kind: 'node'; id: string }
@@ -74,6 +74,13 @@ export class EditorCanvas {
   private layerId = OVERWORLD;
   private raf = 0;
   private dragNodes: ReadonlySet<string> = new Set();
+  // Enemy-tier badges, computed once per doc change (not per frame — the BFS
+  // over the whole board was 60×/sec of pure churn). Refreshed in invalidate().
+  private enemyTiers = new Map<string, EnemyTier>();
+  // On-demand rendering: the loop only draws when something changed
+  // (`needsRender`) or a time-based animation is on screen (`animating()`), so
+  // a static editor sits at ~0 CPU/GPU instead of a permanent 60fps redraw.
+  private needsRender = true;
 
   camX = 0;
   camY = 0;
@@ -136,8 +143,30 @@ export class EditorCanvas {
     preloadDecalImages(this.doc, () => this.invalidate());
     this.layers = computeLayers(this.doc);
     if (!this.layers.some((l) => l.id === this.layerId)) this.layerId = OVERWORLD;
+    this.enemyTiers = computeEnemyTiers(this.doc);
     this.freeTerrain();
     this.bakeLayer(this.activeLayer());
+    this.needsRender = true;
+  }
+
+  /** Request one redraw. The component calls this after any overlay/state
+   *  change that isn't already a camera/doc method on this class. */
+  markDirty(): void {
+    this.needsRender = true;
+  }
+
+  /** True while a time-based animation is on screen and must redraw every
+   *  frame: the selection pulse, marching-ants gizmos, or the connect band. */
+  private animating(): boolean {
+    const o = this.overlay;
+    return (
+      !!o.selectedNode ||
+      o.selectedDecal != null ||
+      o.selectedLabel != null ||
+      o.hover?.kind === 'decal' ||
+      o.hover?.kind === 'label' ||
+      !!o.connectFrom
+    );
   }
 
   /** Release every cached terrain canvas' backing store immediately (not just
@@ -183,6 +212,7 @@ export class EditorCanvas {
   beginGroupDrag(ids: ReadonlySet<string>): void {
     this.dragNodes = ids;
     this.bakeLayer(this.activeLayer(), { omitEdgesOf: ids });
+    this.needsRender = true;
   }
 
   layerIds(): string[] {
@@ -212,6 +242,7 @@ export class EditorCanvas {
     this.freeTerrain();
     this.bakeLayer(this.activeLayer());
     this.fitView();
+    this.needsRender = true;
   }
 
   /** Fit + center the whole active layer in the viewport. */
@@ -220,17 +251,20 @@ export class EditorCanvas {
     this.camX = b.x + b.w / 2;
     this.camY = b.y + b.h / 2;
     this.zoom = Math.min(this.canvas.width / b.w, this.canvas.height / b.h) * 0.92;
+    this.needsRender = true;
   }
 
   centerOn(x: number, y: number): void {
     this.camX = x;
     this.camY = y;
+    this.needsRender = true;
   }
 
   resize(): void {
     const r = this.canvas.getBoundingClientRect();
     this.canvas.width = r.width * devicePixelRatio;
     this.canvas.height = r.height * devicePixelRatio;
+    this.needsRender = true;
   }
 
   /** Kept for API compatibility — the loop renders every frame now. */
@@ -251,6 +285,7 @@ export class EditorCanvas {
   panByScreen(dx: number, dy: number): void {
     this.camX -= (dx * devicePixelRatio) / this.zoom;
     this.camY -= (dy * devicePixelRatio) / this.zoom;
+    this.needsRender = true;
   }
 
   zoomAt(clientX: number, clientY: number, factor: number): void {
@@ -259,6 +294,7 @@ export class EditorCanvas {
     const after = this.toWorld(clientX, clientY);
     this.camX += before.x - after.x;
     this.camY += before.y - after.y;
+    this.needsRender = true;
   }
 
   /** Zoom around the viewport center (toolbar +/− buttons, keyboard). */
@@ -371,6 +407,11 @@ export class EditorCanvas {
   private loop = (ts: number): void => {
     this.raf = requestAnimationFrame(this.loop);
     if (!this.doc || !this.layers.length) return;
+    // Idle: nothing changed and no live animation — skip the whole draw (canvas
+    // fill, tier badges, disc sort, gizmos). This is the memory/CPU fix: a
+    // static editor no longer repaints the full board 60×/sec.
+    if (!this.needsRender && !this.animating()) return;
+    this.needsRender = false;
     this.frame(ts);
   };
 
@@ -473,8 +514,9 @@ export class EditorCanvas {
       .filter((n) => layer.nodeIds.has(n.id))
       .sort((a, b) => a.y - b.y);
     // Enemy-space difficulty badges (T1/T2/T3), same as the live board so an
-    // editor can see at a glance what a wild/elite space will spawn.
-    const tiers = computeEnemyTiers(this.doc);
+    // editor can see at a glance what a wild/elite space will spawn. Computed
+    // once per doc change (invalidate), not per frame.
+    const tiers = this.enemyTiers;
     for (const n of nodes) {
       drawSpaceDisc(ctx, n, {
         selected: n.id === o.selectedNode || !!o.selectedNodes?.has(n.id),

@@ -159,6 +159,9 @@ const LEGACY_FLOOR_SRC: Record<string, string> = {
 
 const MIN_ZOOM = 0.15; // floor for tiny screens; larger screens stop at whole-map fit
 const MAX_ZOOM = 2.5;
+// Enemy T1/T2/T3 labels only appear once zoomed in past halfway — below this the
+// letters are too small to read and just clutter the coins.
+const TIER_LABEL_MIN_ZOOM = MAX_ZOOM * 0.5;
 const DRAG_THRESHOLD = 6;
 const MOVE_MS = 320; // token slide + camera glide duration per step
 
@@ -1557,10 +1560,14 @@ export class BoardCanvas {
       ctx.setLineDash([]);
     }
 
-    // Enemy spaces wear a small T1/T2/T3 badge grading how tough a foe spawns
+    // Enemy spaces wear a small T1/T2/T3 label grading how tough a foe spawns
     // here (mirrors the server enemy-pool ladder — see board-enemy-tier.ts).
+    // Only once you've zoomed in past halfway (~50% of MAX_ZOOM) — zoomed out,
+    // the tiny letters just clutter the coins.
     const tier = this.enemyTiers.get(n.id);
-    if (tier && !sealed && !this.lockedIds.has(n.id)) drawTierBadge(ctx, n, tier, this.zoom);
+    if (tier && this.zoom >= TIER_LABEL_MIN_ZOOM && !sealed && !this.lockedIds.has(n.id)) {
+      drawTierBadge(ctx, n, tier, this.zoom);
+    }
 
     ctx.restore();
   }

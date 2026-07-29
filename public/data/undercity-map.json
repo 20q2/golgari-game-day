@@ -2984,7 +2984,7 @@
    "type": "elite",
    "x": 1446,
    "y": 787,
-   "region": "wilderness",
+   "region": "isle",
    "neighbors": [
     "cw0",
     "cw2"
@@ -2995,7 +2995,7 @@
    "type": "elite",
    "x": 1496,
    "y": 679,
-   "region": "wilderness",
+   "region": "isle",
    "neighbors": [
     "cw1",
     "cw3"
@@ -3006,7 +3006,7 @@
    "type": "elite",
    "x": 1738,
    "y": 668,
-   "region": "wilderness",
+   "region": "isle",
    "neighbors": [
     "cw2",
     "cw4"
@@ -3017,7 +3017,7 @@
    "type": "elite",
    "x": 1918,
    "y": 671,
-   "region": "wilderness",
+   "region": "isle",
    "neighbors": [
     "cw3",
     "cw5"
@@ -3028,7 +3028,7 @@
    "type": "elite",
    "x": 1927,
    "y": 833,
-   "region": "wilderness",
+   "region": "isle",
    "neighbors": [
     "cw4",
     "isl_warp"

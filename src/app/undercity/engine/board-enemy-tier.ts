@@ -48,6 +48,7 @@ export function drawTierBadge(
   const cy = n.y + DISC_RY * 0.5; // lower face of the coin, clear of the centre glyph
 
   ctx.save();
+  ctx.globalAlpha = 0.5; // half-strength so the letters read as a subtle stamp
   ctx.font = `900 ${13 * k}px sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';

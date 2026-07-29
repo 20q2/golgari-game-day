@@ -315,6 +315,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   onPointerDown(e: PointerEvent): void {
+    this.canvas?.markDirty();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     // Middle mouse is always the camera — never grabs, places, or connects.
     if (e.button === 1) {
@@ -422,6 +423,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   onPointerMove(e: PointerEvent): void {
+    this.canvas?.markDirty();
     const w = this.canvas.toWorld(e.clientX, e.clientY);
     this.cursor.set({ x: Math.round(w.x), y: Math.round(w.y) });
 
@@ -519,6 +521,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   onPointerUp(): void {
+    this.canvas?.markDirty();
     if (!this.drag) return;
     if (this.drag.kind === 'marquee') {
       const moved = this.drag.moved;
@@ -581,10 +584,12 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     this.cursor.set(null);
     this.canvas.overlay.hover = null;
     this.canvas.overlay.tooltip = null;
+    this.canvas.markDirty();
   }
 
   onWheel(e: WheelEvent): void {
     e.preventDefault();
+    this.canvas.markDirty();
     this.canvas.zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.15 : 1 / 1.15);
     this.zoomPct.set(this.canvas.zoomPct());
   }
@@ -665,12 +670,14 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       showIds: this.showIds(),
       grid: this.snap() ? 100 : 0,
     };
+    this.canvas.markDirty();
   }
 
   private onKey(e: KeyboardEvent): void {
     if (this.previewSeed()) return;   // no keyboard edits while previewing samples
     const tag = (e.target as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    this.canvas?.markDirty();
 
     const key = e.key.toLowerCase();
     if (!e.ctrlKey && !e.metaKey && !e.altKey && MODE_KEYS[key]) {
