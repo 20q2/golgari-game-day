@@ -576,6 +576,11 @@ export interface SpaceEvent {
   renownGained?: number;
   hp?: number;
   roll?: number;
+  /** Mystery-space canonical outcome (mirrors undercity_db._mystery →
+   *  engine.mystery_outcome): drives which reel face the lottery machine lands
+   *  on. One of jackpot|gear|grimoire|item|heal|buff|curse|warp|hurt|theft|
+   *  spores|xp|mystery. */
+  outcome?: string;
   paint?: string;
   hat?: string;
   duplicate?: boolean;
