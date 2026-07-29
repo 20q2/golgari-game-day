@@ -70,7 +70,11 @@ type Cell = [number, number];
                   }
                 }
                 @if (rewardAt(ri, ci); as rw) {
-                  <mat-icon class="reward-ic" [svgIcon]="iconFor(rw)"></mat-icon>
+                  @if (isLigatureReward(rw)) {
+                    <mat-icon class="reward-ic">{{ iconFor(rw) }}</mat-icon>
+                  } @else {
+                    <mat-icon class="reward-ic" [svgIcon]="iconFor(rw)"></mat-icon>
+                  }
                 }
               </div>
             }
@@ -353,12 +357,18 @@ export class FlowPuzzleModalComponent {
     return this.trailMap().get(`${r},${c}`) ?? null;
   }
 
-  /** Registry name of the SVG icon for each reward kind. */
-  private readonly rewardIcon: Record<FlowReward['kind'], string> = {
+  /** Registry name of the SVG icon for each SVG-backed reward kind. Moltings use
+   * the Material `grass` ligature instead (see `isLigatureReward`/template). */
+  private readonly rewardIcon: Record<'spores' | 'item' | 'gear', string> = {
     spores: 'uc-spore',
     item: 'uc-pouch',
     gear: 'uc-chest',
   };
+
+  /** Moltings render as a Material Icons ligature, not a registered SVG. */
+  protected isLigatureReward(rw: FlowReward): boolean {
+    return rw.kind === 'molting';
+  }
 
   /** The reward at (r,c), or null. */
   protected rewardAt(r: number, c: number): FlowReward | null {
@@ -366,7 +376,7 @@ export class FlowPuzzleModalComponent {
   }
 
   protected iconFor(rw: FlowReward): string {
-    return this.rewardIcon[rw.kind];
+    return rw.kind === 'molting' ? 'grass' : this.rewardIcon[rw.kind];
   }
 
   /** The first reward cell the current path crosses, or null. */
