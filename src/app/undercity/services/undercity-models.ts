@@ -291,6 +291,8 @@ export interface GameState {
   /** Landmark node id -> its season-global first conqueror.
    *  `kind` is 'lair' | 'boss' | 'trove' | 'cache' | 'vault'. */
   firsts?: Record<string, { by: string; at?: string; kind: string }>;
+  /** Ashen Fog node id -> the space type it permanently revealed to (season-global). */
+  fogReveals?: Record<string, string>;
   /** The wilderness World Event ("Great Beast"), or null if it never spawned. */
   worldEvent?: WorldEventState | null;
   /** Barrier/lair node id -> its live guardian HP pool (field-spell targets). */
@@ -547,6 +549,9 @@ export interface FlowPuzzleView {
 export interface SpaceEvent {
   type: string;
   text: string;
+  /** Set only on the FIRST landing of an Ashen Fog tile: the space type the fog
+   *  just revealed (also `type`). Drives the "the fog parts" reveal beat. */
+  fogReveal?: string;
   spores?: number;
   item?: string;
   /** A spell-scroll drop (mirrors undercity_db._roll_scroll_drop): the spell id. */

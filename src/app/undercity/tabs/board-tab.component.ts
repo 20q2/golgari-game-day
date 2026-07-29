@@ -72,6 +72,7 @@ import {
 import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome } from '../data/dungeons';
 import { WORLD_EVENT, WORLD_EVENT_SPRITE } from '../data/world-event';
 import { formName } from '../data/forms';
+import { RegionInfo, regionInfo, tunnelDest } from '../data/regions';
 import { formSprite } from '../data/species';
 import { getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
 import { BattlePlaybackComponent, BattleSide, BattleRewards } from './battle-playback.component';
@@ -1007,7 +1008,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const bg =
       regions?.[region]?.background ||
       regions?.['city']?.background ||
-      'undercity/undercity_background.png';
+      'undercity/undercity_background.webp';
     return `url('${bg}')`;
   }
 
@@ -1041,18 +1042,29 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     );
   }
 
+  /** Region the currently-prompted tunnel leads to (null if unresolved). */
+  protected bridgeDest(): RegionInfo | null {
+    const id = this.bridgePrompt();
+    if (!id || !this.map) return null;
+    const node = this.map.nodes.find((n) => n.id === id);
+    if (!node) return null;
+    const dest = tunnelDest(this.map.nodes, node);
+    return (dest && regionInfo(dest)) || null;
+  }
+
   /**
-   * Bridge-crossing backdrop: the Nyx Weaver's silk roads slung across the misty
-   * biome gaps. Every tunnel joins two chambers, so instead of either biome's
-   * scenery the tollkeeper dialog shows the same between-worlds chasm — washed
-   * dark enough (with the modal's text-shadows) that her dialog stays legible.
+   * Bridge-crossing backdrop: peer across at the destination biome's own scenery
+   * behind the Nyx Weaver, washed dark (under the gradient) so her dialog stays
+   * legible. Falls back to the between-worlds silk chasm if the destination
+   * can't be resolved.
    */
   protected bridgeWashBg(): string {
+    const bg = this.bridgeDest()?.bg ?? 'undercity/silk_roads.png';
     return (
       `linear-gradient(to bottom, ` +
       `rgba(16, 14, 11, 0.58) 0%, ` +
-      `rgba(16, 14, 11, 0.88) 100%), ` +
-      `url('undercity/silk_roads.png')`
+      `rgba(16, 14, 11, 0.90) 100%), ` +
+      `url('${bg}')`
     );
   }
 
@@ -1902,6 +1914,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       claims.filter((c) => c.endsWith('_lair')).map((c) => c.split('_')[0]),
     );
     this.board.setFirsts(this.store.firsts());
+    this.board.setFogReveals(this.store.fogReveals());
   }
 
   private async move(to: string): Promise<void> {

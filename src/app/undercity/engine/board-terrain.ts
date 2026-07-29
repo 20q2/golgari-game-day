@@ -76,9 +76,22 @@ export interface TerrainArt {
   glowSpots: GlowSpot[];
   /** Soft flora pulled out of the bake to sway per frame (empty if baked). */
   flora: FloraInstance[];
+  /** Path motifs lifted out of the bake so BoardCanvas can redraw them crisp per
+   *  frame at full res (the baked terrain is soft at TERRAIN_RES). Empty unless
+   *  renderTerrain was called with animatePaths. */
+  pathMotifs: PathMotifInstance[];
   /** World-px per canvas-px the backing store was baked at (1 = full res). The
    *  renderer must scale the blit up by 1/resolution to cover the world. */
   resolution: number;
+}
+
+/** One collected path decoration — a curve, which motif draws it, and its
+ *  style — redrawn crisp per frame by drawPathMotifs. `key` is the region →
+ *  PATH_MOTIFS lookup (drawStuds fallback for depths / dungeon pockets). */
+export interface PathMotifInstance {
+  key: string;
+  c: EdgeCurve;
+  style: PathStyle;
 }
 
 /** Floor paintings keyed by region, ghosted onto the cave floor per chamber. */
@@ -111,7 +124,7 @@ interface RegionTheme {
 }
 
 const REGION_THEMES: Record<string, RegionTheme> = {
-  // The Undercity — emerald-teal gothic stone (undercity_background.png).
+  // The Undercity — emerald-teal gothic stone (undercity_background.webp).
   // Shape language: chamfered, angular masonry slabs, tall and chunky.
   city: {
     top: '#22403a',
@@ -386,47 +399,304 @@ function strokePolyline(
   ctx.stroke();
 }
 
-/**
- * A grand crossing between two regions: a wide raised deck with a stone kerb
- * down each side and a lantern post near each end. Reads as a "highway between
- * chambers" versus the narrow local paths inside a region. (Distinct from
- * drawCauseway, which is the boss island's broken stepping-stone bridge.)
- */
-function drawCrossing(
-  ctx: CanvasRenderingContext2D,
-  c: EdgeCurve,
-  glowSpots: GlowSpot[],
-): void {
-  const ribbon = (width: number, color: string, dy = 0): void => {
-    ctx.beginPath();
-    ctx.moveTo(c.a.x, c.a.y + dy);
-    ctx.quadraticCurveTo(c.cx, c.cy + dy, c.b.x, c.b.y + dy);
-    ctx.lineWidth = width;
-    ctx.strokeStyle = color;
-    ctx.lineCap = 'round';
-    ctx.stroke();
+// ── Region-to-region crossings ────────────────────────────────────────────────
+// A crossing is the set-piece on an overworld edge between two chambers — a
+// "highway between chambers" versus the narrow local paths inside a region.
+// (Distinct from drawCauseway, the boss island's broken stepping-stone bridge.)
+// Each biome has its own crossing style; drawCrossing() picks the style of the
+// deeper/more-dangerous endpoint (CROSSING_RANK) so, as you push outward from
+// the Mosslight hub, the bridge belongs to the scarier place you're entering.
+
+type CrossingFn = (ctx: CanvasRenderingContext2D, c: EdgeCurve, glowSpots: GlowSpot[]) => void;
+
+/** Point on the crossing's quadratic Bézier at t. */
+function crossPoint(c: EdgeCurve, t: number): Pt {
+  const u = 1 - t;
+  return {
+    x: u * u * c.a.x + 2 * u * t * c.cx + t * t * c.b.x,
+    y: u * u * c.a.y + 2 * u * t * c.cy + t * t * c.b.y,
   };
-  ribbon(52, 'rgba(0,0,0,0.4)', 8); // drop shadow
-  ribbon(48, '#20242c'); // kerb / rim
-  ribbon(40, '#6b6f66'); // pale flagstone deck
-  ribbon(34, '#4a4e48'); // worn center
-  ribbon(3, 'rgba(230, 214, 170, 0.5)', -14); // lit kerb highlight (north)
-  ribbon(3, 'rgba(0,0,0,0.35)', 15); // shaded kerb (south)
-  // Lantern posts a short way in from each end, plus animated glow spots.
-  const post = (t: number): void => {
-    const u = 1 - t;
-    const x = u * u * c.a.x + 2 * u * t * c.cx + t * t * c.b.x;
-    const y = u * u * c.a.y + 2 * u * t * c.cy + t * t * c.b.y;
+}
+
+/** Unit normal (across the span) at t on the crossing curve. */
+function crossNormal(c: EdgeCurve, t: number): { nx: number; ny: number } {
+  const dx = 2 * (1 - t) * (c.cx - c.a.x) + 2 * t * (c.b.x - c.cx);
+  const dy = 2 * (1 - t) * (c.cy - c.a.y) + 2 * t * (c.b.y - c.cy);
+  const len = Math.hypot(dx, dy) || 1;
+  return { nx: -dy / len, ny: dx / len };
+}
+
+/** Stroke a deck ribbon along the crossing curve, offset `dy` px vertically. */
+function crossRibbon(ctx: CanvasRenderingContext2D, c: EdgeCurve, width: number, color: string, dy = 0): void {
+  ctx.beginPath();
+  ctx.moveTo(c.a.x, c.a.y + dy);
+  ctx.quadraticCurveTo(c.cx, c.cy + dy, c.b.x, c.b.y + dy);
+  ctx.lineWidth = width;
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+}
+
+/** Sedgemoor: the original wide raised deck with kerbs and amber lantern posts. */
+function crossBog(ctx: CanvasRenderingContext2D, c: EdgeCurve, glowSpots: GlowSpot[]): void {
+  crossRibbon(ctx, c, 52, 'rgba(0,0,0,0.4)', 8); // drop shadow
+  crossRibbon(ctx, c, 48, '#20242c'); // kerb / rim
+  crossRibbon(ctx, c, 40, '#6b6f66'); // pale flagstone deck
+  crossRibbon(ctx, c, 34, '#4a4e48'); // worn center
+  crossRibbon(ctx, c, 3, 'rgba(230, 214, 170, 0.5)', -14); // lit kerb (north)
+  crossRibbon(ctx, c, 3, 'rgba(0,0,0,0.35)', 15); // shaded kerb (south)
+  for (const t of [0.16, 0.84]) {
+    const p = crossPoint(c, t);
     ctx.fillStyle = '#2a2018';
-    ctx.fillRect(x - 3, y - 30, 6, 30); // post
+    ctx.fillRect(p.x - 3, p.y - 30, 6, 30);
     ctx.fillStyle = '#ffd58a';
     ctx.beginPath();
-    ctx.arc(x, y - 32, 5, 0, Math.PI * 2); // lantern head
+    ctx.arc(p.x, p.y - 32, 5, 0, Math.PI * 2);
     ctx.fill();
-    glowSpots.push({ x, y: y - 32, r: 46, color: '255, 200, 130', phase: t * 6.28 });
+    glowSpots.push({ x: p.x, y: p.y - 32, r: 46, color: '255, 200, 130', phase: t * 6.28 });
+  }
+}
+
+/** The Undercity: buttressed stone bridge with an arched underside + sconces. */
+function crossCity(ctx: CanvasRenderingContext2D, c: EdgeCurve, glowSpots: GlowSpot[]): void {
+  for (const t of [0.3, 0.7]) {
+    const p = crossPoint(c, t); // arch voids under the deck
+    ctx.beginPath();
+    ctx.arc(p.x, p.y + 6, 16, 0, Math.PI);
+    ctx.fillStyle = '#0d1a16';
+    ctx.fill();
+  }
+  crossRibbon(ctx, c, 50, 'rgba(0,0,0,0.4)', 8);
+  crossRibbon(ctx, c, 46, '#16241f');
+  crossRibbon(ctx, c, 38, '#6b8078');
+  crossRibbon(ctx, c, 32, '#46605a');
+  crossRibbon(ctx, c, 3, 'rgba(200, 236, 216, 0.4)', -14);
+  crossRibbon(ctx, c, 3, 'rgba(0,0,0,0.35)', 15);
+  for (const t of [0.16, 0.84]) {
+    const p = crossPoint(c, t);
+    ctx.fillStyle = '#16241f';
+    ctx.fillRect(p.x - 3, p.y - 30, 6, 30);
+    ctx.fillStyle = '#a8f0c0';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - 32, 5, 0, Math.PI * 2);
+    ctx.fill();
+    glowSpots.push({ x: p.x, y: p.y - 32, r: 42, color: '120, 240, 170', phase: t * 6.28 });
+  }
+}
+
+/** Mosslight Cavern: a row of glowing mushroom-cap stepping stones. */
+function crossCavern(ctx: CanvasRenderingContext2D, c: EdgeCurve, glowSpots: GlowSpot[]): void {
+  const n = 5;
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n;
+    const p = crossPoint(c, t);
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + 6, 20, 8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fill();
+    ctx.fillStyle = '#cabfa4';
+    ctx.fillRect(p.x - 2.5, p.y, 5, 7);
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, 19, 10, 0, Math.PI, 0);
+    ctx.fillStyle = '#3f8f8a';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(p.x - 3, p.y - 2, 11, 5, 0, Math.PI, 0);
+    ctx.fillStyle = '#63c6bd';
+    ctx.fill();
+    glowSpots.push({ x: p.x, y: p.y - 3, r: 26, color: '116, 240, 214', phase: t * 6.28 });
+  }
+}
+
+/** The Rot-Gardens: a vine arbor with a drooping swag and hanging gourds. */
+function crossGarden(ctx: CanvasRenderingContext2D, c: EdgeCurve, glowSpots: GlowSpot[]): void {
+  crossRibbon(ctx, c, 34, 'rgba(0,0,0,0.35)', 6);
+  crossRibbon(ctx, c, 30, '#3a3018');
+  crossRibbon(ctx, c, 24, '#4c4620');
+  const a = crossPoint(c, 0.14);
+  const b = crossPoint(c, 0.86);
+  for (const p of [a, b]) {
+    ctx.fillStyle = '#3a2c14';
+    ctx.fillRect(p.x - 2.5, p.y - 34, 5, 34);
+  }
+  const at = { x: a.x, y: a.y - 34 };
+  const bt = { x: b.x, y: b.y - 34 };
+  const swag = (w: number, col: string): void => {
+    ctx.strokeStyle = col;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(at.x, at.y);
+    ctx.quadraticCurveTo((at.x + bt.x) / 2, (at.y + bt.y) / 2 + 20, bt.x, bt.y);
+    ctx.stroke();
   };
-  post(0.16);
-  post(0.84);
+  swag(5, '#3a5a24');
+  swag(2.5, '#5a8a34');
+  for (const t of [0.35, 0.65]) {
+    const m = { x: at.x + (bt.x - at.x) * t, y: at.y + (bt.y - at.y) * t + 20 - Math.abs(t - 0.5) * 10 };
+    ctx.beginPath();
+    ctx.ellipse(m.x, m.y + 7, 5, 7, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#c2c24a';
+    ctx.fill();
+    glowSpots.push({ x: m.x, y: m.y + 6, r: 16, color: '160, 210, 90', phase: t * 6.28 });
+  }
+}
+
+/** Ossuary Fields: skull-topped posts strung with a sagging bone chain. */
+function crossBone(ctx: CanvasRenderingContext2D, c: EdgeCurve, glowSpots: GlowSpot[]): void {
+  crossRibbon(ctx, c, 34, 'rgba(0,0,0,0.4)', 6);
+  crossRibbon(ctx, c, 30, '#2a251c');
+  crossRibbon(ctx, c, 24, '#5c5644');
+  crossRibbon(ctx, c, 18, '#6f6650');
+  const a = crossPoint(c, 0.14);
+  const b = crossPoint(c, 0.86);
+  const skull = (p: Pt): void => {
+    ctx.fillStyle = '#2a251c';
+    ctx.fillRect(p.x - 2.5, p.y - 26, 5, 26);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - 28, 5.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#e2d8bc';
+    ctx.fill();
+    ctx.fillStyle = '#141110';
+    ctx.beginPath();
+    ctx.arc(p.x - 2, p.y - 29, 1.4, 0, Math.PI * 2);
+    ctx.arc(p.x + 2, p.y - 29, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  skull(a);
+  skull(b);
+  const at = { x: a.x, y: a.y - 28 };
+  const bt = { x: b.x, y: b.y - 28 };
+  for (let i = 0; i <= 8; i++) {
+    const t = i / 8;
+    const x = at.x + (bt.x - at.x) * t;
+    const y = at.y + (bt.y - at.y) * t + Math.sin(t * Math.PI) * 9;
+    ctx.beginPath();
+    ctx.arc(x, y, 1.8, 0, Math.PI * 2);
+    ctx.fillStyle = '#cfc4a8';
+    ctx.fill();
+  }
+  const mid = crossPoint(c, 0.5);
+  glowSpots.push({ x: mid.x, y: mid.y - 14, r: 26, color: '230, 222, 196', phase: 0.5 });
+}
+
+/** Gated ruins: a toppled colonnade — fallen column drums laid across the gap. */
+function crossRuin(ctx: CanvasRenderingContext2D, c: EdgeCurve, glowSpots: GlowSpot[]): void {
+  const n = 5;
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n;
+    const p = crossPoint(c, t);
+    const { nx, ny } = crossNormal(c, t);
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + 6, 16, 7, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fill();
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(Math.atan2(ny, nx)); // drum lies across the span
+    ctx.fillStyle = '#4a3f27';
+    ctx.fillRect(-14, -8, 28, 16);
+    ctx.beginPath();
+    ctx.ellipse(14, 0, 4, 8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#5c4f31';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(-14, 0, 4, 8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#2e2717';
+    ctx.fill();
+    ctx.fillStyle = 'rgba(226, 204, 150, 0.5)';
+    ctx.fillRect(-9, -8, 18, 2);
+    ctx.restore();
+  }
+  const mid = crossPoint(c, 0.5);
+  glowSpots.push({ x: mid.x, y: mid.y, r: 24, color: '226, 204, 150', phase: 0.5 });
+}
+
+/** The Ashen Wilds: a jury-rigged rope-and-plank bridge lashed to anchor posts. */
+function crossWilds(ctx: CanvasRenderingContext2D, c: EdgeCurve, glowSpots: GlowSpot[]): void {
+  const a = crossPoint(c, 0.1);
+  const b = crossPoint(c, 0.9);
+  for (const p of [a, b]) {
+    ctx.fillStyle = '#241812';
+    ctx.fillRect(p.x - 2.5, p.y - 26, 5, 26);
+  }
+  const at = { x: a.x, y: a.y - 24 };
+  const bt = { x: b.x, y: b.y - 24 };
+  const rope = (off: number, w: number): void => {
+    ctx.strokeStyle = '#6a5236';
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(at.x, at.y + off);
+    ctx.quadraticCurveTo((at.x + bt.x) / 2, (at.y + bt.y) / 2 + off + 14, bt.x, bt.y + off);
+    ctx.stroke();
+  };
+  rope(20, 2);
+  rope(0, 1.6);
+  ctx.strokeStyle = '#3a2c1c';
+  ctx.lineWidth = 4;
+  for (let i = 1; i < 7; i++) {
+    const t = i / 7;
+    const x = at.x + (bt.x - at.x) * t;
+    const y = at.y + (bt.y - at.y) * t + Math.sin(t * Math.PI) * 12;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + 20);
+    ctx.stroke();
+  }
+  const mid = crossPoint(c, 0.5);
+  glowSpots.push({ x: mid.x, y: mid.y, r: 22, color: '224, 117, 46', phase: 0.4 });
+}
+
+/** Savra's Isle: a black deck lined with violet-flame ritual braziers. */
+function crossIsle(ctx: CanvasRenderingContext2D, c: EdgeCurve, glowSpots: GlowSpot[]): void {
+  crossRibbon(ctx, c, 40, 'rgba(0,0,0,0.45)', 7);
+  crossRibbon(ctx, c, 34, '#171020');
+  crossRibbon(ctx, c, 26, '#2a2038');
+  crossRibbon(ctx, c, 3, 'rgba(184, 122, 255, 0.4)', -12);
+  for (const t of [0.15, 0.5, 0.85]) {
+    const p = crossPoint(c, t);
+    const { nx, ny } = crossNormal(c, t);
+    for (const s of [-16, 16]) {
+      const bx = p.x + nx * s;
+      const by = p.y + ny * s;
+      ctx.fillStyle = '#1a1424';
+      ctx.fillRect(bx - 2, by - 16, 4, 16);
+      ctx.fillStyle = '#b87aff';
+      ctx.beginPath();
+      ctx.arc(bx, by - 18, 4, 0, Math.PI * 2);
+      ctx.fill();
+      glowSpots.push({ x: bx, y: by - 18, r: 24, color: '184, 122, 255', phase: t * 6.28 });
+    }
+  }
+}
+
+const CROSSING_STYLES: Record<string, CrossingFn> = {
+  bog: crossBog,
+  city: crossCity,
+  cavern: crossCavern,
+  garden: crossGarden,
+  bone: crossBone,
+  ruin: crossRuin,
+  wilderness: crossWilds,
+  isle: crossIsle,
+};
+
+/** Depth/danger rank — the higher-ranked endpoint's style wins the crossing. */
+const CROSSING_RANK: Record<string, number> = {
+  cavern: 0,
+  bog: 1,
+  garden: 2,
+  city: 3,
+  bone: 4,
+  ruin: 5,
+  wilderness: 6,
+  isle: 7,
+};
+
+function drawCrossing(ctx: CanvasRenderingContext2D, c: EdgeCurve, glowSpots: GlowSpot[]): void {
+  const ra = CROSSING_RANK[c.a.region ?? ''] ?? -1;
+  const rb = CROSSING_RANK[c.b.region ?? ''] ?? -1;
+  const key = (rb > ra ? c.b.region : c.a.region) ?? '';
+  (CROSSING_STYLES[key] ?? crossBog)(ctx, c, glowSpots);
 }
 
 /**
@@ -711,6 +981,320 @@ function drawCauseway(
   glowSpots.push({ x: cx, y: cy, r: 210, color: '150, 80, 205', phase: 1.9 });
 }
 
+// ── Path motifs ──────────────────────────────────────────────────────────────
+// Each overworld biome decorates its intra-region path ribbons differently. The
+// caller draws the shared shadow/rim/edge/fill ribbon; a motif only adds the top
+// layer. Keyed by region in PATH_MOTIFS; anything without an entry (depths,
+// dungeon:* pockets) falls back to drawStuds. Region-to-region edges are
+// crossings (drawCrossing), not paths, so a motif always sees keyA === keyB.
+
+type PathStyle = RegionTheme['path'];
+type PathMotifFn = (
+  ctx: CanvasRenderingContext2D,
+  c: EdgeCurve,
+  style: PathStyle,
+  glowSpots: GlowSpot[],
+) => void;
+
+/** Unit normal (perpendicular to the local tangent) at sample i. */
+function pathNormal(pts: Pt[], i: number): { nx: number; ny: number } {
+  const a = pts[Math.max(0, i - 1)];
+  const b = pts[Math.min(pts.length - 1, i + 1)];
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  return { nx: -dy / len, ny: dx / len };
+}
+
+/** Stroke a polyline offset `s` px sideways (along the normal) from the centre. */
+function strokeOffset(
+  ctx: CanvasRenderingContext2D,
+  pts: Pt[],
+  s: number,
+  width: number,
+  color: string,
+): void {
+  ctx.beginPath();
+  for (let i = 0; i < pts.length; i++) {
+    const { nx, ny } = pathNormal(pts, i);
+    const x = pts[i].x + nx * s;
+    const y = pts[i].y + ny * s;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+}
+
+/** Default: round studs down the path (every region without a motif). */
+function drawStuds(ctx: CanvasRenderingContext2D, c: EdgeCurve, style: PathStyle): void {
+  const pts = sampleCurve(c, 48);
+  for (const p of pts.slice(1, -1)) {
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, 4.5, 3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = style.stud;
+    ctx.fill();
+  }
+}
+
+/** Sedgemoor: plank boardwalk + rope-and-post handrails. */
+function motifBoardwalk(ctx: CanvasRenderingContext2D, c: EdgeCurve, style: PathStyle): void {
+  const pts = sampleCurve(c, 20);
+  ctx.strokeStyle = style.stud;
+  ctx.lineWidth = 3;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const { nx, ny } = pathNormal(pts, i);
+    ctx.beginPath();
+    ctx.moveTo(pts[i].x - nx * 10, pts[i].y - ny * 10);
+    ctx.lineTo(pts[i].x + nx * 10, pts[i].y + ny * 10);
+    ctx.stroke();
+  }
+  const posts: { x: number; y: number; side: number }[] = [];
+  for (let i = 3; i < pts.length - 2; i += 6) {
+    const { nx, ny } = pathNormal(pts, i);
+    for (const s of [-14, 14]) {
+      const x = pts[i].x + nx * s;
+      const y = pts[i].y + ny * s;
+      ctx.fillStyle = '#2a2012';
+      ctx.fillRect(x - 1.5, y - 11, 3, 11);
+      posts.push({ x, y: y - 11, side: Math.sign(s) });
+    }
+  }
+  ctx.strokeStyle = 'rgba(120, 95, 55, 0.85)';
+  ctx.lineWidth = 1.6;
+  for (const side of [-1, 1]) {
+    const row = posts.filter((p) => p.side === side);
+    for (let i = 0; i < row.length - 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(row[i].x, row[i].y);
+      ctx.quadraticCurveTo(
+        (row[i].x + row[i + 1].x) / 2,
+        (row[i].y + row[i + 1].y) / 2 + 5,
+        row[i + 1].x,
+        row[i + 1].y,
+      );
+      ctx.stroke();
+    }
+  }
+}
+
+/** The Undercity: a checkered flagstone avenue, lit by emerald lamps.
+ *  Bold high-contrast stones + a glow chain — the fine gutter lines the old
+ *  version used washed out at the board's 0.6x bake and zoomed-out camera. */
+function motifPaved(
+  ctx: CanvasRenderingContext2D,
+  c: EdgeCurve,
+  _style: PathStyle,
+  glowSpots: GlowSpot[],
+): void {
+  const pts = sampleCurve(c, 18);
+  for (let i = 1; i < pts.length - 1; i++) {
+    const a = pts[i - 1];
+    const b = pts[i + 1];
+    ctx.save();
+    ctx.translate(pts[i].x, pts[i].y);
+    ctx.rotate(Math.atan2(b.y - a.y, b.x - a.x));
+    ctx.fillStyle = i % 2 ? '#7c968c' : '#2f423b';
+    ctx.fillRect(-5, -10, 10, 20);
+    ctx.restore();
+  }
+  const rand = mulberry32(hashStr(`city-${c.a.id}-${c.b.id}`));
+  for (let i = 3; i < pts.length - 2; i += 6) {
+    glowSpots.push({ x: pts[i].x, y: pts[i].y, r: 22, color: '120, 240, 170', phase: rand() * 6.28 });
+  }
+}
+
+/** Mosslight Cavern: a dark mossy trough with a bright glowing vein + spore-caps.
+ *  Teal glow on teal ground was self-camouflaging, so this leans on VALUE
+ *  contrast — a dark bed and near-white accents — not same-hue glow. */
+function motifMoss(
+  ctx: CanvasRenderingContext2D,
+  c: EdgeCurve,
+  _style: PathStyle,
+  glowSpots: GlowSpot[],
+): void {
+  const pts = sampleCurve(c, 30);
+  strokeOffset(ctx, pts, 0, 18, '#0e2a26'); // dark trough over the pale ribbon
+  strokeOffset(ctx, pts, 0, 3, 'rgba(160, 255, 228, 0.85)'); // glowing vein
+  const rand = mulberry32(hashStr(`moss-${c.a.id}-${c.b.id}`));
+  for (let i = 4; i < pts.length - 2; i += 5) {
+    const { nx, ny } = pathNormal(pts, i);
+    const s = (rand() - 0.5) * 8;
+    const x = pts[i].x + nx * s;
+    const y = pts[i].y + ny * s;
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(210, 255, 240, 0.95)';
+    ctx.fill();
+    glowSpots.push({ x, y, r: 22, color: '150, 255, 225', phase: rand() * 6.28 });
+  }
+}
+
+/** The Rot-Gardens: a tilled bed — bold alternating soil rows across the lane
+ *  + glowing seed-pods on the verge. Chunky like the boardwalk so it survives. */
+function motifFurrow(
+  ctx: CanvasRenderingContext2D,
+  c: EdgeCurve,
+  _style: PathStyle,
+  glowSpots: GlowSpot[],
+): void {
+  const pts = sampleCurve(c, 20);
+  ctx.lineCap = 'round';
+  for (let i = 1; i < pts.length - 1; i++) {
+    const { nx, ny } = pathNormal(pts, i);
+    ctx.strokeStyle = i % 2 ? '#b2ce54' : '#1e280e'; // bright lime vs near-black rows
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(pts[i].x - nx * 10, pts[i].y - ny * 10);
+    ctx.lineTo(pts[i].x + nx * 10, pts[i].y + ny * 10);
+    ctx.stroke();
+  }
+  const rand = mulberry32(hashStr(`garden-${c.a.id}-${c.b.id}`));
+  for (let i = 4; i < pts.length - 2; i += 6) {
+    const { nx, ny } = pathNormal(pts, i);
+    const x = pts[i].x + nx * 12;
+    const y = pts[i].y + ny * 12;
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#e4e45c';
+    ctx.fill();
+    glowSpots.push({ x, y, r: 18, color: '170, 220, 90', phase: rand() * 6.28 });
+  }
+}
+
+/** Ossuary Fields: a spine road — bold bone-white vertebrae beads down the
+ *  centre, thick rib-arches straddling them. High contrast, no glow (bone is
+ *  dead); sized up so it doesn't vanish at the 0.6x bake. */
+function motifSpine(ctx: CanvasRenderingContext2D, c: EdgeCurve): void {
+  const pts = sampleCurve(c, 22);
+  strokeOffset(ctx, pts, 0, 16, '#241f16'); // dark bed so the bone-white pops
+  ctx.strokeStyle = '#ece2c6';
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  for (let i = 3; i < pts.length - 2; i += 4) {
+    const { nx, ny } = pathNormal(pts, i);
+    ctx.beginPath();
+    ctx.moveTo(pts[i].x - nx * 13, pts[i].y - ny * 13);
+    ctx.quadraticCurveTo(pts[i].x, pts[i].y - 13, pts[i].x + nx * 13, pts[i].y + ny * 13);
+    ctx.stroke();
+  }
+  for (let i = 1; i < pts.length - 1; i++) {
+    ctx.beginPath();
+    ctx.arc(pts[i].x, pts[i].y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#f2e9cc';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(pts[i].x, pts[i].y, 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(20, 15, 12, 0.6)';
+    ctx.fill();
+  }
+}
+
+/** Gated ruins (Sunken Vaults / Titan's Rest): a broken processional — chunky
+ *  cracked flagstones with dark gaps, a bold gold inlay stripe, and gold glints.
+ *  The old hairline crack + dashed inlay disappeared at play zoom. */
+function motifCracked(
+  ctx: CanvasRenderingContext2D,
+  c: EdgeCurve,
+  _style: PathStyle,
+  glowSpots: GlowSpot[],
+): void {
+  const pts = sampleCurve(c, 18);
+  const rand = mulberry32(hashStr(`ruin-${c.a.id}-${c.b.id}`));
+  for (let i = 1; i < pts.length - 1; i++) {
+    const a = pts[i - 1];
+    const b = pts[i + 1];
+    ctx.save();
+    ctx.translate(pts[i].x, pts[i].y);
+    ctx.rotate(Math.atan2(b.y - a.y, b.x - a.x));
+    if (rand() < 0.18) {
+      ctx.fillStyle = '#0a0806'; // a missing slab
+      ctx.fillRect(-6, -11, 12, 22);
+    } else {
+      ctx.fillStyle = i % 2 ? '#6f6038' : '#453a22';
+      ctx.fillRect(-6, -10, 12, 20);
+    }
+    ctx.restore();
+  }
+  ctx.beginPath();
+  pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  ctx.strokeStyle = 'rgba(232, 202, 122, 0.85)';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  for (let i = 4; i < pts.length - 2; i += 7) {
+    glowSpots.push({ x: pts[i].x, y: pts[i].y, r: 16, color: '226, 204, 150', phase: rand() * 6.28 });
+  }
+}
+
+/** The Ashen Wilds: charcoal road veined with a glowing ember crack. */
+function motifEmber(
+  ctx: CanvasRenderingContext2D,
+  c: EdgeCurve,
+  _style: PathStyle,
+  glowSpots: GlowSpot[],
+): void {
+  const pts = sampleCurve(c, 26);
+  const rand = mulberry32(hashStr(`ember-${c.a.id}-${c.b.id}`));
+  const mid = pts[Math.floor(pts.length / 2)];
+  glowSpots.push({ x: mid.x, y: mid.y, r: 34, color: '224, 117, 46', phase: rand() * 6.28 });
+  const crack = pts.map((p, i) => {
+    const { nx, ny } = pathNormal(pts, i);
+    const j = (rand() - 0.5) * 6;
+    return { x: p.x + nx * j, y: p.y + ny * j };
+  });
+  const line = (w: number, col: string): void => {
+    ctx.beginPath();
+    crack.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.strokeStyle = col;
+    ctx.lineWidth = w;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  };
+  line(2, 'rgba(255, 140, 50, 0.85)');
+  line(0.8, 'rgba(255, 220, 150, 0.9)');
+  ctx.strokeStyle = 'rgba(230, 110, 40, 0.7)';
+  ctx.lineWidth = 1.2;
+  for (let i = 3; i < pts.length - 3; i += 4) {
+    const { nx, ny } = pathNormal(pts, i);
+    const len = 7 + rand() * 6;
+    ctx.beginPath();
+    ctx.moveTo(crack[i].x, crack[i].y);
+    ctx.lineTo(crack[i].x + nx * len, crack[i].y + ny * len);
+    ctx.stroke();
+  }
+}
+
+/** Savra's Isle: lit obsidian glass — bold specular streaks + a violet glow
+ *  strung down the path. The old thin reflection lines were invisible at zoom. */
+function motifObsidian(
+  ctx: CanvasRenderingContext2D,
+  c: EdgeCurve,
+  _style: PathStyle,
+  glowSpots: GlowSpot[],
+): void {
+  const pts = sampleCurve(c, 22);
+  strokeOffset(ctx, pts, -4, 2.5, 'rgba(200, 160, 255, 0.7)');
+  strokeOffset(ctx, pts, 5, 1.6, 'rgba(160, 120, 220, 0.5)');
+  const rand = mulberry32(hashStr(`isle-${c.a.id}-${c.b.id}`));
+  for (let i = 3; i < pts.length - 2; i += 5) {
+    glowSpots.push({ x: pts[i].x, y: pts[i].y, r: 20, color: '184, 122, 255', phase: rand() * 6.28 });
+  }
+}
+
+const PATH_MOTIFS: Record<string, PathMotifFn> = {
+  bog: motifBoardwalk,
+  city: motifPaved,
+  cavern: motifMoss,
+  garden: motifFurrow,
+  bone: motifSpine,
+  ruin: motifCracked,
+  wilderness: motifEmber,
+  isle: motifObsidian,
+};
+
 export function renderTerrain(
   map: BoardMap,
   floors?: FloorTextures,
@@ -728,11 +1312,18 @@ export function renderTerrain(
      * the map editor, which has no per-frame loop) keeps the flora baked.
      */
     animateFlora?: boolean;
+    /**
+     * Collect path motifs into TerrainArt.pathMotifs for a crisp per-frame draw
+     * (drawPathMotifs) instead of baking them into the soft-res image. Default
+     * false: the editor bakes them in place (it renders full-res anyway).
+     */
+    animatePaths?: boolean;
   },
 ): TerrainArt {
   const cleared = opts?.cleared ?? false;
   const resolution = opts?.resolution ?? 1;
   const animateFlora = opts?.animateFlora ?? false;
+  const animatePaths = opts?.animatePaths ?? false;
   // A layer restricts what we draw to a node subset within a world-space
   // bounding box; default (no layer) draws the whole world (legacy behaviour).
   const bx = layer ? layer.bounds.x : 0;
@@ -789,10 +1380,16 @@ export function renderTerrain(
   const isleZone = regionZone('isle');
   const ISLAND = { cx: isleZone.cx, cy: isleZone.cy };
   const LAKE = { cx: isleZone.cx, cy: isleZone.cy + 170, rx: 300, ry: 96 };
-  const FLOOR_ZONES = [...regionPts.keys()].map((r) => {
-    const z = regionZone(r);
-    return { region: r, cx: z.cx, cy: z.cy, r: z.rad, alpha: 0.18 };
-  });
+  const FLOOR_ZONES = [...regionPts.keys()]
+    .map((r) => {
+      const z = regionZone(r);
+      return { region: r, cx: z.cx, cy: z.cy, r: z.rad, alpha: 0.18 };
+    })
+    // Paint broad zones first and tight ones last, so a small chamber sitting
+    // inside a big neighbour's wash radius (e.g. the Floating Isle engulfed by
+    // the sprawling wilderness/arena zone) shows its OWN floor instead of being
+    // buried under the larger zone's bleed.
+    .sort((a, b) => b.r - a.r);
   const LABEL_NAMES: Record<string, string> = {
     city: 'The Undercity', cavern: 'Mosslight Cavern', bog: 'The Sedgemoor',
     bone: 'Ossuary Fields', garden: 'The Rot-Gardens', depths: 'The Deep',
@@ -1034,17 +1631,32 @@ export function renderTerrain(
     const roll = rand();
     const nearKey = themeKeyFor(nearest);
     if (nearKey === 'bone') {
-      if (roll < 0.55) drawSkullPile(ctx, x, y, rand);
-      else if (roll < 0.8) drawBoneMound(ctx, x, y, rand);
+      if (roll < 0.4) drawSkullPile(ctx, x, y, rand);
+      else if (roll < 0.6) drawBoneMound(ctx, x, y, rand);
+      else if (roll < 0.78) drawGraveStele(ctx, x, y, rand);
+      else if (roll < 0.9) drawAshDrift(ctx, x, y);
       else drawPillar(ctx, x, y, rand);
     } else if (nearKey === 'garden') {
-      if (roll < 0.55) emitScatter('mushrooms', x, y);
-      else if (roll < 0.8) emitScatter('giant_mushroom', x, y);
+      if (roll < 0.4) emitScatter('mushrooms', x, y);
+      else if (roll < 0.62) emitScatter('giant_mushroom', x, y);
+      else if (roll < 0.82) drawTerrace(ctx, x, y, rand, glowSpots);
       else emitScatter('reeds', x, y);
-    } else if (nearKey === 'city' || nearKey === 'ruin') {
-      if (roll < 0.35) drawPillar(ctx, x, y, rand);
-      else if (roll < 0.6) drawRuinBlock(ctx, x, y, rand, glowSpots);
-      else if (roll < 0.8) drawArchRuin(ctx, x, y, rand, glowSpots);
+    } else if (nearKey === 'city') {
+      if (roll < 0.3) drawPillar(ctx, x, y, rand);
+      else if (roll < 0.52) drawRuinBlock(ctx, x, y, rand, glowSpots);
+      else if (roll < 0.72) drawWindowArch(ctx, x, y, rand, glowSpots);
+      else if (roll < 0.9) drawArchRuin(ctx, x, y, rand, glowSpots);
+      else drawSkullPile(ctx, x, y, rand);
+    } else if (nearKey === 'ruin') {
+      if (roll < 0.28) drawPillar(ctx, x, y, rand);
+      else if (roll < 0.5) drawStatueTorso(ctx, x, y);
+      else if (roll < 0.68) drawRuneTablet(ctx, x, y, rand, glowSpots);
+      else if (roll < 0.86) drawRuinBlock(ctx, x, y, rand, glowSpots);
+      else drawArchRuin(ctx, x, y, rand, glowSpots);
+    } else if (nearKey === 'wilderness') {
+      if (roll < 0.4) drawCharredSnag(ctx, x, y, rand, glowSpots);
+      else if (roll < 0.68) drawTarPit(ctx, x, y, rand, glowSpots);
+      else if (roll < 0.85) drawEmbers(ctx, x, y, rand, glowSpots);
       else drawSkullPile(ctx, x, y, rand);
     } else if (nearKey === 'dungeon:city') {
       if (roll < 0.5) drawEggCluster(ctx, x, y, rand, glowSpots);
@@ -1069,6 +1681,10 @@ export function renderTerrain(
       if (roll < 0.45) drawPool(ctx, x, y, rand, glowSpots);
       else if (roll < 0.75) emitScatter('reeds', x, y);
       else emitScatter('bog_tree', x, y);
+    } else if (nearKey === 'cavern') {
+      if (roll < 0.5) emitScatter('mushrooms', x, y);
+      else if (roll < 0.78) drawCrystal(ctx, x, y, rand, glowSpots);
+      else drawCrystalArch(ctx, x, y, rand, glowSpots);
     } else {
       if (roll < 0.6) emitScatter('mushrooms', x, y);
       else drawCrystal(ctx, x, y, rand, glowSpots);
@@ -1077,6 +1693,8 @@ export function renderTerrain(
 
   // 7. Path ribbons — each edge styled by its chamber (tunnels between two
   //    regions fall back to raw cavern stone).
+  const pathMotifs: PathMotifInstance[] = [];
+  let pathHarvest: CanvasRenderingContext2D | null = null;
   for (const c of curves) {
     // A climb, not a road — the stairwell landmark signals the link instead.
     if (isLadderLink(c)) continue;
@@ -1086,9 +1704,7 @@ export function renderTerrain(
       continue;
     }
     const keyA = themeKeyFor(c.a);
-    const keyB = themeKeyFor(c.b);
-    const style = keyA === keyB ? theme(keyA).path : REGION_THEMES['cavern'].path;
-    const bog = keyA === 'bog' && keyB === 'bog';
+    const style = keyA === themeKeyFor(c.b) ? theme(keyA).path : REGION_THEMES['cavern'].path;
     const ribbon = (width: number, color: string, dy = 0): void => {
       ctx.beginPath();
       ctx.moveTo(c.a.x, c.a.y + dy);
@@ -1102,27 +1718,16 @@ export function renderTerrain(
     ribbon(33, style.rim);
     ribbon(28, style.edge);
     ribbon(23, style.fill);
-    const pts = sampleCurve(c, bog ? 20 : 48);
-    if (bog) {
-      // Plank ticks across a boardwalk instead of studs.
-      ctx.strokeStyle = style.stud;
-      ctx.lineWidth = 3;
-      for (let i = 1; i < pts.length - 1; i++) {
-        const dx = pts[i + 1].x - pts[i - 1].x;
-        const dy = pts[i + 1].y - pts[i - 1].y;
-        const len = Math.hypot(dx, dy) || 1;
-        ctx.beginPath();
-        ctx.moveTo(pts[i].x - (-dy / len) * 10, pts[i].y - (dx / len) * 10);
-        ctx.lineTo(pts[i].x + (-dy / len) * 10, pts[i].y + (dx / len) * 10);
-        ctx.stroke();
-      }
+    // Top layer: each biome's own motif (boardwalk, paved, spine…), else studs.
+    // When animatePaths, lift the motif onto the crisp per-frame layer: bake only
+    // its glow (strokes go to a throwaway ctx) and stash the curve for
+    // drawPathMotifs, exactly as flora is un-baked. Otherwise bake it in place.
+    if (animatePaths) {
+      pathHarvest ??= document.createElement('canvas').getContext('2d')!;
+      (PATH_MOTIFS[keyA] ?? drawStuds)(pathHarvest, c, style, glowSpots);
+      pathMotifs.push({ key: keyA, c, style });
     } else {
-      for (const p of pts.slice(1, -1)) {
-        ctx.beginPath();
-        ctx.ellipse(p.x, p.y, 4.5, 3, 0, 0, Math.PI * 2);
-        ctx.fillStyle = style.stud;
-        ctx.fill();
-      }
+      (PATH_MOTIFS[keyA] ?? drawStuds)(ctx, c, style, glowSpots);
     }
   }
 
@@ -1202,7 +1807,7 @@ export function renderTerrain(
   // dynamic layer (tokens, discs, highlights).
   drawDecals(ctx, map, 'under', layer, glowSpots);
 
-  return { canvas, glowSpots, flora, resolution };
+  return { canvas, glowSpots, flora, resolution, pathMotifs };
 }
 
 interface TerrainBlob {
@@ -1564,6 +2169,17 @@ function drawPool(
     ctx.beginPath();
     ctx.ellipse(px, py, 4 + rand() * 3, 2.5 + rand() * 2, rand(), 0.25, Math.PI * 2);
     ctx.fill();
+  }
+  // Wisp-buoys: a couple of floating lights bobbing over the still water.
+  const wisps = 1 + Math.floor(rand() * 2);
+  for (let i = 0; i < wisps; i++) {
+    const wx = x + (rand() - 0.5) * rx * 1.1;
+    const wy = y + (rand() - 0.5) * ry * 0.9;
+    ctx.beginPath();
+    ctx.arc(wx, wy, 1.6, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(200, 255, 220, 0.95)';
+    ctx.fill();
+    glowSpots.push({ x: wx, y: wy, r: 13, color: '150, 220, 180', phase: rand() * 6.28 });
   }
   glowSpots.push({ x, y, r: 34, color: '150, 220, 180', phase: rand() * 6.28 });
 }
@@ -2258,6 +2874,279 @@ function drawLandmark(
   ctx.restore();
 }
 
+// ── Region ambience set-pieces ────────────────────────────────────────────────
+// Biome-specific scatter props placed in renderTerrain's decoration pass (and
+// hand-placeable via STAMPS). Each is 2.5D and grounded by a contact shadow, in
+// the style of the older props above.
+
+/** Mosslight Cavern: two crystal clusters leaning into an arch, glowing seam. */
+function drawCrystalArch(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+  glowSpots: GlowSpot[],
+): void {
+  groundShadow(ctx, x, y, 24, 0.3);
+  const cluster = (cx: number, dir: number): void => {
+    for (let i = 0; i < 3; i++) {
+      const h = 30 + i * 6;
+      const w = 6;
+      ctx.save();
+      ctx.translate(cx, y);
+      ctx.rotate(dir * 0.32);
+      ctx.beginPath();
+      ctx.moveTo(-w + i * 5, 0);
+      ctx.lineTo(-w * 0.3 + i * 5, -h);
+      ctx.lineTo(w * 0.5 + i * 5, -h * 0.75);
+      ctx.lineTo(w + i * 5, 0);
+      ctx.closePath();
+      ctx.fillStyle = i === 1 ? 'rgba(140, 240, 220, 0.9)' : 'rgba(120, 200, 190, 0.8)';
+      ctx.fill();
+      ctx.restore();
+    }
+  };
+  cluster(x - 16, -1);
+  cluster(x + 16, 1);
+  glowSpots.push({ x, y: y - 26, r: 40, color: '116, 240, 214', phase: rand() * 6.28 });
+}
+
+/** The Rot-Gardens: stepped planting terraces with sprouts along each lip. */
+function drawTerrace(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+  glowSpots: GlowSpot[],
+): void {
+  const cols = ['#2e3a18', '#3a4a20', '#48592a'];
+  for (let i = 0; i < 3; i++) {
+    const w = 60 - i * 14;
+    const yy = y + i * 9;
+    ctx.beginPath();
+    ctx.ellipse(x, yy, w / 2, 7, 0, Math.PI, 0);
+    ctx.fillStyle = cols[i];
+    ctx.fill();
+    ctx.fillStyle = 'rgba(160, 210, 90, 0.7)';
+    for (let s = 0; s < 4; s++) {
+      ctx.beginPath();
+      ctx.arc(x - w / 2 + 8 + (s * (w - 16)) / 3, yy - 5, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  glowSpots.push({ x, y, r: 30, color: '160, 210, 90', phase: rand() * 6.28 });
+}
+
+/** The Undercity: a lancet window-arch with a glowing emerald interior. */
+function drawWindowArch(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+  glowSpots: GlowSpot[],
+): void {
+  groundShadow(ctx, x, y, 20, 0.3);
+  ctx.fillStyle = '#1c332d';
+  ctx.beginPath();
+  ctx.moveTo(x - 15, y);
+  ctx.lineTo(x - 15, y - 30);
+  ctx.quadraticCurveTo(x, y - 52, x + 15, y - 30);
+  ctx.lineTo(x + 15, y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(168, 240, 192, 0.9)';
+  ctx.beginPath();
+  ctx.moveTo(x - 8, y - 3);
+  ctx.lineTo(x - 8, y - 30);
+  ctx.quadraticCurveTo(x, y - 45, x + 8, y - 30);
+  ctx.lineTo(x + 8, y - 3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#0d1a16';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y - 3);
+  ctx.lineTo(x, y - 40);
+  ctx.stroke();
+  glowSpots.push({ x, y: y - 24, r: 34, color: '140, 230, 170', phase: rand() * 6.28 });
+}
+
+/** Gated ruins: a headless statue torso on a broken plinth. */
+function drawStatueTorso(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  groundShadow(ctx, x, y, 16, 0.3);
+  ctx.fillStyle = '#4a4436';
+  ctx.beginPath();
+  ctx.moveTo(x - 10, y);
+  ctx.lineTo(x - 8, y - 34);
+  ctx.lineTo(x + 8, y - 34);
+  ctx.lineTo(x + 10, y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#5c5646'; // broken shoulders
+  ctx.fillRect(x - 12, y - 40, 24, 8);
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'; // neck stump
+  ctx.beginPath();
+  ctx.ellipse(x, y - 40, 4, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(226, 204, 150, 0.12)'; // lit flank
+  ctx.fillRect(x - 8, y - 34, 3, 34);
+}
+
+/** Gated ruins: a half-buried floor tablet etched with glowing gold runes. */
+function drawRuneTablet(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+  glowSpots: GlowSpot[],
+): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate((rand() - 0.5) * 0.3);
+  ctx.fillStyle = '#2e2717';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 22, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#3a3220';
+  ctx.beginPath();
+  ctx.ellipse(0, -1.5, 18, 8.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(226, 204, 150, 0.85)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(-7, -2);
+  ctx.lineTo(-2, -4);
+  ctx.lineTo(-4, 1);
+  ctx.lineTo(3, -1);
+  ctx.moveTo(6, -3);
+  ctx.lineTo(6, 2);
+  ctx.stroke();
+  ctx.restore();
+  glowSpots.push({ x, y, r: 26, color: '226, 204, 150', phase: rand() * 6.28 });
+}
+
+/** Ossuary Fields: a leaning grave-stele with a scratched cross-mark. */
+function drawGraveStele(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+): void {
+  groundShadow(ctx, x, y, 16, 0.3);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(-0.12 + (rand() - 0.5) * 0.1);
+  ctx.fillStyle = '#4a463c';
+  ctx.beginPath();
+  ctx.moveTo(-11, 0);
+  ctx.lineTo(-11, -30);
+  ctx.arc(0, -30, 11, Math.PI, 0);
+  ctx.lineTo(11, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(230, 222, 196, 0.15)';
+  ctx.fillRect(-11, -40, 4, 40);
+  ctx.strokeStyle = '#26221a';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(-5, -34);
+  ctx.lineTo(5, -24);
+  ctx.moveTo(-5, -24);
+  ctx.lineTo(5, -34);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Ossuary Fields: a soft banked drift of pale ash. */
+function drawAshDrift(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, 30);
+  g.addColorStop(0, 'rgba(210, 204, 180, 0.22)');
+  g.addColorStop(1, 'rgba(210, 204, 180, 0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(x, y, 30, 9, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** The Ashen Wilds: a blackened dead tree, bare branches, a smouldering base. */
+function drawCharredSnag(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+  glowSpots: GlowSpot[],
+): void {
+  groundShadow(ctx, x, y, 15, 0.3);
+  const h = 30 + rand() * 14;
+  ctx.strokeStyle = '#15100c';
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.quadraticCurveTo(x - 4, y - h * 0.6, x + 3, y - h);
+  ctx.stroke();
+  ctx.lineWidth = 2.5;
+  for (let i = 0; i < 3; i++) {
+    const ey = y - h * (0.5 + i * 0.15);
+    const ex = (rand() - 0.5) * 24;
+    ctx.beginPath();
+    ctx.moveTo(x + (ex > 0 ? 2 : 0), ey);
+    ctx.lineTo(x + ex, ey - 4 - rand() * 6);
+    ctx.stroke();
+  }
+  glowSpots.push({ x, y: y - 6, r: 20, color: '224, 117, 46', phase: rand() * 6.28 });
+}
+
+/** The Ashen Wilds: a bubbling tar pit lit by ember-orange from within. */
+function drawTarPit(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+  glowSpots: GlowSpot[],
+): void {
+  const rx = 22 + rand() * 10;
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx, rx * 0.45, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#0a0705';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x, y, rx * 0.78, rx * 0.36, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#151009';
+  ctx.fill();
+  for (let i = 0; i < 3; i++) {
+    const bx = x + (rand() - 0.5) * rx;
+    const by = y + (rand() - 0.5) * rx * 0.4;
+    const br = 1.8 + rand() * 1.8;
+    ctx.beginPath();
+    ctx.arc(bx, by, br, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(230, 120, 40, 0.5)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(bx, by, br * 0.4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 200, 120, 0.8)';
+    ctx.fill();
+  }
+  glowSpots.push({ x, y, r: 28, color: '224, 117, 46', phase: rand() * 6.28 });
+}
+
+/** The Ashen Wilds: a small drift of rising embers. */
+function drawEmbers(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rand: () => number,
+  glowSpots: GlowSpot[],
+): void {
+  for (let i = 0; i < 6; i++) {
+    ctx.beginPath();
+    ctx.arc(x + (rand() - 0.5) * 30, y - rand() * 24, 1.4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 170, 80, 0.9)';
+    ctx.fill();
+  }
+  glowSpots.push({ x, y: y - 10, r: 26, color: '224, 117, 46', phase: rand() * 6.28 });
+}
+
 // ── Stamp registry ───────────────────────────────────────────────────────────
 // Hand-placeable set-pieces for map.json decals and the map editor's palette.
 // Uniform call shape; 4-arg draw functions simply ignore the glow sink.
@@ -2285,6 +3174,16 @@ export const STAMPS: Record<string, StampFn> = {
   egg_cluster: drawEggCluster,
   web_strand: drawWebStrand,
   compost_heap: drawCompostHeap,
+  crystal_arch: drawCrystalArch,
+  window_arch: drawWindowArch,
+  terrace: drawTerrace,
+  grave_stele: drawGraveStele,
+  ash_drift: drawAshDrift,
+  statue_torso: drawStatueTorso,
+  rune_tablet: drawRuneTablet,
+  charred_snag: drawCharredSnag,
+  tar_pit: drawTarPit,
+  embers: drawEmbers,
 };
 
 export function stampRand(seed: number | undefined): () => number {
@@ -2366,6 +3265,31 @@ export function drawFlora(
     ctx.translate(-f.x, -f.y);
     fn(ctx, f.x, f.y, stampRand(f.seed), glowSink); // fresh RNG => stable shape
     ctx.restore();
+  }
+  glowSink.length = 0;
+}
+
+/**
+ * Redraw the collected path motifs crisp at full resolution. Call each frame
+ * under the camera transform, right after the terrain blit, so the fine path
+ * detail sits sharp over the soft-res baked ground (and under glows/flora/discs).
+ * Culls to `view`. Glow the motifs re-push is discarded into `glowSink` — their
+ * halos were harvested into terrain.glowSpots at bake time and pulsed by drawGlows.
+ */
+export function drawPathMotifs(
+  ctx: CanvasRenderingContext2D,
+  motifs: PathMotifInstance[],
+  view: { x0: number; y0: number; x1: number; y1: number },
+  glowSink: GlowSpot[] = [],
+): void {
+  for (const m of motifs) {
+    const c = m.c;
+    const minX = Math.min(c.a.x, c.b.x, c.cx) - 60;
+    const maxX = Math.max(c.a.x, c.b.x, c.cx) + 60;
+    const minY = Math.min(c.a.y, c.b.y, c.cy) - 60;
+    const maxY = Math.max(c.a.y, c.b.y, c.cy) + 60;
+    if (maxX < view.x0 || minX > view.x1 || maxY < view.y0 || minY > view.y1) continue;
+    (PATH_MOTIFS[m.key] ?? drawStuds)(ctx, c, m.style, glowSink);
   }
   glowSink.length = 0;
 }

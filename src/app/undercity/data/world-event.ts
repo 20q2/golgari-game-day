@@ -15,5 +15,10 @@ export const WORLD_EVENT = {
   } as Record<string, { spores: number; renown: number; xp: number }>,
 };
 
-// Path (relative to the app base href) of the beast sprite.
+// Path (relative to the app base href) of the beast sprite (head + neck, drawn
+// on the footprint's center tile).
 export const WORLD_EVENT_SPRITE = 'undercity/sigil_boss/moor_wyrm.png';
+
+// A single serpent-body hump, drawn on each non-center footprint tile so the
+// beast reads as one long body arcing across the run.
+export const WORLD_EVENT_PIECE_SPRITE = 'undercity/sigil_boss/moor_wyrm_piece.png';

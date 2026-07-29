@@ -519,7 +519,7 @@ export class IntroCutsceneComponent implements AfterViewInit, OnDestroy {
   protected readonly guardians = GUARDIAN_IDS;
   /** Bound at runtime (not in the stylesheet) so webpack doesn't try to resolve
    *  the asset at build time — it's served from the app base href. */
-  protected readonly bgUrl = "url('undercity/gate_background.png')";
+  protected readonly bgUrl = "url('undercity/gate_background.webp')";
 
   private static readonly RAW: Panel[] = [
     {

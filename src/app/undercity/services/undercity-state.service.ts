@@ -73,6 +73,7 @@ export class UndercityStateService {
   readonly barriersOpen = computed(() => this._state()?.barriersOpen ?? []);
   readonly guardians = computed(() => this._state()?.guardians ?? {});
   readonly firsts = computed(() => this._state()?.firsts ?? {});
+  readonly fogReveals = computed(() => this._state()?.fogReveals ?? {});
   readonly worldEvent = computed(() => this._state()?.worldEvent ?? null);
   readonly wardrobe = computed(() => this._state()?.wardrobe ?? null);
   readonly result = computed(() => this._state()?.result ?? null);

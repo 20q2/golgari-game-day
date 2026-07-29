@@ -102,14 +102,14 @@ _POCKET_LAYOUTS = {
 # Region metadata seeded into map.json. Backgrounds mirror what the client
 # hardcoded before regions{} existed (board-canvas.ts floorSrc).
 _REGION_SEED = {
-    'city':   ('undercity/undercity_background.png', None),
-    'cavern': ('undercity/cavern_background.png', None),
-    'bog':    ('undercity/swamp_background.png', None),
-    'garden': ('undercity/swamp_background.png', None),
-    'bone':   ('undercity/palace_background.png', None),
-    'isle':   ('undercity/palace_background.png', 'The Floating Isle'),
-    'ruin':   ('undercity/palace_background.png', 'The Ruinways'),
-    'depths': ('undercity/cavern_background.png', 'The Depths'),
+    'city':   ('undercity/undercity_background.webp', None),
+    'cavern': ('undercity/cavern_background.webp', None),
+    'bog':    ('undercity/swamp_background.webp', None),
+    'garden': ('undercity/swamp_background.webp', None),
+    'bone':   ('undercity/palace_background.webp', None),
+    'isle':   ('undercity/palace_background.webp', 'The Floating Isle'),
+    'ruin':   ('undercity/palace_background.webp', 'The Ruinways'),
+    'depths': ('undercity/cavern_background.webp', 'The Depths'),
 }
 
 

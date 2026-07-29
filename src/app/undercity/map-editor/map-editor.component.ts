@@ -57,6 +57,13 @@ const MODE_HINTS: Record<Mode, string> = {
 
 const SNAP = 25;
 const DRAFT_KEY = 'undercity-map-editor-draft';
+// Sticky Add-tool defaults — the last space type + region the editor used, so
+// new spaces inherit them instead of always loot / the layer's dominant guess.
+const ADD_TYPE_KEY = 'undercity-map-editor-add-type';
+const ADD_REGION_KEY = 'undercity-map-editor-add-region';
+// Breathing room kept between the furthest space and the declared world edge as
+// the world auto-grows to fit the map.
+const WORLD_FIT_MARGIN = 400;
 
 /** Images offered before the repo folder is granted (can't list dirs via HTTP). */
 const SEED_IMAGES = [
@@ -123,6 +130,16 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       regions: Object.keys(d.regions ?? {}).length,
     };
   });
+  // Live memory/size readout, refreshed on a slow timer while the editor is
+  // open (NOT per frame — must not drive the idle render loop). `heap` is the
+  // JS heap (Chrome only; null elsewhere); `art` is the baked-terrain canvas
+  // footprint, the memory that actually grows with world/layer size.
+  protected readonly mem = signal<{ heap: number | null; art: number; world: string }>({
+    heap: null,
+    art: 0,
+    world: '—',
+  });
+  private memTimer: ReturnType<typeof setInterval> | null = null;
 
   // Selection: one node, one decal, one label, or (region mode) a node set.
   protected readonly selNode = signal<string | null>(null);
@@ -152,6 +169,12 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   protected readonly rootPicked = signal(false);
   protected readonly dirtySinceSave = signal(false);
   protected readonly draftAvailable = signal(false);
+
+  // Sticky Add-tool state: the last space type + region used, so a freshly
+  // placed space inherits what you were just building. Restored from
+  // localStorage on load (validated against the current map).
+  private addType = 'loot';
+  private addRegion: string | null = null;
 
   private undoStack: string[] = [];
   private redoStack: string[] = [];
@@ -203,6 +226,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     doc.decals ??= [];
     doc.labels ??= [];
     this.doc.set(doc);
+    this.restoreAddDefaults(doc);
     this.canvas.setDoc(doc);
     this.canvas.setLayer('overworld');
     this.zoomPct.set(this.canvas.zoomPct());
@@ -214,13 +238,29 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     window.addEventListener('keydown', this.keyHandler);
     window.addEventListener('resize', this.resizeHandler);
     window.addEventListener('beforeunload', this.unloadHandler);
+    this.sampleMem();
+    this.memTimer = setInterval(() => this.sampleMem(), 1500);
   }
 
   ngOnDestroy(): void {
     this.canvas?.destroy();
+    if (this.memTimer) clearInterval(this.memTimer);
     window.removeEventListener('keydown', this.keyHandler);
     window.removeEventListener('resize', this.resizeHandler);
     window.removeEventListener('beforeunload', this.unloadHandler);
+  }
+
+  /** Refresh the status-bar memory readout. Cheap: reads performance.memory
+   *  (Chrome) + the canvas's baked-terrain byte count + the current world size. */
+  private sampleMem(): void {
+    if (!this.canvas) return;
+    const m = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory;
+    const d = this.doc();
+    this.mem.set({
+      heap: m ? Math.round(m.usedJSHeapSize / 1048576) : null,
+      art: Math.round(this.canvas.terrainBytes() / 1048576),
+      world: d ? `${d.worldW}×${d.worldH}` : '—',
+    });
   }
 
   // ── Doc access + undo + drafts ───────────────────────────────────────────
@@ -245,6 +285,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     if (gate) d.gate = gate.id;
     const boss = bossNode(d);
     if (boss) d.boss = boss.id;
+    this.growWorldToFit(d);
     this.canvas.invalidate();
     // Pocket layer ids shift with connectivity (they're named after a root
     // node). Follow the selected node's layer so an edit that creates or
@@ -263,6 +304,22 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       localStorage.setItem(DRAFT_KEY, serializeMap(this.d()));
     }
     this.syncOverlay();
+  }
+
+  /** Grow the declared world so it always encompasses every space (+ margin).
+   *  Grow-only: it never shrinks below its authored/previous size, so terrain
+   *  and ambient don't jump when far spaces are deleted. Keeps worldW/H in sync
+   *  with the real extent as the map expands, so the bounds lint never
+   *  false-fires and terrain/ambient cover the whole board. */
+  private growWorldToFit(d: BoardMap): void {
+    let w = d.worldW;
+    let h = d.worldH;
+    for (const n of d.nodes) {
+      w = Math.max(w, Math.round(n.x + WORLD_FIT_MARGIN));
+      h = Math.max(h, Math.round(n.y + WORLD_FIT_MARGIN));
+    }
+    d.worldW = w;
+    d.worldH = h;
   }
 
   protected restoreDraft(): void {
@@ -880,7 +937,13 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
       // lair rewards) — is read from its id prefix, e.g. "city_d0" -> city.
       dungeon ??= dungeonBiome(n.id, n.region);
     }
-    const region = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'city';
+    const dominant = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'city';
+    // Sticky region: on the overworld, honour the last region you were building
+    // in (falling back to the layer's dominant guess). In a dungeon pocket the
+    // region is structural — keep the pocket's own so the space stays in it.
+    const stickyOk =
+      layer.id === OVERWORLD && this.addRegion != null && !!doc.regions?.[this.addRegion];
+    const region = stickyOk ? this.addRegion! : dominant;
     // A new space in a known dungeon pocket must carry that biome's prefix so
     // it renders and behaves as part of the dungeon, not a stray depths node.
     const prefix = dungeon ? `${dungeon}_x` : 'n';
@@ -888,7 +951,8 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     while (doc.nodes.some((n) => n.id === `${prefix}${i}`)) i++;
     const node: BoardNode = {
       id: `${prefix}${i}`,
-      type: 'loot',
+      // Sticky type: default to the last space type you used (not always loot).
+      type: this.nodeTypes.includes(this.addType) ? this.addType : 'loot',
       x: this.applySnap(x),
       y: this.applySnap(y),
       region,
@@ -997,13 +1061,35 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   protected setNodeType(n: BoardNode, type: string): void {
     this.snapshot();
     n.type = type;
+    this.rememberAddType(type);
     this.afterDocChange();
   }
 
   protected setNodeRegion(n: BoardNode, region: string): void {
     this.snapshot();
     n.region = region;
+    this.rememberAddRegion(region);
     this.afterDocChange();
+  }
+
+  /** Persist the last space type used, so new spaces default to it. */
+  private rememberAddType(type: string): void {
+    this.addType = type;
+    localStorage.setItem(ADD_TYPE_KEY, type);
+  }
+
+  /** Persist the last region used, so new overworld spaces default to it. */
+  private rememberAddRegion(region: string): void {
+    this.addRegion = region;
+    localStorage.setItem(ADD_REGION_KEY, region);
+  }
+
+  /** Restore sticky Add defaults, ignoring values invalid for this map. */
+  private restoreAddDefaults(doc: BoardMap): void {
+    const t = localStorage.getItem(ADD_TYPE_KEY);
+    if (t && this.nodeTypes.includes(t)) this.addType = t;
+    const r = localStorage.getItem(ADD_REGION_KEY);
+    if (r && doc.regions?.[r]) this.addRegion = r;
   }
 
   /** Does this space type draw an auto landmark sprite the toggle can hide? */
@@ -1225,6 +1311,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
     for (const n of this.d().nodes) {
       if (this.selNodes().has(n.id)) n.region = region;
     }
+    this.rememberAddRegion(region);
     this.afterDocChange();
   }
 
@@ -1291,7 +1378,7 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   protected backgroundOptions(): string[] {
-    return this.images().filter((i) => i.endsWith('_background.png'));
+    return this.images().filter((i) => i.endsWith('_background.webp'));
   }
 
   // ── Save ─────────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { STARTERS, TIER2, FormInfo, PASSIVE_BLURBS } from '../data/forms';
+import { REGION_LIST } from '../data/regions';
 import {
   PAINTS,
   PAINT_MAP,
@@ -216,33 +217,7 @@ export class HatchFlowComponent {
    * `tint` is a per-biome color overlay so cards that share a floor image
    * (bog/garden, bone) still read as distinct.
    */
-  protected readonly biomes = [
-    { id: 'city', name: 'The Undercity', bg: 'undercity/undercity_background.png', tint: 'rgba(38, 120, 110, 0.35)',
-      perk: 'City Rat', blurb: 'Hatch with a random Tier-1 item, equipped.',
-      lore: 'A warren of crooked tunnels and black-market stalls beneath the palace. ' +
-        'If it can be bought, stolen, or pried loose, it changes hands down here.',
-      feature: { name: 'The Guildvault', desc: 'Crack the tumbler lock — read the sigils right to walk off with a fat prize.' } },
-    { id: 'cavern', name: 'Mosslight Cavern', bg: 'undercity/cavern_background.png', tint: 'rgba(70, 96, 190, 0.35)',
-      perk: 'Darkvision', blurb: 'See 2 spaces away in dungeons.',
-      lore: 'Deep galleries lit by glowing moss and seams of raw crystal. ' +
-        'The dark keeps few secrets from those born to it.',
-      feature: { name: 'Crystal Veins', desc: 'Mine glittering gems straight from the cavern walls.' } },
-    { id: 'bog', name: 'The Sedgemoor', bg: 'undercity/swamp_background.png', tint: 'rgba(52, 110, 60, 0.32)',
-      perk: 'Mirefoot', blurb: 'Hazards cost you half, and rival spells more often miss you.',
-      lore: 'A drowned expanse of reeking sedge and sunken paths, presided over by an old ' +
-        'witch who trades in stranger currencies than Spores.',
-      feature: { name: 'The Sedgemoor Witch', desc: 'Buy spell scrolls, or inscribe them into a grimoire of your own.' } },
-    { id: 'bone', name: 'Ossuary Fields', bg: 'undercity/palace_background.png', tint: 'rgba(150, 150, 130, 0.30)',
-      perk: 'Marrowborn', blurb: '+8 Max HP.',
-      lore: 'Endless drifts of bleached bone — the palace’s dead, and older things beneath them. ' +
-        'Good digging, if you’re not squeamish.',
-      feature: { name: 'Excavation Sites', desc: 'Dig through buried plots to unearth long-lost gear.' } },
-    { id: 'garden', name: 'The Rot-Gardens', bg: 'undercity/swamp_background.png', tint: 'rgba(140, 170, 40, 0.34)',
-      perk: 'Composter', blurb: '+2 Spores from every loot space.',
-      lore: 'Terraced beds of glorious decay where the Golgari cycle turns fastest — ' +
-        'death feeding growth feeding death.',
-      feature: { name: 'The Spore Shrine', desc: 'Offer your Spores to permanently raise an attribute.' } },
-  ];
+  protected readonly biomes = REGION_LIST;
 
   /** Biome-id -> its innate starting spell display (name/icon/desc), resolved
    *  from the generated spell catalogue so the home showcase never duplicates

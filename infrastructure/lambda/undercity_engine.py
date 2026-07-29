@@ -828,6 +828,18 @@ def regen_rolls(player: dict, now_iso: str) -> None:
     player['rollRegenAt'] = advanced.strftime(_ISO)
 
 
+# ── Ashen Fog table (fog-of-war tile, d20) ───────────────────────────────────
+
+def roll_fog(rng) -> str:
+    """Roll the d20 Ashen Fog table and return the space type it reveals.
+    `data.FOG_TABLE` is an ordered list of (hi, type) cutoffs covering 1..20."""
+    roll = rng.randint(1, 20)
+    for hi, kind in data.FOG_TABLE:
+        if roll <= hi:
+            return kind
+    return data.FOG_TABLE[-1][1]  # defensive: the last band always catches 20
+
+
 # ── Mystery table (GDD §6, d12) ──────────────────────────────────────────────
 
 def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool, biome: str = None) -> dict:

@@ -137,6 +137,13 @@
         @if (counts(); as k) {
           <span class="stat">{{ k.nodes }} spaces · {{ k.decals }} decals · {{ k.labels }} labels</span>
         }
+        @if (mem(); as mm) {
+          <span
+            class="stat"
+            matTooltip="World size · baked-terrain canvas memory{{ mm.heap !== null ? ' · JS heap' : '' }}. Watch the art/heap figures as the map grows."
+            >{{ mm.world }} · {{ mm.art }}MB art@if (mm.heap !== null) {<span> · {{ mm.heap }}MB heap</span>}</span
+          >
+        }
         <span class="stat">{{ zoomPct() }}%</span>
         @if (dirtySinceSave()) {
           <span class="stat dirty" matTooltip="Unsaved changes">●</span>

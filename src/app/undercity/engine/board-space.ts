@@ -16,6 +16,7 @@ export const TYPE_COLORS: Record<string, string> = {
   wild: '#a83c3c',
   elite: '#7c2440',
   mystery: '#7a5cc2',
+  fog: '#4b4a54',
   shop: '#bd8c3e',
   trading_post: '#5a9a6a',
   excavation: '#b8934e',

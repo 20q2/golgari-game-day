@@ -8,7 +8,7 @@ import undercity_data as data
 import undercity_db as db
 from undercity_engine import (
     Combatant, resolve_battle, legal_destinations, validate_walk, board_distance,
-    roll_mystery, apply_level_ups, spend_stat, effective_stats, regen_hp,
+    roll_mystery, roll_fog, apply_level_ups, spend_stat, effective_stats, regen_hp,
     regen_rolls, pick_npc, pvp_spore_steal,
 )
 
@@ -346,6 +346,30 @@ def test_roll_regen_noop_within_interval():
     regen_rolls(p, '2026-07-17T20:09:59')
     assert p['rolls'] == 1
     assert p['rollRegenAt'] == '2026-07-17T20:00:00'
+
+
+# ── Ashen Fog table ──────────────────────────────────────────────────────────
+
+def test_roll_fog_d20_bands():
+    # Each d20 value maps to its band per data.FOG_TABLE.
+    expect = {1: 'wild', 5: 'wild', 6: 'mystery', 9: 'mystery', 10: 'hazard',
+              13: 'hazard', 14: 'loot', 16: 'loot', 17: 'elite', 19: 'elite',
+              20: 'cache'}
+    for roll, kind in expect.items():
+        assert roll_fog(FakeRng(randints=[roll])) == kind, f'roll {roll}'
+
+
+def test_roll_fog_cache_only_on_20():
+    # Cache is the 5% jackpot: exactly one face (20) of the d20.
+    got = [roll_fog(FakeRng(randints=[r])) for r in range(1, 21)]
+    assert got.count('cache') == 1
+    assert got[19] == 'cache'  # index 18 -> roll 20
+
+
+def test_roll_fog_covers_all_outcomes():
+    # Every advertised outcome is reachable across the d20.
+    got = {roll_fog(FakeRng(randints=[r])) for r in range(1, 21)}
+    assert got == {'wild', 'mystery', 'hazard', 'loot', 'elite', 'cache'}
 
 
 # ── Mystery table ────────────────────────────────────────────────────────────

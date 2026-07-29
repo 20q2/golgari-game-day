@@ -399,7 +399,7 @@ export function preloadAll(): Promise<void> {
       /* no hat guide for this sprite */
     }
   });
-  const bg = loadImage('undercity/plaza_background.png').then((img) => {
+  const bg = loadImage('undercity/plaza_background.webp').then((img) => {
     plazaBgImage = img;
   });
   // Starry special-paint texture. Fire-and-forget: a missing texture must not

@@ -389,6 +389,20 @@ GEAR_DROP = {
     'boss':     (0.35, {2: 0.4, 3: 0.6}),
 }
 
+# ── Ashen Fog (fog-of-war tile) d20 reveal table ─────────────────────────────
+# The first player to land on a `fog` node rolls a d20; the tile locks to the
+# revealed space type for the season. Ordered (hi, type) cutoffs covering 1..20
+# — combat 8/20 (dangerous Wilds), cache the 5% jackpot on a nat 20.
+# spec: specs/2026-07-29-undercity-ashen-fog-design.md
+FOG_TABLE = [
+    (5,  'wild'),     # 1–5   enemy
+    (9,  'mystery'),  # 6–9   mystery
+    (13, 'hazard'),   # 10–13 hazard
+    (16, 'loot'),     # 14–16 loot (Overgrown Cache puzzle)
+    (19, 'elite'),    # 17–19 elite enemy
+    (20, 'cache'),    # 20    cache (uncommon spore jackpot)
+]
+
 # ── Combat: stance triangle tuning (spec 2026-07-14 §1) ──────────────────────
 # The triangle decides who wins an exchange; ATK/DEF set the magnitude. A "hit"
 # is max(1, round(atk * uniform(0.85,1.15)) - effective_def); the multipliers

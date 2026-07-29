@@ -1379,6 +1379,14 @@ def handle_state(table, query_params):
               {'by': i.get('by'), 'at': i.get('at'), 'kind': i.get('kind')}
               for i in (_clean(x) for x in fr['Items'])}
 
+    # Ashen Fog reveals: FOG# also sorts before PLAYER#, so (like FIRST#) it needs
+    # its own query. Maps a revealed fog node -> the space type it locked to.
+    fg = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': pk, ':sk': 'FOG#'})
+    fog_reveals = {i['sk'].replace('FOG#', ''): i.get('revealed')
+                   for i in (_clean(x) for x in fg['Items']) if i.get('revealed')}
+
     players, you, snares, result, posts, sites = [], None, [], None, {}, {}
     veins, vaults, shops = {}, {}, {}
     now = _now()
@@ -1477,6 +1485,7 @@ def handle_state(table, query_params):
         'barriersOpen': sorted(_open_barriers(table, sid)),
         'boss': {'hp': _boss_hp(table, sid), 'maxHp': data.ROT_SOVEREIGN['hp']},
         'firsts': firsts,
+        'fogReveals': fog_reveals,
         'worldEvent': _world_event_public(table, sid),
         'guardians': _guardian_pools(table, sid),
         'events': [{k: v for k, v in e.items() if k not in ('pk', 'sk')} for e in events],
@@ -2016,6 +2025,7 @@ def _admin_export(table, sid, payload):
         'players': _all('PLAYER#'),
         'events': _all('EVENT#'),
         'firsts': _all('FIRST#'),
+        'fogReveals': _all('FOG#'),
     }
 
 
@@ -2715,6 +2725,87 @@ def _award_gear(doc):
 _LOOT_AWARDERS = {'spores': _award_spores, 'item': _award_item, 'gear': _award_gear}
 
 
+def _loot_puzzle(table, sid, doc, node):
+    """Overgrown Cache routing puzzle: two consumable pouches plus a rare gear
+    chest, laid on a rocked flow-puzzle so the board reads as a little maze.
+    Extracted from the `loot` landing so the Ashen Fog router can reuse it."""
+    pid = _rng.choice([p['id'] for p in data.FLOW_PUZZLES if p['rocks']])
+    puzzle = data.flow_puzzle(pid)
+    kinds = ['item', 'item']
+    if _rng.random() < data.GEAR_DROP['loot'][0]:
+        kinds.append('gear')
+    rewards = _place_loot_rewards(puzzle, kinds, _rng)
+    view = _flow_puzzle_view(pid)
+    view['rewards'] = rewards
+    doc['pendingLoot'] = {'puzzleId': pid, 'view': view, 'rewards': rewards}
+    return {'type': 'loot_puzzle', 'node': node, 'puzzle': view}
+
+
+def _fog_outcome(table, sid, doc, node, region, nodes, prev, kind):
+    """Resolve a revealed Ashen Fog tile as its locked space type, reusing the
+    existing resolvers so fog inherits every battle/mystery/hazard/loot/cache flow."""
+    if kind == 'wild':
+        return _wild_battle(table, sid, doc, region=region)
+    if kind == 'elite':
+        return _wild_battle(table, sid, doc, elite=True, region=region)
+    if kind == 'mystery':
+        return _mystery(table, sid, doc)
+    if kind == 'hazard':
+        return _hazard(table, sid, doc, node)
+    if kind == 'loot':
+        return _loot_puzzle(table, sid, doc, node)
+    if kind == 'cache':
+        return _cache(table, sid, doc, node)
+    return _mystery(table, sid, doc)  # defensive fallback
+
+
+_FOG_REVEAL_TEXT = {
+    'wild':    'The ashen fog parts — a wild creature lunges out!',
+    'elite':   'The ashen fog parts — an elite predator bars your way!',
+    'mystery': 'The ashen fog parts, revealing a mystery.',
+    'hazard':  'The ashen fog coils tight — a hazard!',
+    'loot':    'The ashen fog parts, revealing an overgrown cache.',
+    'cache':   'The ashen fog parts, revealing a hidden cache!',
+}
+
+
+def _ashen_fog(table, sid, doc, node, region, nodes, prev):
+    """Fog-of-war tile. The first lander (season-global) rolls a d20 that reveals
+    what the tile permanently becomes; the reveal is a FOG#<node> season record
+    surfaced to every client (handle_state -> fogReveals). Later landers resolve
+    straight as the locked type — no re-roll, no fog beat."""
+    pk = _season_pk(sid)
+    rec = _get(table, pk, f'FOG#{node}')
+    first = False
+    if rec and rec.get('revealed'):
+        revealed = rec['revealed']
+    else:
+        revealed = engine.roll_fog(_rng)
+        try:
+            # Race-safe: exactly one concurrent lander locks the reveal.
+            table.put_item(
+                Item={'pk': pk, 'sk': f'FOG#{node}', 'revealed': revealed,
+                      'by': doc['username'], 'uid': doc['userId'], 'at': _now()},
+                ConditionExpression='attribute_not_exists(pk)')
+            first = True
+        except ClientError as e:
+            if e.response['Error']['Code'] != 'ConditionalCheckFailedException':
+                raise
+            # A rival locked it a beat earlier — resolve as THEIR reveal so all agree.
+            rec = _get(table, pk, f'FOG#{node}')
+            revealed = (rec or {}).get('revealed') or revealed
+    result = _fog_outcome(table, sid, doc, node, region, nodes, prev, revealed)
+    if first and isinstance(result, dict):
+        result = dict(result)
+        result['fogReveal'] = revealed
+        # Front the resolved outcome with the fog-parts beat so every client (and
+        # the event log) shows the reveal, regardless of which modal opens.
+        reveal_line = _FOG_REVEAL_TEXT.get(revealed, 'The ashen fog parts.')
+        base = (result.get('text') or '').strip()
+        result['text'] = f'{reveal_line} {base}'.strip()
+    return result
+
+
 def _resolve_space(table, sid, doc, node, prev):
     """Apply the landing event for `node`, mutating doc. Returns event dict."""
     nodes = _season_map(table, sid)
@@ -2770,21 +2861,10 @@ def _resolve_space(table, sid, doc, node, prev):
                 'stock': _umori_barter_stock(table, sid, _uwin)}
 
     if ntype == 'loot':
-        # Overgrown Cache: a routing puzzle. Movement grants spores (awarded in
-        # _solve_loot_puzzle); the board only carries item/gear pickups — the
-        # first one the path crosses is redeemed. Always two consumable pouches,
-        # plus a rare gear chest for variety. Only pick puzzles with a rock so
-        # the board reads as a little maze rather than an empty square.
-        pid = _rng.choice([p['id'] for p in data.FLOW_PUZZLES if p['rocks']])
-        puzzle = data.flow_puzzle(pid)
-        kinds = ['item', 'item']
-        if _rng.random() < data.GEAR_DROP['loot'][0]:
-            kinds.append('gear')
-        rewards = _place_loot_rewards(puzzle, kinds, _rng)
-        view = _flow_puzzle_view(pid)
-        view['rewards'] = rewards
-        doc['pendingLoot'] = {'puzzleId': pid, 'view': view, 'rewards': rewards}
-        return {'type': 'loot_puzzle', 'node': node, 'puzzle': view}
+        return _loot_puzzle(table, sid, doc, node)
+
+    if ntype == 'fog':
+        return _ashen_fog(table, sid, doc, node, region, nodes, prev)
 
     if ntype == 'wild':
         return _wild_battle(table, sid, doc, region=region)

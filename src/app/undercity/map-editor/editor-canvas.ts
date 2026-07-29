@@ -25,6 +25,7 @@ import {
 import { drawSpaceDisc, NODE_R, DISC_RY } from '../engine/board-space';
 import { computeLayers, LayerSpec, OVERWORLD } from '../engine/board-layers';
 import { computeEnemyTiers, drawTierBadge, EnemyTier } from '../engine/board-enemy-tier';
+import { drawTunnelSignpost } from '../engine/board-signpost';
 
 export type EditorPick =
   | { kind: 'node'; id: string }
@@ -153,6 +154,17 @@ export class EditorCanvas {
    *  change that isn't already a camera/doc method on this class. */
   markDirty(): void {
     this.needsRender = true;
+  }
+
+  /** Total backing-store bytes of the baked terrain currently held (one active
+   *  layer). This is the canvas memory that scales with world/layer size —
+   *  surfaced in the editor's memory readout. */
+  terrainBytes(): number {
+    let bytes = 0;
+    for (const art of this.terrain.values()) {
+      bytes += art.canvas.width * art.canvas.height * 4;
+    }
+    return bytes;
   }
 
   /** True while a time-based animation is on screen and must redraw every
@@ -523,6 +535,11 @@ export class EditorCanvas {
       });
       const tier = tiers.get(n.id);
       if (tier) drawTierBadge(ctx, n, tier, this.zoom);
+    }
+    // Tunnel signposts preview the destination biome (overworld only — tunnels
+    // are surface). Same art as the live board, via the shared helper.
+    if (layer.id === OVERWORLD) {
+      for (const n of nodes) drawTunnelSignpost(ctx, n, this.doc.nodes, this.floorTex);
     }
     // Pulse on the primary selection: a soft gold breath over the ring.
     if (o.selectedNode) {

@@ -1718,7 +1718,10 @@
 .witch-modal {
   // The Sedgemoor scenery (swamp) is bound inline via regionWashBg(); cover it
   // and lean on text-shadows so nothing sits black-on-black over the bog.
-  overflow: hidden;
+  // Clip horizontally, but KEEP the base modal's vertical scroll — a plain
+  // `overflow: hidden` here clipped the tall inscribe/buy content (incl. the
+  // confirm button) below the fold on phones, so the dialog couldn't scroll.
+  overflow: hidden auto;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

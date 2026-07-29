@@ -368,6 +368,12 @@
             dragons and lich lords would snap them outright.)
           </p>
         }
+        @if (bridgeDest(); as dest) {
+          <p class="modal-sub bridge-dest">
+            Beyond the silk lies <strong>{{ dest.name }}</strong> &mdash;
+            {{ dest.feature.desc }}
+          </p>
+        }
         <div class="choice-grid">
           <button class="uc-btn" (click)="turnBackBridge()">
             <mat-icon class="mi">undo</mat-icon> Turn back
@@ -697,7 +703,7 @@
       <div
         class="uc-modal ossuary-modal"
         (click)="$event.stopPropagation()"
-        style="background-image: linear-gradient(rgba(16, 14, 11, 0.82), rgba(16, 14, 11, 0.9)), url('undercity/pub_background.png')"
+        style="background-image: linear-gradient(rgba(16, 14, 11, 0.82), rgba(16, 14, 11, 0.9)), url('undercity/pub_background.webp')"
       >
         <h3><img class="die-icon" src="undercity/icons/die.png" alt="" /> The Casino</h3>
         <p class="ossuary-tag">Serious Fun.™</p>

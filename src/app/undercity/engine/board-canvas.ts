@@ -24,6 +24,7 @@ import {
   renderTerrain,
   drawDecals,
   drawFlora,
+  drawPathMotifs,
   preloadDecalImages,
   FloorTextures,
   LandmarkTextures,
@@ -33,7 +34,8 @@ import {
 } from './board-terrain';
 import { computeLayers, layerIndex, OVERWORLD, LayerSpec } from './board-layers';
 import { computeEnemyTiers, drawTierBadge, EnemyTier } from './board-enemy-tier';
-import { WORLD_EVENT_SPRITE } from '../data/world-event';
+import { WORLD_EVENT_SPRITE, WORLD_EVENT_PIECE_SPRITE } from '../data/world-event';
+import { drawTunnelSignpost } from './board-signpost';
 import { WorldEventState } from '../services/undercity-models';
 
 export interface BoardNode {
@@ -147,14 +149,14 @@ export interface NodeInfo {
 
 /** Floor paintings for map files that predate the editable regions{} section. */
 const LEGACY_FLOOR_SRC: Record<string, string> = {
-  city: 'undercity/undercity_background.png',
-  cavern: 'undercity/cavern_background.png',
-  bog: 'undercity/swamp_background.png',
-  isle: 'undercity/palace_background.png',
-  ruin: 'undercity/palace_background.png',
-  bone: 'undercity/palace_background.png',
-  garden: 'undercity/swamp_background.png',
-  depths: 'undercity/cavern_background.png',
+  city: 'undercity/undercity_background.webp',
+  cavern: 'undercity/cavern_background.webp',
+  bog: 'undercity/swamp_background.webp',
+  isle: 'undercity/palace_background.webp',
+  ruin: 'undercity/palace_background.webp',
+  bone: 'undercity/ossuary_field.webp',
+  garden: 'undercity/rot_gardens.webp',
+  depths: 'undercity/cavern_background.webp',
 };
 
 const MIN_ZOOM = 0.15; // floor for tiny screens; larger screens stop at whole-map fit
@@ -345,6 +347,11 @@ const VESTIGE_ALPHA = 0.55; // translucent — you can see the floor through it
 // The wilderness World Event beast — larger than a lair boss, since it straddles
 // a 3-tile footprint and is the biggest thing on the overworld.
 const WORLD_EVENT_H = 150;
+// A body hump on each flank tile — shorter than the reared head+neck.
+const WORLD_EVENT_PIECE_H = 96;
+// Cap the body-line tilt (radians) so a near-vertical flank→center run never
+// lays a hump flat on its side.
+const WORLD_EVENT_PIECE_TILT_MAX = 1.0;
 
 /** One render/view layer: its node subset + world bounds, and its terrain. */
 interface Layer {
@@ -380,6 +387,10 @@ export class BoardCanvas {
   private worldEventTex: HTMLImageElement | null = null;
   private worldEventLoading = false;
   private worldEventMiss = false;
+  // Serpent-body hump drawn on the footprint's flank tiles (see loadWorldEvent).
+  private worldEventPieceTex: HTMLImageElement | null = null;
+  private worldEventPieceLoading = false;
+  private worldEventPieceMiss = false;
   private choices = new Set<string>();
   private backChoice: string | null = null;
   private info: NodeInfo | null = null;
@@ -425,6 +436,8 @@ export class BoardCanvas {
   private treasureTex: HTMLImageElement | null = null;
   private treasurePlunderedTex: HTMLImageElement | null = null;
   private firsts: Record<string, { by: string; kind: string }> = {};
+  /** Ashen Fog node id -> the space type it permanently revealed to. */
+  private fogReveals: Record<string, string> = {};
   private clearedDungeons = new Set<string>(); // biome keys with your sigil
   private onEnterDungeonCb: ((biome: string) => void) | null = null;
   private ambient: BoardAmbient;
@@ -465,6 +478,7 @@ export class BoardCanvas {
           cleared: !!biome && this.clearedDungeons.has(biome),
           resolution: TERRAIN_RES,
           animateFlora: true,
+          animatePaths: true,
         }),
       });
       if (old) {
@@ -488,6 +502,11 @@ export class BoardCanvas {
   /** Season-global first-conqueror plates + plundered-treasure state. */
   setFirsts(firsts: Record<string, { by: string; kind: string }>): void {
     this.firsts = firsts ?? {};
+  }
+
+  /** Season-global Ashen Fog reveals: node id -> the type the fog locked to. */
+  setFogReveals(fogReveals: Record<string, string>): void {
+    this.fogReveals = fogReveals ?? {};
   }
 
   /** Dungeons YOU hold the sigil for render as 'cleared' (banner, calm glow). */
@@ -571,6 +590,7 @@ export class BoardCanvas {
         terrain: renderTerrain(map, undefined, undefined, spec, {
           resolution: TERRAIN_RES,
           animateFlora: true,
+          animatePaths: true,
         }),
       });
     }
@@ -769,18 +789,32 @@ export class BoardCanvas {
   }
 
   private loadWorldEvent(): void {
-    if (this.worldEventTex || this.worldEventLoading || this.worldEventMiss) return;
-    this.worldEventLoading = true;
-    const img = new Image();
-    img.onload = () => {
-      this.worldEventTex = img;
-      this.worldEventLoading = false;
-    };
-    img.onerror = () => {
-      this.worldEventMiss = true;
-      this.worldEventLoading = false;
-    };
-    img.src = WORLD_EVENT_SPRITE;
+    if (!(this.worldEventTex || this.worldEventLoading || this.worldEventMiss)) {
+      this.worldEventLoading = true;
+      const img = new Image();
+      img.onload = () => {
+        this.worldEventTex = img;
+        this.worldEventLoading = false;
+      };
+      img.onerror = () => {
+        this.worldEventMiss = true;
+        this.worldEventLoading = false;
+      };
+      img.src = WORLD_EVENT_SPRITE;
+    }
+    if (!(this.worldEventPieceTex || this.worldEventPieceLoading || this.worldEventPieceMiss)) {
+      this.worldEventPieceLoading = true;
+      const piece = new Image();
+      piece.onload = () => {
+        this.worldEventPieceTex = piece;
+        this.worldEventPieceLoading = false;
+      };
+      piece.onerror = () => {
+        this.worldEventPieceMiss = true;
+        this.worldEventPieceLoading = false;
+      };
+      piece.src = WORLD_EVENT_PIECE_SPRITE;
+    }
   }
 
   /**
@@ -1217,6 +1251,16 @@ export class BoardCanvas {
       L.terrain.canvas.width / L.terrain.resolution,
       L.terrain.canvas.height / L.terrain.resolution,
     );
+    // Path motifs are lifted out of the soft bake and redrawn crisp here, at
+    // full res, culled to the view — so the fine detail survives (the demo was
+    // sharp because it was full-res; the baked terrain is TERRAIN_RES soft).
+    const motifView = {
+      x0: this.camX,
+      y0: this.camY,
+      x1: this.camX + this.viewW / this.zoom,
+      y1: this.camY + this.viewH / this.zoom,
+    };
+    drawPathMotifs(ctx, L.terrain.pathMotifs, motifView);
     this.drawGlows(elapsed);
 
     // Soft flora (mushrooms, reeds, bog trees) lifted out of the static bake so
@@ -1235,6 +1279,9 @@ export class BoardCanvas {
       if (!this.inActive(n.id) || !this.isLit(n.id) || this.isHiddenEscape(n.id)) continue;
       this.drawSpace(n, elapsed);
     }
+
+    // Signposts beside tunnel mouths preview where the shortcut leads.
+    this.drawSignposts();
 
     // Player tokens — grouped by logical node, drawn at eased positions so a
     // position change slides the token along instead of teleporting it.
@@ -1508,7 +1555,18 @@ export class BoardCanvas {
     const sealed = n.type === 'barrier' && !this.barriersOpen.has(n.id);
     // A live raid boss claims its footprint: corrupt those tiles' colour + glyph.
     const bossHere = !!this.worldEvent && this.worldEvent.nodes.includes(n.id);
-    drawSpaceDisc(ctx, n, { sealed, locked: this.lockedIds.has(n.id), corrupted: bossHere });
+    // Ashen Fog: unrevealed tiles get a swirling ashen aura + the foggy disc;
+    // once the first lander reveals it, the tile wears the revealed type's disc.
+    const fogReveal = n.type === 'fog' ? this.fogReveals[n.id] : undefined;
+    if (n.type === 'fog' && !fogReveal) {
+      const pulse = 0.4 + 0.3 * Math.sin(elapsed * 2.2 + n.x * 0.03);
+      ctx.beginPath();
+      ctx.ellipse(n.x, n.y, NODE_R + 8, DISC_RY + 6, 0, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(150, 150, 165, ${0.12 + pulse * 0.14})`;
+      ctx.fill();
+    }
+    const discNode = fogReveal ? { ...n, type: fogReveal } : n;
+    drawSpaceDisc(ctx, discNode, { sealed, locked: this.lockedIds.has(n.id), corrupted: bossHere });
 
     // A sealed barrier is held by the area's guardian creature, standing across
     // the route; it's drawn no more the moment someone breaks the barrier.
@@ -1519,7 +1577,7 @@ export class BoardCanvas {
 
     // Treasure tiles wear the hoard sprite, swapping to a plundered variant once
     // their season-global first conqueror has cracked them open.
-    if (n.type === 'trove' || n.type === 'cache' || n.type === 'vault') {
+    if (n.type === 'trove' || n.type === 'cache' || n.type === 'vault' || fogReveal === 'cache') {
       this.drawTreasureHoard(n);
     }
 
@@ -1570,6 +1628,17 @@ export class BoardCanvas {
     }
 
     ctx.restore();
+  }
+
+  /** Planted signposts beside overworld tunnel mouths, previewing the
+   *  destination region's backdrop + name (shared with the map editor via
+   *  board-signpost). Overworld only — tunnels are surface. */
+  private drawSignposts(): void {
+    if (this.activeLayerId !== OVERWORLD) return;
+    for (const n of this.map.nodes) {
+      if (n.type !== 'tunnel' || !this.inActive(n.id) || !this.isLit(n.id)) continue;
+      drawTunnelSignpost(this.ctx, n, this.map.nodes, this.floorTex);
+    }
   }
 
   /** Treasure set-piece for trove/cache/vault; plundered variant once claimed. */
@@ -1773,7 +1842,11 @@ export class BoardCanvas {
     ctx.stroke();
     ctx.restore();
 
-    if (n.id !== we.center) return;
+    // Flank tiles carry a body hump aligned along the run toward the head.
+    if (n.id !== we.center) {
+      this.drawWorldEventPiece(n, elapsed);
+      return;
+    }
 
     // The beast itself, centered on the middle tile and drawn on top.
     const art = this.worldEventTex;
@@ -1792,6 +1865,48 @@ export class BoardCanvas {
     }
     // Shared HP bar above the beast.
     this.drawGuardianHp(n.x, footAnchor - WORLD_EVENT_H * breath - 4, we.hp, we.maxHp, 72);
+    ctx.restore();
+  }
+
+  /**
+   * A serpent-body hump on one flank tile of the World Event footprint. The
+   * beast's head+neck sits on the center tile; each hump is planted upright on
+   * its own tile and rotated along the flank→center line so the tapered end
+   * points toward the head — the run reads as one long body arcing across the
+   * three spaces. The tilt is clamped so a near-vertical run never lays the
+   * hump flat, and a horizontal flip keeps it upright regardless of side.
+   */
+  private drawWorldEventPiece(n: BoardNode, elapsed: number): void {
+    const art = this.worldEventPieceTex;
+    if (!art) return;
+    const c = this.nodeMap.get(this.worldEvent!.center);
+    if (!c) return;
+
+    const dx = c.x - n.x;
+    const dy = c.y - n.y;
+    // Mirror so the thick/forward end faces the head; tilt along the body slope.
+    const flipX = dx > 0;
+    const tilt = Math.max(
+      -WORLD_EVENT_PIECE_TILT_MAX,
+      Math.min(WORLD_EVENT_PIECE_TILT_MAX, Math.atan2(-dy, Math.abs(dx))),
+    );
+
+    const breath = 1 + Math.sin(elapsed * 1.4 + 1.1) * 0.03;
+    const footAnchor = n.y + 6;
+    const drawH = WORLD_EVENT_PIECE_H * breath;
+    const w = art.width * (drawH / art.height);
+
+    const ctx = this.ctx;
+    ctx.save();
+    // Ground shadow stays flat on the tile (drawn before the body transform).
+    ctx.beginPath();
+    ctx.ellipse(n.x, footAnchor, w * 0.42, 18, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.34)';
+    ctx.fill();
+    ctx.translate(n.x, footAnchor);
+    ctx.scale(flipX ? -1 : 1, 1);
+    ctx.rotate(tilt);
+    ctx.drawImage(art, -w / 2, -drawH, w, drawH);
     ctx.restore();
   }
 

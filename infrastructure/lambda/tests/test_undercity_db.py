@@ -3739,3 +3739,51 @@ def test_wilderness_and_isle_use_tier3(table):
         assert w and w <= t3_wild, (region, w)
         e = {db._wild_battle(table, sid, doc, region=region, elite=True)['npc']['id'] for _ in range(30)}
         assert e and e <= t3_elite, (region, e)
+
+
+# ── Ashen Fog (fog-of-war tile) ──────────────────────────────────────────────
+
+def test_ashen_fog_first_lander_reveals_and_locks(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    nodes = db._season_map(table, sid)
+    node = 'wild_fog_test'
+
+    # First lander: force a 'mystery' reveal.
+    monkeypatch.setattr(db.engine, 'roll_fog', lambda rng: 'mystery')
+    first = db._ashen_fog(table, sid, doc, node, 'wilderness', nodes, None)
+    assert first['type'] == 'mystery'
+    assert first.get('fogReveal') == 'mystery'   # first lander sees the fog part
+    assert 'fog' in first['text'].lower()        # the reveal beat is fronted
+    rec = db._get(table, db._season_pk(sid), f'FOG#{node}')
+    assert rec and rec['revealed'] == 'mystery'  # locked season-global
+
+    # A later lander (even rolling something else) resolves as the LOCKED type,
+    # with no re-roll and no fog beat.
+    monkeypatch.setattr(db.engine, 'roll_fog', lambda rng: 'cache')
+    again = db._ashen_fog(table, sid, doc, node, 'wilderness', nodes, None)
+    assert again['type'] == 'mystery'            # locked, not the new 'cache' roll
+    assert 'fogReveal' not in again              # already revealed → no beat
+
+    # State surfaces the reveal to every client.
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert state['fogReveals'].get(node) == 'mystery'
+
+
+def test_ashen_fog_cache_reveal_claims_once(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    nodes = db._season_map(table, sid)
+    node = 'wild_fog_cache'
+
+    monkeypatch.setattr(db.engine, 'roll_fog', lambda rng: 'cache')
+    first = db._ashen_fog(table, sid, doc, node, 'wilderness', nodes, None)
+    assert first['type'] == 'cache' and first.get('fogReveal') == 'cache'
+    assert first.get('spores', 0) > 0            # the jackpot pays out on reveal
+
+    # Second landing on the now-cache tile: claimed → no more spores.
+    again = db._ashen_fog(table, sid, doc, node, 'wilderness', nodes, None)
+    assert again['type'] == 'cache'
+    assert not again.get('spores')               # already plundered
