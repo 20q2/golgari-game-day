@@ -352,9 +352,9 @@ def test_roll_regen_noop_within_interval():
 
 def test_roll_fog_d20_bands():
     # Each d20 value maps to its band per data.FOG_TABLE.
-    expect = {1: 'wild', 5: 'wild', 6: 'mystery', 9: 'mystery', 10: 'hazard',
-              13: 'hazard', 14: 'loot', 16: 'loot', 17: 'elite', 19: 'elite',
-              20: 'cache'}
+    expect = {1: 'wild', 8: 'wild', 9: 'elite', 13: 'elite', 14: 'loot',
+              15: 'loot', 16: 'mystery', 17: 'mystery', 18: 'hazard',
+              19: 'hazard', 20: 'cache'}
     for roll, kind in expect.items():
         assert roll_fog(FakeRng(randints=[roll])) == kind, f'roll {roll}'
 
@@ -1226,6 +1226,41 @@ def test_validate_flow_path_rejects_revisit():
 def test_validate_flow_path_rejects_entering_rock():
     p = {'w': 4, 'h': 4, 'start': [0, 0], 'end': [0, 3], 'rocks': [[0, 1]]}
     assert _eng_flow.validate_flow_path(p, [[0, 0], [0, 1], [0, 2], [0, 3]]) is False
+
+
+def test_cell_on_some_route_open_board_center():
+    # 4x4 open, start [0,0] end [3,0]; a mid cell is trivially routable.
+    p = {'w': 4, 'h': 4, 'start': [0, 0], 'end': [3, 0], 'rocks': []}
+    assert _eng_flow.cell_on_some_route(p, [1, 2]) is True
+
+
+def test_cell_on_some_route_rejects_boxed_in_cell():
+    # [0,0] start, [3,3] end. Cell [0,3] is walled off by rocks at [0,2] and
+    # [1,3], leaving it a dead-end pocket no through-route can cross.
+    p = {'w': 4, 'h': 4, 'start': [0, 0], 'end': [3, 3],
+         'rocks': [[0, 2], [1, 3]]}
+    assert _eng_flow.cell_on_some_route(p, [0, 3]) is False
+
+
+def test_cell_on_some_route_rejects_start_and_end():
+    p = {'w': 4, 'h': 4, 'start': [0, 0], 'end': [3, 0], 'rocks': []}
+    assert _eng_flow.cell_on_some_route(p, [0, 0]) is False
+    assert _eng_flow.cell_on_some_route(p, [3, 0]) is False
+
+
+def test_cell_on_some_route_rejects_rock_and_oob():
+    p = {'w': 4, 'h': 4, 'start': [0, 0], 'end': [3, 0], 'rocks': [[1, 1]]}
+    assert _eng_flow.cell_on_some_route(p, [1, 1]) is False
+    assert _eng_flow.cell_on_some_route(p, [9, 9]) is False
+
+
+def test_cell_on_some_route_all_puzzle_solution_cells_route():
+    # Every non-endpoint cell on a real puzzle's canonical solution is, by
+    # definition, on a valid route.
+    for p in data.FLOW_PUZZLES:
+        sol = p['solution']
+        for cell in sol[1:-1]:
+            assert _eng_flow.cell_on_some_route(p, list(cell)) is True, (p['id'], cell)
 
 
 # ── Gear expansion (2026-07-20) ──────────────────────────────────────────────

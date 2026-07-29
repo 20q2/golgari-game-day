@@ -982,3 +982,50 @@ def first_reward_on_path(rewards, path):
         if kind is not None:
             return kind
     return None
+
+
+def cell_on_some_route(puzzle, cell):
+    """True iff some valid start->end route (per validate_flow_path rules) passes
+    through `cell`: a simple orthogonal line, no revisits, avoiding rocks and the
+    board edge. Used to guarantee a placed cache reward is actually collectible —
+    a cell boxed in by rocks (or otherwise on no through-route) is rejected.
+
+    Boards are tiny (<=5x5, <=2 rocks), so an early-exit DFS that greedily heads
+    for the target waypoint then the goal resolves immediately in practice.
+    """
+    w, h = puzzle['w'], puzzle['h']
+    rocks = {tuple(c) for c in puzzle['rocks']}
+    start, end = tuple(puzzle['start']), tuple(puzzle['end'])
+    target = (cell[0], cell[1])
+    if not (0 <= target[0] < h and 0 <= target[1] < w):
+        return False
+    if target in rocks or target == start or target == end:
+        return False
+
+    def neighbours(r, c, toward):
+        opts = []
+        for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < h and 0 <= nc < w and (nr, nc) not in rocks:
+                opts.append((nr, nc))
+        # Greedy: try cells closest to the current waypoint first for a fast hit.
+        opts.sort(key=lambda p: abs(p[0] - toward[0]) + abs(p[1] - toward[1]))
+        return opts
+
+    # Search for one simple start->end route that visits `target` on the way.
+    # Aim for the target until it's crossed, then aim for the goal.
+    def dfs(cur, visited, hit_target):
+        hit = hit_target or cur == target
+        if cur == end:
+            return hit
+        waypoint = end if hit else target
+        for nxt in neighbours(cur[0], cur[1], waypoint):
+            if nxt in visited:
+                continue
+            visited.add(nxt)
+            if dfs(nxt, visited, hit):
+                return True
+            visited.remove(nxt)
+        return False
+
+    return dfs(start, {start}, False)
