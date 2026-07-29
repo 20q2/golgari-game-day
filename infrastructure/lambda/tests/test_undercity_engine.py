@@ -1513,3 +1513,44 @@ def test_def_measurably_reduces_damage_taken():
     _w_high, taken_high = _fight_vs_gitrog(8, 15, 5, 50, rc)
     # Same HP pool, same offense — armor must visibly lower HP lost.
     assert taken_high < taken_low, f'DEF did nothing: {taken_high} vs {taken_low}'
+
+
+# ── Mystery reel outcome mapping (2026-07-29) ────────────────────────────────
+from undercity_engine import mystery_outcome
+
+
+def _res(**kw):
+    base = {'roll': 4, 'spores': 0, 'xp': 0, 'hpPct': 0, 'item': None,
+            'heal': False, 'buff': None, 'teleport': False, 'curse': False}
+    base.update(kw)
+    return base
+
+
+def test_mystery_outcome_jackpot_beats_its_own_rewards():
+    # Roll 12 grants spores + xp + item, but reads as the jackpot face.
+    assert mystery_outcome(_res(roll=12, spores=30, xp=10, item='random'),
+                           {'item': 'mushroom_snack'}) == 'jackpot'
+
+
+def test_mystery_outcome_gear_grimoire_item_priority():
+    assert mystery_outcome(_res(roll=4, item='random'), {'gear': {'id': 'x'}}) == 'gear'
+    assert mystery_outcome(_res(roll=4, item='random'), {'grimoire': 'g'}) == 'grimoire'
+    assert mystery_outcome(_res(roll=6, item='random'), {'item': 'mushroom_snack'}) == 'item'
+
+
+def test_mystery_outcome_status_flags():
+    assert mystery_outcome(_res(roll=5, heal=True), {}) == 'heal'
+    assert mystery_outcome(_res(roll=7, buff='rot_surge'), {}) == 'buff'
+    assert mystery_outcome(_res(roll=11, curse=True), {}) == 'curse'
+    assert mystery_outcome(_res(roll=10, teleport=True), {'to': 'n5'}) == 'warp'
+
+
+def test_mystery_outcome_numeric_deltas():
+    assert mystery_outcome(_res(roll=9, hpPct=-0.20), {}) == 'hurt'
+    assert mystery_outcome(_res(roll=8, spores=-10), {}) == 'theft'
+    assert mystery_outcome(_res(roll=1, spores=20), {}) == 'spores'
+    assert mystery_outcome(_res(roll=2, xp=10), {}) == 'xp'
+
+
+def test_mystery_outcome_defensive_fallback():
+    assert mystery_outcome(_res(roll=3), {}) == 'mystery'

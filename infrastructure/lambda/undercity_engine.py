@@ -900,6 +900,42 @@ def roll_mystery(rng, has_drift: bool, has_doubling_rot: bool, biome: str = None
     return out
 
 
+def mystery_outcome(res, out):
+    """Canonical reel/UI outcome key for a resolved mystery roll.
+
+    `res` is the raw roll dict from `roll_mystery`; `out` is the event dict the db
+    layer built (it already carries any resolved 'gear'/'grimoire'/'item'/'to').
+    Priority matters: the jackpot face wins over its own spores/xp/item, and a
+    resolved treasure (gear > grimoire > consumable) is named specifically before
+    the generic numeric-delta faces. Returns one of: jackpot, gear, grimoire,
+    item, heal, buff, curse, warp, hurt, theft, spores, xp, mystery."""
+    if res.get('roll') == 12:
+        return 'jackpot'
+    if out.get('gear'):
+        return 'gear'
+    if out.get('grimoire'):
+        return 'grimoire'
+    if out.get('item'):
+        return 'item'
+    if res.get('heal'):
+        return 'heal'
+    if res.get('buff'):
+        return 'buff'
+    if res.get('curse'):
+        return 'curse'
+    if res.get('teleport'):
+        return 'warp'
+    if res.get('hpPct', 0) < 0:
+        return 'hurt'
+    if res.get('spores', 0) < 0:
+        return 'theft'
+    if res.get('spores', 0) > 0:
+        return 'spores'
+    if res.get('xp', 0) > 0:
+        return 'xp'
+    return 'mystery'
+
+
 # ── Wild NPCs ────────────────────────────────────────────────────────────────
 
 def npc_from_spec(spec: dict) -> dict:
