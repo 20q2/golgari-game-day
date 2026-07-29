@@ -3806,3 +3806,25 @@ def test_loot_puzzle_pool_has_molting_not_second_pouch():
     kinds = [r['kind'] for r in ev['puzzle']['rewards']]
     assert kinds.count('item') == 1          # one pouch, not two
     assert 'molting' in kinds                 # replaced by a molting pile
+
+
+def test_place_loot_rewards_only_uses_routable_cells():
+    # Every rocked puzzle, every reward: the chosen cell must be on some route.
+    for p in [q for q in data.FLOW_PUZZLES if q['rocks']]:
+        rng = random.Random(1234)
+        rewards = db._place_loot_rewards(p, ['item', 'molting', 'gear'], rng)
+        for rw in rewards:
+            assert engine.cell_on_some_route(p, rw['cell']) is True, (p['id'], rw)
+
+
+def test_place_loot_rewards_avoids_boxed_in_pocket():
+    # [0,3] is a dead-end pocket walled by rocks [0,2] and [1,3] — no through-route
+    # crosses it, so a reward there would be uncollectible. Across many seeds,
+    # placement must never choose it.
+    puzzle = {'w': 4, 'h': 4, 'start': [0, 0], 'end': [3, 3],
+              'rocks': [[0, 2], [1, 3]]}
+    for seed in range(80):
+        rng = random.Random(seed)
+        rewards = db._place_loot_rewards(puzzle, ['item', 'molting'], rng)
+        for rw in rewards:
+            assert list(rw['cell']) != [0, 3], seed

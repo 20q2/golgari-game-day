@@ -2651,17 +2651,28 @@ def _place_loot_rewards(puzzle, kinds, rng):
     def adjacent_to_start(cell):
         return abs(cell[0] - start[0]) + abs(cell[1] - start[1]) == 1
 
+    # A cell is only offered if some valid route can cross it (never box a reward
+    # in behind rocks). If nothing routable is free for a kind, fall back to any
+    # free cell so a cache never errors out on a pathological board.
+    routable = [c for c in cells if engine.cell_on_some_route(puzzle, c)]
+
     rewards, used = [], set()
     for kind in kinds:
-        for cell in cells:
-            t = (cell[0], cell[1])
-            if t in used:
-                continue
-            if kind == 'gear' and adjacent_to_start(cell):
-                continue
-            rewards.append({'kind': kind, 'cell': [cell[0], cell[1]]})
-            used.add(t)
-            break
+        chosen = None
+        for pool in (routable, cells):  # prefer routable; fall back to any free
+            for cell in pool:
+                t = (cell[0], cell[1])
+                if t in used:
+                    continue
+                if kind == 'gear' and adjacent_to_start(cell):
+                    continue
+                chosen = cell
+                break
+            if chosen is not None:
+                break
+        if chosen is not None:
+            rewards.append({'kind': kind, 'cell': [chosen[0], chosen[1]]})
+            used.add((chosen[0], chosen[1]))
     return rewards
 
 
