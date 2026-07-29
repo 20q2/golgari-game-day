@@ -496,9 +496,15 @@
                 <mat-icon class="mi">{{ slotIcon(ev.gear.slot) }}</mat-icon>
                 {{ g.name }}
                 <span class="rarity-badge {{ tierRarity(g.tier).key }}">{{ tierRarity(g.tier).label }}</span>
-                —
-                {{ ev.gear.outcome === 'stashed' ? 'to stash' : 'stash full → materials' }}
+                @if (ev.gear.outcome === 'equipped') {
+                  — equipped
+                } @else if (ev.gear.outcome === 'stash-full') {
+                  — → materials
+                }
               </span>
+            }
+            @if (ev.materials?.moltings; as m) {
+              <span class="chip gain"><mat-icon class="mi">grass</mat-icon> +{{ m }}</span>
             }
           </div>
         }
