@@ -15,6 +15,7 @@ import { GEAR_MAP, CONSUMABLE_MAP, tierRarity, marketBand, MarketKind } from '..
 import { RIDER_AUGMENTS } from '../data/combat';
 import {
   innateSpellIds,
+  BIOME_SPELLS,
   GRIMOIRE_MAP,
   GRIMOIRES,
   GrimoireInfo,
@@ -431,6 +432,15 @@ export class CreatureTabComponent {
     return innateSpellIds(you.homeBiome, you.species, you.passives)
       .map((id) => SPELL_MAP[id])
       .filter((sp): sp is SpellInfo => !!sp);
+  });
+
+  /** The single home-biome innate ability, shown as a trait on the Stats tab.
+   *  Resolved from the biome the player chose at the home step. */
+  protected readonly biomeInnate = computed<SpellInfo | null>(() => {
+    const you = this.store.you();
+    if (!you) return null;
+    const id = BIOME_SPELLS[you.homeBiome ?? ''];
+    return id ? (SPELL_MAP[id] ?? null) : null;
   });
 
   protected readonly equippedBook = computed<GrimoireInfo | null>(() => {

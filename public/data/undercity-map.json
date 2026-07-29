@@ -1062,56 +1062,21 @@
    "y": 2961,
    "region": "ruin",
    "neighbors": [
-    "s1",
-    "s2",
-    "s0"
-   ]
-  },
-  {
-   "id": "s1",
-   "type": "wild",
-   "x": 580,
-   "y": 2788,
-   "region": "ruin",
-   "neighbors": [
-    "bar_s",
-    "s3"
-   ]
-  },
-  {
-   "id": "s2",
-   "type": "wild",
-   "x": 323,
-   "y": 2975,
-   "region": "ruin",
-   "neighbors": [
-    "vault",
-    "bar_s"
+    "s0",
+    "n301"
    ]
   },
   {
    "id": "vault",
    "type": "vault",
-   "x": 130,
-   "y": 2884,
+   "x": -346,
+   "y": 2974,
    "region": "ruin",
    "neighbors": [
-    "s3",
-    "s2"
+    "n312"
    ],
    "spriteAngle": 295,
    "spriteDist": 70
-  },
-  {
-   "id": "s3",
-   "type": "elite",
-   "x": 344,
-   "y": 2766,
-   "region": "ruin",
-   "neighbors": [
-    "s1",
-    "vault"
-   ]
   },
   {
    "id": "n124",
@@ -3295,6 +3260,138 @@
     "n299",
     "n271"
    ]
+  },
+  {
+   "id": "n301",
+   "type": "wild",
+   "x": 343,
+   "y": 2960,
+   "region": "ruin",
+   "neighbors": [
+    "n302",
+    "bar_s"
+   ]
+  },
+  {
+   "id": "n302",
+   "type": "wild",
+   "x": 334,
+   "y": 2766,
+   "region": "ruin",
+   "neighbors": [
+    "n301",
+    "n303"
+   ]
+  },
+  {
+   "id": "n303",
+   "type": "wild",
+   "x": 344,
+   "y": 2567,
+   "region": "ruin",
+   "neighbors": [
+    "n302",
+    "n304"
+   ]
+  },
+  {
+   "id": "n304",
+   "type": "hazard",
+   "x": 114,
+   "y": 2559,
+   "region": "ruin",
+   "neighbors": [
+    "n303",
+    "n305"
+   ]
+  },
+  {
+   "id": "n305",
+   "type": "hazard",
+   "x": 108,
+   "y": 2777,
+   "region": "ruin",
+   "neighbors": [
+    "n304",
+    "n306"
+   ]
+  },
+  {
+   "id": "n306",
+   "type": "hazard",
+   "x": 110,
+   "y": 2968,
+   "region": "ruin",
+   "neighbors": [
+    "n305",
+    "n307"
+   ]
+  },
+  {
+   "id": "n307",
+   "type": "wild",
+   "x": -99,
+   "y": 2970,
+   "region": "ruin",
+   "neighbors": [
+    "n308",
+    "n306"
+   ]
+  },
+  {
+   "id": "n308",
+   "type": "wild",
+   "x": -94,
+   "y": 2782,
+   "region": "ruin",
+   "neighbors": [
+    "n307",
+    "n309"
+   ]
+  },
+  {
+   "id": "n309",
+   "type": "wild",
+   "x": -75,
+   "y": 2565,
+   "region": "ruin",
+   "neighbors": [
+    "n308",
+    "n310",
+    "n311"
+   ]
+  },
+  {
+   "id": "n310",
+   "type": "rest",
+   "x": -77,
+   "y": 2410,
+   "region": "ruin",
+   "neighbors": [
+    "n309"
+   ]
+  },
+  {
+   "id": "n311",
+   "type": "elite",
+   "x": -330,
+   "y": 2568,
+   "region": "ruin",
+   "neighbors": [
+    "n312",
+    "n309"
+   ]
+  },
+  {
+   "id": "n312",
+   "type": "elite",
+   "x": -329,
+   "y": 2783,
+   "region": "ruin",
+   "neighbors": [
+    "n311",
+    "vault"
+   ]
   }
  ],
  "regions": {
@@ -3354,5 +3451,14 @@
   }
  },
  "decals": [],
- "labels": []
+ "labels": [
+  {
+   "text": "The Sunken Vault",
+   "x": -11,
+   "y": 3110,
+   "size": 46,
+   "rot": 0,
+   "alpha": 0.16
+  }
+ ]
 }

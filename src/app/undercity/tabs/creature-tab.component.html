@@ -149,17 +149,10 @@
                   </aside>
                 }
               </div>
-              <div class="passives">
-                @for (p of you.passives; track p) {
-                  <div class="passive-pill">
-                    <strong>{{ passiveName(p) }}</strong> {{ passiveBlurbs[p] }}
-                  </div>
-                }
-              </div>
-
               <!-- Attribute perk tracks: nodes light as invested atk/def/spd
                    plus equipped gear cross 6 / 12 / 18. Temporary buffs never
-                   light a node. -->
+                   light a node. Each track's three perks lay out as a 3-up
+                   card row to keep the panel short. -->
               <div class="perk-tracks">
                 <h4 class="perk-tracks-title">Attribute perks</h4>
                 @for (track of perkTrackOrder; track track) {
@@ -183,6 +176,23 @@
                         </div>
                       }
                     </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Traits: the home-biome innate ability plus any form passives.
+                   Sits below the perk tracks. -->
+              <div class="passives">
+                <h4 class="perk-tracks-title">Traits</h4>
+                @if (biomeInnate(); as sp) {
+                  <div class="passive-pill">
+                    <strong>{{ sp.name }} <span class="trait-tag">innate</span></strong>
+                    {{ sp.desc }}
+                  </div>
+                }
+                @for (p of you.passives; track p) {
+                  <div class="passive-pill">
+                    <strong>{{ passiveName(p) }}</strong> {{ passiveBlurbs[p] }}
                   </div>
                 }
               </div>

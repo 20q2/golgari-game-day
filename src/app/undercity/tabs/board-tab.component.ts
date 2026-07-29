@@ -1089,7 +1089,27 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   protected readonly nodeType = computed(() => {
     const pos = this.store.you()?.position;
+    if (!pos) return null;
+    // Umori the wandering post overlays whatever wilderness tile it squats on.
+    // While it's parked on your tile, treat the space as a trading post so the
+    // storefront-style access button + modal work exactly as they do on landing.
+    // A live raid boss on the same tile wins (mirrors the server's landing order).
+    const we = this.store.worldEvent();
+    const bossHere = !!we && !we.dead && (we.nodes ?? []).includes(pos);
+    if (!bossHere && this.store.umori()?.node === pos) return 'trading_post';
     return this.map?.nodes.find((n) => n.id === pos)?.type ?? null;
+  });
+
+  /** True while the plotted/walked route crosses a gate — i.e. the pending
+   *  gate-pass heal (GATE_PASS_HEAL_FRACTION of max HP) that lands when the move
+   *  ends. Drives both the token self-heal sparkle and the on-board "Gate
+   *  Blessing" badge, so the two always agree. */
+  protected readonly gateBlessing = computed(() => {
+    const step = this.stepping();
+    return (
+      !!step &&
+      step.path.slice(1).some((id) => this.map?.nodes.find((n) => n.id === id)?.type === 'gate')
+    );
   });
 
   /** Label of the biome the player stands in, from the authoritative
@@ -1845,12 +1865,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // Sparkle promise: lit whenever the route walked so far touches a gate
     // (recomputed each step, so retracing off the gate clears it). The starting
     // space (path[0]) doesn't count — only spaces stepped onto.
-    const willHeal =
-      !!step &&
-      step.path
-        .slice(1)
-        .some((id) => this.map.nodes.find((n) => n.id === id)?.type === 'gate');
-    this.board.setSelfHealPending(willHeal);
+    const willHeal = this.gateBlessing();
+    this.board.setSelfHealPending(willHeal); // token sparkle
+    this.store.gateHealPending.set(willHeal); // buff HUD badge (always-mounted page)
     const ownId = this.store.ownUserId;
     const you = this.store.you();
     this.board.setPlayers(

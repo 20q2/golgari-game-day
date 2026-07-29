@@ -395,12 +395,12 @@ GEAR_DROP = {
 # — combat 8/20 (dangerous Wilds), cache the 5% jackpot on a nat 20.
 # spec: specs/2026-07-29-undercity-ashen-fog-design.md
 FOG_TABLE = [
-    (5,  'wild'),     # 1–5   enemy
-    (9,  'mystery'),  # 6–9   mystery
-    (13, 'hazard'),   # 10–13 hazard
-    (16, 'loot'),     # 14–16 loot (Overgrown Cache puzzle)
-    (19, 'elite'),    # 17–19 elite enemy
-    (20, 'cache'),    # 20    cache (uncommon spore jackpot)
+    (8,  'wild'),     # 1–8   enemy (40%)
+    (13, 'elite'),    # 9–13  elite enemy (25%)
+    (15, 'loot'),     # 14–15 loot / Overgrown Cache puzzle (10%)
+    (17, 'mystery'),  # 16–17 mystery (10%)
+    (19, 'hazard'),   # 18–19 hazard (10%)
+    (20, 'cache'),    # 20    cache — uncommon spore jackpot (5%)
 ]
 
 # ── Combat: stance triangle tuning (spec 2026-07-14 §1) ──────────────────────

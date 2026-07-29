@@ -12,7 +12,6 @@
  * with the Python if the ladder ever changes.
  */
 import type { BoardMap, BoardNode } from './board-canvas';
-import { DISC_RY } from './board-space';
 import { DUNGEONS } from '../data/dungeons';
 
 export type EnemyTier = 1 | 2 | 3;
@@ -25,36 +24,32 @@ export const TIER_COLORS: Record<EnemyTier, string> = {
 };
 
 /**
- * The "T1/T2/T3" difficulty label stamped in white directly onto the lower face
- * of a wild/elite coin (below its centre enemy glyph), so the difficulty of a
- * red space reads at a glance without a floating pill. A dark outline keeps the
- * letters legible against the red coin. Shared by the game board and the map
- * editor so both render it identically.
+ * The "T1/T2/T3" difficulty tag for a wild/elite coin, drawn as a small crisp
+ * superscript pinned to the UPPER-RIGHT of the centre enemy glyph (like an
+ * exponent), so the difficulty reads at a glance without a floating pill or a
+ * muddy stamp across the coin. A dark outline keeps it legible on the red coin.
  *
- * The caller's canvas is scaled by `zoom` (world -> screen), so we counter-scale
- * the text by `1/zoom`: it holds a constant *on-screen* size and stays legible
- * whether you're zoomed into your token in-game or looking at the whole board in
- * the editor. Its position stays pinned in world space to the disc.
+ * Sized in world units (like the glyph itself, not counter-scaled), so it always
+ * reads as a neat half-size superscript relative to the coin at any zoom. Shared
+ * by the game board and the map editor so both render it identically.
  */
 export function drawTierBadge(
   ctx: CanvasRenderingContext2D,
   n: BoardNode,
   tier: EnemyTier,
-  zoom = 1,
+  _zoom = 1,
 ): void {
   const label = `T${tier}`;
-  const k = 1 / zoom; // world units per on-screen px at the current zoom
-  const cx = n.x;
-  const cy = n.y + DISC_RY * 0.5; // lower face of the coin, clear of the centre glyph
+  const cx = n.x + 9; // just right of the glyph…
+  const cy = n.y - 9; // …and up, so it sits like a superscript
 
   ctx.save();
-  ctx.globalAlpha = 0.5; // half-strength so the letters read as a subtle stamp
-  ctx.font = `900 ${13 * k}px sans-serif`;
-  ctx.textAlign = 'center';
+  ctx.font = "800 15px 'Segoe UI', system-ui, sans-serif";
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
-  ctx.lineWidth = 3 * k;
-  ctx.strokeStyle = 'rgba(12, 8, 8, 0.85)';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(10, 6, 6, 0.9)';
   ctx.strokeText(label, cx, cy);
   ctx.fillStyle = '#ffffff';
   ctx.fillText(label, cx, cy);

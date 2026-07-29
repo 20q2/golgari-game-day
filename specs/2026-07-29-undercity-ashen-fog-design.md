@@ -21,14 +21,15 @@ fog space is a *router* into the machinery that already exists.
 
 | Roll | Outcome | Resolves as | Notes |
 | --- | --- | --- | --- |
-| 1–5  | Enemy | `wild` | interactive battle, region-gated foe |
-| 6–9  | Mystery | `mystery` | the d12 mystery table |
-| 10–13 | Hazard | `hazard` | overworld hazard |
-| 14–16 | Loot | `loot` | Overgrown Cache flow-puzzle (items/gear) |
-| 17–19 | Elite enemy | `elite` | harder region-gated battle |
-| 20 | Cache | `cache` | claim-once spore treasure (the uncommon jackpot) |
+| 1–8  | Enemy | `wild` | interactive battle, region-gated foe (40%) |
+| 9–13 | Elite enemy | `elite` | harder region-gated battle (25%) |
+| 14–15 | Loot | `loot` | Overgrown Cache flow-puzzle, items/gear (10%) |
+| 16–17 | Mystery | `mystery` | the d12 mystery table (10%) |
+| 18–19 | Hazard | `hazard` | overworld hazard (10%) |
+| 20 | Cache | `cache` | claim-once spore treasure — the uncommon jackpot (5%) |
 
-Combat = 8/20 (40%), fitting the Wilds as the dangerous T2+ frontier. The breakpoints live in
+Combat = 13/20 (65% — wild + elite), leaning hard into the Wilds as the dangerous T2+
+frontier; rewards 15%, events 20%. The breakpoints live in
 `undercity_config.py` as `FOG_TABLE` — an ordered list of `(hi, type)` d20 cutoffs, e.g.
 `[(5,'wild'), (9,'mystery'), (13,'hazard'), (16,'loot'), (19,'elite'), (20,'cache')]` —
 tunable via the balance flow; a display mirror ships in `src/app/undercity/data/*.ts` if the

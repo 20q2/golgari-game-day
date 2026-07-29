@@ -116,10 +116,25 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
    * unknown kinds are skipped, buffs sort ahead of debuffs. */
   protected readonly activeBuffs = computed<{ kind: string; info: StatusInfo }[]>(() => {
     const buffs = this.store.you()?.buffs ?? [];
-    return buffs
+    const list = buffs
       .filter((b) => STATUS_INFO[b.kind])
       .map((b) => ({ kind: b.kind, info: STATUS_INFO[b.kind] }))
       .sort((a, b) => Number(a.info.tone === 'debuff') - Number(b.info.tone === 'debuff'));
+    // Pending pass-through-gate heal: a client-only anticipatory buff shown while
+    // the plotted route crosses a gate. The heal itself (50% of max HP) is applied
+    // server-side when the move commits; this just surfaces it in the buff HUD.
+    if (this.store.gateHealPending()) {
+      list.unshift({
+        kind: 'gate_heal',
+        info: {
+          label: 'Gate Blessing',
+          icon: 'auto_awesome',
+          tone: 'buff',
+          blurb: 'Restore 50% of max HP when you finish moving.',
+        },
+      });
+    }
+    return list;
   });
 
   /** Collapsed HUD pill caps at this many badges so a stack of buffs (e.g. a

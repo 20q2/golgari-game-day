@@ -566,6 +566,20 @@
       color: #fbbf24;
       display: block;
     }
+
+    .trait-tag {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 0 6px;
+      border-radius: 999px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #0c100c;
+      background: #fbbf24;
+      vertical-align: middle;
+    }
   }
 }
 
@@ -604,17 +618,20 @@
     }
   }
 
+  // Three perks per track, laid out as a 3-up card row to save vertical space.
   .perk-nodes {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
   }
 
   .perk-node {
     display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 5px 9px;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 4px;
+    padding: 8px 7px;
     border-radius: 8px;
     background: rgba(0, 0, 0, 0.18);
     // locked: dim and desaturated until the threshold is crossed.
@@ -626,31 +643,35 @@
       opacity: 1;
       filter: none;
       background: rgba(154, 194, 110, 0.12);
-      border-left: 2px solid var(--accent-color, #9ac26e);
+      border: 1px solid rgba(154, 194, 110, 0.5);
     }
 
     .perk-node-thr {
       flex: 0 0 auto;
-      min-width: 20px;
+      min-width: 22px;
       text-align: center;
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       color: #c9b458;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(201, 180, 88, 0.14);
     }
     .perk-node-body {
       display: flex;
       flex-direction: column;
+      gap: 2px;
     }
     .perk-node-name {
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 600;
       color: #dfe7df;
     }
     .perk-node-blurb {
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       color: #a7b5a7;
-      line-height: 1.3;
+      line-height: 1.25;
     }
   }
 }

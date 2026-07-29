@@ -94,6 +94,12 @@ export class UndercityStateService {
    * A store signal so it survives BoardTabComponent teardown. */
   readonly levelUpHold = signal(false);
 
+  /** Held true by the board tab while the plotted/walked route crosses a gate,
+   * so the always-mounted page's buff HUD can show the pending gate-pass heal
+   * (restore 50% of max HP when the move ends) as a buff badge. Client-only:
+   * the heal itself is applied server-side when the move commits. */
+  readonly gateHealPending = signal(false);
+
   /** Monotonic pulse asking the mounted board canvas to re-center on the
    * player's own creature (e.g. tapping the HUD portrait). Bumped, not toggled,
    * so repeat taps keep firing. */
