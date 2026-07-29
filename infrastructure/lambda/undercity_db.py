@@ -853,6 +853,19 @@ def _drop_phrase(drop):
     return 'stashed' if drop['outcome'] == 'stashed' else 'ground into materials'
 
 
+def _gear_find_text(drop):
+    """Celebratory one-liner for a fresh gear find, keyed by how it was routed.
+    equipped/stashed read as a plain win (the piece is yours, no logistics
+    noise); only stash-full is spelled out because you got materials, not the
+    gear."""
+    name = data.GEAR[drop['id']]['name']
+    if drop['outcome'] == 'stash-full':
+        return f'Your gear stash was full, so you grind {name} into materials.'
+    if drop['outcome'] == 'equipped':
+        return f'You unearth {name} and slot it on!'
+    return f'You unearth {name}!'
+
+
 def _roll_scroll_drop(doc, source):
     """Maybe drop a spell scroll from a reward `source`. The tier is fixed by the
     source (SCROLL_DROP_TIER); the spell is an equal-weight roll within that tier.
@@ -2727,9 +2740,7 @@ def _award_gear(doc):
     """Gear loot reward; falls back to Spores if a drop somehow fails to roll."""
     drop = _roll_gear_drop(doc, data.GEAR_DROP['loot'][1])
     if drop:
-        return {'type': 'loot',
-                'text': f'You unearth a piece of gear — {_drop_phrase(drop)}!',
-                'gear': drop}
+        return {'type': 'loot', 'text': _gear_find_text(drop), 'gear': drop}
     return _award_spores(doc)
 
 

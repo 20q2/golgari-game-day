@@ -3385,14 +3385,14 @@ def test_award_gear_rolls_a_drop(monkeypatch):
     assert ev['type'] == 'loot' and ev['gear']['slot'] == 'fang'
 
 
-def test_loot_landing_places_two_items_no_gear(table, monkeypatch):
+def test_loot_landing_places_pouch_and_molting_no_gear(table, monkeypatch):
     node = _first_loot_node()
     sid, doc = _player_at(table, node, spores=0)
     monkeypatch.setattr(db._rng, 'random', lambda: 0.99)   # gear roll misses
     ev = db._resolve_space(table, sid, doc, node, None)
     assert ev['type'] == 'loot_puzzle'
     kinds = [r['kind'] for r in ev['puzzle']['rewards']]
-    assert kinds == ['item', 'item']                       # no 'spores' symbol
+    assert kinds == ['item', 'molting']                    # one pouch + a molting pile
     assert doc['spores'] == 0                              # not credited yet
     assert doc['pendingLoot']['rewards'] == ev['puzzle']['rewards']
 
@@ -3403,7 +3403,7 @@ def test_loot_landing_appends_gear_on_rare_roll(table, monkeypatch):
     monkeypatch.setattr(db._rng, 'random', lambda: 0.0)    # gear roll fires
     ev = db._resolve_space(table, sid, doc, node, None)
     kinds = [r['kind'] for r in ev['puzzle']['rewards']]
-    assert kinds == ['item', 'item', 'gear']
+    assert kinds == ['item', 'molting', 'gear']
 
 
 def _land_loot_with(table, monkeypatch, placement):
@@ -3828,3 +3828,21 @@ def test_place_loot_rewards_avoids_boxed_in_pocket():
         rewards = db._place_loot_rewards(puzzle, ['item', 'molting'], rng)
         for rw in rewards:
             assert list(rw['cell']) != [0, 3], seed
+
+
+def test_gear_find_text_equipped_and_stashed_are_celebratory():
+    gid = next(iter(data.GEAR))
+    name = data.GEAR[gid]['name']
+    equipped = db._gear_find_text({'id': gid, 'outcome': 'equipped'})
+    stashed = db._gear_find_text({'id': gid, 'outcome': 'stashed'})
+    assert name in equipped and 'slot it on' in equipped
+    assert stashed == f'You unearth {name}!'
+    # No storage-logistics wording for the happy cases.
+    assert 'stash' not in equipped.lower() and 'stash' not in stashed.lower()
+
+
+def test_gear_find_text_stash_full_is_honest():
+    gid = next(iter(data.GEAR))
+    name = data.GEAR[gid]['name']
+    txt = db._gear_find_text({'id': gid, 'outcome': 'stash-full'})
+    assert name in txt and 'materials' in txt
