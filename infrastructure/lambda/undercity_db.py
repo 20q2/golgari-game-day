@@ -3130,6 +3130,7 @@ def _mystery(table, sid, doc):
     if res['teleport']:
         out['to'] = res['to']
     _append_scroll(doc, out, 'mystery')
+    out['outcome'] = engine.mystery_outcome(res, out)
     return out
 
 

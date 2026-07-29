@@ -3846,3 +3846,26 @@ def test_gear_find_text_stash_full_is_honest():
     name = data.GEAR[gid]['name']
     txt = db._gear_find_text({'id': gid, 'outcome': 'stash-full'})
     assert name in txt and 'materials' in txt
+
+
+# ── Mystery reel outcome field (2026-07-29) ──────────────────────────────────
+
+def _first_mystery_node():
+    return next(n for n, d in data.MAP_NODES.items() if d['type'] == 'mystery')
+
+
+def test_mystery_event_always_carries_a_valid_outcome(table, monkeypatch):
+    valid = {'jackpot', 'gear', 'grimoire', 'item', 'heal', 'buff', 'curse',
+             'warp', 'hurt', 'theft', 'spores', 'xp', 'mystery'}
+    node = _first_mystery_node()
+    sid, doc = _player_at(table, node, spores=50)
+    seen = set()
+    for r in range(1, 13):
+        # Force the d12 roll; _mystery calls engine.roll_mystery(db._rng, ...).
+        monkeypatch.setattr(db._rng, 'randint', lambda a, b, _r=r: _r)
+        ev = db._mystery(table, sid, doc)
+        assert ev['type'] == 'mystery'
+        assert ev.get('outcome') in valid, (r, ev.get('outcome'))
+        seen.add(ev['outcome'])
+    # Across the whole d12 we should see clearly more than one face.
+    assert len(seen) >= 5
