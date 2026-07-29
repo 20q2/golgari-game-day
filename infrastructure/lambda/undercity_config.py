@@ -43,6 +43,7 @@ GRIMOIRE_SWAP_COOLDOWN_MIN = 30  # opening a different grimoire is gated for N m
 # src/app/undercity/tabs/flow-puzzle.component.ts.
 FLOW_SPORE_PER_CELL = 0.5    # spores per tile crossed (path length)
 FLOW_SPORE_CAP = 10          # hard ceiling on a single cache's movement spores
+FLOW_MOLTING_REWARD = 1      # Moltings granted per Overgrown Cache molting pickup
 
 # ── HP / death / PvP ─────────────────────────────────────────────────────────
 # Passive time-based HP regen is DISABLED (0). HP is restored ONLY by: a spell
