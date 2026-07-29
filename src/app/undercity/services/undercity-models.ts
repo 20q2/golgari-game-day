@@ -530,7 +530,7 @@ export interface DigFound {
  * crosses is what the player keeps; the server decides which — this is only
  * used for rendering. Values are never sent to the client. */
 export interface FlowReward {
-  kind: 'spores' | 'item' | 'gear';
+  kind: 'spores' | 'item' | 'gear' | 'molting';
   cell: [number, number];
 }
 
@@ -563,9 +563,12 @@ export interface SpaceEvent {
     id: string;
     slot: string;
     tier: number;
-    outcome: 'stashed' | 'stash-full';
+    outcome: 'equipped' | 'stashed' | 'stash-full';
     materials?: { moltings: number; ichor: number };
   };
+  /** Crafting materials gained from this space (e.g. an Overgrown Cache molting
+   *  pickup). Mirrors the server event's `materials`. */
+  materials?: { moltings: number; ichor: number };
   xp?: number;
   levels?: number;
   /** Renown this fight earned (marginal compute_renown delta): +wild win, +POI
