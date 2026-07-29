@@ -3787,3 +3787,22 @@ def test_ashen_fog_cache_reveal_claims_once(table, monkeypatch):
     again = db._ashen_fog(table, sid, doc, node, 'wilderness', nodes, None)
     assert again['type'] == 'cache'
     assert not again.get('spores')               # already plundered
+
+
+# ── Overgrown Cache moltings (2026-07-29) ────────────────────────────────────
+
+def test_award_molting_grants_configured_amount():
+    doc = {'materials': {'moltings': 0, 'ichor': 0}}
+    ev = db._award_molting(doc)
+    assert doc['materials']['moltings'] == data.FLOW_MOLTING_REWARD
+    assert ev['materials']['moltings'] == data.FLOW_MOLTING_REWARD
+    assert ev['type'] == 'loot'
+    assert 'Molting' in ev['text']
+
+
+def test_loot_puzzle_pool_has_molting_not_second_pouch():
+    doc = {'materials': {'moltings': 0, 'ichor': 0}}
+    ev = db._loot_puzzle(None, 'S1', doc, 'n1')
+    kinds = [r['kind'] for r in ev['puzzle']['rewards']]
+    assert kinds.count('item') == 1          # one pouch, not two
+    assert 'molting' in kinds                 # replaced by a molting pile

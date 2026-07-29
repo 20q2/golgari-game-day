@@ -2722,7 +2722,18 @@ def _award_gear(doc):
     return _award_spores(doc)
 
 
-_LOOT_AWARDERS = {'spores': _award_spores, 'item': _award_item, 'gear': _award_gear}
+def _award_molting(doc):
+    """Cache molting reward: mine a small amount of moltings straight into the
+    material counters (the same path salvage/mining use)."""
+    gained = _mine_materials(doc, moltings=data.FLOW_MOLTING_REWARD)
+    n = gained['moltings']
+    return {'type': 'loot',
+            'text': f'You pry {n} Molting{"s" if n != 1 else ""} loose from the cache!',
+            'materials': gained}
+
+
+_LOOT_AWARDERS = {'spores': _award_spores, 'item': _award_item,
+                  'gear': _award_gear, 'molting': _award_molting}
 
 
 def _loot_puzzle(table, sid, doc, node):
@@ -2731,7 +2742,7 @@ def _loot_puzzle(table, sid, doc, node):
     Extracted from the `loot` landing so the Ashen Fog router can reuse it."""
     pid = _rng.choice([p['id'] for p in data.FLOW_PUZZLES if p['rocks']])
     puzzle = data.flow_puzzle(pid)
-    kinds = ['item', 'item']
+    kinds = ['item', 'molting']
     if _rng.random() < data.GEAR_DROP['loot'][0]:
         kinds.append('gear')
     rewards = _place_loot_rewards(puzzle, kinds, _rng)
@@ -5424,17 +5435,15 @@ def _award_flow_reward(doc, path, rewards):
 
     kind = engine.first_reward_on_path(rewards or [], path)
     event = {'type': 'loot', 'spores': move_spores}
-    if kind == 'gear':
-        sub = _award_gear(doc)
-    elif kind == 'item':
-        sub = _award_item(doc)
+    if kind in ('gear', 'item', 'molting'):
+        sub = _LOOT_AWARDERS[kind](doc)
     else:
         event['text'] = f'You forage {move_spores} Spores routing through the cache.'
         return event
 
-    # Merge the item/gear award onto the movement-spore event.
+    # Merge the item/gear/molting award onto the movement-spore event.
     event['spores'] = move_spores + sub.get('spores', 0)
-    for key in ('item', 'gear'):
+    for key in ('item', 'gear', 'materials'):
         if key in sub:
             event[key] = sub[key]
     event['text'] = f"{sub['text']} (+{move_spores} Spores foraged on the way.)"
