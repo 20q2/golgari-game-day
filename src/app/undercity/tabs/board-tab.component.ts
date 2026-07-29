@@ -1502,14 +1502,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.rolling.set(false);
   }
 
-  /** Map a mystery outcome to a reel face so it lands on something meaningful. */
+  /** Reel face for a mystery outcome. The server stamps a canonical `outcome`
+   *  (undercity_db._mystery → engine.mystery_outcome); the reel component falls
+   *  back to its own `mystery` face for any key it doesn't recognise. */
   private mysterySymbol(ev: SpaceEvent): string {
-    if (ev.item) return 'item';
-    if (ev.to) return 'warp';
-    if ((ev.hp ?? 0) > 0) return 'heal';
-    if ((ev.hp ?? 0) < 0 || ev.sporesLost) return 'hurt';
-    if (ev.spores) return 'spores';
-    return 'mystery';
+    return ev.outcome || 'mystery';
   }
 
   /** Reel is fading out — open the event card underneath now (cross-fade),
