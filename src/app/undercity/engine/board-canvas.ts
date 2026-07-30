@@ -34,10 +34,10 @@ import {
 } from './board-terrain';
 import { computeLayers, layerIndex, OVERWORLD, LayerSpec } from './board-layers';
 import { computeEnemyTiers, drawTierBadge, EnemyTier } from './board-enemy-tier';
+import { computeProgress, drawProgressRing } from './board-progress-ring';
 import { WORLD_EVENT_SPRITE, WORLD_EVENT_PIECE_SPRITE } from '../data/world-event';
 import { drawTunnelSignpost } from './board-signpost';
-import { WorldEventState } from '../services/undercity-models';
-import { EnragedMonster } from '../services/undercity-models';
+import { DigGrid, EnragedMonster, VeinState, WorldEventState } from '../services/undercity-models';
 
 export interface BoardNode {
   id: string;
@@ -162,9 +162,9 @@ const LEGACY_FLOOR_SRC: Record<string, string> = {
 
 const MIN_ZOOM = 0.15; // floor for tiny screens; larger screens stop at whole-map fit
 const MAX_ZOOM = 2.5;
-// Enemy T1/T2/T3 labels only appear once zoomed in past halfway — below this the
-// letters are too small to read and just clutter the coins.
-const TIER_LABEL_MIN_ZOOM = MAX_ZOOM * 0.5;
+// Enemy T1/T2/T3 labels appear once zoomed in past ~a third of MAX_ZOOM — below
+// this the letters are too small to read and just clutter the coins.
+const TIER_LABEL_MIN_ZOOM = MAX_ZOOM * 0.32;
 const DRAG_THRESHOLD = 6;
 const MOVE_MS = 320; // token slide + camera glide duration per step
 
@@ -377,6 +377,8 @@ export class BoardCanvas {
   private ownTier = 1;
   /** {wild/elite node id -> difficulty tier} for the T1/T2/T3 space badges. */
   private enemyTiers = new Map<string, EnemyTier>();
+  /** {dig-site/gemstone-wall node id -> completion 0..1} for the progress ring. */
+  private nodeProgress = new Map<string, number>();
   // Real transparent guardian art, lazily loaded from undercity/guardians/<id>.png.
   // Missing files (the folder is a placeholder for now) fall back to a token sprite.
   private guardianTex = new Map<string, HTMLImageElement>();
@@ -506,6 +508,11 @@ export class BoardCanvas {
   /** Season-global first-conqueror plates + plundered-treasure state. */
   setFirsts(firsts: Record<string, { by: string; kind: string }>): void {
     this.firsts = firsts ?? {};
+  }
+
+  /** Live dig-site / gemstone-wall completion, for the coin progress rings. */
+  setProgress(excavations: Record<string, DigGrid>, veins: Record<string, VeinState>): void {
+    this.nodeProgress = computeProgress(this.map, excavations ?? {}, veins ?? {});
   }
 
   /** Season-global Ashen Fog reveals: node id -> the type the fog locked to. */
@@ -1638,6 +1645,14 @@ export class BoardCanvas {
     const tier = this.enemyTiers.get(n.id);
     if (tier && this.zoom >= TIER_LABEL_MIN_ZOOM && !sealed && !this.lockedIds.has(n.id)) {
       drawTierBadge(ctx, n, tier, this.zoom);
+    }
+
+    // Dig sites + gemstone walls wear a ring that fills toward completion, so you
+    // can spot the nearly-worked-out ones before spending a landing (see
+    // board-progress-ring.ts). Shown at any zoom — the arc reads even small.
+    const progress = this.nodeProgress.get(n.id);
+    if (progress !== undefined && !this.lockedIds.has(n.id)) {
+      drawProgressRing(ctx, n, progress);
     }
 
     ctx.restore();

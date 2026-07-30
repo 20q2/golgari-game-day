@@ -2690,8 +2690,8 @@
   {
    "id": "n245",
    "type": "fog",
-   "x": 1504,
-   "y": 429,
+   "x": 1575,
+   "y": 360,
    "region": "wilderness",
    "neighbors": [
     "n248",
@@ -2714,8 +2714,8 @@
   {
    "id": "n249",
    "type": "fog",
-   "x": 1679,
-   "y": 205,
+   "x": 1824,
+   "y": 171,
    "region": "wilderness",
    "neighbors": [
     "n248",
@@ -2923,8 +2923,8 @@
   {
    "id": "n270",
    "type": "fog",
-   "x": 2051,
-   "y": 180,
+   "x": 2178,
+   "y": 246,
    "region": "wilderness",
    "neighbors": [
     "n269",
@@ -2934,8 +2934,8 @@
   {
    "id": "n271",
    "type": "fog",
-   "x": 1780,
-   "y": 415,
+   "x": 1946,
+   "y": 374,
    "region": "wilderness",
    "neighbors": [
     "n273",
@@ -2946,8 +2946,8 @@
   {
    "id": "n273",
    "type": "fog",
-   "x": 2117,
-   "y": 480,
+   "x": 2230,
+   "y": 493,
    "region": "wilderness",
    "neighbors": [
     "n271",
@@ -2958,88 +2958,88 @@
   {
    "id": "n274",
    "type": "fog",
-   "x": 2318,
-   "y": 808,
+   "x": 2401,
+   "y": 633,
    "region": "wilderness",
    "neighbors": [
     "n273",
-    "n275"
+    "n314"
    ]
   },
   {
    "id": "n275",
    "type": "elite",
-   "x": 2577,
-   "y": 1107,
+   "x": 2764,
+   "y": 1044,
    "region": "wilderness",
    "neighbors": [
-    "n274",
     "n276",
-    "n251"
+    "n251",
+    "n314"
    ]
   },
   {
    "id": "n276",
    "type": "fog",
-   "x": 2662,
-   "y": 1425,
+   "x": 2858,
+   "y": 1266,
    "region": "wilderness",
    "neighbors": [
     "n275",
-    "n277"
+    "n315"
    ]
   },
   {
    "id": "n277",
    "type": "fog",
-   "x": 2575,
-   "y": 1698,
+   "x": 2674,
+   "y": 1852,
    "region": "wilderness",
    "neighbors": [
-    "n276",
     "n278",
-    "n255"
+    "n255",
+    "n315"
    ]
   },
   {
    "id": "n278",
    "type": "fog",
-   "x": 2128,
-   "y": 1818,
+   "x": 2451,
+   "y": 1939,
    "region": "wilderness",
    "neighbors": [
     "n277",
-    "n279"
+    "n316"
    ]
   },
   {
    "id": "n279",
    "type": "fog",
-   "x": 1658,
-   "y": 1858,
+   "x": 1786,
+   "y": 2035,
    "region": "wilderness",
    "neighbors": [
-    "n278",
-    "n280",
-    "n258"
+    "n258",
+    "n313",
+    "n316"
    ]
   },
   {
    "id": "n280",
    "type": "elite",
-   "x": 1231,
-   "y": 1781,
+   "x": 1083,
+   "y": 1853,
    "region": "wilderness",
    "neighbors": [
-    "n279",
-    "n281"
+    "n281",
+    "n313"
    ]
   },
   {
    "id": "n281",
    "type": "fog",
-   "x": 903,
-   "y": 1542,
+   "x": 796,
+   "y": 1661,
    "region": "wilderness",
    "neighbors": [
     "n280",
@@ -3050,8 +3050,8 @@
   {
    "id": "n282",
    "type": "fog",
-   "x": 783,
-   "y": 1357,
+   "x": 615,
+   "y": 1410,
    "region": "wilderness",
    "neighbors": [
     "n281",
@@ -3061,8 +3061,8 @@
   {
    "id": "n283",
    "type": "fog",
-   "x": 709,
-   "y": 966,
+   "x": 525,
+   "y": 1087,
    "region": "wilderness",
    "neighbors": [
     "n282",
@@ -3073,24 +3073,24 @@
   {
    "id": "n284",
    "type": "elite",
-   "x": 874,
-   "y": 683,
+   "x": 723,
+   "y": 656,
    "region": "wilderness",
    "neighbors": [
     "n283",
-    "n285",
-    "n265"
+    "n265",
+    "n317"
    ]
   },
   {
    "id": "n285",
    "type": "fog",
-   "x": 1294,
-   "y": 573,
+   "x": 1298,
+   "y": 446,
    "region": "wilderness",
    "neighbors": [
-    "n284",
-    "n245"
+    "n245",
+    "n317"
    ]
   },
   {
@@ -3219,9 +3219,9 @@
   },
   {
    "id": "n297",
-   "type": "hazard",
-   "x": 1173,
-   "y": 1405,
+   "type": "fog",
+   "x": 1175,
+   "y": 1394,
    "region": "isle",
    "neighbors": [
     "n296",
@@ -3241,9 +3241,9 @@
   },
   {
    "id": "n299",
-   "type": "hazard",
+   "type": "fog",
    "x": 1375,
-   "y": 762,
+   "y": 780,
    "region": "isle",
    "neighbors": [
     "n298",
@@ -3391,6 +3391,61 @@
    "neighbors": [
     "n311",
     "vault"
+   ]
+  },
+  {
+   "id": "n313",
+   "type": "fog",
+   "x": 1405,
+   "y": 1968,
+   "region": "wilderness",
+   "neighbors": [
+    "n280",
+    "n279"
+   ]
+  },
+  {
+   "id": "n314",
+   "type": "fog",
+   "x": 2560,
+   "y": 845,
+   "region": "wilderness",
+   "neighbors": [
+    "n274",
+    "n275"
+   ]
+  },
+  {
+   "id": "n315",
+   "type": "fog",
+   "x": 2903,
+   "y": 1600,
+   "region": "wilderness",
+   "neighbors": [
+    "n276",
+    "n277"
+   ]
+  },
+  {
+   "id": "n316",
+   "type": "fog",
+   "x": 2110,
+   "y": 2016,
+   "region": "wilderness",
+   "neighbors": [
+    "n278",
+    "n279"
+   ]
+  },
+  {
+   "id": "n317",
+   "type": "fog",
+   "x": 953,
+   "y": 570,
+   "region": "wilderness",
+   "neighbors": [
+    "n285",
+    "n284"
    ]
   }
  ],

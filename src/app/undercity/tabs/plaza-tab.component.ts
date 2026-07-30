@@ -162,6 +162,32 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
     () => this.store.you()?.materials ?? { moltings: 0, ichor: 0 },
   );
 
+  /** Which material's info popover is open above the band (null = none). */
+  protected readonly matInfo = signal<'moltings' | 'ichor' | null>(null);
+
+  /** Player-facing blurbs for the two crafting materials (tap a chip to read).
+   *  `ichor` is the internal id for the Gemstone the UI shows. */
+  protected readonly matMeta: Record<
+    'moltings' | 'ichor',
+    { name: string; icon: string; desc: string }
+  > = {
+    moltings: {
+      name: 'Moltings',
+      icon: 'grass',
+      desc: 'Shed husks and chitin — the common crafting material. Grind gear at the Salvage Yard, or dig them from Excavation Sites and mines. Spend them at the Blacksmith to climb a piece up its rarity ladder.',
+    },
+    ichor: {
+      name: 'Gemstone',
+      icon: 'diamond',
+      desc: 'Raw crystal torn from the deep — the rare crafting material. Comes from grinding Rare-or-better gear and from deep mine strikes. The Blacksmith needs Gemstones for the top upgrade rungs.',
+    },
+  };
+
+  /** Toggle a material's info popover; tapping the open one (or its card) closes it. */
+  protected toggleMatInfo(kind: 'moltings' | 'ichor'): void {
+    this.matInfo.update((cur) => (cur === kind ? null : kind));
+  }
+
   protected readonly stashRows = computed(() =>
     (this.store.you()?.gearStash ?? [])
       .map((id, index) => ({ index, info: GEAR_MAP[id] }))
@@ -275,6 +301,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
 
   protected openBuilding(b: 'salvage' | 'blacksmith' | 'market'): void {
     if (b === 'market') this.marketTab.set('buy');
+    this.matInfo.set(null);
     this.building.set(b);
   }
   protected closeBuilding(): void {

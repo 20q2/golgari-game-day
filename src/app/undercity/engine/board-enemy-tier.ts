@@ -1,20 +1,29 @@
 /**
  * Enemy-space difficulty tier (T1/T2/T3) for the board badges. Mirrors the
- * server's enemy-pool resolution (undercity_db._wild_battle / _depths_enemy):
- * what actually spawns on a `wild`/`elite` space depends on its region and, in
- * the depths, how deep the pocket runs (hop-distance from the biome mouth). We
- * bucket the server's rungs onto three tiers by the pool that spawns:
- *   T1  surface / home wilds + shallow depths (d1-4) fodder
- *   T2  mid + deep depths (d5-15) + wilderness
- *   T3  abyss (depths d16+) + the isle / boss approach
- * An `elite` space spikes one rung up (server behaviour), so an elite reads as
- * the tier of its spiked pool. Pure: map in, {nodeId -> tier} out. Keep in sync
- * with the Python if the ladder ever changes.
+ * server's enemy-pool resolution (undercity_db._wild_battle → data.region_tier):
+ * difficulty is WHERE you are, not how deep you dig — each region maps flatly to
+ * a tier (design 2026-07-26-region-tier), and an `elite` space draws the tougher
+ * members of that SAME tier (elites never jump a tier). So the badge is just the
+ * region's tier for any wild/elite coin. Pure: map in, {nodeId -> tier} out.
+ * Keep REGION_TIER below in sync with undercity_data.REGION_TIER.
  */
 import type { BoardMap, BoardNode } from './board-canvas';
-import { DUNGEONS } from '../data/dungeons';
 
 export type EnemyTier = 1 | 2 | 3;
+
+/** Region -> difficulty tier. Mirror of undercity_data.REGION_TIER; unknown/None
+ *  falls back to tier 1 (safe), matching data.region_tier. */
+const REGION_TIER: Record<string, EnemyTier> = {
+  city: 1,
+  garden: 1,
+  bone: 1,
+  cavern: 1,
+  bog: 1,
+  ruin: 2,
+  depths: 2,
+  wilderness: 3,
+  isle: 3,
+};
 
 /** Danger grade colours for the enemy-space T1/T2/T3 badge (calm -> lethal). */
 export const TIER_COLORS: Record<EnemyTier, string> = {
@@ -56,52 +65,17 @@ export function drawTierBadge(
   ctx.restore();
 }
 
-/** BFS hop-distance of every depths node from its biome's ladder mouth
- *  (`<biome>_lb`) — a direct port of undercity_db._season_depth_map. */
-function depthMap(map: BoardMap): Map<string, number> {
-  const byId = new Map(map.nodes.map((n) => [n.id, n]));
-  const depth = new Map<string, number>();
-  for (const biome of Object.keys(DUNGEONS)) {
-    const mouth = `${biome}_lb`;
-    if (!byId.has(mouth)) continue;
-    depth.set(mouth, 0);
-    const queue = [mouth];
-    for (let i = 0; i < queue.length; i++) {
-      const cur = byId.get(queue[i])!;
-      for (const nb of cur.neighbors) {
-        const n = byId.get(nb);
-        if (n && n.region === 'depths' && !depth.has(nb)) {
-          depth.set(nb, depth.get(queue[i])! + 1);
-          queue.push(nb);
-        }
-      }
-    }
-  }
-  return depth;
-}
-
 /** Tier of a single wild/elite space, or null if it isn't an enemy space. */
-function tierOf(node: BoardNode, depth: Map<string, number>): EnemyTier | null {
+function tierOf(node: BoardNode): EnemyTier | null {
   if (node.type !== 'wild' && node.type !== 'elite') return null;
-  const elite = node.type === 'elite';
-  const region = node.region;
-  if (region === 'isle') return 3;
-  if (region === 'wilderness') return 2;
-  if (region === 'depths') {
-    const d = depth.get(node.id) ?? 0;
-    let rung = d <= 4 ? 1 : d <= 9 ? 2 : d <= 15 ? 3 : 4;
-    if (elite) rung += 1; // elite = spike one rung up (capped implicitly at rung 5)
-    return rung <= 1 ? 1 : rung <= 3 ? 2 : 3; // rung1->T1, rung2/3->T2, rung4/5->T3
-  }
-  return 1; // surface / home biome pockets (NPCS / ELITE_NPCS — the fodder band)
+  return REGION_TIER[node.region ?? ''] ?? 1;
 }
 
 /** {enemy node id -> T1/T2/T3}. Non-enemy nodes are absent from the map. */
 export function computeEnemyTiers(map: BoardMap): Map<string, EnemyTier> {
-  const depth = depthMap(map);
   const out = new Map<string, EnemyTier>();
   for (const n of map.nodes) {
-    const t = tierOf(n, depth);
+    const t = tierOf(n);
     if (t) out.set(n.id, t);
   }
   return out;

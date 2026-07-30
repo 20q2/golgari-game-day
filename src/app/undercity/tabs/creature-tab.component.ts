@@ -15,7 +15,6 @@ import { GEAR_MAP, CONSUMABLE_MAP, tierRarity, marketBand, MarketKind } from '..
 import { RIDER_AUGMENTS } from '../data/combat';
 import {
   innateSpellIds,
-  BIOME_SPELLS,
   GRIMOIRE_MAP,
   GRIMOIRES,
   GrimoireInfo,
@@ -39,6 +38,7 @@ import { formSprite } from '../data/species';
 import { getRecoloredDataUrl, getRecoloredWithHatEffectDataUrl } from '../engine/sprite-engine';
 import { isShielded } from '../services/undercity-models';
 import { DUNGEONS, SIGILS_REQUIRED } from '../data/dungeons';
+import { regionInfo } from '../data/regions';
 import { UcActionBandComponent } from './action-band.component';
 
 type CreatureSubTab = 'stats' | 'gear' | 'wardrobe' | 'sigils';
@@ -434,13 +434,14 @@ export class CreatureTabComponent {
       .filter((sp): sp is SpellInfo => !!sp);
   });
 
-  /** The single home-biome innate ability, shown as a trait on the Stats tab.
-   *  Resolved from the biome the player chose at the home step. */
-  protected readonly biomeInnate = computed<SpellInfo | null>(() => {
+  /** The home-biome innate ability (Darkvision, Mirefoot, …), shown as a trait
+   *  on the Stats tab. Resolved from the biome the player chose at the home step
+   *  — the hatch perk, not the biome spell. */
+  protected readonly biomeInnate = computed<{ name: string; blurb: string } | null>(() => {
     const you = this.store.you();
     if (!you) return null;
-    const id = BIOME_SPELLS[you.homeBiome ?? ''];
-    return id ? (SPELL_MAP[id] ?? null) : null;
+    const region = regionInfo(you.homeBiome);
+    return region ? { name: region.perk, blurb: region.blurb } : null;
   });
 
   protected readonly equippedBook = computed<GrimoireInfo | null>(() => {

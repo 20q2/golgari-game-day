@@ -43,7 +43,28 @@
         }
       </div>
     } @else {
-      <!-- Default: forge buildings as a sub-navbar + material chips -->
+      <!-- Tapping a chip pops its info card just above the band. -->
+      @if (matInfo(); as mk) {
+        <div class="mat-info-card" [class.ich]="mk === 'ichor'" (click)="matInfo.set(null)">
+          <div class="mat-info-head">
+            <mat-icon class="mi">{{ matMeta[mk].icon }}</mat-icon>
+            <span class="mat-info-name">{{ matMeta[mk].name }}</span>
+            <span class="mat-info-count">×{{ mk === 'ichor' ? materials().ichor : materials().moltings }}</span>
+          </div>
+          <p class="mat-info-desc">{{ matMeta[mk].desc }}</p>
+        </div>
+      }
+      <!-- Material chips float just above the band so they never crowd or clip
+           the forge buttons on a narrow phone. Tap one for what it's for. -->
+      <span class="forge-mats">
+        <button type="button" class="mat-chip mtl" [class.on]="matInfo() === 'moltings'" title="Moltings — tap for info" (click)="toggleMatInfo('moltings')">
+          <mat-icon class="mi">grass</mat-icon> {{ materials().moltings }}
+        </button>
+        <button type="button" class="mat-chip ich" [class.on]="matInfo() === 'ichor'" title="Gemstone — tap for info" (click)="toggleMatInfo('ichor')">
+          <mat-icon class="mi">diamond</mat-icon> {{ materials().ichor }}
+        </button>
+      </span>
+      <!-- Default: forge buildings as a sub-navbar -->
       <div class="forge-bar">
         <button class="uc-btn forge-btn" (click)="openBuilding('salvage')">
           <mat-icon class="mi">recycling</mat-icon> Salvage
@@ -57,10 +78,6 @@
           <mat-icon class="mi">storefront</mat-icon> Market
           @if (marketRows().length) { <span class="forge-count">{{ marketRows().length }}</span> }
         </button>
-        <span class="forge-mats">
-          <span class="mat-chip mtl" title="Moltings"><mat-icon class="mi">grass</mat-icon> {{ materials().moltings }}</span>
-          <span class="mat-chip ich" title="Gemstone"><mat-icon class="mi">diamond</mat-icon> {{ materials().ichor }}</span>
-        </span>
       </div>
     }
   </app-uc-action-band>

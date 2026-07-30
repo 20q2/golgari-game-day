@@ -187,7 +187,7 @@
                 @if (biomeInnate(); as sp) {
                   <div class="passive-pill">
                     <strong>{{ sp.name }} <span class="trait-tag">innate</span></strong>
-                    {{ sp.desc }}
+                    {{ sp.blurb }}
                   </div>
                 }
                 @for (p of you.passives; track p) {
