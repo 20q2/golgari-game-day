@@ -4792,9 +4792,12 @@ def _cast(table, sid, doc, payload):
 
 
 def _cast_field(table, sid, doc, spell_id, spell, target_id):
-    """Route a field spell to a guardian/boss target, else a rival player."""
+    """Route a field spell to a guardian/boss/enraged target, else a rival player."""
     if target_id == 'boss' or target_id in data.BARRIER_GUARDIANS or target_id in data.LAIR_BOSSES:
         return _cast_at_guardian(table, sid, doc, spell, target_id)
+    er = _enraged_state(table, sid)
+    if not er.get('dead') and target_id == er['node']:
+        return _cast_at_enraged(table, sid, doc, spell, er)
     return _cast_at_player(table, sid, doc, spell_id, spell, target_id)
 
 
@@ -4860,6 +4863,51 @@ def _cast_at_guardian(table, sid, doc, spell, target_id):
            f"{doc['username']} cursed {name} with {spell['name']}!", actor=doc['userId'])
     return {'targetName': name,
             'text': f'{spell["name"]} settles over {name} — it will fester in its next fight.'}
+
+
+def _cast_at_enraged(table, sid, doc, spell, rec):
+    """Field damage/curse at the rooted enraged monster within range. Damage
+    floors its shared pool at 1 (the killing blow needs melee or a lethal strike);
+    a curse persists to bite in its next fight. An error tuple leaves the caster's
+    cooldown unstarted."""
+    nodes = _season_map(table, sid)
+    spec = data.ENRAGED_MONSTERS[rec['monsterId']]
+    name = spec['name']
+    dist = engine.board_distance(nodes, doc['position'], rec['node'],
+                                 spell['range'], _closed_barriers(table, sid))
+    if dist is None:
+        return _spell_err(f"It is beyond the spell's reach ({spell['range']} spaces).",
+                          'out_of_range')
+
+    if spell['effect'] == 'field_damage':
+        live = _enraged_state(table, sid)          # re-read: concurrent chippers
+        if live.get('dead') or live.get('monsterId') != rec['monsterId']:
+            return _spell_err('It has already fallen.', 'invalid_target', 409)
+        new_hp = max(1, int(live['hp']) - _spell_damage(spell, doc))
+        dealt = int(live['hp']) - new_hp
+        live['hp'] = new_hp
+        _set_enraged_state(table, sid, live)
+        if dealt:
+            _event(table, sid, 'spell',
+                   f"{doc['username']}'s {spell['name']} wounds the {name} from afar "
+                   f'({new_hp}/{spec["hp"]} HP)!', actor=doc['userId'])
+            text = f'{spell["name"]} wounds the {name} for {dealt}! ({new_hp}/{spec["hp"]} HP)'
+        else:
+            text = f'The {name} is already at the brink — finish it in person.'
+        return {'dmg': dealt, 'targetName': name, 'text': text}
+
+    # field_curse: refresh-don't-stack, then persist.
+    live = _enraged_state(table, sid)
+    if live.get('dead') or live.get('monsterId') != rec['monsterId']:
+        return _spell_err('It has already fallen.', 'invalid_target', 409)
+    buffs = [x for x in (live.get('buffs') or []) if x.get('kind') != spell['buffKind']]
+    buffs.append({'kind': spell['buffKind']})
+    live['buffs'] = buffs
+    _set_enraged_state(table, sid, live)
+    _event(table, sid, 'spell',
+           f"{doc['username']} cursed the {name} with {spell['name']}!", actor=doc['userId'])
+    return {'targetName': name,
+            'text': f'{spell["name"]} settles over the {name} — it will fester in its next fight.'}
 
 
 def _cast_at_player(table, sid, doc, spell_id, spell, target_id):

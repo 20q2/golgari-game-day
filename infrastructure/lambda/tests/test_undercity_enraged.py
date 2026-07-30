@@ -169,3 +169,63 @@ def test_enraged_loss_leaves_wounded_shared_pool(table):
     live = db._enraged_state(table, sid)
     assert live['dead'] is False
     assert live['hp'] == rec['hp'] - 12   # wound lingers for the next challenger
+
+
+def _give_book(table, user, gid):
+    doc = db._get_player(table, _sid(table), user)
+    doc.setdefault('grimoires', []).append(gid)
+    doc['equippedGrimoire'] = gid
+    db._put_player(table, doc)
+
+
+def test_field_damage_softens_enraged_floored_at_one(table):
+    act(table, 'join', starter='pest', home='city')
+    sid = _sid(table)
+    # Stand the caster on the enraged node so any spell range reaches (dist 0).
+    rec = db._enraged_state(table, sid)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = rec['node']
+    db._put_player(table, doc)
+    # Find a grimoire holding a ranged field_damage spell.
+    cand = None
+    for gid, g in data.GRIMOIRES.items():
+        for s in g['spells']:
+            sp = data.SPELLS[s]
+            if sp['effect'] == 'field_damage' and sp.get('range'):
+                cand = (gid, s); break
+        if cand: break
+    assert cand, 'expected at least one ranged field_damage spell'
+    gid, spell_id = cand
+    _give_book(table, 'user-alex', gid)
+    # Drive the pool low, then confirm a field-damage cast floors at 1 (no kill).
+    rec['hp'] = 3
+    db._set_enraged_state(table, sid, rec)
+    status, resp = act(table, 'cast', spellId=spell_id, source='grimoire', target=rec['node'])
+    assert status == 200, resp
+    live = db._enraged_state(table, sid)
+    assert live['hp'] == 1 and live['dead'] is False
+    assert resp['cast']['targetName'] == data.ENRAGED_MONSTERS[rec['monsterId']]['name']
+
+
+def test_field_curse_persists_and_bites_on_engage(table):
+    act(table, 'join', starter='pest', home='city')
+    sid = _sid(table)
+    rec = db._enraged_state(table, sid)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = rec['node']
+    db._put_player(table, doc)
+    # Find any grimoire holding a field_curse whose buffKind is in GUARDIAN_DEBUFF.
+    cand = None
+    for gid, g in data.GRIMOIRES.items():
+        for s in g['spells']:
+            sp = data.SPELLS[s]
+            if sp['effect'] == 'field_curse' and sp.get('buffKind') in data.GUARDIAN_DEBUFF:
+                cand = (gid, s, sp['buffKind']); break
+        if cand: break
+    assert cand, 'expected at least one field_curse in GUARDIAN_DEBUFF'
+    gid, spell_id, kind = cand
+    _give_book(table, 'user-alex', gid)
+    status, _ = act(table, 'cast', spellId=spell_id, source='grimoire', target=rec['node'])
+    assert status == 200
+    stored = db._enraged_state(table, sid)
+    assert any(b['kind'] == kind for b in stored['buffs'])
