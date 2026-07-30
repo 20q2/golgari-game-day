@@ -229,3 +229,37 @@ def test_field_curse_persists_and_bites_on_engage(table):
     assert status == 200
     stored = db._enraged_state(table, sid)
     assert any(b['kind'] == kind for b in stored['buffs'])
+
+
+def test_sear_throne_slays_enraged_from_afar(table):
+    act(table, 'join', starter='pest', home='city')
+    sid = _sid(table)
+    rec = db._enraged_state(table, sid)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = rec['node']
+    db._put_player(table, doc)
+    _give_book(table, 'user-alex', 'throneburner_codex')   # holds lethal sear_throne
+    rec['hp'] = 4
+    db._set_enraged_state(table, sid, rec)
+    perm_before = db._get_perm(table, 'user-alex').get('renown', 0)
+    status, resp = act(table, 'cast', spellId='sear_throne', source='grimoire', target=rec['node'])
+    assert status == 200, resp
+    assert db._enraged_state(table, sid)['dead'] is True
+    assert resp['cast']['renown'] == data.ENRAGED_KILL_RENOWN
+    assert db._get_perm(table, 'user-alex')['renown'] == perm_before + data.ENRAGED_KILL_RENOWN
+
+
+def test_nonlethal_boss_strike_floors_enraged(table):
+    act(table, 'join', starter='pest', home='city')
+    sid = _sid(table)
+    rec = db._enraged_state(table, sid)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = rec['node']
+    db._put_player(table, doc)
+    _give_book(table, 'user-alex', 'queensbane_grimoire')  # non-lethal boss_strike
+    rec['hp'] = 3
+    db._set_enraged_state(table, sid, rec)
+    status, resp = act(table, 'cast', spellId='queens_bane', source='grimoire', target=rec['node'])
+    assert status == 200, resp
+    live = db._enraged_state(table, sid)
+    assert live['hp'] == 1 and live['dead'] is False

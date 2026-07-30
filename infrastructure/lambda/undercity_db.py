@@ -5061,6 +5061,32 @@ def _cast_boss_strike(table, sid, doc, spell, target):
         else:
             text = f'The {display} is already at the brink — finish it in person.'
         return {'dmg': dealt, 'targetName': display, 'text': text}
+    er = _enraged_state(table, sid)
+    if not er.get('dead') and target == er['node']:
+        spec = data.ENRAGED_MONSTERS[er['monsterId']]
+        new_hp = max(floor, int(er['hp']) - _spell_damage(spell, doc))
+        dealt = int(er['hp']) - new_hp
+        name = spec['name']
+        if lethal and new_hp <= 0:
+            out = {'dmg': dealt, 'targetName': name}
+            if _enraged_kill_pool(table, sid, er['monsterId']):
+                _award_enraged_kill(table, sid, doc, er['monsterId'], out)
+                out['enragedKill'] = True
+                out['text'] = (f'{spell["name"]} sears clean through — the {name} '
+                               f'FALLS! +{data.ENRAGED_KILL_RENOWN} renown.')
+            else:
+                out['text'] = f'The {name} has already fallen.'
+            return out
+        er['hp'] = new_hp
+        _set_enraged_state(table, sid, er)
+        if dealt:
+            _event(table, sid, 'spell',
+                   f"{doc['username']}'s {spell['name']} sears the {name} from afar "
+                   f'({new_hp}/{spec["hp"]} HP)!', actor=doc['userId'])
+            text = f'{spell["name"]} sears the {name} for {dealt}! ({new_hp} HP remains)'
+        else:
+            text = f'The {name} is already at the brink — finish it in person.'
+        return {'dmg': dealt, 'targetName': name, 'text': text}
     return _spell_err('Aim at the Queen (boss) or a lair.', 'invalid_target', 400)
 
 
