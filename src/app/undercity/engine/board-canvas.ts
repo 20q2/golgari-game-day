@@ -37,6 +37,7 @@ import { computeEnemyTiers, drawTierBadge, EnemyTier } from './board-enemy-tier'
 import { WORLD_EVENT_SPRITE, WORLD_EVENT_PIECE_SPRITE } from '../data/world-event';
 import { drawTunnelSignpost } from './board-signpost';
 import { WorldEventState } from '../services/undercity-models';
+import { EnragedMonster } from '../services/undercity-models';
 
 export interface BoardNode {
   id: string;
@@ -391,6 +392,9 @@ export class BoardCanvas {
   private worldEventPieceTex: HTMLImageElement | null = null;
   private worldEventPieceLoading = false;
   private worldEventPieceMiss = false;
+  /** The live wilderness enraged monster (spell-targetable, relocates hourly),
+   *  or null when it's dead this window / never fed. */
+  private enraged: EnragedMonster | null = null;
   private choices = new Set<string>();
   private backChoice: string | null = null;
   private info: NodeInfo | null = null;
@@ -786,6 +790,14 @@ export class BoardCanvas {
   setWorldEvent(we: WorldEventState | null): void {
     this.worldEvent = we && !we.dead ? we : null;
     if (this.worldEvent) this.loadWorldEvent();
+  }
+
+  /** The live wilderness enraged monster, or null to clear it (dead / never
+   *  spawned). Kicks off its sprite load (via the guardian art loader) the first
+   *  time one appears. */
+  setEnraged(er: EnragedMonster | null): void {
+    this.enraged = er && !er.dead && er.node ? er : null;
+    if (this.enraged) this.loadGuardian(this.enraged.monsterId ?? '');
   }
 
   private loadWorldEvent(): void {
@@ -1455,6 +1467,7 @@ export class BoardCanvas {
     this.drawHealNumbers();
 
     if (this.umori) this.drawUmori(ts);
+    this.drawEnraged(ts);
 
     this.drawInfo();
 
@@ -2002,6 +2015,69 @@ export class BoardCanvas {
   private umoriCountdown(): string {
     if (!this.umori) return '';
     const ms = new Date(this.umori.movesAt + 'Z').getTime() - Date.now();
+    const min = Math.max(0, Math.ceil(ms / 60_000));
+    return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min}m`;
+  }
+
+  /** The wilderness enraged monster: its sprite hopping above its node with an
+   *  HP bar and a relocate-countdown over its head. Drawn on the live layer (the
+   *  static terrain prerender can't animate or re-place it each window). */
+  private drawEnraged(ts: number): void {
+    const er = this.enraged;
+    if (!er || !er.node) return;
+    const n = this.nodeMap.get(er.node);
+    if (!n || !this.inActive(n.id)) return;
+    const ctx = this.ctx;
+    const elapsed = (ts - this.startTime) / 1000;
+    const hop = Math.abs(Math.sin(elapsed * 3)) * HOP_HEIGHT;
+    const cx = n.x;
+    const footAnchor = n.y - 6;
+
+    // Warning pulse ring so it reads as "deal with me" on the overworld.
+    const pulse = 0.3 + 0.2 * Math.sin(elapsed * 2.4);
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(n.x, n.y + 4, 40, 20, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(230, 90, 70, ${pulse})`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
+
+    const art = this.guardianArt(er.monsterId ?? '');
+    if (art) {
+      const h = 46;
+      const w = art.img.width * (h / art.img.height);
+      ctx.imageSmoothingEnabled = !art.pixelArt;
+      ctx.drawImage(art.img, cx - w / 2, footAnchor - h - hop, w, h);
+      ctx.imageSmoothingEnabled = true;
+    }
+
+    // HP bar (same palette as the interactive battle / guardians).
+    if (typeof er.hp === 'number' && typeof er.maxHp === 'number') {
+      this.drawGuardianHp(cx, footAnchor - 46 - hop - 4, er.hp, er.maxHp, 44);
+    }
+
+    // Relocate-countdown label above its head.
+    const label = this.enragedCountdown();
+    ctx.save();
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    const tw = ctx.measureText(label).width;
+    const ty = footAnchor - 62 - hop;
+    ctx.fillStyle = 'rgba(28,12,12,0.82)';
+    ctx.beginPath();
+    ctx.roundRect(cx - tw / 2 - 6, ty - 11, tw + 12, 16, 6);
+    ctx.fill();
+    ctx.fillStyle = '#ffd9c2';
+    ctx.fillText(label, cx, ty + 1);
+    ctx.restore();
+  }
+
+  /** Remaining time until the monster relocates, formatted like Umori's clock. */
+  private enragedCountdown(): string {
+    if (!this.enraged) return '';
+    const ms = new Date(this.enraged.movesAt + 'Z').getTime() - Date.now();
     const min = Math.max(0, Math.ceil(ms / 60_000));
     return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min}m`;
   }
