@@ -64,3 +64,41 @@ def test_window_advances_with_time():
     win = db._enraged_window(now)
     later = now + timedelta(minutes=data.ENRAGED_DWELL_MIN)
     assert db._enraged_window(later) == win + 1
+
+
+def test_state_spawns_fresh_and_persists_in_window(table):
+    sid = _sid(table)
+    rec = db._enraged_state(table, sid)
+    assert rec['monsterId'] in data.ENRAGED_MONSTERS
+    spec = data.ENRAGED_MONSTERS[rec['monsterId']]
+    assert rec['hp'] == spec['hp'] == rec['maxHp']
+    assert rec['dead'] is False
+    assert rec['node'] == db._enraged_node(rec['window'])
+    # A second read in the same window returns the SAME record, not a re-roll.
+    rec2 = db._enraged_state(table, sid)
+    assert rec2['window'] == rec['window'] and rec2['node'] == rec['node']
+
+
+def test_dead_stays_dead_until_window_rolls(table):
+    sid = _sid(table)
+    rec = db._enraged_state(table, sid)
+    rec['dead'] = True
+    rec['hp'] = 0
+    db._set_enraged_state(table, sid, rec)
+    # Same window -> still dead (spot stays empty).
+    assert db._enraged_state(table, sid)['dead'] is True
+
+
+def test_stale_window_rolls_over_to_fresh_spawn(table):
+    sid = _sid(table)
+    rec = db._enraged_state(table, sid)
+    # Force a stale, wounded, dead record from a prior window.
+    rec['window'] -= 1
+    rec['hp'] = 0
+    rec['dead'] = True
+    db._set_enraged_state(table, sid, rec)
+    fresh = db._enraged_state(table, sid)
+    assert fresh['window'] == db._enraged_window()
+    assert fresh['dead'] is False
+    spec = data.ENRAGED_MONSTERS[fresh['monsterId']]
+    assert fresh['hp'] == spec['hp']

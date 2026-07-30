@@ -3348,6 +3348,51 @@ def _world_event_public(table, sid):
             'dead': bool(we.get('dead'))}
 
 
+# ── Enraged wilderness monster shared state ──────────────────────────────────
+
+def _set_enraged_state(table, sid, rec):
+    """Persist the single shared enraged-monster record (sk='ENRAGED')."""
+    item = dict(rec)
+    item['pk'] = _season_pk(sid)
+    item['sk'] = 'ENRAGED'
+    table.put_item(Item=item)
+
+
+def _enraged_state(table, sid):
+    """The live enraged-monster record for the CURRENT window, rolling it over to
+    a fresh spawn (new node + monster + full HP) if the stored record is missing
+    or belongs to an earlier window. HP/curses/dead persist within a window.
+
+    Spawn is fully deterministic, so two clients that both cross a window boundary
+    write identical content — the race is benign (last write wins, same data)."""
+    win = _enraged_window()
+    rec = _get(table, _season_pk(sid), 'ENRAGED')
+    if rec and int(rec.get('window', -1)) == win:
+        return rec
+    mid = _enraged_monster(win)
+    spec = data.ENRAGED_MONSTERS[mid]
+    rec = {'window': win, 'monsterId': mid, 'node': _enraged_node(win),
+           'hp': int(spec['hp']), 'maxHp': int(spec['hp']), 'buffs': [], 'dead': False}
+    _set_enraged_state(table, sid, rec)
+    return rec
+
+
+def _enraged_public(table, sid):
+    """Client-facing enraged block: the live monster's node/HP/curses + relocate
+    countdown, or a dead-with-countdown stub when this window's monster has
+    already fallen (the spot stays empty until it hops)."""
+    rec = _enraged_state(table, sid)
+    moves_at = _enraged_window_end(rec['window'])
+    if rec.get('dead'):
+        return {'dead': True, 'movesAt': moves_at}
+    spec = data.ENRAGED_MONSTERS[rec['monsterId']]
+    return {'dead': False, 'node': rec['node'], 'monsterId': rec['monsterId'],
+            'name': spec['name'], 'spriteId': rec['monsterId'],
+            'hp': int(rec['hp']), 'maxHp': int(rec['maxHp']),
+            'buffs': [b['kind'] for b in (rec.get('buffs') or [])],
+            'movesAt': moves_at}
+
+
 def _pick_world_event_run(nodes):
     """A length-3 connected chain of wilderness nodes: [flank, center, flank].
     Picks a center that has >=2 wilderness neighbours. Returns None if the map
