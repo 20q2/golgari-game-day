@@ -436,6 +436,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       if (dist !== null)
         out.push({ target: 'boss', name: 'Savra, the Queen', hp: boss.hp, maxHp: boss.maxHp, dist });
     }
+    const er = this.store.enraged();
+    if (er && !er.dead && er.node && typeof er.hp === 'number' && typeof er.maxHp === 'number') {
+      const dist = boardDistance(this.map, you.position, er.node, spell.range, closed);
+      if (dist !== null)
+        out.push({ target: er.node, name: er.name ?? 'Enraged monster', hp: er.hp, maxHp: er.maxHp, dist });
+    }
     return out.sort((a, b) => a.dist - b.dist);
   }
 
@@ -443,9 +449,14 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
    *  ("from anywhere"), so no distance filter — lairs carry their node id, which
    *  the server matches against data.LAIR_BOSSES. */
   protected spellLairTargets(): { target: string; name: string; hp: number; maxHp: number }[] {
-    return Object.entries(this.store.guardians())
+    const out = Object.entries(this.store.guardians())
       .filter(([, g]) => g.kind === 'lair')
       .map(([node, g]) => ({ target: node, name: g.name, hp: g.hp, maxHp: g.maxHp }));
+    const er = this.store.enraged();
+    if (er && !er.dead && er.node && typeof er.hp === 'number' && typeof er.maxHp === 'number') {
+      out.push({ target: er.node, name: er.name ?? 'Enraged monster', hp: er.hp, maxHp: er.maxHp });
+    }
+    return out;
   }
 
   /** Value-picker faces for a fate_die spell: 1..maxValue (Fate Die = 6, Skitter Step = 3). */
@@ -1904,6 +1915,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.board.setBarriersOpen(this.store.barriersOpen());
     this.board.setGuardianPools(this.store.guardians());
     this.board.setWorldEvent(this.store.worldEvent());
+    this.board.setEnraged(this.store.enraged());
     const here = step ? stepPos(step) : null;
     const choices = step ? this.stepChoices(step) : [];
     const tele = this.castTeleport();
@@ -1929,6 +1941,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     );
     this.board.setFirsts(this.store.firsts());
     this.board.setFogReveals(this.store.fogReveals());
+    this.board.setProgress(this.store.excavations(), this.store.veins());
   }
 
   private async move(to: string): Promise<void> {
