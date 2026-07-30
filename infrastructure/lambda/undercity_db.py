@@ -83,6 +83,37 @@ def _umori_node(window):
     return rng.choice(data.UMORI_NODES)
 
 
+def _enraged_window(now=None):
+    """Which ENRAGED_DWELL_MIN window the wilderness monster's location/identity
+    belong to. Pure function of the wall clock — every client agrees, no tick."""
+    now = now or datetime.utcnow()
+    secs = int((now - _EPOCH).total_seconds())
+    return secs // (data.ENRAGED_DWELL_MIN * 60)
+
+
+def _enraged_window_end(window):
+    """ISO timestamp the monster next relocates (the client's countdown target)."""
+    end = _EPOCH + timedelta(seconds=(window + 1) * data.ENRAGED_DWELL_MIN * 60)
+    return end.isoformat(timespec='seconds')
+
+
+def _enraged_node(window):
+    """Deterministic wilderness node the monster occupies this window, excluding
+    Umori's node (computed for the umori-window containing this window's start) so
+    the two overlays never stack on one tile."""
+    umori_win = (window * data.ENRAGED_DWELL_MIN) // data.UMORI_DWELL_MIN
+    umori_here = _umori_node(umori_win)
+    pool = [n for n in data.UMORI_NODES if n != umori_here] or list(data.UMORI_NODES)
+    rng = random.Random(zlib.crc32(f'enraged:{window}'.encode()))
+    return rng.choice(pool)
+
+
+def _enraged_monster(window):
+    """Deterministic roster id for this window (stable hash over ENRAGED_ORDER)."""
+    rng = random.Random(zlib.crc32(f'enraged-monster:{window}'.encode()))
+    return rng.choice(data.ENRAGED_ORDER)
+
+
 def _umori_stock(window):
     """Fresh T3 barter seed for a window: one T3 gear per slot (fixed order) +
     UMORI_STOCK_SPEC['grimoire'] T3 grimoires. Deterministic per window."""

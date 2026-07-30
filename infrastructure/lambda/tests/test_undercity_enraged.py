@@ -36,3 +36,31 @@ def test_roster_shape():
         for stat in ('atk', 'def', 'spd'):
             assert m[stat] >= 1
     assert 'enraged' in data.GEAR_DROP
+
+
+def test_window_and_pick_are_deterministic():
+    from datetime import datetime
+    now = datetime(2026, 7, 30, 12, 0, 0)
+    win = db._enraged_window(now)
+    # Same window -> identical node + monster, every call, every client.
+    assert db._enraged_node(win) == db._enraged_node(win)
+    assert db._enraged_monster(win) == db._enraged_monster(win)
+    # The pick is a real wilderness node and a real roster id.
+    assert db._enraged_node(win) in data.UMORI_NODES
+    assert db._enraged_monster(win) in data.ENRAGED_MONSTERS
+
+
+def test_enraged_node_avoids_umori():
+    # For any window, the enraged node never collides with Umori's node computed
+    # for the umori-window that contains this enraged window's start.
+    for win in range(0, 200):
+        umori_win = (win * data.ENRAGED_DWELL_MIN) // data.UMORI_DWELL_MIN
+        assert db._enraged_node(win) != db._umori_node(umori_win), win
+
+
+def test_window_advances_with_time():
+    from datetime import datetime, timedelta
+    now = datetime(2026, 7, 30, 12, 0, 0)
+    win = db._enraged_window(now)
+    later = now + timedelta(minutes=data.ENRAGED_DWELL_MIN)
+    assert db._enraged_window(later) == win + 1
