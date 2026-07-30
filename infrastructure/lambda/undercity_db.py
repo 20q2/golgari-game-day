@@ -1531,6 +1531,7 @@ def handle_state(table, query_params):
         'firsts': firsts,
         'fogReveals': fog_reveals,
         'worldEvent': _world_event_public(table, sid),
+        'enraged': _enraged_public(table, sid),
         'guardians': _guardian_pools(table, sid),
         'events': [{k: v for k, v in e.items() if k not in ('pk', 'sk')} for e in events],
         'result': result if config.get('status') == 'ended' else None,

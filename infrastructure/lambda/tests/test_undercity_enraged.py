@@ -102,3 +102,14 @@ def test_stale_window_rolls_over_to_fresh_spawn(table):
     assert fresh['dead'] is False
     spec = data.ENRAGED_MONSTERS[fresh['monsterId']]
     assert fresh['hp'] == spec['hp']
+
+
+def test_state_payload_includes_enraged(table):
+    act(table, 'join', starter='pest', home='city')
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200, state
+    er = state['enraged']
+    assert er['dead'] is False
+    assert er['node'] in data.UMORI_NODES
+    assert er['maxHp'] == data.ENRAGED_MONSTERS[er['monsterId']]['hp']
+    assert 'movesAt' in er
