@@ -297,6 +297,9 @@ export interface GameState {
   worldEvent?: WorldEventState | null;
   /** Barrier/lair node id -> its live guardian HP pool (field-spell targets). */
   guardians?: Record<string, GuardianPool>;
+  /** The wilderness enraged monster — a periodic shared, spell-targetable terror,
+   *  or a dead-with-countdown stub while this window's monster is down. */
+  enraged?: EnragedMonster | null;
   events: GameEvent[];
   result: SeasonResult | null;
   wardrobe?: Wardrobe;
@@ -315,6 +318,21 @@ export interface WorldEventState {
   name: string;
   spriteId: string;
   dead: boolean;
+}
+
+/** The wilderness enraged monster: one shared creature squatting on a single
+ *  wilderness node, relocating every ENRAGED_DWELL_MIN. `movesAt` is the ISO
+ *  (UTC, no suffix) relocate clock. When `dead`, only `dead`+`movesAt` are set. */
+export interface EnragedMonster {
+  dead: boolean;
+  movesAt: string;
+  node?: string;
+  monsterId?: string;
+  name?: string;
+  spriteId?: string;
+  hp?: number;
+  maxHp?: number;
+  buffs?: string[];
 }
 
 export interface BattleResult {
