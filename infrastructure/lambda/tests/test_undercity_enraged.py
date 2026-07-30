@@ -113,3 +113,59 @@ def test_state_payload_includes_enraged(table):
     assert er['node'] in data.UMORI_NODES
     assert er['maxHp'] == data.ENRAGED_MONSTERS[er['monsterId']]['hp']
     assert 'movesAt' in er
+
+
+def _engage_here(table, sid, uid='user-alex'):
+    """Move the player onto the live enraged node and return (doc, rec)."""
+    rec = db._enraged_state(table, sid)
+    doc = db._get_player(table, sid, uid)
+    doc['position'] = rec['node']
+    db._put_player(table, doc)
+    return db._get_player(table, sid, uid), rec
+
+
+def test_landing_starts_enraged_battle(table):
+    act(table, 'join', starter='pest', home='city')
+    sid = _sid(table)
+    doc, rec = _engage_here(table, sid)
+    ev = db._resolve_space(table, sid, doc, rec['node'], rec['node'])
+    assert ev['type'] == 'battle_start'
+    assert doc['battle']['kind'] == 'enraged'
+    assert doc['battle']['npc']['maxHp'] == data.ENRAGED_MONSTERS[rec['monsterId']]['hp']
+
+
+def test_enraged_kill_pays_renown_xp_and_marks_dead(table):
+    act(table, 'join', starter='pest', home='city')
+    sid = _sid(table)
+    doc, rec = _engage_here(table, sid)
+    perm_before = db._get_perm(table, 'user-alex').get('renown', 0)
+    db._start_battle(table, sid, doc, 'enraged',
+                     dict(data.ENRAGED_MONSTERS[rec['monsterId']],
+                          hp=rec['hp'], maxHp=rec['maxHp']),
+                     node=rec['node'],
+                     ctx={'poolStart': rec['hp'], 'monsterId': rec['monsterId']})
+    result = {'outcome': 'attacker', 'strikes': [],
+              'attackerHp': 20, 'defenderHp': 0}
+    out = db._finish_enraged(table, sid, doc, doc['battle'], result)
+    assert out['type'] == 'enraged'
+    assert out['renown'] == data.ENRAGED_KILL_RENOWN
+    assert out['xp'] == data.ENRAGED_KILL_XP
+    assert db._get_perm(table, 'user-alex')['renown'] == perm_before + data.ENRAGED_KILL_RENOWN
+    assert db._enraged_state(table, sid)['dead'] is True
+
+
+def test_enraged_loss_leaves_wounded_shared_pool(table):
+    act(table, 'join', starter='pest', home='city')
+    sid = _sid(table)
+    doc, rec = _engage_here(table, sid)
+    db._start_battle(table, sid, doc, 'enraged',
+                     dict(data.ENRAGED_MONSTERS[rec['monsterId']],
+                          hp=rec['hp'], maxHp=rec['maxHp']),
+                     node=rec['node'],
+                     ctx={'poolStart': rec['hp'], 'monsterId': rec['monsterId']})
+    result = {'outcome': 'defender', 'strikes': [],
+              'attackerHp': 0, 'defenderHp': rec['hp'] - 12}
+    db._finish_enraged(table, sid, doc, doc['battle'], result)
+    live = db._enraged_state(table, sid)
+    assert live['dead'] is False
+    assert live['hp'] == rec['hp'] - 12   # wound lingers for the next challenger

@@ -2925,6 +2925,15 @@ def _resolve_space(table, sid, doc, node, prev):
                 'text': 'Umori the ooze has oozed up a crooked stall here. Leave one, take one.',
                 'stock': _umori_barter_stock(table, sid, _uwin)}
 
+    # Enraged monster overlay: a periodic wilderness terror squats on one node and
+    # overrides its normal event with a guardian-style fight. Shared HP; also
+    # spell-targetable from afar. Placed after World Event/Umori (they win a rare
+    # coincidence) and before the node's own type dispatch. Once it's dead this
+    # window, the node reverts to its normal behavior.
+    er = _enraged_state(table, sid)
+    if not er.get('dead') and node == er['node']:
+        return _enraged(table, sid, doc, er)
+
     if ntype == 'loot':
         return _loot_puzzle(table, sid, doc, node)
 
@@ -3702,6 +3711,8 @@ def _finish_battle(table, sid, doc, rec, result):
         out = _finish_lair(table, sid, doc, rec, result)
     elif kind == 'world':
         out = _finish_world(table, sid, doc, rec, result)
+    elif kind == 'enraged':
+        out = _finish_enraged(table, sid, doc, rec, result)
     else:
         out = _finish_boss(table, sid, doc, rec, result)
     renown_gained = data.compute_renown(doc) - renown_before
@@ -3943,6 +3954,108 @@ def _finish_world(table, sid, doc, rec, result):
             out['spores'] = mine['spores']   # display echo; credited in payout
         out['text'] = (f"Your blow fells the {spec['name']}! It collapses into the mire — "
                        'the spoils are shared out by who bled it most.')
+    return out
+
+
+def _enraged(table, sid, doc, rec):
+    """Engage the enraged monster in a guardian-style fight. Rooted → persisted
+    curses convert to flat penalties (consumed on engagement). Shared HP pool
+    lingers across challengers; the poolStart is stashed so the finisher can bank
+    the delta against concurrent chippers."""
+    spec = data.ENRAGED_MONSTERS[rec['monsterId']]
+    buffs = list(rec.get('buffs') or [])
+    npc = dict(spec, hp=int(rec['hp']), maxHp=int(spec['hp']),
+               personality=spec.get('personality', 'balanced'),
+               bluff=spec.get('bluff', 0.20))
+    _apply_guardian_debuffs(npc, buffs)
+    if buffs:
+        rec['buffs'] = []
+        _set_enraged_state(table, sid, rec)   # curses consumed on engagement
+    return _start_battle(table, sid, doc, 'enraged', npc, node=rec['node'],
+                         ctx={'poolStart': int(rec['hp']), 'monsterId': rec['monsterId']})
+
+
+def _award_enraged_kill(table, sid, doc, monster_id, out):
+    """Grant the killing blow's payout: perm renown + XP + a gear drop, and mark
+    the monster dead for this window. Shared by the melee finisher and the lethal
+    ranged strike. Mutates doc/out in place; the caller persists doc."""
+    spec = data.ENRAGED_MONSTERS[monster_id]
+    perm = _get_perm(table, doc['userId'])
+    perm['renown'] = perm.get('renown', 0) + data.ENRAGED_KILL_RENOWN
+    table.put_item(Item=perm)
+    doc['wildWins'] = doc.get('wildWins', 0) + 1
+    levels = _grant_xp(table, sid, doc, data.ENRAGED_KILL_XP)
+    out['renown'] = data.ENRAGED_KILL_RENOWN
+    out['xp'] = data.ENRAGED_KILL_XP
+    if levels:
+        out['levels'] = levels
+    chance, tiers = data.GEAR_DROP['enraged']
+    if _rng.random() < chance:
+        drop = _roll_gear_drop(doc, tiers)
+        if drop:
+            out['gear'] = drop
+    _event(table, sid, 'boss',
+           f"{doc['username']} slew the {spec['name']} in the wilderness!",
+           actor=doc['userId'])
+    _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
+                                 'name': spec['name'], 'at': _now()}, doc['userId'])
+
+
+def _enraged_kill_pool(table, sid, monster_id):
+    """Idempotently mark the current enraged monster dead. Returns True if THIS
+    call transitioned it (so only one caller pays the reward)."""
+    rec = _enraged_state(table, sid)
+    if rec.get('dead') or rec.get('monsterId') != monster_id:
+        return False
+    rec['hp'] = 0
+    rec['dead'] = True
+    _set_enraged_state(table, sid, rec)
+    return True
+
+
+def _finish_enraged(table, sid, doc, rec, result):
+    """Bank this fight's damage into the shared pool (re-read + apply delta, like
+    the World Event, so a concurrent chipper is never clobbered). On a win that
+    empties the pool, pay the killing blow. A loss/timeout leaves the wound."""
+    monster_id = rec['ctx'].get('monsterId')
+    spec = data.ENRAGED_MONSTERS[monster_id]
+    dealt = max(0, int(rec['ctx'].get('poolStart', 0)) - int(result['defenderHp']))
+    out = {'type': 'enraged',
+           'npc': {'name': spec['name'], 'id': monster_id, 'maxHp': int(spec['hp'])},
+           'battle': result, 'dealt': dealt}
+
+    live = _enraged_state(table, sid)
+    if live.get('dead') or live.get('monsterId') != monster_id:
+        # Already down (a concurrent killer / a window hop mid-fight). No pay.
+        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
+        out['text'] = f"The {spec['name']} has already fallen."
+        return out
+
+    new_hp = max(0, int(live['hp']) - dealt)
+
+    if result['outcome'] == 'attacker' and new_hp <= 0:
+        if _enraged_kill_pool(table, sid, monster_id):
+            _award_enraged_kill(table, sid, doc, monster_id, out)
+            out['enragedKill'] = True
+            out['text'] = (f"You fell the {spec['name']}! +{data.ENRAGED_KILL_RENOWN} "
+                           'renown — the wilderness quiets… for now.')
+        else:
+            _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
+            out['text'] = f"The {spec['name']} has already fallen."
+        return out
+
+    # Not a kill: persist the (possibly lower) pool.
+    live['hp'] = max(1, new_hp)
+    _set_enraged_state(table, sid, live)
+    if result['outcome'] == 'defender':
+        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
+        _compost(table, sid, doc,
+                 f"{doc['username']} was thrown down by the {spec['name']} "
+                 f"(it lingers at {live['hp']} HP).")
+        out['text'] = f"The {spec['name']} hurls you off — but your blows landed ({dealt})."
+    else:
+        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
+        out['text'] = f"You rake the {spec['name']} for {dealt}. It settles back in."
     return out
 
 
