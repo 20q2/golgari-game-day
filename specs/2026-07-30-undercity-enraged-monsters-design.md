@@ -28,13 +28,21 @@ with good curses and damage spells a reliable, regular target to excel against.
 - **Rewards:** last hit only. 15–20 renown + XP + a gear drop.
 - **Variety:** a small roster of 4 variants, one picked deterministically per
   window, each rewarding a different build archetype.
+- **Ranged-kill rule:** normal `field_damage` spells floor the pool at 1
+  (soften only), exactly like barrier guardians. Only a `lethal`-flagged
+  `boss_strike` spell (Sear the Throne) may land the killing blow at range and
+  claim the reward. Curses (`field_curse`) persist and bite in the melee fight.
+  This lets damage/curse casters "excel with regularity" (soften every window)
+  while the actual kill needs melee or the one lethal strike.
 
 ## Explicitly out of scope (YAGNI)
 
 - No contribution/assist rewards — last hit takes everything.
-- No `boss_strike` spell interaction — only normal damage/curse **field** spells.
 - No passive "damage for walking nearby" — danger comes from the fight itself.
 - No unique art yet — placeholder sprites, swapped later.
+- No per-creature frenzy ramp. Frenzy (`_frenzy_from` → `FRENZY_START`) is
+  global to all battle kinds and not a per-monster knob, so the Ravager is an
+  aggressive all-rounder (high ATK + SPD) rather than a special-ramp variant.
 
 ## Existing systems reused
 
@@ -103,8 +111,8 @@ New `ENRAGED_MONSTERS` table, same shape as `BARRIER_GUARDIANS`
 2. **Carapace** — high DEF, 44 HP, low ATK. Wall of meat; rewards raw damage
    spells that ignore the grind.
 3. **Swift** — high SPD, 36 HP. Rewards SPD/roll builds and initiative.
-4. **Ravager** — balanced but with a nasty swing ramp (frenzy), 40 HP. A race
-   against escalation.
+4. **Ravager** — aggressive all-rounder (high ATK + SPD), 40 HP. Fastest to
+   punish a slow build; no special frenzy (see the out-of-scope note).
 
 Each carries its own `bounty` (15–20 renown), `xp`, `personality`, `bluff`, and
 sprite id.
