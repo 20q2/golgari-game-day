@@ -514,7 +514,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   private dmgIcon(e: CombatEntry, aStance?: Stance, dStance?: Stance): { icon: string; svg: boolean } | null {
     if (e.rot) return { icon: 'coronavirus', svg: false }; // rot damage-over-time
     if (e.frenzy) return { icon: 'local_fire_department', svg: false }; // legacy escalation
-    if (e.retaliation) return { icon: 'uc-carapace', svg: true }; // thorns / scavenge reflect
+    if (e.retaliation) return { icon: 'uc-carapace', svg: true }; // thorns / spikeshell reflect
     if (e.swarm) return { icon: 'uc-fang', svg: true }; // swarm chip
     if (e.counter || e.guardChip) return { icon: 'uc-shield', svg: true }; // guard counter / chip
     if (e.mitigated) return { icon: 'uc-sword', svg: true }; // aggressor's hit soaked by a guard

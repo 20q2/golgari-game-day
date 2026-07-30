@@ -413,7 +413,8 @@ export const NPC_ICONS: Record<string, string> = {
   // v3 guardians & mini-bosses
   golgari_grave_troll: 'landslide',
   wight_of_the_reliquary: 'security',
-  gravebound_colossus: 'domain_disabled',
+  lord_of_extinction: 'domain_disabled',
+  doomgape: 'dangerous',
   ishkanah: 'pest_control',
   // v6 dungeon fauna (battle art: undercity/enemies/<id>.png, icon fallback)
   broodling: 'pest_control',
@@ -421,6 +422,11 @@ export const NPC_ICONS: Record<string, string> = {
   mire_leech: 'water_drop',
   gravewight: 'skull',
   rot_grub: 'compost',
+  // v7 enemy-ladder additions (battle art: undercity/enemies/<id>.png)
+  ravenous_squirrel: 'cruelty_free',
+  fiend_artisan: 'construction',
+  poison_tip_archer: 'my_location',
+  vulturous_zombie: 'flutter_dash',
 };
 
 /**
@@ -457,7 +463,8 @@ export const DEFAULT_GUARDIAN_SPRITE = 'godzilla';
  * undercity/guardians/<id>.png with the same placeholder fallback as barriers.
  */
 export const LAIR_GUARDIANS: Record<string, string> = {
-  lair_titan: 'gravebound_colossus',
+  lair_titan: 'lord_of_extinction',
+  n288: 'doomgape',
   city_lair: 'ishkanah',
   cavern_lair: 'sarulf',
   bog_lair: 'gitrog_monster',

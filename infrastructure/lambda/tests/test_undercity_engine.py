@@ -264,9 +264,9 @@ def test_smoke_spore_saves_failed_flee():
 
 
 # NOTE: old strike-format passive tests (swarm extra-strike, deathtouch, drain,
-# venom_barb first-strike, rot_breath round-1, scavenge) removed with _strike.
+# venom_barb first-strike, rot_breath round-1, spikeshell) removed with _strike.
 # Replaced by the stance-triangle passive tests further below (test_venom_barb_
-# first_win_bonus_once, test_rot_breath_first_win_doubles, test_scavenge_
+# first_win_bonus_once, test_rot_breath_first_win_doubles, test_spikeshell_
 # retaliates_on_loss, test_deathtouch_aggress_pierces_def, test_swarm_adds_chip_
 # each_round, test_drain_life_heals_on_win).
 
@@ -752,12 +752,12 @@ def test_rot_breath_first_win_doubles():
     assert d.hp == 60 - 18
 
 
-def test_scavenge_retaliates_on_loss():
+def test_spikeshell_retaliates_on_loss():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)                       # winner
-    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'scavenge'}))
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'spikeshell'}))
     resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))   # d loses
-    # d retaliates 2 (scavenge) AND pokes 1 (caught feint)
-    assert a.hp == 30 - data.SCAVENGE_RETALIATE - round(5 * data.STANCE_STALL_MULT)
+    # d retaliates 2 (spikeshell) AND pokes 1 (caught feint)
+    assert a.hp == 30 - data.SPIKESHELL_RETALIATE - round(5 * data.STANCE_STALL_MULT)
 
 
 def test_drain_life_heals_on_win():

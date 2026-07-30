@@ -126,6 +126,11 @@
       "hasHat": false
     },
     {
+      "name": "underrealm_lich",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
       "name": "vexing_pest",
       "hasMask": true,
       "hasHat": true

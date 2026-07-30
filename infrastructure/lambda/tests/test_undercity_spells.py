@@ -1173,20 +1173,22 @@ def _become(table, form, passives, tier=2, hp=None, user='user-alex'):
     return doc
 
 
-def test_shambling_shell_casts_mend_flesh_innate(table):
+def test_underrealm_lich_casts_mend_flesh_innate(table):
+    # The Underrealm Lich carries rootwall (Shambling Shell handed it off), so it
+    # gains the innate Mend Flesh.
     act(table, 'join', starter='zombie', home='cavern')
-    _become(table, 'shambling_shell', ['regrowth', 'rootwall'], hp=5)
+    _become(table, 'underrealm_lich', ['regrowth', 'rootwall'], hp=5)
     status, resp = act(table, 'cast', spellId='mend_flesh', source='innate')
     assert status == 200, resp
     assert db._get_player(table, _sid(table), 'user-alex')['hp'] == 17  # 5 + 12
 
 
-def test_shambling_shell_apex_keeps_mend_flesh(table):
-    # A Grave Titan that came up through Shambling Shell still has rootwall in its
-    # accumulated passives, so Mend Flesh stays castable.
+def test_underrealm_lich_apex_keeps_mend_flesh(table):
+    # A Lich Lord that came up through the Underrealm Lich still has rootwall in
+    # its accumulated passives, so Mend Flesh stays castable.
     act(table, 'join', starter='zombie', home='cavern')
-    _become(table, 'grave_titan',
-            ['regrowth', 'rootwall', 'deathtouch_stomp'], tier=3, hp=5)
+    _become(table, 'golgari_lich_lord',
+            ['regrowth', 'rootwall', 'drain_life'], tier=3, hp=5)
     status, resp = act(table, 'cast', spellId='mend_flesh', source='innate')
     assert status == 200, resp
 

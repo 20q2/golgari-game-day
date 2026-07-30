@@ -116,8 +116,14 @@ TIER2 = {
     },
     'shambling_shell': {
         'name': 'Shambling Shell', 'line': 'zombie', 'bonus': {'maxHp': 6, 'def': 2},
+        'passive': 'spikeshell',
+        'blurb': 'Thorned bulwark. Spiked Shell: retaliate 2 damage whenever a foe’s blow lands.',
+    },
+    'underrealm_lich': {
+        'name': 'Underrealm Lich', 'line': 'zombie', 'bonus': {'maxHp': 6, 'atk': 2},
         'passive': 'rootwall',
-        'blurb': 'Regrowing bulwark. Rootwall: Regrowth improves to 35%.',
+        'blurb': 'Regenerating necromancer. Rootwall: Regrowth improves to 35%, and it '
+                 'knits its wounds with an innate Mend Flesh.',
     },
     'corpsejack_menace': {
         'name': 'Vinelash Reaper', 'line': 'saproling', 'bonus': {'spd': 2, 'atk': 2},
@@ -147,13 +153,13 @@ APEX = {
     'grave_titan': {
         'name': 'Grave Titan', 'bonus': {'maxHp': 6, 'def': 2},
         'passive': 'deathtouch_stomp',
-        'from': ['brackish_trudge', 'shambling_shell', 'deathrite_shaman'],
+        'from': ['brackish_trudge', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich'],
         'blurb': 'Deathtouch Stomp: your strikes ignore 3 of the enemy’s DEF.',
     },
     'golgari_lich_lord': {
         'name': 'Golgari Lich Lord', 'bonus': {'atk': 2, 'maxHp': 6},
         'passive': 'drain_life',
-        'from': ['brackish_trudge', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman'],
+        'from': ['brackish_trudge', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich'],
         'blurb': 'Drain Life: heal for 50% of damage you deal.',
     },
     'swamp_dragon': {
@@ -440,7 +446,7 @@ MITIGATION_CAP = 0.75
 ROT_PER_STACK   = 2   # damage per rot stack, ticked at end of each round
 SWARM_CHIP_MULT = 0.5 # swarm: extra hit each round = hit * this (min 1)
 FLURRY_CHANCE   = 0.25 # flurry: per-round chance for a bonus strike (weaker swarm)
-SCAVENGE_RETALIATE = 2  # scavenge: damage dealt back when you LOSE an exchange
+SPIKESHELL_RETALIATE = 2  # spikeshell: damage dealt back when you LOSE an exchange
 DEATHTOUCH_PIERCE  = 3  # deathtouch_stomp: Aggress reduces target eff-DEF by this
 FLYBY_DODGE        = 0.25  # chance to dodge the punish when you LOSE an exchange
 VENOM_BARB_BONUS   = 3   # first winning exchange +this
@@ -866,6 +872,12 @@ NPCS = [
     {'id': 'myconid', 'name': 'Myconid',
      'hp': 34, 'atk': 7, 'def': 5, 'spd': 2, 'bounty': 9, 'xp': 10,
      'itemChance': 0.0, 'personality': 'turtle', 'bluff': 0.0},
+    # Fast glass biter — fills the missing trickster slot. Readable (bluff 0)
+    # like the rest of the fodder, so a bare starter that reads the feint wins;
+    # low HP/DEF but stings, so a whiffed read hurts.
+    {'id': 'ravenous_squirrel', 'name': 'Ravenous Squirrel',
+     'hp': 24, 'atk': 7, 'def': 2, 'spd': 7, 'bounty': 8, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'trickster', 'bluff': 0.0},
 ]
 
 # Elites live only at 'elite' board spaces — never a surprise on a wild space.
@@ -876,6 +888,12 @@ ELITE_NPCS = [
     {'id': 'rot_shambler', 'name': 'Rot Shambler',
      'hp': 32, 'atk': 11, 'def': 5, 'spd': 4, 'bounty': 20, 'xp': 25,
      'itemChance': 0.30, 'personality': 'brute', 'bluff': 0.10},
+    # A crafty, well-rounded elite — no glaring weakness, moderate bluff. The
+    # third elite so tier-1 elite spaces field all-round threats, not just the
+    # fast imp and the heavy shambler.
+    {'id': 'fiend_artisan', 'name': 'Fiend Artisan',
+     'hp': 31, 'atk': 10, 'def': 6, 'spd': 6, 'bounty': 18, 'xp': 25,
+     'itemChance': 0.28, 'personality': 'balanced', 'bluff': 0.12},
 ]
 
 # Wilderness fauna — the T2+ frontier. Every wild AND elite space in the
@@ -929,6 +947,11 @@ DEPTHS_MID = [
     {'id': 'rotwing_harrier', 'name': 'Rotwing Harrier',
      'hp': 48, 'atk': 13, 'def': 5, 'spd': 7, 'bounty': 28, 'xp': 45,
      'itemChance': 0.25, 'personality': 'balanced', 'bluff': 0.15},
+    # Glass-cannon sniper — top-of-band ATK and SPD, paper DEF/HP. Reads well
+    # and hits hard; punish its feints on Guard and it folds fast.
+    {'id': 'poison_tip_archer', 'name': 'Poison-Tip Archer',
+     'hp': 44, 'atk': 14, 'def': 4, 'spd': 10, 'bounty': 27, 'xp': 44,
+     'itemChance': 0.22, 'personality': 'trickster', 'bluff': 0.18},
 ]
 
 DEPTHS_DEEP = [
@@ -944,6 +967,12 @@ DEPTHS_DEEP = [
     {'id': 'carrion_behemoth', 'name': 'Carrion Behemoth',
      'hp': 74, 'atk': 15, 'def': 7, 'spd': 5, 'bounty': 40, 'xp': 58,
      'itemChance': 0.30, 'personality': 'balanced', 'bluff': 0.15},
+    # A menacing flyer — highest ATK and near-highest SPD in the pool but the
+    # thinnest hide. It races to open on Aggress; a Guard turns its own swing
+    # back on it. A real deep-wild threat that rewards tanky builds.
+    {'id': 'vulturous_zombie', 'name': 'Vulturous Zombie',
+     'hp': 68, 'atk': 18, 'def': 5, 'spd': 9, 'bounty': 38, 'xp': 56,
+     'itemChance': 0.32, 'personality': 'brute', 'bluff': 0.18},
 ]
 
 DEPTHS_ABYSS = [
@@ -1119,9 +1148,12 @@ BARRIER_GUARDIANS = {
 # Sigils on first clear; lair_titan is side content.
 _LAIR_REWARD = {'first': {'spores': 60, 'xp': 35}, 'repeat': {'spores': 15, 'xp': 12}}
 LAIR_BOSSES = {
-    'lair_titan': {'id': 'gravebound_colossus', 'name': 'Lord of Extinction',
+    'lair_titan': {'id': 'lord_of_extinction', 'name': 'Lord of Extinction',
                    'hp': 46, 'atk': 14, 'def': 7, 'spd': 4,
                    'personality': 'brute', 'bluff': 0.35, **_LAIR_REWARD},
+    'n288': {'id': 'doomgape', 'name': 'Doomgape',
+             'hp': 46, 'atk': 15, 'def': 6, 'spd': 5,
+             'personality': 'brute', 'bluff': 0.35, **_LAIR_REWARD},
     'city_lair': {'id': 'ishkanah', 'name': 'Ishkanah, Grafwidow',
                   'hp': 42, 'atk': 14, 'def': 5, 'spd': 8,
                   'personality': 'trickster', 'bluff': 0.35, **_LAIR_REWARD},

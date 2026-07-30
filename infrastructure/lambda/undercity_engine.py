@@ -184,7 +184,7 @@ def _other(side):
 
 def _bramble(struck, striker, struck_side, rnd, entries):
     """A struck Bramble carapace reflects a scaled flat amount back onto the striker.
-    Called at every strike site (not on rot/scavenge — DoT or already-retaliatory
+    Called at every strike site (not on rot/spikeshell — DoT or already-retaliatory
     damage does not trigger thorns). The reflect amount scales with rarity via
     the struck combatant's rider_mag."""
     amt = struck.mag('bramble', 0)
@@ -194,11 +194,11 @@ def _bramble(struck, striker, struck_side, rnd, entries):
                         'dmg': amt, 'retaliation': True})
 
 
-def _scavenge(loser, winner, loser_side, rnd, entries):
-    """A losing combatant with scavenge retaliates a flat amount."""
-    if loser.has('scavenge') and winner.hp > 0:
-        winner.hp -= data.SCAVENGE_RETALIATE
-        entries.append({'round': rnd, 'by': loser_side, 'dmg': data.SCAVENGE_RETALIATE,
+def _spikeshell(loser, winner, loser_side, rnd, entries):
+    """A losing combatant with spikeshell retaliates a flat amount."""
+    if loser.has('spikeshell') and winner.hp > 0:
+        winner.hp -= data.SPIKESHELL_RETALIATE
+        entries.append({'round': rnd, 'by': loser_side, 'dmg': data.SPIKESHELL_RETALIATE,
                         'retaliation': True})
 
 
@@ -265,7 +265,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                 if heal:
                     winr.hp += heal
                     entries.append({'round': rnd, 'by': win_side, 'heal': heal})
-            _scavenge(losr, winr, lose_side, rnd, entries)
+            _spikeshell(losr, winr, lose_side, rnd, entries)
         else:
             lose_stance = d_stance if winner == 'attacker' else a_stance
             pierce = (data.DEATHTOUCH_PIERCE
@@ -325,7 +325,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                 chip_raw = _base_hit(losr, winr, rng, stance='feint', ramp=ramp)
                 _deal(losr, winr, lose_side, rnd, chip_raw, data.STANCE_STALL_MULT,
                       entries, tag='chip')
-            _scavenge(losr, winr, lose_side, rnd, entries)
+            _spikeshell(losr, winr, lose_side, rnd, entries)
     elif winner == 'clash':
         # A-vs-A: both strike full; SPD-first lands first (matters for a kill).
         # first_bite forces striking first regardless of SPD.

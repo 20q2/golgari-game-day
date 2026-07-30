@@ -11,7 +11,17 @@ import {
   SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { VEIN_CAVE_IN_PCT_PER_LEVEL, VEIN_MAX_DEPTH } from '../data/vein-vault';
+import {
+  VEIN_CAVE_IN_PCT_PER_LEVEL,
+  VEIN_CAVE_IN_DMG_PER_LEVEL,
+  VEIN_ICHOR_BASE,
+  VEIN_ICHOR_PER_LEVEL,
+  VEIN_HEARTSTONE_SPORES,
+  VEIN_HEARTSTONE_ICHOR,
+  VEIN_ITEM_CONSUMABLE_BAND,
+  VEIN_ITEM_RARE_BAND,
+  VEIN_MAX_DEPTH,
+} from '../data/vein-vault';
 import { VeinCanvas } from '../engine/vein-canvas';
 
 /** Which scripted animation the 3D wall should play, with a monotonic `seq`
@@ -65,17 +75,61 @@ export interface VeinEffect {
         }
 
         @if (strikesLeft > 0) {
-          <p class="vein-odds">
-            Next strike — level {{ depth + 1 }}: <strong>+{{ depth + 2 }}</strong> Spores,
-            <strong class="risk">{{ riskPct }}%</strong> cave-in
-          </p>
+          <div class="forecast" [class.heart]="isHeartstoneNext">
+            <p class="forecast-title">
+              Next strike · Level {{ level }}
+              @if (isHeartstoneNext) {
+                <span class="heart-tag">— The Heartstone ✦</span>
+              }
+            </p>
+            <div class="cols">
+              <div class="col hold">
+                <div class="col-head">{{ isHeartstoneNext ? 'If you pry it ✦' : 'If it holds ✓' }}</div>
+                <ul>
+                  @if (isHeartstoneNext) {
+                    <li>
+                      <strong>+{{ spores }}</strong> 🍄
+                      <span class="bonus">+{{ HEART_SPORES }} bonus</span>
+                    </li>
+                    <li><strong>+1</strong> ⛏️ Molting</li>
+                    <li><strong>+{{ HEART_ICHOR }}</strong> 💠 Gemstones</li>
+                    <li>a <strong>guaranteed</strong> rare 💎</li>
+                  } @else {
+                    <li><strong>+{{ spores }}</strong> 🍄 Spores</li>
+                    <li><strong>+1</strong> ⛏️ Molting</li>
+                    <li><strong>{{ gemPct }}%</strong> 💠 Gemstone</li>
+                    @if (itemChance) {
+                      <li><strong>{{ itemChance.pct }}%</strong> {{ itemChance.label }}</li>
+                    } @else {
+                      <li class="muted">finds start at L{{ CONSUMABLE_MIN }}</li>
+                    }
+                  }
+                </ul>
+              </div>
+              <div class="col cave">
+                <div class="col-head">If it caves ✗</div>
+                <ul>
+                  <li><strong class="risk">{{ riskPct }}%</strong> chance</li>
+                  <li><strong class="risk">{{ caveDmg }}</strong> damage</li>
+                  <li>your visit ends</li>
+                  <li class="muted">non-fatal · shaft holds</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <button class="uc-btn strike-btn" [disabled]="busy" (click)="strike.emit()">
             ⛏️ Strike
           </button>
-          <p class="vein-hint">
-            Every strike's Spores are yours to keep. Go deeper for bigger hits and the
-            Heartstone at level {{ MAX }} — a cave-in costs HP and ends your dig here, but
-            the shaft holds. Walking away leaves the depth for the next digger.
+
+          @if (!isHeartstoneNext) {
+            <p class="vein-hint goal">
+              → Reach level {{ MAX }} for the <strong>Heartstone</strong>:
+              +{{ HEART_SPORES }}🍄 · +{{ HEART_ICHOR }}💠 · a rare find
+            </p>
+          }
+          <p class="vein-hint shared">
+            Everyone digs the same shaft — your depth carries over for the next digger.
           </p>
         } @else {
           <p class="vein-hint out">Out of strikes — come back next time you land here.</p>
@@ -166,16 +220,76 @@ export interface VeinEffect {
         font-size: 0.82rem;
         color: #cbd5ce;
       }
-      .vein-odds {
-        margin: 0;
-        font-size: 0.85rem;
-        color: #9aa79a;
+      .forecast {
+        border: 1px solid rgba(90, 150, 165, 0.35);
+        border-radius: 10px;
+        padding: 10px 8px;
+        background: rgba(20, 30, 32, 0.5);
       }
-      .vein-odds strong {
+      .forecast.heart {
+        border-color: rgba(224, 192, 136, 0.6);
+        background: rgba(38, 30, 16, 0.5);
+      }
+      .forecast-title {
+        margin: 0 0 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
         color: #8fd0dd;
       }
-      .vein-odds .risk {
+      .heart-tag {
+        color: #e0c088;
+      }
+      .cols {
+        display: flex;
+        gap: 8px;
+      }
+      .col {
+        flex: 1;
+        text-align: left;
+      }
+      .col-head {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 5px;
+        padding-bottom: 3px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .col.hold .col-head {
+        color: #b6ffbf;
+      }
+      .col.cave .col-head {
         color: #d08a6f;
+      }
+      .col ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .col li {
+        font-size: 0.8rem;
+        color: #cbd5ce;
+      }
+      .col li strong {
+        color: #e7f0ea;
+      }
+      .col.hold li strong {
+        color: #b6ffbf;
+      }
+      .col li .risk {
+        color: #e6926f;
+      }
+      .col li .bonus {
+        color: #e0c088;
+        font-size: 0.72rem;
+      }
+      .col li.muted {
+        color: #6f7d72;
+        font-style: italic;
+        font-size: 0.74rem;
       }
       .strike-btn {
         font-size: 1rem;
@@ -184,6 +298,16 @@ export interface VeinEffect {
         margin: 0;
         font-size: 0.78rem;
         color: #8a978a;
+      }
+      .vein-hint.goal {
+        color: #c9b07a;
+      }
+      .vein-hint.goal strong {
+        color: #e0c088;
+      }
+      .vein-hint.shared {
+        color: #7f8c84;
+        font-size: 0.72rem;
       }
       .vein-hint.out {
         color: #d08a6f;
@@ -213,6 +337,9 @@ export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDe
 
   protected readonly MAX = VEIN_MAX_DEPTH;
   protected readonly levels = Array.from({ length: VEIN_MAX_DEPTH }, (_, i) => i + 1);
+  protected readonly HEART_SPORES = VEIN_HEARTSTONE_SPORES;
+  protected readonly HEART_ICHOR = VEIN_HEARTSTONE_ICHOR;
+  protected readonly CONSUMABLE_MIN = VEIN_ITEM_CONSUMABLE_BAND.min;
   protected ready = false;
   protected failed = false;
 
@@ -220,8 +347,46 @@ export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDe
   private lastSeq = -1;
   private resizeObs?: ResizeObserver;
 
+  /** The level this next swing enters (shared depth + 1). */
+  protected get level(): number {
+    return this.depth + 1;
+  }
+
+  /** Spores paid on a successful strike at this level (server: 1 + level). */
+  protected get spores(): number {
+    return this.level + 1;
+  }
+
+  /** Gemstone (Ichor) drop chance %, level-scaling and capped at 100. */
+  protected get gemPct(): number {
+    return Math.round(Math.min(1, VEIN_ICHOR_BASE + this.level * VEIN_ICHOR_PER_LEVEL) * 100);
+  }
+
+  /** Cave-in chance % at this level. */
   protected get riskPct(): number {
-    return Math.round((this.depth + 1) * VEIN_CAVE_IN_PCT_PER_LEVEL * 100);
+    return Math.round(this.level * VEIN_CAVE_IN_PCT_PER_LEVEL * 100);
+  }
+
+  /** Rockfall damage if this strike caves in. */
+  protected get caveDmg(): number {
+    return this.level * VEIN_CAVE_IN_DMG_PER_LEVEL;
+  }
+
+  /** This swing pries the Heartstone (reaches VEIN_MAX_DEPTH). */
+  protected get isHeartstoneNext(): boolean {
+    return this.level >= this.MAX;
+  }
+
+  /** Bonus-item odds for this level, or null in the shallow band (no items). */
+  protected get itemChance(): { pct: number; label: string } | null {
+    const l = this.level;
+    if (l >= VEIN_ITEM_RARE_BAND.min) {
+      return { pct: Math.round(VEIN_ITEM_RARE_BAND.chance * 100), label: 'a rare find' };
+    }
+    if (l >= VEIN_ITEM_CONSUMABLE_BAND.min && l <= VEIN_ITEM_CONSUMABLE_BAND.max) {
+      return { pct: Math.round(VEIN_ITEM_CONSUMABLE_BAND.chance * 100), label: 'a consumable' };
+    }
+    return null;
   }
 
   async ngAfterViewInit(): Promise<void> {

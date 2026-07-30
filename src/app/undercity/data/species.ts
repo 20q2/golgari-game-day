@@ -37,6 +37,7 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   // woodwraith_strangler id now displays as Myconid Sporetender.
   woodwraith_strangler: { sprite: 'myconid_sporetender', regions: MASK_REGIONS, scale: 1.05 },
   shambling_shell: { sprite: 'shambling_shell', regions: MASK_REGIONS, scale: 1.0 },
+  underrealm_lich: { sprite: 'underrealm_lich', regions: MASK_REGIONS, scale: 1.05 },
   corpsejack_menace: { sprite: 'corpsejack_menace', regions: MASK_REGIONS, scale: 0.95 },
   deathrite_shaman: { sprite: 'deathrite_shaman', regions: MASK_REGIONS, scale: 1.0 },
   // Apexes

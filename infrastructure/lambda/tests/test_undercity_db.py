@@ -212,7 +212,8 @@ def test_elite_battle_pulls_from_elite_pool(table, monkeypatch):
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
     ev = db._wild_battle(table, sid, doc, elite=True)
-    assert ev['type'] == 'battle_start' and ev['npc']['id'] in {'fetid_imp', 'rot_shambler'}
+    assert ev['type'] == 'battle_start'
+    assert ev['npc']['id'] in {n['id'] for n in data.ELITE_NPCS}
     se = _finish_started_battle(table, monkeypatch, doc, 'attacker')
     assert se['type'] == 'elite'
     assert se['xp'] == 25
@@ -225,7 +226,7 @@ def test_elite_space_resolves_to_elite_battle(table, monkeypatch):
     assert data.MAP_NODES['city_i1']['type'] == 'elite'
     ev = db._resolve_space(table, sid, doc, 'city_i1', None)
     assert ev['type'] == 'battle_start'
-    assert ev['npc']['id'] in {'fetid_imp', 'rot_shambler'}
+    assert ev['npc']['id'] in {n['id'] for n in data.ELITE_NPCS}
 
 
 def test_non_wilderness_battle_still_uses_base_pools(table):
@@ -3511,6 +3512,19 @@ def test_squirrel_line_and_calamity_beast_wired():
     assert 'calamity_beast' in data.apex_options('vexing_pest')
     assert data.APEX['calamity_beast']['passive'] == 'wish'
     assert data.SPELLS['wish']['effect'] == 'wish'
+
+
+def test_underrealm_lich_handoff_wired():
+    import undercity_data as data
+    # The Underrealm Lich took over the Shambling Shell's regrow+spell kit; the
+    # Shell now runs the spikeshell thorns passive instead.
+    assert data.TIER2['underrealm_lich']['line'] == 'zombie'
+    assert data.TIER2['underrealm_lich']['passive'] == 'rootwall'
+    assert data.TIER2['shambling_shell']['passive'] == 'spikeshell'
+    # rootwall grants Mend Flesh, so it follows the passive to the Lich.
+    assert data.FORM_SPELLS['rootwall'] == 'mend_flesh'
+    # Lich reaches both zombie apexes (satisfies the >=2 apex invariant).
+    assert set(data.apex_options('underrealm_lich')) == {'grave_titan', 'golgari_lich_lord'}
 
 
 def test_admin_reset_all_opens_fresh_night_and_wipes_profiles(table):

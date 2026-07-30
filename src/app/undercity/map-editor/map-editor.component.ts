@@ -76,6 +76,10 @@ const SEED_IMAGES = [
   'undercity/enemies/rot_shambler.png',
   'undercity/enemies/sewer_shambler.png',
   'undercity/enemies/myconid.png',
+  'undercity/enemies/ravenous_squirrel.png',
+  'undercity/enemies/fiend_artisan.png',
+  'undercity/enemies/poison_tip_archer.png',
+  'undercity/enemies/vulturous_zombie.png',
 ];
 
 /**
