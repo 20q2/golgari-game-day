@@ -205,6 +205,16 @@ WORLD_EVENT_REWARDS = {
     'participant': {'spores': 20,  'renown': 0, 'xp': 15, 'tiers': {1: 1.0}},
 }
 
+# ── Enraged wilderness monsters (design 2026-07-30) ──────────────────────────
+# A single shared, spell-targetable terror roams the wilderness, relocating to a
+# new deterministic node every ENRAGED_DWELL_MIN minutes (pure wall-clock window,
+# no server tick — same model as Umori). Guardian-style: land on it to fight, or
+# soften/curse it from range; a lethal strike (or the killing melee blow) claims
+# the reward. Mirror in src/app/undercity/data/enraged.ts when tuned.
+ENRAGED_DWELL_MIN = 90       # minutes a monster haunts one node before it hops
+ENRAGED_KILL_RENOWN = 18     # renown to the killing blow's perm doc (design: 15–20)
+ENRAGED_KILL_XP = 30         # XP to the killer
+
 # ── Procedural dungeons ──────────────────────────────────────────────────────
 # When True, each night's five dungeon pockets are regenerated from a per-season
 # graph (built at season-start, stored on the SEASON#<sid>/MAP record) instead of

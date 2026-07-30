@@ -387,6 +387,7 @@ GEAR_DROP = {
     'treasure': (0.50, {2: 0.6, 3: 0.4}),
     'lair':     (0.35, {2: 0.5, 3: 0.5}),
     'boss':     (0.35, {2: 0.4, 3: 0.6}),
+    'enraged':  (0.45, {2: 0.5, 3: 0.5}),
 }
 
 # ── Ashen Fog (fog-of-war tile) d20 reveal table ─────────────────────────────
@@ -1164,6 +1165,34 @@ def world_event_reward(share, is_top):
     else:
         key = 'participant'
     return key, WORLD_EVENT_REWARDS[key]
+
+
+# Enraged wilderness monsters. Four stat-distinct variants, one picked
+# deterministically per ENRAGED_DWELL_MIN window (see undercity_db._enraged_*).
+# ~40 HP in the barrier/lair band so decent gear can down them; each rewards a
+# different build. `bounty` is the renown-echo used in flavor; the real perm
+# renown grant is ENRAGED_KILL_RENOWN (config). Rooted → curses convert to speed
+# penalties via GUARDIAN_DEBUFF, same as guardians. Placeholder art resolves
+# through the client's guardian sprite loader until real PNGs land under
+# public/undercity/enraged/. Mirror names in src/app/undercity/data/enraged.ts.
+ENRAGED_MONSTERS = {
+    'enr_brute':    {'id': 'enr_brute', 'name': 'Enraged Bloodhulk',
+                     'hp': 38, 'atk': 15, 'def': 4, 'spd': 5,
+                     'bounty': 16, 'xp': 30, 'personality': 'brute', 'bluff': 0.25},
+    'enr_carapace': {'id': 'enr_carapace', 'name': 'Enraged Shellback',
+                     'hp': 44, 'atk': 10, 'def': 9, 'spd': 3,
+                     'bounty': 18, 'xp': 32, 'personality': 'turtle', 'bluff': 0.30},
+    'enr_swift':    {'id': 'enr_swift', 'name': 'Enraged Fenstalker',
+                     'hp': 36, 'atk': 12, 'def': 5, 'spd': 10,
+                     'bounty': 16, 'xp': 30, 'personality': 'trickster', 'bluff': 0.30},
+    'enr_ravager':  {'id': 'enr_ravager', 'name': 'Enraged Ravager',
+                     'hp': 40, 'atk': 14, 'def': 6, 'spd': 7,
+                     'bounty': 20, 'xp': 34, 'personality': 'balanced', 'bluff': 0.28},
+}
+
+# Stable ordered id list for deterministic per-window picks (sorted so it is
+# reproducible across Python runs, independent of dict insertion order).
+ENRAGED_ORDER = sorted(ENRAGED_MONSTERS)
 
 
 # Field-curse buffs, when they land on a rooted guardian/boss, resolve to a
