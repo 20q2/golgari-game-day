@@ -441,6 +441,11 @@
     <app-undercity-mystery-reel [target]="sym" [washBg]="regionWashBg()" (settled)="onReelSettled()" />
   }
 
+  <!-- Hazard wheel-of-fortune reveal -->
+  @if (hazardWheel(); as wheel) {
+    <app-undercity-hazard-wheel [target]="wheel" [washBg]="regionWashBg()" (settled)="onWheelSettled()" />
+  }
+
   <!-- Space event result modal -->
   @if (spaceModal(); as ev) {
     <div class="uc-modal-backdrop" (click)="closeSpaceModal()">
@@ -1170,7 +1175,8 @@
                 }
               </div>
             }
-          } @else if (spellInfo(pickedScroll()!); as scroll) {
+          } @else {
+            @if (pickedSpell(); as scroll) {
             <!-- STEP 2 — inscribe detail: choose the book / burn target with room -->
             <div class="witch-detail">
               <button class="witch-back" (click)="backToScrolls()">
@@ -1264,6 +1270,7 @@
                 <p class="witch-hint">You carry no grimoire to inscribe into — find one in a shop.</p>
               }
             </div>
+            }
           }
         } @else {
           <p class="witch-hint">Fresh-brewed tier-I scrolls — cast once, or copy them in.</p>

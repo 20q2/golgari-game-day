@@ -85,6 +85,7 @@ import { FlowPuzzleModalComponent } from './flow-puzzle.component';
 import { CrystalVeinModalComponent, VeinEffect } from './crystal-vein.component';
 import { GuildvaultModalComponent } from './guildvault.component';
 import { MysteryReelComponent } from './mystery-reel.component';
+import { HazardWheelComponent, HazardWheelTarget } from './hazard-wheel.component';
 import { BoardEventFeedComponent } from './board-event-feed.component';
 import { UcActionBandComponent } from './action-band.component';
 
@@ -186,6 +187,7 @@ const FX_TINT: Record<string, [string, string]> = {
     CrystalVeinModalComponent,
     GuildvaultModalComponent,
     MysteryReelComponent,
+    HazardWheelComponent,
     BoardEventFeedComponent,
     UcActionBandComponent,
   ],
@@ -269,6 +271,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly vaultView = signal<VaultView | null>(null);
   protected readonly reelSymbol = signal<string | null>(null);
   private pendingMysteryEv: SpaceEvent | null = null;
+  protected readonly hazardWheel = signal<HazardWheelTarget | null>(null);
+  private pendingHazardEv: SpaceEvent | null = null;
   protected readonly bet = signal(5);
   protected readonly gambleResult = signal<string | null>(null);
   protected readonly rolling = signal(false);
@@ -630,6 +634,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   ];
   protected spellInfo(id: string): SpellInfo | undefined {
     return SPELL_MAP[id];
+  }
+  /** SpellInfo for the scroll currently being inscribed (drives the detail view). */
+  protected pickedSpell(): SpellInfo | undefined {
+    const s = this.pickedScroll();
+    return s ? SPELL_MAP[s] : undefined;
   }
   /** Spells currently in a book (mutable per-player, falling back to the bundle). */
   protected bookSpells(gid: string): string[] {
@@ -1570,6 +1579,26 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     setTimeout(() => this.reelSymbol.set(null), 340);
   }
 
+  /** Map a hazard event to the wheel it should spin. A dungeon hazard carries a
+   *  `biome` (→ that lair's boss silhouette); a surface hazard carries a rolled
+   *  `hazardOutcome` (→ one of the three generic effect faces). */
+  private hazardWheelTarget(ev: SpaceEvent): HazardWheelTarget {
+    if (ev.biome && DUNGEONS[ev.biome]) {
+      return { mode: 'dungeon', bossId: DUNGEONS[ev.biome].lairNpcId };
+    }
+    return { mode: 'surface', outcome: ev.hazardOutcome };
+  }
+
+  /** Wheel is fading out — open the hazard card underneath (cross-fade), then
+   *  unmount the wheel once its fade completes. Mirrors onReelSettled. */
+  onWheelSettled(): void {
+    if (this.pendingHazardEv) {
+      this.spaceModal.set(this.pendingHazardEv);
+      this.pendingHazardEv = null;
+    }
+    setTimeout(() => this.hazardWheel.set(null), 340);
+  }
+
   private onTapNode(nodeId: string | null): void {
     const tele = this.castTeleport();
     if (tele && nodeId && tele.nodes.includes(nodeId) && !this.busy()) {
@@ -2055,6 +2084,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       // Spin the reveal reel first; the event card opens once it lands.
       this.pendingMysteryEv = ev;
       this.reelSymbol.set(this.mysterySymbol(ev));
+    } else if (ev.type === 'hazard') {
+      // Spin the hazard wheel first; the effect card opens once it lands.
+      this.pendingHazardEv = ev;
+      this.hazardWheel.set(this.hazardWheelTarget(ev));
     } else {
       this.spaceModal.set(ev);
     }
