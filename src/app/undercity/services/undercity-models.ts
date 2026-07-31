@@ -599,6 +599,15 @@ export interface SpaceEvent {
    *  on. One of jackpot|gear|grimoire|item|heal|buff|curse|warp|hurt|theft|
    *  spores|xp|mystery. */
   outcome?: string;
+  /** Dungeon signature-hazard id (mirrors undercity_db._dungeon_hazard):
+   *  webbing|spore_cloud|sinkwater|bone_chill|rot_bloom. */
+  hazardId?: string;
+  /** Surface-hazard rolled effect (mirrors undercity_db._hazard):
+   *  swamp_gas|vines|spore_cloud. Drives which face the hazard wheel lands on. */
+  hazardOutcome?: string;
+  /** Dungeon-hazard pocket biome (mirrors undercity_db._dungeon_hazard) — lets
+   *  the hazard wheel pick this lair's boss silhouette. */
+  biome?: string;
   paint?: string;
   hat?: string;
   duplicate?: boolean;

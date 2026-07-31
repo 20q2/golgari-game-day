@@ -652,14 +652,34 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const filled = this.bookSpells(gid).length;
     return Array.from({ length: this.bookCap(gid) }, (_, i) => i < filled);
   }
+  /** Empty capacity slots in a book (for the detail view's placeholder rows). */
+  protected bookEmptySlots(gid: string): number[] {
+    return Array.from({ length: Math.max(0, this.bookCap(gid) - this.bookSpells(gid).length) },
+      (_, i) => i);
+  }
+  /** Pick a scroll → drill into the inscribe detail view, defaulting the target
+   *  to the first owned grimoire so its spell list shows immediately. */
   protected pickScroll(id: string): void {
-    this.pickedScroll.set(this.pickedScroll() === id ? null : id);
+    const next = this.pickedScroll() === id ? null : id;
+    this.pickedScroll.set(next);
+    const books = this.store.you()?.grimoires ?? [];
+    this.pickedBook.set(next && books.length ? books[0] : null);
+    this.burnTarget.set(null);
+  }
+  /** Back out of the detail view to the scroll picker. */
+  protected backToScrolls(): void {
+    this.pickedScroll.set(null);
     this.pickedBook.set(null);
     this.burnTarget.set(null);
   }
-  protected pickBook(gid: string): void {
-    this.pickedBook.set(this.pickedBook() === gid ? null : gid);
+  /** Switch which grimoire the detail view targets (book tabs). */
+  protected selectBook(gid: string): void {
+    this.pickedBook.set(gid);
     this.burnTarget.set(null);
+  }
+  /** Toggle a spell as the one to burn when overwriting a full book. */
+  protected toggleBurn(spellId: string): void {
+    this.burnTarget.set(this.burnTarget() === spellId ? null : spellId);
   }
   /** Inscribe requires a burn target only when the chosen book is full. */
   /** Why the inscribe confirm is blocked (pick both → duplicate → book full), or
@@ -1868,6 +1888,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       const resp = await this.store.action('ladder-cross', {});
       if (resp.you) this.board?.centerOn(resp.you.position);
     });
+    // The relocate leaves any banked steps as a fresh pendingMove, but the old
+    // local walk still points at the near-side ladder — and syncBoard derives
+    // own position from that stale path, so setPlayers never crosses to the far
+    // layer (the camera moves but the dungeon/overworld never renders until a
+    // tab round-trip). Drop the stale walk so the store effect re-seeds it from
+    // the new position on the far side, exactly as move() does after a carry.
+    if (this.store.you()?.pendingMove) this.stepping.set(null);
   }
 
   private syncBoard(): void {

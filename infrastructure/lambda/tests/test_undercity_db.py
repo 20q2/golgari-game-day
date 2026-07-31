@@ -1588,20 +1588,25 @@ def test_bone_chill_consumed_by_next_battle(table, monkeypatch):
     assert not any(b.get('kind') == 'bone_chill' for b in fresh.get('buffs', []))
 
 
-def test_webbing_halves_next_roll(table):
-    sid, doc = _player_at(table, 'city_d1')
+def test_webbing_snares_two_rolls_and_bleeds(table):
+    sid, doc = _player_at(table, 'city_d1')          # pest hp 25
     out = db._hazard(table, sid, doc, 'city_d1')
     assert out['hazardId'] == 'webbing'
-    assert any(b.get('kind') == 'vines' for b in doc['buffs'])
+    vines = [b for b in doc['buffs'] if b.get('kind') == 'vines']
+    assert vines and vines[0].get('turns') == 2      # a two-roll snare
+    assert doc['hp'] == 25 - 2                        # round(25*0.10) = 2 HP bleed
+    assert out['hp'] == -2
 
 
-def test_spore_cloud_teleports_within_pocket(table):
-    sid, doc = _player_at(table, 'cavern_a1')
+def test_spore_cloud_teleports_and_bleeds(table):
+    sid, doc = _player_at(table, 'cavern_a1')         # pest hp 25
     out = db._hazard(table, sid, doc, 'cavern_a1')
     assert out['hazardId'] == 'spore_cloud'
     assert doc['position'] != 'cavern_a1'
     assert data.MAP_NODES[doc['position']].get('region') == 'depths'
     assert doc['position'].startswith('cavern_')
+    assert doc['hp'] == 25 - 4                         # round(25*0.15) = 4 HP burst
+    assert out['hp'] == -4
 
 
 def test_wild_warp_node_always_relocates(table, monkeypatch):
@@ -1645,24 +1650,27 @@ def test_normal_warp_still_shows_picker(table, monkeypatch):
     assert doc['position'] == other
 
 
-def test_sinkwater_takes_15_pct_spores(table):
-    sid, doc = _player_at(table, 'bog_m1', spores=100)
+def test_sinkwater_takes_25_pct_spores_and_hp(table):
+    sid, doc = _player_at(table, 'bog_m1', spores=100)   # pest hp 25
     out = db._hazard(table, sid, doc, 'bog_m1')
     assert out['hazardId'] == 'sinkwater'
-    assert doc['spores'] == 85
+    assert doc['spores'] == 75                            # ceil(100*0.25) = 25 lost
+    assert doc['hp'] == 25 - 3                            # round(25*0.12) = 3 HP
 
 
 def test_sinkwater_mirefoot_halved(table):
     sid, doc = _player_at(table, 'bog_m1', spores=100, homeBiome='bog')
     db._hazard(table, sid, doc, 'bog_m1')
-    assert doc['spores'] == 93   # ceil(100*0.15)=15, Mirefoot halves -> 7 lost
+    assert doc['spores'] == 88   # ceil(100*0.25)=25, Mirefoot halves -> 12 lost
+    assert doc['hp'] == 25 - 2   # round(25*0.06)=2 (Mirefoot halves the HP too)
 
 
-def test_bone_chill_applies_debuff(table):
-    sid, doc = _player_at(table, 'bone_g11')
+def test_bone_chill_applies_grave_chill(table):
+    sid, doc = _player_at(table, 'bone_g11')             # pest hp 25
     out = db._hazard(table, sid, doc, 'bone_g11')
     assert out['hazardId'] == 'bone_chill'
-    assert any(b.get('kind') == 'bone_chill' for b in doc['buffs'])
+    assert any(b.get('kind') == 'grave_chill' for b in doc['buffs'])
+    assert doc['hp'] == 25 - 8                            # 8 HP grave-cold
 
 
 def test_rot_bloom_trades_hp_for_spores(table):
@@ -1671,8 +1679,8 @@ def test_rot_bloom_trades_hp_for_spores(table):
     out = db._hazard(table, sid, doc, 'garden_m2')
     assert out['hazardId'] == 'rot_bloom'
     # pest base DEF 5 is below the DEF-6 Thick Hide node, so it takes full HP loss.
-    assert doc['hp'] == hp_before - 3
-    assert doc['spores'] == 14
+    assert doc['hp'] == hp_before - 15
+    assert doc['spores'] == 22
 
 
 def test_rot_bloom_never_kills(table):
@@ -1686,6 +1694,28 @@ def test_surface_hazard_unchanged(table):
     sid, doc = _player_at(table, 'city_r4')
     out = db._hazard(table, sid, doc, 'city_r4')
     assert out['type'] == 'hazard' and 'hazardId' not in out
+
+
+def test_surface_hazard_stamps_outcome(table, monkeypatch):
+    # Each generic surface hazard reports which effect rolled, so the client
+    # wheel can land on it truthfully.
+    for kind in ('swamp_gas', 'vines', 'spore_cloud'):
+        sid, doc = _player_at(table, 'city_r4', spores=50)
+        monkeypatch.setattr(db._rng, 'choice', lambda seq, k=kind: k)
+        out = db._hazard(table, sid, doc, 'city_r4')
+        assert out['hazardOutcome'] == kind
+
+
+def test_dungeon_hazard_stamps_biome(table):
+    # Signature hazards report their pocket's biome so the wheel picks the right
+    # lair-boss silhouette (position may be mutated by spore_cloud).
+    for biome, node in (('city', 'city_d1'), ('cavern', 'cavern_a1'),
+                        ('bog', 'bog_m1'), ('bone', 'bone_g11'),
+                        ('garden', 'garden_m2')):
+        sid, doc = _player_at(table, node, spores=50)
+        out = db._hazard(table, sid, doc, node)
+        assert out['biome'] == biome
+        assert 'hazardOutcome' not in out
 
 
 def test_cache_pays_once_per_player(table):

@@ -1857,4 +1857,151 @@
     gap: 5px;
     &:disabled { opacity: 0.5; }
   }
+
+  // ── Step 1: scroll cards drill into the detail view ──────────────────────
+  .witch-card.drill { padding-right: 26px; }
+  .wc-drill {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: #b7e4c7;
+    opacity: 0.7;
+  }
+
+  // ── Step 2: the roomy inscribe detail view ───────────────────────────────
+  .witch-detail { display: flex; flex-direction: column; gap: 10px; }
+
+  .witch-back {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 10px 4px 4px;
+    border: 1px solid rgba(183, 228, 199, 0.28);
+    border-radius: 8px;
+    background: rgba(16, 14, 11, 0.55);
+    color: #e6efe6;
+    font-weight: 600;
+    cursor: pointer;
+    .mi { font-size: 20px; width: 20px; height: 20px; }
+  }
+
+  // The incoming scroll: a highlighted card so it reads as the subject.
+  .witch-adding {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 12px;
+    border: 1px solid rgba(215, 195, 230, 0.35);
+    border-left: 3px solid transparent;
+    border-radius: 10px;
+    background: rgba(20, 14, 24, 0.72);
+    &[data-rarity='common'] { border-left-color: #9aa7a0; }
+    &[data-rarity='rare'] { border-left-color: #5fd18a; }
+    &[data-rarity='legendary'] { border-left-color: #fbbf24; }
+    .wd-label {
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #c9a9e0;
+    }
+  }
+  .wd-desc { font-size: 0.8rem; line-height: 1.35; color: #cfe0cf; }
+  .rarity-badge.inline {
+    position: static;
+    display: inline;
+    margin-left: 4px;
+    font-size: 0.58rem;
+    vertical-align: 0.1em;
+  }
+
+  // Book switcher tabs (only when >1 grimoire).
+  .witch-books { display: flex; flex-wrap: wrap; gap: 6px; }
+  .witch-book-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid rgba(183, 228, 199, 0.24);
+    border-radius: 8px;
+    background: rgba(16, 14, 11, 0.55);
+    color: #e6efe6;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    &.active { background: var(--accent-color, #e91e63); color: #fff; border-color: transparent; }
+  }
+
+  .witch-bookhead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 2px;
+    .wc-name { font-size: 0.95rem; }
+  }
+  .wc-bookcap {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #9fd6b3;
+    &.full { color: var(--warning, #ff9800); }
+  }
+
+  .witch-hint.burn { color: var(--warning, #ffb74d); margin: 2px 0 4px; }
+
+  // The spell list — one roomy row per spell so its effect text is readable.
+  .witch-spelllist { display: flex; flex-direction: column; gap: 6px; }
+  .witch-spellrow {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    border: 1px solid rgba(183, 228, 199, 0.18);
+    border-radius: 8px;
+    background: rgba(14, 12, 10, 0.72);
+    color: inherit;
+    &.selectable { cursor: pointer; }
+    &[disabled] { cursor: default; }
+    &.doomed {
+      border-color: var(--error, #f44336);
+      background: rgba(60, 18, 16, 0.72);
+      .wc-name { text-decoration: line-through; color: #f0a9a2; }
+    }
+    &.empty {
+      border-style: dashed;
+      opacity: 0.6;
+      .wd-desc { font-style: italic; color: #9aa79a; }
+    }
+  }
+  .wsr-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .wsr-head .wc-name { flex: 0 1 auto; }
+  .wsr-burn {
+    margin-left: auto;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--error, #f44336);
+  }
+
+  // "Doomed → incoming" swap summary above the confirm button.
+  .witch-swap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 2px 0 0;
+    font-size: 0.84rem;
+    font-weight: 700;
+    .mi { font-size: 18px; width: 18px; height: 18px; color: var(--error, #f44336); }
+    .swap-out { color: #f0a9a2; text-decoration: line-through; }
+    .swap-in { color: #b6ffbf; }
+  }
 }

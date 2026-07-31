@@ -716,6 +716,10 @@ def effective_stats(player: dict) -> dict:
             eff['atk'] = max(1, eff['atk'] - 1)
         elif kind == 'bone_chill':
             eff['atk'] = max(1, eff['atk'] - 2)
+        elif kind == 'grave_chill':
+            # Marrow Pits signature hazard — grave-cold numbs the whole body.
+            eff['atk'] = max(1, eff['atk'] - 3)
+            eff['def'] = max(1, eff['def'] - 2)
         elif kind == 'glowveil':
             eff['spd'] += 2 * mult
         elif kind == 'harden_shell':

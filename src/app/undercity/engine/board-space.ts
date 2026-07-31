@@ -118,6 +118,12 @@ export interface SpaceDiscOpts {
    * at a glance, distinct from the tile's normal type colour and icon.
    */
   corrupted?: boolean;
+  /**
+   * Suppress the type glyph so the caller can paint its own emblem over the
+   * coin instead — used for depths hazard tiles, which wear their dungeon boss's
+   * silhouette rather than the generic warning triangle.
+   */
+  hideGlyph?: boolean;
 }
 
 // Muted stone-grey for locked spaces — top face + darker side wall.
@@ -182,7 +188,7 @@ export function drawSpaceDisc(
   if (opts.locked) ctx.globalAlpha = 0.4;
   if (n.type === 'boss' || n.type === 'lair' || opts.corrupted) {
     drawSkull(ctx, n.x, n.y);
-  } else {
+  } else if (!opts.hideGlyph) {
     const glyph =
       n.type === 'barrier'
         ? opts.sealed

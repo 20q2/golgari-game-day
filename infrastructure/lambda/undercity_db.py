@@ -796,9 +796,9 @@ def _creature_label(doc):
     return doc.get('creatureName') or _form_name(doc)
 
 
-ONE_BATTLE_BUFFS = ('rot_surge', 'acorn_fury', 'bone_chill', 'glowveil', 'harden_shell',
-                    'weaken_hex', 'savage_roar', 'iron_hide', 'fleetfoot', 'warding_dance',
-                    'sap_vigor', 'rust_curse', 'high_five', 'trophy')
+ONE_BATTLE_BUFFS = ('rot_surge', 'acorn_fury', 'bone_chill', 'grave_chill', 'glowveil',
+                    'harden_shell', 'weaken_hex', 'savage_roar', 'iron_hide', 'fleetfoot',
+                    'warding_dance', 'sap_vigor', 'rust_curse', 'high_five', 'trophy')
 
 
 def _consume_one_battle_buffs(doc):
@@ -2449,7 +2449,19 @@ def _roll(table, sid, doc, payload):
     vines = [b for b in (doc.get('buffs') or []) if b.get('kind') == 'vines']
     if vines and picked is None:
         value = (value + 1) // 2
-        doc['buffs'] = [b for b in doc['buffs'] if b.get('kind') != 'vines']
+        # A snare may last more than one roll (Webbing lands turns:2). Tick each
+        # vines buff down one roll and drop the ones that run out; a plain snare
+        # (no `turns`) defaults to a single roll, so behavior is unchanged.
+        remaining = []
+        for b in doc['buffs']:
+            if b.get('kind') == 'vines':
+                left = b.get('turns', 1) - 1
+                if left > 0:
+                    b['turns'] = left
+                    remaining.append(b)
+            else:
+                remaining.append(b)
+        doc['buffs'] = remaining
 
     def _legal(v):
         return engine.legal_destinations(nodes, doc['position'], v,
@@ -3175,38 +3187,66 @@ def _mystery(table, sid, doc):
     return out
 
 
+def _depths_biome(table, sid, node):
+    """Biome key for a depths hazard node, resolved against the LIVE season map
+    (which holds the procedural pocket ids like `city_g3_2`) and only falling
+    back to the committed board. `data.dungeon_biome` alone knows just the
+    committed ids, so on a regrown maze every hazard tile missed its signature
+    branch and rolled the generic table instead — the bug this fixes."""
+    n = _season_map(table, sid).get(node)
+    if n and n.get('region') == 'depths':
+        biome = node.split('_')[0]
+        if biome in data.DUNGEON_HAZARDS:
+            return biome
+    return data.dungeon_biome(node)
+
+
 def _hazard(table, sid, doc, node):
     # Mirefoot hatch perk: bog natives shrug off half of any hazard's cost.
     mire = doc.get('homeBiome') == 'bog'
-    biome = data.dungeon_biome(node)
+    biome = _depths_biome(table, sid, node)
     if biome:
         return _dungeon_hazard(table, sid, doc, node, biome, mire)
+    # `hazardOutcome` reports which generic effect rolled so the client's hazard
+    # wheel can land on it truthfully (dungeon hazards carry `biome` instead).
     kind = _rng.choice(['swamp_gas', 'vines', 'spore_cloud'])
     if kind == 'swamp_gas':
         lost = min(doc.get('spores', 0), _rng.randint(1, 10))
         if mire:
             lost //= 2
         doc['spores'] = doc.get('spores', 0) - lost
-        return {'type': 'hazard', 'text': f'Swamp gas! You drop {lost} Spores in the scramble.',
+        return {'type': 'hazard', 'hazardOutcome': kind,
+                'text': f'Swamp gas! You drop {lost} Spores in the scramble.',
                 'spores': -lost}
     if kind == 'vines':
         if mire:
-            return {'type': 'hazard',
+            return {'type': 'hazard', 'hazardOutcome': kind,
                     'text': 'Grasping vines slide off your mire-slick hide. (Mirefoot)'}
         doc.setdefault('buffs', []).append({'kind': 'vines'})
-        return {'type': 'hazard', 'text': 'Grasping vines coil around you — your next roll is halved.'}
+        return {'type': 'hazard', 'hazardOutcome': kind,
+                'text': 'Grasping vines coil around you — your next roll is halved.'}
     dmg = _apply_hp_loss(doc, round(doc['hp'] * (0.075 if mire else 0.15)))
-    return {'type': 'hazard', 'text': f'A choking spore cloud! You lose {dmg} HP.', 'hp': -dmg}
+    return {'type': 'hazard', 'hazardOutcome': kind,
+            'text': f'A choking spore cloud! You lose {dmg} HP.', 'hp': -dmg}
 
 
 def _dungeon_hazard(table, sid, doc, node, biome, mire):
-    """v6 signature hazards — one per dungeon, themed to its pocket."""
+    """v6 signature hazards — one per dungeon, themed to its pocket. Tuned brutal
+    (2026-07-30): each stacks an HP bite on its signature debuff so a depths
+    hazard tile is genuinely feared, not a shrug. `_apply_hp_loss` still halves
+    the HP cost for the Thick Hide perk; Mirefoot (bog natives) halves every
+    cost on top, as it always has."""
     nodes = _season_map(table, sid)
     h = data.DUNGEON_HAZARDS[biome]
-    out = {'type': 'hazard', 'hazardId': h['id'], 'text': h['text']}
+    # `biome` lets the client wheel pick this lair's boss silhouette even after
+    # spore_cloud mutates the player's position.
+    out = {'type': 'hazard', 'hazardId': h['id'], 'biome': biome, 'text': h['text']}
     if h['id'] == 'webbing':
-        # Reuses the vines mechanic: _roll halves and consumes it.
-        doc.setdefault('buffs', []).append({'kind': 'vines'})
+        # Broodsilk cinches for TWO rolls (vines turns:2, ticked in _roll) and
+        # bleeds 10% HP as it tightens.
+        doc.setdefault('buffs', []).append({'kind': 'vines', 'turns': 2})
+        dmg = _apply_hp_loss(doc, round(doc['hp'] * (0.05 if mire else 0.10)))
+        out['hp'] = -dmg
     elif h['id'] == 'spore_cloud':
         pocket = [nid for nid, n in nodes.items()
                   if n.get('region') == 'depths' and nid.startswith(biome + '_')
@@ -3214,21 +3254,32 @@ def _dungeon_hazard(table, sid, doc, node, biome, mire):
         dest = _rng.choice(pocket)
         doc['position'] = dest
         out['to'] = dest
+        # No longer a free fling — the concussive burst costs 15% HP.
+        dmg = _apply_hp_loss(doc, round(doc['hp'] * (0.075 if mire else 0.15)))
+        out['hp'] = -dmg
     elif h['id'] == 'sinkwater':
-        lost = -(-doc.get('spores', 0) * 15 // 100)   # ceil(spores * 0.15)
+        lost = -(-doc.get('spores', 0) * 25 // 100)   # ceil(spores * 0.25)
         if mire:
             lost //= 2
         lost = min(doc.get('spores', 0), lost)
         doc['spores'] = doc.get('spores', 0) - lost
         out['spores'] = -lost
-        out['text'] = f"{h['text']} You lose {lost} Spores to the murk."
-    elif h['id'] == 'bone_chill':
-        doc.setdefault('buffs', []).append({'kind': 'bone_chill'})
-    elif h['id'] == 'rot_bloom':
-        dmg = _apply_hp_loss(doc, 1 if mire else 3)
-        doc['spores'] = doc.get('spores', 0) + 4
+        dmg = _apply_hp_loss(doc, round(doc['hp'] * (0.06 if mire else 0.12)))
         out['hp'] = -dmg
-        out['spores'] = 4
+        out['text'] = (f"{h['text']} You lose {lost} Spores to the murk "
+                       f"and {dmg} HP as it drags you under.")
+    elif h['id'] == 'bone_chill':
+        # grave_chill: −3 ATK and −2 DEF next battle (a harsher cousin of the
+        # bone_chill spell curse), plus 8 HP of grave-cold now.
+        doc.setdefault('buffs', []).append({'kind': 'grave_chill'})
+        dmg = _apply_hp_loss(doc, 4 if mire else 8)
+        out['hp'] = -dmg
+    elif h['id'] == 'rot_bloom':
+        # A real gamble now: 15 HP for 12 Spores instead of a free 4.
+        dmg = _apply_hp_loss(doc, 7 if mire else 15)
+        doc['spores'] = doc.get('spores', 0) + 12
+        out['hp'] = -dmg
+        out['spores'] = 12
     return out
 
 

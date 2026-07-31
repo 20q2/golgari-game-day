@@ -136,6 +136,8 @@ export const STATUS_INFO: Record<string, StatusInfo> = {
     blurb: '+2 SPD and easier to flee this battle.' },
   bone_chill: { label: 'Bone Chill', icon: 'ac_unit', tone: 'debuff',
     blurb: 'Cursed: -2 ATK this battle.' },
+  grave_chill: { label: 'Grave Chill', icon: 'severe_cold', tone: 'debuff',
+    blurb: 'Grave-cold: -3 ATK and -2 DEF this battle.' },
   weaken_hex: { label: 'Weaken Hex', icon: 'heart_broken', tone: 'debuff',
     blurb: 'Cursed: -3 ATK this battle.' },
   cursed_idol: { label: 'Cursed', icon: 'dangerous', tone: 'debuff',

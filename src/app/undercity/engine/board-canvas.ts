@@ -162,9 +162,9 @@ const LEGACY_FLOOR_SRC: Record<string, string> = {
 
 const MIN_ZOOM = 0.15; // floor for tiny screens; larger screens stop at whole-map fit
 const MAX_ZOOM = 2.5;
-// Enemy T1/T2/T3 labels appear once zoomed in past ~a third of MAX_ZOOM — below
+// Enemy T1/T2/T3 labels appear once zoomed in past ~a fifth of MAX_ZOOM — below
 // this the letters are too small to read and just clutter the coins.
-const TIER_LABEL_MIN_ZOOM = MAX_ZOOM * 0.32;
+const TIER_LABEL_MIN_ZOOM = MAX_ZOOM * 0.2;
 const DRAG_THRESHOLD = 6;
 const MOVE_MS = 320; // token slide + camera glide duration per step
 
@@ -345,6 +345,11 @@ const LAIR_BACK_OFFSET = 26; // px north — sits behind the lair space
 // weakened echo rather than the living threat it used to be.
 const VESTIGE_FILTER = 'brightness(0.42) saturate(0.35) blur(0.7px)';
 const VESTIGE_ALPHA = 0.55; // translucent — you can see the floor through it
+// Depths hazard tiles wear a shadow of their dungeon's sigil boss instead of the
+// generic warning triangle, so each lair's hazards read as its own cursed turf.
+const HAZARD_OMEN_H = 40; // silhouette draw height — sits within the ~52px coin
+const HAZARD_OMEN_FILTER = 'brightness(0) saturate(0)'; // flatten to a pure shadow
+const HAZARD_OMEN_ALPHA = 0.72; // dark, but the hazard disc colour still frames it
 // The wilderness World Event beast — larger than a lair boss, since it straddles
 // a 3-tile footprint and is the biggest thing on the overworld.
 const WORLD_EVENT_H = 150;
@@ -1586,7 +1591,15 @@ export class BoardCanvas {
       ctx.fill();
     }
     const discNode = fogReveal ? { ...n, type: fogReveal } : n;
-    drawSpaceDisc(ctx, discNode, { sealed, locked: this.lockedIds.has(n.id), corrupted: bossHere });
+    // Depths hazard tiles hide the generic warning glyph — the dungeon boss's
+    // silhouette (drawn below) is their emblem instead.
+    const dungeonHazard = n.type === 'hazard' && n.region === 'depths';
+    drawSpaceDisc(ctx, discNode, {
+      sealed,
+      locked: this.lockedIds.has(n.id),
+      corrupted: bossHere,
+      hideGlyph: dungeonHazard,
+    });
 
     // A sealed barrier is held by the area's guardian creature, standing across
     // the route; it's drawn no more the moment someone breaks the barrier.
@@ -1594,6 +1607,9 @@ export class BoardCanvas {
 
     // Sigil bosses pace behind their lair spaces.
     if (n.type === 'lair') this.drawLairBoss(n, elapsed);
+
+    // A depths hazard wears the shadow of its dungeon's sigil boss.
+    if (dungeonHazard) this.drawHazardOmen(n, elapsed);
 
     // Treasure tiles wear the hoard sprite, swapping to a plundered variant once
     // their season-global first conqueror has cracked them open.
@@ -1848,6 +1864,31 @@ export class BoardCanvas {
     if (pool && !vestige) {
       this.drawGuardianHp(cx, top - 6, pool.hp, pool.maxHp, 56);
     }
+    ctx.restore();
+  }
+
+  /**
+   * A depths hazard tile's emblem: the flattened shadow of that dungeon's sigil
+   * boss, centered on the coin so its hazards read as the lair's own cursed turf
+   * (and distinct from surface hazards). Reuses the lazy guardian art loader
+   * (undercity/guardians/<id>.png; placeholder sprite until it arrives) and adds
+   * a faint bob so the omen feels alive rather than stamped on.
+   */
+  private drawHazardOmen(n: BoardNode, elapsed: number): void {
+    const bossId = LAIR_GUARDIANS[`${n.id.split('_')[0]}_lair`];
+    if (!bossId) return;
+    const art = this.guardianArt(bossId);
+    if (!art) return;
+    const ctx = this.ctx;
+    const phase = ((hashStr(n.id) % 1000) / 1000) * Math.PI * 2;
+    const bob = Math.sin(elapsed * 1.8 + phase) * 1.5;
+    const h = HAZARD_OMEN_H;
+    const w = art.img.width * (h / art.img.height);
+    ctx.save();
+    ctx.globalAlpha = HAZARD_OMEN_ALPHA;
+    ctx.filter = HAZARD_OMEN_FILTER;
+    ctx.imageSmoothingEnabled = !art.pixelArt;
+    ctx.drawImage(art.img, n.x - w / 2, n.y - h / 2 + bob, w, h);
     ctx.restore();
   }
 

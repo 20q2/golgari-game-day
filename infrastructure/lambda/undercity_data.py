@@ -1288,15 +1288,16 @@ DUNGEON_NPCS = {
 # Signature hazards — display copy here; behavior lives in undercity_db._hazard.
 DUNGEON_HAZARDS = {
     'city':   {'id': 'webbing', 'name': 'Webbing',
-               'text': 'Sticky broodsilk wraps your legs — your next roll is halved.'},
+               'text': 'Sticky broodsilk cinches tight — your next two rolls are '
+                       'halved, and the silk saws into you.'},
     'cavern': {'id': 'spore_cloud', 'name': 'Spore Cloud',
-               'text': 'A luminous cloud bursts! The hollow spins around you…'},
+               'text': 'A luminous cloud bursts! The hollow lurches and slams you elsewhere.'},
     'bog':    {'id': 'sinkwater', 'name': 'Sinkwater',
-               'text': 'The floor is water. Your pouch is not waterproof.'},
+               'text': 'The floor is water, and it wants your pouch and your breath.'},
     'bone':   {'id': 'bone_chill', 'name': 'Bone Chill',
-               'text': 'Grave-cold seeps into your joints: -2 ATK in your next battle.'},
+               'text': 'Grave-cold seizes your joints: −3 ATK and −2 DEF in your next battle.'},
     'garden': {'id': 'rot_bloom', 'name': 'Rot Bloom',
-               'text': 'Bursting rot-pods sting your hide — but the compost is rich.'},
+               'text': 'Bursting rot-pods flay your hide — but the compost pays well.'},
 }
 
 # First visit per player pays out; tracked in poiClaims as 'cache:<nodeId>'
@@ -1305,7 +1306,7 @@ CACHE_REWARD = {'spores': 40, 'xp': 10}
 
 # Rest room: a hidden alcove that mends you fully, once per descent. Clears the
 # lingering hazard debuffs (vines / bone_chill / cursed_idol) too.
-REST_CURES = ('vines', 'bone_chill', 'cursed_idol')
+REST_CURES = ('vines', 'bone_chill', 'grave_chill', 'cursed_idol')
 
 
 def dungeon_biome(node_id):

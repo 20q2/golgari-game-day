@@ -1132,80 +1132,138 @@
         </div>
 
         @if (witchSeg() === 'inscribe') {
-          <!-- Spore fee to copy a spell into a grimoire, by scroll tier. -->
-          <p class="witch-costs">
-            Copying into a grimoire costs by tier —
-            @for (t of inscribeTiers; track t.tier) {
-              <span class="witch-cost"
-                ><b>{{ t.roman }}</b>
-                <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />{{ t.cost }}</span
-              >
-            }
-          </p>
-          @if (!(store.you()?.scrolls?.length)) {
-            <p class="witch-hint">No scrolls yet — find them in the deep, or buy one.</p>
-          } @else {
-            <p class="witch-hint">Pick a scroll, then a book to copy it into.</p>
-            <div class="witch-grid">
-              @for (s of store.you()?.scrolls ?? []; track $index) {
-                @if (spellInfo(s); as sp) {
-                  <button
-                    class="witch-card"
-                    [attr.data-rarity]="tierRarity(sp.tier).key"
-                    [class.picked]="pickedScroll() === s"
-                    (click)="pickScroll(s)"
-                  >
-                    <span class="wc-name">{{ sp.name }}</span>
-                    <span class="wc-cat" [style.color]="spellCategoryStyle(sp).color">
-                      {{ spellCategoryStyle(sp).kind }}
-                      @if (spellPowerLabel(sp, playerLevel()); as pw) { · {{ pw }} }
-                    </span>
-                    <span class="wc-fee"
-                      ><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />{{ inscribeFee(s) }} to copy</span
-                    >
-                    <span class="rarity-badge" [ngClass]="tierRarity(sp.tier).key">{{ tierRarity(sp.tier).label }}</span>
-                  </button>
-                }
-              }
-            </div>
-          }
-
-          @if (pickedScroll()) {
-            <h4 class="witch-sub">Into which book?</h4>
-            <div class="witch-grid">
-              @for (g of store.you()?.grimoires ?? []; track g) {
-                <button
-                  class="witch-book"
-                  [attr.data-rarity]="tierRarity(bookTier(g)).key"
-                  [class.picked]="pickedBook() === g"
-                  (click)="pickBook(g)"
+          @if (!pickedScroll()) {
+            <!-- STEP 1 — pick a scroll to inscribe (compact) -->
+            <p class="witch-costs">
+              Copying into a grimoire costs by tier —
+              @for (t of inscribeTiers; track t.tier) {
+                <span class="witch-cost"
+                  ><b>{{ t.roman }}</b>
+                  <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />{{ t.cost }}</span
                 >
-                  <span class="wc-name">{{ bookName(g) }}</span>
-                  <span class="wc-pips">
-                    @for (f of bookPips(g); track $index) {
-                      <span class="wc-pip" [class.filled]="f">●</span>
-                    }
-                  </span>
-                  <span class="wc-spells">
-                    @for (sp of bookSpells(g); track sp) {
-                      <span
-                        class="wc-chip"
-                        [style.color]="spellCategoryStyle(spellInfo(sp)!).color"
-                        [class.doomed]="pickedBook() === g && burnTarget() === sp"
-                        (click)="$event.stopPropagation(); pickedBook.set(g); bookFull(g) && burnTarget.set(sp)"
-                      >{{ spellInfo(sp)!.name }}</span>
-                    }
-                  </span>
-                  @if (pickedBook() === g && bookFull(g)) {
-                    <span class="wc-warn">Full — tap a spell above to burn it out.</span>
+              }
+            </p>
+            @if (!(store.you()?.scrolls?.length)) {
+              <p class="witch-hint">No scrolls yet — find them in the deep, or buy one.</p>
+            } @else {
+              <p class="witch-hint">Pick a scroll to inscribe into a grimoire.</p>
+              <div class="witch-grid">
+                @for (s of store.you()?.scrolls ?? []; track $index) {
+                  @if (spellInfo(s); as sp) {
+                    <button
+                      class="witch-card drill"
+                      [attr.data-rarity]="tierRarity(sp.tier).key"
+                      (click)="pickScroll(s)"
+                    >
+                      <span class="wc-name">{{ sp.name }}</span>
+                      <span class="wc-cat" [style.color]="spellCategoryStyle(sp).color">
+                        {{ spellCategoryStyle(sp).kind }}
+                        @if (spellPowerLabel(sp, playerLevel()); as pw) { · {{ pw }} }
+                      </span>
+                      <span class="wc-fee"
+                        ><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />{{ inscribeFee(s) }} to copy</span
+                      >
+                      <span class="rarity-badge" [ngClass]="tierRarity(sp.tier).key">{{ tierRarity(sp.tier).label }}</span>
+                      <mat-icon class="wc-drill">chevron_right</mat-icon>
+                    </button>
                   }
+                }
+              </div>
+            }
+          } @else if (spellInfo(pickedScroll()!); as scroll) {
+            <!-- STEP 2 — inscribe detail: choose the book / burn target with room -->
+            <div class="witch-detail">
+              <button class="witch-back" (click)="backToScrolls()">
+                <mat-icon class="mi">chevron_left</mat-icon> Scrolls
+              </button>
+
+              <div class="witch-adding" [attr.data-rarity]="tierRarity(scroll.tier).key">
+                <span class="wd-label">Inscribing</span>
+                <span class="wc-name"
+                  >{{ scroll.name }}
+                  <span class="rarity-badge inline" [ngClass]="tierRarity(scroll.tier).key">{{ tierRarity(scroll.tier).label }}</span>
+                </span>
+                <span class="wc-cat" [style.color]="spellCategoryStyle(scroll).color">
+                  {{ spellCategoryStyle(scroll).kind }}
+                  @if (spellPowerLabel(scroll, playerLevel()); as pw) { · {{ pw }} }
+                  @if (scroll.cooldownMin) { · {{ scroll.cooldownMin }}m cooldown }
+                </span>
+                <span class="wd-desc">{{ scroll.desc }}</span>
+              </div>
+
+              <!-- Book tabs, only when the player carries more than one grimoire. -->
+              @if ((store.you()?.grimoires?.length ?? 0) > 1) {
+                <div class="witch-books">
+                  @for (g of store.you()?.grimoires ?? []; track g) {
+                    <button class="witch-book-tab" [class.active]="pickedBook() === g" (click)="selectBook(g)">
+                      {{ bookName(g) }}
+                      <span class="wc-pips">
+                        @for (f of bookPips(g); track $index) { <span class="wc-pip" [class.filled]="f">●</span> }
+                      </span>
+                    </button>
+                  }
+                </div>
+              }
+
+              @if (pickedBook(); as book) {
+                <div class="witch-bookhead">
+                  <span class="wc-name">{{ bookName(book) }}</span>
+                  <span class="wc-bookcap" [class.full]="bookFull(book)"
+                    >{{ bookSpells(book).length }} / {{ bookCap(book) }}@if (bookFull(book)) { · Full }</span
+                  >
+                </div>
+                @if (bookFull(book)) {
+                  <p class="witch-hint burn">Book is full — tap a spell to burn it out and free its slot.</p>
+                } @else {
+                  <p class="witch-hint">This book has room — inscribing fills an empty slot.</p>
+                }
+
+                <div class="witch-spelllist">
+                  @for (sp of bookSpells(book); track sp) {
+                    @if (spellInfo(sp); as info) {
+                      <button
+                        class="witch-spellrow"
+                        [class.selectable]="bookFull(book)"
+                        [class.doomed]="burnTarget() === sp"
+                        [disabled]="!bookFull(book)"
+                        (click)="toggleBurn(sp)"
+                      >
+                        <span class="wsr-head">
+                          <span class="wc-name">{{ info.name }}</span>
+                          <span class="wc-cat" [style.color]="spellCategoryStyle(info).color">
+                            {{ spellCategoryStyle(info).kind }}
+                            @if (spellPowerLabel(info, playerLevel()); as pw) { · {{ pw }} }
+                            @if (info.cooldownMin) { · {{ info.cooldownMin }}m CD }
+                          </span>
+                          @if (bookFull(book)) {
+                            <mat-icon class="wsr-burn">{{ burnTarget() === sp ? 'local_fire_department' : 'delete_outline' }}</mat-icon>
+                          }
+                        </span>
+                        <span class="wd-desc">{{ info.desc }}</span>
+                      </button>
+                    }
+                  }
+                  @for (e of bookEmptySlots(book); track e) {
+                    <div class="witch-spellrow empty"><span class="wd-desc">Empty slot</span></div>
+                  }
+                </div>
+
+                @if (burnTarget(); as bt) {
+                  <p class="witch-swap">
+                    <span class="swap-out">{{ spellInfo(bt)!.name }}</span>
+                    <mat-icon class="mi">local_fire_department</mat-icon>
+                    <span class="swap-in">{{ scroll.name }}</span>
+                  </p>
+                }
+
+                <button class="uc-btn uc-btn-primary witch-confirm" [disabled]="busy() || !canInscribe()" (click)="inscribe()">
+                  Inscribe · <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />{{ pickedInscribeFee() }}
                 </button>
+                @if (!busy() && inscribeReason(); as r) { <span class="block-reason">{{ r }}</span> }
+              } @else {
+                <p class="witch-hint">You carry no grimoire to inscribe into — find one in a shop.</p>
               }
             </div>
-            <button class="uc-btn uc-btn-primary witch-confirm" [disabled]="busy() || !canInscribe()" (click)="inscribe()">
-              Inscribe · <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />{{ pickedInscribeFee() }}
-            </button>
-            @if (!busy() && inscribeReason(); as r) { <span class="block-reason">{{ r }}</span> }
           }
         } @else {
           <p class="witch-hint">Fresh-brewed tier-I scrolls — cast once, or copy them in.</p>

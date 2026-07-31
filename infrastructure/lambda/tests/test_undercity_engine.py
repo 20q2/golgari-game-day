@@ -474,6 +474,20 @@ def test_bone_chill_never_below_one():
     assert effective_stats(player)['atk'] == 1
 
 
+def test_grave_chill_lowers_atk_and_def():
+    player = {'atk': 6, 'def': 4, 'spd': 5, 'maxHp': 30,
+              'buffs': [{'kind': 'grave_chill'}]}
+    eff = effective_stats(player)
+    assert eff['atk'] == 3 and eff['def'] == 2
+
+
+def test_grave_chill_floors_at_one():
+    player = {'atk': 2, 'def': 1, 'spd': 5, 'maxHp': 30,
+              'buffs': [{'kind': 'grave_chill'}]}
+    eff = effective_stats(player)
+    assert eff['atk'] == 1 and eff['def'] == 1
+
+
 # ── Tier balance (mean rolls: uniform()=1.0, no passives) ───────────────────
 
 def _ref(level):
