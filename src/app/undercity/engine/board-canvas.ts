@@ -146,6 +146,8 @@ export interface NodeInfo {
   nodeId: string;
   title: string;
   body: string;
+  /** Optional Material Icons ligature drawn to the left of the title. */
+  icon?: string;
 }
 
 /** Floor paintings for map files that predate the editable regions{} section. */
@@ -2203,11 +2205,12 @@ export class BoardCanvas {
     ctx.save();
     ctx.globalAlpha = alpha;
 
+    const iconW = info.icon ? 20 : 0; // 16px glyph + a little gap
     ctx.font = 'bold 13px sans-serif';
     const titleW = ctx.measureText(info.title).width;
     ctx.font = '11px sans-serif';
     const lines = this.wrapText(info.body, maxTextW);
-    let widest = titleW;
+    let widest = titleW + iconW;
     for (const l of lines) widest = Math.max(widest, ctx.measureText(l).width);
 
     const w = Math.min(maxTextW, widest) + pad * 2;
@@ -2245,9 +2248,16 @@ export class BoardCanvas {
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
+    let titleX = x + pad;
+    if (info.icon) {
+      ctx.fillStyle = '#e0b34e'; // amber glyph so the space type reads at a glance
+      ctx.font = "16px 'Material Icons'";
+      ctx.fillText(info.icon, titleX, y + pad - 1);
+      titleX += iconW;
+    }
     ctx.fillStyle = '#b7e4c7';
     ctx.font = 'bold 13px sans-serif';
-    ctx.fillText(info.title, x + pad, y + pad);
+    ctx.fillText(info.title, titleX, y + pad);
     ctx.fillStyle = '#b7c7b7';
     ctx.font = '11px sans-serif';
     lines.forEach((l, i) => ctx.fillText(l, x + pad, y + pad + titleH + i * lineH));

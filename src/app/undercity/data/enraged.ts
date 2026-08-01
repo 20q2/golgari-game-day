@@ -18,3 +18,12 @@ export const ENRAGED = {
 // Placeholder art path: the board's guardian sprite loader falls back to a
 // generic token until real PNGs land under public/undercity/enraged/<id>.png.
 export const ENRAGED_SPRITE_DIR = 'undercity/enraged';
+
+// The tap-to-inspect identity of a tile a roaming enraged monster squats on:
+// its own space-type name + Material Icon (shown in the board popover). The
+// body blurb is built dynamically (live HP + relocate countdown) in
+// board-tab.buildNodeInfo. `icon` is a Material Icons ligature — swap freely.
+export const MONSTER_SPACE = {
+  name: 'Monster Space',
+  icon: 'pets',
+};

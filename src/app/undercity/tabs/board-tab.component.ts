@@ -71,6 +71,7 @@ import {
 } from '../data/items';
 import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome } from '../data/dungeons';
 import { WORLD_EVENT, WORLD_EVENT_SPRITE } from '../data/world-event';
+import { MONSTER_SPACE } from '../data/enraged';
 import { formName } from '../data/forms';
 import { RegionInfo, regionInfo, tunnelDest } from '../data/regions';
 import { formSprite } from '../data/species';
@@ -1813,6 +1814,27 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           `A season-shared raid boss straddling the Ashen Wilds (${we.hp}/${we.maxHp} HP). ` +
           `Everyone hacks at one shared pool — land on it and Engage to burst it over ` +
           `${this.worldEventRoundCap} rounds; when it falls, all who struck split the bounty by the damage they dealt.`,
+      };
+    }
+    // A roaming enraged monster squats on this wilderness tile — it becomes a
+    // "Monster Space" with its own identity + icon, overriding the underlying
+    // wild/elite blurb. Its sprite/HP bar already draw over the coin.
+    const er = this.store.enraged();
+    if (er && !er.dead && er.node === nodeId) {
+      const ms = new Date(er.movesAt + 'Z').getTime() - Date.now();
+      const min = Math.max(0, Math.ceil(ms / 60_000));
+      const t = min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`;
+      const name = er.name ?? 'enraged monster';
+      const hp =
+        typeof er.hp === 'number' && typeof er.maxHp === 'number' ? ` (${er.hp}/${er.maxHp} HP)` : '';
+      return {
+        nodeId,
+        title: MONSTER_SPACE.name,
+        icon: MONSTER_SPACE.icon,
+        body:
+          `A wandering ${name}${hp} prowls this tile. Land on it to fight it head-on, or strike ` +
+          `from afar with damage and curse spells — whoever lands the killing blow claims renown, ` +
+          `XP, and a gear drop. It roams to new ground in ${t}.`,
       };
     }
     const node = this.map?.nodes.find((n) => n.id === nodeId);
