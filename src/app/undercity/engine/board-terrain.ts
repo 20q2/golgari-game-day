@@ -1585,15 +1585,22 @@ export function renderTerrain(
   }
 
   // 3c. Rim catch-light: a ~4 px lit band along each region's silhouette in
-  // the biome glow color, plus a soft blurred spill. Rendered on a transient
-  // canvas (fill minus shrunken refill = band), then composited and freed —
-  // no persistent backing store, so the iOS memory budget is unchanged.
+  // the biome glow color, plus a soft spill. Rendered on a transient canvas
+  // (fill minus shrunken refill = band), then composited and freed — no
+  // persistent backing store, so the iOS memory budget is unchanged.
+  //
+  // Perf: the band bakes at a LOW resolution and upscales on composite — it's
+  // a glow, so soft is the intended look, and the low-res fills plus a mip
+  // downscale (instead of a ctx.filter gaussian blur) keep this pass to a few
+  // ms. The first version baked full-res with blur(5px) and made every
+  // tab-entry terrain rebuild visibly slow.
   {
+    const rimRes = Math.min(0.35, resolution);
     const rimCanvas = document.createElement('canvas');
-    rimCanvas.width = canvas.width;
-    rimCanvas.height = canvas.height;
+    rimCanvas.width = Math.max(1, Math.round(w * rimRes));
+    rimCanvas.height = Math.max(1, Math.round(h * rimRes));
     const rc = rimCanvas.getContext('2d')!;
-    rc.scale(resolution, resolution);
+    rc.scale(rimRes, rimRes);
     rc.translate(TERRAIN_MARGIN - bx, TERRAIN_MARGIN - by);
     for (const [region, list] of blobs) {
       // Per-region intensity (rimAlpha) bakes into the band brightness here,
@@ -1607,20 +1614,27 @@ export function renderTerrain(
       const shrunk = list.map((b) => ({ ...b, r: Math.max(6, b.r - 4) }));
       fillRegionBlobs(rc, region, shrunk, 0, '#000');
     }
+    // Halo = the band downscaled 3x and drawn back up: a cheap approximate
+    // blur. It merges INTO the band canvas (at 0.625 so the final 0.16 draw
+    // lands it at ~0.1) so the terrain pays a single full-canvas composite.
+    const halo = document.createElement('canvas');
+    halo.width = Math.max(1, Math.round(rimCanvas.width / 3));
+    halo.height = Math.max(1, Math.round(rimCanvas.height / 3));
+    halo.getContext('2d')!.drawImage(rimCanvas, 0, 0, halo.width, halo.height);
+    rc.setTransform(1, 0, 0, 1, 0, 0);
+    rc.globalCompositeOperation = 'lighter';
+    rc.globalAlpha = 0.625; // soft spill just outside the edge
+    rc.drawImage(halo, 0, 0, rimCanvas.width, rimCanvas.height);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = 'lighter';
-    if (typeof ctx.filter === 'string') {
-      ctx.filter = 'blur(5px)'; // soft spill just outside the edge
-      ctx.globalAlpha = 0.09;
-      ctx.drawImage(rimCanvas, 0, 0);
-      ctx.filter = 'none';
-    }
-    ctx.globalAlpha = 0.16; // the crisp band itself — catch-light, not neon
-    ctx.drawImage(rimCanvas, 0, 0);
+    ctx.globalAlpha = 0.16; // the band itself — catch-light, not neon
+    ctx.drawImage(rimCanvas, 0, 0, canvas.width, canvas.height);
     ctx.restore();
-    rimCanvas.width = 0; // free the transient store immediately (iOS)
+    rimCanvas.width = 0; // free the transient stores immediately (iOS)
     rimCanvas.height = 0;
+    halo.width = 0;
+    halo.height = 0;
   }
 
   // 3d. Faint pulsing light-pool under every disc, in the biome glow color.

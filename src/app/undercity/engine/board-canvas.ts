@@ -533,15 +533,19 @@ export class BoardCanvas {
     }
   }
 
-  /** Coalesce the burst of startup art-load rebuilds (9 floors + 4 landmarks +
-   *  decals each used to trigger a full rebuild) into one per frame. */
-  private rebuildRaf: number | null = null;
+  /** Coalesce the burst of startup art-load rebuilds (9 floors + 5 landmarks +
+   *  decals each trigger one) into a single trailing rebuild. Per-frame rAF
+   *  coalescing still let the burst cost several full all-layer rebuilds when
+   *  cached images decoded across a few frames — a visible tab-entry stall.
+   *  A short trailing debounce makes the whole burst cost exactly one rebuild;
+   *  on a cold cache a straggler image just schedules one more. */
+  private rebuildTimer: ReturnType<typeof setTimeout> | null = null;
   private scheduleRebuild(): void {
-    if (this.rebuildRaf !== null) return;
-    this.rebuildRaf = requestAnimationFrame(() => {
-      this.rebuildRaf = null;
+    if (this.rebuildTimer !== null) clearTimeout(this.rebuildTimer);
+    this.rebuildTimer = setTimeout(() => {
+      this.rebuildTimer = null;
       this.rebuildLayers();
-    });
+    }, 150);
   }
 
   /** Season-global first-conqueror plates + plundered-treasure state. */
@@ -1250,9 +1254,9 @@ export class BoardCanvas {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
-    if (this.rebuildRaf !== null) {
-      cancelAnimationFrame(this.rebuildRaf);
-      this.rebuildRaf = null;
+    if (this.rebuildTimer !== null) {
+      clearTimeout(this.rebuildTimer);
+      this.rebuildTimer = null;
     }
     window.removeEventListener('resize', this.boundResize);
     if (this.pointerHandlers) {
