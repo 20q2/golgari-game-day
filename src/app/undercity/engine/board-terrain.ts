@@ -1553,6 +1553,45 @@ export function renderTerrain(
     textureRegionBlobs(ctx, region, list);
   }
 
+  // 3c. Rim catch-light: a ~4 px lit band along each region's silhouette in
+  // the biome glow color, plus a soft blurred spill. Rendered on a transient
+  // canvas (fill minus shrunken refill = band), then composited and freed —
+  // no persistent backing store, so the iOS memory budget is unchanged.
+  {
+    const rimCanvas = document.createElement('canvas');
+    rimCanvas.width = canvas.width;
+    rimCanvas.height = canvas.height;
+    const rc = rimCanvas.getContext('2d')!;
+    rc.scale(resolution, resolution);
+    rc.translate(TERRAIN_MARGIN - bx, TERRAIN_MARGIN - by);
+    for (const [region, list] of blobs) {
+      // Per-region intensity (rimAlpha) bakes into the band brightness here,
+      // so bright glow colors (bone, isle, depths) come out pre-dimmed.
+      rc.globalAlpha = theme(region).rimAlpha ?? 1;
+      fillRegionBlobs(rc, region, list, 0, `rgb(${theme(region).glow})`);
+    }
+    rc.globalAlpha = 1;
+    rc.globalCompositeOperation = 'destination-out';
+    for (const [region, list] of blobs) {
+      const shrunk = list.map((b) => ({ ...b, r: Math.max(6, b.r - 4) }));
+      fillRegionBlobs(rc, region, shrunk, 0, '#000');
+    }
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'lighter';
+    if (typeof ctx.filter === 'string') {
+      ctx.filter = 'blur(5px)'; // soft spill just outside the edge
+      ctx.globalAlpha = 0.09;
+      ctx.drawImage(rimCanvas, 0, 0);
+      ctx.filter = 'none';
+    }
+    ctx.globalAlpha = 0.16; // the crisp band itself — catch-light, not neon
+    ctx.drawImage(rimCanvas, 0, 0);
+    ctx.restore();
+    rimCanvas.width = 0; // free the transient store immediately (iOS)
+    rimCanvas.height = 0;
+  }
+
   // 4. Underground river: surfaces as a fall out of the Mosslight Cavern,
   //    sweeps down to a still pool cupping the boss island, then drains east
   //    through the Sedgemoor. Paths cross it on bridges (drawn after paths).
