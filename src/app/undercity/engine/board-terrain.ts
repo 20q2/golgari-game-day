@@ -1548,6 +1548,11 @@ export function renderTerrain(
     }
   }
 
+  // 3b. Living surface texture — grain/cracks/moss clipped to each plateau.
+  for (const [region, list] of blobs) {
+    textureRegionBlobs(ctx, region, list);
+  }
+
   // 4. Underground river: surfaces as a fall out of the Mosslight Cavern,
   //    sweeps down to a still pool cupping the boss island, then drains east
   //    through the Sedgemoor. Paths cross it on bridges (drawn after paths).
@@ -1844,17 +1849,16 @@ interface TerrainBlob {
 }
 
 /**
- * Fill one region's ground as a single unioned path so overlapping shapes
- * merge cleanly. The silhouette is the region's shape language.
+ * Build one region's unioned ground path (no fill) — shared by the fill,
+ * rim and texture passes so every pass traces the identical silhouette.
+ * The silhouette is the region's shape language.
  */
-function fillRegionBlobs(
+function traceRegionBlobs(
   ctx: CanvasRenderingContext2D,
   region: string,
   list: TerrainBlob[],
   offsetY: number,
-  style: string,
 ): void {
-  ctx.fillStyle = style;
   ctx.beginPath();
   for (const b of list) {
     const rnd = mulberry32(b.seed);
@@ -1924,7 +1928,90 @@ function fillRegionBlobs(
       ctx.closePath();
     }
   }
+}
+
+/** Fill one region's ground as a single unioned path so overlapping shapes
+ *  merge cleanly. */
+function fillRegionBlobs(
+  ctx: CanvasRenderingContext2D,
+  region: string,
+  list: TerrainBlob[],
+  offsetY: number,
+  style: string,
+): void {
+  ctx.fillStyle = style;
+  traceRegionBlobs(ctx, region, list, offsetY);
   ctx.fill();
+}
+
+/**
+ * Living-surface texture: seeded grain speckle, hairline cracks and soft
+ * moss/lichen patches, clipped to the region's plateau union so nothing
+ * bleeds onto the cave floor. Bake-time only. Mark sizes stay ≥3 world px
+ * so the TERRAIN_RES 0.6 bake doesn't dissolve them.
+ */
+function textureRegionBlobs(
+  ctx: CanvasRenderingContext2D,
+  region: string,
+  list: TerrainBlob[],
+): void {
+  if (!list.length) return;
+  const th = theme(region);
+  const rand = mulberry32(hashStr('tex-' + region));
+  let x0 = Infinity,
+    y0 = Infinity,
+    x1 = -Infinity,
+    y1 = -Infinity;
+  for (const b of list) {
+    x0 = Math.min(x0, b.x - b.r * 1.3);
+    y0 = Math.min(y0, b.y - b.r * 1.3);
+    x1 = Math.max(x1, b.x + b.r * 1.3);
+    y1 = Math.max(y1, b.y + b.r * 1.3);
+  }
+  const area = (x1 - x0) * (y1 - y0);
+  ctx.save();
+  traceRegionBlobs(ctx, region, list, 0);
+  ctx.clip();
+  // Grain: two-tone speckle, ~1 mark per 2600 px² of bbox (clip discards misses).
+  const speckles = Math.min(2400, Math.round(area / 2600));
+  for (let i = 0; i < speckles; i++) {
+    const x = x0 + rand() * (x1 - x0);
+    const y = y0 + rand() * (y1 - y0);
+    ctx.fillStyle = rand() > 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.10)';
+    ctx.beginPath();
+    ctx.ellipse(x, y, 2 + rand() * 2, 1.5 + rand() * 1.5, rand() * 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Hairline cracks: short seeded polylines.
+  const cracks = Math.min(70, Math.round(area / 45000));
+  ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < cracks; i++) {
+    let cx = x0 + rand() * (x1 - x0);
+    let cy = y0 + rand() * (y1 - y0);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    const segs = 3 + Math.floor(rand() * 3);
+    for (let s = 0; s < segs; s++) {
+      cx += (rand() - 0.5) * 46;
+      cy += (rand() - 0.3) * 26;
+      ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+  }
+  // Moss/lichen: soft radial patches in the region's existing mottle color.
+  const moss = Math.min(110, Math.round(area / 30000));
+  for (let i = 0; i < moss; i++) {
+    const x = x0 + rand() * (x1 - x0);
+    const y = y0 + rand() * (y1 - y0);
+    const r = 10 + rand() * 20;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, th.mottle);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  ctx.restore();
 }
 
 function drawWalls(
