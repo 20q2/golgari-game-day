@@ -1662,7 +1662,6 @@ export function renderTerrain(
     ctx.font = 'italic 600 46px Georgia, "Times New Roman", serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(210, 235, 220, 0.16)';
     for (const [region, name] of Object.entries(LABEL_NAMES)) {
       if (!regionPts.has(region)) continue;
       const z = regionZone(region);
@@ -1672,7 +1671,34 @@ export function renderTerrain(
       const ox = z.cx - ISLAND.cx;
       const oy = z.cy - ISLAND.cy;
       const L = Math.hypot(ox, oy) || 1;
-      ctx.fillText(name, z.cx + (ox / L) * 125, z.cy + (oy / L) * 125);
+      const lx = z.cx + (ox / L) * 125;
+      const ly = z.cy + (oy / L) * 125;
+      const glow = theme(region).glow;
+      ctx.save();
+      ctx.shadowColor = `rgba(${glow}, 0.32)`;
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = 'rgba(224, 240, 230, 0.20)';
+      ctx.fillText(name, lx, ly);
+      ctx.restore();
+      // Flourish: a fading underline with a small diamond at its center.
+      const uw = ctx.measureText(name).width * 0.42;
+      const uy = ly + 32;
+      const g = ctx.createLinearGradient(lx - uw, uy, lx + uw, uy);
+      g.addColorStop(0, `rgba(${glow}, 0)`);
+      g.addColorStop(0.5, `rgba(${glow}, 0.30)`);
+      g.addColorStop(1, `rgba(${glow}, 0)`);
+      ctx.strokeStyle = g;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(lx - uw, uy);
+      ctx.lineTo(lx + uw, uy);
+      ctx.stroke();
+      ctx.save();
+      ctx.translate(lx, uy);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = `rgba(${glow}, 0.45)`;
+      ctx.fillRect(-3, -3, 6, 6);
+      ctx.restore();
     }
     ctx.restore();
   } else {
@@ -1680,11 +1706,14 @@ export function renderTerrain(
     const cx = nodes.reduce((s, n) => s + n.x, 0) / (nodes.length || 1);
     const cy = nodes.reduce((s, n) => s + n.y, 0) / (nodes.length || 1);
     const biome = nodes.length ? dungeonBiome(nodes[0].id, nodes[0].region) : null;
+    const glow = theme(biome ? `dungeon:${biome}` : 'depths').glow;
     ctx.save();
     ctx.font = 'italic 600 40px Georgia, "Times New Roman", serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(210, 235, 220, 0.16)';
+    ctx.shadowColor = `rgba(${glow}, 0.32)`;
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = 'rgba(224, 240, 230, 0.20)';
     ctx.fillText(biome ? DUNGEONS[biome].name : (LABEL_NAMES['depths'] ?? 'The Deep'), cx, cy);
     ctx.restore();
   }
@@ -3550,17 +3579,18 @@ export function drawMapLabels(
   layer?: LayerSpec,
 ): void {
   for (const l of map.labels ?? []) {
-    if (layer) {
-      const n = nearestNode(map, l.x, l.y);
-      if (!n || !layer.nodeIds.has(n.id)) continue;
-    }
+    const n = nearestNode(map, l.x, l.y);
+    if (layer && (!n || !layer.nodeIds.has(n.id))) continue;
+    const glow = theme(n ? themeKeyFor(n) : 'cavern').glow;
     ctx.save();
     ctx.translate(l.x, l.y);
     ctx.rotate(l.rot);
     ctx.font = `italic 600 ${l.size}px Georgia, "Times New Roman", serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = `rgba(210, 235, 220, ${l.alpha})`;
+    ctx.shadowColor = `rgba(${glow}, 0.30)`;
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = `rgba(210, 235, 220, ${Math.min(1, l.alpha * 1.25)})`;
     ctx.fillText(l.text, 0, 0);
     ctx.restore();
   }
