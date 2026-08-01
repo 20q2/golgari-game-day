@@ -121,6 +121,12 @@ interface RegionTheme {
   mottle: string; // soft highlight blotches on the surface
   tint: string; // floor wash coloring the cave floor around the chamber
   path: { rim: string; edge: string; fill: string; stud: string };
+  /** 'r, g, b' triple for rim catch-light, light pools, shafts and label glow. */
+  glow: string;
+  /** Per-region rim intensity multiplier (default 1) — pale/bright biomes dial down. */
+  rimAlpha?: number;
+  /** Bake faint god-ray shafts into this chamber's floor (living caves only). */
+  shafts?: boolean;
 }
 
 const REGION_THEMES: Record<string, RegionTheme> = {
@@ -133,6 +139,7 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(80, 190, 150, 0.13)',
     tint: 'rgba(26, 92, 76, 0.22)',
     path: { rim: '#16241f', edge: '#63d494', fill: '#46605a', stud: 'rgba(198, 236, 216, 0.6)' },
+    glow: '120, 240, 170',
   },
   // Mosslight Cavern — cool, luminous teal-green so it reads at a glance as
   // the "living" glowing chamber. Shape language: soft lumpy organic blobs.
@@ -143,6 +150,8 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(96, 214, 190, 0.20)',
     tint: 'rgba(52, 158, 146, 0.20)',
     path: { rim: '#233028', edge: '#74f0d6', fill: '#527568', stud: 'rgba(214, 250, 240, 0.6)' },
+    glow: '116, 240, 214',
+    shafts: true,
   },
   // The Sedgemoor — murky, jaundiced brown-green so it's unmistakably the
   // opposite of the cavern. Shape language: low ragged marsh splats.
@@ -153,6 +162,7 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(158, 150, 66, 0.14)',
     tint: 'rgba(122, 98, 30, 0.22)',
     path: { rim: '#1c1710', edge: '#a37a42', fill: '#59472c', stud: 'rgba(24, 18, 10, 0.6)' },
+    glow: '214, 170, 92',
   },
   // Boss island — bare haunted rock, raised tall on its own plateau. Shape
   // language: jagged shards.
@@ -163,6 +173,8 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(180, 130, 210, 0.14)',
     tint: 'rgba(96, 58, 126, 0.16)',
     path: { rim: '#171218', edge: '#6f558a', fill: '#413748', stud: 'rgba(196, 176, 216, 0.5)' },
+    glow: '184, 122, 255',
+    rimAlpha: 0.7,
   },
   // The Ashen Wilds — charcoal wastes lit by ember-orange rot-fire, the T2+
   // frontier. Deliberately warm/dark to contrast the cool biomes.
@@ -173,6 +185,7 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(224, 117, 46, 0.12)',
     tint: 'rgba(150, 70, 30, 0.20)',
     path: { rim: '#1a1614', edge: '#e0752e', fill: '#4a423c', stud: 'rgba(240, 190, 140, 0.55)' },
+    glow: '224, 117, 46',
   },
   // Gated ruins (Titan's Rest, the Sunken Vaults) — dead grey-gold stonework,
   // clearly "older" than the living chambers. Masonry silhouette like the city.
@@ -183,6 +196,7 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(200, 176, 110, 0.13)',
     tint: 'rgba(140, 118, 58, 0.14)',
     path: { rim: '#1c1912', edge: '#b09454', fill: '#55492f', stud: 'rgba(226, 204, 150, 0.55)' },
+    glow: '226, 204, 150',
   },
   // Ossuary Fields — bone-white ash flats. Masonry silhouette like the city.
   bone: {
@@ -192,6 +206,8 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(220, 210, 180, 0.14)',
     tint: 'rgba(150, 140, 108, 0.16)',
     path: { rim: '#26221a', edge: '#c8bd9c', fill: '#5c5644', stud: 'rgba(230, 222, 196, 0.6)' },
+    glow: '230, 222, 196',
+    rimAlpha: 0.7,
   },
   // The Rot-Gardens — fertile compost greens, warmer than the cavern.
   garden: {
@@ -201,6 +217,7 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(150, 200, 90, 0.16)',
     tint: 'rgba(96, 138, 44, 0.18)',
     path: { rim: '#241d10', edge: '#8fbf50', fill: '#4c5a2e', stud: 'rgba(210, 232, 160, 0.6)' },
+    glow: '160, 210, 90',
   },
   // Generic depths fallback — near-black nest tunnels under everything.
   depths: {
@@ -210,6 +227,8 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(150, 100, 190, 0.12)',
     tint: 'rgba(70, 40, 96, 0.18)',
     path: { rim: '#120d14', edge: '#7a4a9a', fill: '#332638', stud: 'rgba(200, 160, 240, 0.45)' },
+    glow: '160, 110, 220',
+    rimAlpha: 0.6,
   },
   // v6 unique dungeon themes, keyed 'dungeon:<biome>' via themeKeyFor().
   'dungeon:city': {
@@ -220,6 +239,7 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(216, 188, 150, 0.10)',
     tint: 'rgba(140, 96, 50, 0.20)',
     path: { rim: '#160f0a', edge: '#c9b696', fill: '#4a3826', stud: 'rgba(238, 226, 200, 0.55)' },
+    glow: '216, 188, 150',
   },
   'dungeon:cavern': {
     // Gloomroot Hollow — deep teal with hot bioluminescent edges.
@@ -229,6 +249,8 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(110, 240, 210, 0.22)',
     tint: 'rgba(40, 170, 150, 0.22)',
     path: { rim: '#0c1f1d', edge: '#8ffce2', fill: '#33544c', stud: 'rgba(220, 255, 245, 0.6)' },
+    glow: '143, 252, 226',
+    shafts: true,
   },
   'dungeon:bog': {
     // Drownedway — drowned slate blue-greens.
@@ -238,6 +260,7 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(120, 180, 180, 0.12)',
     tint: 'rgba(50, 110, 120, 0.22)',
     path: { rim: '#0e1718', edge: '#6aa8a0', fill: '#2e4a4a', stud: 'rgba(180, 220, 215, 0.5)' },
+    glow: '106, 168, 160',
   },
   'dungeon:bone': {
     // Marrow Pits — ashen bone-greys.
@@ -247,6 +270,8 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(230, 222, 200, 0.12)',
     tint: 'rgba(160, 150, 120, 0.16)',
     path: { rim: '#1c1a14', edge: '#d6cbaa', fill: '#4e483a', stud: 'rgba(240, 233, 210, 0.55)' },
+    glow: '214, 203, 170',
+    rimAlpha: 0.7,
   },
   'dungeon:garden': {
     // Rotcellar — hot compost browns-greens.
@@ -256,6 +281,7 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     mottle: 'rgba(190, 200, 90, 0.14)',
     tint: 'rgba(120, 130, 40, 0.20)',
     path: { rim: '#181608', edge: '#b9c25a', fill: '#4a4726', stud: 'rgba(230, 235, 170, 0.5)' },
+    glow: '185, 194, 90',
   },
 };
 
