@@ -202,6 +202,44 @@
             </section>
           }
           @case ('gear') {
+            @switch (gearSection()) {
+              @case ('home') {
+                <!-- Gear hub: three live-status tiles; bottom-right cell left empty. -->
+                <section class="gear-hub">
+                  <button type="button" class="gear-tile" (click)="selectGear('equip')">
+                    <span class="gear-tile-count">{{ wornCount() }}/3</span>
+                    <span class="gear-tile-ico"><mat-icon class="mi" svgIcon="uc-carapace"></mat-icon></span>
+                    <span class="gear-tile-title">Equipment</span>
+                    <span class="gear-tile-status">{{ wornCount() }} worn · stash {{ stashRows().length }}/{{ stashCap }}</span>
+                    @if (gearModLabel(); as m) {
+                      <span class="gear-tile-pill">{{ m }}</span>
+                    }
+                  </button>
+
+                  <button type="button" class="gear-tile magic" (click)="selectGear('magic')">
+                    <span class="gear-tile-count">{{ (you.grimoires ?? []).length }} books</span>
+                    <span class="gear-tile-ico"><mat-icon class="mi">menu_book</mat-icon></span>
+                    <span class="gear-tile-title">Magic</span>
+                    <span class="gear-tile-status">{{ equippedBook() ? equippedBook()!.name : 'No book open' }}</span>
+                    <span class="gear-tile-pill">{{ spellsReadyCount() }} ready</span>
+                  </button>
+
+                  <button type="button" class="gear-tile" (click)="selectGear('bag')">
+                    <span class="gear-tile-count">{{ you.bag.length }}/3</span>
+                    <span class="gear-tile-ico"><mat-icon class="mi" svgIcon="uc-duffel"></mat-icon></span>
+                    <span class="gear-tile-title">Bag</span>
+                    <span class="gear-tile-status">{{ you.bag.length ? you.bag.length + ' carried' : 'Empty' }}</span>
+                    @if (you.bag.length >= 3) {
+                      <span class="gear-tile-pill">full</span>
+                    }
+                  </button>
+                </section>
+              }
+
+              @case ('equip') {
+                <button type="button" class="gear-back" (click)="selectGear('home')">
+                  <mat-icon class="mi">chevron_left</mat-icon> Gear
+                </button>
             <!-- Equipment -->
             <section class="card">
               <h3>Equipment</h3>
@@ -299,6 +337,12 @@
               </div>
             </section>
 
+              }
+
+              @case ('bag') {
+                <button type="button" class="gear-back" (click)="selectGear('home')">
+                  <mat-icon class="mi">chevron_left</mat-icon> Gear
+                </button>
             <!-- Bag -->
             <section class="card">
               <h3>Bag <span class="muted">({{ you.bag.length }}/3)</span></h3>
@@ -334,6 +378,12 @@
               }
             </section>
 
+              }
+
+              @case ('magic') {
+                <button type="button" class="gear-back" (click)="selectGear('home')">
+                  <mat-icon class="mi">chevron_left</mat-icon> Gear
+                </button>
             <!-- Grimoire -->
             <section class="card">
               <h3>Grimoire <span class="muted">({{ (you.grimoires ?? []).length }} collected)</span></h3>
@@ -442,6 +492,8 @@
                 </p>
               }
             </section>
+              }
+            }
           }
           @case ('wardrobe') {
             <section class="card">
