@@ -280,6 +280,11 @@
   font-style: italic;
 }
 
+// Pushed to the right edge of the header row (opposite the "Stats" title).
+.stats-hint-end {
+  margin-left: auto;
+}
+
 .stats-body {
   display: flex;
   align-items: stretch;
