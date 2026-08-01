@@ -3252,7 +3252,7 @@ def _hazard(table, sid, doc, node):
         doc['spores'] = doc.get('spores', 0) - lost
         return {'type': 'hazard', 'hazardOutcome': kind,
                 'text': f'Swamp gas! You drop {lost} Spores in the scramble.',
-                'spores': -lost}
+                'sporesLost': lost}
     if kind == 'vines':
         if mire:
             return {'type': 'hazard', 'hazardOutcome': kind,
@@ -3298,7 +3298,7 @@ def _dungeon_hazard(table, sid, doc, node, biome, mire):
             lost //= 2
         lost = min(doc.get('spores', 0), lost)
         doc['spores'] = doc.get('spores', 0) - lost
-        out['spores'] = -lost
+        out['sporesLost'] = lost
         dmg = _apply_hp_loss(doc, round(doc['hp'] * (0.06 if mire else 0.12)))
         out['hp'] = -dmg
         out['text'] = (f"{h['text']} You lose {lost} Spores to the murk "

@@ -483,7 +483,7 @@
         <p class="event-text">{{ ev.text }}</p>
         @if (eventHasChips(ev)) {
           <div class="event-chips">
-            @if (ev.spores && ev.type !== 'loot') {
+            @if (ev.spores && ev.spores > 0 && ev.type !== 'loot') {
               <span class="chip gain"><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> +{{ ev.spores }}</span>
             }
             @if (ev.sporesLost) {

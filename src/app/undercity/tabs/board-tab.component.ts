@@ -1124,7 +1124,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected eventHasChips(ev: SpaceEvent): boolean {
     // Loot spores are shown inline in the grass scene, not as a chip — so a
     // plain forage doesn't render an empty chip row.
-    const spores = ev.spores && ev.type !== 'loot';
+    const spores = ev.spores && ev.spores > 0 && ev.type !== 'loot';
     return !!(spores || ev.sporesLost || ev.hp || ev.item || ev.gear || ev.materials?.moltings);
   }
 
