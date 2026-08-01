@@ -1479,6 +1479,37 @@ export function renderTerrain(
     }
   }
 
+  // 1b. God-rays — reserved for the living caves (theme.shafts) and sparse
+  // even there: two faint trapezoids of falling light per cave chamber.
+  for (const z of FLOOR_ZONES) {
+    const th = theme(z.region);
+    if (!th.shafts) continue;
+    const sRand = mulberry32(hashStr('shaft-' + z.region));
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const s of [
+      { dx: -z.r * 0.18, w: z.r * 0.5, a: 0.05 },
+      { dx: z.r * 0.55, w: z.r * 0.28, a: 0.03 },
+    ]) {
+      const topY = z.cy - z.r * 0.95;
+      const botY = z.cy + z.r * 0.55;
+      const x = z.cx + s.dx + (sRand() - 0.5) * 40;
+      const g = ctx.createLinearGradient(x, topY, x + s.w * 0.35, botY);
+      g.addColorStop(0, `rgba(${th.glow}, ${s.a})`);
+      g.addColorStop(0.7, `rgba(${th.glow}, ${s.a * 0.35})`);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(x - s.w * 0.14, topY);
+      ctx.lineTo(x + s.w * 0.14, topY);
+      ctx.lineTo(x + s.w * 0.62, botY);
+      ctx.lineTo(x - s.w * 0.62, botY);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   // 2. Stalagmite wall ring + central water are whole-world overworld scenery.
   if (isOverworld) {
     // Stalagmite wall ring hugging the layer border (the declared world size
@@ -1590,6 +1621,18 @@ export function renderTerrain(
     ctx.restore();
     rimCanvas.width = 0; // free the transient store immediately (iOS)
     rimCanvas.height = 0;
+  }
+
+  // 3d. Faint pulsing light-pool under every disc, in the biome glow color.
+  // These ride BoardCanvas.drawGlows (alpha 0.05–0.10, view-culled) for free.
+  for (const n of nodes) {
+    glowSpots.push({
+      x: n.x,
+      y: n.y,
+      r: 46,
+      color: theme(themeKeyFor(n)).glow,
+      phase: (hashStr(n.id) % 628) / 100,
+    });
   }
 
   // 4. Underground river: surfaces as a fall out of the Mosslight Cavern,
