@@ -1,0 +1,233 @@
+// Positioned against .plaza-scene (the host itself is not positioned, so the
+// absolute children resolve to the scene): FAB bottom-left, panel above it.
+
+.chat-fab {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 5;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #15170f;
+  border: 1px solid rgba(103, 194, 128, 0.55);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  color: #8cdcaa;
+  cursor: pointer;
+
+  .mi {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+.chat-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #c0392b;
+  border: 1px solid #15170f;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.chat-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.chat-panel {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 8;
+  width: min(340px, calc(100% - 20px));
+  max-height: calc(100% - 20px);
+  height: 420px;
+  display: flex;
+  flex-direction: column;
+  background: #15170f;
+  border: 1px solid rgba(103, 194, 128, 0.55);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  animation: uc-rise 0.15s ease;
+}
+
+.chat-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(103, 194, 128, 0.25);
+  color: #8cdcaa;
+
+  h3 {
+    flex: 1;
+    margin: 0;
+    font-size: 0.9rem;
+    color: #d8f3dc;
+  }
+}
+
+.chat-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #9aa79a;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.chat-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-msg {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+
+  &.own {
+    .chat-name {
+      color: #8cdcaa;
+    }
+    .chat-text {
+      background: rgba(74, 124, 89, 0.28);
+    }
+  }
+}
+
+.chat-avatar,
+.chat-avatar-fallback {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  image-rendering: pixelated;
+}
+
+.chat-avatar-fallback {
+  font-size: 24px;
+  color: #5a6b5a;
+}
+
+.chat-body {
+  min-width: 0;
+}
+
+.chat-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.chat-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #b7c9b7;
+}
+
+.chat-time {
+  font-size: 0.62rem;
+  color: #6b7a6b;
+}
+
+.chat-text {
+  margin-top: 2px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.82rem;
+  color: #d8f3dc;
+  overflow-wrap: anywhere;
+}
+
+.chat-empty {
+  margin: auto;
+  font-size: 0.82rem;
+  color: #9aa79a;
+}
+
+.chat-error {
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  color: #e8a0a0;
+}
+
+.chat-compose {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid rgba(103, 194, 128, 0.25);
+}
+
+.chat-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(103, 194, 128, 0.35);
+  background: #0e100a;
+  color: #d8f3dc;
+  font-size: 0.85rem;
+
+  &:focus {
+    outline: none;
+    border-color: rgba(103, 194, 128, 0.7);
+  }
+}
+
+.chat-send {
+  flex: none;
+  width: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(103, 194, 128, 0.55);
+  background: rgba(74, 124, 89, 0.35);
+  color: #d8f3dc;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+@keyframes uc-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

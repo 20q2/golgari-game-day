@@ -2,9 +2,30 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { UserService } from '../../services/user.service';
 import { PushService } from '../../services/push.service';
 import { UndercityApiService, UndercityApiError } from './undercity-api.service';
-import { ActionResponse, GameState, PublicPlayer, YouDoc } from './undercity-models';
+import { ActionResponse, ChatMessage, GameState, PublicPlayer, YouDoc } from './undercity-models';
 
 const POLL_INTERVAL_MS = 10_000;
+
+const CHAT_READ_KEY = 'uc-chat-read';
+/** Mirror of the server's CHAT_STATE_LIMIT (undercity_db.py). */
+const CHAT_KEEP = 50;
+
+function readChatLastRead(): string {
+  try {
+    return localStorage.getItem(CHAT_READ_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** Union of known + incoming messages by id, in time order, newest CHAT_KEEP.
+ * ISO timestamps compare lexicographically, so plain string sort is time sort. */
+function mergeChat(known: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] {
+  const ids = new Set(incoming.map((m) => m.id));
+  const merged = [...incoming, ...known.filter((m) => !ids.has(m.id))];
+  merged.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
+  return merged.slice(-CHAT_KEEP);
+}
 
 export interface RosterDiff {
   arrived: string[];
@@ -79,6 +100,45 @@ export class UndercityStateService {
   readonly wardrobe = computed(() => this._state()?.wardrobe ?? null);
   readonly result = computed(() => this._state()?.result ?? null);
   readonly hallOfFame = computed(() => this._state()?.hallOfFame ?? []);
+  readonly chat = computed(() => this._state()?.chat ?? []);
+
+  /** ISO ts of the newest chat message the player has seen (panel open =
+   * seen). Persisted so a reload doesn't re-badge the whole backlog. */
+  private readonly chatLastRead = signal<string>(readChatLastRead());
+
+  /** Unread badge count: others' messages newer than the last-read mark. */
+  readonly chatUnread = computed(() => {
+    const last = this.chatLastRead();
+    const own = this.userService.userId();
+    return this.chat().filter((m) => m.ts > last && m.userId !== own).length;
+  });
+
+  /** Advance the last-read mark to the newest message (chat panel is open). */
+  markChatRead(): void {
+    const msgs = this.chat();
+    if (!msgs.length) return;
+    const newest = msgs[msgs.length - 1].ts;
+    if (newest <= this.chatLastRead()) return;
+    this.chatLastRead.set(newest);
+    try {
+      localStorage.setItem(CHAT_READ_KEY, newest);
+    } catch {
+      /* storage blocked — badge resets on reload, harmless */
+    }
+  }
+
+  /** Post a chat message; the server echoes it back and it's appended locally
+   * so the sender sees it immediately instead of after the next poll. */
+  async sendChat(text: string): Promise<void> {
+    const resp = await this.action('chat', { text });
+    if (resp.chat) this.appendChat(resp.chat);
+  }
+
+  private appendChat(msg: ChatMessage): void {
+    const cur = this._state();
+    if (!cur || (cur.chat ?? []).some((m) => m.id === msg.id)) return;
+    this._state.set({ ...cur, chat: [...(cur.chat ?? []), msg] });
+  }
 
   /** Which facility/decision modal is open, if any — survives BoardTabComponent
    * being torn down and rebuilt when the player switches tabs. */
@@ -151,6 +211,10 @@ export class UndercityStateService {
         next.you = cur.you;
       }
       this.computeDiff(this._state()?.players ?? [], next.players ?? []);
+      // Chat merges by id instead of being replaced wholesale: a poll racing
+      // DynamoDB's eventually-consistent CHAT# query would otherwise briefly
+      // drop a just-sent message that was appended optimistically.
+      next.chat = mergeChat(cur?.chat ?? [], next.chat ?? []);
       this._state.set(next);
       if (next.you && !this.pushPrompted) {
         // Once the player has a creature they're committed to tonight — ask to

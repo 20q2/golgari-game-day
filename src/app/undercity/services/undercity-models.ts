@@ -194,6 +194,16 @@ export interface YouDoc {
   ver: number;
 }
 
+/** One plaza-chat message (mirrors the server's CHAT# items). `ts` is an ISO
+ * millisecond timestamp (UTC, no suffix) — lexicographic order is time order. */
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  username: string;
+  text: string;
+  ts: string;
+}
+
 export interface GameEvent {
   type: string;
   text: string;
@@ -303,6 +313,8 @@ export interface GameState {
    *  or a dead-with-countdown stub while this window's monster is down. */
   enraged?: EnragedMonster | null;
   events: GameEvent[];
+  /** Plaza chat — the newest 50 messages, oldest first. */
+  chat?: ChatMessage[];
   result: SeasonResult | null;
   wardrobe?: Wardrobe;
   hallOfFame?: HallOfFameNight[];
@@ -720,6 +732,8 @@ export interface ActionResponse {
   combat?: CombatRound | CombatFlee;
   peek?: CombatPeek;
   cast?: CastResult;
+  /** The message a `chat` action just created, echoed for instant local append. */
+  chat?: ChatMessage;
   target?: { userId: string; username: string; formName: string; creatureName?: string };
   winner?: string;
   stolen?: number;

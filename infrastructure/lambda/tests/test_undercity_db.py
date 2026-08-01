@@ -1572,6 +1572,73 @@ def test_status_visible_in_peer_roster(table):
     assert alex['status'] == 'Come fight me'
 
 
+# ── Plaza chat ───────────────────────────────────────────────────────────────
+
+def test_chat_posts_and_reads_back(table):
+    act(table, 'join', user='user-alex', name='Alex', starter='saproling', home='cavern')
+    act(table, 'join', user='user-bea', name='Bea', starter='pest', home='bone')
+    status, resp = act(table, 'chat', text='hello swamp')
+    assert status == 200
+    msg = resp['chat']
+    assert msg['text'] == 'hello swamp'
+    assert msg['userId'] == 'user-alex' and msg['username'] == 'Alex'
+    assert msg['id'] and msg['ts']
+    # Bea sees it in her state fetch.
+    _, state = db.handle_state(table, {'userId': 'user-bea'})
+    assert [m['text'] for m in state['chat']] == ['hello swamp']
+    assert state['chat'][0]['username'] == 'Alex'
+    assert 'pk' not in state['chat'][0] and 'sk' not in state['chat'][0]
+
+
+def test_chat_normalizes_and_caps(table):
+    act(table, 'join', starter='saproling', home='cavern')
+    status, resp = act(table, 'chat', text='  a\n\t b  ' + 'x' * 300)
+    assert status == 200
+    saved = resp['chat']['text']
+    assert saved.startswith('a b')
+    assert len(saved) == db.CHAT_MAX_LEN
+    assert '\n' not in saved and '\t' not in saved
+
+
+def test_chat_rejects_empty(table):
+    act(table, 'join', starter='saproling', home='cavern')
+    status, _ = act(table, 'chat', text='   \n ')
+    assert status == 400
+
+
+def test_chat_requires_join(table):
+    status, _ = act(table, 'chat', text='hi')
+    assert status == 409
+
+
+def test_chat_allowed_during_battle(table):
+    # Chat is a meta action like set-status: a pending fight must not gag you.
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['battle'] = {'kind': 'wild'}
+    db._put_player(table, doc)
+    status, _ = act(table, 'chat', text='send help')
+    assert status == 200
+
+
+def test_chat_state_caps_at_newest_50_chronological(table):
+    act(table, 'join', starter='saproling', home='cavern')
+    pk = db._season_pk(_sid(table))
+    # Seed 55 messages directly with ISO-ms timestamps (the real writer's
+    # format) so string-ordered sks match chronological order.
+    for i in range(55):
+        ts = f'2026-07-31T00:00:00.{i:03d}'
+        table.put_item(Item={'pk': pk, 'sk': f'CHAT#{ts}#{i:06x}',
+                             'id': f'{ts}#{i:06x}', 'userId': 'user-alex',
+                             'username': 'Alex', 'text': f'm{i}', 'ts': ts})
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    texts = [m['text'] for m in state['chat']]
+    assert len(texts) == 50
+    # Oldest 5 dropped; the rest arrive oldest-first for straight rendering.
+    assert texts[0] == 'm5' and texts[-1] == 'm54'
+
+
 def _sid(table):
     return db._get(table, db.META_PK, 'CURRENT')['seasonId']
 

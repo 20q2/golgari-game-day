@@ -12,6 +12,7 @@ Item layout (existing single table, pk/sk strings):
   UNDERCITY#{sid}           / PLAYER#{uid}   season player doc
   UNDERCITY#{sid}           / SPACE#{node}   snare / spore-pile state
   UNDERCITY#{sid}           / EVENT#{ts}#{x} Grapevine log entries
+  UNDERCITY#{sid}           / CHAT#{ts}#{x}  plaza chat messages
   UNDERCITY#{sid}           / RESULT         final scoreboard
   UNDERCITY#HALLOFFAME      / NIGHT#{sid}    per-night archive
   UNDERCITYUSER#{uid}       / META           permanent wardrobe/seals/lifetime
@@ -1392,7 +1393,8 @@ def handle_state(table, query_params):
 
     if not sid or not config:
         return 200, {'season': None, 'you': None, 'players': [], 'snares': [],
-                     'events': [], 'result': None, 'hallOfFame': _hall_of_fame(table)}
+                     'events': [], 'chat': [], 'result': None,
+                     'hallOfFame': _hall_of_fame(table)}
 
     nodes = _season_map(table, sid)
     pk = _season_pk(sid)
@@ -1406,6 +1408,14 @@ def handle_state(table, query_params):
         ExpressionAttributeValues={':pk': pk, ':sk': 'EVENT#'},
         ScanIndexForward=False, Limit=150)
     events = [_clean(i) for i in ev['Items']]
+
+    # Plaza chat: newest CHAT_STATE_LIMIT, flipped back to chronological. CHAT#
+    # sorts before PLAYER#, so (like FIRST#/FOG#) it needs its own query.
+    ch = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': pk, ':sk': 'CHAT#'},
+        ScanIndexForward=False, Limit=CHAT_STATE_LIMIT)
+    chat = [_clean(i) for i in ch['Items']][::-1]
 
     mk = table.query(
         KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
@@ -1537,6 +1547,7 @@ def handle_state(table, query_params):
         'enraged': _enraged_public(table, sid),
         'guardians': _guardian_pools(table, sid),
         'events': [{k: v for k, v in e.items() if k not in ('pk', 'sk')} for e in events],
+        'chat': [{k: v for k, v in m.items() if k not in ('pk', 'sk')} for m in chat],
         'result': result if config.get('status') == 'ended' else None,
         'battle': battle_resume,
     }
@@ -1651,7 +1662,7 @@ def handle_action(table, body):
         'trophy-choose': _trophy_choose,
         'buy': _buy, 'use-item': _use_item, 'shrine': _shrine, 'warp': _warp,
         'gamble': _gamble, 'poke': _poke, 'high-five': _high_five, 'customize': _customize,
-        'set-status': _set_status,
+        'set-status': _set_status, 'chat': _chat,
         'drop-item': _drop_item,
         'attack-boss': _attack_boss, 'world-engage': _world_engage,
         'trade': _trade, 'dig': _dig, 'strike': _strike,
@@ -1679,7 +1690,7 @@ def handle_action(table, body):
 # Actions permitted while a battle is in progress (combat + read-only/meta).
 _BATTLE_ALLOWED_ACTIONS = frozenset({
     'combat-round', 'combat-peek', 'combat-flee',
-    'set-stance', 'spend-stat', 'customize', 'set-status', 'ack-events',
+    'set-stance', 'spend-stat', 'customize', 'set-status', 'chat', 'ack-events',
 })
 
 
@@ -1695,6 +1706,21 @@ def _normalize_status(raw):
     if not isinstance(raw, str):
         return ''
     return ' '.join(raw.split())[:STATUS_MAX_LEN]
+
+
+# Max length of one plaza-chat message (mirror: CHAT_MAX in
+# src/app/undercity/tabs/plaza-chat.component.ts). Same normalization as status.
+CHAT_MAX_LEN = 140
+
+# Newest chat messages a state fetch returns (chronological). Older messages
+# simply age out of view — one-night seasons never need pagination.
+CHAT_STATE_LIMIT = 50
+
+
+def _normalize_chat(raw):
+    if not isinstance(raw, str):
+        return ''
+    return ' '.join(raw.split())[:CHAT_MAX_LEN]
 
 
 def _roll_meta(doc):
@@ -2072,6 +2098,7 @@ def _admin_export(table, sid, payload):
         'exportedAt': _now(),
         'players': _all('PLAYER#'),
         'events': _all('EVENT#'),
+        'chat': _all('CHAT#'),
         'firsts': _all('FIRST#'),
         'fogReveals': _all('FOG#'),
     }
@@ -6318,3 +6345,19 @@ def _set_status(table, sid, doc, payload):
     if conflict:
         return conflict
     return _ok(doc)
+
+
+def _chat(table, sid, doc, payload):
+    """Post one plaza-chat message. Append-only like the Grapevine (its own
+    CHAT# namespace so banter never crowds the event log); the player doc is
+    untouched, so there's no version guard to lose. The created message is
+    echoed back so the client can append it without waiting for a poll."""
+    text = _normalize_chat(payload.get('text', ''))
+    if not text:
+        return _err('Say something first.')
+    ts = _now_ms()
+    rand = uuid.uuid4().hex[:6]
+    msg = {'id': f'{ts}#{rand}', 'userId': doc['userId'],
+           'username': doc.get('username', '?'), 'text': text, 'ts': ts}
+    table.put_item(Item={'pk': _season_pk(sid), 'sk': f'CHAT#{ts}#{rand}', **msg})
+    return _ok(doc, chat=msg)
