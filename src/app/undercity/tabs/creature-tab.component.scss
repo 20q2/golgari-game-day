@@ -1538,3 +1538,132 @@
 .bag-row--tap { cursor: pointer; }
 .bag-chevron,
 .gear-chevron { opacity: 0.5; }
+
+// ── Gear landing hub ──────────────────────────────────────────────────────
+.gear-hub {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.gear-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 150px;
+  padding: 15px 14px;
+  text-align: left;
+  color: #dfe7df;
+  background: linear-gradient(165deg, #121810 0%, #0d130b 100%);
+  border: 1px solid #22301d;
+  border-radius: 16px;
+  cursor: pointer;
+  transition:
+    border-color 0.16s,
+    transform 0.09s;
+
+  &:hover {
+    border-color: #3a5030;
+    transform: translateY(-2px);
+  }
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.gear-tile-ico {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-bottom: auto;
+  color: #9ac26e;
+  background: #0e160b;
+  border: 1px solid #26331f;
+  border-radius: 13px;
+
+  .mi {
+    width: 26px;
+    height: 26px;
+    font-size: 26px;
+  }
+}
+
+.gear-tile-count {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a9a8a;
+  font-variant-numeric: tabular-nums;
+}
+
+.gear-tile-title {
+  margin-top: 12px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.gear-tile-status {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #8a9a8a;
+}
+
+.gear-tile-pill {
+  align-self: flex-start;
+  margin-top: 9px;
+  padding: 3px 9px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #b7e4c7;
+  background: rgba(107, 174, 117, 0.12);
+  border: 1px solid #2a3f24;
+  border-radius: 999px;
+}
+
+.gear-tile.magic {
+  border-color: #2c2547;
+
+  &:hover {
+    border-color: #4a3d75;
+  }
+  .gear-tile-ico {
+    color: #a78bfa;
+    background: #150f26;
+    border-color: #382c5c;
+  }
+  .gear-tile-pill {
+    color: #c4b5fd;
+    background: rgba(167, 139, 250, 0.1);
+    border-color: #382c5c;
+  }
+}
+
+.gear-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 7px 12px 7px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #9ac26e;
+  background: transparent;
+  border: 1px solid #263223;
+  border-radius: 10px;
+  cursor: pointer;
+
+  &:hover {
+    background: #17200f;
+    border-color: #33472b;
+  }
+  .mi {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
