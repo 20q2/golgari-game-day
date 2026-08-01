@@ -33,6 +33,14 @@ interface Mote {
   violet: boolean;
 }
 
+/** A barely-there drifting fog patch, wrapping east across the world. */
+interface FogBank {
+  x: number;
+  y: number;
+  r: number;
+  phase: number;
+}
+
 /** Particle look per context: overworld default + one per dungeon biome. */
 interface AmbientStyle {
   colors: [string, string]; // [common, rare] as 'r, g, b'
@@ -58,6 +66,10 @@ export interface Viewport {
 
 export class BoardAmbient {
   private motes: Mote[] = [];
+  /** How many motes actually draw — the full 150 on the overworld reads as
+   *  ~20 per screen; a small dungeon pocket caps lower or it's a blizzard. */
+  private activeMotes = 150;
+  private fog: FogBank[] = [];
   private rand = mulberry32(hashStr('undercity-ambient'));
   private styleKey = 'overworld';
 
@@ -69,13 +81,21 @@ export class BoardAmbient {
   private batNextAt = 0;
 
   constructor(private map: BoardMap) {
-    for (let i = 0; i < 42; i++) {
+    for (let i = 0; i < 150; i++) {
       this.motes.push({
         x: 60 + this.rand() * (map.worldW - 120),
         y: 100 + this.rand() * (map.worldH - 160),
         r: 1.5 + this.rand() * 1.8,
         phase: this.rand() * 100,
         violet: this.rand() < 0.3,
+      });
+    }
+    for (let i = 0; i < 8; i++) {
+      this.fog.push({
+        x: this.rand() * map.worldW,
+        y: 120 + this.rand() * (map.worldH - 240),
+        r: 170 + this.rand() * 120,
+        phase: this.rand() * Math.PI * 2,
       });
     }
   }
@@ -90,10 +110,15 @@ export class BoardAmbient {
     const next = styleKey in AMBIENT_STYLES ? styleKey : 'overworld';
     if (next === this.styleKey) return;
     this.styleKey = next;
+    this.activeMotes = bounds ? 48 : 150;
     if (bounds) {
       for (const m of this.motes) {
         m.x = bounds.x + 60 + this.rand() * Math.max(1, bounds.w - 120);
         m.y = bounds.y + 100 + this.rand() * Math.max(1, bounds.h - 160);
+      }
+      for (const f of this.fog) {
+        f.x = bounds.x + this.rand() * Math.max(1, bounds.w);
+        f.y = bounds.y + 80 + this.rand() * Math.max(1, bounds.h - 160);
       }
     }
   }
@@ -103,7 +128,22 @@ export class BoardAmbient {
     const t = now * 0.001;
     const style = AMBIENT_STYLES[this.styleKey];
     ctx.save();
-    for (const m of this.motes) {
+    // Barely-there fog banks drifting east, wrapping across the world.
+    ctx.globalCompositeOperation = 'lighter';
+    const span = this.map.worldW + 600;
+    for (const f of this.fog) {
+      const x = ((f.x + t * 8 + 300) % span) - 300;
+      const y = f.y + Math.sin(t * 0.3 + f.phase) * 18;
+      if (x < view.x0 - f.r || x > view.x1 + f.r || y < view.y0 - f.r || y > view.y1 + f.r) continue;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, f.r);
+      g.addColorStop(0, `rgba(${style.colors[0]}, 0.022)`);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - f.r, y - f.r, f.r * 2, f.r * 2);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < this.activeMotes; i++) {
+      const m = this.motes[i];
       const cycle = (t * Math.abs(style.riseSpeed) + m.phase * 47) % 240;
       const y = m.y - (style.riseSpeed >= 0 ? cycle : -cycle);
       const x = m.x + Math.sin(t * 0.5 + m.phase) * style.wobble;
