@@ -1486,6 +1486,9 @@ export class BoardCanvas {
     this.drawInfo();
 
     ctx.restore();
+
+    // Screen-space vignette over the whole scene (transform is the dpr base).
+    this.drawVignette();
   }
 
   /** True when a node belongs to the layer currently on screen. */
@@ -1537,6 +1540,27 @@ export class BoardCanvas {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(v, 0, 0);
     ctx.restore();
+  }
+
+  /** Soft screen-space vignette so the cave darkens away from the action.
+   *  Gradient is cached per viewport size — one fillRect per frame. */
+  private vignetteCache: { grad: CanvasGradient; w: number; h: number } | null = null;
+  private drawVignette(): void {
+    const ctx = this.ctx;
+    if (
+      !this.vignetteCache ||
+      this.vignetteCache.w !== this.viewW ||
+      this.vignetteCache.h !== this.viewH
+    ) {
+      const cx = this.viewW / 2;
+      const cy = this.viewH / 2;
+      const g = ctx.createRadialGradient(cx, cy, Math.min(cx, cy) * 0.9, cx, cy, Math.hypot(cx, cy) * 1.05);
+      g.addColorStop(0, 'rgba(4, 3, 6, 0)');
+      g.addColorStop(1, 'rgba(4, 3, 6, 0.32)');
+      this.vignetteCache = { grad: g, w: this.viewW, h: this.viewH };
+    }
+    ctx.fillStyle = this.vignetteCache.grad;
+    ctx.fillRect(0, 0, this.viewW, this.viewH);
   }
 
   /** Pulsing radial glows over the terrain's registered spots (river, flora, portals). */
