@@ -45,6 +45,16 @@
     font-size: 0.82rem;
     color: #9aa79a;
   }
+
+  // Poke on cooldown: countdown wheel + label in place of the button.
+  .poke-cd {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(242, 169, 0, 0.8);
+  }
 }
 
 @keyframes uc-rise {
@@ -331,6 +341,28 @@ button.mat-chip {
   &.rare { color: #5fd18a; }
   &.legendary { color: #fbbf24; }
   &.mythic { color: #c084fc; }
+}
+
+// Seller credit, pulled up beside the item name as a compact chip.
+.seller-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+  padding: 1px 6px 1px 4px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #b7c9b7;
+  background: rgba(74, 124, 89, 0.18);
+  border-radius: 999px;
+  vertical-align: middle;
+
+  mat-icon {
+    font-size: 12px;
+    width: 12px;
+    height: 12px;
+    line-height: 12px;
+  }
 }
 
 .forge-tag {

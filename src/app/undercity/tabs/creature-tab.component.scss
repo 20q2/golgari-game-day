@@ -648,15 +648,25 @@
 
     .perk-node-thr {
       flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
       min-width: 22px;
       text-align: center;
       font-size: 0.68rem;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       color: #c9b458;
-      padding: 1px 6px;
+      padding: 1px 7px 1px 5px;
       border-radius: 999px;
       background: rgba(201, 180, 88, 0.14);
+    }
+
+    .perk-node-icon {
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+      line-height: 15px;
     }
     .perk-node-body {
       display: flex;

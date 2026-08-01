@@ -15,14 +15,17 @@
           }
         </span>
         @if (sel.userId !== store.ownUserId) {
-          <button
-            class="uc-btn uc-btn-primary"
-            [disabled]="busy() || sel.pokedRecently"
-            (click)="poke()"
-          >
-            <mat-icon class="mi">touch_app</mat-icon>
-            {{ sel.pokedRecently ? 'Poked recently' : 'Poke (gift a roll)' }}
-          </button>
+          @if (sel.pokeCooldownUntil) {
+            <span class="poke-cd">
+              <app-uc-poke-wheel [until]="sel.pokeCooldownUntil" />
+              Poked recently
+            </span>
+          } @else {
+            <button class="uc-btn uc-btn-primary" [disabled]="busy()" (click)="poke()">
+              <mat-icon class="mi">touch_app</mat-icon>
+              Poke (gift a roll)
+            </button>
+          }
         } @else {
           <div class="status-editor">
             <label class="status-label">Your status</label>
@@ -186,7 +189,8 @@
                 @if (l.view!.rarity) {
                   <span class="rarity-badge {{ l.view!.rarity!.key }}">{{ l.view!.rarity!.label }}</span>
                 }
-                <em>by {{ l.sellerName }} · {{ l.view!.desc }}</em>
+                <span class="seller-chip"><mat-icon class="mi">person</mat-icon>{{ l.sellerName }}</span>
+                <em>{{ l.view!.desc }}</em>
               </span>
               @if (l.own) {
                 <button class="uc-btn" [disabled]="busy()" (click)="marketCancel(l.id)">Cancel</button>

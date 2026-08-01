@@ -204,15 +204,12 @@
       </div>
     }
 
-    <!-- Escalation: warn before/while the fight starts hitting harder -->
-    @if (!done() && !resolving() && introDone() && collapseState(); as cs) {
-      <div class="collapse-warn" [class.active]="cs === 'active'">
+    <!-- Escalation: warn before the fight starts hitting harder. The active-state
+         "turning desperate" line is intentionally suppressed. -->
+    @if (!done() && !resolving() && introDone() && collapseState() === 'imminent') {
+      <div class="collapse-warn">
         <mat-icon class="mi">warning</mat-icon>
-        @if (cs === 'active') {
-          <span>The fight is turning desperate — every blow lands harder now.</span>
-        } @else {
-          <span>Tempers fray — blows start hitting harder next round.</span>
-        }
+        <span>Tempers fray — blows start hitting harder next round.</span>
       </div>
     }
 

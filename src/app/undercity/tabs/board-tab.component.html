@@ -53,7 +53,7 @@
   <app-uc-action-band>
     <!-- Roll-regen cooldown: its own small status line pinned to the band's top-left -->
     @if (nextRollLabel(); as nrl) {
-      <div class="band-status">next roll in {{ nrl }}</div>
+      <div class="band-status">new rolls in {{ nrl }}</div>
     }
     <!-- PvP: someone shares your space — Battle stays available alongside Roll -->
     @if (occupantsHere().length && !store.you()?.pendingMove) {
@@ -257,8 +257,9 @@
     }
   </app-uc-action-band>
 
-  <!-- Respawn gate choice (after a compost) -->
-  @if (store.you()?.pendingRespawn; as pr) {
+  <!-- Respawn gate choice (after a compost). Held until the battle-result dialog
+       is dismissed so the DEFEAT screen reads before the Composted gate takes over. -->
+  @if (!liveBattle() && store.you()?.pendingRespawn; as pr) {
     <div class="uc-modal-backdrop">
       <div class="uc-modal" (click)="$event.stopPropagation()">
         <h3><mat-icon class="mi">skull</mat-icon> Composted</h3>
@@ -343,29 +344,29 @@
         @if (bridgeTier() >= 3) {
           <p class="modal-sub">
             The Nyx Weaver skitters back in alarm. &ldquo;No &mdash; <em>no.</em>
-            A beast your size would rip my threads to tatters. This silk will
-            <em>never</em> hold you. Away!&rdquo;
+            A beast your size would rip my threads to tatters. No toll could mend
+            what you'd tear. This silk will <em>never</em> hold you. Away!&rdquo;
           </p>
         } @else if (bridgeTier() === 2 && !bridgeCommittable()) {
           <p class="modal-sub">
-            The Nyx Weaver plucks a taut strand. &ldquo;Fifty spores to reinforce
-            the silk for a grown-up &mdash; or find another way across.&rdquo;
-            You can't afford the mending fee. (Little ones cross free; dragons
-            and lich lords would tear the web apart.)
+            The Nyx Weaver plucks a taut strand. &ldquo;A grown-up frays my silk
+            &mdash; fifty spores to reinforce it, and not a spore less.&rdquo; Your
+            purse comes up short. &ldquo;Find another way across &mdash; and mind
+            you don't grow any bigger, or no toll will save the web.&rdquo;
           </p>
         } @else if (bridgeTier() === 2) {
           <p class="modal-sub">
             The Nyx Weaver weighs you against her threads. &ldquo;A grown-up will
             strain my silk &mdash; <strong>50 spores</strong> to reinforce the
-            strands and see you across.&rdquo; (Little ones cross free; dragons
-            and lich lords would tear the web apart.)
+            strands and see you across. Grow much larger, mind, and no toll will
+            hold the web together.&rdquo;
           </p>
         } @else {
           <p class="modal-sub">
             The Nyx Weaver clacks her fangs in welcome. &ldquo;Light as a leaf
-            &mdash; my silk will bear you with ease, little one. Skitter
-            across!&rdquo; (Grown-ups pay 50 spores to reinforce the strands;
-            dragons and lich lords would snap them outright.)
+            &mdash; my silk will bear you with ease, little one. Skitter across!
+            When you're grown you'll owe me a few spores for the mending &mdash;
+            but that's a worry for a bigger day.&rdquo;
           </p>
         }
         @if (bridgeDest(); as dest) {

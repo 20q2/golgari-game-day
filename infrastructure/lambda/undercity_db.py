@@ -1591,6 +1591,11 @@ def _public_player(p):
         # anyone) — the client dims the poke button and shows "Poked recently".
         'pokedRecently': bool(p.get('pokeCooldownUntil')
                               and p['pokeCooldownUntil'] > _now()),
+        # The raw timestamp (UTC ISO, no tz suffix), surfaced only while the
+        # timer is running so the client can draw a live countdown wheel.
+        'pokeCooldownUntil': (p['pokeCooldownUntil']
+                              if p.get('pokeCooldownUntil')
+                              and p['pokeCooldownUntil'] > _now() else None),
     }
 
 

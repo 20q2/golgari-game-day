@@ -146,8 +146,6 @@
       transform: translateY(-1px);
     }
 
-    // Poked recently: greyed and locked until the cooldown lapses.
-    &.poked,
     &:disabled {
       cursor: default;
       opacity: 0.4;

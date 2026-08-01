@@ -23,16 +23,19 @@
           </span>
           <span class="lb-renown">{{ p.renown }}</span>
           @if (p.userId !== store.ownUserId) {
-            <button
-              class="lb-poke"
-              [class.poked]="pokedRecently(p.userId)"
-              [disabled]="busy() || pokedRecently(p.userId)"
-              [title]="pokedRecently(p.userId) ? 'Poked recently' : 'Poke — gift a roll'"
-              [attr.aria-label]="'Poke ' + p.username"
-              (click)="poke(p.userId, p.username)"
-            >
-              <mat-icon class="mi">touch_app</mat-icon>
-            </button>
+            @if (p.pokeCooldownUntil) {
+              <app-uc-poke-wheel [until]="p.pokeCooldownUntil" />
+            } @else {
+              <button
+                class="lb-poke"
+                [disabled]="busy()"
+                title="Poke — gift a roll"
+                [attr.aria-label]="'Poke ' + p.username"
+                (click)="poke(p.userId, p.username)"
+              >
+                <mat-icon class="mi">touch_app</mat-icon>
+              </button>
+            }
           } @else {
             <span class="lb-poke-spacer"></span>
           }

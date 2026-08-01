@@ -1500,7 +1500,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const at = this.store.you()?.nextRollAt;
     if (!at || this.debugMode()) return null;
     const min = Math.max(1, Math.ceil((new Date(at + 'Z').getTime() - Date.now()) / 60_000));
-    return min <= 1 ? 'under a minute' : `${min} min`;
+    return min <= 1 ? '<1m' : `${min}m`;
   }
 
   async roll(picked?: number, opts?: { blink?: boolean; reroll?: boolean }): Promise<void> {
@@ -2108,14 +2108,23 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     } else if (ev.type === 'vault_lock') {
       this.openVault(ev);
     } else if (ev.type === 'mystery') {
-      // Spin the reveal reel first; the event card opens once it lands.
+      // Spin the reveal reel first; the event card opens once it lands. Hold the
+      // page's level-up fanfare until that card is read (released in
+      // closeSpaceModal) so it can't bury the reveal.
+      this.store.levelUpHold.set(true);
       this.pendingMysteryEv = ev;
       this.reelSymbol.set(this.mysterySymbol(ev));
     } else if (ev.type === 'hazard') {
       // Spin the hazard wheel first; the effect card opens once it lands.
+      this.store.levelUpHold.set(true);
       this.pendingHazardEv = ev;
       this.hazardWheel.set(this.hazardWheelTarget(ev));
     } else {
+      // A landing reward/info card (item cache, forage, etc.). A space that
+      // grants XP can push you over a level threshold in the same action; defer
+      // the page's level-up celebration until the player dismisses this card,
+      // otherwise the fanfare paints over the "what you found" explanation.
+      this.store.levelUpHold.set(true);
       this.spaceModal.set(ev);
     }
   }
@@ -2125,7 +2134,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
    *  straight into the interactive battle UI. */
   async engageWorldEvent(): Promise<void> {
     const preHp = this.store.you()?.hp ?? 0;
-    this.spaceModal.set(null);
+    // closeSpaceModal (not a raw clear) so the level-up hold this prompt card set
+    // is released before we drop into the battle path, which manages its own hold.
+    this.closeSpaceModal();
     try {
       const resp = await this.store.action('world-engage', {});
       if (resp.spaceEvent) this.routeSpaceEvent(resp.spaceEvent, preHp);
@@ -2699,6 +2710,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   private finishLiveBattle(ev: SpaceEvent): void {
     const you = this.store.you();
+    // The fight resolved server-side, so `you` already carries the post-battle
+    // level (and HP), and the unawaited refresh in store.action will soon clear
+    // `pendingBattle` — flipping the page's `inBattle` false while the results
+    // dialog is still open. Hold the level-up fanfare now, synchronously (before
+    // the watcher effect flushes), so it can't paint over the battle result.
+    // Released in closeLiveBattle once the player dismisses the results.
+    this.store.levelUpHold.set(true);
     const outcome = ev.battle?.outcome ?? 'timeout';
     const npcHp = ev.battle?.defenderHp ?? 0;
     // The killing round isn't returned as a `combat` payload — its blows live in
@@ -2743,12 +2761,23 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     if (raid) this.awayModal.set([raid]);
     if (biome) this.openSigilCelebration(biome);
     this.openPendingTrophy();
+    // Release the fanfare hold set when the fight ended (finishLiveBattle). If a
+    // sigil / raid summary is now up, this keeps it deferred until those close
+    // (their dismiss handlers call maybeReleaseLevelUp); otherwise the banked
+    // level-up fanfare fires now — after the results dialog is gone.
+    this.maybeReleaseLevelUp();
   }
 
   /** Release the level-up hold once every higher-priority celebration is gone,
    * letting the page flush any banked level-up fanfare. */
   private maybeReleaseLevelUp(): void {
-    if (!this.awayModal() && !this.sigilCelebration()) {
+    if (
+      !this.awayModal() &&
+      !this.sigilCelebration() &&
+      !this.spaceModal() &&
+      !this.reelSymbol() &&
+      !this.hazardWheel()
+    ) {
       this.store.levelUpHold.set(false);
     }
   }
@@ -2782,6 +2811,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   closeSpaceModal(): void {
     this.spaceModal.set(null);
+    // The card is gone — let any level-up fanfare deferred while it was open now
+    // fire (no-op if a higher-priority celebration is still queued).
+    this.maybeReleaseLevelUp();
   }
 
   closeFacilities(): void {

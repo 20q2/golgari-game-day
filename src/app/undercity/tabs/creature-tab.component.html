@@ -168,7 +168,10 @@
                           [class.lit]="node.lit"
                           [title]="node.perk.name + ' — ' + node.perk.blurb"
                         >
-                          <span class="perk-node-thr">{{ node.threshold }}</span>
+                          <span class="perk-node-thr">
+                            <mat-icon class="mi perk-node-icon" [svgIcon]="statInfo[node.perk.track].icon"></mat-icon>
+                            {{ node.threshold }}
+                          </span>
                           <span class="perk-node-body">
                             <span class="perk-node-name">{{ node.perk.name }}</span>
                             <span class="perk-node-blurb">{{ node.perk.blurb }}</span>

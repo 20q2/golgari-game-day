@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { HostPanelComponent } from '../host/host-panel.component';
+import { PokeWheelComponent } from './poke-wheel.component';
 import { formSprite } from '../data/species';
 import { getRecoloredWithHatDataUrl, preloadAll } from '../engine/sprite-engine';
 
@@ -25,7 +26,7 @@ const EVENT_ICONS: Record<string, string> = {
 @Component({
   selector: 'app-undercity-log-tab',
   standalone: true,
-  imports: [CommonModule, MatIconModule, HostPanelComponent],
+  imports: [CommonModule, MatIconModule, HostPanelComponent, PokeWheelComponent],
   templateUrl: './log-tab.component.html',
   styleUrls: ['./log-tab.component.scss'],
 })
@@ -45,12 +46,6 @@ export class LogTabComponent {
 
   eventIcon(type: string): string {
     return EVENT_ICONS[type] ?? 'spa';
-  }
-
-  /** True while this creature's poke timer is running (poked recently by anyone),
-   *  so nobody can poke them yet. */
-  pokedRecently(userId: string): boolean {
-    return this.store.players().find((p) => p.userId === userId)?.pokedRecently ?? false;
   }
 
   /** Poke a player straight from the leaderboard — same gift-a-roll action as

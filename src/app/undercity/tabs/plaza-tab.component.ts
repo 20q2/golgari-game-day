@@ -31,6 +31,7 @@ import { SPELL_MAP } from '../data/spells';
 import { affordReason, containerFullReason, materialReason } from '../data/block-reasons';
 import { UcActionBandComponent } from './action-band.component';
 import { UcChatComponent } from './plaza-chat.component';
+import { PokeWheelComponent } from './poke-wheel.component';
 
 /**
  * A run of the upgraded description. `same` is unchanged carry-over text; a change
@@ -135,7 +136,14 @@ function descDiff(a: string, b: string): DescSeg[] {
 @Component({
   selector: 'app-undercity-plaza-tab',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, UcActionBandComponent, UcChatComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatIconModule,
+    UcActionBandComponent,
+    UcChatComponent,
+    PokeWheelComponent,
+  ],
   templateUrl: './plaza-tab.component.html',
   styleUrls: ['./plaza-tab.component.scss'],
 })
@@ -447,6 +455,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       evolveGlow: evolveGlowActive(p as { evolvedAt?: string }),
       status: p.status ?? '',
       pokedRecently: p.pokedRecently ?? false,
+      pokeCooldownUntil: p.pokeCooldownUntil ?? null,
     };
   }
 

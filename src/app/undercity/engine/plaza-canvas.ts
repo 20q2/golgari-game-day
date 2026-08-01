@@ -34,6 +34,9 @@ export interface PlazaCreature {
   /** You poked this creature recently (poke still on cooldown) — draws a small
    *  badge so you can see at a glance who you've already greeted. */
   pokedRecently?: boolean;
+  /** The poke timer (UTC ISO, no tz suffix), present only while running —
+   *  passed through so the poke card can draw a countdown wheel. */
+  pokeCooldownUntil?: string | null;
 }
 
 const BASE_SPRITE_SCALE = 1.25;

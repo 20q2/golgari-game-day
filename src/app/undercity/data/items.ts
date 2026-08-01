@@ -484,7 +484,7 @@ export const SPACE_BLURBS: Record<string, string> = {
   excavation:
     'A dig site — buried finds show through the dirt; dig each one out to claim it. Clear the whole grid for a Spore bonus plus Gemstones & Moltings — the materials that upgrade your gear. 6 digs per visit.',
   crystal_vein:
-    'A shared mineshaft — every strike digs the region deeper for Spores, Moltings, and Gemstones (deeper strikes pay more) — the materials for gear upgrades. Cave-in risk climbs with depth; the Heartstone at the bottom is the jackpot. First swing is mandatory; 3 per visit.',
+    'A shared mineshaft — each strike digs deeper for Spores, Moltings, and Gemstones, the materials that upgrade your gear (deeper pays more). Cave-in risk climbs with depth; the Heartstone at the bottom is the jackpot. 3 strikes per visit.',
   vault_lock:
     'The Guildvault: crack the hidden 3-sigil combination. Every failed pick is public intel on the wall — and fattens the pot. 3 picks per visit.',
   shrine: 'Spend 15 Spores for a lasting blessing: +1 ATK, DEF, or SPD, or a full heal.',

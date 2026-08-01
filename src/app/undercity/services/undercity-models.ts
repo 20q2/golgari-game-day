@@ -50,6 +50,9 @@ export interface PublicPlayer {
   /** True while this creature's poke timer is running (poked recently by anyone),
    *  so nobody can poke them yet. Server-computed each state fetch. */
   pokedRecently?: boolean;
+  /** The poke timer itself (UTC ISO, no tz suffix) — present only while it's
+   *  running, so the client can draw a live countdown wheel. */
+  pokeCooldownUntil?: string | null;
   isBot?: boolean;
 }
 

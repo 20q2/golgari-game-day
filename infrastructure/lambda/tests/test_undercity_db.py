@@ -1000,10 +1000,14 @@ def test_public_player_exposes_poke_timer(table):
     status, state = db.handle_state(table, {'userId': 'user-alex'})
     sam = next(p for p in state['players'] if p['userId'] == 'user-sam')
     assert sam['pokedRecently'] is False
+    assert sam['pokeCooldownUntil'] is None
     act(table, 'poke', targetUserId='user-sam')
     status, state = db.handle_state(table, {'userId': 'user-alex'})
     sam = next(p for p in state['players'] if p['userId'] == 'user-sam')
     assert sam['pokedRecently'] is True
+    # The raw timestamp is surfaced while running so the client can render
+    # a countdown wheel on the poke button.
+    assert sam['pokeCooldownUntil'] > datetime.utcnow().isoformat(timespec='seconds')
 
 
 def test_drop_item_removes_one(table):

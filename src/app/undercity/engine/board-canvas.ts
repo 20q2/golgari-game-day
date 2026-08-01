@@ -469,6 +469,38 @@ export class BoardCanvas {
     return !this.clearedDungeons.has(nodeId.split('_')[0]);
   }
 
+  /** Region -> its barrier gate node ids, computed once (barriers never move).
+   *  A region with barrier gates keeps its lair bosses concealed until one of
+   *  those gates is broken. */
+  private _regionBarriers: Map<string, string[]> | null = null;
+  private regionBarriers(region: string): string[] {
+    if (!this._regionBarriers) {
+      const m = new Map<string, string[]>();
+      for (const x of this.map.nodes) {
+        if (x.type === 'barrier' && x.region) {
+          const list = m.get(x.region) ?? [];
+          list.push(x.id);
+          m.set(x.region, list);
+        }
+      }
+      this._regionBarriers = m;
+    }
+    return this._regionBarriers.get(region) ?? [];
+  }
+
+  /** A lair inside a still-sealed region hides its occupant: if the lair's
+   *  region has barrier gates and none are broken yet, we don't reveal which
+   *  monster resides there. Breaking any one gate breaches the region (shared
+   *  season state) and reveals its lairs for everyone. The ruins' Lord of
+   *  Extinction and Doomgape stay unknown until a ruin guardian falls; biome
+   *  lairs live in barrier-less dungeon pockets, so they're never concealed. */
+  private isConcealedLair(n: BoardNode): boolean {
+    if (!n.region) return false;
+    const gates = this.regionBarriers(n.region);
+    if (gates.length === 0) return false;
+    return !gates.some((id) => this.barriersOpen.has(id));
+  }
+
   /**
    * Re-render layer terrain with the current art + cleared flags. Rebuilds
    * every layer by default; pass `onlyLayerIds` to refresh just those (e.g. the
@@ -1855,6 +1887,9 @@ export class BoardCanvas {
    * lazy art loader (undercity/guardians/<id>.png; placeholder sprite until).
    */
   private drawLairBoss(n: BoardNode, elapsed: number): void {
+    // Concealed until the region is breached: don't reveal which monster resides
+    // in a lair whose region is still sealed behind unbroken barrier guardians.
+    if (this.isConcealedLair(n)) return;
     const ctx = this.ctx;
     const bossId = LAIR_GUARDIANS[n.id] ?? DEFAULT_GUARDIAN;
     const art = this.guardianArt(bossId);
