@@ -184,6 +184,16 @@ export class CreatureTabComponent {
     this.gearSection.set(section);
   }
 
+  /** Bottom-bar Gear button: entering the tab restores the remembered section;
+   *  tapping it again while already on Gear pops back to the hub. */
+  selectGearTab(): void {
+    if (this.subTab() === 'gear') {
+      this.gearSection.set('home');
+    } else {
+      this.subTab.set('gear');
+    }
+  }
+
   /** Flat stat bonus contributed by currently-equipped gear, per stat.
    * Mirrors the backend's effective_stats() gear sum — the stored atk/def/spd
    * on `you` are base values, so this surfaces what the gear adds on top. */
