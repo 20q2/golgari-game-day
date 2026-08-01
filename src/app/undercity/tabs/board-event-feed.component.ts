@@ -16,6 +16,7 @@ const EVENT_ICONS: Record<string, string> = {
   jackpot: 'paid',
   season: 'nightlight',
   boss: 'whatshot',
+  chat: 'chat_bubble',
 };
 
 /** How long a row lingers on screen before it auto-hides (ms). */

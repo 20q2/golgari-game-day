@@ -41,6 +41,10 @@ Seasons are one-night affairs, so no TTL/pruning — same policy as `EVENT#`.
 `{ ok, you, chat: <the created message> }` so the client can append it
 instantly without waiting for a poll.
 
+**Grapevine mirror.** Each message is also written to the `EVENT#` log as a
+`type: 'chat'` event (`"<username>: <text>"`), so chat surfaces in the board
+event ticker and the Log tab alongside the other game notifications.
+
 **State projection.** `handle_state` runs its own `CHAT#` query (`CHAT#`
 sorts before `PLAYER#`, so — like `FIRST#`/`FOG#` — the main range query
 doesn't cover it): descending, `Limit=50`, then reversed so the client gets
@@ -81,6 +85,12 @@ text, ts }`; `GameState.chat?: ChatMessage[]`.
   Enter or send button submits; disabled while in flight.
 - Opening the panel calls `refresh()` once and marks read; new messages
   arriving while open keep being marked read.
+- **Plaza speech bubble:** a fresh chat message pops a speech bubble (tailed,
+  vs. the status bubble's thought-dots) over the sender's creature for 5
+  seconds, temporarily outranking their status bubble. Long messages clip to
+  40 chars with an ellipsis. The override lives on the canvas Dino record so
+  roster polls don't clobber it; the plaza tab seeds its chat watermark
+  silently on mount so reopening the tab never replays the backlog.
 
 ## Testing
 
