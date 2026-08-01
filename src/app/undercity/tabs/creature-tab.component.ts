@@ -58,6 +58,23 @@ function loadSubTab(): CreatureSubTab {
   return 'stats';
 }
 
+type GearSection = 'home' | 'equip' | 'magic' | 'bag';
+
+/** localStorage key remembering which gear section (hub or a drilled-in
+ *  panel) was last open, so returning to the Gear tab restores it. */
+const GEAR_SECTION_KEY = 'uc-gear-section';
+const GEAR_SECTIONS: readonly GearSection[] = ['home', 'equip', 'magic', 'bag'];
+
+function loadGearSection(): GearSection {
+  try {
+    const v = localStorage.getItem(GEAR_SECTION_KEY) as GearSection | null;
+    if (v && GEAR_SECTIONS.includes(v)) return v;
+  } catch {
+    /* storage blocked — fall back to the hub */
+  }
+  return 'home';
+}
+
 type ItemSource = 'equipped' | 'stash' | 'bag';
 
 /** A chip rendered in the item-detail popup. Stat chips have no blurb;
@@ -106,11 +123,25 @@ export class CreatureTabComponent {
    *  Seeded from and persisted to localStorage so it survives leaving the tab. */
   protected readonly subTab = signal<CreatureSubTab>(loadSubTab());
 
+  /** Which gear section is showing: the hub grid ('home') or a drilled-in
+   *  panel. Seeded from and persisted to localStorage so the last-open
+   *  section is restored when the player returns to the Gear tab. */
+  protected readonly gearSection = signal<GearSection>(loadGearSection());
+
   constructor() {
     effect(() => {
       const tab = this.subTab();
       try {
         localStorage.setItem(SUBTAB_KEY, tab);
+      } catch {
+        /* storage full/blocked — stay session-only */
+      }
+    });
+
+    effect(() => {
+      const section = this.gearSection();
+      try {
+        localStorage.setItem(GEAR_SECTION_KEY, section);
       } catch {
         /* storage full/blocked — stay session-only */
       }
@@ -146,6 +177,11 @@ export class CreatureTabComponent {
 
   selectStat(stat: string): void {
     this.openStat.update((cur) => (cur === stat ? null : stat));
+  }
+
+  /** Open a gear section from the hub, or return to the hub with 'home'. */
+  selectGear(section: GearSection): void {
+    this.gearSection.set(section);
   }
 
   /** Flat stat bonus contributed by currently-equipped gear, per stat.
@@ -189,6 +225,34 @@ export class CreatureTabComponent {
       .map((id, index) => ({ index, info: GEAR_MAP[id] }))
       .filter((r) => !!r.info),
   );
+
+  /** How many of the three gear slots are filled — the Equipment tile count. */
+  protected readonly wornCount = computed(() => {
+    const gear = this.store.you()?.gear ?? {};
+    return (['fang', 'carapace', 'charm'] as const).filter((s) => gear[s]).length;
+  });
+
+  /** Compact "ATK +2 · DEF +1" summary of equipped gear's stat bonuses, or ''
+   *  when gear adds nothing — the Equipment tile pill. */
+  protected readonly gearModLabel = computed(() => {
+    const m = this.gearMods();
+    const parts: string[] = [];
+    if (m['atk']) parts.push(`ATK +${m['atk']}`);
+    if (m['def']) parts.push(`DEF +${m['def']}`);
+    if (m['spd']) parts.push(`SPD +${m['spd']}`);
+    if (m['maxHp']) parts.push(`+${m['maxHp']} HP`);
+    return parts.join(' · ');
+  });
+
+  /** Innate + open-book spells currently off cooldown — the Magic tile pill. */
+  protected readonly spellsReadyCount = computed(() => {
+    const you = this.store.you();
+    if (!you) return 0;
+    let n = this.innateSpells().filter((sp) => this.cooldownLabel(sp.id) === 'Ready').length;
+    const book = this.equippedBook();
+    if (book) n += this.bookSpells(book).filter((sp) => this.cooldownLabel(sp.id) === 'Ready').length;
+    return n;
+  });
 
   /** Equip a stash piece into its slot; the worn piece swaps back to the stash.
    *  Same server action the Salvage Yard uses — index-based, server picks slot. */
