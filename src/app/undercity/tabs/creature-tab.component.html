@@ -204,39 +204,42 @@
           @case ('gear') {
             @switch (gearSection()) {
               @case ('home') {
-                <!-- Gear hub: three live-status tiles; bottom-right cell left empty. -->
-                <section class="gear-hub">
-                  <button type="button" class="gear-tile" (click)="selectGear('equip')">
-                    <span class="gear-tile-count">{{ wornCount() }}/3</span>
-                    <span class="gear-tile-ico"><mat-icon class="mi" svgIcon="uc-carapace"></mat-icon></span>
-                    <span class="gear-tile-title">Equipment</span>
-                    <span class="gear-tile-status">{{ wornCount() }} worn · stash {{ stashRows().length }}/{{ stashCap }}</span>
-                    @if (gearModLabel(); as m) {
-                      <span class="gear-tile-pill">{{ m }}</span>
-                    }
-                  </button>
+                <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
+                  <!-- Gear hub: three live-status tiles; bottom-right cell left empty. -->
+                  <section class="gear-hub">
+                    <button type="button" class="gear-hub-tile" (click)="selectGear('equip')">
+                      <span class="gear-hub-count">{{ wornCount() }}/3</span>
+                      <span class="gear-hub-ico"><mat-icon class="mi" svgIcon="uc-carapace"></mat-icon></span>
+                      <span class="gear-hub-title">Equipment</span>
+                      <span class="gear-hub-status">{{ wornCount() }} worn · stash {{ stashRows().length }}/{{ stashCap }}</span>
+                      @if (gearModLabel(); as m) {
+                        <span class="gear-hub-pill">{{ m }}</span>
+                      }
+                    </button>
 
-                  <button type="button" class="gear-tile magic" (click)="selectGear('magic')">
-                    <span class="gear-tile-count">{{ (you.grimoires ?? []).length }} books</span>
-                    <span class="gear-tile-ico"><mat-icon class="mi">menu_book</mat-icon></span>
-                    <span class="gear-tile-title">Magic</span>
-                    <span class="gear-tile-status">{{ equippedBook() ? equippedBook()!.name : 'No book open' }}</span>
-                    <span class="gear-tile-pill">{{ spellsReadyCount() }} ready</span>
-                  </button>
+                    <button type="button" class="gear-hub-tile magic" (click)="selectGear('magic')">
+                      <span class="gear-hub-count">{{ (you.grimoires ?? []).length }} books</span>
+                      <span class="gear-hub-ico"><mat-icon class="mi">menu_book</mat-icon></span>
+                      <span class="gear-hub-title">Magic</span>
+                      <span class="gear-hub-status">{{ equippedBook() ? equippedBook()!.name : 'No book open' }}</span>
+                      <span class="gear-hub-pill">{{ spellsReadyCount() }} ready</span>
+                    </button>
 
-                  <button type="button" class="gear-tile" (click)="selectGear('bag')">
-                    <span class="gear-tile-count">{{ you.bag.length }}/3</span>
-                    <span class="gear-tile-ico"><mat-icon class="mi" svgIcon="uc-duffel"></mat-icon></span>
-                    <span class="gear-tile-title">Bag</span>
-                    <span class="gear-tile-status">{{ you.bag.length ? you.bag.length + ' carried' : 'Empty' }}</span>
-                    @if (you.bag.length >= 3) {
-                      <span class="gear-tile-pill">full</span>
-                    }
-                  </button>
-                </section>
+                    <button type="button" class="gear-hub-tile" (click)="selectGear('bag')">
+                      <span class="gear-hub-count">{{ you.bag.length }}/3</span>
+                      <span class="gear-hub-ico"><mat-icon class="mi" svgIcon="uc-duffel"></mat-icon></span>
+                      <span class="gear-hub-title">Bag</span>
+                      <span class="gear-hub-status">{{ you.bag.length ? you.bag.length + ' carried' : 'Empty' }}</span>
+                      @if (you.bag.length >= 3) {
+                        <span class="gear-hub-pill">full</span>
+                      }
+                    </button>
+                  </section>
+                </div>
               }
 
               @case ('equip') {
+                <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
                 <button type="button" class="gear-back" (click)="selectGear('home')">
                   <mat-icon class="mi">chevron_left</mat-icon> Gear
                 </button>
@@ -337,9 +340,11 @@
               </div>
             </section>
 
+                </div>
               }
 
               @case ('bag') {
+                <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
                 <button type="button" class="gear-back" (click)="selectGear('home')">
                   <mat-icon class="mi">chevron_left</mat-icon> Gear
                 </button>
@@ -378,9 +383,11 @@
               }
             </section>
 
+                </div>
               }
 
               @case ('magic') {
+                <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
                 <button type="button" class="gear-back" (click)="selectGear('home')">
                   <mat-icon class="mi">chevron_left</mat-icon> Gear
                 </button>
@@ -492,6 +499,7 @@
                 </p>
               }
             </section>
+                </div>
               }
             }
           }

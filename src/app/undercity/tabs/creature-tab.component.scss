@@ -1546,7 +1546,7 @@
   gap: 12px;
 }
 
-.gear-tile {
+.gear-hub-tile {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1571,7 +1571,7 @@
   }
 }
 
-.gear-tile-ico {
+.gear-hub-ico {
   display: grid;
   place-items: center;
   width: 46px;
@@ -1589,7 +1589,7 @@
   }
 }
 
-.gear-tile-count {
+.gear-hub-count {
   position: absolute;
   top: 15px;
   right: 15px;
@@ -1599,20 +1599,20 @@
   font-variant-numeric: tabular-nums;
 }
 
-.gear-tile-title {
+.gear-hub-title {
   margin-top: 12px;
   font-size: 17px;
   font-weight: 700;
 }
 
-.gear-tile-status {
+.gear-hub-status {
   margin-top: 3px;
   font-size: 12px;
   line-height: 1.35;
   color: #8a9a8a;
 }
 
-.gear-tile-pill {
+.gear-hub-pill {
   align-self: flex-start;
   margin-top: 9px;
   padding: 3px 9px;
@@ -1625,21 +1625,58 @@
   border-radius: 999px;
 }
 
-.gear-tile.magic {
+.gear-hub-tile.magic {
   border-color: #2c2547;
 
   &:hover {
     border-color: #4a3d75;
   }
-  .gear-tile-ico {
+  .gear-hub-ico {
     color: #a78bfa;
     background: #150f26;
     border-color: #382c5c;
   }
-  .gear-tile-pill {
+  .gear-hub-pill {
     color: #c4b5fd;
     background: rgba(167, 139, 250, 0.1);
     border-color: #382c5c;
+  }
+}
+
+// Directional slide-in when switching gear sections. The @switch recreates
+// the case's root on every change, so this keyframe fires on mount.
+.gear-view {
+  animation: gear-view-in 190ms ease both;
+}
+.gear-view--back {
+  animation-name: gear-view-in-back;
+}
+
+@keyframes gear-view-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes gear-view-in-back {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gear-view,
+  .gear-view--back {
+    animation: none;
   }
 }
 

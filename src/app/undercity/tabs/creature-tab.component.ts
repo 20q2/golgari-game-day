@@ -128,6 +128,10 @@ export class CreatureTabComponent {
    *  section is restored when the player returns to the Gear tab. */
   protected readonly gearSection = signal<GearSection>(loadGearSection());
 
+  /** Direction of the last gear-section change, driving the slide-in
+   *  animation: 'forward' when drilling into a tile, 'back' returning home. */
+  protected readonly gearNav = signal<'forward' | 'back'>('forward');
+
   constructor() {
     effect(() => {
       const tab = this.subTab();
@@ -181,6 +185,7 @@ export class CreatureTabComponent {
 
   /** Open a gear section from the hub, or return to the hub with 'home'. */
   selectGear(section: GearSection): void {
+    this.gearNav.set(section === 'home' ? 'back' : 'forward');
     this.gearSection.set(section);
   }
 
@@ -188,6 +193,7 @@ export class CreatureTabComponent {
    *  tapping it again while already on Gear pops back to the hub. */
   selectGearTab(): void {
     if (this.subTab() === 'gear') {
+      this.gearNav.set('back');
       this.gearSection.set('home');
     } else {
       this.subTab.set('gear');
