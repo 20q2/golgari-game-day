@@ -1590,6 +1590,17 @@ def test_chat_posts_and_reads_back(table):
     assert 'pk' not in state['chat'][0] and 'sk' not in state['chat'][0]
 
 
+def test_chat_mirrors_into_grapevine(table):
+    # Every chat message also lands in the EVENT# log, so it shows up in the
+    # board event feed / log tab alongside the other game notifications.
+    act(table, 'join', starter='saproling', home='cavern')
+    act(table, 'chat', text='hello swamp')
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    ev = next(e for e in state['events'] if e['type'] == 'chat')
+    assert ev['text'] == 'Alex: hello swamp'
+    assert ev['actor'] == 'user-alex'
+
+
 def test_chat_normalizes_and_caps(table):
     act(table, 'join', starter='saproling', home='cavern')
     status, resp = act(table, 'chat', text='  a\n\t b  ' + 'x' * 300)

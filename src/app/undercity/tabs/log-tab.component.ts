@@ -19,6 +19,7 @@ const EVENT_ICONS: Record<string, string> = {
   jackpot: 'paid',
   season: 'nightlight',
   boss: 'whatshot',
+  chat: 'chat_bubble',
 };
 
 @Component({

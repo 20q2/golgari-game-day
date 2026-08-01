@@ -395,6 +395,10 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  /** Newest chat ts already bubbled (ISO strings compare chronologically);
+   * undefined until the first effect run seeds it. */
+  private lastChatTs?: string;
+
   constructor() {
     effect(() => {
       const players = this.store.players();
@@ -407,6 +411,22 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       for (const id of diff.departed) this.plaza.fadeOutDino(id);
       for (const id of diff.arrived) this.plaza.dropInDino(id);
       for (const id of diff.restyled) this.plaza.boingDino(id);
+    });
+    // Fresh chat messages pop a speech bubble over the sender's creature.
+    // The first run seeds silently so opening the plaza doesn't replay the
+    // whole backlog as a bubble storm; own sends land instantly because
+    // sendChat appends the echoed message before any poll.
+    effect(() => {
+      const msgs = this.store.chat();
+      const newest = msgs.length ? msgs[msgs.length - 1].ts : '';
+      if (this.lastChatTs === undefined) {
+        this.lastChatTs = newest;
+        return;
+      }
+      const fresh = msgs.filter((m) => m.ts > this.lastChatTs!);
+      if (newest > this.lastChatTs) this.lastChatTs = newest;
+      if (!this.plaza) return;
+      for (const m of fresh) this.plaza.showChatBubble(m.userId, m.text);
     });
   }
 

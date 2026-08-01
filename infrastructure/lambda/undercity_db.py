@@ -6348,16 +6348,20 @@ def _set_status(table, sid, doc, payload):
 
 
 def _chat(table, sid, doc, payload):
-    """Post one plaza-chat message. Append-only like the Grapevine (its own
-    CHAT# namespace so banter never crowds the event log); the player doc is
-    untouched, so there's no version guard to lose. The created message is
-    echoed back so the client can append it without waiting for a poll."""
+    """Post one plaza-chat message. Append-only in its own CHAT# namespace
+    (the chat panel's backlog), and mirrored into the Grapevine EVENT# log so
+    the message also surfaces in the board event feed / log tab alongside the
+    other game notifications. The player doc is untouched, so there's no
+    version guard to lose. The created message is echoed back so the client
+    can append it without waiting for a poll."""
     text = _normalize_chat(payload.get('text', ''))
     if not text:
         return _err('Say something first.')
     ts = _now_ms()
     rand = uuid.uuid4().hex[:6]
+    username = doc.get('username', '?')
     msg = {'id': f'{ts}#{rand}', 'userId': doc['userId'],
-           'username': doc.get('username', '?'), 'text': text, 'ts': ts}
+           'username': username, 'text': text, 'ts': ts}
     table.put_item(Item={'pk': _season_pk(sid), 'sk': f'CHAT#{ts}#{rand}', **msg})
+    _event(table, sid, 'chat', f'{username}: {text}', actor=doc['userId'])
     return _ok(doc, chat=msg)

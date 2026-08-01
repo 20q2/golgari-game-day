@@ -50,6 +50,11 @@ const NORMALIZED_SPRITE_PX = 90;
 // Fixed on-screen scale for status bubbles (~= a mid tier-1 creature's old
 // d.scale*2), so bubble legibility doesn't depend on creature tier/level.
 const BUBBLE_SCALE = 2.2;
+// A just-sent chat message pops as a speech bubble over the sender for this
+// long, taking precedence over their status bubble.
+const CHAT_BUBBLE_MS = 5000;
+// Chat messages run to 140 chars; the single-line bubble clips long ones.
+const CHAT_BUBBLE_MAX_CHARS = 40;
 // Intended size hierarchy: each tier is 50% larger than the one below.
 const TIER_SCALE: Record<number, number> = { 1: 1, 2: 1.5, 3: 2.25 };
 
@@ -142,6 +147,11 @@ interface Dino {
   dropIn: number;
   dropInTotal: number;
   squish: number;
+  /** Transient chat speech-bubble: text + performance.now() expiry (0 = none).
+   * Overrides the status bubble while active; survives roster rebuilds via the
+   * reuse spread in buildDinoData. */
+  chatText: string;
+  chatUntil: number;
 }
 
 export class PlazaCanvas {
@@ -238,6 +248,8 @@ export class PlazaCanvas {
       dropIn: 0,
       dropInTotal: 0,
       squish: 0,
+      chatText: '',
+      chatUntil: 0,
     };
 
     let dropIn = reuse && reuse.dropIn > 0 ? reuse.dropIn : 0;
@@ -293,6 +305,17 @@ export class PlazaCanvas {
   setStatus(userId: string, status: string): void {
     const d = this.dinos.find((x) => x.partner.userId === userId);
     if (d) d.partner.status = status;
+  }
+
+  /** Pop a chat message as a speech bubble over a creature for a few seconds.
+   * It temporarily outranks the status bubble; repeat calls restart the clock
+   * with the newest text. */
+  showChatBubble(userId: string, text: string): void {
+    const d = this.dinos.find((x) => x.partner.userId === userId);
+    if (!d) return;
+    d.chatText =
+      text.length > CHAT_BUBBLE_MAX_CHARS ? `${text.slice(0, CHAT_BUBBLE_MAX_CHARS - 1)}…` : text;
+    d.chatUntil = performance.now() + CHAT_BUBBLE_MS;
   }
 
   setTremorPhase(active: boolean): void {
@@ -982,11 +1005,17 @@ export class PlazaCanvas {
       ctx.restore();
     }
 
-    if (d.partner.status && d.fadeOut === 0 && d.dropIn === 0) {
+    const chatActive = d.chatUntil > performance.now() && d.chatText;
+    if ((chatActive || d.partner.status) && d.fadeOut === 0 && d.dropIn === 0) {
       const isOwnDino =
         this.ownUserId !== null && d.partner.userId === this.ownUserId;
       const headTop = y - halfH + hopY - (d.partner.hat ? 16 : 8);
-      this.drawStatusBubble(x, headTop, d.partner.status, d.scale, isOwnDino);
+      // A fresh chat message outranks the standing status bubble.
+      if (chatActive) {
+        this.drawStatusBubble(x, headTop, d.chatText, d.scale, isOwnDino, true);
+      } else {
+        this.drawStatusBubble(x, headTop, d.partner.status!, d.scale, isOwnDino);
+      }
     }
 
     // "You poked them recently" badge — a small amber hand tucked at the
@@ -1032,6 +1061,7 @@ export class PlazaCanvas {
     text: string,
     scale: number,
     isOwn: boolean,
+    speech = false,
   ): void {
     const ctx = this.ctx;
     // Bubbles read at a fixed world-space size regardless of the creature's
@@ -1062,18 +1092,29 @@ export class PlazaCanvas {
     ctx.roundRect(bx, by, bubbleW, bubbleH, 4 * scale);
     ctx.fill();
     ctx.stroke();
-    // Trail of shrinking thought-dots dropping toward the creature's head.
-    const dots = [
-      { r: 1.7 * scale, t: 0.28 },
-      { r: 1.1 * scale, t: 0.62 },
-      { r: 0.7 * scale, t: 0.95 },
-    ];
-    for (const dot of dots) {
-      const dy = by + bubbleH + trailGap * dot.t;
+    if (speech) {
+      // Speech (not thought): a solid tail pointing at the creature's head.
       ctx.beginPath();
-      ctx.arc(cx, dy, dot.r, 0, Math.PI * 2);
+      ctx.moveTo(cx - 3 * scale, by + bubbleH - ctx.lineWidth);
+      ctx.lineTo(cx, by + bubbleH + trailGap * 0.75);
+      ctx.lineTo(cx + 3 * scale, by + bubbleH - ctx.lineWidth);
+      ctx.closePath();
       ctx.fill();
       ctx.stroke();
+    } else {
+      // Trail of shrinking thought-dots dropping toward the creature's head.
+      const dots = [
+        { r: 1.7 * scale, t: 0.28 },
+        { r: 1.1 * scale, t: 0.62 },
+        { r: 0.7 * scale, t: 0.95 },
+      ];
+      for (const dot of dots) {
+        const dy = by + bubbleH + trailGap * dot.t;
+        ctx.beginPath();
+        ctx.arc(cx, dy, dot.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
     }
     // Dark text for contrast against the white bubble.
     ctx.fillStyle = '#1a2e1a';
