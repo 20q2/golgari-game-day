@@ -935,6 +935,17 @@ def _hatch_egg(table, sid, doc, payload):
     return _ok(doc, text=f'The egg hatches into a {name}!', hatched=pet)
 
 
+def _activate_pet(table, sid, doc, payload):
+    pet = _find_pet(doc, payload.get('petId'))
+    if not pet:
+        return _err('No such pet.', 409)
+    doc['activePetId'] = pet['id']
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text=f"{data.PET_SPECIES[pet['species']]['name']} is at your side.")
+
+
 def _grind_materials(doc, gid):
     """Grind a gear piece into crafting materials by its rarity (tier). Mutates
     the player's material counters; returns the amounts gained."""

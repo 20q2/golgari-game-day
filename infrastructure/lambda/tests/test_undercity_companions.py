@@ -80,3 +80,22 @@ def test_incubate_rejects_when_slot_busy(table):
     db._incubate_egg(table, sid, doc, {'eggId': first})
     status, _ = db._incubate_egg(table, sid, doc, {'eggId': second})
     assert status == 409
+
+
+def _give_pet(doc, species='fox', tier=1, level=1):
+    pet = {'id': db._new_id('pet-'), 'species': species, 'tier': tier,
+           'level': level, 'mergeProgress': 0}
+    doc.setdefault('pets', []).append(pet)
+    return pet
+
+
+def test_activate_pet(table):
+    sid, doc = _player_at(table, 'n1')
+    pet = _give_pet(doc, 'turtle')
+    status, body = db._activate_pet(table, sid, doc, {'petId': pet['id']})
+    assert status == 200
+    assert doc['activePetId'] == pet['id']
+    # Unknown pet is rejected (fresh refetch to avoid a stale-ver false 409).
+    doc = db._get_player(table, sid, 'user-alex')
+    status, _ = db._activate_pet(table, sid, doc, {'petId': 'nope'})
+    assert status == 409
