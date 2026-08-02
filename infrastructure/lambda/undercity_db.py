@@ -860,6 +860,18 @@ def _materials(doc):
     return m
 
 
+def _new_id(prefix):
+    """Short unique id for pets/eggs (e.g. 'pet-1a2b3c4d')."""
+    return f"{prefix}{uuid.uuid4().hex[:8]}"
+
+
+def _find_pet(doc, pet_id):
+    for p in doc.get('pets') or []:
+        if p.get('id') == pet_id:
+            return p
+    return None
+
+
 def _grind_materials(doc, gid):
     """Grind a gear piece into crafting materials by its rarity (tier). Mutates
     the player's material counters; returns the amounts gained."""
@@ -2201,6 +2213,8 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'grimoires': [], 'equippedGrimoire': None,
         'scrolls': [], 'grimoireSpells': {},
         'spellCooldowns': {}, 'highFiveCooldowns': {}, 'awayEvents': [],
+        'pets': [], 'activePetId': None,
+        'eggs': [], 'incubator': None, 'petCooldowns': {},
         'lastFinishedClaim': None, 'taughtClaims': 0, 'pokesReceived': 0,
         'pvpWins': 0, 'wildWins': 0, 'composts': 0, 'bossDamage': 0,
         'paint': {'body': body_hue, 'belly': 50, 'stripes': body_hue},
