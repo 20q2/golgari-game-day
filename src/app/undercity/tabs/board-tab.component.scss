@@ -565,6 +565,11 @@
 
   .modal-sub {
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+
+    // Bolded words tinted a soft green so they pop against the gray dialog text.
+    strong {
+      color: #8cdcaa;
+    }
   }
 }
 
@@ -1046,9 +1051,6 @@
   &.spd {
     --shrine-accent: #f0d16b;
   }
-  &.heal {
-    --shrine-accent: #6bbf8a;
-  }
 }
 
 .shrine-note {
@@ -1186,6 +1188,7 @@
 
 .shop-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;

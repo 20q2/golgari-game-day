@@ -113,8 +113,9 @@ export class CreatureTabComponent {
   private cutsceneTimer: ReturnType<typeof setTimeout> | null = null;
   /** Toast queued to fire when the cutscene finishes. */
   private pendingCutsceneToast: string | null = null;
-  /** Full cutscene runtime — MUST match the CSS timeline in the .scss. */
-  private static readonly CUTSCENE_MS = 2700;
+  /** Full cutscene runtime — MUST match the CSS timeline in the .scss
+   *  (2700ms silhouette→strobe→reveal + 2000ms shake/jump/breathe). */
+  private static readonly CUTSCENE_MS = 4700;
   /** Reduced-motion runtime — MUST match the reduced-motion CSS fallback. */
   private static readonly CUTSCENE_REDUCED_MS = 600;
   protected readonly showEvolve = signal(false);
@@ -122,8 +123,6 @@ export class CreatureTabComponent {
 
   /** Which inventory item's detail popup is open (null = none). */
   protected readonly selectedItem = signal<SelectedItem | null>(null);
-  /** Which ability chip inside the popup is expanded to show its blurb. */
-  protected readonly expandedChip = signal<number | null>(null);
   /** Whether the popup's send-to-market price control is revealed. */
   protected readonly listOpen = signal(false);
   /** Current price typed into the send-to-market control (Spores). */
@@ -296,7 +295,6 @@ export class CreatureTabComponent {
   protected selectItem(source: ItemSource, id: string, index: number, slotLabel: string): void {
     if (!id) return;
     const kind: MarketKind = source === 'bag' ? 'consumable' : 'gear';
-    this.expandedChip.set(null);
     this.listOpen.set(false);
     this.selectedItem.set({ source, kind, id, index, slotLabel });
   }
@@ -304,13 +302,7 @@ export class CreatureTabComponent {
   /** Close the popup and reset its transient state. */
   protected closeItem(): void {
     this.selectedItem.set(null);
-    this.expandedChip.set(null);
     this.listOpen.set(false);
-  }
-
-  /** Toggle an ability chip's blurb open/closed. */
-  protected toggleChip(i: number): void {
-    this.expandedChip.update((cur) => (cur === i ? null : i));
   }
 
   /** Stat chips (+2 ATK, +1 SPD, +3 max HP) for a gear item; empty for others. */
@@ -330,7 +322,7 @@ export class CreatureTabComponent {
   protected abilityChips(item: SelectedItem): ItemChip[] {
     if (item.kind === 'consumable') {
       const c = CONSUMABLE_MAP[item.id];
-      return c ? [{ label: 'Effect', blurb: c.desc }] : [];
+      return c ? [{ label: '', blurb: c.desc }] : [];
     }
     const g = GEAR_MAP[item.id];
     if (!g) return [];

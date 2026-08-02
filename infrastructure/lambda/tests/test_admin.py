@@ -45,6 +45,17 @@ def test_broadcast_requires_text(table):
     assert status == 400
 
 
+def test_broadcast_reaches_players_onscreen(table):
+    # A broadcast must land as an away-event on each player so the board surfaces
+    # it on-screen (toast while live, modal on return) — not just in the log feed.
+    assert act(table, 'join', user='user-alex', name='Alex', starter='saproling')[0] == 200
+    status, resp = _admin(table, 'broadcast', text='Snack break in 5!')
+    assert status == 200 and resp['ok'] is True
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    away = state['you']['awayEvents']
+    assert any(e['kind'] == 'host' and e['text'] == 'Snack break in 5!' for e in away)
+
+
 def test_unknown_admin_cmd(table):
     status, resp = _admin(table, 'frobnicate')
     assert status == 400

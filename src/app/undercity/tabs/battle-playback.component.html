@@ -138,7 +138,7 @@
           @if (r.gearName) {
             <span class="reward-chip item">
               <mat-icon class="mi">{{ r.gearIcon ?? 'hardware' }}</mat-icon>
-              {{ r.gearName }} — {{ r.gearStashed ? 'to stash' : 'stash full → materials' }}
+              {{ r.gearName }}{{ r.gearStashed ? '' : ' — stash full → materials' }}
             </span>
           }
           @if (r.levels) {

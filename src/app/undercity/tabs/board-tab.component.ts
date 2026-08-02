@@ -83,7 +83,7 @@ import { affordReason, containerFullReason } from '../data/block-reasons';
 import { DiceRollComponent } from './dice-roll.component';
 import { ExcavationModalComponent } from './excavation.component';
 import { FlowPuzzleModalComponent } from './flow-puzzle.component';
-import { CrystalVeinModalComponent, VeinEffect } from './crystal-vein.component';
+import { CrystalVeinModalComponent } from './crystal-vein.component';
 import { GuildvaultModalComponent } from './guildvault.component';
 import { MysteryReelComponent } from './mystery-reel.component';
 import { HazardWheelComponent, HazardWheelTarget } from './hazard-wheel.component';
@@ -199,6 +199,21 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   @Input({ required: true }) map!: BoardMap;
   @ViewChild('boardCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
 
+  /** Whether the Board tab is the visible tab. The component now stays mounted
+   *  while other tabs are shown (so the terrain never re-bakes on return), so we
+   *  pause the render loop while hidden and resume it on return. Defaults true —
+   *  the Board is the initial tab. */
+  private _active = true;
+  @Input() set active(v: boolean) {
+    if (v === this._active) return;
+    this._active = v;
+    // The canvas only exists after ngAfterViewInit; the initial (active) state is
+    // handled there. Once it's live, mirror visibility onto the render loop.
+    if (!this.board) return;
+    if (v) this.board.resume();
+    else this.board.pause();
+  }
+
   protected readonly store = inject(UndercityStateService);
   private board: BoardCanvas | null = null;
 
@@ -266,8 +281,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly veinLog = signal<string | null>(null);
   /** Gemstones banked from strikes so far this vein visit; resets on a fresh landing. */
   protected readonly veinEarned = signal(0);
-  /** Latest vein animation cue for the 3D wall; seq bumps so repeats retrigger. */
-  protected readonly veinEffect = signal<VeinEffect | null>(null);
   protected readonly showVault = signal(false);
   protected readonly vaultView = signal<VaultView | null>(null);
   protected readonly reelSymbol = signal<string | null>(null);
@@ -947,9 +960,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return affordReason(this.store.you()?.spores ?? 0, info.cost);
   }
 
-  /** Why a GRIMOIRE line can't be bought (already owned → price). */
+  /** Why a GRIMOIRE line can't be bought. Owned tomes return null — the buy
+   *  button is disabled separately (ownsGrimoire) so we skip the "Already owned"
+   *  tag, which would otherwise add a dead column and throw off the row layout. */
   protected shopGrimoireReason(g: GrimoireInfo): string | null {
-    if (this.ownsGrimoire(g.id)) return 'Already owned';
+    if (this.ownsGrimoire(g.id)) return null;
     return affordReason(this.store.you()?.spores ?? 0, g.cost);
   }
 
@@ -1322,6 +1337,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         return `${e.from} high-fived you — +1 to all stats next fight!`;
       case 'market':
         return e.text;
+      case 'host':
+        return e.text;
     }
   }
 
@@ -1345,6 +1362,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         return 'back_hand';
       case 'market':
         return 'storefront';
+      case 'host':
+        return 'campaign';
     }
   }
 
@@ -1366,7 +1385,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       { label: 'Attacks', rows: of('pvp', 'spell_hit', 'spell_dodged') },
       { label: 'Rewards', rows: of('reward') },
       { label: 'The Wilderness', rows: of('world_kill', 'world_fallen') },
-      { label: 'News', rows: of('boss') },
+      { label: 'News', rows: of('boss', 'host') },
       { label: 'Friends', rows: of('high_five') },
       { label: 'Market', rows: of('market') },
     ].filter((g) => g.rows.length);
@@ -1411,6 +1430,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const savedZoom = this.store.boardZoom();
     if (savedZoom != null) this.board.restoreZoom(savedZoom);
     this.board.start();
+    // Created while hidden (defensive — the Board is the default tab, so this is
+    // rare): don't burn frames until it's shown.
+    if (!this._active) this.board.pause();
     this.restoreOpenFacility();
   }
 
@@ -2191,7 +2213,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   /** Spore price of a single shrine blessing (mirrors SHRINE_BLESSING_COST). */
-  protected readonly SHRINE_COST = 15;
+  protected readonly SHRINE_COST = 30;
 
   /** Whether the player can afford a blessing — gates the shrine cards. The
    *  shrine template already shows a "You need N spores" note when this is false,
@@ -2316,7 +2338,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Open the shaft, seeding depth from the landing event or polled state. */
   openVein(ev?: SpaceEvent): void {
-    this.veinEffect.set(null); // clear any stale cue so it can't replay on reopen
     if (ev) this.veinEarned.set(0); // fresh visit (a landing carries ev) — start the tally over
     const pos = this.store.you()?.position ?? '';
     const region = this.map?.nodes.find((n) => n.id === pos)?.region ?? '';
@@ -2333,16 +2354,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       if (resp.depth !== undefined) this.veinDepth.set(resp.depth);
       this.veinLog.set(resp.text ?? null);
       if (!resp.collapsed && resp.ichor) this.veinEarned.update((n) => n + resp.ichor!);
-      const kind: VeinEffect['kind'] = resp.collapsed
-        ? 'cave-in'
-        : resp.heartstone
-          ? 'heartstone'
-          : 'strike';
-      this.veinEffect.set({
-        kind,
-        seq: (this.veinEffect()?.seq ?? 0) + 1,
-        burst: (resp.ichor ?? 0) + (resp.moltings ?? 0),
-      });
       if (resp.collapsed || resp.heartstone) this.showToast(resp.text ?? '');
     });
   }

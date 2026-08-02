@@ -335,7 +335,7 @@
         (click)="$event.stopPropagation()"
         [style.background-image]="bridgeWashBg()"
       >
-        <h3><mat-icon class="mi">toll</mat-icon> The Nyx Weaver</h3>
+        <h3>The Nyx Weaver</h3>
         <img
           class="modal-art"
           src="undercity/map_events/bridge_keeper.png"
@@ -541,7 +541,7 @@
       <div
         class="uc-modal shop-modal"
         (click)="$event.stopPropagation()"
-        [style.background-image]="regionWashBg()"
+        style="background-image: linear-gradient(rgba(16, 14, 11, 0.82), rgba(16, 14, 11, 0.9)), url('undercity/pub_background.webp')"
       >
         <img class="modal-art" [src]="bazaarKeeper().art" alt="" />
         <h3><mat-icon class="mi">storefront</mat-icon> {{ bazaarTitle() }}</h3>
@@ -617,7 +617,7 @@
                 <span class="shop-name">
                   <mat-icon class="mi">menu_book</mat-icon> {{ g.name }} <em>{{ grimoireSpellList(g) }}</em>
                 </span>
-                <button class="uc-btn shop-buy" [disabled]="busy() || !!shopGrimoireReason(g)" (click)="buy(g)">
+                <button class="uc-btn shop-buy" [disabled]="busy() || ownsGrimoire(g.id) || !!shopGrimoireReason(g)" (click)="buy(g)">
                   {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                 </button>
                 @if (!busy() && shopGrimoireReason(g); as reason) { <span class="block-reason">{{ reason }}</span> }
@@ -655,7 +655,7 @@
           <button class="shrine-card atk" [disabled]="busy() || !canBless()" (click)="shrine('atk')">
             <mat-icon class="mi shrine-card-icon">sports_martial_arts</mat-icon>
             <span class="shrine-card-name">+1 ATK</span>
-            <span class="shrine-card-desc">Hit harder all night</span>
+            <span class="shrine-card-desc">Hit harder — permanently</span>
           </button>
           <button class="shrine-card def" [disabled]="busy() || !canBless()" (click)="shrine('def')">
             <mat-icon class="mi shrine-card-icon">shield</mat-icon>
@@ -666,11 +666,6 @@
             <mat-icon class="mi shrine-card-icon">bolt</mat-icon>
             <span class="shrine-card-name">+1 SPD</span>
             <span class="shrine-card-desc">Strike first, dodge more</span>
-          </button>
-          <button class="shrine-card heal" [disabled]="busy() || !canBless()" (click)="shrine('heal')">
-            <mat-icon class="mi shrine-card-icon">healing</mat-icon>
-            <span class="shrine-card-name">Full Heal</span>
-            <span class="shrine-card-desc">Restore all your HP</span>
           </button>
         </div>
 
@@ -918,7 +913,6 @@
       [log]="veinLog()"
       [earnedThisVisit]="veinEarned()"
       [washBg]="regionWashBg()"
-      [effect]="veinEffect()"
       (strike)="strike()"
       (closed)="closeFacilities()"
     />

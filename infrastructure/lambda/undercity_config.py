@@ -194,7 +194,7 @@ BAZAAR_BLACKMARKET_CHANCE = 0.05
 # before hopping to a new random one. Location/stock are pure functions of this
 # window (see undercity_db._umori_window) — no server tick.
 UMORI_DWELL_MIN = 120
-SHRINE_BLESSING_COST = 15
+SHRINE_BLESSING_COST = 30
 OSSUARY_MAX_BET = 20
 OSSUARY_ROLLS_PER_VISIT = 3  # gambles allowed per landing; refills when you land again
 SNARE_SPILL_PCT = 0.20
@@ -236,6 +236,15 @@ WORLD_EVENT_REWARDS = {
 ENRAGED_DWELL_MIN = 90       # minutes a monster haunts one node before it hops
 ENRAGED_KILL_RENOWN = 18     # renown to the killing blow's perm doc (design: 15–20)
 ENRAGED_KILL_XP = 30         # XP to the killer
+
+# ── Boss-area signature minions ──────────────────────────────────────────────
+# Each biome depths pocket (and the ruins) has one themed "signature" enemy that
+# is thematically aligned with the boss that lairs there — Skullbriar's ossuary
+# crawls with skeletons, Slimefoot's rotcellar with saproling-spawners, etc.
+# (data.LAIR_SIGNATURE). At a WILD space in that boss's area this fraction of
+# encounters roll the signature instead of the flat region pool, so it reads as
+# that boss's turf without erasing variety. Elite spaces keep the full pool.
+SIGNATURE_SPAWN_CHANCE = 0.40
 
 # ── Procedural dungeons ──────────────────────────────────────────────────────
 # When True, each night's five dungeon pockets are regenerated from a per-season

@@ -505,7 +505,7 @@
           }
           @case ('wardrobe') {
             <section class="card">
-              <h3>Wardrobe <span class="muted">(yours forever, every night)</span></h3>
+              <h3>Wardrobe <span class="muted">(Shake up your look)</span></h3>
               <div class="wardrobe-group">
                 <span class="wardrobe-label">Hat</span>
                 <div class="swatch-row">
@@ -655,15 +655,15 @@
       </div>
     }
 
-    <!-- Evolution cutscene — silhouette → strobe-swap → color reveal -->
+    <!-- Evolution cutscene — silhouette → strobe-swap → color reveal → celebrate.
+         Plays to the end on its own timer; no skip. -->
     @if (evolveCutscene(); as cut) {
-      <div class="evolve-cutscene" (click)="endEvolveCutscene()">
+      <div class="evolve-cutscene">
         <div class="ec-stage">
           <img class="ec-sprite ec-from" [src]="cut.from" alt="" />
           <img class="ec-sprite ec-to" [src]="cut.to" alt="" />
         </div>
         <div class="ec-flash"></div>
-        <p class="ec-skip">tap to skip</p>
       </div>
     }
 
@@ -716,59 +716,53 @@
           }
 
           @if (abilityChips(item).length) {
-            <div class="chip-row">
-              @for (chip of abilityChips(item); track chip.label; let i = $index) {
-                <button class="chip chip--ability" [class.open]="expandedChip() === i" (click)="toggleChip(i)">
-                  {{ chip.label }}
-                  <mat-icon class="mi chip-caret">{{ expandedChip() === i ? 'expand_less' : 'expand_more' }}</mat-icon>
-                </button>
+            <div class="item-sheet-effects">
+              @for (chip of abilityChips(item); track $index) {
+                <p class="effect-line">
+                  @if (chip.label) { <strong class="effect-label">{{ chip.label }}</strong> }
+                  <span>{{ chip.blurb }}</span>
+                </p>
               }
             </div>
-            @if (expandedChip() !== null && abilityChips(item)[expandedChip()!]; as chip) {
-              <p class="chip-blurb">{{ chip.blurb }}</p>
-            }
           }
 
-          <div class="item-sheet-actions">
-            @switch (item.source) {
-              @case ('stash') {
-                <button class="uc-btn" [disabled]="busy()" (click)="equipFromPopup(item)">Equip</button>
-              }
-              @case ('bag') {
-                @if (itemAction(item.id) === 'plant') {
-                  <button class="uc-btn" [disabled]="busy()" (click)="useFromPopup(item)">Plant here</button>
-                } @else if (itemAction(item.id) === 'use') {
-                  <button class="uc-btn" [disabled]="busy()" (click)="useFromPopup(item)">Use</button>
+          @if (listOpen()) {
+            <div class="market-price">
+              <label>Price (Spores)</label>
+              <input
+                #mp
+                type="number"
+                class="price-input"
+                [value]="listPrice()"
+                [min]="marketBand(item.kind, item.id).lo"
+                [max]="marketBand(item.kind, item.id).hi"
+              />
+              <span class="band-note muted">
+                {{ marketBand(item.kind, item.id).lo }}–{{ marketBand(item.kind, item.id).hi }}
+              </span>
+              <button class="uc-btn" [disabled]="busy()" (click)="sendToMarket(item, mp.valueAsNumber)">List</button>
+            </div>
+          } @else {
+            <div class="item-sheet-actions">
+              @switch (item.source) {
+                @case ('stash') {
+                  <button class="uc-btn" [disabled]="busy()" (click)="equipFromPopup(item)">Equip</button>
+                }
+                @case ('bag') {
+                  @if (itemAction(item.id) === 'plant') {
+                    <button class="uc-btn" [disabled]="busy()" (click)="useFromPopup(item)">Plant here</button>
+                  } @else if (itemAction(item.id) === 'use') {
+                    <button class="uc-btn" [disabled]="busy()" (click)="useFromPopup(item)">Use</button>
+                  }
+                }
+                @case ('equipped') {
+                  <span class="item-sheet-hint muted">Equipped. To sell it, equip another piece first.</span>
                 }
               }
-              @case ('equipped') {
-                <span class="item-sheet-hint muted">Equipped. To sell it, equip another piece first.</span>
-              }
-            }
-          </div>
-
-          @if (item.source !== 'equipped') {
-            <div class="item-sheet-market">
-              @if (!listOpen()) {
+              @if (item.source !== 'equipped') {
                 <button class="uc-btn ghost" [disabled]="busy()" (click)="beginList(item)">
                   <mat-icon class="mi">storefront</mat-icon> Send to market
                 </button>
-              } @else {
-                <div class="market-price">
-                  <label>Price (Spores)</label>
-                  <input
-                    #mp
-                    type="number"
-                    class="price-input"
-                    [value]="listPrice()"
-                    [min]="marketBand(item.kind, item.id).lo"
-                    [max]="marketBand(item.kind, item.id).hi"
-                  />
-                  <span class="band-note muted">
-                    {{ marketBand(item.kind, item.id).lo }}–{{ marketBand(item.kind, item.id).hi }}
-                  </span>
-                  <button class="uc-btn" [disabled]="busy()" (click)="sendToMarket(item, mp.valueAsNumber)">List</button>
-                </div>
               }
             </div>
           }

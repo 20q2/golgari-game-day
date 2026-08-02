@@ -61,11 +61,6 @@
       "hasHat": true
     },
     {
-      "name": "myconid_sporetender",
-      "hasMask": false,
-      "hasHat": false
-    },
-    {
       "name": "pest",
       "hasMask": true,
       "hasHat": true
@@ -74,16 +69,6 @@
       "name": "pest_2",
       "hasMask": true,
       "hasHat": true
-    },
-    {
-      "name": "pest_big",
-      "hasMask": false,
-      "hasHat": false
-    },
-    {
-      "name": "plant",
-      "hasMask": false,
-      "hasHat": false
     },
     {
       "name": "saproling",

@@ -1282,6 +1282,26 @@ export class BoardCanvas {
     this.rafId = requestAnimationFrame(loop);
   }
 
+  /** Pause the render loop without tearing anything down — the baked terrain,
+   *  textures, camera, and input listeners all stay live so `resume()` is
+   *  instant. Used when the Board tab is hidden behind another tab so an
+   *  off-screen canvas doesn't burn frames/battery. */
+  pause(): void {
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+  }
+
+  /** Restart the render loop after a `pause()`. The canvas was likely sized 0×0
+   *  while hidden, so `start()`'s deferred first-frame resize + recentre-on-own-
+   *  token runs again, landing the camera correctly on return. No-op if already
+   *  running. */
+  resume(): void {
+    if (this.rafId != null) return;
+    this.start();
+  }
+
   stop(): void {
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);

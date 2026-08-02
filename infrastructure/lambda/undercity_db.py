@@ -2088,6 +2088,9 @@ def _admin_broadcast(table, sid, payload):
     if not text:
         return _err('Broadcast text required.')
     _event(table, sid, 'host', text)
+    # Fan the message out as an away-event so every player sees it on-screen:
+    # a live board player gets a toast, a returning one finds it in the modal.
+    _broadcast_away(table, sid, {'kind': 'host', 'text': text, 'at': _now()})
     return 200, {'ok': True}
 
 
@@ -3534,7 +3537,19 @@ def _wild_battle(table, sid, doc, elite=False, region=None):
     # a region — no depth scaling (design 2026-07-26-region-tier).
     tier = data.region_tier(node_region)
     pool = data.TIER_NPCS[tier]['elite' if elite else 'wild']
-    spec = _rng.choice(pool)
+    # Boss-area signature (design 2026-08-02): at a WILD space in a boss's turf,
+    # SIGNATURE_SPAWN_CHANCE of encounters are its themed minion instead of a flat
+    # pool roll. Area = the depths pocket's biome, or the ruin region.
+    area = None
+    if node_region == 'depths':
+        area = data.dungeon_biome(position) or position.split('_')[0]
+    elif node_region == 'ruin':
+        area = 'ruin'
+    sig_id = None if elite else data.LAIR_SIGNATURE.get(area)
+    if sig_id and _rng.random() < data.SIGNATURE_SPAWN_CHANCE:
+        spec = data.ENEMY_SPECS_BY_ID[sig_id]
+    else:
+        spec = _rng.choice(pool)
     npc = engine.npc_from_spec(spec)
     npc['personality'] = spec.get('personality', data.NPC_DEFAULT_PERSONALITY)
     npc['bluff'] = spec.get('bluff', data.NPC_DEFAULT_BLUFF)
@@ -6347,19 +6362,14 @@ def _shrine(table, sid, doc, payload):
     if nodes.get(doc.get('position'), {}).get('type') != 'shrine':
         return _err('You are not at a shrine.', 409)
     choice = payload.get('choice')
-    eff = engine.effective_stats(doc)
-    if choice in ('atk', 'def', 'spd', 'heal'):
+    if choice in ('atk', 'def', 'spd'):
         if doc.get('spores', 0) < data.SHRINE_BLESSING_COST:
-            return _err('The shrine demands 15 Spores.', 409)
+            return _err('The shrine demands 30 Spores.', 409)
         doc['spores'] -= data.SHRINE_BLESSING_COST
-        if choice == 'heal':
-            doc['hp'] = eff['maxHp']
-            text = 'Candlelight seals your wounds. Fully healed.'
-        else:
-            doc[choice] += 1
-            text = f'The swarm blesses you: +1 {choice.upper()} for the night.'
+        doc[choice] += 1
+        text = f'The swarm blesses you: +1 {choice.upper()}, permanently.'
     else:
-        return _err('Choose a blessing: atk, def, spd, or heal.')
+        return _err('Choose a blessing: atk, def, or spd.')
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict

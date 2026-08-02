@@ -93,7 +93,8 @@ export type AwayEvent =
     }
   | { kind: 'world_fallen'; name: string; at: string }
   | { kind: 'high_five'; from: string; fromId: string; at: string }
-  | { kind: 'market'; text: string; at: string };
+  | { kind: 'market'; text: string; at: string }
+  | { kind: 'host'; text: string; at: string };
 
 /** Result payload of a `cast` action (mirrors undercity_db._cast). */
 export interface CastResult {

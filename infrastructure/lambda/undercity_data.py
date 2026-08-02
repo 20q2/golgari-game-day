@@ -1035,6 +1035,33 @@ def region_tier(region):
     return REGION_TIER.get(region or '', 1)
 
 
+# ── Boss-area signature minions (design 2026-08-02) ──────────────────────────
+# One themed enemy per boss area, thematically aligned with the lair boss that
+# rules it. Keyed by biome (for the five depths pockets) and by region for the
+# ruins. Rolled at WILD spaces via SIGNATURE_SPAWN_CHANCE in _wild_battle, so the
+# signature dominates its turf without erasing pool variety. The chosen ids are
+# ordinary tier-2 roster members (tier-appropriate power), looked up by
+# ENEMY_SPECS_BY_ID. Ruin holds two bosses but one wild pool, so it gets one
+# signature (Moldering Karock, for the decaying ruins / Lord of Extinction).
+LAIR_SIGNATURE = {
+    'bone':   'mosspit_skeleton',    # Skullbriar, the Walking Grave — skeletons
+    'garden': 'infested_thrinax',    # Slimefoot — dies into saprolings
+    'bog':    'golgari_rotwurm',     # The Gitrog Monster — swamp rot
+    'cavern': 'large_bear',          # Sarulf, Realm Eater — apex beast
+    'city':   'sluiceway_scorpion',  # Ishkanah, Grafwidow — arthropod kin
+    'ruin':   'moldering_karock',    # Lord of Extinction / Doomgape — dead ruins
+}
+
+# Every wild/elite enemy spec, indexed by id, so a signature can be pulled from
+# whichever pool it lives in.
+ENEMY_SPECS_BY_ID = {
+    s['id']: s
+    for pool in (NPCS, ELITE_NPCS, DEPTHS_MID, WILDERNESS_NPCS,
+                 DEPTHS_DEEP, WILDERNESS_ELITE_NPCS, DEPTHS_ABYSS, ISLE_APEX)
+    for s in pool
+}
+
+
 # ── Derived opponent level (battle UI) ───────────────────────────────────────
 # Enemies store no level. This maps a stat block onto the player's own level
 # scale so the "Lv. N" beside a foe reads as "roughly what player level this is a

@@ -478,7 +478,7 @@ export const LAIR_GUARDIANS: Record<string, string> = {
 export const SPACE_BLURBS: Record<string, string> = {
   loot: 'Rustle through the tall grass for Spores — sometimes a buried consumable.',
   wild: 'A wild creature lurks here. Beat it for XP and a Spore bounty. Beatable from Level 1+.',
-  elite: 'An elite predator claims this ground. Rich XP and Spores — but a death sentence for fresh hatchlings. We recommend Level 3+ before you fight one.',
+  elite: 'An elite predator claims this ground. Rich XP and Spores — but a death sentence for fresh hatchlings.',
   mystery: 'Roll the d12 mystery table — fortune, junk, or misfortune.',
   fog: "A bank of ashen fog hides what waits here — enemy, mystery, hazard, loot, or (rarely) a cache. The first to step in reveals it for good.",
   shop: 'Buy gear and consumables for Spores.',
@@ -489,7 +489,7 @@ export const SPACE_BLURBS: Record<string, string> = {
     'A shared mineshaft — each strike digs deeper for Spores, Moltings, and Gemstones, the materials that upgrade your gear (deeper pays more). Cave-in risk climbs with depth; the Heartstone at the bottom is the jackpot. 3 strikes per visit.',
   vault_lock:
     'The Guildvault: crack the hidden 3-sigil combination. Every failed pick is public intel on the wall — and fattens the pot. 3 picks per visit.',
-  shrine: 'Spend 15 Spores for a lasting blessing: +1 ATK, DEF, or SPD, or a full heal.',
+  shrine: 'Spend 30 Spores for a permanent blessing: +1 ATK, DEF, or SPD.',
   witch: 'The Sedgemoor Witch inscribes scrolls into your grimoire — and sells tier-I scrolls for Spores.',
   hazard: 'Swamp gas, grasping vines, or choking spore clouds. It will cost you.',
   warp: 'A warp mushroom — step through to another cap, if it behaves.',

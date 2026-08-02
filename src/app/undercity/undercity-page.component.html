@@ -134,10 +134,15 @@
         </header>
 
         <main class="tab-body">
+          <!-- The Board stays mounted across tab switches so its baked terrain
+               never reloads; it's hidden (and its render loop paused) while
+               another tab is showing. The lighter tabs still mount on demand. -->
+          <app-undercity-board-tab
+            [map]="map()!"
+            [active]="tab() === 'board'"
+            [hidden]="tab() !== 'board'"
+          />
           @switch (tab()) {
-            @case ('board') {
-              <app-undercity-board-tab [map]="map()!" />
-            }
             @case ('creature') {
               <app-undercity-creature-tab />
             }

@@ -238,6 +238,39 @@ def test_non_wilderness_battle_still_uses_base_pools(table):
     assert ev['npc']['id'] in {n['id'] for n in data.NPCS}
 
 
+def test_boss_area_signature_spawns_themed_minion(table, monkeypatch):
+    # In a boss's depths pocket, a hit signature roll spawns its themed minion.
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'bone_d0'                       # Skullbriar's ossuary pocket
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)   # under the chance -> signature
+    ev = db._wild_battle(table, sid, doc, elite=False, region='depths')
+    assert ev['npc']['id'] == data.LAIR_SIGNATURE['bone'] == 'mosspit_skeleton'
+
+
+def test_boss_area_signature_missed_roll_uses_flat_pool(table, monkeypatch):
+    # A missed roll falls back to the flat tier-2 wild pool (variety preserved).
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'bone_d0'
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)  # over the chance -> flat pool
+    ev = db._wild_battle(table, sid, doc, elite=False, region='depths')
+    assert ev['npc']['id'] in {n['id'] for n in data.DEPTHS_MID}
+
+
+def test_boss_area_signature_never_on_elite_spaces(table, monkeypatch):
+    # Elite spaces keep the full tier pool even on a would-be-hit signature roll.
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'bone_d0'
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)
+    ev = db._wild_battle(table, sid, doc, elite=True, region='depths')
+    assert ev['npc']['id'] in {n['id'] for n in data.WILDERNESS_NPCS}
+
+
 def test_wilderness_monsters_are_tougher_than_base_elites(table):
     base_max_hp = max(n['hp'] for n in data.ELITE_NPCS)
     assert min(n['hp'] for n in data.WILDERNESS_NPCS) > max(n['hp'] for n in data.NPCS)
@@ -3930,13 +3963,16 @@ def test_ruin_is_tier2_not_tier1(table):
 
 
 def test_depths_is_flat_tier2_regardless_of_depth(table):
-    """No more depth ladder: a shallow AND a deep depths node both pull tier 2."""
+    """No more depth ladder: a shallow AND a deep depths node both pull tier 2 —
+    the flat DEPTHS_MID pool plus that biome's signature minion (design 2026-08-02)."""
     sid = _sid(table)
     mid_ids = {n['id'] for n in data.DEPTHS_MID}
-    for node in ('city_lb', 'city_d1'):           # both region='depths'
+    for node in ('city_lb', 'city_d1'):           # both region='depths', biome 'city'
+        sig = data.LAIR_SIGNATURE.get(data.dungeon_biome(node) or node.split('_')[0])
+        allowed = mid_ids | ({sig} if sig else set())
         _, doc = _player_at(table, node)
         ids = {db._wild_battle(table, sid, doc)['npc']['id'] for _ in range(20)}
-        assert ids and ids <= mid_ids, (node, ids)
+        assert ids and ids <= allowed, (node, ids)
 
 
 def test_wilderness_and_isle_use_tier3(table):

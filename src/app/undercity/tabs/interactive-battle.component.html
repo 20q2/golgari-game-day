@@ -196,8 +196,6 @@
           } @else {
             @if (telegraph; as t) {
               <span class="intent read"><mat-icon class="mi">visibility</mat-icon> you read {{ stanceMap[t].label }}</span>
-            } @else {
-              <span class="intent none">— no read; its intent is hidden</span>
             }
           }
         </div>
@@ -355,7 +353,7 @@
           @if (r.xp) { <span class="reward-chip xp"><mat-icon class="mi">auto_awesome</mat-icon> +{{ r.xp }} XP</span> }
           @if (r.renown) { <span class="reward-chip renown"><mat-icon class="mi">military_tech</mat-icon> +{{ r.renown }} Renown</span> }
           @if (r.itemName) { <span class="reward-chip item"><mat-icon class="mi">{{ r.itemIcon ?? 'backpack' }}</mat-icon> {{ r.itemName }}</span> }
-          @if (r.gearName) { <span class="reward-chip item"><mat-icon class="mi">{{ r.gearIcon ?? 'hardware' }}</mat-icon> {{ r.gearName }} — {{ r.gearStashed ? 'to stash' : 'stash full → materials' }}</span> }
+          @if (r.gearName) { <span class="reward-chip item"><mat-icon class="mi">{{ r.gearIcon ?? 'hardware' }}</mat-icon> {{ r.gearName }}{{ r.gearStashed ? '' : ' — stash full → materials' }}</span> }
           @if (r.levels) { <span class="reward-chip levelup"><mat-icon class="mi">arrow_upward</mat-icon> Level up{{ r.levels > 1 ? ' ×' + r.levels : '' }}!</span> }
         </div>
       </div>

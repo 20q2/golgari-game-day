@@ -1492,23 +1492,28 @@
 
 .chip--stat { background: rgba(255, 255, 255, 0.06); }
 
-.chip--ability {
-  cursor: pointer;
-  color: inherit;
-  background: rgba(74, 124, 89, 0.18);
-  border-color: rgba(154, 194, 110, 0.7);
-  &.open { background: rgba(74, 124, 89, 0.32); }
-  .chip-caret { font-size: 1rem; width: 1rem; height: 1rem; }
+// Effects shown directly (no dropdown): one line per rider/effect.
+.item-sheet-effects {
+  margin: 0 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
-.chip-blurb {
-  margin: 0 0 0.75rem;
+.effect-line {
+  margin: 0;
   font-size: 0.85rem;
   opacity: 0.85;
+
+  .effect-label {
+    color: #b7e4c7;
+    margin-right: 0.35rem;
+  }
 }
 
 .item-sheet-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin: 0.5rem 0;
 
@@ -1517,17 +1522,12 @@
 
 .item-sheet-hint { font-size: 0.85rem; }
 
-.item-sheet-market {
-  margin-top: 0.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(183, 228, 199, 0.18);
-}
-
 .market-price {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
+  margin: 0.5rem 0;
 
   label { font-size: 0.8rem; opacity: 0.8; }
   .price-input { width: 5rem; }
@@ -1717,7 +1717,6 @@
   justify-content: center;
   gap: 18px;
   overflow: hidden;
-  cursor: pointer;
 }
 
 .ec-stage {
@@ -1741,7 +1740,12 @@
 }
 .ec-to {
   opacity: 0;
-  animation: ec-to 2700ms linear forwards;
+  // Reveal (0–2700ms) then, once colored, a celebration beat: shake + jump,
+  // then a breath (2700–4700ms). The celebrate anim is delayed so it takes over
+  // transform only after the reveal holds its final colored frame.
+  animation:
+    ec-to 2700ms linear forwards,
+    ec-celebrate 2000ms ease-in-out 2700ms forwards;
 }
 
 .ec-flash {
@@ -1751,14 +1755,6 @@
   opacity: 0;
   pointer-events: none;
   animation: ec-flash 2700ms linear forwards;
-}
-
-.ec-skip {
-  margin: 0;
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(183, 228, 199, 0.55);
 }
 
 /* Old silhouette: pops in, breathes, underlies the strobe, then clears before color reveal. */
@@ -1786,6 +1782,28 @@
   63.0% { opacity: 1; filter: brightness(0); transform: scale(1); }
   74.1% { opacity: 1; filter: brightness(0); transform: scale(1.12); }
   100%  { opacity: 1; filter: brightness(1); transform: scale(1); }
+}
+
+/* Celebration (runs 2700–4700ms, after the color reveal): the new form does a
+   quick shake and a squash-and-stretch jump (~first second), then settles into
+   one slow breath (~second second) before the cutscene closes. Only drives
+   transform — filter/opacity stay at the reveal's held colored frame. */
+@keyframes ec-celebrate {
+  /* shake — rapid side-to-side wobble */
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  4%   { transform: translate(-5px, 0) rotate(-3deg); }
+  10%  { transform: translate(5px, 0) rotate(3deg); }
+  16%  { transform: translate(-4px, 0) rotate(-2deg); }
+  22%  { transform: translate(4px, 0) rotate(2deg); }
+  28%  { transform: translate(0, 0) rotate(0deg); }
+  /* jump — crouch, launch, land with squash/stretch */
+  33%  { transform: translate(0, 5px) scale(1.06, 0.92); }
+  42%  { transform: translate(0, -34px) scale(0.95, 1.08); }
+  49%  { transform: translate(0, 0) scale(1.05, 0.95); }
+  53%  { transform: translate(0, 0) scale(1); }
+  /* breathe — one slow swell out and back */
+  76%  { transform: translate(0, -3px) scale(1.045); }
+  100% { transform: translate(0, 0) scale(1); }
 }
 
 /* White veil: small beat flashes, then a big burst before the color reveal. */

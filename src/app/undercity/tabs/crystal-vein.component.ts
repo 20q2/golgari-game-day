@@ -5,9 +5,7 @@ import {
   Output,
   ViewChild,
   ElementRef,
-  AfterViewInit,
   OnChanges,
-  OnDestroy,
   SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -21,21 +19,22 @@ import {
   VEIN_ITEM_RARE_BAND,
   VEIN_MAX_DEPTH,
 } from '../data/vein-vault';
-import { VeinCanvas } from '../engine/vein-canvas';
 
-/** Which scripted animation the 3D wall should play, with a monotonic `seq`
- *  so repeat kinds (two strikes in a row) still retrigger via ngOnChanges. */
-export interface VeinEffect {
-  kind: 'strike' | 'cave-in' | 'heartstone';
-  seq: number;
-  /** Materials gained on this strike — drives the particle-burst count. */
-  burst?: number;
+/** One row of the next-strike odds table — a small gacha pull where the cave-in
+ *  is just another possible result alongside the rewards. */
+interface Outcome {
+  icon: string;
+  label: string;
+  value: string;
+  tone: 'gem' | 'item' | 'molt' | 'risk';
+  muted?: boolean;
 }
 
 /**
  * The crystal-vein modal: a shared shaft everyone digs deeper. Pure
- * presentation — the parent owns the shared depth and the `strike` action;
- * this component renders the shaft, the next-strike odds, and emits swings.
+ * presentation — the parent owns the shared depth and the `strike` action.
+ * You strike by tapping the shaft itself; the odds table shows what this swing
+ * can turn up (cave-in included, gacha-style).
  */
 @Component({
   selector: 'app-undercity-crystal-vein',
@@ -51,20 +50,40 @@ export interface VeinEffect {
           Gemstones this visit: <strong #earnedEl class="earned">{{ earnedThisVisit }}</strong> 💠
         </p>
 
-        <div class="vein-stage">
-          @if (!failed) {
-            <canvas #veinCanvas class="vein-canvas" [class.hidden]="!ready"></canvas>
-          }
-          @if (failed) {
-            <div class="shaft">
-              @for (lv of levels; track lv) {
-                <div
-                  class="rung"
-                  [class.dug]="lv <= depth"
-                  [class.next]="lv === depth + 1"
-                  [class.heart]="lv === MAX"
-                ></div>
-              }
+        <!-- The shaft IS the strike button: tap the vein to swing your pick. -->
+        <div
+          #shaftEl
+          class="vein-stage"
+          [class.tappable]="canStrike"
+          [class.heart]="isHeartstoneNext"
+          role="button"
+          [attr.aria-label]="canStrike ? 'Strike the crystal vein' : null"
+          [attr.aria-disabled]="!canStrike"
+          [attr.tabindex]="canStrike ? 0 : -1"
+          (click)="onStrike()"
+          (keydown.enter)="onStrike()"
+          (keydown.space)="onStrike(); $event.preventDefault()"
+        >
+          <div class="shaft">
+            @for (lv of levels; track lv) {
+              <div
+                class="rung"
+                [class.dug]="lv <= depth"
+                [class.next]="lv === depth + 1"
+                [class.heart]="lv === MAX"
+              ></div>
+            }
+          </div>
+          @if (strikesLeft > 0) {
+            <div class="strike-cue">
+              <span class="pick">⛏️</span>
+              <span>{{
+                busy
+                  ? 'Striking…'
+                  : isHeartstoneNext
+                    ? 'Tap to pry the Heartstone ✦'
+                    : 'Tap the vein to strike'
+              }}</span>
             </div>
           }
         </div>
@@ -81,40 +100,16 @@ export interface VeinEffect {
                 <span class="heart-tag">— The Heartstone ✦</span>
               }
             </p>
-            <div class="cols">
-              <div class="col hold">
-                <div class="col-head">{{ isHeartstoneNext ? 'If you pry it ✦' : 'If it holds ✓' }}</div>
-                <ul>
-                  @if (isHeartstoneNext) {
-                    <li><strong>+{{ HEART_ICHOR }}</strong> 💠 Gemstones</li>
-                    <li><strong>+1</strong> ⛏️ Molting</li>
-                    <li>a <strong>guaranteed</strong> rare 💎</li>
-                  } @else {
-                    <li><strong>{{ gemPct }}%</strong> 💠 Gemstone</li>
-                    <li><strong>+1</strong> ⛏️ Molting</li>
-                    @if (itemChance) {
-                      <li><strong>{{ itemChance.pct }}%</strong> {{ itemChance.label }}</li>
-                    } @else {
-                      <li class="muted">finds start at L{{ CONSUMABLE_MIN }}</li>
-                    }
-                  }
-                </ul>
-              </div>
-              <div class="col cave">
-                <div class="col-head">If it caves ✗</div>
-                <ul>
-                  <li><strong class="risk">{{ riskPct }}%</strong> chance</li>
-                  <li><strong class="risk">{{ caveDmg }}</strong> damage</li>
-                  <li>your visit ends</li>
-                  <li class="muted">non-fatal · shaft holds</li>
-                </ul>
-              </div>
-            </div>
+            <ul class="odds-list">
+              @for (o of outcomes; track o.label) {
+                <li class="odds-row" [class.risk]="o.tone === 'risk'" [class.muted]="o.muted">
+                  <span class="odds-icon">{{ o.icon }}</span>
+                  <span class="odds-label">{{ o.label }}</span>
+                  <span class="odds-val">{{ o.value }}</span>
+                </li>
+              }
+            </ul>
           </div>
-
-          <button class="uc-btn strike-btn" [disabled]="busy" (click)="strike.emit()">
-            ⛏️ Strike
-          </button>
 
           @if (!isHeartstoneNext) {
             <p class="vein-hint goal">
@@ -171,30 +166,44 @@ export interface VeinEffect {
         color: #b6ffbf;
         display: inline-block;
       }
+      /* The tappable shaft — the vein you strike. */
       .vein-stage {
-        position: relative;
-        width: 100%;
-        height: 180px;
-        margin: 2px auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 12px;
+        border: 1px solid rgba(90, 150, 165, 0.28);
+        border-radius: 12px;
+        background: radial-gradient(120% 90% at 50% 0%, rgba(40, 62, 68, 0.55), rgba(16, 22, 24, 0.55));
+        user-select: none;
+        transition:
+          transform 0.08s ease,
+          border-color 0.15s ease,
+          box-shadow 0.15s ease;
       }
-      .vein-canvas {
-        width: 100%;
-        height: 100%;
-        display: block;
-        border-radius: 10px;
+      .vein-stage.tappable {
+        cursor: pointer;
+        border-color: rgba(143, 208, 221, 0.55);
       }
-      .vein-canvas.hidden {
-        visibility: hidden;
+      .vein-stage.tappable:hover {
+        box-shadow: 0 0 0 1px rgba(143, 208, 221, 0.35);
+      }
+      .vein-stage.tappable:active {
+        transform: scale(0.98);
+      }
+      .vein-stage.heart.tappable {
+        border-color: rgba(224, 192, 136, 0.7);
+        box-shadow: 0 0 14px rgba(224, 192, 136, 0.25);
       }
       .shaft {
         display: flex;
         flex-direction: column-reverse;
         gap: 3px;
-        margin: 2px auto;
-        width: 64px;
+        width: 132px;
       }
       .rung {
-        height: 10px;
+        height: 12px;
         border-radius: 3px;
         background: #23282a;
         box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.6);
@@ -204,10 +213,34 @@ export interface VeinEffect {
         box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25);
       }
       .rung.next {
-        outline: 1px dashed rgba(143, 208, 221, 0.7);
+        outline: 1px dashed rgba(143, 208, 221, 0.85);
+        animation: nextPulse 1.4s ease-in-out infinite;
       }
       .rung.heart {
-        border: 1px solid rgba(224, 192, 136, 0.8);
+        border: 1px solid rgba(224, 192, 136, 0.85);
+      }
+      @keyframes nextPulse {
+        0%,
+        100% {
+          outline-color: rgba(143, 208, 221, 0.35);
+        }
+        50% {
+          outline-color: rgba(143, 208, 221, 1);
+        }
+      }
+      .strike-cue {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #b9e6ef;
+      }
+      .vein-stage.heart .strike-cue {
+        color: #e7cf9c;
+      }
+      .strike-cue .pick {
+        font-size: 1.05rem;
       }
       .vein-log {
         margin: 0;
@@ -233,60 +266,48 @@ export interface VeinEffect {
       .heart-tag {
         color: #e0c088;
       }
-      .cols {
-        display: flex;
-        gap: 8px;
-      }
-      .col {
-        flex: 1;
-        text-align: left;
-      }
-      .col-head {
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        margin-bottom: 5px;
-        padding-bottom: 3px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      }
-      .col.hold .col-head {
-        color: #b6ffbf;
-      }
-      .col.cave .col-head {
-        color: #d08a6f;
-      }
-      .col ul {
+      /* Single gacha-style odds table: each swing's possible results, cave-in included. */
+      .odds-list {
         list-style: none;
         margin: 0;
         padding: 0;
         display: flex;
         flex-direction: column;
-        gap: 3px;
+        gap: 4px;
       }
-      .col li {
-        font-size: 0.8rem;
-        color: #cbd5ce;
+      .odds-row {
+        display: grid;
+        grid-template-columns: 1.3rem 1fr auto;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 6px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.03);
+        font-size: 0.82rem;
+        color: #d3ddd6;
+        text-align: left;
       }
-      .col li strong {
-        color: #e7f0ea;
+      .odds-icon {
+        text-align: center;
       }
-      .col.hold li strong {
+      .odds-val {
+        font-weight: 700;
         color: #b6ffbf;
+        font-variant-numeric: tabular-nums;
       }
-      .col li .risk {
-        color: #e6926f;
+      .odds-row.risk {
+        background: rgba(120, 46, 30, 0.22);
+        color: #f0c3b2;
       }
-      .col li .bonus {
-        color: #e0c088;
-        font-size: 0.72rem;
+      .odds-row.risk .odds-val {
+        color: #ef8f6d;
       }
-      .col li.muted {
+      .odds-row.muted {
         color: #6f7d72;
         font-style: italic;
-        font-size: 0.74rem;
       }
-      .strike-btn {
-        font-size: 1rem;
+      .odds-row.muted .odds-val {
+        color: #6f7d72;
       }
       .vein-hint {
         margin: 0;
@@ -312,7 +333,7 @@ export interface VeinEffect {
     `,
   ],
 })
-export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDestroy {
+export class CrystalVeinModalComponent implements OnChanges {
   @Input() depth = 0;
   @Input() strikesLeft = 0;
   @Input() busy = false;
@@ -321,43 +342,20 @@ export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDe
   @Input() earnedThisVisit = 0;
   /** Region biome wash painted behind the card (from the board tab). */
   @Input() washBg: string | null = null;
-  /** Set by the parent after each strike response to trigger a wall animation. */
-  @Input() effect: VeinEffect | null = null;
   @Output() strike = new EventEmitter<void>();
   @Output() closed = new EventEmitter<void>();
 
-  @ViewChild('veinCanvas') private canvasRef?: ElementRef<HTMLCanvasElement>;
   @ViewChild('earnedEl') private earnedRef?: ElementRef<HTMLElement>;
+  @ViewChild('shaftEl') private shaftRef?: ElementRef<HTMLElement>;
 
   protected readonly MAX = VEIN_MAX_DEPTH;
   protected readonly levels = Array.from({ length: VEIN_MAX_DEPTH }, (_, i) => i + 1);
   protected readonly HEART_ICHOR = VEIN_HEARTSTONE_ICHOR;
   protected readonly CONSUMABLE_MIN = VEIN_ITEM_CONSUMABLE_BAND.min;
-  protected ready = false;
-  protected failed = false;
-
-  private readonly vein = new VeinCanvas();
-  private lastSeq = -1;
-  private resizeObs?: ResizeObserver;
 
   /** The level this next swing enters (shared depth + 1). */
   protected get level(): number {
     return this.depth + 1;
-  }
-
-  /** Gemstone (Ichor) drop chance %, level-scaling and capped at 100. */
-  protected get gemPct(): number {
-    return Math.round(Math.min(1, VEIN_ICHOR_BASE + this.level * VEIN_ICHOR_PER_LEVEL) * 100);
-  }
-
-  /** Cave-in chance % at this level. */
-  protected get riskPct(): number {
-    return Math.round(this.level * VEIN_CAVE_IN_PCT_PER_LEVEL * 100);
-  }
-
-  /** Rockfall damage if this strike caves in. */
-  protected get caveDmg(): number {
-    return this.level * VEIN_CAVE_IN_DMG_PER_LEVEL;
   }
 
   /** This swing pries the Heartstone (reaches VEIN_MAX_DEPTH). */
@@ -365,37 +363,84 @@ export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDe
     return this.level >= this.MAX;
   }
 
+  /** A swing is available (has strikes, not mid-request). */
+  protected get canStrike(): boolean {
+    return this.strikesLeft > 0 && !this.busy;
+  }
+
+  private get gemPct(): number {
+    return Math.round(Math.min(1, VEIN_ICHOR_BASE + this.level * VEIN_ICHOR_PER_LEVEL) * 100);
+  }
+
+  private get riskPct(): number {
+    return Math.round(this.level * VEIN_CAVE_IN_PCT_PER_LEVEL * 100);
+  }
+
+  private get caveDmg(): number {
+    return this.level * VEIN_CAVE_IN_DMG_PER_LEVEL;
+  }
+
   /** Bonus-item odds for this level, or null in the shallow band (no items). */
-  protected get itemChance(): { pct: number; label: string } | null {
+  private get itemChance(): { pct: number; label: string } | null {
     const l = this.level;
     if (l >= VEIN_ITEM_RARE_BAND.min) {
-      return { pct: Math.round(VEIN_ITEM_RARE_BAND.chance * 100), label: 'a rare find' };
+      return { pct: Math.round(VEIN_ITEM_RARE_BAND.chance * 100), label: 'Rare find' };
     }
     if (l >= VEIN_ITEM_CONSUMABLE_BAND.min && l <= VEIN_ITEM_CONSUMABLE_BAND.max) {
-      return { pct: Math.round(VEIN_ITEM_CONSUMABLE_BAND.chance * 100), label: 'a consumable' };
+      return { pct: Math.round(VEIN_ITEM_CONSUMABLE_BAND.chance * 100), label: 'Consumable' };
     }
     return null;
   }
 
-  async ngAfterViewInit(): Promise<void> {
-    const el = this.canvasRef?.nativeElement;
-    if (!el) {
-      this.failed = true;
-      return;
+  /** The next swing's full result table — every possible pull, cave-in last as
+   *  the "bad roll". Rewards read as a Heartstone jackpot at max depth. */
+  protected get outcomes(): Outcome[] {
+    const rows: Outcome[] = [];
+    if (this.isHeartstoneNext) {
+      rows.push({ icon: '💠', label: 'Gemstones', value: `+${this.HEART_ICHOR}`, tone: 'gem' });
+      rows.push({ icon: '💎', label: 'Rare find', value: 'guaranteed', tone: 'item' });
+      rows.push({ icon: '⛏️', label: 'Molting', value: '+1', tone: 'molt' });
+    } else {
+      rows.push({ icon: '💠', label: 'Gemstone', value: `${this.gemPct}%`, tone: 'gem' });
+      const item = this.itemChance;
+      if (item) {
+        rows.push({ icon: '🎁', label: item.label, value: `${item.pct}%`, tone: 'item' });
+      } else {
+        rows.push({
+          icon: '🎁',
+          label: `Finds start at L${this.CONSUMABLE_MIN}`,
+          value: '—',
+          tone: 'item',
+          muted: true,
+        });
+      }
+      rows.push({ icon: '⛏️', label: 'Molting', value: '+1', tone: 'molt' });
     }
-    const ok = await this.vein.mount(el);
-    if (!ok) {
-      this.failed = true;
-      return;
-    }
-    this.ready = true;
-    this.vein.setDepth(this.depth, this.MAX);
-    this.resizeObs = new ResizeObserver(() => this.vein.resize());
-    this.resizeObs.observe(el);
+    rows.push({
+      icon: '⚠️',
+      label: `Cave-in · ${this.caveDmg} dmg, visit ends`,
+      value: `${this.riskPct}%`,
+      tone: 'risk',
+    });
+    return rows;
+  }
+
+  /** Tap-the-vein handler: a quick pick-shake for feel, then emit the swing. */
+  protected onStrike(): void {
+    if (!this.canStrike) return;
+    this.shaftRef?.nativeElement.animate(
+      [
+        { transform: 'translateX(0) scale(1)' },
+        { transform: 'translateX(-4px) scale(1.01)' },
+        { transform: 'translateX(4px) scale(1.01)' },
+        { transform: 'translateX(0) scale(1)' },
+      ],
+      { duration: 220, easing: 'ease-in-out' },
+    );
+    this.strike.emit();
   }
 
   ngOnChanges(ch: SimpleChanges): void {
-    if (ch['depth'] && this.ready) this.vein.setDepth(this.depth, this.MAX);
     if (
       ch['earnedThisVisit'] &&
       !ch['earnedThisVisit'].firstChange &&
@@ -403,16 +448,10 @@ export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDe
     ) {
       this.pulseEarned();
     }
-    if (ch['effect'] && this.ready && this.effect && this.effect.seq !== this.lastSeq) {
-      this.lastSeq = this.effect.seq;
-      if (this.effect.kind === 'cave-in') this.vein.playCaveIn();
-      else if (this.effect.kind === 'heartstone') this.vein.playHeartstone(this.effect.burst);
-      else this.vein.playStrike(this.effect.burst);
-    }
   }
 
-  /** Scale + colour flash on the tally each time it climbs — the universal
-   *  "Gemstone gained" cue that also covers the no-WebGL fallback. */
+  /** Scale + colour flash on the tally each time it climbs — the "Gemstone
+   *  gained" cue. */
   private pulseEarned(): void {
     this.earnedRef?.nativeElement.animate(
       [
@@ -422,10 +461,5 @@ export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDe
       ],
       { duration: 420, easing: 'ease-out' },
     );
-  }
-
-  ngOnDestroy(): void {
-    this.resizeObs?.disconnect();
-    this.vein.dispose();
   }
 }
