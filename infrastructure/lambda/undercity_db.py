@@ -1000,6 +1000,25 @@ def _level_pet(table, sid, doc, payload):
     return _ok(doc, text=f"{data.PET_SPECIES[pet['species']]['name']} reaches level {pet['level']}.")
 
 
+def _salvage_pet(table, sid, doc, payload):
+    pet = _find_pet(doc, payload.get('petId'))
+    if not pet:
+        return _err('No such pet.', 409)
+    moltings = data.PET_SALVAGE_MOLTINGS[pet['tier']] + (pet['level'] - 1)
+    ichor = 1 if pet['tier'] >= data.PET_SALVAGE_ICHOR_MIN_TIER else 0
+    m = _materials(doc)
+    m['moltings'] += moltings
+    m['ichor'] += ichor
+    doc['pets'] = [p for p in doc['pets'] if p['id'] != pet['id']]
+    if doc.get('activePetId') == pet['id']:
+        doc['activePetId'] = None
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    gem = f" +{ichor} gemstone" if ichor else ''
+    return _ok(doc, text=f"Salvaged for {moltings} moltings{gem}.")
+
+
 def _grind_materials(doc, gid):
     """Grind a gear piece into crafting materials by its rarity (tier). Mutates
     the player's material counters; returns the amounts gained."""

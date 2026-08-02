@@ -160,3 +160,32 @@ def test_level_pet_rejects_at_cap(table):
     status, _ = db._level_pet(table, sid, doc, {'petId': pet['id']})
     assert status == 409
     assert pet['level'] == data.PET_LEVEL_CAP[1]
+
+
+def test_salvage_low_tier_gives_moltings(table):
+    sid, doc = _player_at(table, 'n1')
+    pet = _give_pet(doc, 'fox', tier=1, level=1)   # base 1 molting, no ichor
+    doc['materials'] = {'moltings': 0, 'ichor': 0}
+    status, body = db._salvage_pet(table, sid, doc, {'petId': pet['id']})
+    assert status == 200
+    assert doc['materials']['moltings'] == 1
+    assert doc['materials']['ichor'] == 0
+    assert doc['pets'] == []
+
+
+def test_salvage_high_tier_gives_ichor_and_scales_with_level(table):
+    sid, doc = _player_at(table, 'n1')
+    pet = _give_pet(doc, 'fox', tier=3, level=3)   # base 4 + (level-1)=2 -> 6 moltings, +1 ichor
+    doc['materials'] = {'moltings': 0, 'ichor': 0}
+    status, _ = db._salvage_pet(table, sid, doc, {'petId': pet['id']})
+    assert status == 200
+    assert doc['materials']['moltings'] == 6
+    assert doc['materials']['ichor'] == 1
+
+
+def test_salvage_clears_active_pointer(table):
+    sid, doc = _player_at(table, 'n1')
+    pet = _give_pet(doc, 'fox')
+    doc['activePetId'] = pet['id']
+    db._salvage_pet(table, sid, doc, {'petId': pet['id']})
+    assert doc['activePetId'] is None
