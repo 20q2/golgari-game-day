@@ -189,3 +189,17 @@ def test_salvage_clears_active_pointer(table):
     doc['activePetId'] = pet['id']
     db._salvage_pet(table, sid, doc, {'petId': pet['id']})
     assert doc['activePetId'] is None
+
+
+def test_actions_routed_through_dispatch(table):
+    _player_at(table, 'n1')   # ensures a season + a joined player 'user-alex'
+    doc = db._get_player(table, _sid(table), 'user-alex')
+    db._grant_egg(doc, 1)
+    db._save_or_conflict(table, doc)
+    egg_id = doc['eggs'][0]['id']
+    status, body = act(table, 'incubate-egg', eggId=egg_id)
+    assert status == 200
+    assert body['you']['incubator']['eggId'] == egg_id
+
+    status, body = act(table, 'activate-pet', petId='nope')
+    assert status == 409

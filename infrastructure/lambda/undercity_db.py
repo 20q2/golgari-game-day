@@ -1840,6 +1840,9 @@ def handle_action(table, body):
         'salvage-gear': _salvage_gear, 'upgrade-gear': _upgrade_gear,
         'market-list': _market_list, 'market-buy': _market_buy,
         'market-cancel': _market_cancel,
+        'incubate-egg': _incubate_egg, 'hatch-egg': _hatch_egg,
+        'activate-pet': _activate_pet, 'merge-pet': _merge_pet,
+        'level-pet': _level_pet, 'salvage-pet': _salvage_pet,
     }
     handler = handlers.get(atype)
     if not handler:
