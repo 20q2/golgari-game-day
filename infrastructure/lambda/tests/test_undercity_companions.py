@@ -132,3 +132,31 @@ def test_merge_partial_progress_carries(table):
         'targetPetId': keeper['id'], 'fodderPetIds': [f1['id']]})
     assert status == 200
     assert keeper['tier'] == 1 and keeper['mergeProgress'] == 1
+
+
+def test_level_pet_spends_materials(table):
+    sid, doc = _player_at(table, 'n1')
+    pet = _give_pet(doc, 'fox', tier=1, level=1)   # tier-1 level cost: 2 moltings
+    doc['materials'] = {'moltings': 5, 'ichor': 0}
+    status, body = db._level_pet(table, sid, doc, {'petId': pet['id']})
+    assert status == 200
+    assert pet['level'] == 2
+    assert doc['materials']['moltings'] == 3
+
+
+def test_level_pet_rejects_when_short(table):
+    sid, doc = _player_at(table, 'n1')
+    pet = _give_pet(doc, 'fox', tier=1, level=1)
+    doc['materials'] = {'moltings': 0, 'ichor': 0}
+    status, _ = db._level_pet(table, sid, doc, {'petId': pet['id']})
+    assert status == 402
+    assert pet['level'] == 1
+
+
+def test_level_pet_rejects_at_cap(table):
+    sid, doc = _player_at(table, 'n1')
+    pet = _give_pet(doc, 'fox', tier=1, level=data.PET_LEVEL_CAP[1])
+    doc['materials'] = {'moltings': 99, 'ichor': 99}
+    status, _ = db._level_pet(table, sid, doc, {'petId': pet['id']})
+    assert status == 409
+    assert pet['level'] == data.PET_LEVEL_CAP[1]

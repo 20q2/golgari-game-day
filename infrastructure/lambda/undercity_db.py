@@ -979,6 +979,27 @@ def _merge_pet(table, sid, doc, payload):
     return _ok(doc, text=f"Your {data.PET_SPECIES[target['species']]['name']} grows stronger.")
 
 
+def _level_pet(table, sid, doc, payload):
+    pet = _find_pet(doc, payload.get('petId'))
+    if not pet:
+        return _err('No such pet.', 409)
+    cap = data.PET_LEVEL_CAP[pet['tier']]
+    if pet['level'] >= cap:
+        return _err('Already at this rarity’s level cap — merge to rank up.', 409)
+    need_m = data.PET_LEVEL_MOLTINGS[pet['tier']]
+    need_i = data.PET_LEVEL_ICHOR[pet['tier']]
+    m = _materials(doc)
+    if m['moltings'] < need_m or m['ichor'] < need_i:
+        return _err('Not enough moltings/gemstones.', 402)
+    m['moltings'] -= need_m
+    m['ichor'] -= need_i
+    pet['level'] += 1
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text=f"{data.PET_SPECIES[pet['species']]['name']} reaches level {pet['level']}.")
+
+
 def _grind_materials(doc, gid):
     """Grind a gear piece into crafting materials by its rarity (tier). Mutates
     the player's material counters; returns the amounts gained."""
