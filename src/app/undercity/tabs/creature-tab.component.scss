@@ -1704,3 +1704,117 @@
     font-size: 18px;
   }
 }
+
+/* ---- Evolution cutscene ---- */
+.evolve-cutscene {
+  position: fixed;
+  inset: 0;
+  z-index: 1250; // just above .evolve-overlay (1200)
+  background: radial-gradient(circle at 50% 45%, rgba(24, 32, 26, 0.9), rgba(4, 6, 4, 0.98));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.ec-stage {
+  position: relative;
+  width: min(62vw, 260px);
+  height: min(62vw, 260px);
+}
+
+.ec-sprite {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: brightness(0);
+  will-change: opacity, filter, transform;
+}
+
+.ec-from {
+  animation: ec-from 2700ms linear forwards;
+}
+.ec-to {
+  opacity: 0;
+  animation: ec-to 2700ms linear forwards;
+}
+
+.ec-flash {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  animation: ec-flash 2700ms linear forwards;
+}
+
+.ec-skip {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(183, 228, 199, 0.55);
+}
+
+/* Old silhouette: pops in, breathes, underlies the strobe, then clears before color reveal. */
+@keyframes ec-from {
+  0%    { opacity: 0; filter: brightness(0); transform: scale(0.9); }
+  6%    { opacity: 1; transform: scale(1); }
+  12%   { transform: scale(1.05); }
+  18.5% { transform: scale(1); }
+  63%   { opacity: 1; filter: brightness(0); }
+  74%   { opacity: 0; }
+  100%  { opacity: 0; }
+}
+
+/* New sprite: blinks over the old silhouette on accelerating beats,
+   settles, then blooms from silhouette (brightness 0) into color (brightness 1). */
+@keyframes ec-to {
+  0%    { opacity: 0; filter: brightness(0); transform: scale(1); }
+  18.5% { opacity: 0; filter: brightness(0); }
+  27.8% { opacity: 1; filter: brightness(0); }
+  35.9% { opacity: 0; filter: brightness(0); }
+  43.0% { opacity: 1; filter: brightness(0); }
+  49.3% { opacity: 0; filter: brightness(0); }
+  54.8% { opacity: 1; filter: brightness(0); }
+  59.6% { opacity: 0; filter: brightness(0); }
+  63.0% { opacity: 1; filter: brightness(0); transform: scale(1); }
+  74.1% { opacity: 1; filter: brightness(0); transform: scale(1.12); }
+  100%  { opacity: 1; filter: brightness(1); transform: scale(1); }
+}
+
+/* White veil: small beat flashes, then a big burst before the color reveal. */
+@keyframes ec-flash {
+  0%, 18.5% { opacity: 0; }
+  27.8% { opacity: 0.25; }
+  30%   { opacity: 0; }
+  43.0% { opacity: 0.32; }
+  45%   { opacity: 0; }
+  54.8% { opacity: 0.42; }
+  56.5% { opacity: 0; }
+  63.0% { opacity: 0.5; }
+  64.5% { opacity: 0; }
+  68%   { opacity: 0.95; }
+  74%   { opacity: 0.55; }
+  82%   { opacity: 0; }
+  100%  { opacity: 0; }
+}
+
+/* Reduced motion: no strobe/flash — just cross-fade to the colored new sprite. */
+@media (prefers-reduced-motion: reduce) {
+  .ec-from { animation: none; opacity: 0; }
+  .ec-flash { animation: none; opacity: 0; }
+  .ec-to {
+    filter: brightness(1);
+    animation: ec-reveal-reduced 500ms ease forwards;
+  }
+  @keyframes ec-reveal-reduced {
+    0%   { opacity: 0; }
+    100% { opacity: 1; }
+  }
+}
