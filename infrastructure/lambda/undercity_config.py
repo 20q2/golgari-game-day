@@ -99,6 +99,19 @@ CARAPACE_GRIND_MAXHP = 15  # DEF-12: bonus Max HP granted while the perk is held
 DEATHDRIVE_MULT = 0.5  # ATK-15: Aggress swing multiplier while below half HP
 MENACE_FACTOR = 0.5    # ATK-10: multiplies the enemy's telegraph bluff chance
 THICK_HIDE_MULT = 0.5  # DEF-5: fraction of hazard/mystery HP loss actually taken
+# DEF-6 Thick Hide hazard dodge (design 2026-08-01): a DEF-scaled chance to avoid
+# a hazard entirely, surfaced as "lucky safety wedges" on the hazard wheel. Scales
+# with the DEF perk-stat (base + gear, temp buffs excluded); depths hazards dodge
+# at half the chance so the boss approach stays brutal. The THICK_HIDE_MULT halving
+# above still applies on a hit — the dodge is additive.
+THICK_HIDE_DODGE_BASE = 0.15         # dodge chance at DEF perk-stat 6 (tier-1 unlock)
+THICK_HIDE_DODGE_PER_DEF = 0.02      # +chance per DEF point above 6
+THICK_HIDE_DODGE_MAX = 0.40          # cap
+THICK_HIDE_DODGE_DUNGEON_MULT = 0.5  # depths/dungeon hazards dodge at half the surface chance
+# DEF-18 Last Stand (design 2026-08-01): revive at half max HP on an otherwise-
+# lethal blow, recharging on a real-time cooldown instead of once per descent.
+LAST_STAND_HP_FRAC = 0.5             # fraction of max HP to revive at (was a flat 1)
+LAST_STAND_COOLDOWN_MINUTES = 60     # real-time recharge between saves
 # Blink (SPD-15): choosing your die value is strong, so it paces itself — after a
 # blink you must take this many ordinary rolls before you can blink again. 1 =
 # "once every 2 rolls" (blink, roll, blink, ...). 0 disables the cooldown.

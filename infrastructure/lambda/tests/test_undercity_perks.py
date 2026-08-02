@@ -198,6 +198,18 @@ def test_hp_loss_floors_at_one():
     assert doc['hp'] == 1   # hazards never compost
 
 
+def test_hazard_dodge_chance_scales_and_caps():
+    # Base 0.15 at def 6, +0.02/pt, capped 0.40; dungeon halves.
+    lo = {'atk': 1, 'def': 6, 'spd': 1}          # perk-stat 6
+    mid = {'atk': 1, 'def': 12, 'spd': 1}        # perk-stat 12
+    cap = {'atk': 1, 'def': 30, 'spd': 1}        # would be 0.63 -> capped
+    assert db._hazard_dodge_chance(lo) == pytest.approx(0.15)
+    assert db._hazard_dodge_chance(mid) == pytest.approx(0.27)
+    assert db._hazard_dodge_chance(cap) == pytest.approx(0.40)
+    # Dungeon is half the surface chance.
+    assert db._hazard_dodge_chance(mid, dungeon=True) == pytest.approx(0.135)
+
+
 # ── Task 9: Last Stand ───────────────────────────────────────────────────────
 
 def test_last_stand_survives_once_per_descent(table, monkeypatch):

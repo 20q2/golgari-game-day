@@ -3236,6 +3236,19 @@ def _depths_biome(table, sid, node):
     return data.dungeon_biome(node)
 
 
+def _hazard_dodge_chance(doc, dungeon=False):
+    """Thick Hide (DEF-6): DEF-scaled chance to fully dodge a hazard. Scales with
+    the DEF perk-stat (base + gear; temp buffs excluded — same value that lights
+    the perk), capped, and halved in the depths so the boss approach stays hard."""
+    d = engine.perk_stat(doc, 'def')
+    chance = min(data.THICK_HIDE_DODGE_MAX,
+                 data.THICK_HIDE_DODGE_BASE
+                 + data.THICK_HIDE_DODGE_PER_DEF * max(0, d - 6))
+    if dungeon:
+        chance *= data.THICK_HIDE_DODGE_DUNGEON_MULT
+    return chance
+
+
 def _hazard(table, sid, doc, node):
     # Mirefoot hatch perk: bog natives shrug off half of any hazard's cost.
     mire = doc.get('homeBiome') == 'bog'
