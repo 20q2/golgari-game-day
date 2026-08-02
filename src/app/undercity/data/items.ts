@@ -413,6 +413,7 @@ export const NPC_ICONS: Record<string, string> = {
   // v3 guardians & mini-bosses
   golgari_grave_troll: 'landslide',
   wight_of_the_reliquary: 'security',
+  corpsejack_menace: 'cyclone',
   lord_of_extinction: 'domain_disabled',
   doomgape: 'dangerous',
   ishkanah: 'pest_control',
@@ -440,6 +441,7 @@ export const NPC_ICONS: Record<string, string> = {
 export const BARRIER_GUARDIANS: Record<string, string> = {
   bar_e: 'golgari_grave_troll',
   bar_s: 'wight_of_the_reliquary',
+  n286: 'corpsejack_menace',
 };
 
 /** Guardian shown when a barrier node isn't in the map above. */

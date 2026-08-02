@@ -1143,7 +1143,9 @@ RENOWN_SHOP_ITEMS_MAP = {i['id']: i for i in RENOWN_SHOP_ITEMS}
 # Fixed guardians blocking the gated routes. Staggered milestones: the
 # Grave-Troll falls to a ~level-5 creature, the Wight to ~level 6, so the
 # east route opens first. Beating one opens the barrier for the WHOLE season
-# (shared) and pays the winner alone.
+# (shared) and pays the winner alone. The Corpsejack Menace seals the ruin
+# pocket that holds the Doomgape lair (n288): unlike the two turtles it is a
+# fast glass striker (high SPD/ATK, thin DEF), so it rewards a different counter.
 BARRIER_GUARDIANS = {
     'bar_e': {'id': 'golgari_grave_troll', 'name': 'Golgari Grave-Troll',
               'hp': 36, 'atk': 11, 'def': 6, 'spd': 3, 'bounty': 30, 'xp': 25,
@@ -1151,6 +1153,9 @@ BARRIER_GUARDIANS = {
     'bar_s': {'id': 'wight_of_the_reliquary', 'name': 'Wight of the Reliquary',
               'hp': 42, 'atk': 12, 'def': 6, 'spd': 5, 'bounty': 35, 'xp': 25,
               'personality': 'turtle', 'bluff': 0.30},
+    'n286': {'id': 'corpsejack_menace', 'name': 'Corpsejack Menace',
+             'hp': 44, 'atk': 14, 'def': 5, 'spd': 9, 'bounty': 40, 'xp': 28,
+             'personality': 'trickster', 'bluff': 0.30},
 }
 
 # Mini-bosses at the lairs. First kill per player pays `first`; repeats pay
