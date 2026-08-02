@@ -1816,6 +1816,42 @@ def test_dungeon_hazard_stamps_biome(table):
         assert 'hazardOutcome' not in out
 
 
+def test_surface_hazard_dodged_by_thick_hide(table, monkeypatch):
+    # def 8 -> thick_hide; surface chance 0.19, so random()=0.0 always dodges.
+    sid, doc = _player_at(table, 'city_r4')
+    doc['def'] = 8
+    doc['hp'] = 25
+    doc['spores'] = 50
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)
+    out = db._hazard(table, sid, doc, 'city_r4')
+    assert out['hazardSafe'] is True
+    assert out['hazardOutcome'] == 'safe'
+    assert doc['hp'] == 25 and doc['spores'] == 50      # nothing applied
+    assert not doc.get('buffs')                          # no vines etc.
+
+
+def test_surface_hazard_hit_flags_not_safe_for_perk(table, monkeypatch):
+    # Same creature, but the dodge roll fails (0.99 > 0.19): today's effect lands
+    # AND the event carries hazardSafe=False so the wheel shows tease wedges.
+    sid, doc = _player_at(table, 'city_r4')
+    doc['def'] = 8
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)
+    monkeypatch.setattr(db._rng, 'choice', lambda seq: 'spore_cloud')
+    out = db._hazard(table, sid, doc, 'city_r4')
+    assert out['hazardSafe'] is False
+    assert out['hazardOutcome'] == 'spore_cloud'
+    assert out['hp'] < 0                                 # HP was actually lost
+
+
+def test_surface_hazard_no_perk_has_no_safe_field(table, monkeypatch):
+    # Pest (def 5) never rolls a dodge; behaviour identical to today.
+    sid, doc = _player_at(table, 'city_r4')
+    monkeypatch.setattr(db._rng, 'choice', lambda seq: 'vines')
+    out = db._hazard(table, sid, doc, 'city_r4')
+    assert 'hazardSafe' not in out
+    assert out['hazardOutcome'] == 'vines'
+
+
 def test_cache_pays_once_per_player(table):
     sid, doc = _player_at(table, 'city_cache', spores=0)
     out = db._resolve_space(table, sid, doc, 'city_cache', 'city_lair')

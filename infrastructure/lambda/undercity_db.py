@@ -3255,6 +3255,12 @@ def _hazard(table, sid, doc, node):
     biome = _depths_biome(table, sid, node)
     if biome:
         return _dungeon_hazard(table, sid, doc, node, biome, mire)
+    # Thick Hide (DEF-6): a DEF-scaled chance to dodge the hazard entirely. The
+    # server decides; the client's hazard wheel lands on a lucky safety wedge.
+    perk = 'thick_hide' in engine.attribute_perks(doc)
+    if perk and _rng.random() < _hazard_dodge_chance(doc, dungeon=False):
+        return {'type': 'hazard', 'hazardOutcome': 'safe', 'hazardSafe': True,
+                'text': 'Your thick hide shrugs it off — no harm done. (Thick Hide)'}
     # `hazardOutcome` reports which generic effect rolled so the client's hazard
     # wheel can land on it truthfully (dungeon hazards carry `biome` instead).
     kind = _rng.choice(['swamp_gas', 'vines', 'spore_cloud'])
@@ -3263,19 +3269,24 @@ def _hazard(table, sid, doc, node):
         if mire:
             lost //= 2
         doc['spores'] = doc.get('spores', 0) - lost
-        return {'type': 'hazard', 'hazardOutcome': kind,
-                'text': f'Swamp gas! You drop {lost} Spores in the scramble.',
-                'sporesLost': lost}
-    if kind == 'vines':
+        out = {'type': 'hazard', 'hazardOutcome': kind,
+               'text': f'Swamp gas! You drop {lost} Spores in the scramble.',
+               'sporesLost': lost}
+    elif kind == 'vines':
         if mire:
-            return {'type': 'hazard', 'hazardOutcome': kind,
-                    'text': 'Grasping vines slide off your mire-slick hide. (Mirefoot)'}
-        doc.setdefault('buffs', []).append({'kind': 'vines'})
-        return {'type': 'hazard', 'hazardOutcome': kind,
-                'text': 'Grasping vines coil around you — your next roll is halved.'}
-    dmg = _apply_hp_loss(doc, round(doc['hp'] * (0.075 if mire else 0.15)))
-    return {'type': 'hazard', 'hazardOutcome': kind,
-            'text': f'A choking spore cloud! You lose {dmg} HP.', 'hp': -dmg}
+            out = {'type': 'hazard', 'hazardOutcome': kind,
+                   'text': 'Grasping vines slide off your mire-slick hide. (Mirefoot)'}
+        else:
+            doc.setdefault('buffs', []).append({'kind': 'vines'})
+            out = {'type': 'hazard', 'hazardOutcome': kind,
+                   'text': 'Grasping vines coil around you — your next roll is halved.'}
+    else:
+        dmg = _apply_hp_loss(doc, round(doc['hp'] * (0.075 if mire else 0.15)))
+        out = {'type': 'hazard', 'hazardOutcome': kind,
+               'text': f'A choking spore cloud! You lose {dmg} HP.', 'hp': -dmg}
+    if perk:
+        out['hazardSafe'] = False
+    return out
 
 
 def _dungeon_hazard(table, sid, doc, node, biome, mire):
