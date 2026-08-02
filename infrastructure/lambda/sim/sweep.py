@@ -23,7 +23,7 @@ OUT.mkdir(exist_ok=True)
 REG = enemy_registry()
 # A representative enemy ladder, weakest -> strongest, for arena tables.
 LADDER = ['drudge_beetle', 'myconid', 'fetid_imp', 'rot_shambler',
-          'cinder_wolf', 'bramble_horror', 'embermaw_alpha', 'thornclad_revenant',
+          'large_bear', 'loleth_troll', 'embermaw_alpha', 'thornclad_revenant',
           'rot_sovereign']
 
 

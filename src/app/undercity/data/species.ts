@@ -34,8 +34,8 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   kraul_warrior: { sprite: 'grave_shell_scarab', regions: MASK_REGIONS, scale: 1.0 },
   golgari_longlegs: { sprite: 'golgari_longlegs', regions: MASK_REGIONS, scale: 1.0 },
   slitherhead: { sprite: 'slitherhead', regions: MASK_REGIONS, scale: 1.0 },
-  // woodwraith_strangler id now displays as Myconid Sporetender.
-  woodwraith_strangler: { sprite: 'myconid_sporetender', regions: MASK_REGIONS, scale: 1.05 },
+  // woodwraith_strangler id displays as Sporeback Skirmisher; art = blightreaper_thallid.
+  woodwraith_strangler: { sprite: 'blightreaper_thallid', regions: MASK_REGIONS, scale: 1.05 },
   shambling_shell: { sprite: 'shambling_shell', regions: MASK_REGIONS, scale: 1.0 },
   underrealm_lich: { sprite: 'underrealm_lich', regions: MASK_REGIONS, scale: 1.05 },
   corpsejack_menace: { sprite: 'corpsejack_menace', regions: MASK_REGIONS, scale: 0.95 },

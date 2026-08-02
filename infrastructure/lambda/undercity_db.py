@@ -5938,8 +5938,8 @@ def _vein_strike_once(table, sid, doc):
                 'text': f'CAVE-IN at level {level}! A rockfall hits you for {dmg} '
                         'damage — but the shaft holds.'}
 
-    spores = 1 + level
-    doc['spores'] = doc.get('spores', 0) + spores
+    # Mining pays NO Spores — it is the crafting-material tap only (Moltings +
+    # Gemstones + the occasional item find).
     found = None
     item = _vein_item(level)
     if item:
@@ -5954,7 +5954,6 @@ def _vein_strike_once(table, sid, doc):
     _mine_materials(doc, ichor=ichor, moltings=moltings)
 
     if level >= data.VEIN_MAX_DEPTH:
-        doc['spores'] += data.VEIN_HEARTSTONE_SPORES
         _mine_materials(doc, ichor=data.VEIN_HEARTSTONE_ICHOR)   # Heartstone bonus
         ichor += data.VEIN_HEARTSTONE_ICHOR
         heart = _award_dig_loot(doc, {'kind': 'item',
@@ -5962,22 +5961,19 @@ def _vein_strike_once(table, sid, doc):
         _save_vein(table, sid, region, 0)
         _event(table, sid, 'vein',
                f"{doc['username']} pried the Heartstone from the crystal vein "
-               f'(+{data.VEIN_HEARTSTONE_SPORES} Spores, +{data.VEIN_HEARTSTONE_ICHOR} Gemstones)! '
-               'The shaft refills.', actor=doc['userId'])
-        return {'depth': 0, 'heartstone': True,
-                'spores': spores + data.VEIN_HEARTSTONE_SPORES, 'found': heart,
+               f'(+{ichor} Gemstones)! The shaft refills.', actor=doc['userId'])
+        return {'depth': 0, 'heartstone': True, 'found': heart,
                 'ichor': ichor, 'moltings': moltings,
-                'text': f'Level {level}: +{spores} Spores — and beneath it, THE '
-                        f'HEARTSTONE! +{data.VEIN_HEARTSTONE_SPORES} Spores, '
-                        f'+{data.VEIN_HEARTSTONE_ICHOR} Gemstones and a '
+                'text': f'Level {level}: beneath it, THE HEARTSTONE! '
+                        f'+{ichor} Gemstones, +{moltings} Moltings and a '
                         'prize. The shaft rumbles full again.'}
 
     _save_vein(table, sid, region, level)
-    return {'depth': level, 'spores': spores, 'found': found,
+    return {'depth': level, 'found': found,
             'ichor': ichor, 'moltings': moltings,
-            'text': f'You cut into level {level}: +{spores} Spores'
-                    + (f', +{ichor} Gemstones' if ichor else '')
-                    + f', +{moltings} Moltings.' + _vein_found_text(found)}
+            'text': f'You cut into level {level}:'
+                    + (f' +{ichor} Gemstones,' if ichor else '')
+                    + f' +{moltings} Moltings.' + _vein_found_text(found)}
 
 
 # ── The Guildvault ────────────────────────────────────────────────────────────

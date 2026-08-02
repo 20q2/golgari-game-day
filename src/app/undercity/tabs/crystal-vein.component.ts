@@ -16,7 +16,6 @@ import {
   VEIN_CAVE_IN_DMG_PER_LEVEL,
   VEIN_ICHOR_BASE,
   VEIN_ICHOR_PER_LEVEL,
-  VEIN_HEARTSTONE_SPORES,
   VEIN_HEARTSTONE_ICHOR,
   VEIN_ITEM_CONSUMABLE_BAND,
   VEIN_ITEM_RARE_BAND,
@@ -29,8 +28,8 @@ import { VeinCanvas } from '../engine/vein-canvas';
 export interface VeinEffect {
   kind: 'strike' | 'cave-in' | 'heartstone';
   seq: number;
-  /** Spores gained on this strike — drives the particle-burst count. */
-  spores?: number;
+  /** Materials gained on this strike — drives the particle-burst count. */
+  burst?: number;
 }
 
 /**
@@ -49,7 +48,7 @@ export interface VeinEffect {
         <p class="vein-sub">
           Shaft depth <strong>{{ depth }}</strong> / {{ MAX }} ·
           <strong>{{ strikesLeft }}</strong> strike{{ strikesLeft === 1 ? '' : 's' }} left ·
-          earned this visit: <strong #earnedEl class="earned">{{ earnedThisVisit }}</strong> 🍄
+          Gemstones this visit: <strong #earnedEl class="earned">{{ earnedThisVisit }}</strong> 💠
         </p>
 
         <div class="vein-stage">
@@ -87,17 +86,12 @@ export interface VeinEffect {
                 <div class="col-head">{{ isHeartstoneNext ? 'If you pry it ✦' : 'If it holds ✓' }}</div>
                 <ul>
                   @if (isHeartstoneNext) {
-                    <li>
-                      <strong>+{{ spores }}</strong> 🍄
-                      <span class="bonus">+{{ HEART_SPORES }} bonus</span>
-                    </li>
-                    <li><strong>+1</strong> ⛏️ Molting</li>
                     <li><strong>+{{ HEART_ICHOR }}</strong> 💠 Gemstones</li>
+                    <li><strong>+1</strong> ⛏️ Molting</li>
                     <li>a <strong>guaranteed</strong> rare 💎</li>
                   } @else {
-                    <li><strong>+{{ spores }}</strong> 🍄 Spores</li>
-                    <li><strong>+1</strong> ⛏️ Molting</li>
                     <li><strong>{{ gemPct }}%</strong> 💠 Gemstone</li>
+                    <li><strong>+1</strong> ⛏️ Molting</li>
                     @if (itemChance) {
                       <li><strong>{{ itemChance.pct }}%</strong> {{ itemChance.label }}</li>
                     } @else {
@@ -125,7 +119,7 @@ export interface VeinEffect {
           @if (!isHeartstoneNext) {
             <p class="vein-hint goal">
               → Reach level {{ MAX }} for the <strong>Heartstone</strong>:
-              +{{ HEART_SPORES }}🍄 · +{{ HEART_ICHOR }}💠 · a rare find
+              +{{ HEART_ICHOR }}💠 · a rare find
             </p>
           }
           <p class="vein-hint shared">
@@ -323,7 +317,7 @@ export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDe
   @Input() strikesLeft = 0;
   @Input() busy = false;
   @Input() log: string | null = null;
-  /** Spores banked from strikes so far this visit (parent-owned). */
+  /** Gemstones banked from strikes so far this visit (parent-owned). */
   @Input() earnedThisVisit = 0;
   /** Region biome wash painted behind the card (from the board tab). */
   @Input() washBg: string | null = null;
@@ -337,7 +331,6 @@ export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDe
 
   protected readonly MAX = VEIN_MAX_DEPTH;
   protected readonly levels = Array.from({ length: VEIN_MAX_DEPTH }, (_, i) => i + 1);
-  protected readonly HEART_SPORES = VEIN_HEARTSTONE_SPORES;
   protected readonly HEART_ICHOR = VEIN_HEARTSTONE_ICHOR;
   protected readonly CONSUMABLE_MIN = VEIN_ITEM_CONSUMABLE_BAND.min;
   protected ready = false;
@@ -350,11 +343,6 @@ export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDe
   /** The level this next swing enters (shared depth + 1). */
   protected get level(): number {
     return this.depth + 1;
-  }
-
-  /** Spores paid on a successful strike at this level (server: 1 + level). */
-  protected get spores(): number {
-    return this.level + 1;
   }
 
   /** Gemstone (Ichor) drop chance %, level-scaling and capped at 100. */
@@ -418,13 +406,13 @@ export class CrystalVeinModalComponent implements AfterViewInit, OnChanges, OnDe
     if (ch['effect'] && this.ready && this.effect && this.effect.seq !== this.lastSeq) {
       this.lastSeq = this.effect.seq;
       if (this.effect.kind === 'cave-in') this.vein.playCaveIn();
-      else if (this.effect.kind === 'heartstone') this.vein.playHeartstone(this.effect.spores);
-      else this.vein.playStrike(this.effect.spores);
+      else if (this.effect.kind === 'heartstone') this.vein.playHeartstone(this.effect.burst);
+      else this.vein.playStrike(this.effect.burst);
     }
   }
 
   /** Scale + colour flash on the tally each time it climbs — the universal
-   *  "Spores gained" cue that also covers the no-WebGL fallback. */
+   *  "Gemstone gained" cue that also covers the no-WebGL fallback. */
   private pulseEarned(): void {
     this.earnedRef?.nativeElement.animate(
       [

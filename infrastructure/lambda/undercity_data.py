@@ -815,9 +815,10 @@ EXCAVATION_GRID = (5, 5)                     # (width, height)
 EXCAVATION_ITEMS = ['1x2', '1x2', '1x2', '2x2']  # shapes buried per site
 EXCAVATION_CLEAR_BONUS = 25                  # Spores for clearing the last item
 # Mining is the crafting-material tap (design 2026-07-27): the vein + excavation
-# pay Chrysalis Ichor + Moltings so gear-upgrades (the big Spore sink) are
-# actually reachable. Sim-tuned so a dedicated miner takes ~2-3 pieces to Mythic
-# a night (4 Ichor each). Clearing a whole dig site pays a materials cache:
+# pay Chrysalis Ichor + Moltings so gear-upgrades are actually reachable. Target
+# (2026-08-01): a full night's mining tops a 3-slot loadout out at all-Legendary
+# + 1-2 Mythic (~6-9 Gemstones; Rare->Mythic is 4 Gemstones). Clearing a whole
+# dig site pays a materials cache:
 EXCAVATION_CLEAR_ICHOR = 1
 EXCAVATION_CLEAR_MOLTINGS = 2
 
@@ -831,14 +832,18 @@ VEIN_STRIKES_PER_VISIT = 3
 VEIN_MAX_DEPTH = 12
 VEIN_CAVE_IN_PCT_PER_LEVEL = 0.04    # cave-in chance = level entered * this
 VEIN_CAVE_IN_DMG_PER_LEVEL = 2       # damage = level entered * this
-VEIN_HEARTSTONE_SPORES = 40
 VEIN_RARE_ITEMS = ['loaded_die', 'smoke_spore']
-# Materials per successful (non-cave-in) strike: always some Moltings, plus Ichor
-# on a level-scaling roll (deeper shafts pay better — the risk/reward payoff).
+# Mining is a pure CRAFTING-MATERIAL tap — it pays Moltings + Gemstones (Ichor)
+# and item finds, but NO Spores (Spores come from combat/board loot; a vein that
+# also rained Spores made one night's haul far too rich). Materials per
+# successful (non-cave-in) strike: always some Moltings, plus a level-scaling
+# Gemstone roll (deeper shafts pay better — the risk/reward payoff).
+# Rate tuned (2026-08-01) so a full night's mining tops a 3-slot loadout out at
+# all-Legendary + 1-2 Mythic (~6-9 Gemstones): ~0.9 Gemstones/visit.
 VEIN_MOLTINGS_PER_STRIKE = 1
-VEIN_ICHOR_BASE = 0.5                 # ichor chance at level 1
-VEIN_ICHOR_PER_LEVEL = 0.04           # + per level entered (≈0.98 at max depth)
-VEIN_HEARTSTONE_ICHOR = 4             # bonus Ichor for prying the Heartstone
+VEIN_ICHOR_BASE = 0.2                 # ichor chance at level 1
+VEIN_ICHOR_PER_LEVEL = 0.03           # + per level entered (≈0.56 at max depth)
+VEIN_HEARTSTONE_ICHOR = 2             # bonus Ichor for prying the Heartstone
 
 # The Guildvault (Undercity focus). One shared Mastermind lock per region:
 # a hidden combination of 3 DISTINCT sigils from the 6 below. Landing grants
@@ -907,16 +912,16 @@ ELITE_NPCS = [
 # units forced onto the travel layer always face tier-appropriate danger.
 # See specs/2026-07-20-undercity-wilderness-expansion-design.md.
 WILDERNESS_NPCS = [
-    {'id': 'ashen_stalker', 'name': 'Ashen Stalker',
+    {'id': 'sluiceway_scorpion', 'name': 'Sluiceway Scorpion',
      'hp': 48, 'atk': 14, 'def': 6, 'spd': 9, 'bounty': 22, 'xp': 35,
      'itemChance': 0.15, 'personality': 'trickster', 'bluff': 0.15},
-    {'id': 'bramble_horror', 'name': 'Bramble Horror',
+    {'id': 'loleth_troll', 'name': 'Lotleth Troll',
      'hp': 58, 'atk': 13, 'def': 8, 'spd': 4, 'bounty': 24, 'xp': 38,
      'itemChance': 0.15, 'personality': 'turtle', 'bluff': 0.10},
-    {'id': 'cinder_wolf', 'name': 'Cinder Wolf',
+    {'id': 'large_bear', 'name': 'Large Bear',
      'hp': 46, 'atk': 16, 'def': 5, 'spd': 10, 'bounty': 22, 'xp': 35,
      'itemChance': 0.15, 'personality': 'brute', 'bluff': 0.10},
-    {'id': 'wastes_marauder', 'name': 'Wastes Marauder',
+    {'id': 'mosspit_skeleton', 'name': 'Mosspit Skeleton',
      'hp': 52, 'atk': 15, 'def': 6, 'spd': 7, 'bounty': 24, 'xp': 38,
      'itemChance': 0.20, 'personality': 'balanced', 'bluff': 0.15},
 ]
@@ -941,16 +946,16 @@ WILDERNESS_ELITE_NPCS = [
 # Roster origin + sim results: specs/2026-07-26-undercity-enemy-ladder-design.md;
 # region-tier selection: specs/2026-07-26-undercity-region-tier-enemies-design.md.
 DEPTHS_MID = [
-    {'id': 'glutton_maw', 'name': 'Glutton Maw',
+    {'id': 'golgari_rotwurm', 'name': 'Golgari Rotwurm',
      'hp': 44, 'atk': 13, 'def': 4, 'spd': 6, 'bounty': 26, 'xp': 42,
      'itemChance': 0.20, 'personality': 'brute', 'bluff': 0.10},
-    {'id': 'chittering_swarm', 'name': 'Chittering Swarm',
+    {'id': 'leyline_prowler', 'name': 'Leyline Prowler',
      'hp': 42, 'atk': 12, 'def': 3, 'spd': 9, 'bounty': 26, 'xp': 42,
      'itemChance': 0.20, 'personality': 'trickster', 'bluff': 0.20},
-    {'id': 'bonemortar_golem', 'name': 'Bonemortar Golem',
+    {'id': 'moldering_karock', 'name': 'Moldering Karock',
      'hp': 56, 'atk': 11, 'def': 6, 'spd': 3, 'bounty': 28, 'xp': 45,
      'itemChance': 0.25, 'personality': 'turtle', 'bluff': 0.10},
-    {'id': 'rotwing_harrier', 'name': 'Rotwing Harrier',
+    {'id': 'infested_thrinax', 'name': 'Infested Thrinax',
      'hp': 48, 'atk': 13, 'def': 5, 'spd': 7, 'bounty': 28, 'xp': 45,
      'itemChance': 0.25, 'personality': 'balanced', 'bluff': 0.15},
     # Glass-cannon sniper — top-of-band ATK and SPD, paper DEF/HP. Reads well

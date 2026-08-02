@@ -752,8 +752,10 @@ export interface ActionResponse {
   depth?: number;
   collapsed?: boolean;
   heartstone?: boolean;
-  /** Spores gained on a vein strike (includes the Heartstone bonus). */
   spores?: number;
+  /** Crafting materials gained on a vein strike (mining pays no Spores). */
+  ichor?: number;
+  moltings?: number;
   strikesLeft?: number;
   vault?: VaultView;
   picksLeft?: number;

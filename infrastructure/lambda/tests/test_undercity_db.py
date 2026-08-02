@@ -2021,11 +2021,13 @@ def test_vein_strike_action_and_guards(table, monkeypatch):
     doc['veinStrikesLeft'] = 2
     db._put_player(table, doc)
     db._save_vein(table, sid, 'cavern', 3)
+    spores_before = db._get_player(table, sid, 'user-alex').get('spores', 0)
     monkeypatch.setattr(db._rng, 'random', lambda: 1.0)     # never cave in
     status, resp = act(table, 'strike')
     assert status == 200
     assert resp['depth'] == 4 and resp['strikesLeft'] == 1
-    assert resp['you']['spores'] >= 5                       # 1 + level 4
+    # Mining pays NO Spores — materials only. Nothing is added and no 'spores' key.
+    assert resp['you']['spores'] == spores_before and 'spores' not in resp
     # Every strike pays Moltings; ichor is a roll (random()==1.0 here → none).
     assert resp['moltings'] == data.VEIN_MOLTINGS_PER_STRIKE and resp['ichor'] == 0
     assert db._materials(db._get_player(table, sid, 'user-alex'))['moltings'] >= 1
@@ -2052,9 +2054,8 @@ def test_vein_heartstone_pays_and_resets(table, monkeypatch):
     assert status == 200
     assert resp['heartstone'] is True
     assert resp['depth'] == 0                               # shaft refilled
-    # 1 + level 12, plus the Heartstone bonus; the rare item goes to the bag.
-    assert resp['you']['spores'] == spores_before + 13 + data.VEIN_HEARTSTONE_SPORES
-    assert resp['spores'] == 13 + data.VEIN_HEARTSTONE_SPORES   # level spores + bonus
+    # Mining pays NO Spores — even the Heartstone is materials + a rare find only.
+    assert resp['you']['spores'] == spores_before and 'spores' not in resp
     assert resp['you']['bag'] and resp['you']['bag'][0] in data.VEIN_RARE_ITEMS
     # The Heartstone pays its Ichor jackpot (random()==1.0 → strike roll adds 0).
     assert resp['ichor'] == data.VEIN_HEARTSTONE_ICHOR
@@ -2065,8 +2066,8 @@ def test_vein_heartstone_pays_and_resets(table, monkeypatch):
 
 def test_vein_strike_rolls_ichor_on_a_hit(table, monkeypatch):
     """A surviving strike rolls a Gemstone (internal key 'ichor'), scaling with depth. Entering
-    level 6 the cave-in threshold is 0.24 and the ichor threshold 0.74, so a
-    constant random()==0.5 both survives the shaft and grants the ichor."""
+    level 6 the cave-in threshold is 0.24 and the ichor threshold 0.38, so a
+    constant random()==0.3 both survives the shaft and grants the ichor."""
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
@@ -2074,7 +2075,7 @@ def test_vein_strike_rolls_ichor_on_a_hit(table, monkeypatch):
     doc['veinStrikesLeft'] = 1
     db._put_player(table, doc)
     db._save_vein(table, sid, 'cavern', 5)                 # entering level 6
-    monkeypatch.setattr(db._rng, 'random', lambda: 0.5)
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.3)
     status, resp = act(table, 'strike')
     assert status == 200 and not resp.get('collapsed')
     assert resp['ichor'] == 1 and resp['moltings'] == data.VEIN_MOLTINGS_PER_STRIKE

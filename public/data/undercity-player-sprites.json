@@ -1,6 +1,11 @@
 {
   "sprites": [
     {
+      "name": "blightreaper_thallid",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
       "name": "brackish_trudge",
       "hasMask": true,
       "hasHat": true
@@ -102,8 +107,8 @@
     },
     {
       "name": "slitherhead",
-      "hasMask": false,
-      "hasHat": false
+      "hasMask": true,
+      "hasHat": true
     },
     {
       "name": "squirrel",
