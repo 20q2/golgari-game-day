@@ -1587,12 +1587,15 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Map a hazard event to the wheel it should spin. A dungeon hazard carries a
    *  `biome` (→ that lair's boss silhouette); a surface hazard carries a rolled
-   *  `hazardOutcome` (→ one of the three generic effect faces). */
+   *  `hazardOutcome` (→ one of the three generic effect faces). A Thick Hide
+   *  creature also gets `hazardSafe` (present ⇒ show tease wedges; true ⇒ dodged). */
   private hazardWheelTarget(ev: SpaceEvent): HazardWheelTarget {
+    const hasPerk = ev.hazardSafe !== undefined;
+    const safe = ev.hazardSafe === true;
     if (ev.biome && DUNGEONS[ev.biome]) {
-      return { mode: 'dungeon', bossId: DUNGEONS[ev.biome].lairNpcId };
+      return { mode: 'dungeon', bossId: DUNGEONS[ev.biome].lairNpcId, hasPerk, safe };
     }
-    return { mode: 'surface', outcome: ev.hazardOutcome };
+    return { mode: 'surface', outcome: safe ? 'safe' : ev.hazardOutcome, hasPerk, safe };
   }
 
   /** Wheel is fading out — open the hazard card underneath (cross-fade), then
