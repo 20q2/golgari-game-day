@@ -850,7 +850,7 @@ def test_outpace_negates_round1_like_reach():
 
 
 def test_flurry_adds_chip_on_successful_roll():
-    # Flurry (Vinelash Reaper): a weaker Swarm — bonus strike only when the
+    # Flurry (Jungle Creeper): a weaker Swarm — bonus strike only when the
     # per-round chance roll succeeds (random() < FLURRY_CHANCE).
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'flurry'}))
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30)

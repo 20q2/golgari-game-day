@@ -126,7 +126,7 @@ TIER2 = {
                  'knits its wounds with an innate Mend Flesh.',
     },
     'corpsejack_menace': {
-        'name': 'Vinelash Reaper', 'line': 'saproling', 'bonus': {'spd': 2, 'atk': 2},
+        'name': 'Jungle Creeper', 'line': 'saproling', 'bonus': {'spd': 2, 'atk': 2},
         'passive': 'flurry',
         'blurb': 'Whirlwind. Flurry: 25% chance for a bonus strike each round.',
     },
@@ -137,7 +137,7 @@ TIER2 = {
                  '+[foe level] to a stat you choose, for your next battle.',
     },
     'squirrel_warrior': {
-        'name': 'Squirrel Warrior', 'line': 'squirrel', 'bonus': {'maxHp': 6, 'atk': 2},
+        'name': 'Vinereap Mentor', 'line': 'squirrel', 'bonus': {'maxHp': 6, 'atk': 2},
         'passive': 'spell_warrior',
         'blurb': 'Spellblade. Spell Warrior: buffs and heals you cast on yourself are doubled (and you still cast 50% faster).',
     },

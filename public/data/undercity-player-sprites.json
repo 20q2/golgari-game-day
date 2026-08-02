@@ -11,19 +11,9 @@
       "hasHat": true
     },
     {
-      "name": "brackish_trudge_stinky",
-      "hasMask": false,
-      "hasHat": false
-    },
-    {
       "name": "clamity_beast",
       "hasMask": true,
       "hasHat": true
-    },
-    {
-      "name": "corpsejack_menace",
-      "hasMask": false,
-      "hasHat": false
     },
     {
       "name": "daemogoth",
@@ -62,6 +52,11 @@
     },
     {
       "name": "insect_2",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
+      "name": "jungle_creeper",
       "hasMask": true,
       "hasHat": true
     },
@@ -127,8 +122,8 @@
     },
     {
       "name": "swamp_dragon",
-      "hasMask": false,
-      "hasHat": false
+      "hasMask": true,
+      "hasHat": true
     },
     {
       "name": "underrealm_lich",
@@ -137,6 +132,11 @@
     },
     {
       "name": "vexing_pest",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
+      "name": "vinereap_mentor",
       "hasMask": true,
       "hasHat": true
     },

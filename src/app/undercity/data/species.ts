@@ -38,7 +38,8 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   woodwraith_strangler: { sprite: 'blightreaper_thallid', regions: MASK_REGIONS, scale: 1.05 },
   shambling_shell: { sprite: 'shambling_shell', regions: MASK_REGIONS, scale: 1.0 },
   underrealm_lich: { sprite: 'underrealm_lich', regions: MASK_REGIONS, scale: 1.05 },
-  corpsejack_menace: { sprite: 'corpsejack_menace', regions: MASK_REGIONS, scale: 0.95 },
+  // corpsejack_menace id displays as Jungle Creeper; art = jungle_creeper.
+  corpsejack_menace: { sprite: 'jungle_creeper', regions: MASK_REGIONS, scale: 0.95 },
   deathrite_shaman: { sprite: 'deathrite_shaman', regions: MASK_REGIONS, scale: 1.0 },
   // Apexes
   grave_titan: { sprite: 'grave_titan', regions: MASK_REGIONS, scale: 1.25 },
@@ -46,7 +47,8 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   swamp_dragon: { sprite: 'swamp_dragon', regions: MASK_REGIONS, scale: 1.3 },
   izoni: { sprite: 'daemogoth', regions: MASK_REGIONS, scale: 1.3 },
   // Squirrel T2/T3
-  squirrel_warrior: { sprite: 'squirrel_general', regions: MASK_REGIONS, scale: 1.0 },
+  // squirrel_warrior id displays as Vinereap Mentor; art = vinereap_mentor.
+  squirrel_warrior: { sprite: 'vinereap_mentor', regions: MASK_REGIONS, scale: 1.0 },
   squirrel_mage: { sprite: 'squirrel_mage', regions: MASK_REGIONS, scale: 1.0 },
   calamity_beast: { sprite: 'clamity_beast', regions: MASK_REGIONS, scale: 1.3 },
 };

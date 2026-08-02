@@ -103,11 +103,11 @@ export const TIER2: FormInfo[] = [
   { id: 'golgari_longlegs', name: 'Golgari Longlegs', tier: 2, line: 'kraul', passive: 'reach', passiveName: 'Reach', bonus: { spd: 4 }, blurb: 'Skirmisher (+SPD).' },
   { id: 'slitherhead', name: 'Slitherhead', tier: 2, line: 'saproling', passive: 'skitter', passiveName: 'Skitter', bonus: { spd: 4 }, blurb: 'Darter (+SPD).' },
   { id: 'woodwraith_strangler', name: 'Sporeback Skirmisher', tier: 2, line: 'saproling', passive: 'outpace', passiveName: 'Outpace', bonus: { spd: 2, maxHp: 4 }, blurb: 'Skirmisher (+SPD/+HP).' },
-  { id: 'corpsejack_menace', name: 'Vinelash Reaper', tier: 2, line: 'saproling', passive: 'flurry', passiveName: 'Flurry', bonus: { spd: 2, atk: 2 }, blurb: 'Whirlwind (+SPD/+ATK).' },
+  { id: 'corpsejack_menace', name: 'Jungle Creeper', tier: 2, line: 'saproling', passive: 'flurry', passiveName: 'Flurry', bonus: { spd: 2, atk: 2 }, blurb: 'Whirlwind (+SPD/+ATK).' },
   { id: 'shambling_shell', name: 'Shambling Shell', tier: 2, line: 'zombie', passive: 'spikeshell', passiveName: 'Spiked Shell', bonus: { maxHp: 6, def: 2 }, blurb: 'Thorned bulwark (+HP/+DEF).' },
   { id: 'deathrite_shaman', name: 'Deathrite Shaman', tier: 2, line: 'zombie', passive: 'soul_trophy', passiveName: 'Soul Trophy', bonus: { maxHp: 6, def: 2 }, blurb: 'Grave ritualist (+HP/+DEF).' },
   { id: 'underrealm_lich', name: 'Underrealm Lich', tier: 2, line: 'zombie', passive: 'rootwall', passiveName: 'Rootwall', bonus: { maxHp: 6, atk: 2 }, blurb: 'Regenerating necromancer — 35% regrow + innate Mend Flesh (+HP/+ATK).' },
-  { id: 'squirrel_warrior', name: 'Squirrel Warrior', tier: 2, line: 'squirrel', passive: 'spell_warrior', passiveName: 'Spell Warrior', bonus: { maxHp: 6, atk: 2 }, blurb: 'Spellblade — self-buffs doubled (+HP/+ATK).' },
+  { id: 'squirrel_warrior', name: 'Vinereap Mentor', tier: 2, line: 'squirrel', passive: 'spell_warrior', passiveName: 'Spell Warrior', bonus: { maxHp: 6, atk: 2 }, blurb: 'Spellblade — self-buffs doubled (+HP/+ATK).' },
   { id: 'squirrel_mage', name: 'Squirrel Mage', tier: 2, line: 'squirrel', passive: 'spell_mage', passiveName: 'Spell Mage', bonus: { maxHp: 4, spd: 2 }, blurb: 'Battlemage — +50% spell damage (+HP/+SPD).' },
 ];
 

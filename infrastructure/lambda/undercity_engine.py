@@ -382,7 +382,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
     # Swarm / Flurry: an extra chip hit per round regardless of stance (min 1).
     for side, (s, t) in (('attacker', (attacker, defender)),
                          ('defender', (defender, attacker))):
-        # Flurry (Vinelash Reaper): a weaker Swarm — only a per-round chance to
+        # Flurry (Jungle Creeper): a weaker Swarm — only a per-round chance to
         # land the bonus strike. Swarm always fires; both share the chip path.
         fires = (s.has('swarm')
                  or (s.has('flurry') and rng.random() < data.FLURRY_CHANCE))
