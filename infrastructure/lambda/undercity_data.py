@@ -1542,3 +1542,47 @@ _FLOW_BY_ID = {p['id']: p for p in FLOW_PUZZLES}
 def flow_puzzle(pid):
     """Return the full puzzle (incl. solution) for an id, or None."""
     return _FLOW_BY_ID.get(pid)
+
+
+# ── Companions ────────────────────────────────────────────────────────────
+# Each pet is an instance whose `tier` is its rarity (1 Common .. 4 Mythic),
+# mirroring gear. `kind` selects how the pet acts.
+PET_SPECIES = {
+    'fox':    {'name': 'Fox',    'kind': 'combat-passive',
+               'blurb': 'Chance to strike a follow-up hit in battle.'},
+    'turtle': {'name': 'Turtle', 'kind': 'combat-passive',
+               'blurb': 'Chance to deflect a few points of damage.'},
+    'bird':   {'name': 'Bird',   'kind': 'activated',
+               'blurb': "Scouts a bazaar's stock before you arrive."},
+    'mouse':  {'name': 'Mouse',  'kind': 'activated',
+               'blurb': 'Scavenges a small cache of loot.'},
+    'grub':   {'name': 'Grub',   'kind': 'economy',
+               'blurb': 'Trickles moltings as you travel.'},
+}
+
+# Egg tier -> weighted species outcomes. An egg always hatches; the egg's tier
+# also becomes the hatched pet's starting tier. Higher-tier eggs skew away from
+# the economy Grub toward the rarer actives.
+PET_HATCH = {
+    1: {'fox': 1.0, 'turtle': 1.0, 'bird': 1.0, 'mouse': 1.0, 'grub': 1.0},
+    2: {'fox': 1.0, 'turtle': 1.0, 'bird': 1.0, 'mouse': 1.0, 'grub': 0.6},
+    3: {'fox': 1.0, 'turtle': 1.0, 'bird': 0.8, 'mouse': 0.8, 'grub': 0.4},
+    4: {'fox': 1.0, 'turtle': 1.0, 'bird': 0.6, 'mouse': 0.6, 'grub': 0.3},
+}
+
+# Level cap per tier — merging raises tier, leveling fills to the cap.
+PET_LEVEL_CAP = {1: 3, 2: 5, 3: 7, 4: 9}
+
+# Merge: each fodder pet contributes points by ITS tier; a pet advances one tier
+# when accumulated mergeProgress reaches PET_MERGE_COST[next_tier]. Remainder
+# carries over. Same-species fodder only (enforced in the handler).
+PET_MERGE_POINTS = {1: 1, 2: 3, 3: 7, 4: 15}
+PET_MERGE_COST   = {2: 2, 3: 3, 4: 4}   # points to reach tier 2 / 3 / 4
+
+# Per-level upgrade cost, by the pet's current tier.
+PET_LEVEL_MOLTINGS = {1: 2, 2: 3, 3: 5, 4: 8}
+PET_LEVEL_ICHOR    = {1: 0, 2: 0, 3: 1, 4: 1}
+
+# Salvage yield: moltings = base[tier] + (level-1); ichor if tier >= threshold.
+PET_SALVAGE_MOLTINGS       = {1: 1, 2: 2, 3: 4, 4: 6}
+PET_SALVAGE_ICHOR_MIN_TIER = 3

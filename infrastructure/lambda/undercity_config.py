@@ -268,3 +268,8 @@ SCROLL_DROP_CHANCE = {
     'elite': 0.15, 'dig': 0.20, 'cache': 0.18,
     'lair': 0.35, 'vault': 0.40, 'boss': 0.50,
 }
+
+
+# ── Companions ────────────────────────────────────────────────────────────
+# Minutes an egg sits in the (single) incubator before it can hatch.
+PET_INCUBATE_MINUTES = 15
