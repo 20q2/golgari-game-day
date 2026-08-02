@@ -1427,11 +1427,19 @@ export function renderTerrain(
   ctx.fillStyle = '#141110';
   ctx.fillRect(bx - TERRAIN_MARGIN, by - TERRAIN_MARGIN, w, h);
   if (floors) {
+    // The floor paintings are ghosted into the dark at ~18% alpha and masked by
+    // a soft radial falloff, so they carry no fine detail. Compositing each
+    // zone's masked image at full world resolution was the single biggest cost
+    // in the whole bake (~9 zones × a ~2000px² temp canvas each) and it re-ran on
+    // every board-tab entry — the visible "black for seconds" stall. Bake the
+    // temp at a low resolution and upscale it on blit; at 18% alpha the softening
+    // is imperceptible, and the pixel work drops by ~(floorRes/worldRes)².
+    const floorRes = Math.min(resolution, 0.4);
     for (const z of FLOOR_ZONES) {
       // Dungeon zones ('dungeon:<biome>') reuse their parent biome's painting.
       const img = floors[z.region] ?? floors[z.region.replace('dungeon:', '')];
       if (!img || !img.width) continue;
-      const size = z.r * 2;
+      const size = Math.max(1, Math.round(z.r * 2 * floorRes)); // temp-canvas px
       const tmp = document.createElement('canvas');
       tmp.width = size;
       tmp.height = size;
@@ -1444,7 +1452,8 @@ export function renderTerrain(
         img.width * scale,
         img.height * scale,
       );
-      const mask = tc.createRadialGradient(z.r, z.r, 0, z.r, z.r, z.r);
+      const half = size / 2;
+      const mask = tc.createRadialGradient(half, half, 0, half, half, half);
       mask.addColorStop(0, 'rgba(0,0,0,1)');
       mask.addColorStop(0.55, 'rgba(0,0,0,0.85)');
       mask.addColorStop(1, 'rgba(0,0,0,0)');
@@ -1453,8 +1462,12 @@ export function renderTerrain(
       tc.fillRect(0, 0, size, size);
       ctx.save();
       ctx.globalAlpha = z.alpha;
-      ctx.drawImage(tmp, z.cx - z.r, z.cy - z.r);
+      // Upscale the low-res temp to the zone's full world rect (ctx is already
+      // world-scaled), so only the temp canvas shrank, not the on-board size.
+      ctx.drawImage(tmp, z.cx - z.r, z.cy - z.r, z.r * 2, z.r * 2);
       ctx.restore();
+      tmp.width = 0; // free the transient store immediately (iOS)
+      tmp.height = 0;
     }
   }
   for (let i = 0; i < 320; i++) {

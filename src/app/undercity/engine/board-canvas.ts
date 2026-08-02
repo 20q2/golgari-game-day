@@ -435,6 +435,8 @@ export class BoardCanvas {
   private startTime = performance.now();
   private layerSpecs: LayerSpec[];
   private layers = new Map<string, Layer>();
+  /** All layer specs by id, for lazy terrain baking (see layerFor). */
+  private specById = new Map<string, LayerSpec>();
   private layerOf = new Map<string, string>();
   private activeLayerId: string = OVERWORLD;
   /** The layer your *own* token currently sits on. Distinct from
@@ -456,7 +458,43 @@ export class BoardCanvas {
   private ambient: BoardAmbient;
 
   private get active(): Layer {
-    return this.layers.get(this.activeLayerId) ?? this.layers.get(OVERWORLD)!;
+    return this.layerFor(this.activeLayerId) ?? this.layerFor(OVERWORLD)!;
+  }
+
+  /**
+   * Fetch a layer's baked terrain, baking it on first access. Terrain is baked
+   * lazily — only the layer you're actually looking at gets a backing store —
+   * because eagerly baking all ~6 layers (each with per-zone floor-painting
+   * compositing) on construction cost seconds of black screen on every board-
+   * tab entry. The overworld bakes in the constructor so first paint is instant;
+   * dungeon pockets bake the moment your token (or the spectator view) enters
+   * them, by which point the floor/landmark art has loaded, so they bake once,
+   * with art, and never need the startup art-load rebuild.
+   */
+  private layerFor(id: string): Layer | undefined {
+    const cached = this.layers.get(id);
+    if (cached) return cached;
+    const spec = this.specById.get(id);
+    if (!spec) return undefined;
+    const layer = this.bakeLayer(spec);
+    this.layers.set(id, layer);
+    return layer;
+  }
+
+  /** Bake one layer's terrain with the art + cleared state available right now. */
+  private bakeLayer(spec: LayerSpec): Layer {
+    const biome = spec.id.startsWith('pocket:')
+      ? (this.map.nodes.find((n) => spec.nodeIds.has(n.id))?.id.split('_')[0] ?? null)
+      : null;
+    return {
+      spec,
+      terrain: renderTerrain(this.map, this.floorTex, this.landmarkTex, spec, {
+        cleared: !!biome && this.clearedDungeons.has(biome),
+        resolution: TERRAIN_RES,
+        animateFlora: true,
+        animatePaths: true,
+      }),
+    };
   }
 
   /**
@@ -502,34 +540,24 @@ export class BoardCanvas {
   }
 
   /**
-   * Re-render layer terrain with the current art + cleared flags. Rebuilds
-   * every layer by default; pass `onlyLayerIds` to refresh just those (e.g. the
-   * one pocket whose cleared flag toggled) and leave the rest — notably the
-   * ~59 MB overworld — untouched. The outgoing canvas's backing store is freed
-   * immediately (width/height → 0) because iOS WebKit reclaims large canvases
-   * lazily, and a pile of orphaned ones is what tips the tab over its memory
-   * ceiling.
+   * Re-render terrain for layers that are ALREADY baked, with the current art +
+   * cleared flags. Only touches layers with a live backing store (lazy baking
+   * means unvisited pockets have none — they'll bake fresh, with whatever art
+   * has loaded, on first entry, so re-baking them here would be wasted work and
+   * would defeat the lazy scheme). Pass `onlyLayerIds` to narrow further (e.g.
+   * the one pocket whose cleared flag toggled). The outgoing canvas's backing
+   * store is freed immediately (width/height → 0) because iOS WebKit reclaims
+   * large canvases lazily, and a pile of orphaned ones is what tips the tab over
+   * its memory ceiling.
    */
   private rebuildLayers(onlyLayerIds?: ReadonlySet<string>): void {
     for (const spec of this.layerSpecs) {
       if (onlyLayerIds && !onlyLayerIds.has(spec.id)) continue;
-      const biome = spec.id.startsWith('pocket:')
-        ? (this.map.nodes.find((n) => spec.nodeIds.has(n.id))?.id.split('_')[0] ?? null)
-        : null;
       const old = this.layers.get(spec.id);
-      this.layers.set(spec.id, {
-        spec,
-        terrain: renderTerrain(this.map, this.floorTex, this.landmarkTex, spec, {
-          cleared: !!biome && this.clearedDungeons.has(biome),
-          resolution: TERRAIN_RES,
-          animateFlora: true,
-          animatePaths: true,
-        }),
-      });
-      if (old) {
-        old.terrain.canvas.width = 0;
-        old.terrain.canvas.height = 0;
-      }
+      if (!old) continue; // not baked yet — leave it lazy
+      this.layers.set(spec.id, this.bakeLayer(spec));
+      old.terrain.canvas.width = 0;
+      old.terrain.canvas.height = 0;
     }
   }
 
@@ -638,16 +666,21 @@ export class BoardCanvas {
     this.enemyTiers = computeEnemyTiers(map);
     this.layerSpecs = computeLayers(map);
     this.layerOf = layerIndex(this.layerSpecs);
-    for (const spec of this.layerSpecs) {
-      this.layers.set(spec.id, {
-        spec,
-        terrain: renderTerrain(map, undefined, undefined, spec, {
-          resolution: TERRAIN_RES,
-          animateFlora: true,
-          animatePaths: true,
-        }),
-      });
-    }
+    for (const spec of this.layerSpecs) this.specById.set(spec.id, spec);
+    // Bake only the layer you open on (the overworld) so first paint is instant;
+    // every other layer bakes lazily on first entry (see layerFor). Baking all
+    // ~6 layers up front cost seconds of black screen on each board-tab entry.
+    // This first bake is artless (floor/landmark images load async right below);
+    // the debounced art-load rebuild re-bakes it once the art arrives.
+    const initial = this.specById.get(this.activeLayerId) ?? this.layerSpecs[0];
+    this.layers.set(initial.id, {
+      spec: initial,
+      terrain: renderTerrain(map, undefined, undefined, initial, {
+        resolution: TERRAIN_RES,
+        animateFlora: true,
+        animatePaths: true,
+      }),
+    });
     // Dungeon fog-of-war: nodes you've stood on stay lit across sessions.
     try {
       const raw = JSON.parse(localStorage.getItem(BoardCanvas.EXPLORED_KEY) ?? '{}');
