@@ -99,3 +99,36 @@ def test_activate_pet(table):
     doc = db._get_player(table, sid, 'user-alex')
     status, _ = db._activate_pet(table, sid, doc, {'petId': 'nope'})
     assert status == 409
+
+
+def test_merge_same_species_ranks_up(table):
+    sid, doc = _player_at(table, 'n1')
+    keeper = _give_pet(doc, 'fox', tier=1)
+    f1 = _give_pet(doc, 'fox', tier=1)
+    f2 = _give_pet(doc, 'fox', tier=1)
+    status, body = db._merge_pet(table, sid, doc, {
+        'targetPetId': keeper['id'], 'fodderPetIds': [f1['id'], f2['id']]})
+    assert status == 200
+    assert keeper['tier'] == 2
+    assert keeper['mergeProgress'] == 0
+    assert [p['id'] for p in doc['pets']] == [keeper['id']]
+
+
+def test_merge_rejects_cross_species(table):
+    sid, doc = _player_at(table, 'n1')
+    keeper = _give_pet(doc, 'fox')
+    fodder = _give_pet(doc, 'turtle')
+    status, _ = db._merge_pet(table, sid, doc, {
+        'targetPetId': keeper['id'], 'fodderPetIds': [fodder['id']]})
+    assert status == 409
+    assert len(doc['pets']) == 2
+
+
+def test_merge_partial_progress_carries(table):
+    sid, doc = _player_at(table, 'n1')
+    keeper = _give_pet(doc, 'fox', tier=1)
+    f1 = _give_pet(doc, 'fox', tier=1)
+    status, _ = db._merge_pet(table, sid, doc, {
+        'targetPetId': keeper['id'], 'fodderPetIds': [f1['id']]})
+    assert status == 200
+    assert keeper['tier'] == 1 and keeper['mergeProgress'] == 1

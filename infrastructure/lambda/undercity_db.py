@@ -946,6 +946,39 @@ def _activate_pet(table, sid, doc, payload):
     return _ok(doc, text=f"{data.PET_SPECIES[pet['species']]['name']} is at your side.")
 
 
+def _merge_pet(table, sid, doc, payload):
+    target = _find_pet(doc, payload.get('targetPetId'))
+    if not target:
+        return _err('No such pet.', 409)
+    fodder_ids = payload.get('fodderPetIds') or []
+    if not fodder_ids:
+        return _err('Pick pets to merge in.')
+    fodder = []
+    for fid in fodder_ids:
+        p = _find_pet(doc, fid)
+        if not p or p['id'] == target['id']:
+            return _err('Bad merge selection.', 409)
+        if p['species'] != target['species']:
+            return _err('Only the same species can be merged.', 409)
+        fodder.append(p)
+    # Award merge points, then advance tiers while affordable (cap tier 4).
+    gained = sum(data.PET_MERGE_POINTS[p['tier']] for p in fodder)
+    target['mergeProgress'] = target.get('mergeProgress', 0) + gained
+    while target['tier'] < 4:
+        cost = data.PET_MERGE_COST[target['tier'] + 1]
+        if target['mergeProgress'] < cost:
+            break
+        target['mergeProgress'] -= cost
+        target['tier'] += 1
+    # Consume fodder.
+    consumed = {p['id'] for p in fodder}
+    doc['pets'] = [p for p in doc['pets'] if p['id'] not in consumed]
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text=f"Your {data.PET_SPECIES[target['species']]['name']} grows stronger.")
+
+
 def _grind_materials(doc, gid):
     """Grind a gear piece into crafting materials by its rarity (tier). Mutates
     the player's material counters; returns the amounts gained."""
