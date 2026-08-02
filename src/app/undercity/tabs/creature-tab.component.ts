@@ -107,6 +107,16 @@ export class CreatureTabComponent {
 
   protected readonly busy = signal(false);
   protected readonly toast = signal<string | null>(null);
+  /** Evolution cutscene: old→new sprite data URLs, or null when idle. */
+  protected readonly evolveCutscene = signal<{ from: string; to: string } | null>(null);
+  /** Auto-dismiss timer for the cutscene. */
+  private cutsceneTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Toast queued to fire when the cutscene finishes. */
+  private pendingCutsceneToast: string | null = null;
+  /** Full cutscene runtime — MUST match the CSS timeline in the .scss. */
+  private static readonly CUTSCENE_MS = 2700;
+  /** Reduced-motion runtime — MUST match the reduced-motion CSS fallback. */
+  private static readonly CUTSCENE_REDUCED_MS = 600;
   protected readonly showEvolve = signal(false);
   protected readonly loadedDiePick = signal(false);
 
@@ -616,11 +626,49 @@ export class CreatureTabComponent {
   }
 
   async evolve(form: FormInfo): Promise<void> {
+    // Snapshot the CURRENT sprite (old form) before the server swaps our form.
+    const from = this.spriteUrl();
     await this.run(async () => {
       await this.store.action('evolve', { form: form.id });
       this.showEvolve.set(false);
-      this.showToast(`You are now a ${form.name}! Fully healed.`);
+      // spriteUrl recomputes off the now-updated store.you() → new form.
+      const to = this.spriteUrl();
+      const doneToast = `You are now a ${form.name}! Fully healed.`;
+      if (from && to && from !== to) {
+        this.playEvolveCutscene(from, to, doneToast);
+      } else {
+        // Missing sprite (or identical) → fall back to the instant behavior.
+        this.showToast(doneToast);
+      }
     });
+  }
+
+  /** Kick off the silhouette→strobe→color cutscene. */
+  private playEvolveCutscene(from: string, to: string, doneToast: string): void {
+    if (this.cutsceneTimer) clearTimeout(this.cutsceneTimer);
+    const reduced =
+      typeof window !== 'undefined' &&
+      !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const dur = reduced
+      ? CreatureTabComponent.CUTSCENE_REDUCED_MS
+      : CreatureTabComponent.CUTSCENE_MS;
+    this.pendingCutsceneToast = doneToast;
+    this.evolveCutscene.set({ from, to });
+    this.cutsceneTimer = setTimeout(() => this.endEvolveCutscene(), dur);
+  }
+
+  /** End the cutscene (natural completion or tap-to-skip) and fire the toast. */
+  protected endEvolveCutscene(): void {
+    if (!this.evolveCutscene()) return;
+    if (this.cutsceneTimer) {
+      clearTimeout(this.cutsceneTimer);
+      this.cutsceneTimer = null;
+    }
+    this.evolveCutscene.set(null);
+    if (this.pendingCutsceneToast) {
+      this.showToast(this.pendingCutsceneToast);
+      this.pendingCutsceneToast = null;
+    }
   }
 
   async useItem(item: string): Promise<void> {
