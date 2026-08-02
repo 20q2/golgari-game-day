@@ -77,9 +77,15 @@ No new DynamoDB records — this rides on the existing player document.
     bypassing `_lair_state` / Vestige entirely. Flag the battle ctx so
     `_finish_lair` knows it is a respawn lair.
 - **`_finish_lair`** — on an attacker win against a respawn lair:
+  - **Reward tier:** if the player has no prior `ruinLairs[node]` entry, this is
+    their first-ever kill of this lair → pay the `first` tier once (the legendary
+    first-kill payout). Every later respawn-cycle kill (entry already exists) pays
+    the `repeat` tier. The `ruinLairs[node]` entry is never deleted — after the
+    hour elapses it simply reads as fightable — so it doubles as the "have I ever
+    killed this" marker.
   - stamp `doc['ruinLairs'][node] = {'respawnAt': now + LAIR_RESPAWN_MINUTES, 'scavenged': False}`
-  - pay the normal lair kill reward (spores / xp) but **skip** `_award_lair_kill`
-    (no Vestige reform, no world-event wake, no first-conqueror).
+  - **skip** `_award_lair_kill` (no Vestige reform, no world-event wake, no
+    first-conqueror).
   - Loss / timeout: no persistent pool write — the fight simply ends.
 - **`_guardian_pools`** — skip nodes in `data.RESPAWN_LAIRS`.
 
