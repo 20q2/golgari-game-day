@@ -872,6 +872,69 @@ def _find_pet(doc, pet_id):
     return None
 
 
+def _pick_weighted(rng, weights):
+    """Pick a key from {key: weight}; deterministic ordering by sorted key."""
+    total = sum(weights.values())
+    roll = rng.random() * total
+    for key in sorted(weights):
+        roll -= weights[key]
+        if roll < 0:
+            return key
+    return max(weights, key=weights.get)
+
+
+def _grant_egg(doc, tier):
+    """Drop a companion egg of the given tier into the player's inventory."""
+    egg = {'id': _new_id('egg-'), 'tier': int(tier)}
+    doc.setdefault('eggs', []).append(egg)
+    return egg
+
+
+def _incubate_egg(table, sid, doc, payload):
+    if doc.get('incubator'):
+        return _err('The incubator is already busy.', 409)
+    eggs = doc.setdefault('eggs', [])
+    egg_id = payload.get('eggId')
+    egg = next((e for e in eggs if e.get('id') == egg_id), None)
+    if not egg:
+        return _err('No such egg.', 409)
+    eggs.remove(egg)
+    doc['incubator'] = {'eggId': egg['id'], 'startedAt': _now(), 'tier': egg['tier']}
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text='The egg is warming in the incubator.')
+
+
+def _incubator_ready(inc):
+    started = inc.get('startedAt')
+    if not started:
+        return False
+    elapsed = datetime.utcnow() - datetime.fromisoformat(started)
+    return elapsed >= timedelta(minutes=data.PET_INCUBATE_MINUTES)
+
+
+def _hatch_egg(table, sid, doc, payload):
+    inc = doc.get('incubator')
+    if not inc:
+        return _err('Nothing is incubating.', 409)
+    if not _incubator_ready(inc):
+        elapsed = datetime.utcnow() - datetime.fromisoformat(inc['startedAt'])
+        wait = data.PET_INCUBATE_MINUTES - int(elapsed.total_seconds() // 60)
+        return _err(f'The egg needs {max(wait, 1)} more min.', 429)
+    tier = int(inc.get('tier', 1))
+    species = _pick_weighted(_rng, data.PET_HATCH.get(tier, data.PET_HATCH[1]))
+    pet = {'id': _new_id('pet-'), 'species': species, 'tier': tier,
+           'level': 1, 'mergeProgress': 0}
+    doc.setdefault('pets', []).append(pet)
+    doc['incubator'] = None
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    name = data.PET_SPECIES[species]['name']
+    return _ok(doc, text=f'The egg hatches into a {name}!', hatched=pet)
+
+
 def _grind_materials(doc, gid):
     """Grind a gear piece into crafting materials by its rarity (tier). Mutates
     the player's material counters; returns the amounts gained."""

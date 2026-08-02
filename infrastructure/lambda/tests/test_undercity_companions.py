@@ -39,3 +39,44 @@ def test_pet_helpers(table):
     doc['pets'] = [pet]
     assert db._find_pet(doc, pid) is pet
     assert db._find_pet(doc, 'missing') is None
+
+
+def _incubating_since(minutes_ago):
+    return (datetime.utcnow() - timedelta(minutes=minutes_ago)).isoformat(timespec='seconds')
+
+
+def test_grant_incubate_hatch_flow(table):
+    sid, doc = _player_at(table, 'n1')
+    db._grant_egg(doc, 2)
+    assert len(doc['eggs']) == 1 and doc['eggs'][0]['tier'] == 2
+    egg_id = doc['eggs'][0]['id']
+
+    status, body = db._incubate_egg(table, sid, doc, {'eggId': egg_id})
+    assert status == 200
+    assert doc['eggs'] == []
+    assert doc['incubator']['eggId'] == egg_id
+
+    # Re-fetch for a fresh optimistic-lock version (one save per request; the
+    # client refetches between actions — mirrors test_undercity_market).
+    doc = db._get_player(table, sid, 'user-alex')
+    status, _ = db._hatch_egg(table, sid, doc, {})
+    assert status == 429
+
+    doc['incubator']['startedAt'] = _incubating_since(config.PET_INCUBATE_MINUTES + 1)
+    status, body = db._hatch_egg(table, sid, doc, {})
+    assert status == 200
+    assert doc['incubator'] is None
+    assert len(doc['pets']) == 1
+    pet = doc['pets'][0]
+    assert pet['species'] in data.PET_SPECIES
+    assert pet['tier'] == 2 and pet['level'] == 1 and pet['mergeProgress'] == 0
+    assert body['you']['pets'][0]['id'] == pet['id']
+
+
+def test_incubate_rejects_when_slot_busy(table):
+    sid, doc = _player_at(table, 'n1')
+    db._grant_egg(doc, 1); db._grant_egg(doc, 1)
+    first = doc['eggs'][0]['id']; second = doc['eggs'][1]['id']
+    db._incubate_egg(table, sid, doc, {'eggId': first})
+    status, _ = db._incubate_egg(table, sid, doc, {'eggId': second})
+    assert status == 409
