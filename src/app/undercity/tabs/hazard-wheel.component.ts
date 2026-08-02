@@ -12,10 +12,14 @@ import { MatIconModule } from '@angular/material/icon';
 /** What the wheel should reveal — built by board-tab.hazardWheelTarget(). */
 export interface HazardWheelTarget {
   mode: 'surface' | 'dungeon';
-  /** Surface: which generic effect rolled (swamp_gas|vines|spore_cloud). */
+  /** Surface: which generic effect rolled (swamp_gas|vines|spore_cloud|safe). */
   outcome?: string;
   /** Dungeon: the lair boss's art id (undercity/guardians/<id>.png). */
   bossId?: string;
+  /** Thick Hide active — render a couple of "safe" tease wedges. */
+  hasPerk?: boolean;
+  /** The hazard was dodged — the winning wedge is a lucky safety wedge. */
+  safe?: boolean;
 }
 
 interface Effect {
@@ -30,6 +34,11 @@ const EFFECTS: Record<string, Effect> = {
   spore_cloud: { icon: 'cloud', color: '#9b7fd0' },
 };
 const EFFECT_KEYS = Object.keys(EFFECTS);
+
+/** Lucky "you dodged" face — only shown to Thick Hide creatures. Kept out of the
+ *  EFFECT_KEYS cycle so a non-perk wheel is byte-for-byte unchanged. */
+const SAFE_FACE: Effect = { icon: 'verified', color: '#7fce8f' };
+const SAFE_TEASE_SLOTS = [3, 5]; // surface loser wedges that tease a safe result
 
 interface Wedge {
   kind: 'boss' | 'decoy' | 'effect';
@@ -272,6 +281,7 @@ export class HazardWheelComponent implements AfterViewInit {
   }
 
   protected caption(): string {
+    if (this.target.safe) return 'Dodged! (Thick Hide)';
     return this.target.mode === 'dungeon' ? 'The lair claims you.' : 'No dodging that.';
   }
 
@@ -294,6 +304,7 @@ export class HazardWheelComponent implements AfterViewInit {
    *  counter-rotated so it reads upright when the wheel rests. */
   private buildWedges(): Wedge[] {
     const isDungeon = this.target.mode === 'dungeon';
+    const safe = this.target.safe === true;
     const outcome = EFFECTS[this.target.outcome ?? ''] ? this.target.outcome! : 'spore_cloud';
     return Array.from({ length: WEDGE_COUNT }, (_, i) => {
       const deg = i * (360 / WEDGE_COUNT);
@@ -302,13 +313,22 @@ export class HazardWheelComponent implements AfterViewInit {
         upright: `rotate(${-deg}deg)`,
       };
       if (isDungeon) {
-        if (i !== 0 && DUNGEON_DECOY_SLOTS.includes(i)) {
-          return { kind: 'decoy', icon: 'verified', color: '#7fce8f', ...base };
+        // Winner (0) is a safe decoy on a Thick-Hide dodge, else the lair boss.
+        if ((i === 0 && safe) || (i !== 0 && DUNGEON_DECOY_SLOTS.includes(i))) {
+          return { kind: 'decoy', icon: SAFE_FACE.icon, color: SAFE_FACE.color, ...base };
         }
         return { kind: 'boss', icon: '', color: '', ...base };
       }
-      // Surface: winner in wedge 0, the rest cycle the three effects for variety.
-      const key = i === 0 ? outcome : EFFECT_KEYS[i % EFFECT_KEYS.length];
+      // Surface. Winner (0): the safe glyph on a dodge, else the rolled effect.
+      if (i === 0) {
+        const face = safe ? SAFE_FACE : EFFECTS[outcome];
+        return { kind: 'effect', icon: face.icon, color: face.color, ...base };
+      }
+      // Thick-Hide players also see a couple of "safe" tease wedges among losers.
+      if (this.target.hasPerk && SAFE_TEASE_SLOTS.includes(i)) {
+        return { kind: 'effect', icon: SAFE_FACE.icon, color: SAFE_FACE.color, ...base };
+      }
+      const key = EFFECT_KEYS[i % EFFECT_KEYS.length];
       return { kind: 'effect', icon: EFFECTS[key].icon, color: EFFECTS[key].color, ...base };
     });
   }
