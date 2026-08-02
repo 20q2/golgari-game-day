@@ -212,20 +212,52 @@ def test_hazard_dodge_chance_scales_and_caps():
 
 # ── Task 9: Last Stand ───────────────────────────────────────────────────────
 
-def test_last_stand_survives_once_per_descent(table, monkeypatch):
+def test_last_stand_revives_at_half_max_hp(table, monkeypatch):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['def'] = 18   # unlock last_stand
+    doc['def'] = 18   # unlock last_stand (and carapace_grind +15 maxHp)
     doc['hp'] = 20
     db._put_player(table, doc)
     doc = db._get_player(table, sid, 'user-alex')
     db._wild_battle(table, sid, doc)
-    _finish_started_battle(table, monkeypatch, doc, outcome='defender', defender_hp=5)
+    se = _finish_started_battle(table, monkeypatch, doc, outcome='defender', defender_hp=5)
+    assert se['battle']['outcome'] == 'timeout'   # survived, but no win
+    assert se['battle'].get('lastStand') is True
     you = db._get_player(table, sid, 'user-alex')
-    assert you['hp'] == 1               # survived the lethal blow
-    assert you.get('lastStandUsed') is True
-    assert not you.get('battle')        # fight is over, not composted mid-fight
+    mh = db.engine.effective_stats(you)['maxHp']
+    assert you['hp'] == max(1, round(mh * 0.5))   # rose at half max HP
+    assert you.get('lastStandReadyAt')            # cooldown stamped
+
+
+def test_last_stand_on_cooldown_does_not_save(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['def'] = 18
+    doc['hp'] = 20
+    doc['lastStandReadyAt'] = '2999-01-01T00:00:00'   # far-future: still charging
+    db._put_player(table, doc)
+    doc = db._get_player(table, sid, 'user-alex')
+    db._wild_battle(table, sid, doc)
+    se = _finish_started_battle(table, monkeypatch, doc, outcome='defender', defender_hp=5)
+    assert se['battle']['outcome'] == 'defender'      # not saved
+    assert not se['battle'].get('lastStand')
+
+
+def test_last_stand_recharges_after_cooldown(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['def'] = 18
+    doc['hp'] = 20
+    doc['lastStandReadyAt'] = '2000-01-01T00:00:00'   # already elapsed
+    db._put_player(table, doc)
+    doc = db._get_player(table, sid, 'user-alex')
+    db._wild_battle(table, sid, doc)
+    se = _finish_started_battle(table, monkeypatch, doc, outcome='defender', defender_hp=5)
+    assert se['battle']['outcome'] == 'timeout'       # saved again
+    assert se['battle'].get('lastStand') is True
 
 
 def test_last_stand_not_triggered_without_perk(table, monkeypatch):
@@ -233,9 +265,10 @@ def test_last_stand_not_triggered_without_perk(table, monkeypatch):
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
     db._wild_battle(table, sid, doc)
-    _finish_started_battle(table, monkeypatch, doc, outcome='defender', defender_hp=5)
+    se = _finish_started_battle(table, monkeypatch, doc, outcome='defender', defender_hp=5)
+    assert se['battle']['outcome'] == 'defender'
     you = db._get_player(table, sid, 'user-alex')
-    assert not you.get('lastStandUsed')
+    assert not you.get('lastStandReadyAt')
 
 
 # ── Task 10: Blink ───────────────────────────────────────────────────────────
