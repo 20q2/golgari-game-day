@@ -655,6 +655,18 @@
       </div>
     }
 
+    <!-- Evolution cutscene — silhouette → strobe-swap → color reveal -->
+    @if (evolveCutscene(); as cut) {
+      <div class="evolve-cutscene" (click)="endEvolveCutscene()">
+        <div class="ec-stage">
+          <img class="ec-sprite ec-from" [src]="cut.from" alt="" />
+          <img class="ec-sprite ec-to" [src]="cut.to" alt="" />
+        </div>
+        <div class="ec-flash"></div>
+        <p class="ec-skip">tap to skip</p>
+      </div>
+    }
+
     <!-- Loaded die value picker -->
     @if (loadedDiePick()) {
       <div class="evolve-overlay">
