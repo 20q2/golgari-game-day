@@ -1852,6 +1852,38 @@ def test_surface_hazard_no_perk_has_no_safe_field(table, monkeypatch):
     assert out['hazardOutcome'] == 'vines'
 
 
+def test_dungeon_hazard_dodged_by_thick_hide(table, monkeypatch):
+    # def 8 -> thick_hide; dungeon chance 0.095, random()=0.0 always dodges.
+    sid, doc = _player_at(table, 'city_d1')   # webbing lair hazard
+    doc['def'] = 8
+    doc['hp'] = 25
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)
+    out = db._hazard(table, sid, doc, 'city_d1')
+    assert out['hazardSafe'] is True
+    assert out['biome'] == 'city'
+    assert doc['hp'] == 25                     # no bleed
+    assert not any(b.get('kind') == 'vines' for b in doc.get('buffs', []))
+
+
+def test_dungeon_dodge_uses_reduced_chance(table, monkeypatch):
+    # random()=0.15 dodges at the surface chance (0.19) but NOT the dungeon
+    # chance (0.095) — proving the dungeon halving is applied.
+    sid, doc = _player_at(table, 'city_d1')
+    doc['def'] = 8
+    doc['hp'] = 25
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.15)
+    out = db._hazard(table, sid, doc, 'city_d1')
+    assert out['hazardSafe'] is False          # not dodged in the depths
+    assert out['hazardId'] == 'webbing'        # today's effect landed
+
+
+def test_dungeon_hazard_no_perk_has_no_safe_field(table):
+    sid, doc = _player_at(table, 'city_d1')    # pest, def 5
+    out = db._hazard(table, sid, doc, 'city_d1')
+    assert 'hazardSafe' not in out
+    assert out['hazardId'] == 'webbing'
+
+
 def test_cache_pays_once_per_player(table):
     sid, doc = _player_at(table, 'city_cache', spores=0)
     out = db._resolve_space(table, sid, doc, 'city_cache', 'city_lair')

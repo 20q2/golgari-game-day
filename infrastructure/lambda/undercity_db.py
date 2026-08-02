@@ -3295,6 +3295,12 @@ def _dungeon_hazard(table, sid, doc, node, biome, mire):
     hazard tile is genuinely feared, not a shrug. `_apply_hp_loss` still halves
     the HP cost for the Thick Hide perk; Mirefoot (bog natives) halves every
     cost on top, as it always has."""
+    # Thick Hide (DEF-6): DEF-scaled dodge at the reduced dungeon chance. The
+    # lair curse still reports its biome so the wheel shows this lair's tease.
+    perk = 'thick_hide' in engine.attribute_perks(doc)
+    if perk and _rng.random() < _hazard_dodge_chance(doc, dungeon=True):
+        return {'type': 'hazard', 'biome': biome, 'hazardSafe': True,
+                'text': "The lair's curse slides off your carapace. (Thick Hide)"}
     nodes = _season_map(table, sid)
     h = data.DUNGEON_HAZARDS[biome]
     # `biome` lets the client wheel pick this lair's boss silhouette even after
@@ -3339,6 +3345,8 @@ def _dungeon_hazard(table, sid, doc, node, biome, mire):
         doc['spores'] = doc.get('spores', 0) + 12
         out['hp'] = -dmg
         out['spores'] = 12
+    if perk:
+        out['hazardSafe'] = False
     return out
 
 
