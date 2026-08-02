@@ -625,6 +625,10 @@ export interface SpaceEvent {
   /** Dungeon-hazard pocket biome (mirrors undercity_db._dungeon_hazard) — lets
    *  the hazard wheel pick this lair's boss silhouette. */
   biome?: string;
+  /** Present only when the player has Thick Hide: true = the hazard was dodged
+   *  (wheel lands on a lucky safety wedge), false = caught (wheel shows a tease).
+   *  Mirrors undercity_db._hazard / _dungeon_hazard. */
+  hazardSafe?: boolean;
   paint?: string;
   hat?: string;
   duplicate?: boolean;
