@@ -237,3 +237,13 @@ def test_maybe_drop_egg_noop_on_high_roll(table):
 def test_maybe_drop_egg_unknown_source_noop(table):
     sid, doc = _player_at(table, 'n1')
     assert db._maybe_drop_egg(doc, 'nope', _SeqRng([0.0])) is None
+
+
+def test_mystery_can_drop_egg(table, monkeypatch):
+    sid, doc = _player_at(table, 'n1')
+    # Force the mystery egg roll to always succeed, tier 1.
+    monkeypatch.setitem(db.data.EGG_DROP, 'mystery', (1.0, {1: 1.0}))
+    before = len(doc.get('eggs') or [])
+    db._mystery(table, sid, doc)
+    assert len(doc['eggs']) == before + 1
+    assert doc['eggs'][-1]['tier'] == 1

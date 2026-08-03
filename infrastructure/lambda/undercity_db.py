@@ -3001,7 +3001,11 @@ def _award_gear(doc):
     """Gear loot reward; falls back to Spores if a drop somehow fails to roll."""
     drop = _roll_gear_drop(doc, data.GEAR_DROP['loot'][1])
     if drop:
-        return {'type': 'loot', 'text': _gear_find_text(drop), 'gear': drop}
+        result = {'type': 'loot', 'text': _gear_find_text(drop), 'gear': drop}
+        egg = _maybe_drop_egg(doc, 'loot')
+        if egg:
+            result['egg'] = {'tier': egg['tier']}
+        return result
     return _award_spores(doc)
 
 
@@ -3396,6 +3400,9 @@ def _mystery(table, sid, doc):
                f"{doc['username']} hit a JACKPOT BLOOM in the tunnels!", actor=doc['userId'])
     if res['teleport']:
         out['to'] = res['to']
+    egg = _maybe_drop_egg(doc, 'mystery')
+    if egg:
+        out['egg'] = {'tier': egg['tier']}
     _append_scroll(doc, out, 'mystery')
     out['outcome'] = engine.mystery_outcome(res, out)
     return out
@@ -4217,6 +4224,9 @@ def _finish_wild(table, sid, doc, rec, result):
             item = _give_consumable(doc)
             if item:
                 out['item'] = item
+        egg = _maybe_drop_egg(doc, 'combat')
+        if egg:
+            out['egg'] = {'tier': egg['tier']}
         out['text'] = f"You compost the {npc['name']}! +{bounty} Spores."
     elif result['outcome'] == 'defender':
         _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
