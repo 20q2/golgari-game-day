@@ -2205,8 +2205,8 @@ def _grant_to_player(table, sid, user_id, is_winner, game_name=None):
         items = 0
         if is_winner:
             _add_rolls(doc, data.CLAIM_WON_BONUS_ROLLS)
-            if _give_consumable(doc):
-                items = 1
+            _give_consumable(doc, 'reward')   # parks if the bag is full
+            items = 1
         _push_away_event(doc, {'kind': 'reward', 'game': game_name,
                                'rolls': rolls, 'items': items, 'at': _now()})
         if _put_player(table, doc):
@@ -2258,10 +2258,7 @@ def apply_banked_rewards(table, sid, user_id, doc):
         _add_rolls(doc, rolls)
     items = rec.get('items') or []
     for item in items:
-        if len(doc.get('bag') or []) >= data.BAG_SIZE:
-            doc['spores'] = doc.get('spores', 0) + 5
-        else:
-            doc.setdefault('bag', []).append(item)
+        _acquire(doc, 'consumable', item, 'reward')   # parks if the bag is full
     table.delete_item(Key={'pk': _reward_pk(sid), 'sk': _reward_sk(user_id)})
     _push_away_event(doc, {'kind': 'reward', 'game': rec.get('game'),
                            'rolls': rolls, 'items': len(items), 'at': _now()})

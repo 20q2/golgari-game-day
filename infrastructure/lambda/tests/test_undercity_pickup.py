@@ -164,3 +164,13 @@ def test_list_owned_rejects_at_listing_cap(table):
     assert db._pickup_resolve(
         table, sid, doc, {'choice': 'list-owned', 'index': 0, 'price': 45})[0] == 409
     assert len(doc['pendingPickups']) == 1                    # unchanged on reject
+
+
+def test_board_game_reward_parks_when_bag_full(table):
+    sid, doc = _player_at(table, 'city_r0')
+    cons = list(db.data.CONSUMABLES)[0]
+    doc['bag'] = [cons] * db.data.BAG_SIZE
+    db._put_player(table, doc)
+    db.grant_board_game_rewards(table, sid, [doc['userId']], [doc['userId']], 'Wingspan')
+    after = db._get_player(table, sid, doc['userId'])
+    assert any(p['kind'] == 'consumable' for p in (after.get('pendingPickups') or []))
