@@ -547,7 +547,9 @@ def test_boss_strike_chips_savra_and_floors(table):
 def test_boss_strike_chips_lair_pool(table):
     act(table, 'join', starter='pest', home='city')
     give_book(table, 'user-alex', 'queensbane_grimoire')
-    lair = next(iter(data.LAIR_BOSSES))
+    # A shared-pool sigil lair — the two ruin lairs (RESPAWN_LAIRS) are per-player
+    # fresh fights and can't be chipped from afar (design 2026-08-02).
+    lair = 'city_lair'
     full = data.LAIR_BOSSES[lair]['hp']
     status, resp = act(table, 'cast', spellId='queens_bane', source='grimoire',
                        target=lair)
@@ -588,7 +590,7 @@ def test_sear_throne_can_slay_savra_and_pays_full_reward(table):
 def test_sear_throne_slays_lair_boss(table):
     act(table, 'join', starter='pest', home='city')
     give_book(table, 'user-alex', 'throneburner_codex')
-    lair = next(iter(data.LAIR_BOSSES))
+    lair = 'city_lair'   # a shared-pool sigil lair (ruin lairs opt out — see above)
     db._set_lair_state(table, _sid(table), lair, 5, False)
     status, resp = act(table, 'cast', spellId='sear_throne', source='grimoire',
                        target=lair)

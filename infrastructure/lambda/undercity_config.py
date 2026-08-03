@@ -108,6 +108,12 @@ THICK_HIDE_DODGE_BASE = 0.15         # dodge chance at DEF perk-stat 6 (tier-1 u
 THICK_HIDE_DODGE_PER_DEF = 0.02      # +chance per DEF point above 6
 THICK_HIDE_DODGE_MAX = 0.40          # cap
 THICK_HIDE_DODGE_DUNGEON_MULT = 0.5  # depths/dungeon hazards dodge at half the surface chance
+# Baseline "lucky" hazard avoid (design 2026-08-02): the hazard wheel always
+# carries one lucky slice — a small chance for ANY creature that a surface hazard
+# just fizzles (flavourwise pure luck, mechanically identical to a Thick Hide
+# resist). Deliberately SURFACE-only (0 in the depths) so the boss approach stays
+# brutal — down there only Thick Hide's own resist can turn a hazard aside.
+HAZARD_LUCKY_AVOID = 0.08            # surface-only baseline no-harm chance (everyone)
 # DEF-18 Last Stand (design 2026-08-01): revive at half max HP on an otherwise-
 # lethal blow, recharging on a real-time cooldown instead of once per descent.
 LAST_STAND_HP_FRAC = 0.5             # fraction of max HP to revive at (was a flat 1)
@@ -282,3 +288,14 @@ SCROLL_DROP_CHANCE = {
 # ── Companions ────────────────────────────────────────────────────────────
 # Minutes an egg sits in the (single) incubator before it can hatch.
 PET_INCUBATE_MINUTES = 15
+
+
+# ── Respawning ruin lairs (design 2026-08-02) ────────────────────────────────
+# The two side-content ruin lairs (Lord of Extinction, Doomgape) don't share the
+# season pool or reform a Vestige. A personal kill leaves the lair abandoned for
+# this many minutes (per player), then it respawns at full strength.
+LAIR_RESPAWN_MINUTES = 60
+# While abandoned, a visit scrounges this many Spores (inclusive range) once, plus
+# a small chance of one minor consumable.
+LAIR_SCAVENGE_SPORES = (5, 10)
+LAIR_SCAVENGE_ITEM_CHANCE = 0.18

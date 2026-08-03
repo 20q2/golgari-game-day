@@ -11,6 +11,10 @@ import undercity_db as db
 
 from test_undercity_db import FakeTable, act
 
+# Real enemy art the roaming monster borrows lives at the repo root under
+# public/undercity/enemies/ (repo root = tests → lambda → infrastructure → root).
+ENEMY_ART_DIR = Path(__file__).resolve().parents[3] / 'public' / 'undercity' / 'enemies'
+
 
 @pytest.fixture
 def table():
@@ -35,6 +39,10 @@ def test_roster_shape():
         assert m['xp'] >= 25
         for stat in ('atk', 'def', 'spd'):
             assert m[stat] >= 1
+        # Every variant borrows a real enemy sprite so the roaming monster always
+        # shows actual art — the PNG must exist under public/undercity/enemies/.
+        assert m['sprite'], mid
+        assert (ENEMY_ART_DIR / f"{m['sprite']}.png").is_file(), m['sprite']
     assert 'enraged' in data.GEAR_DROP
 
 
@@ -112,6 +120,8 @@ def test_state_payload_includes_enraged(table):
     assert er['dead'] is False
     assert er['node'] in data.UMORI_NODES
     assert er['maxHp'] == data.ENRAGED_MONSTERS[er['monsterId']]['hp']
+    # spriteId is the borrowed real enemy art id, not the logical monsterId.
+    assert er['spriteId'] == data.ENRAGED_MONSTERS[er['monsterId']]['sprite']
     assert 'movesAt' in er
 
 
@@ -132,6 +142,8 @@ def test_landing_starts_enraged_battle(table):
     assert ev['type'] == 'battle_start'
     assert doc['battle']['kind'] == 'enraged'
     assert doc['battle']['npc']['maxHp'] == data.ENRAGED_MONSTERS[rec['monsterId']]['hp']
+    # The battle card gets the borrowed real enemy sprite so it shows actual art.
+    assert ev['npc']['spriteId'] == data.ENRAGED_MONSTERS[rec['monsterId']]['sprite']
 
 
 def test_enraged_kill_pays_renown_xp_and_marks_dead(table):

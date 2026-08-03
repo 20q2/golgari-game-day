@@ -124,6 +124,12 @@ export interface SpaceDiscOpts {
    * silhouette rather than the generic warning triangle.
    */
   hideGlyph?: boolean;
+  /**
+   * Override the coin's glyph with a specific Material Icons ligature — used to
+   * stamp a paw print on whatever tile a roaming monster is squatting on, so its
+   * occupied space reads at a glance regardless of the underlying type.
+   */
+  glyph?: string;
 }
 
 // Muted stone-grey for locked spaces — top face + darker side wall.
@@ -186,7 +192,14 @@ export function drawSpaceDisc(
 
   // A locked space fades its icon too, so the whole coin reads as inactive.
   if (opts.locked) ctx.globalAlpha = 0.4;
-  if (n.type === 'boss' || n.type === 'lair' || opts.corrupted) {
+  if (opts.glyph) {
+    // An occupying monster stamps its own glyph (paw print) over any tile type.
+    ctx.font = "30px 'Material Icons'";
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = isLightHex(topColor) ? 'rgba(24, 28, 22, 0.92)' : 'rgba(250, 255, 250, 1)';
+    ctx.fillText(opts.glyph, n.x, n.y);
+  } else if (n.type === 'boss' || n.type === 'lair' || opts.corrupted) {
     drawSkull(ctx, n.x, n.y);
   } else if (!opts.hideGlyph) {
     const glyph =

@@ -256,6 +256,13 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       materialReason(m.moltings, m.ichor, cost.moltings, cost.ichor)
     );
   }
+  /** The displayed block note for an upgrade. Spore shortfalls only — a material
+   *  shortfall is already spelled out by the cost line, so it gets no note. */
+  protected upgradeNote(cost: { spores: number; moltings: number; ichor: number }): string | null {
+    const you = this.store.you();
+    if (!you) return 'Unavailable';
+    return affordReason(you.spores, cost.spores);
+  }
 
   private marketView(kind: MarketKind, id: string): MarketView | null {
     if (kind === 'gear') {
@@ -368,19 +375,6 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       this.showToast(resp.text ?? 'Salvaged.');
     } catch (e) {
       this.showToast(e instanceof Error ? e.message : 'Salvage failed');
-    } finally {
-      this.busy.set(false);
-    }
-  }
-
-  async equip(index: number): Promise<void> {
-    if (this.busy()) return;
-    this.busy.set(true);
-    try {
-      const resp = await this.store.action('equip-gear', { index });
-      this.showToast(resp.text ?? 'Equipped.');
-    } catch (e) {
-      this.showToast(e instanceof Error ? e.message : 'Equip failed');
     } finally {
       this.busy.set(false);
     }

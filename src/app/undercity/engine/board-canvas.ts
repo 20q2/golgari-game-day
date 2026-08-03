@@ -36,6 +36,7 @@ import { computeLayers, layerIndex, OVERWORLD, LayerSpec } from './board-layers'
 import { computeEnemyTiers, drawTierBadge, EnemyTier } from './board-enemy-tier';
 import { computeProgress, drawProgressRing } from './board-progress-ring';
 import { WORLD_EVENT_SPRITE, WORLD_EVENT_PIECE_SPRITE } from '../data/world-event';
+import { MONSTER_SPACE } from '../data/enraged';
 import { drawTunnelSignpost } from './board-signpost';
 import { DigGrid, EnragedMonster, VeinState, WorldEventState } from '../services/undercity-models';
 
@@ -377,6 +378,8 @@ export class BoardCanvas {
   /** Barrier/lair node id -> its shared guardian HP pool, so the overworld can
    *  draw a boss-style health bar above each guardian as players chip it down. */
   private guardianPools: Record<string, { hp: number; maxHp: number }> = {};
+  /** Ruin-lair node ids currently abandoned for this player (drawn faded). */
+  private abandonedLairs = new Set<string>();
   /** Nodes sealed behind an unbroken barrier (or tunnels, for evolved units) —
    *  rendered greyed. */
   private lockedIds = new Set<string>();
@@ -391,6 +394,11 @@ export class BoardCanvas {
   private guardianTex = new Map<string, HTMLImageElement>();
   private guardianMiss = new Set<string>();
   private guardianLoading = new Set<string>();
+  // Real transparent enemy art (undercity/enemies/<id>.png), lazily loaded for
+  // the roaming enraged monster so it shows its actual creature sprite.
+  private enemyTex = new Map<string, HTMLImageElement>();
+  private enemyMiss = new Set<string>();
+  private enemyLoading = new Set<string>();
   /** The live wilderness World Event ("Great Beast"), or null. Its sprite is
    *  drawn straddling its 3-node footprint, centered on `center`. */
   private worldEvent: WorldEventState | null = null;
@@ -868,6 +876,11 @@ export class BoardCanvas {
     this.guardianPools = pools;
   }
 
+  /** Ruin-lair node ids currently abandoned for this player (drawn faded). */
+  setAbandonedLairs(nodeIds: string[]): void {
+    this.abandonedLairs = new Set(nodeIds);
+  }
+
   /** The live wilderness World Event, or null to clear it (killed / never
    *  spawned). Kicks off the sprite load the first time one appears. */
   setWorldEvent(we: WorldEventState | null): void {
@@ -876,11 +889,10 @@ export class BoardCanvas {
   }
 
   /** The live wilderness enraged monster, or null to clear it (dead / never
-   *  spawned). Kicks off its sprite load (via the guardian art loader) the first
-   *  time one appears. */
+   *  spawned). Kicks off its real enemy-art load the first time one appears. */
   setEnraged(er: EnragedMonster | null): void {
     this.enraged = er && !er.dead && er.node ? er : null;
-    if (this.enraged) this.loadGuardian(this.enraged.monsterId ?? '');
+    if (this.enraged) this.loadEnemy(this.enraged.spriteId ?? '');
   }
 
   private loadWorldEvent(): void {
@@ -1709,11 +1721,15 @@ export class BoardCanvas {
     // Depths hazard tiles hide the generic warning glyph — the dungeon boss's
     // silhouette (drawn below) is their emblem instead.
     const dungeonHazard = n.type === 'hazard' && n.region === 'depths';
+    // A roaming enraged monster squatting here stamps a paw print over the tile
+    // (its live sprite + HP bar draw above it in drawEnraged).
+    const monsterHere = this.enraged?.node === n.id;
     drawSpaceDisc(ctx, discNode, {
       sealed,
       locked: this.lockedIds.has(n.id),
       corrupted: bossHere,
       hideGlyph: dungeonHazard,
+      glyph: monsterHere ? MONSTER_SPACE.icon : undefined,
     });
 
     // A sealed barrier is held by the area's guardian creature, standing across
@@ -1963,11 +1979,15 @@ export class BoardCanvas {
 
     // Beaten boss (its sigil is claimed) → render the weakened vestige.
     const vestige = n.id.endsWith('_lair') && this.clearedDungeons.has(n.id.split('_')[0]);
+    // A ruin lair this player has cleared sits abandoned (respawn timer live).
+    const abandoned = this.abandonedLairs.has(n.id);
 
     ctx.save();
     if (vestige) {
       ctx.filter = VESTIGE_FILTER;
       ctx.globalAlpha = VESTIGE_ALPHA;
+    } else if (abandoned) {
+      ctx.globalAlpha = 0.35;
     }
     const drawH = LAIR_H * breath;
     const w = art.img.width * (LAIR_H / art.img.height);
@@ -2217,13 +2237,11 @@ export class BoardCanvas {
     ctx.stroke();
     ctx.restore();
 
-    const art = this.guardianArt(er.monsterId ?? '');
+    const art = this.enemyArt(er.spriteId ?? '');
     if (art) {
       const h = 46;
-      const w = art.img.width * (h / art.img.height);
-      ctx.imageSmoothingEnabled = !art.pixelArt;
-      ctx.drawImage(art.img, cx - w / 2, footAnchor - h - hop, w, h);
-      ctx.imageSmoothingEnabled = true;
+      const w = art.width * (h / art.height);
+      ctx.drawImage(art, cx - w / 2, footAnchor - h - hop, w, h);
     }
 
     // HP bar (same palette as the interactive battle / guardians).
@@ -2290,6 +2308,35 @@ export class BoardCanvas {
       this.guardianLoading.delete(guardianId);
     };
     img.src = `undercity/guardians/${guardianId}.png`;
+  }
+
+  /** Real transparent enemy art if loaded (undercity/enemies/<id>.png), else null
+   *  while it loads. Used by the roaming enraged monster so it shows its actual
+   *  creature sprite over its tile. */
+  private enemyArt(enemyId: string): HTMLImageElement | null {
+    return this.enemyTex.get(enemyId) ?? null;
+  }
+
+  private loadEnemy(enemyId: string): void {
+    if (
+      !enemyId ||
+      this.enemyTex.has(enemyId) ||
+      this.enemyMiss.has(enemyId) ||
+      this.enemyLoading.has(enemyId)
+    ) {
+      return;
+    }
+    this.enemyLoading.add(enemyId);
+    const img = new Image();
+    img.onload = () => {
+      this.enemyTex.set(enemyId, img);
+      this.enemyLoading.delete(enemyId);
+    };
+    img.onerror = () => {
+      this.enemyMiss.add(enemyId);
+      this.enemyLoading.delete(enemyId);
+    };
+    img.src = `undercity/enemies/${enemyId}.png`;
   }
 
   /** Space-info popover, drawn in world space so it pans/zooms with the board. */

@@ -205,6 +205,9 @@ button.mat-chip {
   width: 14px;
   height: 14px;
   vertical-align: middle;
+
+  &.mtl-i { color: #9fd6a6; }
+  &.ich-i { color: #b98cf0; }
 }
 
 .rot-coin {
@@ -240,21 +243,13 @@ button.mat-chip {
     gap: 8px;
     margin-bottom: 8px;
 
-    h3 {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      margin: 0;
-      font-size: 1.05rem;
-      color: #eafff0;
-    }
     .forge-mats {
       display: inline-flex;
       gap: 6px;
-      margin-left: auto;
     }
     .forge-close {
       padding: 2px 6px;
+      margin-left: auto;
     }
   }
 
@@ -407,6 +402,44 @@ button.mat-chip {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #b7e4c7;
+}
+
+// Top-level facility tabs (Salvage · Smith · Market). Underline style so they
+// read as the primary switcher, distinct from Market's boxed Buy/Sell sub-tabs.
+.forge-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 10px;
+  border-bottom: 1px solid rgba(74, 124, 89, 0.25);
+}
+
+.forge-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: #9aa79a;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+
+  .mi {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &.active {
+    color: #eafff0;
+    border-bottom-color: var(--accent-color);
+  }
 }
 
 .market-tabs {

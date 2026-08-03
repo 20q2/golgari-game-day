@@ -1820,16 +1820,19 @@ def test_rot_bloom_never_kills(table):
     assert doc['hp'] == 1
 
 
-def test_surface_hazard_unchanged(table):
-    # A ring hazard still rolls the generic table (no hazardId key).
+def test_surface_hazard_unchanged(table, monkeypatch):
+    # A ring hazard still rolls the generic table (no hazardId key). Miss the
+    # lucky slice so the generic effect actually resolves.
     sid, doc = _player_at(table, 'city_r4')
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)
     out = db._hazard(table, sid, doc, 'city_r4')
     assert out['type'] == 'hazard' and 'hazardId' not in out
 
 
 def test_surface_hazard_stamps_outcome(table, monkeypatch):
     # Each generic surface hazard reports which effect rolled, so the client
-    # wheel can land on it truthfully.
+    # wheel can land on it truthfully. Miss the lucky slice first (random 0.99).
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)
     for kind in ('swamp_gas', 'vines', 'spore_cloud'):
         sid, doc = _player_at(table, 'city_r4', spores=50)
         monkeypatch.setattr(db._rng, 'choice', lambda seq, k=kind: k)
@@ -1849,71 +1852,103 @@ def test_dungeon_hazard_stamps_biome(table):
         assert 'hazardOutcome' not in out
 
 
-def test_surface_hazard_dodged_by_thick_hide(table, monkeypatch):
-    # def 8 -> thick_hide; surface chance 0.19, so random()=0.0 always dodges.
+def test_surface_hazard_lucky_avoid(table, monkeypatch):
+    # random()=0.0 < HAZARD_LUCKY_AVOID -> the baseline lucky fizzle fires for
+    # ANYONE (this pest has no Thick Hide), no harm, flavoured 'lucky'.
+    sid, doc = _player_at(table, 'city_r4', spores=50)
+    doc['hp'] = 25
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)
+    out = db._hazard(table, sid, doc, 'city_r4')
+    assert out['hazardAvoid'] == 'lucky'
+    assert out['hazardOutcome'] == 'safe'
+    assert 'hazardPerk' not in out                       # pest: no resist teases
+    assert doc['hp'] == 25 and doc['spores'] == 50       # nothing applied
+    assert not doc.get('buffs')
+
+
+def test_surface_hazard_resisted_by_thick_hide(table, monkeypatch):
+    # def 8 -> thick_hide. random()=0.10 misses the lucky slice (0.08) but lands
+    # inside the stacked resist band (0.08 + 0.19), so Thick Hide turns it aside.
     sid, doc = _player_at(table, 'city_r4')
     doc['def'] = 8
     doc['hp'] = 25
     doc['spores'] = 50
-    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.10)
     out = db._hazard(table, sid, doc, 'city_r4')
-    assert out['hazardSafe'] is True
+    assert out['hazardAvoid'] == 'resist'
+    assert out['hazardPerk'] is True
     assert out['hazardOutcome'] == 'safe'
     assert doc['hp'] == 25 and doc['spores'] == 50      # nothing applied
     assert not doc.get('buffs')                          # no vines etc.
 
 
-def test_surface_hazard_hit_flags_not_safe_for_perk(table, monkeypatch):
-    # Same creature, but the dodge roll fails (0.99 > 0.19): today's effect lands
-    # AND the event carries hazardSafe=False so the wheel shows tease wedges.
+def test_surface_hazard_hit_flags_perk_for_teases(table, monkeypatch):
+    # Same creature, but both avoids miss (0.99): today's effect lands AND the
+    # event carries hazardPerk so the wheel still shows the resist tease wedges.
     sid, doc = _player_at(table, 'city_r4')
     doc['def'] = 8
     monkeypatch.setattr(db._rng, 'random', lambda: 0.99)
     monkeypatch.setattr(db._rng, 'choice', lambda seq: 'spore_cloud')
     out = db._hazard(table, sid, doc, 'city_r4')
-    assert out['hazardSafe'] is False
+    assert out['hazardPerk'] is True
+    assert 'hazardAvoid' not in out
     assert out['hazardOutcome'] == 'spore_cloud'
     assert out['hp'] < 0                                 # HP was actually lost
 
 
-def test_surface_hazard_no_perk_has_no_safe_field(table, monkeypatch):
-    # Pest (def 5) never rolls a dodge; behaviour identical to today.
+def test_surface_hazard_no_perk_no_perk_field(table, monkeypatch):
+    # Pest (def 5): missing the lucky slice leaves a plain hazard, no perk flag.
     sid, doc = _player_at(table, 'city_r4')
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)   # miss the lucky slice
     monkeypatch.setattr(db._rng, 'choice', lambda seq: 'vines')
     out = db._hazard(table, sid, doc, 'city_r4')
-    assert 'hazardSafe' not in out
+    assert 'hazardPerk' not in out
+    assert 'hazardAvoid' not in out
     assert out['hazardOutcome'] == 'vines'
 
 
-def test_dungeon_hazard_dodged_by_thick_hide(table, monkeypatch):
-    # def 8 -> thick_hide; dungeon chance 0.095, random()=0.0 always dodges.
+def test_dungeon_hazard_resisted_by_thick_hide(table, monkeypatch):
+    # def 8 -> thick_hide; dungeon chance 0.095, random()=0.0 always resists.
     sid, doc = _player_at(table, 'city_d1')   # webbing lair hazard
     doc['def'] = 8
     doc['hp'] = 25
     monkeypatch.setattr(db._rng, 'random', lambda: 0.0)
     out = db._hazard(table, sid, doc, 'city_d1')
-    assert out['hazardSafe'] is True
+    assert out['hazardAvoid'] == 'resist'
+    assert out['hazardPerk'] is True
     assert out['biome'] == 'city'
     assert doc['hp'] == 25                     # no bleed
     assert not any(b.get('kind') == 'vines' for b in doc.get('buffs', []))
 
 
-def test_dungeon_dodge_uses_reduced_chance(table, monkeypatch):
-    # random()=0.15 dodges at the surface chance (0.19) but NOT the dungeon
+def test_dungeon_has_no_lucky_avoid(table, monkeypatch):
+    # The depths carry NO baseline lucky fizzle: a pest that would trip the lucky
+    # slice on the surface still eats the full lair hazard here.
+    sid, doc = _player_at(table, 'city_d1')    # pest, def 5
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)
+    out = db._hazard(table, sid, doc, 'city_d1')
+    assert 'hazardAvoid' not in out
+    assert out['hazardId'] == 'webbing'
+
+
+def test_dungeon_resist_uses_reduced_chance(table, monkeypatch):
+    # random()=0.15 would resist at the surface chance (0.19) but NOT the dungeon
     # chance (0.095) — proving the dungeon halving is applied.
     sid, doc = _player_at(table, 'city_d1')
     doc['def'] = 8
     doc['hp'] = 25
     monkeypatch.setattr(db._rng, 'random', lambda: 0.15)
     out = db._hazard(table, sid, doc, 'city_d1')
-    assert out['hazardSafe'] is False          # not dodged in the depths
+    assert 'hazardAvoid' not in out            # not resisted in the depths
+    assert out['hazardPerk'] is True           # perk present -> tease flag
     assert out['hazardId'] == 'webbing'        # today's effect landed
 
 
-def test_dungeon_hazard_no_perk_has_no_safe_field(table):
+def test_dungeon_hazard_no_perk_no_perk_field(table):
     sid, doc = _player_at(table, 'city_d1')    # pest, def 5
     out = db._hazard(table, sid, doc, 'city_d1')
-    assert 'hazardSafe' not in out
+    assert 'hazardPerk' not in out
+    assert 'hazardAvoid' not in out
     assert out['hazardId'] == 'webbing'
 
 
@@ -4229,3 +4264,175 @@ def test_pvp_loss_composts_attacker_and_leaves_target_intact(table, monkeypatch)
     assert alex['position'] == 'cavern_r0'              # composted to the home gate
     assert sam['spores'] == 100 and sam['hp'] == sam_hp  # target fully intact
     assert sam['awayEvents'][-1]['outcome'] == 'defended'
+
+
+# ── Respawning ruin lairs (design 2026-08-02) ────────────────────────────────
+
+def test_respawn_lair_constants_are_well_formed():
+    # The two ruin lairs are a subset of the lair-boss roster.
+    assert data.RESPAWN_LAIRS == {'lair_titan', 'n288'}
+    assert data.RESPAWN_LAIRS <= set(data.LAIR_BOSSES)
+    # Every respawn lair has abandoned-lair flavour.
+    for node in data.RESPAWN_LAIRS:
+        assert data.LAIR_ABANDONED_DIALOGUE.get(node)
+    # Scavenge items are real consumables; the spore range is sane.
+    assert set(data.LAIR_SCAVENGE_ITEMS) <= set(data.CONSUMABLES)
+    lo, hi = data.LAIR_SCAVENGE_SPORES
+    assert 0 < lo <= hi
+    assert 0 < data.LAIR_SCAVENGE_ITEM_CHANCE < 1
+    assert data.LAIR_RESPAWN_MINUTES == 60
+
+
+def _land_ruin_lair(table, sid, user='user-alex'):
+    """Land the player on the Lord of Extinction's lair and return the event."""
+    doc = db._get_player(table, sid, user)
+    doc['position'] = 'lair_titan'
+    ev = db._lair(table, sid, doc, 'lair_titan')
+    db._put_player(table, doc)
+    return doc, ev
+
+
+def test_fresh_ruin_lair_starts_a_full_hp_fight(table):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    _, ev = _land_ruin_lair(table, sid)
+    b = data.LAIR_BOSSES['lair_titan']
+    assert ev['type'] == 'battle_start' and ev['kind'] == 'lair'
+    assert ev['npc']['name'] == b['name']          # not a Vestige
+    assert ev['npc']['hp'] == b['hp'] and ev['npc']['maxHp'] == b['hp']
+
+
+def test_abandoned_ruin_lair_scavenges_once(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    # Stamp a live abandonment window by hand (Task 3 produces this for real).
+    future = (db.datetime.utcnow() + db.timedelta(minutes=30)).isoformat(timespec='seconds')
+    doc['ruinLairs'] = {'lair_titan': {'respawnAt': future, 'scavenged': False}}
+    doc['spores'] = 100
+    db._put_player(table, doc)
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: 7)
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)  # no item this time
+
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'lair_titan'
+    ev = db._lair(table, sid, doc, 'lair_titan')
+    assert ev['type'] == 'lairAbandoned'
+    assert ev['spores'] == 7
+    assert doc['spores'] == 107
+    assert doc['ruinLairs']['lair_titan']['scavenged'] is True
+
+    # Second visit in the same window: picked clean, no further spores.
+    ev2 = db._lair(table, sid, doc, 'lair_titan')
+    assert ev2['type'] == 'lairAbandoned'
+    assert 'spores' not in ev2
+    assert doc['spores'] == 107
+
+
+def test_abandoned_ruin_lair_can_yield_an_item(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    future = (db.datetime.utcnow() + db.timedelta(minutes=30)).isoformat(timespec='seconds')
+    doc['ruinLairs'] = {'lair_titan': {'respawnAt': future, 'scavenged': False}}
+    doc['bag'] = []
+    db._put_player(table, doc)
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: 5)
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)   # hit the item roll
+    monkeypatch.setattr(db._rng, 'choice', lambda seq: seq[0])
+
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'lair_titan'
+    ev = db._lair(table, sid, doc, 'lair_titan')
+    assert ev['item'] == data.LAIR_SCAVENGE_ITEMS[0]
+    assert data.LAIR_SCAVENGE_ITEMS[0] in doc['bag']
+
+
+def _ruin_lair_fight(table, sid, user, outcome, defender_hp, monkeypatch):
+    """Start + resolve one ruin-lair fight, returning (doc, merged-out)."""
+    doc = db._get_player(table, sid, user)
+    doc['position'] = 'lair_titan'
+    ev = db._lair(table, sid, doc, 'lair_titan')          # battle_start (full HP)
+    se = _finish_started_battle(table, monkeypatch, doc, outcome, defender_hp,
+                                user=user, name=user)
+    out = dict(se)
+    out['npc'] = {**ev.get('npc', {}), **se.get('npc', {})}
+    return db._get_player(table, sid, user), out
+
+
+def test_ruin_lair_kill_stamps_respawn_no_vestige_no_worldevent(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    b = data.LAIR_BOSSES['lair_titan']
+
+    doc, out = _ruin_lair_fight(table, sid, 'user-alex', 'attacker', 0, monkeypatch)
+    # First-ever kill pays the `first` tier.
+    assert out['spores'] == b['first']['spores']
+    # Abandonment stamped, not yet scavenged.
+    entry = doc['ruinLairs']['lair_titan']
+    assert entry['respawnAt'] > db._now() and entry['scavenged'] is False
+    # No Vestige reform: the shared LAIR# pool was never written.
+    assert db._get(table, db._season_pk(sid), 'LAIR#lair_titan') is None
+    # No world-event wake, no first-conqueror stamp.
+    assert db._get(table, db._season_pk(sid), 'WORLDEVENT') is None
+    assert db._get(table, db._season_pk(sid), 'FIRST#lair_titan') is None
+    # First personal kill still claims the POI (renown), once.
+    assert doc['poiClaims'].count('lair_titan') == 1
+
+
+def test_ruin_lair_repeat_kill_pays_repeat_tier(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    b = data.LAIR_BOSSES['lair_titan']
+    # First kill (first tier), then force the window elapsed so it's fightable.
+    doc, _ = _ruin_lair_fight(table, sid, 'user-alex', 'attacker', 0, monkeypatch)
+    doc['ruinLairs']['lair_titan']['respawnAt'] = '2000-01-01T00:00:00'
+    db._put_player(table, doc)
+    # Second kill pays repeat and does NOT double-claim the POI.
+    doc2, out2 = _ruin_lair_fight(table, sid, 'user-alex', 'attacker', 0, monkeypatch)
+    assert out2['spores'] == b['repeat']['spores']
+    assert doc2['poiClaims'].count('lair_titan') == 1
+
+
+def test_sigil_lair_still_reforms_a_vestige(table, monkeypatch):
+    # Guard: the change must not touch the five sigil lairs.
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    _, out = _lair_fight(table, sid, 'user-alex', 'attacker', 0, monkeypatch)  # existing helper
+    _, out2 = _lair_fight(table, sid, 'user-alex', 'attacker', 0, monkeypatch)
+    assert out2['npc']['name'].startswith('Vestige of ')
+
+
+def test_ruin_lair_respawns_after_the_window(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    b = data.LAIR_BOSSES['lair_titan']
+    # Kill it, then age the window into the past.
+    doc, _ = _ruin_lair_fight(table, sid, 'user-alex', 'attacker', 0, monkeypatch)
+    doc['ruinLairs']['lair_titan']['respawnAt'] = '2000-01-01T00:00:00'
+    db._put_player(table, doc)
+    # Landing now starts a fresh full-HP fight again (not a scavenge).
+    doc['position'] = 'lair_titan'
+    ev = db._lair(table, sid, doc, 'lair_titan')
+    assert ev['type'] == 'battle_start'
+    assert ev['npc']['hp'] == b['hp'] and ev['npc']['name'] == b['name']
+
+
+def test_respawn_lairs_are_not_field_spell_targets(table):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    pools = db._guardian_pools(table, sid)
+    assert 'lair_titan' not in pools and 'n288' not in pools
+    # The five sigil lairs are still rooted pools.
+    assert 'city_lair' in pools
+
+
+def test_field_spell_rejects_a_respawn_lair_target(table):
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    # The RESPAWN_LAIRS guard is the first line of _cast_field and returns before
+    # the spell dict is read, so a minimal stub spell is enough to exercise it.
+    res = db._cast_field(table, sid, doc, 'stub', {'effect': 'damage'}, 'lair_titan')
+    # Error tuple (status int, body) — the caster's cooldown is left unstarted.
+    assert isinstance(res[0], int) and res[0] >= 400

@@ -90,26 +90,47 @@
     <div class="uc-modal-backdrop" (click)="closeBuilding()">
       <div class="forge-modal" (click)="$event.stopPropagation()">
         <header class="forge-head">
-          <h3>
-            @if (b === 'salvage') {
-              <mat-icon class="mi">recycling</mat-icon> Salvage Yard
-            } @else if (b === 'blacksmith') {
-              <mat-icon class="mi">hardware</mat-icon> Blacksmith
-            } @else {
-              <mat-icon class="mi">storefront</mat-icon> Market
-            }
-          </h3>
           <span class="forge-mats">
-            @if (b !== 'market') {
-              <span class="mat-chip mtl" title="Moltings"><mat-icon class="mi">grass</mat-icon> {{ materials().moltings }}</span>
-              <span class="mat-chip ich" title="Gemstone"><mat-icon class="mi">diamond</mat-icon> {{ materials().ichor }}</span>
-            }
-            @if (b === 'blacksmith' || b === 'market') {
-              <span class="mat-chip spore"><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ store.you()?.spores ?? 0 }}</span>
-            }
+            <span class="mat-chip mtl" title="Moltings"><mat-icon class="mi">grass</mat-icon> {{ materials().moltings }}</span>
+            <span class="mat-chip ich" title="Gemstone"><mat-icon class="mi">diamond</mat-icon> {{ materials().ichor }}</span>
+            <span class="mat-chip spore" title="Spores"><img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ store.you()?.spores ?? 0 }}</span>
           </span>
           <button class="uc-btn forge-close" (click)="closeBuilding()"><mat-icon class="mi">close</mat-icon></button>
         </header>
+
+        <!-- Top-level facility tabs — swap Salvage/Smith/Market without closing. -->
+        <div class="forge-tabs" role="tablist">
+          <button
+            class="forge-tab"
+            role="tab"
+            [class.active]="b === 'salvage'"
+            [attr.aria-selected]="b === 'salvage'"
+            (click)="building.set('salvage')"
+          >
+            <mat-icon class="mi">recycling</mat-icon> Salvage
+            @if (stashRows().length) { <span class="market-tab-count">{{ stashRows().length }}</span> }
+          </button>
+          <button
+            class="forge-tab"
+            role="tab"
+            [class.active]="b === 'blacksmith'"
+            [attr.aria-selected]="b === 'blacksmith'"
+            (click)="building.set('blacksmith')"
+          >
+            <mat-icon class="mi">hardware</mat-icon> Smith
+            @if (upgradeRows().length) { <span class="market-tab-count">{{ upgradeRows().length }}</span> }
+          </button>
+          <button
+            class="forge-tab"
+            role="tab"
+            [class.active]="b === 'market'"
+            [attr.aria-selected]="b === 'market'"
+            (click)="building.set('market')"
+          >
+            <mat-icon class="mi">storefront</mat-icon> Market
+            @if (marketRows().length) { <span class="market-tab-count">{{ marketRows().length }}</span> }
+          </button>
+        </div>
 
         @if (b === 'salvage') {
           <p class="forge-hint">Grind finds into materials, or sell for Spores. Stash {{ stashRows().length }}/6.</p>
@@ -121,9 +142,8 @@
                 <em>{{ row.info.desc }}</em>
               </span>
               <span class="forge-actions">
-                <button class="uc-btn" [disabled]="busy()" (click)="equip(row.index)">Equip</button>
                 <button class="uc-btn" [disabled]="busy()" (click)="salvage(row.index, 'grind')">
-                  Grind +{{ salvageYield(row.info.tier).moltings }}<mat-icon class="mi tiny">grass</mat-icon>@if (salvageYield(row.info.tier).ichor) {&nbsp;+{{ salvageYield(row.info.tier).ichor }}<mat-icon class="mi tiny">diamond</mat-icon>}
+                  Grind +{{ salvageYield(row.info.tier).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (salvageYield(row.info.tier).ichor) {&nbsp;+{{ salvageYield(row.info.tier).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
                 </button>
                 <button class="uc-btn" [disabled]="busy()" (click)="salvage(row.index, 'sell')">Sell +{{ sellSpores(row.info) }}</button>
               </span>
@@ -145,9 +165,9 @@
               </span>
               <button class="uc-btn forge-upgrade" [disabled]="busy() || !!upgradeReason(row.cost)" (click)="upgrade(row)">
                 {{ row.cost.spores }}<img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-                · {{ row.cost.moltings }}<mat-icon class="mi tiny">grass</mat-icon>@if (row.cost.ichor) {&nbsp;· {{ row.cost.ichor }}<mat-icon class="mi tiny">diamond</mat-icon>}
+                · {{ row.cost.moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (row.cost.ichor) {&nbsp;· {{ row.cost.ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
               </button>
-              @if (!busy() && upgradeReason(row.cost); as r) { <span class="block-reason">{{ r }}</span> }
+              @if (!busy() && upgradeNote(row.cost); as r) { <span class="block-reason">{{ r }}</span> }
             </div>
           } @empty {
             <div class="forge-empty">Nothing to upgrade yet — find or stash gear that has a rarer rung.</div>

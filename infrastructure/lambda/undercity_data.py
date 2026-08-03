@@ -1214,6 +1214,21 @@ LAIR_BOSSES = {
                     'personality': 'turtle', 'bluff': 0.35, **_LAIR_REWARD},
 }
 
+# The two ruin lairs are side content: instead of the shared pool + permanent
+# Vestige, each player kills them, the lair sits abandoned for LAIR_RESPAWN_MINUTES,
+# then it respawns fresh. See specs/2026-08-02-undercity-respawning-ruin-lairs-design.md
+RESPAWN_LAIRS = {'lair_titan', 'n288'}
+
+LAIR_ABANDONED_DIALOGUE = {
+    'lair_titan': "The Lord of Extinction's lair lies still and abandoned — bones "
+                  'and shed carapace litter the dark. Nothing left but scraps.',
+    'n288': "Doomgape's pit is silent, its maw gone. Only spoor and spore remain "
+            'among the ruin.',
+}
+
+# Minor consumables scrounged from an abandoned lair (bag-full falls back to Spores).
+LAIR_SCAVENGE_ITEMS = ['healing_moss', 'smoke_spore', 'scrying_spore']
+
 # The wilderness World Event boss. `spriteId` maps to public/undercity/sigil_boss/
 # art on the client. Stats are per-swing combat stats; the live shared pool comes
 # from WORLD_EVENT_HP (config, re-exported above) via the WORLDEVENT record.
@@ -1247,20 +1262,27 @@ def world_event_reward(share, is_top):
 # ~40 HP in the barrier/lair band so decent gear can down them; each rewards a
 # different build. `bounty` is the renown-echo used in flavor; the real perm
 # renown grant is ENRAGED_KILL_RENOWN (config). Rooted → curses convert to speed
-# penalties via GUARDIAN_DEBUFF, same as guardians. Placeholder art resolves
-# through the client's guardian sprite loader until real PNGs land under
-# public/undercity/enraged/. Mirror names in src/app/undercity/data/enraged.ts.
+# penalties via GUARDIAN_DEBUFF, same as guardians. Each variant borrows a real
+# enemy sprite (public/undercity/enemies/<sprite>.png) so the roaming monster
+# always shows actual art on the board + battle card — every id below MUST have a
+# matching PNG. `sprite` is emitted as the client `spriteId`. The four archetypes
+# still reward distinct builds (brute / wall / speedster / all-rounder). Mirror
+# names + sprites in src/app/undercity/data/enraged.ts.
 ENRAGED_MONSTERS = {
-    'enr_brute':    {'id': 'enr_brute', 'name': 'Enraged Bloodhulk',
+    'enr_brute':    {'id': 'enr_brute', 'name': 'Enraged Lotleth Troll',
+                     'sprite': 'loleth_troll',
                      'hp': 38, 'atk': 15, 'def': 4, 'spd': 5,
                      'bounty': 16, 'xp': 30, 'personality': 'brute', 'bluff': 0.25},
-    'enr_carapace': {'id': 'enr_carapace', 'name': 'Enraged Shellback',
+    'enr_carapace': {'id': 'enr_carapace', 'name': 'Enraged Sluiceway Scorpion',
+                     'sprite': 'sluiceway_scorpion',
                      'hp': 44, 'atk': 10, 'def': 9, 'spd': 3,
                      'bounty': 18, 'xp': 32, 'personality': 'turtle', 'bluff': 0.30},
-    'enr_swift':    {'id': 'enr_swift', 'name': 'Enraged Fenstalker',
+    'enr_swift':    {'id': 'enr_swift', 'name': 'Enraged Leyline Prowler',
+                     'sprite': 'leyline_prowler',
                      'hp': 36, 'atk': 12, 'def': 5, 'spd': 10,
                      'bounty': 16, 'xp': 30, 'personality': 'trickster', 'bluff': 0.30},
-    'enr_ravager':  {'id': 'enr_ravager', 'name': 'Enraged Ravager',
+    'enr_ravager':  {'id': 'enr_ravager', 'name': 'Enraged Golgari Rot Wurm',
+                     'sprite': 'golgari_rotwurm',
                      'hp': 40, 'atk': 14, 'def': 6, 'spd': 7,
                      'bounty': 20, 'xp': 34, 'personality': 'balanced', 'bluff': 0.28},
 }

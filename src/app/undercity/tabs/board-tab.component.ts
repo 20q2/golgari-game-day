@@ -70,6 +70,7 @@ import {
   witchScrollPrice,
 } from '../data/items';
 import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome } from '../data/dungeons';
+import { RUIN_LAIRS, RUIN_LAIR_NAMES, ruinLairAbandoned } from '../data/ruin-lairs';
 import { WORLD_EVENT, WORLD_EVENT_SPRITE } from '../data/world-event';
 import { MONSTER_SPACE } from '../data/enraged';
 import { formName } from '../data/forms';
@@ -1609,15 +1610,16 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Map a hazard event to the wheel it should spin. A dungeon hazard carries a
    *  `biome` (→ that lair's boss silhouette); a surface hazard carries a rolled
-   *  `hazardOutcome` (→ one of the three generic effect faces). A Thick Hide
-   *  creature also gets `hazardSafe` (present ⇒ show tease wedges; true ⇒ dodged). */
+   *  `hazardOutcome` (→ one of the three generic effect faces). `hazardAvoid`
+   *  (lucky|resist) says which no-harm wedge won; `hazardPerk` (Thick Hide
+   *  present) tells the wheel to paint the resist tease wedges. */
   private hazardWheelTarget(ev: SpaceEvent): HazardWheelTarget {
-    const hasPerk = ev.hazardSafe !== undefined;
-    const safe = ev.hazardSafe === true;
+    const hasPerk = ev.hazardPerk === true;
+    const avoid = ev.hazardAvoid;
     if (ev.biome && DUNGEONS[ev.biome]) {
-      return { mode: 'dungeon', bossId: DUNGEONS[ev.biome].lairNpcId, hasPerk, safe };
+      return { mode: 'dungeon', bossId: DUNGEONS[ev.biome].lairNpcId, hasPerk, avoid };
     }
-    return { mode: 'surface', outcome: safe ? 'safe' : ev.hazardOutcome, hasPerk, safe };
+    return { mode: 'surface', outcome: avoid ? 'safe' : ev.hazardOutcome, hasPerk, avoid };
   }
 
   /** Wheel is fading out — open the hazard card underneath (cross-fade), then
@@ -1879,6 +1881,25 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         body = `The den of ${d.lairName}. First kill claims the ${d.name} Guild Sigil. Come at Level 5+.`;
       }
     }
+    // Ruin lairs are side content, not dungeon lairs, so dungeonBiome() misses
+    // them. Give them their own fight / abandoned copy driven by the per-player
+    // respawn timer.
+    if (RUIN_LAIRS.has(nodeId)) {
+      const name = RUIN_LAIR_NAMES[nodeId] ?? 'a ruin beast';
+      const ab = ruinLairAbandoned(nodeId, this.store.you()?.ruinLairs);
+      if (ab) {
+        title = `${name}'s Lair — Abandoned`;
+        body = ab.scavenged
+          ? `You already picked this lair clean. ${name} will stir again in ~${ab.minsLeft}m.`
+          : `${name} lies slain and its lair is abandoned — land here to scrounge what's left. ` +
+            `It respawns in ~${ab.minsLeft}m.`;
+      } else {
+        title = `${name}'s Lair`;
+        body =
+          `${name} prowls this ruin. Land on it to fight — a fresh challenge each time. ` +
+          `Beat it and its lair falls quiet for an hour, leaving scraps to scavenge.`;
+      }
+    }
     // The Ashen Wilds (wilderness region) draw from the tougher T2+ enemy pools,
     // so the generic "Level 1+/3+" blurbs understate the danger. Override them
     // with a frontier warning to steer new players back to their home biome.
@@ -2022,6 +2043,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.board.setUmori(this.store.umori());
     this.board.setBarriersOpen(this.store.barriersOpen());
     this.board.setGuardianPools(this.store.guardians());
+    const rl = this.store.you()?.ruinLairs;
+    this.board.setAbandonedLairs([...RUIN_LAIRS].filter((id) => ruinLairAbandoned(id, rl)));
     this.board.setWorldEvent(this.store.worldEvent());
     this.board.setEnraged(this.store.enraged());
     const here = step ? stepPos(step) : null;
@@ -2431,7 +2454,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Battle-card art path per foe class (missing files fall back to icons). */
   private npcSpriteUrl(evType: string, npcId: string): string {
-    if (evType === 'wild' || evType === 'elite') return `undercity/enemies/${npcId}.png`;
+    // Wild/elite foes and the roaming enraged wilderness monster all wear real
+    // creature art from the enemies folder (the enraged one borrows an enemy
+    // sprite via its spriteId — see the callers).
+    if (evType === 'wild' || evType === 'elite' || evType === 'enraged')
+      return `undercity/enemies/${npcId}.png`;
     // The wilderness World Event beast lives in its own art folder.
     if (evType === 'world') return `undercity/sigil_boss/${npcId}.png`;
     // Barriers, lair mini-bosses, and the island boss all share the guardians folder.
@@ -2587,7 +2614,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         spriteUrl:
           ev.kind === 'pvp' && ev.npc!.form
             ? this.spriteUrl(ev.npc!.form, ev.npc!.paint ?? {}, ev.npc!.hat, ev.npc!.spriteVariant)
-            : this.npcSpriteUrl(ev.kind!, ev.npc!.id),
+            : this.npcSpriteUrl(ev.kind!, ev.npc!.spriteId ?? ev.npc!.id),
         icon: ev.kind === 'pvp' ? 'pets' : (NPC_ICONS[ev.npc!.id] ?? 'bug_report'),
         startHp: ev.npc!.hp,
         maxHp: ev.npc!.maxHp ?? ev.npc!.hp,
@@ -2631,7 +2658,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       },
       defender: {
         name: pb.npc.name,
-        spriteUrl: this.npcSpriteUrl(pb.kind, pb.npc.id ?? ''),
+        spriteUrl: this.npcSpriteUrl(pb.kind, pb.npc.spriteId ?? pb.npc.id ?? ''),
         icon: NPC_ICONS[pb.npc.id ?? ''] ?? 'bug_report',
         startHp: pb.npc.hp,
         maxHp: pb.npc.maxHp,

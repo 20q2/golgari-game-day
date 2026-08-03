@@ -778,6 +778,7 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
     shown = _telegraph_next(rec)
     return {'type': 'battle_start', 'kind': kind,
             'npc': {'name': npc['name'], 'id': npc.get('id'),
+                    'spriteId': npc.get('sprite'),
                     'hp': npc_snap['hp'], 'maxHp': npc_snap['maxHp'],
                     'atk': npc_snap['atk'], 'def': npc_snap['dfn'],
                     'spd': npc_snap['spd'],
@@ -3419,12 +3420,23 @@ def _hazard(table, sid, doc, node):
     biome = _depths_biome(table, sid, node)
     if biome:
         return _dungeon_hazard(table, sid, doc, node, biome, mire)
-    # Thick Hide (DEF-6): a DEF-scaled chance to dodge the hazard entirely. The
-    # server decides; the client's hazard wheel lands on a lucky safety wedge.
+    # A surface hazard can be turned aside two ways, both surfaced as no-harm
+    # wedges on the wheel (see hazard-wheel.component). One shared draw partitions
+    # [0,1): the baseline "lucky" fizzle (everyone) sits first, then Thick Hide's
+    # DEF-scaled resist stacks on top of it. `hazardPerk` (present ⇒ Thick Hide)
+    # tells the client to paint the extra resist tease slices.
     perk = 'thick_hide' in engine.attribute_perks(doc)
-    if perk and _rng.random() < _hazard_dodge_chance(doc, dungeon=False):
-        return {'type': 'hazard', 'hazardOutcome': 'safe', 'hazardSafe': True,
-                'text': 'Your thick hide shrugs it off — no harm done. (Thick Hide)'}
+    r = _rng.random()
+    if r < data.HAZARD_LUCKY_AVOID:
+        out = {'type': 'hazard', 'hazardOutcome': 'safe', 'hazardAvoid': 'lucky',
+               'text': 'The hazard fizzles out — pure luck! (Lucky)'}
+        if perk:
+            out['hazardPerk'] = True
+        return out
+    if perk and r < data.HAZARD_LUCKY_AVOID + _hazard_dodge_chance(doc, dungeon=False):
+        return {'type': 'hazard', 'hazardOutcome': 'safe', 'hazardAvoid': 'resist',
+                'hazardPerk': True,
+                'text': 'Your thick hide turns it aside — no harm done. (Thick Hide)'}
     # `hazardOutcome` reports which generic effect rolled so the client's hazard
     # wheel can land on it truthfully (dungeon hazards carry `biome` instead).
     kind = _rng.choice(['swamp_gas', 'vines', 'spore_cloud'])
@@ -3448,8 +3460,10 @@ def _hazard(table, sid, doc, node):
         dmg = _apply_hp_loss(doc, round(doc['hp'] * (0.075 if mire else 0.15)))
         out = {'type': 'hazard', 'hazardOutcome': kind,
                'text': f'A choking spore cloud! You lose {dmg} HP.', 'hp': -dmg}
+    # Thick Hide is present but neither avoid fired — flag it so the wheel still
+    # teases its resist slices (the hazard just won this spin).
     if perk:
-        out['hazardSafe'] = False
+        out['hazardPerk'] = True
     return out
 
 
@@ -3459,11 +3473,14 @@ def _dungeon_hazard(table, sid, doc, node, biome, mire):
     hazard tile is genuinely feared, not a shrug. `_apply_hp_loss` still halves
     the HP cost for the Thick Hide perk; Mirefoot (bog natives) halves every
     cost on top, as it always has."""
-    # Thick Hide (DEF-6): DEF-scaled dodge at the reduced dungeon chance. The
-    # lair curse still reports its biome so the wheel shows this lair's tease.
+    # Thick Hide (DEF-6): DEF-scaled resist at the reduced dungeon chance. No
+    # baseline "lucky" fizzle down here — the depths only bend to Thick Hide, so
+    # the boss approach stays brutal. The lair curse still reports its biome so
+    # the wheel shows this lair's tease.
     perk = 'thick_hide' in engine.attribute_perks(doc)
     if perk and _rng.random() < _hazard_dodge_chance(doc, dungeon=True):
-        return {'type': 'hazard', 'biome': biome, 'hazardSafe': True,
+        return {'type': 'hazard', 'biome': biome, 'hazardAvoid': 'resist',
+                'hazardPerk': True,
                 'text': "The lair's curse slides off your carapace. (Thick Hide)"}
     nodes = _season_map(table, sid)
     h = data.DUNGEON_HAZARDS[biome]
@@ -3509,8 +3526,9 @@ def _dungeon_hazard(table, sid, doc, node, biome, mire):
         doc['spores'] = doc.get('spores', 0) + 12
         out['hp'] = -dmg
         out['spores'] = 12
+    # Thick Hide present but the resist didn't fire — flag it for the wheel tease.
     if perk:
-        out['hazardSafe'] = False
+        out['hazardPerk'] = True
     return out
 
 
@@ -3601,6 +3619,8 @@ def _guardian_pools(table, sid):
         out[node] = {'kind': 'barrier', 'name': g['name'], 'npcId': g['id'],
                      'hp': hp, 'maxHp': g['hp'], 'buffs': [b['kind'] for b in buffs]}
     for node, b in data.LAIR_BOSSES.items():
+        if node in data.RESPAWN_LAIRS:
+            continue                       # per-player fights: no shared pool to chip
         hp, slain, buffs = _lair_state(table, sid, node)
         out[node] = {'kind': 'lair', 'npcId': b['id'],
                      'name': f"Vestige of {b['name']}" if slain else b['name'],
@@ -3691,7 +3711,7 @@ def _enraged_public(table, sid):
         return {'dead': True, 'movesAt': moves_at}
     spec = data.ENRAGED_MONSTERS[rec['monsterId']]
     return {'dead': False, 'node': rec['node'], 'monsterId': rec['monsterId'],
-            'name': spec['name'], 'spriteId': rec['monsterId'],
+            'name': spec['name'], 'spriteId': spec['sprite'],
             'hp': int(rec['hp']), 'maxHp': int(rec['maxHp']),
             'buffs': [b['kind'] for b in (rec.get('buffs') or [])],
             'movesAt': moves_at}
@@ -3750,7 +3770,12 @@ def _lair(table, sid, doc, node):
     pays the major reward; it then reforms at HALF strength as the "Vestige
     of <boss>", whose kills pay the minor reward. Guild Sigils stay
     per-player — a Vestige kill still claims yours.
+
+    The two ruin lairs (data.RESPAWN_LAIRS) opt out of this entirely: they run a
+    per-player defeat -> abandoned -> respawn cycle instead (see _respawn_lair).
     """
+    if node in data.RESPAWN_LAIRS:
+        return _respawn_lair(table, sid, doc, node)
     b = data.LAIR_BOSSES[node]
     hp_pool, slain, buffs = _lair_state(table, sid, node)
     vest_max = b['hp'] // 2
@@ -3762,6 +3787,57 @@ def _lair(table, sid, doc, node):
         _set_lair_state(table, sid, node, hp_pool, slain, [])   # consumed on engagement
     return _start_battle(table, sid, doc, 'lair', npc, node=node,
                          ctx={'slain': slain, 'vestMax': vest_max})
+
+
+def _respawn_lair(table, sid, doc, node):
+    """A ruin lair on its per-player cycle: abandoned (scavenge) while the timer
+    is live, otherwise a fresh full-HP fight. State lives on doc['ruinLairs']."""
+    entry = (doc.get('ruinLairs') or {}).get(node)
+    if entry and _now() < (entry.get('respawnAt') or ''):
+        return _lair_scavenge(doc, node, entry)
+    b = data.LAIR_BOSSES[node]
+    npc = dict(b, maxHp=b['hp'],
+               personality=b.get('personality', 'balanced'),
+               bluff=b.get('bluff', 0.20))
+    return _start_battle(table, sid, doc, 'lair', npc, node=node,
+                         ctx={'respawn': True})
+
+
+def _lair_scavenge(doc, node, entry):
+    """Scrounge an abandoned ruin lair once per abandonment: a few Spores + a
+    small item chance. Mutates doc (persisted by the move-action wrapper, like
+    the ossuary/vault landing handlers). Repeat visits report it picked clean."""
+    b = data.LAIR_BOSSES[node]
+    dialogue = data.LAIR_ABANDONED_DIALOGUE.get(node, f"The {b['name']}'s lair lies abandoned.")
+    out = {'type': 'lairAbandoned', 'node': node, 'text': dialogue}
+    if entry.get('scavenged'):
+        out['text'] = dialogue + ' You already picked it clean — nothing left to take.'
+        return out
+    spores = _rng.randint(*data.LAIR_SCAVENGE_SPORES)
+    doc['spores'] = doc.get('spores', 0) + spores
+    out['spores'] = spores
+    if _rng.random() < data.LAIR_SCAVENGE_ITEM_CHANCE:
+        item = _scavenge_item(doc)
+        if item:
+            out['item'] = item
+    entry['scavenged'] = True
+    doc.setdefault('ruinLairs', {})[node] = entry
+    tail = f' You scrounge up {spores} Spores'
+    if out.get('item'):
+        tail += f" and a {data.CONSUMABLES[out['item']]['name']}."
+    else:
+        tail += '.'
+    out['text'] = dialogue + tail
+    return out
+
+
+def _scavenge_item(doc):
+    """One minor consumable from the scavenge table into the bag; None if full."""
+    if len(doc.get('bag') or []) >= data.BAG_SIZE:
+        return None
+    item = _rng.choice(data.LAIR_SCAVENGE_ITEMS)
+    doc.setdefault('bag', []).append(item)
+    return item
 
 
 def _sigil_count(doc):
@@ -3950,6 +4026,7 @@ def _battle_resume(rec, player_hp):
         'revealed': rec.get('npcActual') if peeked else None,
         'npc': {
             'id': (rec.get('npcMeta') or {}).get('id'),
+            'spriteId': (rec.get('npcMeta') or {}).get('sprite'),
             'name': npc.get('name'),
             'hp': npc.get('hp'),
             'maxHp': npc.get('maxHp', npc.get('hp')),
@@ -4248,9 +4325,61 @@ def _award_lair_kill(table, sid, doc, node, slain, out):
     return reward
 
 
+def _award_respawn_lair_kill(table, sid, doc, node, out):
+    """Ruin-lair kill payout: spores/XP (first tier once, then repeat), a lair
+    gear drop + scroll, a one-time POI claim for renown — but NO Vestige, world
+    event, sigil, or first-conqueror. Stamps the per-player abandonment window."""
+    b = data.LAIR_BOSSES[node]
+    ruin = doc.setdefault('ruinLairs', {})
+    first_ever = node not in ruin
+    reward = b['first'] if first_ever else b['repeat']
+    doc['spores'] = doc.get('spores', 0) + reward['spores']
+    doc['wildWins'] = doc.get('wildWins', 0) + 1
+    if first_ever:
+        claims = doc.setdefault('poiClaims', [])
+        if node not in claims:
+            claims.append(node)
+    levels = _grant_xp(table, sid, doc, reward['xp'])
+    out['spores'] = reward['spores']
+    out['xp'] = reward['xp']
+    if levels:
+        out['levels'] = levels
+    chance, tiers = data.GEAR_DROP['lair']
+    if _rng.random() < chance:
+        drop = _roll_gear_drop(doc, tiers)
+        if drop:
+            out['gear'] = drop
+    until = (datetime.utcnow() + timedelta(minutes=data.LAIR_RESPAWN_MINUTES)) \
+        .isoformat(timespec='seconds')
+    ruin[node] = {'respawnAt': until, 'scavenged': False}
+    out['text'] = (f"The {b['name']} falls! +{reward['spores']} Spores. Its lair "
+                   'falls silent — it will stir again within the hour.')
+    _append_scroll(doc, out, 'lair')
+
+
+def _finish_respawn_lair(table, sid, doc, rec, result):
+    """Resolve a ruin-lair fight. No lingering pool: a loss/timeout just ends."""
+    node = rec['node']
+    display = rec['npcMeta']['name']
+    npc_max = rec['npc']['maxHp']
+    out = {'type': 'lair', 'npc': {'name': display, 'maxHp': npc_max}, 'battle': result}
+    if result['outcome'] == 'attacker':
+        _award_respawn_lair_kill(table, sid, doc, node, out)
+    elif result['outcome'] == 'defender':
+        _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
+        _compost(table, sid, doc, f"{doc['username']} was devoured by the {display}.")
+        out['text'] = f"The {display} is too much. Back to the Gate…"
+    else:
+        _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
+        out['text'] = f"You trade blows with the {display}, but it holds its ground."
+    return out
+
+
 def _finish_lair(table, sid, doc, rec, result):
     node = rec['node']
     b = data.LAIR_BOSSES[node]
+    if rec['ctx'].get('respawn'):
+        return _finish_respawn_lair(table, sid, doc, rec, result)
     slain = rec['ctx'].get('slain', False)
     display = rec['npcMeta']['name']
     npc_max = rec['npc']['maxHp']
@@ -5119,6 +5248,9 @@ def _cast(table, sid, doc, payload):
 
 def _cast_field(table, sid, doc, spell_id, spell, target_id):
     """Route a field spell to a guardian/boss/enraged target, else a rival player."""
+    if target_id in data.RESPAWN_LAIRS:
+        return _spell_err('That beast can only be faced in its lair, in person.',
+                          'invalid_target', 409)
     if target_id == 'boss' or target_id in data.BARRIER_GUARDIANS or target_id in data.LAIR_BOSSES:
         return _cast_at_guardian(table, sid, doc, spell, target_id)
     er = _enraged_state(table, sid)
@@ -5366,6 +5498,9 @@ def _cast_boss_strike(table, sid, doc, spell, target):
             text = 'The Queen is already at the brink — finish her in person.'
         return {'dmg': dealt, 'targetName': name, 'text': text}
     if target in data.LAIR_BOSSES:
+        if target in data.RESPAWN_LAIRS:
+            return {'dmg': 0, 'targetName': data.LAIR_BOSSES[target]['name'],
+                    'text': 'Your reach falls short — that beast must be faced in its lair.'}
         hp, slain, _ = _lair_state(table, sid, target)
         new_hp = max(floor, hp - _spell_damage(spell, doc))
         dealt = hp - new_hp

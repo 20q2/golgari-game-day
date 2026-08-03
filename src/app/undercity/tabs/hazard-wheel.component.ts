@@ -16,10 +16,12 @@ export interface HazardWheelTarget {
   outcome?: string;
   /** Dungeon: the lair boss's art id (undercity/guardians/<id>.png). */
   bossId?: string;
-  /** Thick Hide active — render a couple of "safe" tease wedges. */
+  /** Thick Hide active — render the extra "resist" tease wedges. */
   hasPerk?: boolean;
-  /** The hazard was dodged — the winning wedge is a lucky safety wedge. */
-  safe?: boolean;
+  /** How the hazard did no harm, if it didn't: 'lucky' (baseline luck fizzle) or
+   *  'resist' (Thick Hide turned it aside). Absent ⇒ the hazard landed and the
+   *  winning wedge is the effect/boss. */
+  avoid?: 'lucky' | 'resist';
 }
 
 interface Effect {
@@ -35,13 +37,16 @@ const EFFECTS: Record<string, Effect> = {
 };
 const EFFECT_KEYS = Object.keys(EFFECTS);
 
-/** Lucky "you dodged" face — only shown to Thick Hide creatures. Kept out of the
- *  EFFECT_KEYS cycle so a non-perk wheel is byte-for-byte unchanged. */
-const SAFE_FACE: Effect = { icon: 'verified', color: '#7fce8f' };
-const SAFE_TEASE_SLOTS = [3, 5]; // surface loser wedges that tease a safe result
+/** The two no-harm faces. "Lucky" (gold sparkle) is the baseline fizzle any
+ *  creature can land on; "Resist" (green hide) is Thick Hide's own turn-aside —
+ *  same effect, different flavour (see the design in undercity_db._hazard). */
+const LUCKY_FACE: Effect = { icon: 'auto_awesome', color: '#ffd76a' };
+const RESIST_FACE: Effect = { icon: 'shield', color: '#7fce8f' };
+const LUCKY_TEASE_SLOT = 4; // the always-present lucky wedge (a loser tease)
+const RESIST_TEASE_SLOTS = [2, 6]; // extra no-harm teases, Thick Hide only
 
 interface Wedge {
-  kind: 'boss' | 'decoy' | 'effect';
+  kind: 'boss' | 'effect';
   icon: string;
   color: string;
   pos: string; // place at the wedge's angle, out along the radius
@@ -50,7 +55,6 @@ interface Wedge {
 
 const WEDGE_COUNT = 8;
 const SYM_RADIUS = 80; // px from hub to symbol center
-const DUNGEON_DECOY_SLOTS = [3, 5]; // wedges that tease a "safe" result
 
 /**
  * A Wheel-of-Fortune reveal for hazard tiles: it spins several turns, eases to a
@@ -60,8 +64,9 @@ const DUNGEON_DECOY_SLOTS = [3, 5]; // wedges that tease a "safe" result
  *
  * The rig is honest-looking but predetermined: the winning symbol always sits in
  * wedge 0 (top), so the wheel always stops ~upright after a whole number of
- * turns. Surface wheels land truthfully on the rolled effect; dungeon wheels are
- * mostly the lair boss (with a couple of decoy wedges) and always land on it.
+ * turns. Wedge 0 shows the actual outcome — the rolled effect / lair boss on a
+ * hit, or the lucky/resist face when the hazard did no harm. Loser wedges always
+ * include one lucky tease, plus a couple of resist teases for Thick Hide.
  */
 @Component({
   selector: 'app-undercity-hazard-wheel',
@@ -281,7 +286,8 @@ export class HazardWheelComponent implements AfterViewInit {
   }
 
   protected caption(): string {
-    if (this.target.safe) return 'Dodged! (Thick Hide)';
+    if (this.target.avoid === 'lucky') return 'Lucky! The hazard fizzles out.';
+    if (this.target.avoid === 'resist') return 'Turned aside! (Thick Hide)';
     return this.target.mode === 'dungeon' ? 'The lair claims you.' : 'No dodging that.';
   }
 
@@ -304,32 +310,37 @@ export class HazardWheelComponent implements AfterViewInit {
    *  counter-rotated so it reads upright when the wheel rests. */
   private buildWedges(): Wedge[] {
     const isDungeon = this.target.mode === 'dungeon';
-    const safe = this.target.safe === true;
+    const avoid = this.target.avoid;
+    const hasPerk = this.target.hasPerk === true;
     const outcome = EFFECTS[this.target.outcome ?? ''] ? this.target.outcome! : 'spore_cloud';
+    const face = (e: Effect, base: Pick<Wedge, 'pos' | 'upright'>): Wedge => ({
+      kind: 'effect',
+      icon: e.icon,
+      color: e.color,
+      ...base,
+    });
+    const hazardWedge = (base: Pick<Wedge, 'pos' | 'upright'>, i: number): Wedge =>
+      isDungeon
+        ? { kind: 'boss', icon: '', color: '', ...base }
+        : face(EFFECTS[EFFECT_KEYS[i % EFFECT_KEYS.length]], base);
     return Array.from({ length: WEDGE_COUNT }, (_, i) => {
       const deg = i * (360 / WEDGE_COUNT);
       const base = {
         pos: `rotate(${deg}deg) translateY(-${SYM_RADIUS}px)`,
         upright: `rotate(${-deg}deg)`,
       };
-      if (isDungeon) {
-        // Winner (0) is a safe decoy on a Thick-Hide dodge, else the lair boss.
-        if ((i === 0 && safe) || (i !== 0 && DUNGEON_DECOY_SLOTS.includes(i))) {
-          return { kind: 'decoy', icon: SAFE_FACE.icon, color: SAFE_FACE.color, ...base };
-        }
-        return { kind: 'boss', icon: '', color: '', ...base };
-      }
-      // Surface. Winner (0): the safe glyph on a dodge, else the rolled effect.
+      // Winner (0) shows the actual outcome: the no-harm face on an avoid, else
+      // the rolled effect (surface) / the lair boss (dungeon).
       if (i === 0) {
-        const face = safe ? SAFE_FACE : EFFECTS[outcome];
-        return { kind: 'effect', icon: face.icon, color: face.color, ...base };
+        if (avoid === 'lucky') return face(LUCKY_FACE, base);
+        if (avoid === 'resist') return face(RESIST_FACE, base);
+        return isDungeon ? hazardWedge(base, i) : face(EFFECTS[outcome], base);
       }
-      // Thick-Hide players also see a couple of "safe" tease wedges among losers.
-      if (this.target.hasPerk && SAFE_TEASE_SLOTS.includes(i)) {
-        return { kind: 'effect', icon: SAFE_FACE.icon, color: SAFE_FACE.color, ...base };
-      }
-      const key = EFFECT_KEYS[i % EFFECT_KEYS.length];
-      return { kind: 'effect', icon: EFFECTS[key].icon, color: EFFECTS[key].color, ...base };
+      // Losers: one guaranteed lucky tease, resist teases for Thick Hide, and the
+      // hazard (boss silhouette / a generic effect face) everywhere else.
+      if (i === LUCKY_TEASE_SLOT) return face(LUCKY_FACE, base);
+      if (hasPerk && RESIST_TEASE_SLOTS.includes(i)) return face(RESIST_FACE, base);
+      return hazardWedge(base, i);
     });
   }
 

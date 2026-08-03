@@ -188,6 +188,9 @@ export interface YouDoc {
   bossDamage: number;
   /** Barriers broken / lair first-kills / vault finds already claimed. */
   poiClaims?: string[];
+  /** Per-player ruin-lair cycle (mirrors undercity_db doc['ruinLairs']): a live
+   *  respawnAt means the lair is abandoned (scavenge once) until it passes. */
+  ruinLairs?: Record<string, { respawnAt: string; scavenged: boolean }>;
   paint: Record<string, number>;
   hat: string | null;
   /** Chosen cosmetic starter look (alt sprite key); absent = base look. */
@@ -454,6 +457,9 @@ export interface BattleResume {
   revealed: Stance | null;
   npc: {
     id?: string;
+    /** Art id under undercity/enemies/ when the foe's sprite differs from its
+     *  logical id (e.g. an enraged wilderness monster borrowing enemy art). */
+    spriteId?: string;
     name: string;
     hp: number;
     maxHp: number;
@@ -626,10 +632,14 @@ export interface SpaceEvent {
   /** Dungeon-hazard pocket biome (mirrors undercity_db._dungeon_hazard) — lets
    *  the hazard wheel pick this lair's boss silhouette. */
   biome?: string;
-  /** Present only when the player has Thick Hide: true = the hazard was dodged
-   *  (wheel lands on a lucky safety wedge), false = caught (wheel shows a tease).
-   *  Mirrors undercity_db._hazard / _dungeon_hazard. */
-  hazardSafe?: boolean;
+  /** How the hazard did no harm, when it didn't (mirrors undercity_db._hazard /
+   *  _dungeon_hazard). 'lucky' = the baseline luck fizzle any creature can hit;
+   *  'resist' = Thick Hide turned it aside. Absent when the hazard landed. Drives
+   *  which no-harm wedge the wheel lands on. */
+  hazardAvoid?: 'lucky' | 'resist';
+  /** Present (true) only when the creature has Thick Hide — set whether or not the
+   *  hazard was avoided, so the wheel paints the extra "resist" tease wedges. */
+  hazardPerk?: boolean;
   paint?: string;
   hat?: string;
   duplicate?: boolean;
@@ -653,6 +663,9 @@ export interface SpaceEvent {
   /** maxHp only differs from hp for the island boss (persistent HP pool). */
   npc?: {
     id: string;
+    /** Art id under undercity/enemies/ when the foe's sprite differs from its
+     *  logical id (e.g. an enraged wilderness monster borrowing enemy art). */
+    spriteId?: string;
     name: string;
     hp: number;
     maxHp?: number;
