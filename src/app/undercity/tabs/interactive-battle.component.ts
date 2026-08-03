@@ -473,7 +473,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   }
 
   private entryHasEffect(e: CombatEntry): boolean {
-    return !!(e.dmg || e.heal || e.miss || e.negated);
+    return !!(e.dmg || e.heal || e.miss || e.negated || e.deflect);
   }
 
   private animateEntry(e: CombatEntry, aStance?: Stance, dStance?: Stance): void {
@@ -492,6 +492,9 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
       this.timers.push(setTimeout(() => this.struck.set(null), 380));
     } else if (e.miss || e.negated) {
       this.pop.set({ side: target, text: e.negated ? 'ward' : 'miss', kind: 'miss' });
+    } else if (e.deflect) {
+      // Turtle companion shrugged off part of the hit — badge the blocker's side.
+      this.pop.set({ side: e.by as Side, text: 'Turtle!', kind: 'miss' });
     }
 
     if (e.heal) {
@@ -512,6 +515,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
    * ligature. Order matters — specific effect tags win over the plain strike.
    */
   private dmgIcon(e: CombatEntry, aStance?: Stance, dStance?: Stance): { icon: string; svg: boolean } | null {
+    if (e.pet === 'fox') return { icon: 'pets', svg: false }; // Fox companion follow-up
     if (e.rot) return { icon: 'coronavirus', svg: false }; // rot damage-over-time
     if (e.frenzy) return { icon: 'local_fire_department', svg: false }; // legacy escalation
     if (e.retaliation) return { icon: 'uc-carapace', svg: true }; // thorns / spikeshell reflect
