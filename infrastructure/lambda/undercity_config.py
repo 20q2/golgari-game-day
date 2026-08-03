@@ -289,6 +289,24 @@ SCROLL_DROP_CHANCE = {
 # Minutes an egg sits in the (single) incubator before it can hatch.
 PET_INCUBATE_MINUTES = 15
 
+# Activated-ability real-time cooldowns (minutes), keyed by species; leveling
+# the pet shortens the wait down to a floor. Mirrors the spell-cooldown idiom.
+PET_ABILITY_COOLDOWN_MIN = {'bird': 30, 'mouse': 20}
+PET_ABILITY_COOLDOWN_PER_LVL = 2      # minutes shaved per level above 1
+PET_ABILITY_COOLDOWN_FLOOR = 5        # never faster than this
+
+# Mouse scavenge yield (scalars; level-scaled in the handler): a small spore
+# cache plus a level-scaled chance to also dig up a consumable.
+PET_MOUSE_SPORES_BASE = 8
+PET_MOUSE_SPORES_PER_LVL = 3
+PET_MOUSE_ITEM_CHANCE_BASE = 0.20
+PET_MOUSE_ITEM_CHANCE_PER_LVL = 0.05
+
+# Grub passive: a small moltings trickle on every completed move, feeding the
+# gear/pet upgrade loop. Grows slowly with the pet's level.
+PET_GRUB_MOLTINGS_BASE = 1
+PET_GRUB_MOLTINGS_PER_LVL = 0.34
+
 
 # ── Respawning ruin lairs (design 2026-08-02) ────────────────────────────────
 # The two side-content ruin lairs (Lord of Extinction, Doomgape) don't share the

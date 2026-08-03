@@ -271,3 +271,69 @@ def test_pet_fields_survive_snapshot_roundtrip(table):
     restored = db._bt_to_combatant(db._bt_snapshot(c))
     assert restored.pet_deflect_chance == c.pet_deflect_chance
     assert restored.pet_deflect_flat == c.pet_deflect_flat
+
+
+# ── Plan 3: activated abilities (Bird/Mouse) + cooldowns + Grub trickle ───────
+
+def _persist_active_pet(table, species, level=1):
+    """Join a player, give+activate a pet of `species`, persist, return (sid, doc)."""
+    _player_at(table, 'n1')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    pet = _give_pet(doc, species, tier=1, level=level)
+    doc['activePetId'] = pet['id']
+    db._save_or_conflict(table, doc)
+    # Refetch so the returned doc's optimistic-lock ver matches storage (callers
+    # that save again directly would otherwise hit a false 409).
+    return sid, db._get_player(table, sid, 'user-alex')
+
+
+def test_pet_ability_cooldown_shortens_with_level():
+    lo = db._pet_ability_cooldown_min('mouse', 1)
+    hi = db._pet_ability_cooldown_min('mouse', 4)
+    assert lo == config.PET_ABILITY_COOLDOWN_MIN['mouse']
+    assert hi < lo
+    # Never faster than the floor.
+    assert db._pet_ability_cooldown_min('mouse', 99) == config.PET_ABILITY_COOLDOWN_FLOOR
+
+
+def test_grub_moltings_scales_with_level():
+    assert db._grub_moltings(1) == config.PET_GRUB_MOLTINGS_BASE
+    assert db._grub_moltings(9) > db._grub_moltings(1)
+
+
+def test_use_pet_ability_rejects_without_activated_pet(table):
+    # No active pet at all.
+    _persist_active_pet(table, 'fox')   # active, but combat-passive
+    status, body = act(table, 'use-pet-ability')
+    assert status == 409
+
+
+def test_mouse_scavenge_gives_spores_and_sets_cooldown(table):
+    sid, doc = _persist_active_pet(table, 'mouse', level=2)
+    before = doc.get('spores', 0)
+    status, body = act(table, 'use-pet-ability')
+    assert status == 200
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['spores'] > before
+    assert doc['petCooldowns'].get('mouse')          # cooldown stamped
+    # Still resting -> rejected.
+    status, _ = act(table, 'use-pet-ability')
+    assert status == 429
+
+
+def test_bird_scout_returns_bazaar_stock(table):
+    sid, doc = _persist_active_pet(table, 'bird', level=1)
+    nodes = db._season_map(table, sid)  # live map (may differ from MAP_NODES)
+    shop_node = next(n for n, v in nodes.items() if v.get('type') == 'shop')
+    status, body = db._use_pet_ability(table, sid, doc, {'targetNode': shop_node})
+    assert status == 200
+    assert body['petAbility']['kind'] == 'bird'
+    assert body['petAbility']['node'] == shop_node
+    assert 'stock' in body['petAbility']
+
+
+def test_bird_scout_rejects_non_bazaar_target(table):
+    sid, doc = _persist_active_pet(table, 'bird')
+    status, _ = db._use_pet_ability(table, sid, doc, {'targetNode': 'n1'})
+    assert status == 409
