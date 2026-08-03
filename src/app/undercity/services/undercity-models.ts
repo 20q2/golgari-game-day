@@ -1,4 +1,5 @@
 /** Shared shapes for the /game/state and /game/action payloads. */
+import { Pet, Egg } from '../data/pets';
 
 export interface Season {
   seasonId: string;
@@ -178,6 +179,14 @@ export interface YouDoc {
   lastGrimoireSwap?: string | null;
   /** spellId -> ISO time it comes off cooldown (server clock, no trailing Z). */
   spellCooldowns?: Record<string, string>;
+  /** Companions (animal pets) — owned roster incl. the active one; eggs carried;
+   *  the single incubator slot; and per-species activated-ability cooldowns. */
+  pets?: Pet[];
+  activePetId?: string | null;
+  eggs?: Egg[];
+  incubator?: { eggId: string; startedAt: string; tier: number } | null;
+  /** species -> ISO time its activated ability comes off cooldown (no trailing Z). */
+  petCooldowns?: Record<string, string>;
   awayEvents?: AwayEvent[];
   taughtClaims: number;
   lastFinishedClaim?: string | null;
