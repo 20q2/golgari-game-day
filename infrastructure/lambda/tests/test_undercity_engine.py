@@ -1619,3 +1619,26 @@ def test_fox_followup_skipped_when_roll_high():
     rng = FakeRng(randoms=[0.99], uniform=1.0)   # 0.99 >= 0.2 -> no follow-up
     entries = resolve_round(a, d, 'aggress', 'feint', 1, rng)
     assert not any(e.get('pet') == 'fox' for e in entries)
+
+
+def test_turtle_deflect_reduces_decisive_hit():
+    # Defender loses the exchange but its Turtle deflects part of the hit.
+    a = fighter(atk=15)
+    plain = resolve_round(a, fighter(hp=100, max_hp=100, dfn=4),
+                          'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    plain_dmg = next(e['dmg'] for e in plain if e.get('winner') == 'attacker' and 'dmg' in e)
+
+    d = fighter(hp=100, max_hp=100, dfn=4, pet_deflect_chance=1.0, pet_deflect_flat=3)
+    rng = FakeRng(randoms=[0.0], uniform=1.0)   # deflect fires
+    entries = resolve_round(a, d, 'aggress', 'feint', 1, rng)
+    hit = next(e['dmg'] for e in entries if e.get('winner') == 'attacker' and 'dmg' in e)
+    assert hit == max(0, plain_dmg - 3)
+    assert any(e.get('pet') == 'turtle' for e in entries)
+
+
+def test_turtle_deflect_skipped_when_roll_high():
+    a = fighter(atk=15)
+    d = fighter(hp=100, max_hp=100, dfn=4, pet_deflect_chance=0.2, pet_deflect_flat=3)
+    rng = FakeRng(randoms=[0.99], uniform=1.0)
+    entries = resolve_round(a, d, 'aggress', 'feint', 1, rng)
+    assert not any(e.get('pet') == 'turtle' for e in entries)

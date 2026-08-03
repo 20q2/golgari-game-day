@@ -310,6 +310,12 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             # trickster: a lost Feint is not fully punished.
             if lose_stance == 'feint' and losr.has_rider('trickster'):
                 dmg = round(dmg * (1 - losr.mag('trickster', 0.0)))
+            # Turtle companion: occasionally shrugs off part of the decisive hit.
+            if dmg > 0 and losr.pet_deflect_chance and rng.random() < losr.pet_deflect_chance:
+                blocked = min(dmg, losr.pet_deflect_flat)
+                dmg -= blocked
+                entries.append({'round': rnd, 'by': lose_side, 'deflect': blocked,
+                                'pet': 'turtle'})
             if dmg > 0:
                 losr.hp -= dmg
                 entry = {'round': rnd, 'by': win_side, 'dmg': dmg, 'winner': win_side}
