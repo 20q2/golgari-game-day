@@ -586,6 +586,7 @@ def _shielded(doc):
 
 def _combatant(doc):
     eff = engine.effective_stats(doc)
+    pc = engine.pet_combat(_find_pet(doc, doc.get('activePetId')))
     return engine.Combatant(
         name=doc.get('username', '?'), hp=doc['hp'], max_hp=eff['maxHp'],
         atk=eff['atk'], dfn=eff['def'], spd=eff['spd'],
@@ -595,7 +596,9 @@ def _combatant(doc):
         perks=engine.attribute_perks(doc),
         has_smoke_spore='smoke_spore' in (doc.get('bag') or []),
         flee_bonus=(15 if any(b.get('kind') == 'glowveil'
-                              for b in (doc.get('buffs') or [])) else 0))
+                              for b in (doc.get('buffs') or [])) else 0),
+        pet_followup_chance=pc['followup_chance'], pet_followup_mult=pc['followup_mult'],
+        pet_deflect_chance=pc['deflect_chance'], pet_deflect_flat=pc['deflect_flat'])
 
 
 def _buff_stat_delta(doc):
@@ -624,6 +627,10 @@ def _bt_snapshot(c):
         'rot_stacks': int(c.rot_stacks), 'first_win_used': bool(c.first_win_used),
         'dmg_penalty': int(c.dmg_penalty), 'reveal_next': bool(c.reveal_next),
         'aggress_ramp': int(c.aggress_ramp), 'feint_won': bool(c.feint_won),
+        'pet_followup_chance': float(c.pet_followup_chance),
+        'pet_followup_mult': float(c.pet_followup_mult),
+        'pet_deflect_chance': float(c.pet_deflect_chance),
+        'pet_deflect_flat': int(c.pet_deflect_flat),
     }
 
 
@@ -637,7 +644,11 @@ def _bt_to_combatant(s):
         buffs=frozenset(s.get('buffs') or []),
         perks=frozenset(s.get('perks') or []),
         flee_bonus=int(s.get('flee_bonus', 0)),
-        has_smoke_spore=bool(s.get('has_smoke_spore', False)))
+        has_smoke_spore=bool(s.get('has_smoke_spore', False)),
+        pet_followup_chance=float(s.get('pet_followup_chance', 0.0)),
+        pet_followup_mult=float(s.get('pet_followup_mult', 0.0)),
+        pet_deflect_chance=float(s.get('pet_deflect_chance', 0.0)),
+        pet_deflect_flat=int(s.get('pet_deflect_flat', 0)))
     c.rot_stacks = int(s.get('rot_stacks', 0))
     c.first_win_used = bool(s.get('first_win_used', False))
     c.dmg_penalty = int(s.get('dmg_penalty', 0))

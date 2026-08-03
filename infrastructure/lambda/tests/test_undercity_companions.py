@@ -247,3 +247,27 @@ def test_mystery_can_drop_egg(table, monkeypatch):
     db._mystery(table, sid, doc)
     assert len(doc['eggs']) == before + 1
     assert doc['eggs'][-1]['tier'] == 1
+
+
+# ── Plan 2: active-pet combat fields on the Combatant ────────────────────────
+
+def test_active_combat_pet_flows_into_combatant(table):
+    sid, doc = _player_at(table, 'n1')
+    pet = _give_pet(doc, 'fox', tier=1, level=1)
+    doc['activePetId'] = pet['id']
+    c = db._combatant(doc)
+    assert c.pet_followup_chance > 0
+    assert c.pet_deflect_chance == 0
+    # No active pet -> zeros.
+    doc['activePetId'] = None
+    assert db._combatant(doc).pet_followup_chance == 0
+
+
+def test_pet_fields_survive_snapshot_roundtrip(table):
+    sid, doc = _player_at(table, 'n1')
+    pet = _give_pet(doc, 'turtle', tier=1, level=2)
+    doc['activePetId'] = pet['id']
+    c = db._combatant(doc)
+    restored = db._bt_to_combatant(db._bt_snapshot(c))
+    assert restored.pet_deflect_chance == c.pet_deflect_chance
+    assert restored.pet_deflect_flat == c.pet_deflect_flat

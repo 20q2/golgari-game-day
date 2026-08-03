@@ -39,6 +39,11 @@ class Combatant:
     struck_yet: bool = field(default=False, repr=False)
     aggress_ramp: int = field(default=0, repr=False)   # rabid: +dmg to Aggress, stacks
     feint_won: bool = field(default=False, repr=False)  # cutpurse: landed a winning Feint
+    # active companion combat contribution (Fox follow-up / Turtle deflect)
+    pet_followup_chance: float = field(default=0.0, repr=False)
+    pet_followup_mult: float = field(default=0.0, repr=False)
+    pet_deflect_chance: float = field(default=0.0, repr=False)
+    pet_deflect_flat: int = field(default=0, repr=False)
 
     def has(self, passive):
         return passive in self.passives
