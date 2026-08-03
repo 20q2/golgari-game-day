@@ -2392,6 +2392,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'grimoires': [], 'equippedGrimoire': None,
         'scrolls': [], 'grimoireSpells': {},
         'spellCooldowns': {}, 'highFiveCooldowns': {}, 'awayEvents': [],
+        'pendingPickups': [],   # overflow items awaiting the pickup modal
         'pets': [], 'activePetId': None,
         'eggs': [], 'incubator': None, 'petCooldowns': {},
         'lastFinishedClaim': None, 'taughtClaims': 0, 'pokesReceived': 0,
