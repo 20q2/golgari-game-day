@@ -1104,25 +1104,60 @@ def _roll_scroll_drop(doc, source):
     return spell_id
 
 
-def _gain_gear(doc, gid):
-    """Route a newly-acquired gear piece. Auto-equip it when its slot is empty
-    (fills the slot; never displaces an equipped piece); otherwise stash it, and
-    if the stash is full grind it into materials so the piece is never lost.
-    Returns {'id','slot','tier','outcome',...} where outcome is 'equipped',
-    'stashed', or 'stash-full' (the latter carries 'materials')."""
-    g = data.GEAR[gid]
-    slot, tier = g['slot'], g['tier']
-    gear = doc.setdefault('gear', {})
-    if not gear.get(slot):
-        gear[slot] = gid
-        return {'id': gid, 'slot': slot, 'tier': tier, 'outcome': 'equipped'}
-    stash = doc.setdefault('gearStash', [])
-    if len(stash) < data.GEAR_STASH_SIZE:
-        stash.append(gid)
-        return {'id': gid, 'slot': slot, 'tier': tier, 'outcome': 'stashed'}
-    gained = _grind_materials(doc, gid)
-    return {'id': gid, 'slot': slot, 'tier': tier,
-            'outcome': 'stash-full', 'materials': gained}
+# Player-doc fields that hold each capacity-limited kind + its cap. Shared by
+# _acquire (placement) and pickup-resolve (freeing a slot). Gear also auto-equips
+# an empty slot before it stashes, so it has extra handling in _acquire.
+_ACQUIRE_KINDS = {
+    'gear':       {'field': 'gearStash', 'cap': data.GEAR_STASH_SIZE},
+    'consumable': {'field': 'bag',       'cap': data.BAG_SIZE},
+    'scroll':     {'field': 'scrolls',   'cap': data.SCROLL_SATCHEL_CAP},
+}
+
+
+def _park_pickup(doc, kind, item_id, source):
+    """Queue an overflowing item for the player to resolve via the pickup modal.
+    The item is held (not lost) until pickup-resolve places, lists, or salvages it."""
+    doc.setdefault('pendingPickups', []).append(
+        {'kind': kind, 'itemId': item_id, 'source': source, 'at': _now()})
+
+
+def _acquire(doc, kind, item_id, source='loot'):
+    """The single entry point for every item a player gains. Places the item by
+    kind — gear auto-equips an empty slot then stashes; consumables/scrolls
+    append — and when there's no room parks it in pendingPickups for the modal.
+    Returns {'kind','itemId','outcome',...}; outcome is one of
+    'equipped' | 'stashed' | 'stored' | 'pending'. For gear the return also
+    carries 'slot' and 'tier' for the caller's flavor text."""
+    if kind == 'gear':
+        g = data.GEAR[item_id]
+        slot, tier = g['slot'], g['tier']
+        base = {'kind': 'gear', 'itemId': item_id, 'slot': slot, 'tier': tier}
+        gear = doc.setdefault('gear', {})
+        if not gear.get(slot):
+            gear[slot] = item_id
+            return {**base, 'outcome': 'equipped'}
+        stash = doc.setdefault('gearStash', [])
+        if len(stash) < data.GEAR_STASH_SIZE:
+            stash.append(item_id)
+            return {**base, 'outcome': 'stashed'}
+        _park_pickup(doc, 'gear', item_id, source)
+        return {**base, 'outcome': 'pending'}
+    spec = _ACQUIRE_KINDS[kind]  # consumable | scroll
+    inv = doc.setdefault(spec['field'], [])
+    if len(inv) < spec['cap']:
+        inv.append(item_id)
+        return {'kind': kind, 'itemId': item_id, 'outcome': 'stored'}
+    _park_pickup(doc, kind, item_id, source)
+    return {'kind': kind, 'itemId': item_id, 'outcome': 'pending'}
+
+
+def _gain_gear(doc, gid, source='loot'):
+    """Route a newly-acquired gear piece through the shared pipeline. Auto-equips
+    an empty slot, else stashes, else parks it for the pickup modal. Returns
+    {'id','slot','tier','outcome'} where outcome is 'equipped' | 'stashed' |
+    'pending'. (Legacy 'id' key retained for the gear text/view helpers.)"""
+    r = _acquire(doc, 'gear', gid, source)
+    return {'id': gid, 'slot': r['slot'], 'tier': r['tier'], 'outcome': r['outcome']}
 
 
 def _roll_gear_drop(doc, tier_weights):
