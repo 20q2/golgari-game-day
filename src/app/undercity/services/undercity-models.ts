@@ -111,6 +111,16 @@ export interface CastResult {
   wished?: string;
 }
 
+/** One item that overflowed a full inventory, awaiting the pickup modal
+ * (mirrors undercity_db._park_pickup). */
+export interface PendingPickup {
+  kind: 'gear' | 'consumable' | 'scroll';
+  itemId: string;
+  /** Short origin tag for the modal's flavor line (battle | loot | boss | dig | scavenge | reward). */
+  source: string;
+  at: string;
+}
+
 export interface YouDoc {
   userId: string;
   username: string;
@@ -153,6 +163,8 @@ export interface YouDoc {
   pendingLoot?: { puzzleId: string; view: FlowPuzzleView } | null;
   bag: string[];
   gear: Record<string, string>;
+  /** Items that overflowed a full inventory, awaiting the pickup modal (FIFO). */
+  pendingPickups?: PendingPickup[];
   /** Forge economy: capped hold for found gear you aren't wearing. */
   gearStash?: string[];
   /** Forge economy: crafting-material counters. */

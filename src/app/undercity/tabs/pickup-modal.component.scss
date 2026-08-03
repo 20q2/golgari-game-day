@@ -1,0 +1,162 @@
+// Blocking overflow-pickup modal. Full-screen backdrop + centered card, styled
+// to match the level-up overlay (Golgari gold-on-dark). Buttons are re-declared
+// here because .uc-btn is component-scoped, not global.
+
+:host {
+  display: contents;
+}
+
+.pu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1500; // above the level-up overlay (1400)
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(6, 5, 3, 0.82);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.pu-card {
+  position: relative;
+  width: min(360px, 100%);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 22px;
+  background: linear-gradient(180deg, #201d17, #17140f);
+  border: 1px solid rgba(224, 192, 120, 0.5);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+  color: #efe7d6;
+}
+
+.pu-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(224, 192, 120, 0.85);
+}
+
+.pu-card h3 {
+  margin: 2px 0 0;
+  font-size: 20px;
+  color: #f4ecda;
+}
+
+.pu-sub {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(239, 231, 214, 0.75);
+}
+
+.pu-count {
+  font-size: 11px;
+  color: rgba(224, 192, 120, 0.7);
+}
+
+.pu-price {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  margin: 6px 0 2px;
+
+  label {
+    font-size: 12px;
+    color: rgba(239, 231, 214, 0.8);
+  }
+
+  input {
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(224, 192, 120, 0.35);
+    background: #12100b;
+    color: #f4ecda;
+    font-size: 15px;
+  }
+
+  small {
+    color: rgba(239, 231, 214, 0.55);
+    font-size: 11px;
+  }
+}
+
+.pu-owned {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 42vh;
+  overflow-y: auto;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: rgba(74, 124, 89, 0.14);
+  }
+}
+
+.pu-owned-name {
+  flex: 1;
+  text-align: left;
+  font-size: 13px;
+}
+
+.pu-error {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #e6a5a5;
+}
+
+// ── buttons ──────────────────────────────────────────────────────────────────
+.uc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(224, 192, 120, 0.35);
+  background: rgba(74, 124, 89, 0.22);
+  color: #f4ecda;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .mi {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.uc-btn-primary {
+  background: linear-gradient(180deg, #6cae75, #4a7c59);
+  border-color: rgba(224, 192, 120, 0.6);
+}
+
+.uc-btn-ghost {
+  background: transparent;
+  border-color: rgba(239, 231, 214, 0.25);
+}
+
+.uc-btn-sm {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 9px;
+}
