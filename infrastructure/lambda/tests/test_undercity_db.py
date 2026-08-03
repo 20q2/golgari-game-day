@@ -954,11 +954,12 @@ def test_gain_gear_equips_empty_stashes_filled_grinds_when_full():
     r = db._gain_gear(doc, 'bloodfang')
     assert r['outcome'] == 'stashed' and 'bloodfang' in doc['gearStash']
     assert doc['gear']['fang'] == 'rusted_fang'
-    # Filled slot, full stash → ground into materials (piece never lost).
+    # Filled slot, full stash → parked for the pickup modal (piece never lost).
     doc['gearStash'] = ['bloodfang'] * data.GEAR_STASH_SIZE
     r = db._gain_gear(doc, 'gutcleaver')
-    assert r['outcome'] == 'stash-full' and 'materials' in r
+    assert r['outcome'] == 'pending'
     assert 'gutcleaver' not in doc['gearStash']
+    assert doc['pendingPickups'][0]['itemId'] == 'gutcleaver'
 
 
 def test_evolution_gates_and_bonuses(table):
@@ -4123,11 +4124,11 @@ def test_gear_find_text_equipped_and_stashed_are_celebratory():
     assert 'stash' not in equipped.lower() and 'stash' not in stashed.lower()
 
 
-def test_gear_find_text_stash_full_is_honest():
+def test_gear_find_text_pending_is_honest():
     gid = next(iter(data.GEAR))
     name = data.GEAR[gid]['name']
-    txt = db._gear_find_text({'id': gid, 'outcome': 'stash-full'})
-    assert name in txt and 'materials' in txt
+    txt = db._gear_find_text({'id': gid, 'outcome': 'pending'})
+    assert name in txt and 'full' in txt.lower()
 
 
 # ── Mystery reel outcome field (2026-07-29) ──────────────────────────────────

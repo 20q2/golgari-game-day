@@ -1045,6 +1045,85 @@ def _salvage_pet(table, sid, doc, payload):
     return _ok(doc, text=f"Salvaged for {moltings} moltings{gem}.")
 
 
+# ── Companion activated / economy abilities (Plan 3) ─────────────────────────
+
+def _pet_ability_cooldown_min(species, level):
+    """Real-time cooldown (minutes) for an activated ability, shortened as the
+    pet levels but never below the floor. Mirrors _start_spell_cooldown."""
+    base = data.PET_ABILITY_COOLDOWN_MIN.get(species, 0)
+    mins = base - data.PET_ABILITY_COOLDOWN_PER_LVL * (int(level) - 1)
+    return max(data.PET_ABILITY_COOLDOWN_FLOOR, mins)
+
+
+def _pet_cd_ready(doc, species):
+    ready_at = (doc.get('petCooldowns') or {}).get(species)
+    return not ready_at or ready_at <= _now()
+
+
+def _start_pet_cooldown(doc, species, level):
+    until = datetime.utcnow() + timedelta(minutes=_pet_ability_cooldown_min(species, level))
+    doc.setdefault('petCooldowns', {})[species] = until.isoformat(timespec='seconds')
+
+
+def _grub_moltings(level):
+    """Passive per-move moltings trickle for an active Grub, scaled by level."""
+    return int(data.PET_GRUB_MOLTINGS_BASE
+               + data.PET_GRUB_MOLTINGS_PER_LVL * (int(level) - 1))
+
+
+def _pet_mouse_scavenge(doc, level):
+    """Mouse activated ability: a small spore cache plus a level-scaled chance to
+    also dig up a consumable. Mutates the player doc; returns a result slice."""
+    spores = int(data.PET_MOUSE_SPORES_BASE + data.PET_MOUSE_SPORES_PER_LVL * (level - 1))
+    doc['spores'] = doc.get('spores', 0) + spores
+    out = {'kind': 'mouse', 'spores': spores,
+           'text': f'Your mouse scurries off and scavenges {spores} Spores.'}
+    chance = data.PET_MOUSE_ITEM_CHANCE_BASE + data.PET_MOUSE_ITEM_CHANCE_PER_LVL * (level - 1)
+    if _rng.random() < chance:
+        item = _give_consumable(doc)
+        if item:
+            out['item'] = item
+            out['text'] += f" It also drags back a {data.CONSUMABLES[item]['name']}!"
+    return out
+
+
+def _pet_bird_scout(table, sid, doc, payload):
+    """Bird activated ability: reveal a bazaar's current-window stock without a
+    visit. Read-only — no state mutation beyond the shared cooldown."""
+    node = payload.get('targetNode')
+    n = _season_map(table, sid).get(node)
+    if not n or n.get('type') != 'shop':
+        return _err('Send the bird to scout a bazaar.', 409)
+    stock = _shop_stock(table, sid, node)
+    return {'kind': 'bird', 'node': node, 'stock': _clean(stock),
+            'text': 'Your bird wings ahead and scouts the bazaar.'}
+
+
+def _use_pet_ability(table, sid, doc, payload):
+    pet = _find_pet(doc, doc.get('activePetId'))
+    if not pet:
+        return _err('You have no active companion.', 409)
+    species = pet['species']
+    if data.PET_SPECIES.get(species, {}).get('kind') != 'activated':
+        return _err('That companion has no ability to activate.', 409)
+    if not _pet_cd_ready(doc, species):
+        return _err('Your companion is still resting.', 429)
+    level = int(pet.get('level', 1))
+    if species == 'mouse':
+        result = _pet_mouse_scavenge(doc, level)
+    elif species == 'bird':
+        result = _pet_bird_scout(table, sid, doc, payload)
+    else:
+        return _err('That companion has no ability to activate.', 409)
+    if isinstance(result, tuple):       # a sub-handler returned an (status, err)
+        return result
+    _start_pet_cooldown(doc, species, level)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text=result['text'], petAbility=result)
+
+
 def _grind_materials(doc, gid):
     """Grind a gear piece into crafting materials by its rarity (tier). Mutates
     the player's material counters; returns the amounts gained."""
@@ -1070,17 +1149,19 @@ def _drop_phrase(drop):
     """Past-tense phrase for how a fresh gear drop was disposed of."""
     if drop['outcome'] == 'equipped':
         return 'equipped'
-    return 'stashed' if drop['outcome'] == 'stashed' else 'ground into materials'
+    if drop['outcome'] == 'stashed':
+        return 'stashed'
+    return 'set aside'   # 'pending' — the pickup modal will resolve it
 
 
 def _gear_find_text(drop):
     """Celebratory one-liner for a fresh gear find, keyed by how it was routed.
     equipped/stashed read as a plain win (the piece is yours, no logistics
-    noise); only stash-full is spelled out because you got materials, not the
-    gear."""
+    noise); only a full-stash overflow is spelled out, because the pickup modal
+    now needs the player to place it."""
     name = data.GEAR[drop['id']]['name']
-    if drop['outcome'] == 'stash-full':
-        return f'Your gear stash was full, so you grind {name} into materials.'
+    if drop['outcome'] == 'pending':
+        return f'You unearth {name}, but your gear stash is full!'
     if drop['outcome'] == 'equipped':
         return f'You unearth {name} and slot it on!'
     return f'You unearth {name}!'
@@ -1162,11 +1243,10 @@ def _gain_gear(doc, gid, source='loot'):
 
 def _roll_gear_drop(doc, tier_weights):
     """Roll a gear piece per the tier profile and route it via _gain_gear: found
-    gear auto-equips into an empty slot, else stashes (or grinds if the stash is
-    full so the find is never lost).
-    Returns {'id','slot','tier','outcome',...} or None. outcome is 'equipped',
-    'stashed', or 'stash-full' (the latter carries the 'materials' it was ground
-    into)."""
+    gear auto-equips into an empty slot, else stashes, else parks for the pickup
+    modal so the find is never lost.
+    Returns {'id','slot','tier','outcome'} or None. outcome is 'equipped',
+    'stashed', or 'pending' (parked when the stash is full)."""
     slot = _rng.choice(data.GEAR_SLOTS)
     tiers = list(tier_weights)
     tier = _rng.choices(tiers, weights=[tier_weights[t] for t in tiers])[0]
@@ -1904,6 +1984,7 @@ def handle_action(table, body):
         'incubate-egg': _incubate_egg, 'hatch-egg': _hatch_egg,
         'activate-pet': _activate_pet, 'merge-pet': _merge_pet,
         'level-pet': _level_pet, 'salvage-pet': _salvage_pet,
+        'use-pet-ability': _use_pet_ability,
     }
     handler = handlers.get(atype)
     if not handler:
@@ -2865,6 +2946,15 @@ def _move(table, sid, doc, payload):
         healed = space_event.get('healed', 0)
         heal = {'amount': healed, 'hp': doc['hp'], 'kind': 'gate_land'} if healed else None
 
+    # Grub companion: a small moltings trickle for completing a move.
+    grub_trickle = None
+    grub = _find_pet(doc, doc.get('activePetId'))
+    if grub and grub.get('species') == 'grub':
+        n = _grub_moltings(grub.get('level', 1))
+        if n:
+            _mine_materials(doc, moltings=n)
+            grub_trickle = {'moltings': n}
+
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
@@ -2872,7 +2962,8 @@ def _move(table, sid, doc, payload):
     # _resolve_space may relocate the unit (tunnel crossing, wild warp) — report
     # occupants of where it actually ended up, not the pre-resolution target.
     occupants = _occupants(table, sid, doc['position'], doc['userId'])
-    return _ok(doc, spaceEvent=space_event, occupants=occupants, heal=heal)
+    return _ok(doc, spaceEvent=space_event, occupants=occupants, heal=heal,
+               petTrickle=grub_trickle)
 
 
 def _ladder_cross(table, sid, doc, payload):
@@ -4625,12 +4716,13 @@ def _finish_enraged(table, sid, doc, rec, result):
 
 def _gear_award_summary(drop):
     """Client-facing view of a _roll_gear_drop result: id, display name, tier,
-    and whether the stash was full so it was ground to materials. None → no drop."""
+    and whether the stash was full so it's parked for the pickup modal. None →
+    no drop."""
     if not drop:
         return None
     g = data.GEAR.get(drop['id'], {})
     return {'id': drop['id'], 'name': g.get('name', drop['id']),
-            'tier': drop['tier'], 'ground': drop['outcome'] == 'stash-full',
+            'tier': drop['tier'], 'pending': drop['outcome'] == 'pending',
             'equipped': drop['outcome'] == 'equipped'}
 
 

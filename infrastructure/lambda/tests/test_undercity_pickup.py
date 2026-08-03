@@ -45,3 +45,12 @@ def test_acquire_gear_parks_when_stash_full(table):
          'at': doc['pendingPickups'][0]['at']}]
     # nothing was ground into materials
     assert doc['materials'] == {'moltings': 0, 'ichor': 0}
+
+
+def test_gear_find_text_pending_mentions_full_stash(table):
+    drop = {'id': 'bark_hide', 'slot': db.data.GEAR['bark_hide']['slot'],
+            'tier': 2, 'outcome': 'pending'}
+    text = db._gear_find_text(drop)
+    assert 'bark' in text.lower() or db.data.GEAR['bark_hide']['name'] in text
+    assert 'full' in text.lower()
+    assert db._drop_phrase(drop) == 'set aside'
