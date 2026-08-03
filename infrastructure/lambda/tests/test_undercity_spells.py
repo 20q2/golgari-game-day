@@ -1067,12 +1067,15 @@ def test_roll_scroll_drop_tiered_and_capped(monkeypatch):
     got = db._roll_scroll_drop(doc, 'elite')          # tier-2 source
     assert got in data.SCROLLABLE_BY_TIER[2]
     assert doc['scrolls'][-1] == got
-    # full satchel -> converts to Spores instead of appending
+    # full satchel -> parks for the pickup modal instead of appending/salvaging
     doc['scrolls'] = ['spore_bolt'] * data.SCROLL_SATCHEL_CAP
     doc['spores'] = 0
-    db._roll_scroll_drop(doc, 'loot')
+    parked = db._roll_scroll_drop(doc, 'loot')
     assert len(doc['scrolls']) == data.SCROLL_SATCHEL_CAP
-    assert doc['spores'] == data.SCROLL_OVERFLOW_SPORES
+    assert doc['spores'] == 0                          # no auto-salvage income
+    assert doc['pendingPickups'][-1] == {
+        'kind': 'scroll', 'itemId': parked, 'source': 'loot',
+        'at': doc['pendingPickups'][-1]['at']}
 
 
 def test_roll_scroll_drop_can_miss(monkeypatch):

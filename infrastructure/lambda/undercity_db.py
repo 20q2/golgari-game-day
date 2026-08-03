@@ -854,13 +854,12 @@ def _grant_xp(table, sid, doc, amount):
     return gained
 
 
-def _give_consumable(doc):
-    """Random consumable into the bag; falls back to Spores when full."""
-    if len(doc.get('bag') or []) >= data.BAG_SIZE:
-        doc['spores'] = doc.get('spores', 0) + 5
-        return None
+def _give_consumable(doc, source='reward'):
+    """Grant a random consumable through the shared pipeline: into the bag if it
+    fits, otherwise parked for the pickup modal. Returns the consumable id
+    (always — the item is never lost)."""
     item = _rng.choice(list(data.CONSUMABLES.keys()))
-    doc.setdefault('bag', []).append(item)
+    _acquire(doc, 'consumable', item, source)
     return item
 
 
@@ -1170,7 +1169,8 @@ def _gear_find_text(drop):
 def _roll_scroll_drop(doc, source):
     """Maybe drop a spell scroll from a reward `source`. The tier is fixed by the
     source (SCROLL_DROP_TIER); the spell is an equal-weight roll within that tier.
-    Appends to the scroll satchel, or converts to Spores when the satchel is full.
+    Routes through _acquire: into the scroll satchel if it fits, else parked for
+    the pickup modal.
     Returns the spell id dropped (for the caller to surface as `scroll=`), or None."""
     if _rng.random() >= data.SCROLL_DROP_CHANCE.get(source, 0.0):
         return None
@@ -1178,10 +1178,7 @@ def _roll_scroll_drop(doc, source):
     if not pool:
         return None
     spell_id = pool[_rng.randrange(len(pool))]
-    if len(doc.get('scrolls') or []) >= data.SCROLL_SATCHEL_CAP:
-        doc['spores'] = doc.get('spores', 0) + data.SCROLL_OVERFLOW_SPORES
-    else:
-        doc.setdefault('scrolls', []).append(spell_id)
+    _acquire(doc, 'scroll', spell_id, source)
     return spell_id
 
 
@@ -3124,15 +3121,12 @@ def _award_spores(doc):
 
 
 def _award_item(doc):
-    """Consumable loot reward; a full bag salvages to Spores (via _give_consumable)."""
-    item = _give_consumable(doc)
-    if item:
-        return {'type': 'loot',
-                'text': f'You unearth a {data.CONSUMABLES[item]["name"]}!',
-                'item': item}
-    # Bag was full — _give_consumable already credited 5 Spores.
-    return {'type': 'loot', 'text': 'Your bag was full — you salvage 5 Spores.',
-            'spores': 5}
+    """Consumable loot reward routed through the shared pipeline (parks if the
+    bag is full — the pickup modal then resolves it)."""
+    item = _give_consumable(doc, 'loot')
+    return {'type': 'loot',
+            'text': f'You unearth a {data.CONSUMABLES[item]["name"]}!',
+            'item': item}
 
 
 def _award_gear(doc):

@@ -54,3 +54,26 @@ def test_gear_find_text_pending_mentions_full_stash(table):
     assert 'bark' in text.lower() or db.data.GEAR['bark_hide']['name'] in text
     assert 'full' in text.lower()
     assert db._drop_phrase(drop) == 'set aside'
+
+
+def test_give_consumable_parks_when_bag_full(table):
+    _s, doc = _player_at(table, 'city_r0')
+    doc['bag'] = ['healing_moss'] * db.data.BAG_SIZE
+    spores_before = doc['spores']
+    item = db._give_consumable(doc, 'reward')
+    assert item is not None                      # item still granted (not lost)
+    assert doc['spores'] == spores_before        # no silent Spore salvage
+    assert doc['pendingPickups'][0]['kind'] == 'consumable'
+    assert doc['pendingPickups'][0]['itemId'] == item
+
+
+def test_scroll_drop_parks_when_satchel_full(table):
+    _s, doc = _player_at(table, 'city_r0')
+    pool = db.data.SCROLLABLE_BY_TIER.get(1) or []
+    assert pool
+    doc['scrolls'] = [pool[0]] * db.data.SCROLL_SATCHEL_CAP
+    spores_before = doc['spores']
+    parked = db._acquire(doc, 'scroll', pool[0], 'battle')
+    assert parked['outcome'] == 'pending'
+    assert doc['spores'] == spores_before
+    assert doc['pendingPickups'][0]['kind'] == 'scroll'
