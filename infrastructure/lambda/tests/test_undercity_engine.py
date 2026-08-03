@@ -1580,3 +1580,24 @@ def test_clone_personality_flat_spread_is_balanced():
     # Top within the dominance margin of the runner-up -> balanced.
     assert clone_personality(11, 10, 10) == 'balanced'
     assert clone_personality(10, 10, 10) == 'balanced'
+
+
+# ── Companion combat pets (Plan 2) ───────────────────────────────────────────
+
+def test_pet_combat_fox_scales_with_level():
+    from undercity_engine import pet_combat
+    lo = pet_combat({'species': 'fox', 'tier': 1, 'level': 1})
+    hi = pet_combat({'species': 'fox', 'tier': 2, 'level': 4})
+    assert lo['followup_chance'] > 0
+    assert hi['followup_chance'] > lo['followup_chance']
+    assert lo['deflect_chance'] == 0 and lo['deflect_flat'] == 0
+
+
+def test_pet_combat_turtle_and_noncombat():
+    from undercity_engine import pet_combat
+    t = pet_combat({'species': 'turtle', 'tier': 1, 'level': 2})
+    assert t['deflect_chance'] > 0 and t['deflect_flat'] >= 1
+    assert t['followup_chance'] == 0
+    # No pet, or a non-combat species -> all zeros.
+    assert pet_combat(None)['followup_chance'] == 0
+    assert pet_combat({'species': 'bird', 'tier': 1, 'level': 3})['deflect_chance'] == 0

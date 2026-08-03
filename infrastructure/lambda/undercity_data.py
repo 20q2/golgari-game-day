@@ -1619,6 +1619,14 @@ PET_HATCH = {
     4: {'fox': 1.0, 'turtle': 1.0, 'bird': 0.6, 'mouse': 0.6, 'grub': 0.3},
 }
 
+# Combat-pet magnitudes. Small and level-scaled; the two combat species only.
+PET_COMBAT = {
+    'fox':    {'followup_chance_base': 0.10, 'followup_chance_per_lvl': 0.03,
+               'followup_mult': 0.30},
+    'turtle': {'deflect_chance_base': 0.12, 'deflect_chance_per_lvl': 0.03,
+               'deflect_flat_base': 2, 'deflect_flat_per_lvl': 0.34},
+}
+
 # Egg drops mirror GEAR_DROP: source -> (chance, {egg_tier: weight}).
 # Eggs are rarer than gear; richer sources skew toward higher-tier eggs.
 EGG_DROP = {

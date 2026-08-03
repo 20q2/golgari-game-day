@@ -802,6 +802,26 @@ def attribute_perks(player: dict) -> frozenset:
     return frozenset(out)
 
 
+def pet_combat(pet: dict) -> dict:
+    """Derive an active pet's combat contribution: follow-up (Fox) and deflect
+    (Turtle), scaled by level. Non-combat species / None -> all zeros."""
+    out = {'followup_chance': 0.0, 'followup_mult': 0.0,
+           'deflect_chance': 0.0, 'deflect_flat': 0}
+    if not pet:
+        return out
+    cfg = data.PET_COMBAT.get(pet.get('species'))
+    if not cfg:
+        return out
+    lvl = int(pet.get('level', 1))
+    if pet['species'] == 'fox':
+        out['followup_chance'] = cfg['followup_chance_base'] + cfg['followup_chance_per_lvl'] * (lvl - 1)
+        out['followup_mult'] = cfg['followup_mult']
+    elif pet['species'] == 'turtle':
+        out['deflect_chance'] = cfg['deflect_chance_base'] + cfg['deflect_chance_per_lvl'] * (lvl - 1)
+        out['deflect_flat'] = int(cfg['deflect_flat_base'] + cfg['deflect_flat_per_lvl'] * (lvl - 1))
+    return out
+
+
 # ── HP regen (the swamp heals its own) ───────────────────────────────────────
 
 _ISO = '%Y-%m-%dT%H:%M:%S'
