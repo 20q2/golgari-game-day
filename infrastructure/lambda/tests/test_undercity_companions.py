@@ -203,3 +203,37 @@ def test_actions_routed_through_dispatch(table):
 
     status, body = act(table, 'activate-pet', petId='nope')
     assert status == 409
+
+
+# ── Plan 2: egg drops from play ──────────────────────────────────────────────
+
+class _SeqRng:
+    """Deterministic rng: random() replays a script, then returns 0.99."""
+    def __init__(self, randoms=None):
+        self.randoms = list(randoms or [])
+    def random(self):
+        return self.randoms.pop(0) if self.randoms else 0.99
+
+
+def test_maybe_drop_egg_drops_on_low_roll(table):
+    sid, doc = _player_at(table, 'n1')
+    # chance for 'loot' is EGG_DROP['loot'][0]; a roll below it drops an egg.
+    chance = data.EGG_DROP['loot'][0]
+    rng = _SeqRng([chance - 0.001, 0.0])   # 1st: pass gate, 2nd: pick tier
+    egg = db._maybe_drop_egg(doc, 'loot', rng)
+    assert egg is not None
+    assert doc['eggs'] and doc['eggs'][0]['id'] == egg['id']
+    assert egg['tier'] in data.EGG_DROP['loot'][1]
+
+
+def test_maybe_drop_egg_noop_on_high_roll(table):
+    sid, doc = _player_at(table, 'n1')
+    rng = _SeqRng([0.999])
+    egg = db._maybe_drop_egg(doc, 'loot', rng)
+    assert egg is None
+    assert doc['eggs'] == []
+
+
+def test_maybe_drop_egg_unknown_source_noop(table):
+    sid, doc = _player_at(table, 'n1')
+    assert db._maybe_drop_egg(doc, 'nope', _SeqRng([0.0])) is None

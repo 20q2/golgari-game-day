@@ -891,6 +891,20 @@ def _grant_egg(doc, tier):
     return egg
 
 
+def _maybe_drop_egg(doc, source, rng=None):
+    """Roll the EGG_DROP table for a source; grant an egg on success. Returns the
+    egg dict or None. Mirrors the GEAR_DROP roll used for gear drops."""
+    rng = rng or _rng
+    entry = data.EGG_DROP.get(source)
+    if not entry:
+        return None
+    chance, weights = entry
+    if rng.random() >= chance:
+        return None
+    tier = _pick_weighted(rng, weights)
+    return _grant_egg(doc, tier)
+
+
 def _incubate_egg(table, sid, doc, payload):
     if doc.get('incubator'):
         return _err('The incubator is already busy.', 409)

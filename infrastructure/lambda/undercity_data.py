@@ -1619,6 +1619,16 @@ PET_HATCH = {
     4: {'fox': 1.0, 'turtle': 1.0, 'bird': 0.6, 'mouse': 0.6, 'grub': 0.3},
 }
 
+# Egg drops mirror GEAR_DROP: source -> (chance, {egg_tier: weight}).
+# Eggs are rarer than gear; richer sources skew toward higher-tier eggs.
+EGG_DROP = {
+    'loot':    (0.06, {1: 0.7, 2: 0.3}),
+    'mystery': (0.08, {1: 0.5, 2: 0.4, 3: 0.1}),
+    'combat':  (0.05, {1: 0.6, 2: 0.4}),
+    'cache':   (0.10, {1: 0.4, 2: 0.4, 3: 0.2}),
+    'lair':    (0.25, {2: 0.5, 3: 0.4, 4: 0.1}),
+}
+
 # Level cap per tier — merging raises tier, leveling fills to the cap.
 PET_LEVEL_CAP = {1: 3, 2: 5, 3: 7, 4: 9}
 
