@@ -77,3 +77,24 @@ def test_scroll_drop_parks_when_satchel_full(table):
     assert parked['outcome'] == 'pending'
     assert doc['spores'] == spores_before
     assert doc['pendingPickups'][0]['kind'] == 'scroll'
+
+
+def test_pickup_resolve_list_new_lists_and_pops(table):
+    sid, doc = _player_at(table, 'city_r0')
+    _park_one(doc, 'gear', 'bark_hide')            # band 22..90
+    status, body = db._pickup_resolve(table, sid, doc, {'choice': 'list-new', 'price': 45})
+    assert status == 200
+    assert doc['pendingPickups'] == []
+    assert body.get('listingId')
+
+
+def test_pickup_resolve_list_new_rejects_out_of_band(table):
+    sid, doc = _player_at(table, 'city_r0')
+    _park_one(doc, 'gear', 'bark_hide')
+    assert db._pickup_resolve(table, sid, doc, {'choice': 'list-new', 'price': 5})[0] == 409
+    assert len(doc['pendingPickups']) == 1         # unchanged on reject
+
+
+def test_pickup_resolve_empty_queue_is_error(table):
+    sid, doc = _player_at(table, 'city_r0')
+    assert db._pickup_resolve(table, sid, doc, {'choice': 'list-new', 'price': 45})[0] == 409

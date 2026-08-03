@@ -1485,6 +1485,56 @@ def _market_list(table, sid, doc, payload):
                listingId=listing_id)
 
 
+def _list_item_on_market(table, sid, doc, kind, item_id, price):
+    """Validate a would-be listing (known kind, in-band price, under the seller's
+    listing cap). Returns an _err tuple on failure, or None if it may proceed.
+    Does NOT write — the caller commits after removing the item from inventory."""
+    spec = _MARKET_KINDS.get(kind)
+    if not spec:
+        return _err('You cannot sell that.')
+    try:
+        price = int(price)
+    except (TypeError, ValueError):
+        return _err('Pick a price.')
+    lo, hi = _market_price_band(kind, item_id)
+    if price < lo or price > hi:
+        return _err(f'Price must be {lo}–{hi} Spores for that item.', 409)
+    if _market_listing_count(table, sid, doc['userId']) >= data.MARKET_MAX_LISTINGS:
+        return _err(f'You already have {data.MARKET_MAX_LISTINGS} listings — cancel one first.', 409)
+    return None
+
+
+def _pickup_resolve(table, sid, doc, payload):
+    """Resolve the head of the player's pendingPickups queue. Choices:
+      list-new     {price}          — list the parked item on the market
+      salvage-owned{index}          — salvage an owned same-kind piece to free a
+                                       slot, then place the parked item
+      list-owned   {index, price}   — list an owned same-kind piece to free a
+                                       slot, then place the parked item
+    Pops the head on success; the client re-renders for the next queued item."""
+    queue = doc.get('pendingPickups') or []
+    if not queue:
+        return _err('Nothing to pick up.', 409)
+    head = queue[0]
+    kind, item_id = head['kind'], head['itemId']
+    choice = payload.get('choice')
+
+    if choice == 'list-new':
+        err = _list_item_on_market(table, sid, doc, kind, item_id, payload.get('price'))
+        if err:
+            return err
+        queue.pop(0)
+        doc['pendingPickups'] = queue
+        conflict = _save_or_conflict(table, doc)
+        if conflict:
+            return conflict
+        listing_id = _create_market_listing(table, sid, doc, kind, item_id, int(payload['price']))
+        return _ok(doc, text=f"Listed {_MARKET_KINDS[kind]['name'](item_id)} on the market.",
+                   listingId=listing_id)
+
+    return _err('Unknown pickup choice.', 400)
+
+
 def _market_buy(table, sid, doc, payload):
     """Buy a listing: claim it (conditional delete so two buyers can't both take
     it), pay the seller, and receive the item into the matching inventory."""
@@ -1978,6 +2028,7 @@ def handle_action(table, body):
         'salvage-gear': _salvage_gear, 'upgrade-gear': _upgrade_gear,
         'market-list': _market_list, 'market-buy': _market_buy,
         'market-cancel': _market_cancel,
+        'pickup-resolve': _pickup_resolve,
         'incubate-egg': _incubate_egg, 'hatch-egg': _hatch_egg,
         'activate-pet': _activate_pet, 'merge-pet': _merge_pet,
         'level-pet': _level_pet, 'salvage-pet': _salvage_pet,
