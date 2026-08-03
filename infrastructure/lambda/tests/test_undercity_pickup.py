@@ -98,3 +98,42 @@ def test_pickup_resolve_list_new_rejects_out_of_band(table):
 def test_pickup_resolve_empty_queue_is_error(table):
     sid, doc = _player_at(table, 'city_r0')
     assert db._pickup_resolve(table, sid, doc, {'choice': 'list-new', 'price': 45})[0] == 409
+
+
+def test_salvage_owned_gear_frees_slot_and_places_parked(table):
+    sid, doc = _player_at(table, 'city_r0')
+    slot = db.data.GEAR['bark_hide']['slot']
+    doc['gear'] = {slot: 'bark_hide'}
+    doc['gearStash'] = ['bark_hide'] * db.data.GEAR_STASH_SIZE
+    _park_one(doc, 'gear', 'bark_hide', 'boss')
+    status, _ = db._pickup_resolve(table, sid, doc, {'choice': 'salvage-owned', 'index': 0})
+    assert status == 200
+    assert doc['pendingPickups'] == []
+    assert len(doc['gearStash']) == db.data.GEAR_STASH_SIZE      # one out, parked one in
+    assert doc['materials']['moltings'] > 0                       # ground the salvaged piece
+
+
+def test_salvage_owned_consumable_gives_spores(table):
+    sid, doc = _player_at(table, 'city_r0')
+    cons = list(db.data.CONSUMABLES)[0]
+    doc['bag'] = [cons] * db.data.BAG_SIZE
+    _park_one(doc, 'consumable', cons)
+    spores_before = doc['spores']
+    status, _ = db._pickup_resolve(table, sid, doc, {'choice': 'salvage-owned', 'index': 0})
+    assert status == 200
+    assert doc['spores'] == spores_before + 5
+    assert doc['pendingPickups'] == []
+    assert len(doc['bag']) == db.data.BAG_SIZE                    # one salvaged, parked one placed
+
+
+def test_salvage_owned_escapes_full_market(table):
+    """The guaranteed escape: even at the 5-listing cap, salvage-owned resolves."""
+    sid, doc = _player_at(table, 'city_r0')
+    slot = db.data.GEAR['bark_hide']['slot']
+    doc['gear'] = {slot: 'bark_hide'}
+    doc['gearStash'] = ['bark_hide'] * db.data.GEAR_STASH_SIZE
+    for _ in range(db.data.MARKET_MAX_LISTINGS):
+        db._create_market_listing(table, sid, doc, 'gear', 'bark_hide', 45)
+    _park_one(doc, 'gear', 'bark_hide')
+    assert db._pickup_resolve(table, sid, doc, {'choice': 'salvage-owned', 'index': 0})[0] == 200
+    assert doc['pendingPickups'] == []

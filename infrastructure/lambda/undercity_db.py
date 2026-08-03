@@ -1504,6 +1504,31 @@ def _list_item_on_market(table, sid, doc, kind, item_id, price):
     return None
 
 
+def _salvage_owned_for_pickup(doc, kind, index):
+    """Salvage the owned same-kind item at `index` to free a slot: grind gear into
+    materials, convert a consumable/scroll to Spores at the standard overflow
+    rate. Returns (ok, text). The freed slot lets the caller place the parked
+    item next."""
+    field = _ACQUIRE_KINDS[kind]['field']
+    inv = doc.get(field) or []
+    if index < 0 or index >= len(inv):
+        return False, 'That slot is empty.'
+    item_id = inv.pop(index)
+    doc[field] = inv
+    if kind == 'gear':
+        gained = _grind_materials(doc, item_id)
+        parts = []
+        if gained['moltings']:
+            parts.append(f"{gained['moltings']} Moltings")
+        if gained['ichor']:
+            parts.append(f"{gained['ichor']} Gemstones")
+        return True, f"Ground {data.GEAR[item_id]['name']} into " + ' + '.join(parts) + '.'
+    spores = 5 if kind == 'consumable' else data.SCROLL_OVERFLOW_SPORES
+    doc['spores'] = doc.get('spores', 0) + spores
+    name = _MARKET_KINDS[kind]['name'](item_id)
+    return True, f"Salvaged {name} for {spores} Spores."
+
+
 def _pickup_resolve(table, sid, doc, payload):
     """Resolve the head of the player's pendingPickups queue. Choices:
       list-new     {price}          — list the parked item on the market
@@ -1531,6 +1556,26 @@ def _pickup_resolve(table, sid, doc, payload):
         listing_id = _create_market_listing(table, sid, doc, kind, item_id, int(payload['price']))
         return _ok(doc, text=f"Listed {_MARKET_KINDS[kind]['name'](item_id)} on the market.",
                    listingId=listing_id)
+
+    if choice == 'salvage-owned':
+        try:
+            index = int(payload.get('index'))
+        except (TypeError, ValueError):
+            return _err('Pick an item to salvage.')
+        ok, salvage_text = _salvage_owned_for_pickup(doc, kind, index)
+        if not ok:
+            return _err(salvage_text, 409)
+        placed = _acquire(doc, kind, item_id, head.get('source', 'loot'))
+        # A slot was just freed, so this never re-parks; guard defensively.
+        if placed['outcome'] == 'pending':
+            return _err('Could not make room — try another piece.', 409)
+        queue.pop(0)
+        doc['pendingPickups'] = queue
+        conflict = _save_or_conflict(table, doc)
+        if conflict:
+            return conflict
+        name = _MARKET_KINDS[kind]['name'](item_id)
+        return _ok(doc, text=f"{salvage_text} Kept {name}.")
 
     return _err('Unknown pickup choice.', 400)
 
