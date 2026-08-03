@@ -1577,6 +1577,35 @@ def _pickup_resolve(table, sid, doc, payload):
         name = _MARKET_KINDS[kind]['name'](item_id)
         return _ok(doc, text=f"{salvage_text} Kept {name}.")
 
+    if choice == 'list-owned':
+        field = _ACQUIRE_KINDS[kind]['field']
+        inv = doc.get(field) or []
+        try:
+            index = int(payload.get('index'))
+        except (TypeError, ValueError):
+            return _err('Pick an item to list.')
+        if index < 0 or index >= len(inv):
+            return _err('That slot is empty.', 409)
+        owned_id = inv[index]
+        err = _list_item_on_market(table, sid, doc, kind, owned_id, payload.get('price'))
+        if err:
+            return err
+        inv.pop(index)
+        doc[field] = inv
+        placed = _acquire(doc, kind, item_id, head.get('source', 'loot'))
+        if placed['outcome'] == 'pending':
+            return _err('Could not make room — try another piece.', 409)
+        queue.pop(0)
+        doc['pendingPickups'] = queue
+        conflict = _save_or_conflict(table, doc)
+        if conflict:
+            return conflict
+        listing_id = _create_market_listing(table, sid, doc, kind, owned_id, int(payload['price']))
+        return _ok(doc,
+                   text=f"Listed {_MARKET_KINDS[kind]['name'](owned_id)}; kept "
+                        f"{_MARKET_KINDS[kind]['name'](item_id)}.",
+                   listingId=listing_id)
+
     return _err('Unknown pickup choice.', 400)
 
 

@@ -137,3 +137,30 @@ def test_salvage_owned_escapes_full_market(table):
     _park_one(doc, 'gear', 'bark_hide')
     assert db._pickup_resolve(table, sid, doc, {'choice': 'salvage-owned', 'index': 0})[0] == 200
     assert doc['pendingPickups'] == []
+
+
+def test_list_owned_lists_piece_and_places_parked(table):
+    sid, doc = _player_at(table, 'city_r0')
+    slot = db.data.GEAR['bark_hide']['slot']
+    doc['gear'] = {slot: 'bark_hide'}
+    doc['gearStash'] = ['bark_hide'] * db.data.GEAR_STASH_SIZE
+    _park_one(doc, 'gear', 'bark_hide')
+    status, body = db._pickup_resolve(
+        table, sid, doc, {'choice': 'list-owned', 'index': 0, 'price': 45})
+    assert status == 200
+    assert body.get('listingId')
+    assert doc['pendingPickups'] == []
+    assert len(doc['gearStash']) == db.data.GEAR_STASH_SIZE   # one listed, parked one placed
+
+
+def test_list_owned_rejects_at_listing_cap(table):
+    sid, doc = _player_at(table, 'city_r0')
+    slot = db.data.GEAR['bark_hide']['slot']
+    doc['gear'] = {slot: 'bark_hide'}
+    doc['gearStash'] = ['bark_hide'] * db.data.GEAR_STASH_SIZE
+    for _ in range(db.data.MARKET_MAX_LISTINGS):
+        db._create_market_listing(table, sid, doc, 'gear', 'bark_hide', 45)
+    _park_one(doc, 'gear', 'bark_hide')
+    assert db._pickup_resolve(
+        table, sid, doc, {'choice': 'list-owned', 'index': 0, 'price': 45})[0] == 409
+    assert len(doc['pendingPickups']) == 1                    # unchanged on reject
