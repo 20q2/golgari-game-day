@@ -1601,3 +1601,21 @@ def test_pet_combat_turtle_and_noncombat():
     # No pet, or a non-combat species -> all zeros.
     assert pet_combat(None)['followup_chance'] == 0
     assert pet_combat({'species': 'bird', 'tier': 1, 'level': 3})['deflect_chance'] == 0
+
+
+def test_fox_followup_adds_extra_hit_on_trigger():
+    # Attacker wins aggress vs feint. Fox trigger roll (random()) forced low.
+    a = fighter(atk=15, pet_followup_chance=1.0, pet_followup_mult=0.5)
+    d = fighter(hp=100, max_hp=100, dfn=4)
+    rng = FakeRng(randoms=[0.0], uniform=1.0)   # 0.0 < 1.0 -> follow-up fires
+    entries = resolve_round(a, d, 'aggress', 'feint', 1, rng)
+    pet_hits = [e for e in entries if e.get('pet') == 'fox']
+    assert len(pet_hits) == 1 and pet_hits[0]['dmg'] >= 1
+
+
+def test_fox_followup_skipped_when_roll_high():
+    a = fighter(atk=15, pet_followup_chance=0.2, pet_followup_mult=0.5)
+    d = fighter(hp=100, max_hp=100, dfn=4)
+    rng = FakeRng(randoms=[0.99], uniform=1.0)   # 0.99 >= 0.2 -> no follow-up
+    entries = resolve_round(a, d, 'aggress', 'feint', 1, rng)
+    assert not any(e.get('pet') == 'fox' for e in entries)

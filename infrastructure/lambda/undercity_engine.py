@@ -321,6 +321,12 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                     winr.hp = min(winr.max_hp, winr.hp + heal); entry['heal'] = heal
                 entries.append(entry)
                 _bramble(losr, winr, lose_side, rnd, entries)
+                # Fox companion: an occasional follow-up nip on the decisive hit.
+                if winr.pet_followup_chance and losr.hp > 0 and rng.random() < winr.pet_followup_chance:
+                    extra = max(1, round(dmg * winr.pet_followup_mult))
+                    losr.hp -= extra
+                    entries.append({'round': rnd, 'by': win_side, 'dmg': extra,
+                                    'pet': 'fox', 'winner': win_side})
             # Rabid: each Aggress win ramps future Aggress hits (applies next win).
             if win_stance == 'aggress' and winr.has_rider('rabid'):
                 winr.aggress_ramp += winr.mag('rabid', 0)
