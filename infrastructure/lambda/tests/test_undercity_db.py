@@ -2485,12 +2485,13 @@ def test_battle_status_reads_rot_and_buffs():
             'statDelta': {'atk': -3, 'def': 2, 'spd': 0}}
     assert db._battle_status(side) == {
         'rot': 3, 'buffs': ['harden_shell', 'weaken_hex'],
-        'delta': {'atk': -3, 'def': 2, 'spd': 0}}
+        'delta': {'atk': -3, 'def': 2, 'spd': 0}, 'traits': [], 'stacks': {}}
 
 
 def test_battle_status_defaults_empty():
     assert db._battle_status({}) == {
-        'rot': 0, 'buffs': [], 'delta': {'atk': 0, 'def': 0, 'spd': 0}}
+        'rot': 0, 'buffs': [], 'delta': {'atk': 0, 'def': 0, 'spd': 0},
+        'traits': [], 'stacks': {}}
 
 
 def test_high_five_buff_adds_one_to_three_stats():
@@ -2631,8 +2632,9 @@ def test_start_battle_includes_status(table, monkeypatch):
     sid = _sid(table)
     ev = _begin(table, sid)
     zero = {'atk': 0, 'def': 0, 'spd': 0}
-    assert ev['playerStatus'] == {'rot': 0, 'buffs': [], 'delta': zero}
-    assert ev['npcStatus'] == {'rot': 0, 'buffs': [], 'delta': zero}
+    empty = {'rot': 0, 'buffs': [], 'delta': zero, 'traits': [], 'stacks': {}}
+    assert ev['playerStatus'] == empty
+    assert ev['npcStatus'] == empty
 
 
 def test_start_battle_reports_opponent_level(table, monkeypatch):
@@ -4497,7 +4499,8 @@ def test_lair_familiar_registry_shape():
         assert spec['passives'] and isinstance(spec['passives'], list)
         assert spec['sprites'] and isinstance(spec['sprites'], list)
         # Mini-elite HP band: below the bosses (40-48) and depths wilds (42-56).
-        assert 28 <= spec['hp'] <= 36
+        # Skullbriar's familiar sits lowest (27) — its ramp needs a short fight.
+        assert 26 <= spec['hp'] <= 36
     # The five biomes now point at familiars; ruin stays a pool enemy.
     for biome in ('bone', 'garden', 'bog', 'cavern', 'city'):
         assert data.LAIR_SIGNATURE[biome] in fam
