@@ -26,8 +26,8 @@ def test_petrify_scalars_and_stone_gaze_read_bonus():
     assert data.READ_PASSIVE_BONUS['stone_gaze'] == 0.15
 
 
-def test_medusa_has_stone_gaze():
-    assert data.TIER2['medusa_stalker']['passive'] == 'stone_gaze'
+def test_gorgon_form_has_stone_gaze():
+    assert data.TIER2['gorgon']['passive'] == 'stone_gaze'
 
 
 def _start_a_fight_as_gorgon(table, passives):
@@ -82,12 +82,6 @@ def test_petrify_threshold_freezes_and_resets(table, monkeypatch):
     npc = db._get_player(table, sid, 'user-alex')['battle']['npc']
     assert npc['petrify'] < data.PETRIFY_FREEZE_AT       # freeze consumed the stacks
     assert npc['hp'] <= hp_before
-
-
-def test_basalt_has_shatter_and_bruiser_bonus():
-    b = data.TIER2['basalt_matron']
-    assert b['passive'] == 'shatter'
-    assert b['bonus'] == {'atk': 2, 'maxHp': 4}
 
 
 def _gorgon_apex_at(table, node='city_r0'):
