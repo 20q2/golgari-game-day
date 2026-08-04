@@ -28,7 +28,7 @@ import {
   GearInfo,
 } from '../data/items';
 import { SPELL_MAP } from '../data/spells';
-import { PET_SPECIES, PetSpecies } from '../data/pets';
+import { PET_SPECIES, PetSpecies, petSpriteUrl, eggSpriteUrl } from '../data/pets';
 import { MarketListing } from '../services/undercity-models';
 import { affordReason, containerFullReason, materialReason } from '../data/block-reasons';
 import { UcActionBandComponent } from './action-band.component';
@@ -52,6 +52,7 @@ interface MarketView {
   desc: string;
   icon?: string; // material-icon ligature (consumable / scroll)
   svgIcon?: string; // gear slot svg id, e.g. 'uc-fang'
+  imgUrl?: string; // pixel-art sprite (pet / egg)
   rarity?: RarityInfo; // gear / scroll tier rarity; undefined for consumables
 }
 
@@ -284,6 +285,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
         name: sp?.name ?? id ?? 'Companion',
         desc: sp?.blurb ?? 'A companion.',
         icon: sp?.icon ?? 'pets',
+        imgUrl: payload?.species ? petSpriteUrl(payload.species) : undefined,
         rarity: tierRarity(tier),
       };
     }
@@ -293,6 +295,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
         name: `${tierRarity(tier).label} Egg`,
         desc: 'Incubate it to hatch a companion.',
         icon: 'egg',
+        imgUrl: eggSpriteUrl(tier),
         rarity: tierRarity(tier),
       };
     }

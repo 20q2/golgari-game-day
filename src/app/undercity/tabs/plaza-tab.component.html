@@ -200,7 +200,10 @@
           <h4 class="forge-subhead">On the market</h4>
           @for (l of marketRows(); track l.id) {
             <div class="forge-row" [attr.data-rarity]="l.view!.rarity?.key ?? 'common'">
-              @if (l.view!.svgIcon) {
+              @if (l.view!.imgUrl) {
+                <img class="slot-mi" [src]="l.view!.imgUrl" [alt]="l.view!.name"
+                     style="width:1.6rem;height:1.6rem;object-fit:contain;image-rendering:pixelated;vertical-align:middle" />
+              } @else if (l.view!.svgIcon) {
                 <mat-icon class="mi slot-mi" [svgIcon]="l.view!.svgIcon"></mat-icon>
               } @else {
                 <mat-icon class="mi slot-mi">{{ l.view!.icon }}</mat-icon>
