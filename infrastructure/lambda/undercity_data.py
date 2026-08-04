@@ -1047,8 +1047,11 @@ def region_tier(region):
 # (design §2.2) — the sim gate (sim/sim_boss_familiars.py) may retune them.
 LAIR_FAMILIAR = {
     'skullbriars_familiar': {
+        # Squishier than its peers: Grave Growth is unconditional, so a shorter
+        # fight (lower HP/ATK) keeps the ramp from walling defensive/low-ATK play
+        # (sim gate 2026-08-04 — 32/12 fell below the good-play floor).
         'id': 'skullbriars_familiar', 'name': "Skullbriar's Familiar",
-        'hp': 32, 'atk': 12, 'def': 4, 'spd': 6, 'bounty': 20, 'xp': 30,
+        'hp': 27, 'atk': 11, 'def': 4, 'spd': 6, 'bounty': 20, 'xp': 30,
         'itemChance': 0.25, 'personality': 'brute', 'bluff': 0.18,
         'passives': ['grave_growth'], 'sprites': ['skullbriars_familiar']},
     'slimefoots_saprolings': {
