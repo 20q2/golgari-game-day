@@ -703,11 +703,16 @@ def _battle_status(side):
     (boss familiars) with live stack counts for the two stacking traits."""
     delta = side.get('statDelta') or {}
     traits = [p for p in (side.get('passives') or []) if p in data.TRAIT_PASSIVES]
+    traits += [k for k in ('petrify', 'brittle') if side.get(k)]   # Gorgon debuffs
     stacks = {}
     if side.get('growth_stacks'):
         stacks['grave_growth'] = int(side['growth_stacks'])
     if side.get('doom_stacks'):
         stacks['doom_counters'] = int(side['doom_stacks'])
+    if side.get('petrify'):
+        stacks['petrify'] = int(side['petrify'])
+    if side.get('brittle'):
+        stacks['brittle'] = int(side['brittle'])
     return {'rot': int(side.get('rot_stacks', 0)),
             'buffs': list(side.get('buffs') or []),
             'delta': {s: int(delta.get(s, 0)) for s in ('atk', 'def', 'spd')},
