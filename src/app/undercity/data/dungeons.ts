@@ -15,6 +15,10 @@ export interface DungeonInfo {
   biomeName: string;
   /** Lair boss NPC id — battle art at undercity/guardians/<id>.png. */
   lairNpcId: string;
+  /** In-world codex flavor (region-lore voice) — Sigils tab boss popout. */
+  lore: string;
+  /** Signature combat trait, mirrors the boss/familiar passive (design 2026-08-04). */
+  trait: { name: string; blurb: string };
 }
 
 export const DUNGEONS: Record<string, DungeonInfo> = {
@@ -28,6 +32,10 @@ export const DUNGEONS: Record<string, DungeonInfo> = {
     hazardBlurb: 'Broodsilk halves your next two rolls and bleeds 10% HP.',
     biomeName: 'The Undercity',
     lairNpcId: 'ishkanah',
+    lore:
+      'The Broodwarrens are her pantry, strung wall to wall in grey silk. ' +
+      "Ishkanah is in no hurry — a single bite keeps working long after you've cut yourself free of the web.",
+    trait: { name: 'Venom', blurb: 'Her winning strikes leave rot behind.' },
   },
   cavern: {
     name: 'Gloomroot Hollow',
@@ -39,6 +47,13 @@ export const DUNGEONS: Record<string, DungeonInfo> = {
     hazardBlurb: 'A bursting cloud flings you across the hollow and costs 15% HP.',
     biomeName: 'Mosslight Cavern',
     lairNpcId: 'sarulf',
+    lore:
+      "Gloomroot's apex doesn't hunt so much as accrue. Every kill and every " +
+      'stalemate settles onto the wolf like silt, until what leaves the fight is a good deal larger than what walked into it.',
+    trait: {
+      name: 'Doom Counters',
+      blurb: "Compounds every round it doesn't lose. Force it to lose and the ramp stalls.",
+    },
   },
   bog: {
     name: 'The Drownedway',
@@ -50,6 +65,10 @@ export const DUNGEONS: Record<string, DungeonInfo> = {
     hazardBlurb: 'The murk claims 25% of your Spores and drags you for 12% HP.',
     biomeName: 'The Sedgemoor',
     lairNpcId: 'gitrog_monster',
+    lore:
+      'A frog the size of a barge, and the Drownedway is its gut. The black ' +
+      'water rots whatever it swallows, then hands it back for the Gitrog to grow again.',
+    trait: { name: 'Dredge', blurb: 'Knits its wounds shut each round — out-hurry it.' },
   },
   bone: {
     name: 'The Marrow Pits',
@@ -61,6 +80,10 @@ export const DUNGEONS: Record<string, DungeonInfo> = {
     hazardBlurb: 'Grave-cold: −3 ATK / −2 DEF next battle, and 8 HP now.',
     biomeName: 'Ossuary Fields',
     lairNpcId: 'skullbriar',
+    lore:
+      "The Marrow Pits don't bury their dead so much as promote them. " +
+      'Skullbriar is a shamble of borrowed bone that only gets heavier — every blow it weathers is another rib lashed to the heap.',
+    trait: { name: 'Grave Growth', blurb: 'Grows stronger the longer it lives.' },
   },
   garden: {
     name: 'The Rotcellar',
@@ -72,6 +95,10 @@ export const DUNGEONS: Record<string, DungeonInfo> = {
     hazardBlurb: 'Flaying pods: lose 15 HP, gain 12 Spores.',
     biomeName: 'The Rot-Gardens',
     lairNpcId: 'slimefoot',
+    lore:
+      'A fungal stowaway that treats the Rotcellar as one big body. Cut it and ' +
+      'it seeds; the thing that answers is never one saproling but a whole squabbling patch of them.',
+    trait: { name: 'Saproling Swarm', blurb: 'Its brood piles on every round.' },
   },
 };
 
