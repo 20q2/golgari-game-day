@@ -562,9 +562,13 @@ def _blocked_nodes(doc):
 
 
 def _riders(doc):
-    """Gear rider tags across all equipped slots (fang/carapace/charm)."""
+    """Gear rider tags across equipped slots. The Gorgon wildcard slot is
+    stats-only — its rider is inert (excluded here), so a second read-charm can't
+    feed her own Petrify and a second lifesteal fang can't double up."""
     out = set()
-    for gid in (doc.get('gear') or {}).values():
+    for slot, gid in (doc.get('gear') or {}).items():
+        if slot == 'wild':
+            continue
         rider = data.GEAR.get(gid, {}).get('rider')
         if rider:
             out.add(rider)
@@ -572,9 +576,12 @@ def _riders(doc):
 
 
 def _rider_mags(doc):
-    """Map each equipped gear rider -> its magnitude at that piece's tier."""
+    """Map each equipped gear rider -> its magnitude at that piece's tier. The
+    wildcard slot's rider is inert (stats-only), so it is skipped."""
     out = {}
-    for gid in (doc.get('gear') or {}).values():
+    for slot, gid in (doc.get('gear') or {}).items():
+        if slot == 'wild':
+            continue
         g = data.GEAR.get(gid)
         if not g:
             continue
@@ -736,7 +743,9 @@ def _read_chance(doc):
     chance = data.READ_BASE + data.READ_SPD_COEFF * eff.get('spd', 0)
     for p in _passives(doc):
         chance += data.READ_PASSIVE_BONUS.get(p, 0)
-    for gid in (doc.get('gear') or {}).values():
+    for slot, gid in (doc.get('gear') or {}).items():
+        if slot == 'wild':
+            continue   # wildcard is stats-only: a read-charm here gives no readBonus
         chance += data.GEAR.get(gid, {}).get('readBonus', 0)
     return max(0.0, min(data.READ_MAX, chance))
 

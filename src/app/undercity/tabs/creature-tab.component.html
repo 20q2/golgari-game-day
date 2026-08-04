@@ -395,6 +395,31 @@
                     }
                   </div>
                 </div>
+                @if (isApexGorgon()) {
+                  <!-- Apex-Gorgon wildcard: any one extra piece, stats only. -->
+                  <div class="gear-tile" [class.empty]="!you.gear['wild']" [attr.data-rarity]="rarityKey(you.gear['wild'])"
+                       (click)="you.gear['wild'] && selectItem('equipped', you.gear['wild']!, -1, 'Wildcard')">
+                    <mat-icon class="mi slot-mi">star</mat-icon>
+                    <div class="gear-tile-body">
+                      <span class="gear-tile-slot">Wildcard</span>
+                      @if (you.gear['wild']; as g) {
+                        <span class="gear-tile-name">{{ gearMap[g].name }}
+                          <span class="rarity-badge {{ tierRarity(gearMap[g].tier).key }}">{{ tierRarity(gearMap[g].tier).label }}</span>
+                        </span>
+                        @if (gearStatChips(g).length) {
+                          <div class="gear-tile-chips">
+                            @for (c of gearStatChips(g); track c.label) {
+                              <span class="chip chip--stat">{{ c.label }}</span>
+                            }
+                          </div>
+                        }
+                        <span class="gear-tile-desc">Stats only — its special effect is inert here.</span>
+                      } @else {
+                        <span class="gear-tile-empty">empty</span>
+                      }
+                    </div>
+                  </div>
+                }
               </div>
             </section>
 
@@ -1023,6 +1048,9 @@
           </header>
 
           <div class="item-sheet-effects">
+                  @if (isApexGorgon()) {
+                    <button class="uc-btn" [disabled]="busy()" (click)="equipToWildcard(item)">+ Wildcard</button>
+                  }
             <p class="effect-line"><span>{{ petInfo(pet.species).blurb }}</span></p>
           </div>
 

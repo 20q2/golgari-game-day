@@ -117,3 +117,18 @@ def test_pre_apex_gorgon_cannot_use_wildcard(table):
     doc['gearStash'] = ['rusted_fang']
     status, _ = db._equip_gear(table, sid, doc, {'index': 0, 'slot': 'wild'})
     assert status == 409
+
+
+def test_wildcard_is_stats_only_no_rider(table):
+    sid, doc = _gorgon_apex_at(table)
+    # seer_charm: rider='seer', readBonus=0.30, spd=1.
+    wild = {**doc, 'gear': {'wild': 'seer_charm'}}
+    normal = {**doc, 'gear': {'charm': 'seer_charm'}}
+    # Rider + readBonus are inert in the wild slot (kills the read-charm → Petrify
+    # runaway), but still work in a normal slot…
+    assert 'seer' not in db._riders(wild)
+    assert 'seer' in db._riders(normal)
+    assert 'seer' not in db._rider_mags(wild)
+    assert db._read_chance(wild) == db._read_chance(normal) - data.GEAR['seer_charm']['readBonus']
+    # …while the raw stat contribution counts the same as any slot.
+    assert engine.effective_stats(wild)['spd'] == engine.effective_stats(normal)['spd']

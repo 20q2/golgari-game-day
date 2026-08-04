@@ -842,6 +842,22 @@ export class CreatureTabComponent {
     this.closeItem();
   }
 
+  /** Apex Gorgons (tier-3 with the Stonewright passive) unlock a wildcard gear
+   *  slot — any one extra piece, stats-only (its rider effect is inert). */
+  protected readonly isApexGorgon = computed(() => {
+    const you = this.store.you();
+    return you?.tier === 3 && (you?.passives ?? []).includes('stonewright');
+  });
+
+  /** Equip a stash piece into the apex-Gorgon wildcard slot (stats only). */
+  protected async equipToWildcard(item: SelectedItem): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('equip-gear', { index: item.index, slot: 'wild' });
+      this.showToast(resp.text ?? 'Set into the wildcard slot.');
+    });
+    this.closeItem();
+  }
+
   /** Grind-salvage yield (Moltings / Gemstones) for a gear tier — mirrors the
    *  Salvage Yard so the popup can preview what grinding would give. */
   protected salvageYield(tier: number): { moltings: number; ichor: number } {
