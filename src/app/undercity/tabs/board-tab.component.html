@@ -2,6 +2,31 @@
   <div class="board-scene">
     <canvas #boardCanvas class="board-canvas"></canvas>
 
+    <!-- Active-companion quick-use: a non-combat pet gets a little box here so its
+         action is one tap from the board, not buried in Gear. Forage/scout fire
+         their ability; economy pets show gathered Spores to collect. -->
+    @if (activeUsablePet(); as pet) {
+      <button
+        type="button"
+        class="pet-quickuse"
+        [class.ready]="petBoxReady(pet)"
+        [disabled]="busy() || !petBoxReady(pet)"
+        (click)="tapBoardPet()"
+        [title]="petInfoOf(pet).name + ' — ' + petInfoOf(pet).blurb"
+      >
+        <img class="pet-quickuse-sprite" [src]="petSpriteUrl(pet.species)" [alt]="petInfoOf(pet).name" />
+        @if (petIsEconomy(pet)) {
+          <span class="pet-quickuse-tag spores" [class.cooldown]="!petBoxReady(pet)">
+            <img class="pet-quickuse-rot" src="undercity/icons/rot.png" alt="" />{{ economyAccruedNow(pet) }}
+          </span>
+        } @else if (petBoxReady(pet)) {
+          <span class="pet-quickuse-tag">{{ petRoleOf(pet) === 'scout' ? 'Scout' : 'Forage' }}</span>
+        } @else {
+          <span class="pet-quickuse-tag cooldown">{{ petAbilityLeftMin(pet) }}m</span>
+        }
+      </button>
+    }
+
     <!-- Focus picker: jump the camera to any player (or the wandering Umori). -->
     <div class="focus-picker">
       <button
@@ -1068,15 +1093,65 @@
     </div>
   }
 
+  <!-- Bird scout picker: choose a bazaar to reveal (fires the scout ability). -->
+  @if (birdScoutOpen()) {
+    <div class="uc-modal-backdrop" (click)="closeBirdScout()">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">visibility</mat-icon> Send the Bird scouting</h3>
+        <p class="scroll-note">Reveal a bazaar's stock before you arrive — puts the bird on cooldown.</p>
+        @for (node of bazaarNodes(); track node; let i = $index) {
+          <div class="shop-row">
+            <span class="shop-name">
+              <mat-icon class="mi">storefront</mat-icon> Bazaar {{ i + 1 }}
+              <em>{{ bazaarGearCount(node) }} gear in stock</em>
+            </span>
+            <button class="uc-btn shop-buy" [disabled]="busy()" (click)="scoutBazaar(node)">Scout</button>
+          </div>
+        } @empty {
+          <p class="scroll-note">No bazaars on the map right now.</p>
+        }
+        <button class="uc-btn close-btn" (click)="closeBirdScout()">Never mind</button>
+      </div>
+    </div>
+  }
+
+  <!-- Bird scout result: the revealed bazaar stock. -->
+  @if (birdScoutResult(); as scout) {
+    <div class="uc-modal-backdrop" (click)="birdScoutResult.set(null)">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">storefront</mat-icon> Scouted bazaar</h3>
+        @for (g of scout.stock.gear; track g.item) {
+          @if (gearMapRef[g.item]; as gi) {
+            <div class="shop-row">
+              <span class="shop-name">{{ gi.name }}
+                <em>{{ tierRarity(gi.tier).label }} · ×{{ g.qty }}</em>
+              </span>
+            </div>
+          }
+        }
+        @for (e of scout.stock.eggs ?? []; track e.tier) {
+          <div class="shop-row">
+            <span class="shop-name">{{ tierRarity(e.tier).label }} Egg
+              <em>{{ e.cost }} Spores · ×{{ e.qty }}</em>
+            </span>
+          </div>
+        }
+        <button class="uc-btn close-btn" (click)="birdScoutResult.set(null)">Done</button>
+      </div>
+    </div>
+  }
+
   <!-- Spell picker -->
   @if (showSpells()) {
     <div class="uc-modal-backdrop" (click)="closeSpellPickers()">
       <div class="uc-modal" (click)="$event.stopPropagation()">
         <h3><mat-icon class="mi">auto_fix_high</mat-icon> Cast a Spell</h3>
         @for (sp of castableSpells(); track sp.id) {
-          <div class="shop-row">
-            <span class="shop-name">
+          <div class="shop-row spell-cast-row">
+            <span class="spell-cast-name">
               <mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}
+            </span>
+            <span class="spell-cast-desc">
               @if (spellPowerLabel(sp, playerLevel()); as pw) {
                 <span class="spell-power-chip">{{ pw }}</span>
               }
@@ -1092,11 +1167,13 @@
           </div>
         }
         @if (castableScrolls().length) {
-          <h4 class="spell-section">Scrolls <span class="scroll-note">one-shot, no cooldown</span></h4>
+          <h4 class="spell-section">Scrolls</h4>
           @for (sp of castableScrolls(); track $index) {
-            <div class="shop-row">
-              <span class="shop-name">
+            <div class="shop-row spell-cast-row">
+              <span class="spell-cast-name">
                 <mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}
+              </span>
+              <span class="spell-cast-desc">
                 @if (spellPowerLabel(sp, playerLevel()); as pw) {
                   <span class="spell-power-chip">{{ pw }}</span>
                 }
@@ -1117,9 +1194,11 @@
       <div class="uc-modal" (click)="$event.stopPropagation()">
         <h3><mat-icon class="mi">auto_awesome</mat-icon> Wish — cast anything</h3>
         @for (sp of allSpellsForWish; track sp.id) {
-          <div class="shop-row">
-            <span class="shop-name">
+          <div class="shop-row spell-cast-row">
+            <span class="spell-cast-name">
               <mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}
+            </span>
+            <span class="spell-cast-desc">
               @if (spellPowerLabel(sp, playerLevel()); as pw) {
                 <span class="spell-power-chip">{{ pw }}</span>
               }

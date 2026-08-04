@@ -1095,6 +1095,25 @@
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(74, 124, 89, 0.25);
   opacity: 0.65;
+  position: relative;
+
+  .sigil-peek {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 1.05rem;
+    height: 1.05rem;
+    font-size: 1.05rem;
+    line-height: 1.05rem;
+    color: #9aa79a;
+    opacity: 0.65;
+    pointer-events: none;
+  }
+
+  &.selected .sigil-peek {
+    color: #fbbf24;
+    opacity: 1;
+  }
 
   &.claimed {
     opacity: 1;
@@ -1326,167 +1345,332 @@
   }
 }
 
+// Grimoire panel local palette — purple (matching the Magic gear tile) marks the
+// "active loadout", a muted red marks the swap cooldown. Green stays the app accent.
+$grim-purple: #a78bfa;
+$grim-lock: #c96a5a;
+
+// Size every grimoire mat-icon to its surrounding text (one rule instead of a
+// width/height/font-size triple per context).
+.grimoire .mi {
+  width: 1em;
+  height: 1em;
+  font-size: 1em;
+  vertical-align: middle;
+}
+
+.grimoire-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.swap-pill {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+
+  &.ready {
+    color: var(--accent-color, #9ac26e);
+    background: rgba(154, 194, 110, 0.16);
+  }
+
+  &.locked {
+    color: $grim-lock;
+    background: rgba(201, 106, 90, 0.16);
+  }
+
+  .swap-bar {
+    width: 2.6rem;
+    height: 0.25rem;
+    border-radius: 999px;
+    background: rgba(201, 106, 90, 0.25);
+    overflow: hidden;
+
+    i {
+      display: block;
+      height: 100%;
+      background: $grim-lock;
+    }
+  }
+}
+
+.active-book {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.55rem;
+  margin-bottom: 0.6rem;
+  border-radius: 0.5rem;
+  background: rgba(167, 139, 250, 0.12);
+  border: 1px solid rgba(167, 139, 250, 0.35);
+
+  .bookicon {
+    color: $grim-purple;
+  }
+
+  .active-name {
+    font-weight: 600;
+    color: #c4b5fd;
+    min-width: 0;
+  }
+
+  .active-tag {
+    margin-left: auto;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: $grim-purple;
+    border: 1px solid rgba(167, 139, 250, 0.5);
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+  }
+}
+
 .spell-rows {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
 }
 
 .spell-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1.3rem 1fr auto;
   gap: 0.5rem;
+  align-items: center;
+  padding: 0.4rem 0.15rem;
 
-  &.innate .spell-name {
-    font-weight: 600;
+  & + .spell-row {
+    border-top: 1px solid rgba(154, 194, 110, 0.12);
+  }
+
+  .glyph {
+    color: var(--accent-color, #9ac26e);
+    font-size: 1.1rem;
+  }
+
+  .spell-body {
+    min-width: 0;
+  }
+
+  .spell-line {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    flex-wrap: wrap;
   }
 
   .spell-name {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    min-width: 0;
+    font-weight: 600;
+  }
 
-    em {
-      font-style: normal;
-      opacity: 0.65;
-      font-size: 0.8em;
+  .spell-src {
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.05rem 0.3rem;
+    border-radius: 0.25rem;
+
+    &.innate {
+      color: var(--accent-color, #9ac26e);
+      background: rgba(154, 194, 110, 0.14);
+    }
+    &.book {
+      color: #c4b5fd;
+      background: rgba(167, 139, 250, 0.14);
     }
   }
 
+  .spell-desc {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.78rem;
+    opacity: 0.65;
+    line-height: 1.35;
+  }
+
+  .spell-meta {
+    text-align: right;
+    font-size: 0.72rem;
+  }
+
   .spell-cd {
-    flex-shrink: 0;
-    font-size: 0.8em;
     opacity: 0.7;
 
     &.ready {
       color: var(--accent-color, #9ac26e);
+      font-weight: 600;
       opacity: 1;
     }
   }
+
+  .spell-cdlen {
+    display: block;
+    font-size: 0.62rem;
+    opacity: 0.45;
+  }
 }
 
-.open-book-head {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0.2rem 0 0.5rem;
+.switcher-label {
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin: 0.8rem 0 0.4rem;
+}
 
-  .open-book-name {
-    font-weight: 600;
+.book-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.book-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(154, 194, 110, 0.28);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+
+  .tab-tag {
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: $grim-purple;
   }
 
-  .open-badge {
-    margin-left: auto;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
+  &.active {
+    border-color: rgba(167, 139, 250, 0.5);
+    background: rgba(167, 139, 250, 0.12);
+    color: #c4b5fd;
+  }
+
+  &.candidate {
+    border-color: var(--accent-color, #9ac26e);
+    background: rgba(154, 194, 110, 0.1);
     color: var(--accent-color, #9ac26e);
   }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
 }
 
-.book-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin-top: 0.6rem;
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
 
-  .book-chip {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    width: 100%;
-    text-align: left;
-
-    .chip-title {
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-      min-width: 0;
-    }
-
-    .chip-badge {
-      flex-shrink: 0;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-
-      &.open {
-        color: #10221a;
-      }
-      &.hint {
-        font-weight: 500;
-        opacity: 0.6;
-      }
-      &.lock {
-        opacity: 0.85;
-      }
-    }
-
-    &.selected {
-      background: var(--accent-color, #9ac26e);
-      border-color: var(--accent-color, #9ac26e);
-      color: #10221a;
-    }
-
-    &.locked {
-      opacity: 0.55;
-    }
-  }
-
-  .book-item {
+  .compare-col {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
-
-    &.expanded .book-chip {
-      border-color: var(--accent-color, #9ac26e);
-    }
+    gap: 0.35rem;
+    min-width: 0;
   }
 
-  .book-chip .chip-badge.chev {
-    opacity: 0.6;
+  .compare-head {
+    font-size: 0.6rem;
     font-weight: 700;
-  }
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 0.3rem 0.4rem;
+    border-radius: 0.4rem;
 
-  .book-detail {
-    padding: 0.1rem 0.2rem 0.4rem 0.6rem;
-    border-left: 2px solid var(--accent-color, #9ac26e);
-
-    .spell-rows {
-      margin-bottom: 0.5rem;
+    &.current {
+      color: $grim-purple;
+      background: rgba(167, 139, 250, 0.12);
+    }
+    &.next {
+      color: var(--accent-color, #9ac26e);
+      background: rgba(154, 194, 110, 0.14);
     }
   }
 
-  .book-actions {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.4rem;
+  .compare-cell {
+    padding: 0.4rem 0.45rem;
+    border-radius: 0.4rem;
+    background: rgba(154, 194, 110, 0.05);
+    border: 1px solid rgba(154, 194, 110, 0.14);
 
-    .locked-note {
+    &.empty {
+      font-size: 0.75rem;
+      opacity: 0.6;
+    }
+
+    .cc-name {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
       font-size: 0.8rem;
-      opacity: 0.7;
+      font-weight: 600;
+
+      .mi {
+        color: var(--accent-color, #9ac26e);
+      }
     }
-  }
 
-  .book-confirm {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-
-    .confirm-q {
-      font-size: 0.82rem;
-      opacity: 0.85;
+    .cc-desc {
+      display: block;
+      margin-top: 0.15rem;
+      font-size: 0.68rem;
+      opacity: 0.6;
+      line-height: 1.3;
     }
   }
 }
 
-.grimoire-cost {
+@media (max-width: 480px) {
+  .compare {
+    grid-template-columns: 1fr;
+  }
+}
+
+.commit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  font-weight: 600;
+  color: #1a1030;
+  background: linear-gradient(180deg, #b39cfb, #8b6ee0);
+  border-color: transparent;
+
+  &.locked {
+    color: $grim-lock;
+    background: rgba(201, 106, 90, 0.16);
+    cursor: default;
+  }
+}
+
+.grimoire-hint {
   margin-top: 0.6rem;
+  font-size: 0.72rem;
+  opacity: 0.6;
 }
 
 .hero-status {
@@ -1630,6 +1814,10 @@
 
 .item-sheet-hint { font-size: 0.85rem; }
 
+// Activate is the primary call to action in the companion sheet — filled and
+// full-width so it stands above the ghost secondary actions below it.
+.pet-cta { flex: 1 1 100%; }
+
 // Inline material glyphs inside the salvage "Grind +N" buttons.
 // Gear top bar: Back (when in a sub-menu) on the left, resource chips right.
 .gear-topbar {
@@ -1753,6 +1941,37 @@
   font-size: 20px;
   font-weight: 800;
   letter-spacing: 0.01em;
+}
+
+// "Egg ready to hatch" flag on the Companion hub tile — gold pill in the top
+// corner, gently pulsing to draw the eye (matches the incubator's ready glow).
+.gear-hub-notice {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px 3px 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #1a1408;
+  background: #ffd24a;
+  border: 1px solid #ffe08a;
+  box-shadow: 0 0 0 rgba(255, 210, 74, 0.6);
+  animation: hub-notice-pulse 1.6s ease-in-out infinite;
+
+  .mi {
+    width: 15px;
+    height: 15px;
+    font-size: 15px;
+  }
+}
+@keyframes hub-notice-pulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(255, 210, 74, 0.4); }
+  50% { box-shadow: 0 0 12px rgba(255, 210, 74, 0.85); }
 }
 
 .gear-hub-tile.magic {
@@ -2249,6 +2468,122 @@
   color: #9fb09f;
 }
 
+// ── Roster-wide Merge popup ──────────────────────────────────────────────────
+// Merge lives in the Roster card header, pushed to the right of the title.
+.roster-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.merge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  border-radius: 8px;
+
+  .mi {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.merge-sheet .merge-popup-body {
+  max-height: 60vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 2px;
+}
+
+.merge-group {
+  @extend %pet-rarity-accent;
+  padding: 11px;
+  background: #101709;
+  border: 1px solid #26331f;
+  border-radius: 12px;
+}
+
+.merge-keeper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.merge-keeper-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.merge-keeper-name { font-weight: 700; color: #dfe7df; }
+.merge-keeper-rarity { font-size: 12px; color: #9fb09f; }
+
+.merge-change {
+  align-self: center;
+  background: transparent;
+  border: 1px solid #2f4222;
+  color: #b6d98a;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  &:hover { border-color: #4a6a34; }
+}
+
+.merge-keeper-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 9px;
+}
+
+.merge-label {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.merge-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 6px;
+}
+.merge-progress-bar {
+  flex: 1 1 auto;
+  height: 8px;
+  background: #1c2617;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.merge-progress-fill {
+  height: 100%;
+  background: var(--accent-color, #9ac26e);
+  border-radius: 999px;
+  transition: width 0.2s;
+}
+.merge-progress-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: #9fb09f;
+  font-variant-numeric: tabular-nums;
+}
+
+.merge-go { width: 100%; margin-top: 2px; }
+
 // Companion sprites: source art is a mix of 32px and 64px, so render every one
 // in a fixed box with nearest-neighbour scaling (crisp pixels) and contain so
 // they all read at the SAME on-screen size regardless of source resolution.
@@ -2448,6 +2783,34 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+// Rarity as its own bold, colored chip so it reads at a glance. Each rarity
+// gets a tinted fill + border + matching glow, keyed off the class name.
+.hatch-reveal-rarity {
+  --rar: #9aa7a0;
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rar);
+  background: color-mix(in srgb, var(--rar) 16%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--rar) 60%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--rar) 45%, transparent);
+  animation: rarity-chip-in 0.4s ease-out 0.2s both;
+
+  &.common { --rar: #b3c0b8; }
+  &.rare { --rar: #5fd18a; }
+  &.legendary { --rar: #fbbf24; }
+  &.mythic { --rar: #c084fc; }
+}
+@keyframes rarity-chip-in {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.12); }
+  100% { transform: scale(1); opacity: 1; }
 }
 .hatch-reveal-blurb {
   font-size: 13px;

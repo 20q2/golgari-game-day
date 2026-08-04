@@ -39,7 +39,7 @@ export const PET_ROLES: Record<PetRole, PetRoleInfo> = {
   defend: { kind: 'combat-passive', blurb: 'Chance to deflect a few points of damage.', icon: 'shield' },
   forage: { kind: 'activated', blurb: 'Scavenges a small cache of loot.', icon: 'savings' },
   scout: { kind: 'activated', blurb: "Scouts a bazaar's stock before you arrive.", icon: 'visibility' },
-  economy: { kind: 'economy', blurb: 'Trickles moltings as you travel.', icon: 'grass' },
+  economy: { kind: 'economy', blurb: 'Gathers Spores over time — tap to collect.', icon: 'grass' },
 };
 
 export interface PetSpeciesInfo {
@@ -127,6 +127,32 @@ export const PET_ABILITY_COOLDOWN_MIN: Partial<Record<PetRole, number>> = {
 };
 export const PET_ABILITY_COOLDOWN_PER_LVL = 2;
 export const PET_ABILITY_COOLDOWN_FLOOR = 5;
+
+// Economy companion idle accumulator (mirror undercity_config PET_SPORE_*). An
+// active economy pet gathers Spores in real time, capped, that the player taps
+// to redeem via its board quick-use box.
+export const PET_SPORE_PER_MIN_BASE = 0.25;
+export const PET_SPORE_PER_MIN_PER_LVL = 0.1;
+export const PET_SPORE_CAP_BASE = 60;
+export const PET_SPORE_CAP_PER_LVL = 30;
+
+export function economySporeRate(level: number): number {
+  return PET_SPORE_PER_MIN_BASE + PET_SPORE_PER_MIN_PER_LVL * (level - 1);
+}
+export function economySporeCap(level: number): number {
+  return Math.floor(PET_SPORE_CAP_BASE + PET_SPORE_CAP_PER_LVL * (level - 1));
+}
+
+/** Spores an active economy pet has gathered since `since` (server ISO, no
+ *  trailing Z — same clock convention as spell/pet cooldowns), floored + capped.
+ *  Display estimate only; the server recomputes the exact amount on redeem. */
+export function economyAccrued(since: string | null | undefined, level: number): number {
+  if (!since) return 0;
+  const ms = Date.now() - new Date(since + 'Z').getTime();
+  if (ms <= 0) return 0;
+  const mins = ms / 60000;
+  return Math.max(0, Math.min(economySporeCap(level), Math.floor(mins * economySporeRate(level))));
+}
 
 // ── Player-market resale (mirror undercity_config PET/EGG_MARKET_*) ───────────
 

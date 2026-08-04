@@ -82,8 +82,21 @@
             </div>
           </div>
           <div class="hud-stats">
-            <span class="hud-chip" title="Spores">
-              <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ you.spores }}
+            <span class="hud-chip spore-chip" title="Spores">
+              <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+              <span class="spore-count" [class.bump]="sporePulse()" [class.big]="sporeBig()">{{
+                you.spores
+              }}</span>
+              @for (d of sporeDeltaList(); track d.id) {
+                <span
+                  class="spore-delta"
+                  [class.gain]="d.amount > 0"
+                  [class.spend]="d.amount < 0"
+                  [class.big]="d.big"
+                >
+                  {{ d.amount > 0 ? '+' : '' }}{{ d.amount }}
+                </span>
+              }
             </span>
             @if (sigilsHeld() > 0) {
               <span class="hud-chip" title="Claim Guild Sigils from lair bosses to unseal the Queen">
@@ -144,7 +157,10 @@
           />
           @switch (tab()) {
             @case ('creature') {
-              <app-undercity-creature-tab />
+              <app-undercity-creature-tab view="creature" />
+            }
+            @case ('gear') {
+              <app-undercity-creature-tab view="gear" />
             }
             @case ('plaza') {
               <app-undercity-plaza-tab />
@@ -167,6 +183,9 @@
               }
             </span>
             <span class="tab-label">Creature</span>
+          </button>
+          <button [class.active]="tab() === 'gear'" [disabled]="inBattle()" (click)="setTab('gear')">
+            <mat-icon class="tab-icon" svgIcon="uc-chest"></mat-icon><span class="tab-label">Gear</span>
           </button>
           <button [class.active]="tab() === 'plaza'" [disabled]="inBattle()" (click)="setTab('plaza')">
             <mat-icon class="tab-icon">park</mat-icon><span class="tab-label">Plaza</span>

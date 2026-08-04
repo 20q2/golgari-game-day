@@ -799,6 +799,25 @@ def _frenzy_from(kind):
     return data.FRENZY_START
 
 
+def _battle_tier(table, sid, kind, npc, node):
+    """Size-tier (1-3) of the foe for relative sprite scaling. Bosses/lairs/world
+    beasts are always apex (3); a PvP clone carries its own creature tier; a
+    caller that already resolved the zone tier stamps it on the npc spec (e.g.
+    _wild_battle, which honours a region= override); everything else falls back
+    to the node's spawn-zone difficulty tier."""
+    if kind in ('boss', 'lair', 'world'):
+        return 3
+    if kind == 'pvp':
+        return int(npc.get('tier') or 1)
+    if npc.get('tier'):
+        return int(npc['tier'])
+    n = _season_map(table, sid).get(node) if node else None
+    region = n.get('region') if n else None
+    if region is None and node and data.dungeon_biome(node):
+        region = 'depths'
+    return data.region_tier(region)
+
+
 def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
     """Snapshot combatants into doc['battle'], telegraph round 1, return the
     battle_start space event. Player buffs/stats freeze here; rewards resolve
@@ -814,8 +833,10 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
         npc_snap['statDelta'] = npc.get('statDelta')
     player_snap = _bt_snapshot(player_c)
     player_snap['statDelta'] = _buff_stat_delta(doc)
+    npc_tier = _battle_tier(table, sid, kind, npc, node)
     rec = {
         'kind': kind, 'node': node, 'round': 1,
+        'npcTier': npc_tier,
         'player': player_snap,
         'npc': npc_snap,
         'npcMeta': npc,          # full spec for reward resolution
@@ -832,7 +853,8 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
                     'atk': npc_snap['atk'], 'def': npc_snap['dfn'],
                     'spd': npc_snap['spd'],
                     'level': data.enemy_level(npc_snap['atk'], npc_snap['dfn'],
-                                              npc_snap['spd'], npc_snap['maxHp'])},
+                                              npc_snap['spd'], npc_snap['maxHp']),
+                    'tier': npc_tier},
             'telegraph': shown, 'round': 1,
             'frenzyFrom': _frenzy_from(kind),
             'fleeChance': _flee_pct(rec),
@@ -1003,6 +1025,12 @@ def _activate_pet(table, sid, doc, payload):
     if not pet:
         return _err('No such pet.', 409)
     doc['activePetId'] = pet['id']
+    # Start (or clear) the economy accrual clock so Spores only gather while an
+    # economy companion is the one at your side.
+    if data.pet_role(pet['species']) == 'economy':
+        doc['petSporeSince'] = _now()
+    else:
+        doc.pop('petSporeSince', None)
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
@@ -1104,10 +1132,31 @@ def _start_pet_cooldown(doc, role, level):
     doc.setdefault('petCooldowns', {})[role] = until.isoformat(timespec='seconds')
 
 
-def _grub_moltings(level):
-    """Passive per-move moltings trickle for an active economy pet, scaled by level."""
-    return int(data.PET_GRUB_MOLTINGS_BASE
-               + data.PET_GRUB_MOLTINGS_PER_LVL * (int(level) - 1))
+def _economy_spore_rate(level):
+    """Spores-per-minute an active economy companion gathers, scaled by level."""
+    return (data.PET_SPORE_PER_MIN_BASE
+            + data.PET_SPORE_PER_MIN_PER_LVL * (int(level) - 1))
+
+
+def _economy_spore_cap(level):
+    """Most Spores an economy companion can bank before the player must collect."""
+    return int(data.PET_SPORE_CAP_BASE
+               + data.PET_SPORE_CAP_PER_LVL * (int(level) - 1))
+
+
+def _economy_accrued(doc, level):
+    """Spores an active economy pet has gathered since `petSporeSince` (its accrual
+    clock), floored and capped. Read-only — does not mutate the doc."""
+    since = doc.get('petSporeSince')
+    if not since:
+        return 0
+    try:
+        elapsed = datetime.utcnow() - datetime.fromisoformat(since)
+    except (ValueError, TypeError):
+        return 0
+    mins = max(0.0, elapsed.total_seconds() / 60.0)
+    return max(0, min(_economy_spore_cap(level),
+                      int(mins * _economy_spore_rate(level))))
 
 
 def _pet_forage(doc, level):
@@ -1143,11 +1192,28 @@ def _use_pet_ability(table, sid, doc, payload):
     if not pet:
         return _err('You have no active companion.', 409)
     role = data.pet_role(pet['species'])
-    if data.PET_SPECIES.get(pet['species'], {}).get('kind') != 'activated':
+    kind = data.PET_SPECIES.get(pet['species'], {}).get('kind')
+    level = int(pet.get('level', 1))
+
+    # Economy pets have no activated ability — tapping their box redeems the
+    # Spores they've gathered in real time and restarts the accrual clock.
+    if kind == 'economy':
+        amount = _economy_accrued(doc, level)
+        if amount <= 0:
+            return _err('Your companion is still gathering — nothing to collect yet.', 409)
+        doc['spores'] = doc.get('spores', 0) + amount
+        doc['petSporeSince'] = _now()
+        conflict = _save_or_conflict(table, doc)
+        if conflict:
+            return conflict
+        result = {'kind': 'economy', 'spores': amount,
+                  'text': f'Your companion hands over {amount} Spores it gathered.'}
+        return _ok(doc, text=result['text'], petAbility=result)
+
+    if kind != 'activated':
         return _err('That companion has no ability to activate.', 409)
     if not _pet_cd_ready(doc, role):
         return _err('Your companion is still resting.', 429)
-    level = int(pet.get('level', 1))
     if role == 'forage':
         result = _pet_forage(doc, level)
     elif role == 'scout':
@@ -1346,6 +1412,12 @@ def _equip_gear(table, sid, doc, payload):
     if not g:
         return _err('Unknown gear.', 409)
     slot = g['slot']
+    if (payload or {}).get('slot') == 'wild':
+        # Apex Gorgon wildcard: any one extra piece (duplicates allowed). Gated on
+        # the Stonewright passive + tier 3 (not the shared apex form).
+        if 'stonewright' not in _passives(doc) or int(doc.get('tier', 1)) < 3:
+            return _err('Only an apex Gorgon has a wildcard slot.', 409)
+        slot = 'wild'
     gear = doc.setdefault('gear', {})
     old = gear.get(slot)
     gear[slot] = gid
@@ -1412,12 +1484,6 @@ def _upgrade_gear(table, sid, doc, payload):
     if where == 'equipped':
         doc['gear'][slot] = next_gid
     else:
-    if (payload or {}).get('slot') == 'wild':
-        # Apex Gorgon wildcard: any one extra piece (duplicates allowed). Gated on
-        # the Stonewright passive + tier 3 (not the shared apex form).
-        if 'stonewright' not in _passives(doc) or int(doc.get('tier', 1)) < 3:
-            return _err('Only an apex Gorgon has a wildcard slot.', 409)
-        slot = 'wild'
         doc['gearStash'][index] = next_gid
     conflict = _save_or_conflict(table, doc)
     if conflict:
@@ -3243,14 +3309,12 @@ def _move(table, sid, doc, payload):
         healed = space_event.get('healed', 0)
         heal = {'amount': healed, 'hp': doc['hp'], 'kind': 'gate_land'} if healed else None
 
-    # Economy companion: a small moltings trickle for completing a move.
-    grub_trickle = None
-    grub = _find_pet(doc, doc.get('activePetId'))
-    if grub and data.pet_role(grub.get('species')) == 'economy':
-        n = _grub_moltings(grub.get('level', 1))
-        if n:
-            _mine_materials(doc, moltings=n)
-            grub_trickle = {'moltings': n}
+    # Economy companion gathers Spores in real time (redeemed via its board box).
+    # Make sure the accrual clock is running for an active economy pet — covers
+    # pets that were already active before this feature existed.
+    econ = _find_pet(doc, doc.get('activePetId'))
+    if econ and data.pet_role(econ.get('species')) == 'economy':
+        doc.setdefault('petSporeSince', _now())
 
     conflict = _save_or_conflict(table, doc)
     if conflict:
@@ -3259,8 +3323,7 @@ def _move(table, sid, doc, payload):
     # _resolve_space may relocate the unit (tunnel crossing, wild warp) — report
     # occupants of where it actually ended up, not the pre-resolution target.
     occupants = _occupants(table, sid, doc['position'], doc['userId'])
-    return _ok(doc, spaceEvent=space_event, occupants=occupants, heal=heal,
-               petTrickle=grub_trickle)
+    return _ok(doc, spaceEvent=space_event, occupants=occupants, heal=heal)
 
 
 def _ladder_cross(table, sid, doc, payload):
@@ -4027,6 +4090,7 @@ def _wild_battle(table, sid, doc, elite=False, region=None):
         npc['spriteId'] = _rng.choice(spec['sprites'])
     npc['personality'] = spec.get('personality', data.NPC_DEFAULT_PERSONALITY)
     npc['bluff'] = spec.get('bluff', data.NPC_DEFAULT_BLUFF)
+    npc['tier'] = tier   # zone tier (honours the region= override) for sprite scaling
     return _start_battle(table, sid, doc, 'elite' if elite else 'wild', npc,
                          node=doc.get('position'))
 
@@ -4368,6 +4432,11 @@ def _combat_round(table, sid, doc, payload):
 
     player_c = _bt_to_combatant(rec['player'])
     npc_c = _bt_to_combatant(rec['npc'])
+    # Gorgon Petrify: a fully-petrified foe skips this round (the Gorgon strikes
+    # free), then the freeze counter resets. The SPD slow already applied persists.
+    if npc_c.petrify >= data.PETRIFY_FREEZE_AT:
+        force_winner = 'attacker'
+        npc_c.petrify = 0
     rnd = rec['round']
     frenzy_from = _frenzy_from(rec['kind'])
     entries = engine.resolve_round(
@@ -4414,6 +4483,11 @@ def _conclude_round(table, sid, doc, rec, player_c, npc_c, entries, frenzy_from,
 
     rec['round'] = rnd + 1
     shown = _telegraph_next(rec)
+    # Gorgon Stone Gaze: a landed read petrifies the foe — a stacking SPD slow.
+    if rec['read'] and 'stone_gaze' in (rec['player'].get('passives') or []):
+        npc = rec['npc']
+        npc['petrify'] = int(npc.get('petrify', 0)) + 1
+        npc['spd'] = max(1, int(npc['spd']) - data.PETRIFY_SLOW)
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
@@ -4432,11 +4506,6 @@ def _conclude_round(table, sid, doc, rec, player_c, npc_c, entries, frenzy_from,
 
 def _combat_flee(table, sid, doc, payload):
     rec = doc.get('battle')
-    # Gorgon Petrify: a fully-petrified foe skips this round (the Gorgon strikes
-    # free), then the freeze counter resets. The SPD slow already applied persists.
-    if npc_c.petrify >= data.PETRIFY_FREEZE_AT:
-        force_winner = 'attacker'
-        npc_c.petrify = 0
     if not rec:
         return _err('No battle in progress.', 409)
     if rec['kind'] in ('barrier', 'boss'):
@@ -4483,11 +4552,6 @@ def _battle_resume(rec, player_hp):
         'fleeChance': _flee_pct(rec),
         'playerHp': player_hp,
         'playerStatus': _battle_status(rec.get('player', {})),
-    # Gorgon Stone Gaze: a landed read petrifies the foe — a stacking SPD slow.
-    if rec['read'] and 'stone_gaze' in (rec['player'].get('passives') or []):
-        npc = rec['npc']
-        npc['petrify'] = int(npc.get('petrify', 0)) + 1
-        npc['spd'] = max(1, int(npc['spd']) - data.PETRIFY_SLOW)
         'npcStatus': _battle_status(rec.get('npc', {})),
         'revealed': rec.get('npcActual') if peeked else None,
         'npc': {
@@ -4504,6 +4568,7 @@ def _battle_resume(rec, player_hp):
                                       npc.get('spd', 0),
                                       npc.get('maxHp', npc.get('hp', 0))),
             'personality': npc.get('personality'),
+            'tier': rec.get('npcTier'),
         },
     }
 
@@ -4624,7 +4689,7 @@ def _finish_pvp(table, sid, doc, rec, result):
         _grant_xp(table, sid, doc, data.XP_REWARDS['pvp_loss'])
         _compost(table, sid, doc,
                  f"{doc['username']}'s {_creature_label(doc)} was driven off by "
-                 f"{tname}. The swarm remembers.")
+                 f"{tname}.")
         out['text'] = f"{tname} drives you off and grinds you into the mulch…"
         away['outcome'] = 'defended'
         if target:
@@ -4679,7 +4744,7 @@ def _finish_wild(table, sid, doc, rec, result):
         salvage = _scrounge_consolation(doc, rec)
         _compost(table, sid, doc,
                  f"{doc['username']}'s {_creature_label(doc)} was composted by a "
-                 f"{npc['name']}. The swarm remembers.")
+                 f"{npc['name']}.")
         out['text'] = f"The {npc['name']} grinds you into the mulch. Back to the Gate…"
         if salvage:
             out['spores'] = salvage

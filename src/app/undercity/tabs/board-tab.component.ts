@@ -69,7 +69,16 @@ import {
   inscribeCost,
   witchScrollPrice,
 } from '../data/items';
-import { eggSpriteUrl, petSpriteUrl } from '../data/pets';
+import {
+  Pet,
+  eggSpriteUrl,
+  petSpriteUrl,
+  petInfo,
+  petRole,
+  abilityReady,
+  abilityCooldownLeftMin,
+  economyAccrued,
+} from '../data/pets';
 import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome, enemyArtUrl } from '../data/dungeons';
 import { RUIN_LAIRS, RUIN_LAIR_NAMES, ruinLairAbandoned } from '../data/ruin-lairs';
 import { WORLD_EVENT, WORLD_EVENT_SPRITE } from '../data/world-event';
@@ -221,6 +230,94 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   protected readonly busy = signal(false);
   protected readonly toast = signal<string | null>(null);
+
+  // ── Active-companion quick-use (board shortcut for activated pets) ──────────
+  // Non-combat companions (forage/scout) have a manual ability that otherwise
+  // lives only on the Gear → Companion screen. Surface it on the board as a
+  // little tap-to-use box beside the recenter control.
+  protected readonly petSpriteUrl = petSpriteUrl;
+  protected petInfoOf(pet: Pet) {
+    return petInfo(pet.species);
+  }
+  protected petRoleOf(pet: Pet): string {
+    return petRole(pet.species);
+  }
+  protected petAbilityReady(pet: Pet): boolean {
+    return abilityReady(this.store.you()?.petCooldowns, petRole(pet.species));
+  }
+  protected petAbilityLeftMin(pet: Pet): number {
+    return abilityCooldownLeftMin(this.store.you()?.petCooldowns, petRole(pet.species));
+  }
+  protected petIsEconomy(pet: Pet): boolean {
+    return petInfo(pet.species).kind === 'economy';
+  }
+  /** Spores an active economy pet has gathered and can collect right now. */
+  protected economyAccruedNow(pet: Pet): number {
+    return economyAccrued(this.store.you()?.petSporeSince, pet.level);
+  }
+
+  /** The active pet, only when it has something to tap on the board: an activated
+   *  ability (forage/scout) or an economy pet's Spore stash to collect. Combat
+   *  pets act only in battle, so they get no board box. */
+  protected readonly activeUsablePet = computed<Pet | null>(() => {
+    const you = this.store.you();
+    const pet = (you?.pets ?? []).find((p) => p.id === you?.activePetId) ?? null;
+    if (!pet) return null;
+    const kind = petInfo(pet.species).kind;
+    return kind === 'activated' || kind === 'economy' ? pet : null;
+  });
+
+  /** Is the board box tappable? Activated pets gate on cooldown; economy pets
+   *  gate on having gathered at least 1 Spore to collect. */
+  protected petBoxReady(pet: Pet): boolean {
+    return this.petIsEconomy(pet) ? this.economyAccruedNow(pet) > 0 : this.petAbilityReady(pet);
+  }
+
+  /** Tap the board pet box — forage scavenges immediately; scout opens a bazaar
+   *  picker (it needs a target); economy collects its gathered Spores. No-op
+   *  while busy or not yet ready. */
+  async tapBoardPet(): Promise<void> {
+    const pet = this.activeUsablePet();
+    if (!pet || this.busy() || !this.petBoxReady(pet)) return;
+    if (petRole(pet.species) === 'scout') {
+      this.openBirdScout();
+      return;
+    }
+    await this.run(async () => {
+      const resp = await this.store.action('use-pet-ability', {});
+      this.showToast(resp.text ?? 'Your companion goes to work.');
+    });
+  }
+
+  // ── Bird scout: pick a bazaar to reveal its stock, off the board ────────────
+  protected readonly birdScoutOpen = signal(false);
+  protected readonly birdScoutResult = signal<{ node: string; stock: BazaarView } | null>(null);
+  protected readonly gearMapRef = GEAR_MAP;
+  protected bazaarNodes(): string[] {
+    return Object.keys(this.store.bazaars());
+  }
+  protected bazaarEggs(node: string): { tier: number; qty: number }[] {
+    return (this.store.bazaars()[node]?.eggs ?? []).filter((e) => e.qty > 0);
+  }
+  protected bazaarGearCount(node: string): number {
+    return (this.store.bazaars()[node]?.gear ?? []).filter((g) => g.qty > 0).length;
+  }
+  protected openBirdScout(): void {
+    this.birdScoutResult.set(null);
+    this.birdScoutOpen.set(true);
+  }
+  protected closeBirdScout(): void {
+    this.birdScoutOpen.set(false);
+  }
+  async scoutBazaar(node: string): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('use-pet-ability', { targetNode: node });
+      const pa = (resp as { petAbility?: { node: string; stock: BazaarView } }).petAbility;
+      if (pa) this.birdScoutResult.set(pa);
+      this.showToast(resp.text ?? 'Your bird scouts ahead.');
+    });
+    this.birdScoutOpen.set(false);
+  }
   protected readonly spaceModal = signal<SpaceEvent | null>(null);
   protected readonly occupants = signal<Occupant[]>([]);
   protected readonly battleView = signal<BattleView | null>(null);

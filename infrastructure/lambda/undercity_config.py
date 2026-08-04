@@ -315,10 +315,15 @@ PET_MOUSE_SPORES_PER_LVL = 3
 PET_MOUSE_ITEM_CHANCE_BASE = 0.20
 PET_MOUSE_ITEM_CHANCE_PER_LVL = 0.05
 
-# Grub passive: a small moltings trickle on every completed move, feeding the
-# gear/pet upgrade loop. Grows slowly with the pet's level.
-PET_GRUB_MOLTINGS_BASE = 1
-PET_GRUB_MOLTINGS_PER_LVL = 0.34
+# Economy companion: instead of a per-move trickle, it slowly gathers Spores in
+# real time (an idle accumulator) that the player taps to redeem via the pet's
+# board quick-use box. Rate + cap scale with the pet's level; the cap keeps AFK
+# banking finite so it stays a "check in and collect" loop. Mirror in
+# src/app/undercity/data/pets.ts.
+PET_SPORE_PER_MIN_BASE = 0.25       # Spores gathered per minute at level 1
+PET_SPORE_PER_MIN_PER_LVL = 0.10    # added per level above 1
+PET_SPORE_CAP_BASE = 60             # most that can bank before you must collect
+PET_SPORE_CAP_PER_LVL = 30          # added per level above 1
 
 # The Rot Bazaar's Eggs tab: a couple of eggs stocked per 30-min window, skewed
 # to low tiers, each a Spore-priced gamble. Deterministic per (node, window) like

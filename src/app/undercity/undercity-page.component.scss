@@ -267,6 +267,130 @@
   }
 }
 
+// Spore wallet: anchor for the floating delta and the number's pop pulse.
+.spore-chip {
+  position: relative;
+}
+
+.spore-count {
+  display: inline-block;
+  // Give the pop a center to scale from without nudging the layout.
+  transform-origin: center;
+
+  &.bump {
+    animation: spore-bump 0.42s ease-out;
+  }
+
+  // Jackpot-scale gain: bigger pop with a gold flash on the number itself.
+  &.bump.big {
+    animation: spore-bump-big 0.6s cubic-bezier(0.2, 1.4, 0.4, 1);
+  }
+}
+
+// Signed delta that floats up out of the chip and fades. Green for gains,
+// red for spends — mirrors the wallet direction.
+.spore-delta {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translate(-50%, 0);
+  pointer-events: none;
+  font-weight: 800;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  animation: spore-float 1.05s ease-out forwards;
+
+  &.gain {
+    color: #7bd88f;
+  }
+
+  &.spend {
+    color: #ef6f6f;
+  }
+
+  // Jackpot flourish: gold, larger, glowing, and a slower rise with a wobble.
+  &.big {
+    color: #fbbf24;
+    font-size: 1.15rem;
+    letter-spacing: 0.02em;
+    text-shadow:
+      0 0 6px rgba(251, 191, 36, 0.9),
+      0 1px 2px rgba(0, 0, 0, 0.6);
+    animation: spore-float-big 1.45s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+  }
+}
+
+@keyframes spore-bump {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes spore-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 4px) scale(0.9);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -2px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -22px) scale(1);
+  }
+}
+
+// Jackpot number pop: overshoots harder and flashes gold at the peak.
+@keyframes spore-bump-big {
+  0% {
+    transform: scale(1);
+    color: inherit;
+  }
+  35% {
+    transform: scale(1.6);
+    color: #fbbf24;
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.85);
+  }
+  100% {
+    transform: scale(1);
+    color: inherit;
+    text-shadow: none;
+  }
+}
+
+// Jackpot delta: a taller, wobbling rise so the gold number lingers and reads.
+@keyframes spore-float-big {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.7);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -4px) scale(1.15);
+  }
+  32% {
+    transform: translate(-54%, -8px) scale(1.05) rotate(-4deg);
+  }
+  46% {
+    transform: translate(-46%, -12px) scale(1.05) rotate(4deg);
+  }
+  60% {
+    transform: translate(-50%, -16px) scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -34px) scale(1);
+  }
+}
+
 // Active overworld buffs/curses carried into the next battle. Floats in its own
 // section one row below the HUD (top-right, mirroring the board's focus picker)
 // so the HP/XP bars aren't crowded. Tap the badge row to expand the details.

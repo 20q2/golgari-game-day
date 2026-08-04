@@ -324,6 +324,59 @@ button.mat-chip {
   }
 }
 
+// Smith rows use a fixed 3-column grid: icon (+ rarity/equipped chips stacked
+// beneath it) on the left, name & upgrade diff in the middle, action button on
+// the right. The icon column stays vertically centred so it "hangs out" beside
+// whatever the description height happens to be.
+.forge-row.smith-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  flex-wrap: nowrap;
+
+  .smith-icon-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+
+    .slot-mi {
+      font-size: 1.5rem;
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    .rarity-badge,
+    .forge-tag {
+      margin-left: 0;
+    }
+  }
+
+  .forge-name {
+    align-self: center;
+  }
+
+  // Colour the from/to names by rarity so the ladder step reads at a glance
+  // (e.g. a white common piece turning into a green rare one).
+  .rar-name {
+    font-weight: 700;
+
+    &.common { color: #e5efe5; }
+    &.rare { color: #5fd18a; }
+    &.legendary { color: #fbbf24; }
+    &.mythic { color: #c084fc; }
+  }
+
+  // The upgraded (new) diff text takes the colour of the rarity being climbed
+  // into — matching the "to" name — rather than a flat gold.
+  &[data-rarity='common'] .diff-new { color: #e5efe5; }
+  &[data-rarity='rare'] .diff-new { color: #5fd18a; }
+  &[data-rarity='legendary'] .diff-new { color: #fbbf24; }
+  &[data-rarity='mythic'] .diff-new { color: #c084fc; }
+}
+
 .rarity-badge {
   display: inline-block;
   margin-left: 4px;

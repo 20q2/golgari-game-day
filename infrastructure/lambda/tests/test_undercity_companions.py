@@ -300,14 +300,48 @@ def test_pet_ability_cooldown_shortens_with_level():
     assert db._pet_ability_cooldown_min('forage', 99) == config.PET_ABILITY_COOLDOWN_FLOOR
 
 
-def test_grub_moltings_scales_with_level():
-    assert db._grub_moltings(1) == config.PET_GRUB_MOLTINGS_BASE
-    assert db._grub_moltings(9) > db._grub_moltings(1)
+def test_economy_accrued_scales_and_caps():
+    # 40 minutes on the clock at level 1 -> floor(40 * rate), under the cap.
+    doc = {'petSporeSince':
+           (datetime.utcnow() - timedelta(minutes=40)).isoformat(timespec='seconds')}
+    assert db._economy_accrued(doc, 1) == int(40 * db._economy_spore_rate(1))
+    # A long AFK stint is clamped to the level cap.
+    doc['petSporeSince'] = (datetime.utcnow() - timedelta(days=10)).isoformat(timespec='seconds')
+    assert db._economy_accrued(doc, 1) == db._economy_spore_cap(1)
+    # Rate and cap both climb with level; no clock -> nothing accrued.
+    assert db._economy_spore_rate(3) > db._economy_spore_rate(1)
+    assert db._economy_spore_cap(3) > db._economy_spore_cap(1)
+    assert db._economy_accrued({}, 1) == 0
 
 
-def test_use_pet_ability_rejects_without_activated_pet(table):
-    # No active pet at all.
+def test_use_pet_ability_rejects_combat_pet(table):
+    # A combat-passive pet has no tap ability at all.
     _persist_active_pet(table, 'baby_leyline_prowler')   # active, but combat-passive
+    status, body = act(table, 'use-pet-ability')
+    assert status == 409
+
+
+def test_economy_redeem_banks_spores_and_resets_clock(table):
+    sid, doc = _persist_active_pet(table, 'baby_broodspinner', level=2)   # economy role
+    doc['petSporeSince'] = (datetime.utcnow() - timedelta(minutes=30)).isoformat(timespec='seconds')
+    doc['spores'] = 5
+    db._save_or_conflict(table, doc)
+    status, body = act(table, 'use-pet-ability')
+    assert status == 200
+    assert body['petAbility']['kind'] == 'economy'
+    gained = body['petAbility']['spores']
+    assert gained > 0
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['spores'] == 5 + gained
+    # Clock reset by the redeem -> collecting again immediately yields nothing.
+    status, _ = act(table, 'use-pet-ability')
+    assert status == 409
+
+
+def test_economy_redeem_rejects_when_nothing_gathered(table):
+    sid, doc = _persist_active_pet(table, 'slime', level=1)   # economy role
+    doc['petSporeSince'] = datetime.utcnow().isoformat(timespec='seconds')  # just started
+    db._save_or_conflict(table, doc)
     status, body = act(table, 'use-pet-ability')
     assert status == 409
 

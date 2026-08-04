@@ -199,16 +199,6 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     return PERSONALITY_TELL[this.personality] ?? 'watching you';
   }
 
-  /** Whether the escalation ramp is live this round ('active'), starts next
-   *  round ('imminent'), or is not a factor (null). */
-  protected collapseState(): 'active' | 'imminent' | null {
-    if (this.frenzyFrom == null) return null;
-    const r = this.round();
-    if (r >= this.frenzyFrom) return 'active';
-    if (r + 1 >= this.frenzyFrom) return 'imminent';
-    return null;
-  }
-
   /** The escalation multiplier now applied to every swing, formatted for display
    *  (e.g. "1.2"). Null until the ramp is live — mirrors engine `ramp = 1 +
    *  FRENZY_RAMP * (round - frenzyFrom + 1)`. */

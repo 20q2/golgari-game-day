@@ -74,6 +74,87 @@
   z-index: 6;
 }
 
+// Active-companion quick-use box: sits just left of the recenter control. Shows
+// the pet sprite with a role tag; pulses gold when the ability is ready, dims to
+// a minutes-left countdown while on cooldown.
+.pet-quickuse {
+  position: absolute;
+  bottom: 10px;
+  right: 60px;
+  z-index: 6;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+  height: 40px;
+  padding: 4px 9px 4px 5px;
+  border-radius: 20px;
+  border: 1px solid rgba(210, 160, 90, 0.6);
+  background: rgba(30, 20, 40, 0.72);
+  color: #d8f3dc;
+  cursor: pointer;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  transition: transform 0.08s ease, border-color 0.15s ease, box-shadow 0.2s ease;
+
+  &:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+
+  &.ready {
+    border-color: #ffd24a;
+    box-shadow: 0 0 10px rgba(255, 210, 74, 0.55);
+    animation: pet-quickuse-pulse 1.8s ease-in-out infinite;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.85;
+    filter: grayscale(0.4);
+  }
+}
+@keyframes pet-quickuse-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(255, 210, 74, 0.4); }
+  50% { box-shadow: 0 0 13px rgba(255, 210, 74, 0.8); }
+}
+
+.pet-quickuse-sprite {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.pet-quickuse-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: #ffe08a;
+
+  &.spores {
+    font-size: 11px;
+    color: #ffe08a;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &.cooldown {
+    color: #9aa7a0;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.pet-quickuse-rot {
+  width: 11px;
+  height: 11px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
 .find-umori-btn {
   position: relative;
   z-index: 2;
@@ -1245,6 +1326,44 @@
     font-size: 0.82rem;
     flex-shrink: 0;
     white-space: nowrap;
+  }
+}
+
+// Spell / Scroll / Wish picker rows: a fixed three-column grid
+// (name │ power + description │ action) so the Cast/Use/Wish button keeps its
+// own column and never wraps below a long description the way the shared flex
+// .shop-row does.
+.spell-cast-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 4px 10px;
+
+  .spell-cast-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: #d8f3dc;
+    white-space: nowrap;
+
+    .mi {
+      font-size: 1.15rem;
+      width: 1.15rem;
+      height: 1.15rem;
+      vertical-align: middle;
+    }
+  }
+
+  .spell-cast-desc {
+    min-width: 0;
+    font-size: 0.78rem;
+    color: #9aa79a;
+    line-height: 1.35;
+
+    em {
+      font-style: normal;
+    }
   }
 }
 

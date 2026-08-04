@@ -199,6 +199,9 @@ export interface YouDoc {
   incubator?: { eggId: string; startedAt: string; tier: number } | null;
   /** species -> ISO time its activated ability comes off cooldown (no trailing Z). */
   petCooldowns?: Record<string, string>;
+  /** ISO time (no trailing Z) the active economy pet started gathering Spores;
+   *  redeeming banks the accrued amount and resets this clock. */
+  petSporeSince?: string | null;
   awayEvents?: AwayEvent[];
   taughtClaims: number;
   lastFinishedClaim?: string | null;

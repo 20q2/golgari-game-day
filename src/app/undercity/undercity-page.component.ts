@@ -27,7 +27,7 @@ import { PickupModalComponent } from './tabs/pickup-modal.component';
 import { HostPanelComponent } from './host/host-panel.component';
 import { CeremonyComponent } from './ceremony/ceremony.component';
 
-type Tab = 'board' | 'creature' | 'plaza' | 'log';
+type Tab = 'board' | 'creature' | 'gear' | 'plaza' | 'log';
 
 @Component({
   selector: 'app-undercity-page',
@@ -174,6 +174,34 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
    * progress so the fanfare pops once the victory screen closes. */
   private pendingLevels = 0;
 
+  /** A gain this size or larger gets the gold "big win" treatment — big enough
+   * to catch doubled jackpots (+60), first lair clears (+60), and fat PvP
+   * steals while ordinary +20/+26/+30 pickups stay on the plain float. */
+  private static readonly SPORE_BIG_GAIN = 40;
+
+  /** Floating spore-delta shown when the wallet changes (board pickups, loot,
+   * PvP steals, purchases). `amount` is signed; `big` flags a jackpot-scale
+   * gain; `id` restarts the CSS float on repeated changes. Null when idle. */
+  protected readonly sporeDelta = signal<{ id: number; amount: number; big: boolean } | null>(null);
+  /** True for a beat after any spore change — drives the number's pop pulse. */
+  protected readonly sporePulse = signal(false);
+  /** True for a beat after a big gain — upgrades the number's pop to the
+   * gold jackpot bump. Follows the same timing as `sporePulse`. */
+  protected readonly sporeBig = signal(false);
+  /** The active delta as a 0-or-1 element list so the template's keyed `@for`
+   * recreates the node per `id`, restarting the float animation on rapid,
+   * back-to-back wallet changes. */
+  protected readonly sporeDeltaList = computed(() => {
+    const d = this.sporeDelta();
+    return d ? [d] : [];
+  });
+  /** Last wallet total we've seen; null before the first read / no creature so a
+   * fresh hatch or a reopen never floats a phantom delta. */
+  private prevSpores: number | null = null;
+  private sporeAnimId = 0;
+  private sporeDeltaTimer: ReturnType<typeof setTimeout> | null = null;
+  private sporePulseTimer: ReturnType<typeof setTimeout> | null = null;
+
   constructor() {
     // Central level-up watcher: `you.level` can rise from battles, board
     // spaces, or any other action, so we watch the one shared signal here in
@@ -207,6 +235,37 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
         this.pendingLevels = 0;
       }
     });
+
+    // Spore-wallet watcher: the counter ticks up (pickups, loot, PvP steals) and
+    // down (purchases, penalties) from many sources, so we watch the one shared
+    // signal here and float a signed delta + pulse the number on any change.
+    effect(() => {
+      const you = this.store.you();
+      if (!you) {
+        this.prevSpores = null;
+        return;
+      }
+      if (this.prevSpores === null) {
+        this.prevSpores = you.spores;
+        return;
+      }
+      const delta = you.spores - this.prevSpores;
+      this.prevSpores = you.spores;
+      if (delta === 0) return;
+
+      const big = delta >= UndercityPageComponent.SPORE_BIG_GAIN;
+      this.sporeDelta.set({ id: ++this.sporeAnimId, amount: delta, big });
+      this.sporePulse.set(true);
+      this.sporeBig.set(big);
+      if (this.sporeDeltaTimer) clearTimeout(this.sporeDeltaTimer);
+      if (this.sporePulseTimer) clearTimeout(this.sporePulseTimer);
+      // Big wins float a touch longer so the gold flourish has room to read.
+      this.sporeDeltaTimer = setTimeout(() => this.sporeDelta.set(null), big ? 1500 : 1100);
+      this.sporePulseTimer = setTimeout(() => {
+        this.sporePulse.set(false);
+        this.sporeBig.set(false);
+      }, big ? 600 : 450);
+    });
   }
 
   async ngOnInit(): Promise<void> {
@@ -224,6 +283,8 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     document.body.classList.remove('undercity-page');
     this.store.stopPolling();
+    if (this.sporeDeltaTimer) clearTimeout(this.sporeDeltaTimer);
+    if (this.sporePulseTimer) clearTimeout(this.sporePulseTimer);
   }
 
   async signIn(): Promise<void> {

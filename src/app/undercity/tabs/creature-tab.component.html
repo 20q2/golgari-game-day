@@ -205,6 +205,43 @@
             </section>
           }
           @case ('gear') {
+            <!-- Active companion rides above the gear top-bar on the Companion
+                 screen — a standalone hero card (no outer card wrapper). -->
+            @if (gearSection() === 'companion' && activePet(); as pet) {
+              <div class="active-pet active-pet--top" [attr.data-rarity]="petRarity(pet)"
+                   style="background-image: linear-gradient(rgba(12, 16, 12, 0.55), rgba(12, 16, 12, 0.85)), url('undercity/swamp_background.webp')">
+                <div class="active-pet-portrait">
+                  <img class="pet-sprite active-pet-ico" [src]="petSpriteUrl(pet.species)" [alt]="petInfo(pet.species).name" />
+                </div>
+                <div class="active-pet-body">
+                  <div class="active-pet-titlerow">
+                    <h4 class="active-pet-name">{{ petInfo(pet.species).name }}</h4>
+                    <span class="rarity-badge {{ petRarity(pet) }}">{{ tierRarity(pet.tier).label }}</span>
+                    <span class="active-pet-lvl">Lv {{ pet.level }} / {{ petLevelCap(pet.tier) }}</span>
+                  </div>
+                  <span class="active-pet-blurb">{{ petInfo(pet.species).blurb }}</span>
+                  <div class="active-pet-actions">
+                    @if (petInfo(pet.species).kind === 'activated') {
+                      @if (petRoleOf(pet) === 'forage') {
+                        <button type="button" class="pet-btn" [disabled]="busy() || !petAbilityReady(pet)" (click)="usePetAbility(pet)">
+                          {{ petAbilityReady(pet) ? 'Send scavenging' : petAbilityLeftMin(pet) + ' min' }}
+                        </button>
+                      } @else if (petRoleOf(pet) === 'scout') {
+                        <button type="button" class="pet-btn" [disabled]="busy() || !petAbilityReady(pet)" (click)="openBirdScout()">
+                          {{ petAbilityReady(pet) ? 'Scout a bazaar' : petAbilityLeftMin(pet) + ' min' }}
+                        </button>
+                      }
+                    } @else if (petInfo(pet.species).kind === 'economy') {
+                      <button type="button" class="pet-btn" [disabled]="busy() || economyAccruedNow(pet) <= 0" (click)="usePetAbility(pet)">
+                        Collect {{ economyAccruedNow(pet) }} Spores
+                      </button>
+                    }
+                    <button type="button" class="pet-btn ghost" (click)="openPet(pet)">Manage</button>
+                  </div>
+                </div>
+              </div>
+            }
+
             <!-- Gear top bar: Back (in a sub-menu) on the left, resources on the right. -->
             <div class="gear-topbar">
               @if (gearSection() !== 'home') {
@@ -242,6 +279,11 @@
                     </button>
 
                     <button type="button" class="gear-hub-tile companion" (click)="selectGear('companion')">
+                      @if (incubatorReady()) {
+                        <span class="gear-hub-notice">
+                          <mat-icon class="mi">egg</mat-icon> Ready to hatch
+                        </span>
+                      }
                       <span class="gear-hub-ico">
                         @if (activePet(); as ap) {
                           <img class="pet-sprite" [src]="petSpriteUrl(ap.species)" [alt]="petInfo(ap.species).name" />
@@ -427,110 +469,141 @@
               @case ('magic') {
                 <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
             <!-- Grimoire -->
-            <section class="card">
-              <h3>Grimoire <span class="muted">({{ (you.grimoires ?? []).length }} collected)</span></h3>
-              @if (equippedBook(); as book) {
-                <div class="open-book-head">
-                  <mat-icon class="mi">menu_book</mat-icon>
-                  <span class="open-book-name">{{ book.name }}</span>
-                  <span class="open-badge">◆ OPEN</span>
-                </div>
-              }
-              <div class="spell-rows">
-                @for (sp of innateSpells(); track sp.id) {
-                  <div class="spell-row innate">
-                    <span class="spell-name">
-                      <mat-icon class="mi">{{ sp.icon }}</mat-icon>
-                      {{ sp.name }} <em>{{ sp.desc }}</em>
+            <section class="card grimoire">
+              @let bookCount = (you.grimoires ?? []).length;
+              @let showSwitcher = bookCount > 1 || (bookCount > 0 && !you.equippedGrimoire);
+              <div class="grimoire-head">
+                <h3>Grimoire <span class="muted">({{ bookCount }} collected)</span></h3>
+                @if (bookCount > 1) {
+                  @if (swapReady()) {
+                    <span class="swap-pill ready">
+                      <mat-icon class="mi">check_circle</mat-icon> Swap ready
                     </span>
-                    <span class="spell-cd" [class.ready]="cooldownLabel(sp.id) === 'Ready'">
-                      {{ cooldownLabel(sp.id) }}
+                  } @else {
+                    <span class="swap-pill locked">
+                      <mat-icon class="mi">lock</mat-icon> Swap in {{ grimoireSwapLeft() }}m
+                      <span class="swap-bar"><i [style.width.%]="swapPct() * 100"></i></span>
                     </span>
-                  </div>
-                }
-                @if (equippedBook(); as book) {
-                  @for (sp of bookSpells(book); track sp.id) {
-                    <div class="spell-row">
-                      <span class="spell-name">
-                        <mat-icon class="mi">{{ sp.icon }}</mat-icon>
-                        {{ sp.name }} <em>{{ sp.desc }}</em>
-                      </span>
-                      <span class="spell-cd" [class.ready]="cooldownLabel(sp.id) === 'Ready'">
-                        {{ cooldownLabel(sp.id) }}
-                      </span>
-                    </div>
                   }
-                } @else if ((you.grimoires ?? []).length) {
-                  <p class="muted bag-empty">Tap a book below to open it.</p>
-                } @else {
-                  <p class="muted bag-empty">No grimoire open. Books wait in the bazaars.</p>
                 }
               </div>
-              @if ((you.grimoires ?? []).length) {
-                <div class="book-list">
-                  @for (g of ownedBooks(); track g.id) {
-                    @let isOpen = you.equippedGrimoire === g.id;
-                    @let expanded = expandedBook() === g.id && !isOpen;
-                    <div class="book-item" [class.selected]="isOpen" [class.expanded]="expanded">
-                      <button
-                        type="button"
-                        class="uc-btn book-chip"
-                        [class.selected]="isOpen"
-                        [disabled]="busy()"
-                        (click)="toggleBook(g.id)"
-                      >
-                        <span class="chip-title"><mat-icon class="mi">menu_book</mat-icon> {{ g.name }}</span>
-                        @if (isOpen) {
-                          <span class="chip-badge open">✓ OPEN</span>
-                        } @else {
-                          <span class="chip-badge chev">{{ expanded ? '▾' : '▸' }}</span>
-                        }
-                      </button>
 
-                      @if (expanded) {
-                        <div class="book-detail">
-                          <div class="spell-rows">
-                            @for (sp of bookSpells(g); track sp.id) {
-                              <div class="spell-row">
-                                <span class="spell-name">
-                                  <mat-icon class="mi">{{ sp.icon }}</mat-icon>
-                                  {{ sp.name }} <em>{{ sp.desc }}</em>
-                                </span>
-                              </div>
-                            }
-                          </div>
-                          <div class="book-actions">
-                            @if (grimoireSwapLeft() > 0) {
-                              <span class="locked-note">🔒 Locked · {{ grimoireSwapLeft() }}m</span>
-                            } @else if (confirmOpen() === g.id) {
-                              <span class="book-confirm">
-                                <span class="confirm-q">
-                                  Opening locks swapping for 30 min. Open <strong>{{ g.name }}</strong>?
-                                </span>
-                                <button class="uc-btn use-btn" [disabled]="busy()" (click)="equipBook(g.id)">
-                                  Open
-                                </button>
-                                <button class="uc-btn use-btn ghost" [disabled]="busy()" (click)="cancelOpen()">
-                                  Cancel
-                                </button>
-                              </span>
-                            } @else {
-                              <button class="uc-btn use-btn" [disabled]="busy()" (click)="askOpen(g.id)">
-                                Open this book
-                              </button>
-                            }
-                          </div>
-                        </div>
-                      }
+              <!-- Active loadout -->
+              @if (equippedBook(); as book) {
+                <div class="active-book">
+                  <mat-icon class="mi bookicon">menu_book</mat-icon>
+                  <span class="active-name">{{ book.name }}</span>
+                  <span class="active-tag">Active</span>
+                </div>
+                <div class="spell-rows">
+                  @for (sp of innateSpells(); track sp.id) {
+                    <div class="spell-row">
+                      <mat-icon class="mi glyph">{{ sp.icon }}</mat-icon>
+                      <span class="spell-body">
+                        <span class="spell-line">
+                          <span class="spell-name">{{ sp.name }}</span>
+                          <span class="spell-src innate">Innate</span>
+                        </span>
+                        <span class="spell-desc">{{ sp.desc }}</span>
+                      </span>
+                      <span class="spell-meta">
+                        <span class="spell-cd" [class.ready]="cooldownLabel(sp.id) === 'Ready'">{{ cooldownLabel(sp.id) }}</span>
+                        <span class="spell-cdlen">{{ spellCooldownText(sp) }}</span>
+                      </span>
+                    </div>
+                  }
+                  @for (sp of bookSpells(book); track sp.id) {
+                    <div class="spell-row">
+                      <mat-icon class="mi glyph">{{ sp.icon }}</mat-icon>
+                      <span class="spell-body">
+                        <span class="spell-line">
+                          <span class="spell-name">{{ sp.name }}</span>
+                          <span class="spell-src book">Book</span>
+                        </span>
+                        <span class="spell-desc">{{ sp.desc }}</span>
+                      </span>
+                      <span class="spell-meta">
+                        <span class="spell-cd" [class.ready]="cooldownLabel(sp.id) === 'Ready'">{{ cooldownLabel(sp.id) }}</span>
+                        <span class="spell-cdlen">{{ spellCooldownText(sp) }}</span>
+                      </span>
                     </div>
                   }
                 </div>
+              } @else if (bookCount) {
+                <p class="muted bag-empty">Open a book below to load its spells.</p>
+              } @else {
+                <p class="muted bag-empty">No grimoire open. Books wait in the bazaars.</p>
+              }
 
-                <p class="muted bag-empty grimoire-cost">
-                  One loadout at a time — opening a different book locks swapping for 30 min.
-                  @if (grimoireSwapLeft() > 0) {
-                    {{ grimoireSwapLeft() }} min until you can open a different book.
+              <!-- Book switcher + compare -->
+              @if (showSwitcher) {
+                <p class="switcher-label">Your books — tap to preview</p>
+                <div class="book-tabs">
+                  @for (g of ownedBooks(); track g.id) {
+                    @let isActive = you.equippedGrimoire === g.id;
+                    <button
+                      type="button"
+                      class="book-tab"
+                      [class.active]="isActive"
+                      [class.candidate]="previewBook() === g.id"
+                      [disabled]="busy()"
+                      (click)="selectBook(g.id)"
+                    >
+                      <mat-icon class="mi">menu_book</mat-icon>
+                      <span class="tab-name">{{ g.name }}</span>
+                      @if (isActive) {
+                        <span class="tab-tag">Active</span>
+                      }
+                    </button>
                   }
+                </div>
+
+                @if (isComparing()) {
+                  @let cand = previewedBook();
+                  <div class="compare">
+                    <div class="compare-col">
+                      <div class="compare-head current">Active now</div>
+                      @if (equippedBook(); as book) {
+                        @for (sp of bookSpells(book); track sp.id) {
+                          <div class="compare-cell">
+                            <span class="cc-name"><mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}</span>
+                            <span class="cc-desc">{{ sp.desc }}</span>
+                          </div>
+                        }
+                      } @else {
+                        <div class="compare-cell empty">No book open — no spells loaded.</div>
+                      }
+                    </div>
+                    <div class="compare-col">
+                      <div class="compare-head next">If you open {{ cand?.name }}</div>
+                      @if (cand) {
+                        @for (sp of bookSpells(cand); track sp.id) {
+                          <div class="compare-cell">
+                            <span class="cc-name"><mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}</span>
+                            <span class="cc-desc">{{ sp.desc }}</span>
+                          </div>
+                        }
+                      }
+                    </div>
+                  </div>
+
+                  @if (cand) {
+                    @if (swapReady()) {
+                      <button type="button" class="uc-btn commit-btn" [disabled]="busy()" (click)="equipBook(cand.id)">
+                        <mat-icon class="mi">auto_stories</mat-icon>
+                        Open {{ cand.name }} — locks swapping 30m
+                      </button>
+                    } @else {
+                      <button type="button" class="uc-btn commit-btn locked" disabled>
+                        <mat-icon class="mi">lock</mat-icon>
+                        Swap locked · {{ grimoireSwapLeft() }}m left
+                      </button>
+                    }
+                  }
+                }
+
+                <p class="muted grimoire-hint">
+                  One loadout at a time — opening a different book locks swapping for 30 min.
                 </p>
               }
             </section>
@@ -586,47 +659,25 @@
                     }
                   </section>
 
-                  <!-- Active companion — mirrors the creature hero card up top:
-                       framed portrait, name + rarity + level, blurb, actions. -->
-                  <section class="card companion-card">
-                    <h3>Active Companion</h3>
-                    @if (activePet(); as pet) {
-                      <div class="active-pet" [attr.data-rarity]="petRarity(pet)"
-                           style="background-image: linear-gradient(rgba(12, 16, 12, 0.55), rgba(12, 16, 12, 0.85)), url('undercity/swamp_background.webp')">
-                        <div class="active-pet-portrait">
-                          <img class="pet-sprite active-pet-ico" [src]="petSpriteUrl(pet.species)" [alt]="petInfo(pet.species).name" />
-                        </div>
-                        <div class="active-pet-body">
-                          <div class="active-pet-titlerow">
-                            <h4 class="active-pet-name">{{ petInfo(pet.species).name }}</h4>
-                            <span class="rarity-badge {{ petRarity(pet) }}">{{ tierRarity(pet.tier).label }}</span>
-                            <span class="active-pet-lvl">Lv {{ pet.level }} / {{ petLevelCap(pet.tier) }}</span>
-                          </div>
-                          <span class="active-pet-blurb">{{ petInfo(pet.species).blurb }}</span>
-                          <div class="active-pet-actions">
-                            @if (petInfo(pet.species).kind === 'activated') {
-                              @if (petRoleOf(pet) === 'forage') {
-                                <button type="button" class="pet-btn" [disabled]="busy() || !petAbilityReady(pet)" (click)="usePetAbility(pet)">
-                                  {{ petAbilityReady(pet) ? 'Send scavenging' : petAbilityLeftMin(pet) + ' min' }}
-                                </button>
-                              } @else if (petRoleOf(pet) === 'scout') {
-                                <button type="button" class="pet-btn" [disabled]="busy() || !petAbilityReady(pet)" (click)="openBirdScout()">
-                                  {{ petAbilityReady(pet) ? 'Scout a bazaar' : petAbilityLeftMin(pet) + ' min' }}
-                                </button>
-                              }
-                            }
-                            <button type="button" class="pet-btn ghost" (click)="openPet(pet)">Manage</button>
-                          </div>
-                        </div>
-                      </div>
-                    } @else {
+                  <!-- Active companion now rides above the gear top-bar (see the
+                       @case('gear') header). Only the empty-state hint stays here. -->
+                  @if (!activePet()) {
+                    <section class="card companion-card">
+                      <h3>Active Companion</h3>
                       <p class="muted bag-empty">No companion active. Hatch an egg, then tap a pet below to activate it.</p>
-                    }
-                  </section>
+                    </section>
+                  }
 
                   <!-- Inactive roster -->
                   <section class="card companion-card">
-                    <h3>Roster</h3>
+                    <div class="roster-head">
+                      <h3>Roster</h3>
+                      @if (mergeableSpeciesExist()) {
+                        <button type="button" class="uc-btn merge-btn" (click)="openMerge()">
+                          <mat-icon class="mi">call_merge</mat-icon> Merge
+                        </button>
+                      }
+                    </div>
                     @if (rosterPets().length) {
                       <div class="pet-grid">
                         @for (pet of rosterPets(); track pet.id) {
@@ -673,7 +724,7 @@
               </div>
               @for (region of paintRegions(); track region) {
                 <div class="wardrobe-group">
-                  <span class="wardrobe-label">{{ region }}</span>
+                  <span class="wardrobe-label">{{ regionLabel(region) }}</span>
                   <div class="swatch-row">
                     @for (p of ownedPaints(); track p.id) {
                       <button
@@ -735,6 +786,7 @@
                        role="button" tabindex="0"
                        (click)="toggleBoss(d.biome)"
                        (keyup.enter)="toggleBoss(d.biome)">
+                    <mat-icon class="mi sigil-peek" aria-hidden="true">info_outline</mat-icon>
                     <div class="sigil-portrait">
                       <img [src]="'undercity/guardians/' + d.lairNpcId + '.png'" [alt]="d.lairName" />
                       @if (!hasSigil(d.biome)) {
@@ -754,10 +806,11 @@
       </div>
     </div>
 
-    <app-uc-action-band>
-      <!-- Sub-tabs: Stats / Wardrobe / Sigils. Gear now has its own bottom-nav
-           destination, so it's dropped from this bar (and hidden in the Gear view). -->
-      @if (view() === 'creature') {
+    <!-- Sub-tabs: Stats / Wardrobe / Sigils. The Gear view has its own bottom-nav
+         destination and no sub-tabs, so the whole action band is hidden there
+         rather than leaving an empty strip above the bottom nav. -->
+    @if (view() === 'creature') {
+      <app-uc-action-band>
         <nav class="subtab-bar">
           <button type="button" [class.active]="activeSubTab() === 'stats'" (click)="subTab.set('stats')">
             <mat-icon class="mi">bar_chart</mat-icon> Stats
@@ -772,8 +825,8 @@
             <mat-icon class="mi">workspace_premium</mat-icon> Sigils
           </button>
         </nav>
-      }
-    </app-uc-action-band>
+      </app-uc-action-band>
+    }
 
     @if (toast(); as t) {
       <div class="tab-toast">{{ t }}</div>
@@ -975,9 +1028,9 @@
 
           <div class="item-sheet-actions">
             @if (activePet()?.id !== pet.id) {
-              <button class="uc-btn" [disabled]="busy()" (click)="activatePet(pet)">Activate</button>
-            } @else {
-              <span class="item-sheet-hint muted">Your active companion.</span>
+              <button class="uc-btn uc-btn-primary pet-cta" [disabled]="busy()" (click)="activatePet(pet)">
+                <mat-icon class="mi">pets</mat-icon> Activate
+              </button>
             }
 
             @if (!petAtLevelCap(pet)) {
@@ -1007,23 +1060,81 @@
             }
           </div>
 
-          @if (!petAtMaxTier(pet) && mergeFodderFor(pet).length) {
-            <div class="merge-box">
-              <span class="merge-title">Merge dupes → {{ tierRarity(pet.tier + 1).label }}</span>
-              <div class="merge-fodder">
-                @for (f of mergeFodderFor(pet); track f.id) {
-                  <button type="button" class="merge-chip" [class.picked]="mergePicks().has(f.id)"
-                          [attr.data-rarity]="petRarity(f)" (click)="toggleMergePick(f.id)">
-                    <img class="pet-sprite" [src]="petSpriteUrl(f.species)" [alt]="petInfo(f.species).name" />
-                    <span>Lv {{ f.level }}</span>
-                  </button>
-                }
-              </div>
-              <button class="uc-btn" [disabled]="busy() || !mergeReady(pet)" (click)="mergePet(pet)">
-                {{ mergeReady(pet) ? 'Merge' : 'Pick more fodder' }}
-              </button>
+        </div>
+      </div>
+    }
+
+    <!-- Roster-wide Merge popup: dupes grouped by species. Reuses the item-sheet
+         bottom-sheet chrome; the body scrolls since it can hold several groups. -->
+    @if (mergeOpen()) {
+      <div class="item-sheet-backdrop" (click)="closeMerge()">
+        <div class="item-sheet merge-sheet" (click)="$event.stopPropagation()">
+          <button class="item-sheet-close" (click)="closeMerge()" aria-label="Close">
+            <mat-icon class="mi">close</mat-icon>
+          </button>
+
+          <header class="item-sheet-head">
+            <mat-icon class="mi slot-mi">call_merge</mat-icon>
+            <div class="item-sheet-title">
+              <span class="item-sheet-name">Merge Companions</span>
+              <span class="item-sheet-sub">Feed duplicates into one to raise its rarity</span>
             </div>
-          }
+          </header>
+
+          <div class="merge-popup-body">
+            @for (group of mergeGroups(); track group.species) {
+              <div class="merge-group" [attr.data-rarity]="petRarity(group.keeper)">
+                <div class="merge-keeper">
+                  <img class="pet-sprite" [src]="petSpriteUrl(group.keeper.species)" [alt]="group.name" />
+                  <div class="merge-keeper-info">
+                    <span class="merge-keeper-name">{{ group.name }}
+                      <span class="rarity-badge {{ petRarity(group.keeper) }}">{{ group.currentRarity }}</span>
+                    </span>
+                    <span class="merge-keeper-rarity">{{ group.currentRarity }} → {{ group.nextRarity }} · keeper Lv {{ group.keeper.level }}</span>
+                  </div>
+                  <button type="button" class="merge-change" (click)="toggleKeeperPicker(group.species)">
+                    Change
+                  </button>
+                </div>
+
+                @if (mergeKeeperPicker() === group.species) {
+                  <div class="merge-keeper-picker">
+                    @for (p of speciesPets(group.species); track p.id) {
+                      <button type="button" class="merge-chip" [class.picked]="p.id === group.keeper.id"
+                              [attr.data-rarity]="petRarity(p)" (click)="chooseKeeper(group.species, p.id)">
+                        <img class="pet-sprite" [src]="petSpriteUrl(p.species)" [alt]="group.name" />
+                        <span>Lv {{ p.level }}</span>
+                      </button>
+                    }
+                  </div>
+                }
+
+                <span class="merge-label muted">Feed in:</span>
+                <div class="merge-fodder">
+                  @for (f of group.fodder; track f.id) {
+                    <button type="button" class="merge-chip" [class.picked]="mergePicks().has(f.id)"
+                            [attr.data-rarity]="petRarity(f)" (click)="toggleMergePick(f.id)">
+                      <img class="pet-sprite" [src]="petSpriteUrl(f.species)" [alt]="group.name" />
+                      <span>Lv {{ f.level }}</span>
+                    </button>
+                  }
+                </div>
+
+                <div class="merge-progress">
+                  <div class="merge-progress-bar">
+                    <div class="merge-progress-fill" [style.width.%]="mergeProgressPct(group)"></div>
+                  </div>
+                  <span class="merge-progress-num">{{ group.points }} / {{ group.need }}</span>
+                </div>
+
+                <button class="uc-btn merge-go" [disabled]="busy() || !group.ready" (click)="mergeGroup(group)">
+                  {{ group.ready ? 'Merge' : 'Pick more duplicates' }}
+                </button>
+              </div>
+            } @empty {
+              <p class="muted bag-empty">No duplicates to merge.</p>
+            }
+          </div>
         </div>
       </div>
     }
@@ -1149,9 +1260,8 @@
           <div class="hatch-reveal-burst">
             <img class="pet-sprite hatch-reveal-sprite" [src]="petSpriteUrl(pet.species)" [alt]="petInfo(pet.species).name" />
           </div>
-          <span class="hatch-reveal-name">{{ petInfo(pet.species).name }}
-            <span class="rarity-badge {{ petRarity(pet) }}">{{ tierRarity(pet.tier).label }}</span>
-          </span>
+          <span class="hatch-reveal-rarity {{ petRarity(pet) }}">{{ tierRarity(pet.tier).label }}</span>
+          <span class="hatch-reveal-name">{{ petInfo(pet.species).name }}</span>
           <span class="hatch-reveal-blurb">{{ petInfo(pet.species).blurb }}</span>
           <div class="hatch-reveal-actions">
             <button class="uc-btn" [disabled]="busy()" (click)="activateFromReveal(pet)">Set active</button>

@@ -154,20 +154,23 @@
         } @else if (b === 'blacksmith') {
           <p class="forge-hint">Spend materials to climb a piece up its rarity ladder.</p>
           @for (row of upgradeRows(); track $index) {
-            <div class="forge-row" [attr.data-rarity]="tierRarity(row.to.tier).key">
-              <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + row.to.slot"></mat-icon>
-              <span class="forge-name">
-                {{ row.from.name }} <mat-icon class="mi tiny">arrow_forward</mat-icon> {{ row.to.name }}
+            <div class="forge-row smith-row" [attr.data-rarity]="tierRarity(row.to.tier).key">
+              <span class="smith-icon-col">
+                <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + row.to.slot"></mat-icon>
                 <span class="rarity-badge {{ tierRarity(row.to.tier).key }}">{{ tierRarity(row.to.tier).label }}</span>
                 @if (row.where === 'stash') { <span class="forge-tag">stash</span> }
                 @if (row.where === 'equipped') { <span class="forge-tag">equipped</span> }
+              </span>
+              <span class="forge-name">
+                <span class="rar-name {{ tierRarity(row.from.tier).key }}">{{ row.from.name }}</span>
+                <mat-icon class="mi tiny">arrow_forward</mat-icon>
+                <span class="rar-name {{ tierRarity(row.to.tier).key }}">{{ row.to.name }}</span>
                 <em class="forge-diff">@for (seg of row.diff; track $index) {@if (seg.same !== undefined) {<span>{{ seg.same }}</span>} @else {<span class="diff-chg">@if (seg.from) {<s class="diff-old">{{ seg.from }}</s> }<span class="diff-new">{{ seg.to }}</span></span>}{{ ' ' }}}</em>
               </span>
               <button class="uc-btn forge-upgrade" [disabled]="busy() || !!upgradeReason(row.cost)" (click)="upgrade(row)">
                 {{ row.cost.spores }}<img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                 · {{ row.cost.moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (row.cost.ichor) {&nbsp;· {{ row.cost.ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
               </button>
-              @if (!busy() && upgradeNote(row.cost); as r) { <span class="block-reason">{{ r }}</span> }
             </div>
           } @empty {
             <div class="forge-empty">Nothing to upgrade yet — find or stash gear that has a rarer rung.</div>

@@ -204,15 +204,6 @@
       </div>
     }
 
-    <!-- Escalation: warn before the fight starts hitting harder. The active-state
-         "turning desperate" line is intentionally suppressed. -->
-    @if (!done() && !resolving() && introDone() && collapseState() === 'imminent') {
-      <div class="collapse-warn">
-        <mat-icon class="mi">warning</mat-icon>
-        <span>Tempers fray — blows start hitting harder next round.</span>
-      </div>
-    }
-
     <!-- Controls -->
     @if (!done() && introDone()) {
       <div class="stance-triangle">
@@ -281,7 +272,7 @@
             (click)="showItems.set(true)"
             title="Items"
           >
-            <mat-icon class="mi">backpack</mat-icon>
+            <mat-icon class="mi" svgIcon="uc-pouch"></mat-icon>
             @if (items.length > 1) { <span class="inv-count">{{ items.length }}</span> }
           </button>
         }
@@ -318,7 +309,7 @@
     @if (showItems() && !done()) {
       <div class="items-panel" (click)="showItems.set(false)">
         <div class="items-body" (click)="$event.stopPropagation()">
-          <h3><mat-icon class="mi">backpack</mat-icon> Items</h3>
+          <h3><mat-icon class="mi" svgIcon="uc-pouch"></mat-icon> Items</h3>
           <div class="item-list">
             @for (it of items; track it.id) {
               <button

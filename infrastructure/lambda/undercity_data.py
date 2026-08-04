@@ -1700,7 +1700,7 @@ PET_ROLES = {
     'defend':  {'kind': 'combat-passive', 'blurb': 'Chance to deflect a few points of damage.'},
     'forage':  {'kind': 'activated',      'blurb': 'Scavenges a small cache of loot.'},
     'scout':   {'kind': 'activated',      'blurb': "Scouts a bazaar's stock before you arrive."},
-    'economy': {'kind': 'economy',        'blurb': 'Trickles moltings as you travel.'},
+    'economy': {'kind': 'economy',        'blurb': 'Gathers Spores over time — tap to collect.'},
 }
 
 # species id (== sprite filename) -> (display name, role). Two per role.

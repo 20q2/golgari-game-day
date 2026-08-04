@@ -29,6 +29,7 @@ import {
   SpellInfo,
   cooldownLeftMin,
   grimoireSwapLeftMin,
+  GRIMOIRE_SWAP_COOLDOWN_MIN,
 } from '../data/spells';
 import {
   HATS,
@@ -53,8 +54,11 @@ import {
   levelCost,
   salvageYield,
   mergeWouldRankUp,
+  mergePointsFor,
+  PET_MERGE_COST,
   abilityReady,
   abilityCooldownLeftMin,
+  economyAccrued,
   petMarketBand,
   eggMarketBand,
   petRole,
@@ -94,6 +98,26 @@ function loadSubTab(): CreatureSubTab {
 type GearSection = 'home' | 'equip' | 'magic' | 'bag' | 'companion';
 
 type ItemSource = 'equipped' | 'stash' | 'bag';
+
+/** One species' merge card in the roster-wide Merge popup: the keeper to raise,
+ *  the same-species dupes available as fodder, and the derived progress. */
+interface MergeGroup {
+  species: PetSpecies;
+  name: string;
+  keeper: Pet;
+  /** All other same-species pets (candidates to feed in). */
+  fodder: Pet[];
+  /** Fodder currently ticked (subset of `fodder`). */
+  selected: Pet[];
+  /** keeper.mergeProgress + points from `selected`. */
+  points: number;
+  /** Points needed to reach the next tier. */
+  need: number;
+  /** Whether `selected` would advance the keeper at least one tier. */
+  ready: boolean;
+  currentRarity: string;
+  nextRarity: string;
+}
 
 /** A chip rendered in the item-detail popup. Stat chips have no blurb;
  *  ability chips carry an expandable blurb explaining what they do. */
@@ -257,6 +281,12 @@ export class CreatureTabComponent {
   protected readonly selectedPet = signal<Pet | null>(null);
   /** Fodder pet ids ticked for a merge into the selected keeper. */
   protected readonly mergePicks = signal<Set<string>>(new Set());
+  /** Whether the roster-wide Merge popup is open. */
+  protected readonly mergeOpen = signal(false);
+  /** Per-species keeper override (species → pet id). Empty = use auto-pick. */
+  protected readonly mergeKeepers = signal<Record<string, string>>({});
+  /** Species whose inline keeper picker is currently expanded (null = none). */
+  protected readonly mergeKeeperPicker = signal<PetSpecies | null>(null);
 
   protected readonly activePet = computed<Pet | null>(() => {
     const you = this.store.you();
@@ -270,6 +300,53 @@ export class CreatureTabComponent {
     const id = you?.activePetId;
     return (you?.pets ?? []).filter((p) => p.id !== id);
   });
+
+  /** Roster grouped into per-species merge cards: every species owned 2+ times
+   *  whose keeper isn't already max tier. Best rarity first, then most dupes. */
+  protected readonly mergeGroups = computed<MergeGroup[]>(() => {
+    const pets = this.store.you()?.pets ?? [];
+    const overrides = this.mergeKeepers();
+    const picks = this.mergePicks();
+
+    const bySpecies = new Map<PetSpecies, Pet[]>();
+    for (const p of pets) {
+      const arr = bySpecies.get(p.species) ?? [];
+      arr.push(p);
+      bySpecies.set(p.species, arr);
+    }
+
+    const groups: MergeGroup[] = [];
+    for (const [species, members] of bySpecies) {
+      if (members.length < 2) continue;
+      // Auto keeper: highest tier, then level, then banked merge progress.
+      const sorted = [...members].sort(
+        (a, b) => b.tier - a.tier || b.level - a.level || b.mergeProgress - a.mergeProgress,
+      );
+      const overrideId = overrides[species];
+      const keeper = members.find((p) => p.id === overrideId) ?? sorted[0];
+      if (atMaxTier(keeper)) continue;
+      const fodder = members.filter((p) => p.id !== keeper.id);
+      const selected = fodder.filter((p) => picks.has(p.id));
+      groups.push({
+        species,
+        name: petInfo(species).name,
+        keeper,
+        fodder,
+        selected,
+        points: keeper.mergeProgress + mergePointsFor(selected),
+        need: PET_MERGE_COST[keeper.tier + 1] ?? Infinity,
+        ready: mergeWouldRankUp(keeper, selected),
+        currentRarity: tierRarity(keeper.tier).label,
+        nextRarity: tierRarity(keeper.tier + 1).label,
+      });
+    }
+    return groups.sort(
+      (a, b) => b.keeper.tier - a.keeper.tier || b.fodder.length - a.fodder.length,
+    );
+  });
+
+  /** Is there anything to merge right now? Drives the top-bar button. */
+  protected readonly mergeableSpeciesExist = computed<boolean>(() => this.mergeGroups().length > 0);
 
   protected readonly eggsList = computed(() => this.store.you()?.eggs ?? []);
   protected readonly incubator = computed(() => this.store.you()?.incubator ?? null);
@@ -291,20 +368,6 @@ export class CreatureTabComponent {
     return ms <= 0 ? 0 : Math.ceil(ms / 60000);
   }
 
-  /** Same-species fodder available to merge into a keeper (excludes the keeper). */
-  protected mergeFodderFor(keeper: Pet): Pet[] {
-    return (this.store.you()?.pets ?? []).filter(
-      (p) => p.id !== keeper.id && p.species === keeper.species,
-    );
-  }
-
-  /** Whether the currently-picked fodder would advance the keeper a tier. */
-  protected mergeReady(keeper: Pet): boolean {
-    const picks = this.mergePicks();
-    const fodder = this.mergeFodderFor(keeper).filter((p) => picks.has(p.id));
-    return fodder.length > 0 && mergeWouldRankUp(keeper, fodder);
-  }
-
   /** Can this activated pet fire right now (activated role + off its role cooldown)? */
   protected petAbilityReady(pet: Pet): boolean {
     if (petInfo(pet.species).kind !== 'activated') return false;
@@ -318,6 +381,11 @@ export class CreatureTabComponent {
   /** Role of a pet's species, for template dispatch (forage/scout/…). */
   protected petRoleOf(pet: Pet): string {
     return petRole(pet.species);
+  }
+
+  /** Spores an active economy pet has gathered and can collect right now. */
+  protected economyAccruedNow(pet: Pet): number {
+    return economyAccrued(this.store.you()?.petSporeSince, pet.level);
   }
 
   /** Enough materials to level this pet? */
@@ -346,6 +414,61 @@ export class CreatureTabComponent {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  }
+
+  protected openMerge(): void {
+    this.mergePicks.set(new Set());
+    this.mergeKeepers.set({});
+    this.mergeKeeperPicker.set(null);
+    this.mergeOpen.set(true);
+  }
+
+  protected closeMerge(): void {
+    this.mergeOpen.set(false);
+    this.mergeKeeperPicker.set(null);
+  }
+
+  /** All pets of one species (keeper + candidates) — for the keeper picker. */
+  protected speciesPets(species: PetSpecies): Pet[] {
+    return (this.store.you()?.pets ?? []).filter((p) => p.species === species);
+  }
+
+  protected toggleKeeperPicker(species: PetSpecies): void {
+    this.mergeKeeperPicker.update((cur) => (cur === species ? null : species));
+  }
+
+  /** Reassign a species' keeper; clears that species' fodder ticks so the
+   *  selection resets around the new keeper, and closes the picker. */
+  protected chooseKeeper(species: PetSpecies, petId: string): void {
+    this.mergeKeepers.update((m) => ({ ...m, [species]: petId }));
+    const ids = new Set(this.speciesPets(species).map((p) => p.id));
+    this.mergePicks.update((s) => new Set([...s].filter((id) => !ids.has(id))));
+    this.mergeKeeperPicker.set(null);
+  }
+
+  protected mergeProgressPct(group: MergeGroup): number {
+    if (!group.need || group.need === Infinity) return 0;
+    return Math.min(100, Math.round((group.points / group.need) * 100));
+  }
+
+  /** Merge a group's ticked fodder into its keeper, then keep the popup open and
+   *  let mergeGroups() recompute from fresh state; close only if nothing remains. */
+  async mergeGroup(group: MergeGroup): Promise<void> {
+    const fodderPetIds = group.selected.map((p) => p.id);
+    if (!fodderPetIds.length) return;
+    await this.run(async () => {
+      const resp = await this.store.action('merge-pet', {
+        targetPetId: group.keeper.id,
+        fodderPetIds,
+      });
+      this.showToast(resp.text ?? 'Merged.');
+    });
+    this.mergePicks.update((s) => {
+      const next = new Set(s);
+      for (const id of fodderPetIds) next.delete(id);
+      return next;
+    });
+    if (!this.mergeGroups().length) this.closeMerge();
   }
 
   async incubateEgg(eggId: string): Promise<void> {
@@ -422,19 +545,6 @@ export class CreatureTabComponent {
     await this.run(async () => {
       const resp = await this.store.action('activate-pet', { petId: pet.id });
       this.showToast(resp.text ?? `${petInfo(pet.species).name} is now at your side.`);
-    });
-    this.closePet();
-  }
-
-  async mergePet(keeper: Pet): Promise<void> {
-    const fodderPetIds = [...this.mergePicks()];
-    if (!fodderPetIds.length) return;
-    await this.run(async () => {
-      const resp = await this.store.action('merge-pet', {
-        targetPetId: keeper.id,
-        fodderPetIds,
-      });
-      this.showToast(resp.text ?? 'Merged.');
     });
     this.closePet();
   }
@@ -850,6 +960,17 @@ export class CreatureTabComponent {
     return you ? formSprite(you.form, you.spriteVariant).regions : [];
   });
 
+  /** Player-facing names for the recolorable zones — the underlying region keys
+   * (body/belly/stripes) stay put; only the wardrobe label reads Primary etc. */
+  private readonly regionLabels: Record<string, string> = {
+    body: 'Primary',
+    belly: 'Secondary',
+    stripes: 'Accent',
+  };
+  protected regionLabel(region: string): string {
+    return this.regionLabels[region] ?? region;
+  }
+
   protected readonly xpNext = computed(() => {
     const you = this.store.you();
     return you ? xpToNext(you.level) : 0;
@@ -953,6 +1074,40 @@ export class CreatureTabComponent {
     grimoireSwapLeftMin(this.store.you()?.lastGrimoireSwap),
   );
 
+  /** Whether a different book can be opened right now. */
+  protected readonly swapReady = computed(() => this.grimoireSwapLeft() === 0);
+
+  /** Fraction of the swap cooldown still remaining (1 → just swapped, 0 → ready),
+   *  for the draining bar on the status pill. */
+  protected readonly swapPct = computed(() =>
+    Math.max(0, Math.min(1, this.grimoireSwapLeft() / GRIMOIRE_SWAP_COOLDOWN_MIN)),
+  );
+
+  /** The book selected in the switcher for preview/compare. Falls back to the
+   *  equipped book when nothing is picked. */
+  protected readonly previewedBook = computed<GrimoireInfo | null>(() => {
+    const id = this.previewBook();
+    if (id) return GRIMOIRE_MAP[id] ?? this.equippedBook();
+    return this.equippedBook();
+  });
+
+  /** True when the previewed book differs from the equipped one — i.e. the
+   *  compare view (current vs candidate) is meaningful. */
+  protected readonly isComparing = computed(() => {
+    const prev = this.previewedBook();
+    return !!prev && prev.id !== this.store.you()?.equippedGrimoire;
+  });
+
+  /** Source label for a spell row in the loadout list. */
+  spellSource(spellId: string): 'Innate' | 'Book' {
+    return this.innateSpells().some((sp) => sp.id === spellId) ? 'Innate' : 'Book';
+  }
+
+  /** Human-readable base cooldown for a spell ("30m cooldown" / "no cooldown"). */
+  spellCooldownText(sp: SpellInfo): string {
+    return sp.cooldownMin > 0 ? `${sp.cooldownMin}m cooldown` : 'no cooldown';
+  }
+
   async equipBook(id: string): Promise<void> {
     // Clicking the already-open book is a no-op — never stow to no-book (that
     // silently strips every spell and confuses players). Opening a *different*
@@ -965,8 +1120,7 @@ export class CreatureTabComponent {
       const resp = await this.store.action('equip-grimoire', { grimoireId: id });
       this.showToast(resp.text ?? 'Done.');
     });
-    this.confirmOpen.set(null);
-    this.expandedBook.set(null);
+    this.previewBook.set(null);
   }
 
   protected readonly evolveChoices = computed<FormInfo[]>(() => {
@@ -1083,27 +1237,14 @@ export class CreatureTabComponent {
     return 'use';
   }
 
-  /** Which owned grimoire's spell list is expanded for reading (null = none). */
-  protected readonly expandedBook = signal<string | null>(null);
-  /** Which grimoire has its "locks swapping for 30 min" confirm prompt live. */
-  protected readonly confirmOpen = signal<string | null>(null);
+  /** Which owned grimoire is selected in the switcher for preview/compare
+   *  (null = show the equipped book). */
+  protected readonly previewBook = signal<string | null>(null);
 
-  /** Expand/collapse a book for reading. The open book is never expandable —
-   *  its spells already render in the top loadout panel. */
-  toggleBook(id: string): void {
-    if (this.store.you()?.equippedGrimoire === id) return;
-    this.confirmOpen.set(null);
-    this.expandedBook.set(this.expandedBook() === id ? null : id);
-  }
-
-  /** Show the swap-confirm prompt for a book. */
-  askOpen(id: string): void {
-    this.confirmOpen.set(id);
-  }
-
-  /** Back out of the swap-confirm prompt, leaving the book expanded to read. */
-  cancelOpen(): void {
-    this.confirmOpen.set(null);
+  /** Select a book in the switcher. Tapping the equipped book clears the
+   *  preview back to the plain active-loadout view. */
+  selectBook(id: string): void {
+    this.previewBook.set(id === this.store.you()?.equippedGrimoire ? null : id);
   }
 
   async useLoadedDie(value: number): Promise<void> {
