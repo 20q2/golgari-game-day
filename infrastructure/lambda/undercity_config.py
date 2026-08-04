@@ -372,3 +372,7 @@ PETRIFY_SLOW = 2          # -SPD applied to the enemy per Petrify stack
 PETRIFY_FREEZE_AT = 4     # Petrify stacks that trigger a one-round freeze (then reset)
 BRITTLE_AMP = 0.15        # +damage the Gorgon deals per Brittle stack
 BRITTLE_MAX = 3           # Brittle stack cap
+
+# ── Wood Lurker (Mimicry) ────────────────────────────────────────────────────
+MIMIC_MIRROR = 3     # +stat matching the foe's fighting style (brute/turtle/trickster)
+MIMIC_BALANCED = 1   # +ATK/+DEF/+SPD vs a balanced foe

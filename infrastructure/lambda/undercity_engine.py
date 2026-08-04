@@ -820,9 +820,10 @@ def effective_stats(player: dict) -> dict:
             eff['atk'] += 1 * mult
             eff['def'] += 1 * mult
             eff['spd'] += 1 * mult
-        elif kind == 'trophy':
-            # Soul Trophy (Deathrite Shaman): a variable +N to a chosen stat for
-            # one battle. The amount + stat ride on the buff entry itself.
+        elif kind in ('trophy', 'mimic'):
+            # Variable +N to a chosen stat for one battle — the amount + stat ride
+            # on the buff entry itself. Soul Trophy (Deathrite Shaman) and Mimicry
+            # (Wood Lurker) share this shape.
             stat = buff.get('stat')
             if stat in ('atk', 'def', 'spd'):
                 eff[stat] += int(buff.get('amount', 0))
