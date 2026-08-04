@@ -20,6 +20,8 @@ export interface GearInfo {
   def?: number;
   spd?: number;
   maxHp?: number;
+  /** Gorgon-forged masterwork ("Gear+"): same tier, primary stat bumped. */
+  plus?: boolean;
 }
 
 export const GEAR: GearInfo[] = [
@@ -209,9 +211,11 @@ export const GEAR_FAMILY: Record<string, Record<number, string>> = (() => {
 
 /** The next rarity rung up for a gear id, or null if Legendary / unupgradeable. */
 export function nextRung(id: string): string | null {
-  const g = GEAR.find((x) => x.id === id);
+  const isPlus = id.endsWith('+'); // a Gorgon-forged "+" upgrades to the next "+"
+  const g = GEAR.find((x) => x.id === (isPlus ? id.slice(0, -1) : id));
   if (!g || !g.rider) return null;
-  return GEAR_FAMILY[g.rider]?.[g.tier + 1] ?? null;
+  const next = GEAR_FAMILY[g.rider]?.[g.tier + 1] ?? null;
+  return next && isPlus ? `${next}+` : next;
 }
 
 /** Blacksmith upgrade cost to reach a tier (mirrors UPGRADE_SPORES/MOLTINGS/ICHOR). */
@@ -233,7 +237,7 @@ export const SALVAGE_YIELD: Record<number, { moltings: number; ichor: number }> 
 export const MARKET_PRICE_MIN_PCT = 0.5;
 export const MARKET_PRICE_MAX_PCT = 2.0;
 export function marketPriceBand(gid: string): { lo: number; hi: number } {
-  const cost = GEAR.find((x) => x.id === gid)?.cost ?? 0;
+  const cost = GEAR_MAP[gid]?.cost ?? 0; // GEAR_MAP resolves "+" ids; GEAR.find would not
   const lo = Math.max(1, Math.floor(cost * MARKET_PRICE_MIN_PCT));
   const hi = Math.max(lo, Math.floor(cost * MARKET_PRICE_MAX_PCT));
   return { lo, hi };
@@ -271,6 +275,29 @@ export const CONSUMABLES: ConsumableInfo[] = [
 ];
 
 export const GEAR_MAP: Record<string, GearInfo> = Object.fromEntries(GEAR.map((g) => [g.id, g]));
+
+// Gorgon "Gear+" masterwork variants (mirror of the generation in
+// undercity_data.py): same piece, primary stat +1 (+2 at Mythic tier 4).
+// Registered into GEAR_MAP for id lookups — NOT into the GEAR catalogue array —
+// so equipped/stash/market resolution renders "+" gear while shop/bazaar
+// listings that iterate GEAR stay unpolluted.
+for (const g of GEAR) {
+  if (!g.rider) continue; // only upgradeable (rider) gear can be minted "+"
+  const prime: 'atk' | 'def' | 'spd' =
+    (g.spd ?? 0) > (g.atk ?? 0) && (g.spd ?? 0) > (g.def ?? 0)
+      ? 'spd'
+      : (g.def ?? 0) > (g.atk ?? 0)
+        ? 'def'
+        : 'atk';
+  const bump = g.tier >= 4 ? 2 : 1;
+  GEAR_MAP[`${g.id}+`] = {
+    ...g,
+    id: `${g.id}+`,
+    name: `${g.name} +`,
+    [prime]: (g[prime] ?? 0) + bump,
+    plus: true,
+  };
+}
 export const CONSUMABLE_MAP: Record<string, ConsumableInfo> = Object.fromEntries(
   CONSUMABLES.map((c) => [c.id, c]),
 );

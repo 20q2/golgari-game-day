@@ -25,10 +25,8 @@ import { PublicPlayer, isShielded } from '../services/undercity-models';
 import { BoardCanvas, BoardMap, BoardNode } from '../engine/board-canvas';
 import { preloadAll, getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
 import { formSprite } from '../data/species';
-import { GEAR } from '../data/items';
+import { GEAR_MAP } from '../data/items';
 import { Scene, SpectatorDirector, SpectatorMapInfo } from './spectator-director';
-
-const GEAR_BY_ID = new Map(GEAR.map((g) => [g.id, g]));
 
 /**
  * /tv — a self-running spectator broadcast of the live Undercity game.
@@ -380,7 +378,7 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
   protected gearRows(p: PublicPlayer): { slot: string; name: string }[] {
     const gear = p.gear ?? {};
     return Object.entries(gear)
-      .filter(([, id]) => GEAR_BY_ID.has(id))
-      .map(([slot, id]) => ({ slot, name: GEAR_BY_ID.get(id)!.name }));
+      .filter(([, id]) => GEAR_MAP[id])
+      .map(([slot, id]) => ({ slot, name: GEAR_MAP[id].name }));
   }
 }
