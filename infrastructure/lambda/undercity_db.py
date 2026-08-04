@@ -595,7 +595,9 @@ def _shielded(doc):
 
 def _combatant(doc):
     eff = engine.effective_stats(doc)
-    pc = engine.pet_combat(_find_pet(doc, doc.get('activePetId')))
+    pc = engine.pet_combat(
+        _find_pet(doc, doc.get('activePetId')),
+        level_bonus=data.GORGON_PET_LEVEL_BONUS if 'stonewright' in _passives(doc) else 0)
     return engine.Combatant(
         name=doc.get('username', '?'), hp=doc['hp'], max_hp=eff['maxHp'],
         atk=eff['atk'], dfn=eff['def'], spd=eff['spd'],

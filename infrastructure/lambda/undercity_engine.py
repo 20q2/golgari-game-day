@@ -856,10 +856,11 @@ def attribute_perks(player: dict) -> frozenset:
     return frozenset(out)
 
 
-def pet_combat(pet: dict) -> dict:
+def pet_combat(pet: dict, level_bonus: int = 0) -> dict:
     """Derive an active pet's combat contribution by ROLE: an 'attack' pet adds a
-    follow-up hit, a 'defend' pet deflects, both scaled by level. Non-combat role
-    / None -> all zeros."""
+    follow-up hit, a 'defend' pet deflects, both scaled by level. `level_bonus`
+    (a Gorgon owner's Stonewright edge) makes the pet fight as if that many levels
+    higher. Non-combat role / None -> all zeros."""
     out = {'followup_chance': 0.0, 'followup_mult': 0.0,
            'deflect_chance': 0.0, 'deflect_flat': 0}
     if not pet:
@@ -868,7 +869,7 @@ def pet_combat(pet: dict) -> dict:
     cfg = data.PET_COMBAT.get(role)
     if not cfg:
         return out
-    lvl = int(pet.get('level', 1))
+    lvl = int(pet.get('level', 1)) + level_bonus
     if role == 'attack':
         out['followup_chance'] = cfg['followup_chance_base'] + cfg['followup_chance_per_lvl'] * (lvl - 1)
         out['followup_mult'] = cfg['followup_mult']

@@ -96,6 +96,14 @@ def test_gorgon_levels_slower():
     assert p['maxHp'] == 33              # HP-per-level unchanged
 
 
+def test_pet_combat_level_bonus_raises_contribution():
+    from undercity_engine import pet_combat
+    pet = {'species': 'baby_leyline_prowler', 'tier': 1, 'level': 2}  # attack role
+    base = pet_combat(pet)
+    boosted = pet_combat(pet, level_bonus=1)
+    assert boosted['followup_chance'] > base['followup_chance']
+
+
 def test_spend_stat_stacks_freely_until_out_of_points():
     p = {'statPoints': 2, 'atk': 6, 'def': 5, 'spd': 5,
          'spentThisLevel': {'atk': 0, 'def': 0, 'spd': 0}}
