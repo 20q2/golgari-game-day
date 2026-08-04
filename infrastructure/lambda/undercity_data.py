@@ -160,8 +160,9 @@ TIER2 = {
     },
     'medusa_stalker': {
         'name': 'Medusa Stalker', 'line': 'gorgon', 'bonus': {'spd': 2, 'atk': 2},
-        'passive': 'vexing',
-        'blurb': 'Gaze-hunter. Vexing: 25% chance enemy strikes miss.',
+        'passive': 'stone_gaze',
+        'blurb': 'Gaze-hunter. Stone Gaze: reads come easily, and every read you land '
+                 'petrifies the foe — stacking slow that ends in a one-round freeze.',
     },
 }
 
@@ -530,7 +531,7 @@ READ_BASE = 0.25
 READ_MAX = 0.80              # cap so a read is never near-guaranteed (was 0.90)
 READ_SPD_COEFF = 0.008       # faster creatures read better, but SPD no longer
                              # monopolises reads (was 0.015)
-READ_PASSIVE_BONUS = {'first_bite': 0.20, 'vexing': 0.15}  # the fast insect lines
+READ_PASSIVE_BONUS = {'first_bite': 0.20, 'vexing': 0.15, 'stone_gaze': 0.15}  # fast insects + Gorgon gaze
 # gear read bonuses live on GEAR[*]['readBonus'] (Glint + Seer charms)
 
 # Monster AI (spec §1). Each personality is a weight triple over

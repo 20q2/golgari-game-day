@@ -351,3 +351,9 @@ GORGON_STAT_POINTS_PER_LEVEL = 1  # she banks 1/level instead of the usual 2
 GORGON_PET_LEVEL_BONUS = 1        # her active pet fights as if this many levels higher
 GEAR_PLUS_BUMP = 1                # Gear+ adds this to a piece's primary stat…
 GEAR_PLUS_MYTHIC_BUMP = 2         # …or this at Mythic (tier 4)
+
+# ── Gorgon abilities (Petrify / Shatter) ─────────────────────────────────────
+PETRIFY_SLOW = 2          # -SPD applied to the enemy per Petrify stack
+PETRIFY_FREEZE_AT = 4     # Petrify stacks that trigger a one-round freeze (then reset)
+BRITTLE_AMP = 0.15        # +damage the Gorgon deals per Brittle stack
+BRITTLE_MAX = 3           # Brittle stack cap

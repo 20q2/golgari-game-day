@@ -18,3 +18,13 @@ def test_combatant_petrify_brittle_round_trip():
     back.petrify = 7
     db._bt_store(back, snap)
     assert snap['petrify'] == 7
+
+
+def test_petrify_scalars_and_stone_gaze_read_bonus():
+    assert data.PETRIFY_SLOW == 2
+    assert data.PETRIFY_FREEZE_AT == 4
+    assert data.READ_PASSIVE_BONUS['stone_gaze'] == 0.15
+
+
+def test_medusa_has_stone_gaze():
+    assert data.TIER2['medusa_stalker']['passive'] == 'stone_gaze'
