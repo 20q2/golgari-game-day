@@ -1733,6 +1733,32 @@ def test_depths_wild_is_tier2(table, monkeypatch):
     assert se['spores'] >= min(n['bounty'] for n in data.DEPTHS_MID)
 
 
+def test_battle_payload_carries_spawn_zone_tier(table):
+    # Enemy size-tier = its spawn zone's difficulty tier (cavern=1, depths=2).
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+
+    ev1 = db._wild_battle(table, sid, doc, elite=False, region='cavern')
+    assert ev1['type'] == 'battle_start'
+    assert ev1['npc']['tier'] == 1
+
+    ev2 = db._wild_battle(table, sid, doc, elite=False, region='depths')
+    assert ev2['npc']['tier'] == 2
+
+
+def test_boss_battle_is_tier3(table, monkeypatch):
+    # Bosses are always T3 regardless of where they sit.
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    act(table, 'boss-awaken', hostKey='swampking')
+    doc['position'] = 'boss'
+    out = db._boss(table, sid, doc, 'boss', 'isl_ossuary')
+    assert out['type'] == 'battle_start' and out['kind'] == 'boss'
+    assert out['npc']['tier'] == 3
+
+
 def test_bone_chill_consumed_by_next_battle(table, monkeypatch):
     sid, doc = _player_at(table, 'city_r1', buffs=[{'kind': 'bone_chill'}])
     db._wild_battle(table, sid, doc)                 # start (buff frozen into rec)
@@ -4497,3 +4523,22 @@ def test_snowball_counters_round_trip_and_persist_stats():
     # atk/spd now persist across rounds (previously only dfn did).
     assert rec['atk'] == 16 and rec['spd'] == 8 and rec['dfn'] == 6
     assert rec['growth_stacks'] == 2 and rec['doom_stacks'] == 1
+
+
+def test_lair_bosses_carry_familiar_traits():
+    want = {'bone_lair': 'grave_growth', 'garden_lair': 'swarm',
+            'bog_lair': 'dredge', 'cavern_lair': 'doom_counters',
+            'city_lair': 'web_venom'}
+    for node, trait in want.items():
+        assert trait in (data.LAIR_BOSSES[node].get('passives') or []), node
+
+
+def test_lair_boss_combatant_carries_its_trait(table):
+    # Engaging a lair boss builds a battle record whose npc carries the trait,
+    # so the client surfaces it (npcStatus) exactly like the familiar teaches.
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'city_lair'
+    db._lair(table, sid, doc, 'city_lair')
+    assert 'web_venom' in (doc['battle']['npc'].get('passives') or [])
