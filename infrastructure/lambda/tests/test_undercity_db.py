@@ -1723,6 +1723,9 @@ def _player_at(table, node, **fields):
 
 def test_depths_wild_is_tier2(table, monkeypatch):
     sid, doc = _player_at(table, 'city_d1')  # a depths (dungeon) wild space
+    # Force a signature MISS so this exercises the flat tier-2 pool (the boss
+    # familiar path is covered by test_boss_area_signature_spawns_themed_minion).
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)
     ev = db._wild_battle(table, sid, doc)
     assert ev['type'] == 'battle_start'
     assert ev['npc']['id'] in {n['id'] for n in data.DEPTHS_MID}
