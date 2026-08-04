@@ -200,3 +200,74 @@ def test_market_buy_legacy_gear_row(table):
     status, _ = db._market_buy(table, sid, buyer, {'listingId': 'legacy01'})
     assert status == 200
     assert buyer['gearStash'] == ['bark_hide']
+
+
+# ── Companion pets / eggs on the player market (instance listings) ────────────
+
+def _give_pet_to(doc, species='fox', tier=2, level=3):
+    pet = {'id': db._new_id('pet-'), 'species': species, 'tier': tier,
+           'level': level, 'mergeProgress': 0}
+    doc.setdefault('pets', []).append(pet)
+    return pet
+
+
+def test_market_list_and_buy_pet(table):
+    sid, seller, buyer = _two_players(table)
+    pet = _give_pet_to(seller, 'fox', tier=2, level=3)
+    lo, _hi = db._instance_price_band('pet', pet)
+    status, body = db._market_list(table, sid, seller, {'kind': 'pet', 'petId': pet['id'], 'price': lo})
+    assert status == 200
+    lid = body['listingId']
+    assert seller['pets'] == []
+
+    buyer['spores'] = 500
+    status, _ = db._market_buy(table, sid, buyer, {'listingId': lid})
+    assert status == 200
+    assert len(buyer['pets']) == 1
+    got = buyer['pets'][0]
+    assert got['species'] == 'fox' and got['tier'] == 2 and got['level'] == 3
+    assert got['id'] != pet['id']                  # a fresh instance id was minted
+    assert buyer['spores'] == 500 - lo
+    assert _listing_gone(table, sid, lid)
+
+
+def test_market_list_pet_clears_active_pointer(table):
+    sid, seller, _buyer = _two_players(table)
+    pet = _give_pet_to(seller)
+    seller['activePetId'] = pet['id']
+    lo, _ = db._instance_price_band('pet', pet)
+    db._market_list(table, sid, seller, {'kind': 'pet', 'petId': pet['id'], 'price': lo})
+    assert seller['activePetId'] is None
+
+
+def test_market_list_and_buy_egg(table):
+    sid, seller, buyer = _two_players(table)
+    db._grant_egg(seller, 2)
+    egg = seller['eggs'][0]
+    lo, _ = db._instance_price_band('egg', egg)
+    status, body = db._market_list(table, sid, seller, {'kind': 'egg', 'eggId': egg['id'], 'price': lo})
+    assert status == 200
+    assert seller['eggs'] == []
+
+    buyer['spores'] = 500
+    status, _ = db._market_buy(table, sid, buyer, {'listingId': body['listingId']})
+    assert status == 200
+    assert len(buyer['eggs']) == 1 and buyer['eggs'][0]['tier'] == 2
+
+
+def test_market_cancel_returns_pet(table):
+    sid, seller, _buyer = _two_players(table)
+    pet = _give_pet_to(seller)
+    lo, _ = db._instance_price_band('pet', pet)
+    _, body = db._market_list(table, sid, seller, {'kind': 'pet', 'petId': pet['id'], 'price': lo})
+    seller = db._get_player(table, sid, 'user-alex')       # fresh optimistic-lock version
+    status, _ = db._market_cancel(table, sid, seller, {'listingId': body['listingId']})
+    assert status == 200
+    assert len(seller['pets']) == 1 and seller['pets'][0]['id'] == pet['id']
+
+
+def test_market_pet_price_band_rejects_out_of_band(table):
+    sid, seller, _buyer = _two_players(table)
+    pet = _give_pet_to(seller, tier=2, level=3)
+    assert db._market_list(table, sid, seller, {'kind': 'pet', 'petId': pet['id'], 'price': 1})[0] == 409
+    assert db._market_list(table, sid, seller, {'kind': 'pet', 'petId': pet['id'], 'price': 99999})[0] == 409

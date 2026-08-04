@@ -337,3 +337,41 @@ def test_bird_scout_rejects_non_bazaar_target(table):
     sid, doc = _persist_active_pet(table, 'bird')
     status, _ = db._use_pet_ability(table, sid, doc, {'targetNode': 'n1'})
     assert status == 409
+
+
+# ── Feature: eggs stocked at the Rot Bazaar ──────────────────────────────────
+
+def test_shop_stock_includes_eggs():
+    stock = db._gen_shop_stock('city_r1', 0)
+    assert 'eggs' in stock
+    assert stock['eggs']  # at least one egg line
+    for line in stock['eggs']:
+        assert line['tier'] in data.SHOP_EGG_COST
+        assert line['qty'] >= 1
+        assert line['cost'] == data.SHOP_EGG_COST[line['tier']]
+
+
+def test_buy_egg_from_bazaar(table):
+    sid = _sid(table)
+    shop = next(n for n, v in db._season_map(table, sid).items() if v.get('type') == 'shop')
+    _, doc = _player_at(table, shop)
+    doc['spores'] = 999
+    stock = db._shop_stock(table, sid, shop)
+    tier = stock['eggs'][0]['tier']
+    before = len(doc.get('eggs') or [])
+    status, body = db._buy(table, sid, doc, {'kind': 'egg', 'tier': tier})
+    assert status == 200
+    assert len(doc['eggs']) == before + 1
+    assert doc['eggs'][-1]['tier'] == tier
+    assert doc['spores'] == 999 - data.SHOP_EGG_COST[tier]
+
+
+def test_buy_egg_rejects_when_broke(table):
+    sid = _sid(table)
+    shop = next(n for n, v in db._season_map(table, sid).items() if v.get('type') == 'shop')
+    _, doc = _player_at(table, shop)
+    doc['spores'] = 0
+    tier = db._shop_stock(table, sid, shop)['eggs'][0]['tier']
+    status, _ = db._buy(table, sid, doc, {'kind': 'egg', 'tier': tier})
+    assert status == 409
+    assert (doc.get('eggs') or []) == []

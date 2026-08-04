@@ -307,6 +307,20 @@ PET_MOUSE_ITEM_CHANCE_PER_LVL = 0.05
 PET_GRUB_MOLTINGS_BASE = 1
 PET_GRUB_MOLTINGS_PER_LVL = 0.34
 
+# The Rot Bazaar's Eggs tab: a couple of eggs stocked per 30-min window, skewed
+# to low tiers, each a Spore-priced gamble. Deterministic per (node, window) like
+# the rest of the shop stock. Mirror in board-tab.component.ts egg rows.
+SHOP_EGG_SLOTS = 2                 # egg lines rolled per window (may collapse by tier)
+SHOP_EGG_QTY = 1                   # units per stocked egg tier
+SHOP_EGG_TIER_WEIGHTS = {1: 0.6, 2: 0.3, 3: 0.1}
+SHOP_EGG_COST = {1: 25, 2: 60, 3: 130, 4: 250}
+
+# Player-market resale value of a companion / egg — the price band centers on
+# this via MARKET_PRICE_MIN/MAX_PCT, exactly like gear. Pets scale with level.
+PET_MARKET_VALUE = {1: 20, 2: 55, 3: 120, 4: 240}
+PET_MARKET_PER_LEVEL = 6
+EGG_MARKET_VALUE = {1: 25, 2: 60, 3: 130, 4: 250}
+
 
 # ── Respawning ruin lairs (design 2026-08-02) ────────────────────────────────
 # The two side-content ruin lairs (Lord of Extinction, Doomgape) don't share the

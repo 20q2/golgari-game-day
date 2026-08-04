@@ -198,8 +198,17 @@ def _gen_shop_stock(node, window):
     rng.shuffle(tier1)
     grimoires = tier1[:data.SHOP_GRIMOIRE_SLOTS]
 
-    return {'window': window, 'gear': gear,
-            'consumables': consumables, 'grimoires': grimoires}
+    # Eggs (the Eggs tab): a couple of low-skewed companion eggs to gamble on;
+    # collapse duplicate tiers into a single line with summed quantity.
+    egg_qty = {}
+    for _ in range(data.SHOP_EGG_SLOTS):
+        t = _weighted_tier(rng, data.SHOP_EGG_TIER_WEIGHTS)
+        egg_qty[t] = egg_qty.get(t, 0) + data.SHOP_EGG_QTY
+    eggs = [{'tier': t, 'qty': q, 'cost': data.SHOP_EGG_COST[t]}
+            for t, q in sorted(egg_qty.items())]
+
+    return {'window': window, 'gear': gear, 'consumables': consumables,
+            'grimoires': grimoires, 'eggs': eggs}
 
 
 def _shop_stock(table, sid, node):
@@ -1419,16 +1428,134 @@ def _market_price_band(kind, item_id):
     return lo, hi
 
 
-def _create_market_listing(table, sid, doc, kind, item_id, price):
+# ── Instance market listings (companions & eggs) ─────────────────────────────
+# Unlike gear/consumables/scrolls (string ids in a capped array), a pet/egg is a
+# unique object, so its listing carries the whole object as `payload` and these
+# helpers resolve its value/name from that object rather than a static id table.
+
+def _instance_market_value(kind, obj):
+    if kind == 'pet':
+        return (data.PET_MARKET_VALUE.get(obj['tier'], 20)
+                + data.PET_MARKET_PER_LEVEL * (int(obj.get('level', 1)) - 1))
+    return data.EGG_MARKET_VALUE.get(obj['tier'], 25)
+
+
+def _instance_price_band(kind, obj):
+    base = _instance_market_value(kind, obj)
+    lo = max(1, int(base * data.MARKET_PRICE_MIN_PCT))
+    hi = max(lo, int(base * data.MARKET_PRICE_MAX_PCT))
+    return lo, hi
+
+
+def _instance_market_name(kind, obj):
+    if kind == 'pet':
+        return data.PET_SPECIES.get(obj['species'], {}).get('name', 'companion')
+    return f"tier-{obj['tier']} egg"
+
+
+def _create_market_listing(table, sid, doc, kind, item_id, price, payload=None):
     """Write one MARKET# row selling `item_id` for `price` on behalf of `doc`.
     Shared by the manual list action and the dig-site auto-list; the caller owns
-    removing the item from inventory (or, for digs, the item never entered it)."""
+    removing the item from inventory (or, for digs, the item never entered it).
+    `payload` carries a full object for instance kinds (pet/egg)."""
     listing_id = '%08x' % _rng.getrandbits(32)
-    table.put_item(Item={
+    item = {
         'pk': _season_pk(sid), 'sk': f'MARKET#{listing_id}', 'id': listing_id,
         'sellerId': doc['userId'], 'sellerName': doc.get('username', '?'),
-        'kind': kind, 'itemId': item_id, 'price': int(price), 'createdAt': _now()})
+        'kind': kind, 'itemId': item_id, 'price': int(price), 'createdAt': _now()}
+    if payload is not None:
+        item['payload'] = payload
+    table.put_item(Item=item)
     return listing_id
+
+
+# Instance market kinds route through dedicated list/buy/cancel branches; the
+# object (not a string id) is the thing being sold.
+_INSTANCE_MARKET = {'pet': ('pets', 'petId'), 'egg': ('eggs', 'eggId')}
+
+
+def _market_list_instance(table, sid, doc, kind, payload):
+    """List a companion pet or an egg (unique object instances) on the market."""
+    field, id_key = _INSTANCE_MARKET[kind]
+    inv = doc.get(field) or []
+    obj = next((o for o in inv if o.get('id') == payload.get(id_key)), None)
+    if not obj:
+        return _err(f'No such {kind}.', 409)
+    try:
+        price = int(payload.get('price'))
+    except (TypeError, ValueError):
+        return _err('Pick a price.')
+    lo, hi = _instance_price_band(kind, obj)
+    if price < lo or price > hi:
+        return _err(f'Price must be {lo}–{hi} Spores for that {kind}.', 409)
+    if _market_listing_count(table, sid, doc['userId']) >= data.MARKET_MAX_LISTINGS:
+        return _err(f'You already have {data.MARKET_MAX_LISTINGS} listings — cancel one first.', 409)
+    doc[field] = [o for o in inv if o.get('id') != obj['id']]
+    if kind == 'pet' and doc.get('activePetId') == obj['id']:
+        doc['activePetId'] = None
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    name = _instance_market_name(kind, obj)
+    listing_id = _create_market_listing(table, sid, doc, kind, name, price, payload=obj)
+    return _ok(doc, text=f'Listed {name} for {price} Spores.', listingId=listing_id)
+
+
+def _market_buy_instance(table, sid, doc, listing, kind):
+    """Claim a pet/egg listing: pay the seller and mint the object into the buyer.
+    A pet arrives as a fresh instance id; an egg re-enters the incubator queue."""
+    pk = _season_pk(sid)
+    listing_id = listing['id']
+    price = int(listing['price'])
+    if doc.get('spores', 0) < price:
+        return _err('Not enough Spores.', 409)
+    obj = listing.get('payload')
+    if not obj:
+        return _err('That listing is gone.', 409)
+    try:
+        table.delete_item(Key={'pk': pk, 'sk': f'MARKET#{listing_id}'},
+                          ConditionExpression='attribute_exists(sk)')
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            return _err('That listing just sold.', 409)
+        raise
+    doc['spores'] = doc.get('spores', 0) - price
+    if kind == 'pet':
+        doc.setdefault('pets', []).append({
+            'id': _new_id('pet-'), 'species': obj['species'], 'tier': int(obj['tier']),
+            'level': int(obj.get('level', 1)), 'mergeProgress': int(obj.get('mergeProgress', 0))})
+    else:
+        _grant_egg(doc, int(obj['tier']))
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    name = _instance_market_name(kind, obj)
+    _credit_market_seller(table, sid, listing['sellerId'], price, {
+        'kind': 'market', 'at': _now(),
+        'text': f"{doc.get('username', 'Someone')} bought your {name} for {price} Spores."})
+    return _ok(doc, text=f'Bought {name} for {price} Spores.')
+
+
+def _market_cancel_instance(table, sid, doc, listing, kind):
+    """Reclaim your own pet/egg listing back into inventory (same instance)."""
+    pk = _season_pk(sid)
+    listing_id = listing['id']
+    obj = listing.get('payload')
+    if not obj:
+        return _err('That listing is gone.', 409)
+    try:
+        table.delete_item(Key={'pk': pk, 'sk': f'MARKET#{listing_id}'},
+                          ConditionExpression='attribute_exists(sk)')
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            return _err('That listing just sold.', 409)
+        raise
+    field = _INSTANCE_MARKET[kind][0]
+    doc.setdefault(field, []).append(obj)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text=f'Reclaimed {_instance_market_name(kind, obj)}.')
 
 
 def _market_listing_count(table, sid, seller_id):
@@ -1458,6 +1585,8 @@ def _market_list(table, sid, doc, payload):
     """List an inventory item (gear / bag consumable / spell scroll) on the Player
     Market at a bounded Spore price."""
     kind = payload.get('kind', 'gear')
+    if kind in _INSTANCE_MARKET:
+        return _market_list_instance(table, sid, doc, kind, payload)
     spec = _MARKET_KINDS.get(kind)
     if not spec:
         return _err('You cannot sell that.')
@@ -1620,6 +1749,8 @@ def _market_buy(table, sid, doc, payload):
     if listing['sellerId'] == doc['userId']:
         return _err('That is your own listing — cancel it instead.', 409)
     kind, item_id = _market_kind(listing)
+    if kind in _INSTANCE_MARKET:
+        return _market_buy_instance(table, sid, doc, listing, kind)
     spec = _MARKET_KINDS.get(kind)
     if not spec:
         return _err('That listing is gone.', 409)
@@ -1657,6 +1788,8 @@ def _market_cancel(table, sid, doc, payload):
     if listing['sellerId'] != doc['userId']:
         return _err('That is not your listing.', 409)
     kind, item_id = _market_kind(listing)
+    if kind in _INSTANCE_MARKET:
+        return _market_cancel_instance(table, sid, doc, listing, kind)
     spec = _MARKET_KINDS.get(kind)
     if not spec:
         return _err('That listing is gone.', 409)
@@ -6009,7 +6142,24 @@ def _buy(table, sid, doc, payload):
     stock = _shop_stock(table, sid, node)
     deplete = None  # the stock line to decrement on a successful gear/consumable buy
 
-    if item_id in data.GEAR:
+    if payload.get('kind') == 'egg':
+        try:
+            tier = int(payload.get('tier'))
+        except (TypeError, ValueError):
+            return _err('Pick an egg.')
+        line = next((e for e in stock.get('eggs', []) if e['tier'] == tier), None)
+        if not line:
+            return _err("The bazaar isn't stocking that egg right now.", 409)
+        if line['qty'] <= 0:
+            return _err('Sold out — check back after the restock.', 409)
+        cost = int(line.get('cost', data.SHOP_EGG_COST.get(tier, 99999)))
+        if doc.get('spores', 0) < cost:
+            return _err('Not enough Spores.', 409)
+        doc['spores'] = doc.get('spores', 0) - cost
+        _grant_egg(doc, tier)
+        deplete = line
+        text = f'Bought a tier-{tier} egg! It waits in your incubator queue.'
+    elif item_id in data.GEAR:
         line = next((e for e in stock['gear'] if e['item'] == item_id), None)
         if not line:
             return _err("The bazaar isn't stocking that right now.", 409)
@@ -6068,7 +6218,8 @@ def _buy(table, sid, doc, payload):
         table.put_item(Item={
             'pk': _season_pk(sid), 'sk': f'SHOP#{node}',
             'window': stock['window'], 'gear': stock['gear'],
-            'consumables': stock['consumables'], 'grimoires': stock['grimoires']})
+            'consumables': stock['consumables'], 'grimoires': stock['grimoires'],
+            'eggs': stock.get('eggs', [])})
     return _ok(doc, text=text)
 
 
