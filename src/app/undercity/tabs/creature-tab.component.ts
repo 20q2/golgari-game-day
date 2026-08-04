@@ -11,7 +11,14 @@ import {
   formName,
   xpToNext,
 } from '../data/forms';
-import { GEAR_MAP, CONSUMABLE_MAP, tierRarity, marketBand, MarketKind } from '../data/items';
+import {
+  GEAR_MAP,
+  CONSUMABLE_MAP,
+  tierRarity,
+  marketBand,
+  MarketKind,
+  SALVAGE_YIELD,
+} from '../data/items';
 import { RIDER_AUGMENTS } from '../data/combat';
 import {
   innateSpellIds,
@@ -34,12 +41,38 @@ import {
   SpecialPaintInfo,
 } from '../data/cosmetics';
 import { PERKS, PERK_TRACKS, PerkTrack } from '../data/perks';
+import {
+  PET_SPECIES,
+  Pet,
+  PetSpecies,
+  petInfo,
+  petRarity,
+  levelCap,
+  atLevelCap,
+  atMaxTier,
+  levelCost,
+  salvageYield,
+  mergeWouldRankUp,
+  abilityReady,
+  abilityCooldownLeftMin,
+  petMarketBand,
+  eggMarketBand,
+  petRole,
+  petSpriteUrl,
+  eggSpriteUrl,
+  Egg,
+  PET_INCUBATE_MINUTES,
+} from '../data/pets';
 import { formSprite } from '../data/species';
 import { getRecoloredDataUrl, getRecoloredWithHatEffectDataUrl } from '../engine/sprite-engine';
-import { isShielded } from '../services/undercity-models';
+import { isShielded, BazaarView } from '../services/undercity-models';
 import { DUNGEONS, SIGILS_REQUIRED } from '../data/dungeons';
 import { regionInfo } from '../data/regions';
 import { UcActionBandComponent } from './action-band.component';
+
+/** Fraction of a gear piece's Spore cost refunded on a sell-salvage (mirrors
+ *  undercity_data.GEAR_SELL_BACK; matches the Salvage Yard in the Plaza). */
+const GEAR_SELL_BACK = 0.5;
 
 type CreatureSubTab = 'stats' | 'gear' | 'wardrobe' | 'sigils';
 
@@ -58,22 +91,7 @@ function loadSubTab(): CreatureSubTab {
   return 'stats';
 }
 
-type GearSection = 'home' | 'equip' | 'magic' | 'bag';
-
-/** localStorage key remembering which gear section (hub or a drilled-in
- *  panel) was last open, so returning to the Gear tab restores it. */
-const GEAR_SECTION_KEY = 'uc-gear-section';
-const GEAR_SECTIONS: readonly GearSection[] = ['home', 'equip', 'magic', 'bag'];
-
-function loadGearSection(): GearSection {
-  try {
-    const v = localStorage.getItem(GEAR_SECTION_KEY) as GearSection | null;
-    if (v && GEAR_SECTIONS.includes(v)) return v;
-  } catch {
-    /* storage blocked — fall back to the hub */
-  }
-  return 'home';
-}
+type GearSection = 'home' | 'equip' | 'magic' | 'bag' | 'companion';
 
 type ItemSource = 'equipped' | 'stash' | 'bag';
 
@@ -133,9 +151,9 @@ export class CreatureTabComponent {
   protected readonly subTab = signal<CreatureSubTab>(loadSubTab());
 
   /** Which gear section is showing: the hub grid ('home') or a drilled-in
-   *  panel. Seeded from and persisted to localStorage so the last-open
-   *  section is restored when the player returns to the Gear tab. */
-  protected readonly gearSection = signal<GearSection>(loadGearSection());
+   *  panel. Always starts at the hub — entering the Gear tab should present
+   *  the choice of Equipment / Magic / Bag, never a remembered sub-panel. */
+  protected readonly gearSection = signal<GearSection>('home');
 
   /** Direction of the last gear-section change, driving the slide-in
    *  animation: 'forward' when drilling into a tile, 'back' returning home. */
@@ -150,16 +168,16 @@ export class CreatureTabComponent {
         /* storage full/blocked — stay session-only */
       }
     });
-
+    // Nudge the player once, the poll after an incubating egg finishes warming.
     effect(() => {
-      const section = this.gearSection();
-      try {
-        localStorage.setItem(GEAR_SECTION_KEY, section);
-      } catch {
-        /* storage full/blocked — stay session-only */
-      }
+      const ready = this.incubatorReady() && !!this.incubator();
+      if (ready && !this.wasIncubatorReady) this.showToast('An egg is ready to hatch!');
+      this.wasIncubatorReady = ready;
     });
   }
+
+  /** Tracks the ready→toast edge so the "egg ready" nudge fires only once. */
+  private wasIncubatorReady = false;
 
   /** Which stat's description panel is open ('atk' | 'def' | 'spd' | null). */
   protected readonly openStat = signal<string | null>(null);
@@ -198,15 +216,328 @@ export class CreatureTabComponent {
     this.gearSection.set(section);
   }
 
-  /** Bottom-bar Gear button: entering the tab restores the remembered section;
-   *  tapping it again while already on Gear pops back to the hub. */
+  /** Bottom-bar Gear button: always lands on the hub — whether entering the
+   *  tab fresh or tapping it again while already on Gear, the player sees the
+   *  Equipment / Magic / Bag choice rather than a remembered sub-panel. */
   selectGearTab(): void {
-    if (this.subTab() === 'gear') {
-      this.gearNav.set('back');
-      this.gearSection.set('home');
-    } else {
-      this.subTab.set('gear');
+    this.gearNav.set('back');
+    this.gearSection.set('home');
+    this.subTab.set('gear');
+  }
+
+  // ── Companions ────────────────────────────────────────────────────────────
+  // Template-exposed pets.ts helpers (Angular templates can only call class
+  // members, so re-bind the pure helpers here).
+  protected readonly petInfo = petInfo;
+  protected readonly petRarity = petRarity;
+  protected readonly petLevelCap = levelCap;
+  protected readonly petAtLevelCap = atLevelCap;
+  protected readonly petAtMaxTier = atMaxTier;
+  protected readonly petLevelCost = levelCost;
+  protected readonly petSalvageYield = salvageYield;
+  protected readonly petSpriteUrl = petSpriteUrl;
+  protected readonly eggSpriteUrl = eggSpriteUrl;
+  protected readonly PET_INCUBATE_MINUTES = PET_INCUBATE_MINUTES;
+
+  /** The pet whose detail popup is open (null = none). */
+  protected readonly selectedPet = signal<Pet | null>(null);
+  /** Fodder pet ids ticked for a merge into the selected keeper. */
+  protected readonly mergePicks = signal<Set<string>>(new Set());
+
+  protected readonly activePet = computed<Pet | null>(() => {
+    const you = this.store.you();
+    const id = you?.activePetId;
+    return (you?.pets ?? []).find((p) => p.id === id) ?? null;
+  });
+
+  /** Owned pets that aren't the active one — the roster grid. */
+  protected readonly rosterPets = computed<Pet[]>(() => {
+    const you = this.store.you();
+    const id = you?.activePetId;
+    return (you?.pets ?? []).filter((p) => p.id !== id);
+  });
+
+  protected readonly eggsList = computed(() => this.store.you()?.eggs ?? []);
+  protected readonly incubator = computed(() => this.store.you()?.incubator ?? null);
+
+  /** True once the incubating egg has sat long enough to hatch. */
+  protected readonly incubatorReady = computed<boolean>(() => {
+    const inc = this.incubator();
+    if (!inc?.startedAt) return false;
+    const done = new Date(inc.startedAt + 'Z').getTime() + PET_INCUBATE_MINUTES * 60000;
+    return Date.now() >= done;
+  });
+
+  /** Whole minutes left before the incubating egg can hatch (0 when ready). */
+  protected incubatorLeftMin(): number {
+    const inc = this.incubator();
+    if (!inc?.startedAt) return 0;
+    const done = new Date(inc.startedAt + 'Z').getTime() + PET_INCUBATE_MINUTES * 60000;
+    const ms = done - Date.now();
+    return ms <= 0 ? 0 : Math.ceil(ms / 60000);
+  }
+
+  /** Same-species fodder available to merge into a keeper (excludes the keeper). */
+  protected mergeFodderFor(keeper: Pet): Pet[] {
+    return (this.store.you()?.pets ?? []).filter(
+      (p) => p.id !== keeper.id && p.species === keeper.species,
+    );
+  }
+
+  /** Whether the currently-picked fodder would advance the keeper a tier. */
+  protected mergeReady(keeper: Pet): boolean {
+    const picks = this.mergePicks();
+    const fodder = this.mergeFodderFor(keeper).filter((p) => picks.has(p.id));
+    return fodder.length > 0 && mergeWouldRankUp(keeper, fodder);
+  }
+
+  /** Can this activated pet fire right now (activated role + off its role cooldown)? */
+  protected petAbilityReady(pet: Pet): boolean {
+    if (petInfo(pet.species).kind !== 'activated') return false;
+    return abilityReady(this.store.you()?.petCooldowns, petRole(pet.species));
+  }
+
+  protected petAbilityLeftMin(pet: Pet): number {
+    return abilityCooldownLeftMin(this.store.you()?.petCooldowns, petRole(pet.species));
+  }
+
+  /** Role of a pet's species, for template dispatch (forage/scout/…). */
+  protected petRoleOf(pet: Pet): string {
+    return petRole(pet.species);
+  }
+
+  /** Enough materials to level this pet? */
+  protected canLevelPet(pet: Pet): boolean {
+    if (atLevelCap(pet)) return false;
+    const cost = levelCost(pet);
+    const mats = this.store.you()?.materials ?? { moltings: 0, ichor: 0 };
+    return mats.moltings >= cost.moltings && mats.ichor >= cost.ichor;
+  }
+
+  protected openPet(pet: Pet): void {
+    this.mergePicks.set(new Set());
+    this.petListOpen.set(false);
+    this.selectedPet.set(pet);
+  }
+
+  protected closePet(): void {
+    this.selectedPet.set(null);
+    this.mergePicks.set(new Set());
+    this.petListOpen.set(false);
+  }
+
+  protected toggleMergePick(id: string): void {
+    this.mergePicks.update((s) => {
+      const next = new Set(s);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  async incubateEgg(eggId: string): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('incubate-egg', { eggId });
+      this.showToast(resp.text ?? 'The egg is warming.');
+    });
+  }
+
+  // ── Interactive hatch: tap 3× to crack the egg, then reveal the pet ────────
+  protected readonly HATCH_TAPS = 3;
+  protected readonly hatchTaps = signal(0);
+  protected readonly hatchShaking = signal(false);
+  protected readonly hatchChunks = signal<{ id: number; t: string }[]>([]);
+  /** The freshly-hatched pet, shown in the reveal overlay (null = closed). */
+  protected readonly hatchReveal = signal<Pet | null>(null);
+  private chunkSeq = 0;
+  private hatchBusy = false;
+
+  protected hatchRemaining(): number {
+    return Math.max(0, this.HATCH_TAPS - this.hatchTaps());
+  }
+
+  /** One crack: shake the egg, throw a few shell chunks, and on the 3rd tap
+   *  actually hatch it on the server and reveal what came out. */
+  protected tapHatch(): void {
+    if (this.hatchBusy || this.busy() || !this.incubatorReady()) return;
+    this.hatchShaking.set(true);
+    setTimeout(() => this.hatchShaking.set(false), 260);
+
+    const chunks = Array.from({ length: 6 }, () => {
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 26 + Math.random() * 22;
+      const dx = Math.round(Math.cos(ang) * dist);
+      const dy = Math.round(Math.sin(ang) * dist) - 10; // bias upward
+      const rot = Math.round((Math.random() - 0.5) * 360);
+      return { id: this.chunkSeq++, t: `translate(${dx}px, ${dy}px) rotate(${rot}deg)` };
+    });
+    this.hatchChunks.update((cur) => [...cur, ...chunks]);
+    const ids = new Set(chunks.map((c) => c.id));
+    setTimeout(() => this.hatchChunks.update((cur) => cur.filter((c) => !ids.has(c.id))), 520);
+
+    const taps = this.hatchTaps() + 1;
+    this.hatchTaps.set(taps);
+    if (taps >= this.HATCH_TAPS) {
+      this.hatchBusy = true;
+      void this.doHatch();
     }
+  }
+
+  private async doHatch(): Promise<void> {
+    const before = new Set((this.store.you()?.pets ?? []).map((p) => p.id));
+    await this.run(async () => {
+      const resp = await this.store.action('hatch-egg', {});
+      const fresh = (this.store.you()?.pets ?? []).find((p) => !before.has(p.id));
+      if (fresh) this.hatchReveal.set(fresh);
+      else this.showToast(resp.text ?? 'It hatched!');
+    });
+    this.hatchTaps.set(0);
+    this.hatchChunks.set([]);
+    this.hatchBusy = false;
+  }
+
+  protected closeReveal(): void {
+    this.hatchReveal.set(null);
+  }
+
+  async activateFromReveal(pet: Pet): Promise<void> {
+    this.closeReveal();
+    await this.activatePet(pet);
+  }
+
+  async activatePet(pet: Pet): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('activate-pet', { petId: pet.id });
+      this.showToast(resp.text ?? `${petInfo(pet.species).name} is now at your side.`);
+    });
+    this.closePet();
+  }
+
+  async mergePet(keeper: Pet): Promise<void> {
+    const fodderPetIds = [...this.mergePicks()];
+    if (!fodderPetIds.length) return;
+    await this.run(async () => {
+      const resp = await this.store.action('merge-pet', {
+        targetPetId: keeper.id,
+        fodderPetIds,
+      });
+      this.showToast(resp.text ?? 'Merged.');
+    });
+    this.closePet();
+  }
+
+  async levelPet(pet: Pet): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('level-pet', { petId: pet.id });
+      this.showToast(resp.text ?? 'Leveled up!');
+      // Keep the open popup pointed at the freshened pet instance.
+      const fresh = (this.store.you()?.pets ?? []).find((p) => p.id === pet.id);
+      this.selectedPet.set(fresh ?? null);
+    });
+  }
+
+  async salvagePet(pet: Pet): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('salvage-pet', { petId: pet.id });
+      this.showToast(resp.text ?? 'Salvaged.');
+    });
+    this.closePet();
+  }
+
+  async usePetAbility(pet: Pet, targetNode?: string): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('use-pet-ability', targetNode ? { targetNode } : {});
+      this.showToast(resp.text ?? 'Your companion goes to work.');
+    });
+  }
+
+  // ── Pet market-sell (the "Sell" disposal exit) ────────────────────────────
+  protected readonly petMarketBand = petMarketBand;
+  protected readonly petListOpen = signal(false);
+  protected readonly petListPrice = signal(0);
+
+  protected beginPetList(pet: Pet): void {
+    this.petListPrice.set(petMarketBand(pet).lo);
+    this.petListOpen.set(true);
+  }
+
+  async listPetOnMarket(pet: Pet, price: number): Promise<void> {
+    if (!Number.isFinite(price)) return;
+    await this.run(async () => {
+      const resp = await this.store.action('market-list', { kind: 'pet', petId: pet.id, price });
+      this.showToast(resp.text ?? 'Listed on the market.');
+    });
+    this.closePet();
+  }
+
+  // ── Egg detail popup: incubate or sell ────────────────────────────────────
+  protected readonly eggMarketBand = eggMarketBand;
+  protected readonly selectedEgg = signal<Egg | null>(null);
+  protected readonly eggListOpen = signal(false);
+  protected readonly eggListPrice = signal(0);
+
+  protected openEgg(egg: Egg): void {
+    this.eggListOpen.set(false);
+    this.selectedEgg.set(egg);
+  }
+  protected closeEgg(): void {
+    this.selectedEgg.set(null);
+    this.eggListOpen.set(false);
+  }
+  protected beginEggList(egg: Egg): void {
+    this.eggListPrice.set(eggMarketBand(egg.tier).lo);
+    this.eggListOpen.set(true);
+  }
+
+  async incubateEggFromPopup(egg: Egg): Promise<void> {
+    await this.incubateEgg(egg.id);
+    this.closeEgg();
+  }
+
+  async listEggOnMarket(egg: Egg, price: number): Promise<void> {
+    if (!Number.isFinite(price)) return;
+    await this.run(async () => {
+      const resp = await this.store.action('market-list', { kind: 'egg', eggId: egg.id, price });
+      this.showToast(resp.text ?? 'Listed on the market.');
+    });
+    this.closeEgg();
+  }
+
+  // ── Bird scout: pick a bazaar to reveal, off the board ────────────────────
+  protected readonly birdScoutOpen = signal(false);
+  protected readonly birdScoutResult = signal<{ node: string; stock: BazaarView } | null>(null);
+  protected readonly gearMapRef = GEAR_MAP;
+
+  /** Bazaar node ids the Bird can scout (every bazaar in the current state). */
+  protected bazaarNodes(): string[] {
+    return Object.keys(this.store.bazaars());
+  }
+
+  /** In-stock egg tiers at a bazaar (for the scout picker preview). */
+  protected bazaarEggs(node: string): { tier: number; qty: number }[] {
+    return (this.store.bazaars()[node]?.eggs ?? []).filter((e) => e.qty > 0);
+  }
+
+  /** Number of gear lines still in stock at a bazaar (picker preview). */
+  protected bazaarGearCount(node: string): number {
+    return (this.store.bazaars()[node]?.gear ?? []).filter((g) => g.qty > 0).length;
+  }
+
+  protected openBirdScout(): void {
+    this.birdScoutResult.set(null);
+    this.birdScoutOpen.set(true);
+  }
+  protected closeBirdScout(): void {
+    this.birdScoutOpen.set(false);
+  }
+
+  async scoutBazaar(node: string): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('use-pet-ability', { targetNode: node });
+      const pa = (resp as { petAbility?: { node: string; stock: BazaarView } }).petAbility;
+      if (pa) this.birdScoutResult.set(pa);
+      this.showToast(resp.text ?? 'Your bird scouts ahead.');
+    });
+    this.birdScoutOpen.set(false);
   }
 
   /** Flat stat bonus contributed by currently-equipped gear, per stat.
@@ -363,6 +694,29 @@ export class CreatureTabComponent {
   protected async equipFromPopup(item: SelectedItem): Promise<void> {
     await this.equipFromStash(item.index);
     this.closeItem();
+  }
+
+  /** Grind-salvage yield (Moltings / Gemstones) for a gear tier — mirrors the
+   *  Salvage Yard so the popup can preview what grinding would give. */
+  protected salvageYield(tier: number): { moltings: number; ichor: number } {
+    return SALVAGE_YIELD[tier] ?? { moltings: 0, ichor: 0 };
+  }
+
+  /** Spores paid for selling a gear piece back (the 50% sell-back). */
+  protected sellSpores(id: string): number {
+    const g = GEAR_MAP[id];
+    return g ? Math.floor(g.cost * GEAR_SELL_BACK) : 0;
+  }
+
+  /** Salvage a stash piece from the popup (grind → materials, sell → Spores),
+   *  then close it. Reuses the shipped `salvage-gear` action — a plaza service
+   *  that isn't gated on board position, so it works straight from this tab. */
+  protected async salvageFromPopup(item: SelectedItem, mode: 'grind' | 'sell'): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('salvage-gear', { index: item.index, mode });
+      this.showToast(resp.text ?? 'Salvaged.');
+      this.closeItem();
+    });
   }
 
   /** Use/plant a bag consumable from the popup, then close it.

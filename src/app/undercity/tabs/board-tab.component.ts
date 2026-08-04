@@ -69,6 +69,7 @@ import {
   inscribeCost,
   witchScrollPrice,
 } from '../data/items';
+import { eggSpriteUrl } from '../data/pets';
 import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome } from '../data/dungeons';
 import { RUIN_LAIRS, RUIN_LAIR_NAMES, ruinLairAbandoned } from '../data/ruin-lairs';
 import { WORLD_EVENT, WORLD_EVENT_SPRITE } from '../data/world-event';
@@ -84,7 +85,7 @@ import { affordReason, containerFullReason } from '../data/block-reasons';
 import { DiceRollComponent } from './dice-roll.component';
 import { ExcavationModalComponent } from './excavation.component';
 import { FlowPuzzleModalComponent } from './flow-puzzle.component';
-import { CrystalVeinModalComponent } from './crystal-vein.component';
+import { CrystalVeinModalComponent, VeinStrikeFx } from './crystal-vein.component';
 import { GuildvaultModalComponent } from './guildvault.component';
 import { MysteryReelComponent } from './mystery-reel.component';
 import { HazardWheelComponent, HazardWheelTarget } from './hazard-wheel.component';
@@ -226,8 +227,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly liveBattle = signal<LiveBattle | null>(null);
   @ViewChild(InteractiveBattleComponent) private liveB?: InteractiveBattleComponent;
   protected readonly showShop = signal(false);
-  protected readonly shopTab = signal<'gear' | 'consumables' | 'grimoires'>('gear');
-  protected setShopTab(tab: 'gear' | 'consumables' | 'grimoires'): void {
+  protected readonly shopTab = signal<'gear' | 'consumables' | 'grimoires' | 'eggs'>('gear');
+  protected setShopTab(tab: 'gear' | 'consumables' | 'grimoires' | 'eggs'): void {
     this.shopTab.set(tab);
     this.store.openFacility.set({ kind: 'shop', shopTab: tab });
   }
@@ -282,6 +283,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly veinLog = signal<string | null>(null);
   /** Gemstones banked from strikes so far this vein visit; resets on a fresh landing. */
   protected readonly veinEarned = signal(0);
+  /** The last resolved swing — drives the modal's tap-spot popups + cave-in fx. */
+  protected readonly veinFx = signal<VeinStrikeFx | null>(null);
   protected readonly showVault = signal(false);
   protected readonly vaultView = signal<VaultView | null>(null);
   protected readonly reelSymbol = signal<string | null>(null);
@@ -937,6 +940,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   protected readonly tierRarity = tierRarity;
+  protected readonly eggSpriteUrl = eggSpriteUrl;
 
   /** Held-stash cap (mirrors GEAR_STASH_SIZE in undercity_config.py). */
   protected readonly GEAR_STASH_SIZE = 6;
@@ -979,6 +983,23 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return (this.currentBazaar()?.grimoires ?? [])
       .map((id) => GRIMOIRE_MAP[id])
       .filter((g): g is GrimoireInfo => !!g);
+  }
+
+  /** In-stock companion eggs for the bazaar's Eggs tab. */
+  protected shopEggRows(): { tier: number; qty: number; cost: number }[] {
+    return (this.currentBazaar()?.eggs ?? []).filter((e) => e.qty > 0);
+  }
+
+  /** Why an egg line can't be bought (affordability), or null when buyable. */
+  protected shopEggReason(cost: number): string | null {
+    return affordReason(this.store.you()?.spores ?? 0, cost);
+  }
+
+  async buyEgg(tier: number): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('buy', { kind: 'egg', tier });
+      this.showToast(resp.text ?? 'Bought an egg.');
+    });
   }
 
   protected bazaarRestockLabel(): string {
@@ -2361,6 +2382,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Open the shaft, seeding depth from the landing event or polled state. */
   openVein(ev?: SpaceEvent): void {
+    this.veinFx.set(null); // clear any stale popup cue so it can't replay on reopen
     if (ev) this.veinEarned.set(0); // fresh visit (a landing carries ev) — start the tally over
     const pos = this.store.you()?.position ?? '';
     const region = this.map?.nodes.find((n) => n.id === pos)?.region ?? '';
@@ -2377,6 +2399,14 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       if (resp.depth !== undefined) this.veinDepth.set(resp.depth);
       this.veinLog.set(resp.text ?? null);
       if (!resp.collapsed && resp.ichor) this.veinEarned.update((n) => n + resp.ichor!);
+      this.veinFx.set({
+        seq: (this.veinFx()?.seq ?? 0) + 1,
+        collapsed: resp.collapsed,
+        heartstone: resp.heartstone,
+        ichor: resp.ichor ?? 0,
+        moltings: resp.moltings ?? 0,
+        found: resp.found?.kind === 'item',
+      });
       if (resp.collapsed || resp.heartstone) this.showToast(resp.text ?? '');
     });
   }

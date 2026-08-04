@@ -223,7 +223,10 @@ button.mat-chip {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  // Reserve room at the bottom so a tall dialogue floats above the plaza action
+  // band (≈76px: its 58px min-height + padding) instead of overlaying it. The
+  // asymmetric padding both shifts the centred modal up and caps its max-height.
+  padding: 16px 16px 88px;
 }
 
 .forge-modal {

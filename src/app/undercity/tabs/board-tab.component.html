@@ -561,6 +561,9 @@
           <button class="shop-tab" [class.active]="shopTab() === 'grimoires'" (click)="setShopTab('grimoires')">
             <mat-icon class="mi">auto_stories</mat-icon> Grimoires
           </button>
+          <button class="shop-tab" [class.active]="shopTab() === 'eggs'" (click)="setShopTab('eggs')">
+            <mat-icon class="mi">egg</mat-icon> Eggs
+          </button>
         </div>
 
         @switch (shopTab()) {
@@ -624,6 +627,24 @@
               </div>
             } @empty {
               <div class="shop-empty">No tomes on the shelf right now.</div>
+            }
+          }
+          @case ('eggs') {
+            <div class="shop-hint">Companion eggs — hatch them in the Creature tab's incubator.</div>
+            @for (e of shopEggRows(); track e.tier) {
+              <div class="shop-row" [attr.data-rarity]="tierRarity(e.tier).key">
+                <span class="shop-name">
+                  <img class="pet-sprite egg-row-sprite" [src]="eggSpriteUrl(e.tier)" alt="Egg" />
+                  {{ tierRarity(e.tier).label }} Egg
+                  <span class="rarity-badge {{ tierRarity(e.tier).key }}">{{ tierRarity(e.tier).label }}</span>
+                  <em>A random companion — richer eggs skew rarer.</em></span>
+                <button class="uc-btn shop-buy" [disabled]="busy() || !!shopEggReason(e.cost)" (click)="buyEgg(e.tier)">
+                  {{ e.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+                </button>
+                @if (!busy() && shopEggReason(e.cost); as reason) { <span class="block-reason">{{ reason }}</span> }
+              </div>
+            } @empty {
+              <div class="shop-empty">No eggs in the nest right now. Check back after the restock.</div>
             }
           }
         }
@@ -913,6 +934,7 @@
       [log]="veinLog()"
       [earnedThisVisit]="veinEarned()"
       [washBg]="regionWashBg()"
+      [fx]="veinFx()"
       (strike)="strike()"
       (closed)="closeFacilities()"
     />

@@ -234,6 +234,24 @@
                         <span class="gear-hub-pill">full</span>
                       }
                     </button>
+
+                    <button type="button" class="gear-hub-tile companion" (click)="selectGear('companion')">
+                      <span class="gear-hub-count">{{ (you.pets ?? []).length }} pets</span>
+                      <span class="gear-hub-ico">
+                        @if (activePet(); as ap) {
+                          <img class="pet-sprite" [src]="petSpriteUrl(ap.species)" [alt]="petInfo(ap.species).name" />
+                        } @else {
+                          <mat-icon class="mi">pets</mat-icon>
+                        }
+                      </span>
+                      <span class="gear-hub-title">Companion</span>
+                      <span class="gear-hub-status">{{ activePet() ? petInfo(activePet()!.species).name + ' at your side' : 'None active' }}</span>
+                      @if (incubatorReady()) {
+                        <span class="gear-hub-pill">hatch!</span>
+                      } @else if ((you.eggs ?? []).length) {
+                        <span class="gear-hub-pill">{{ (you.eggs ?? []).length }} eggs</span>
+                      }
+                    </button>
                   </section>
                 </div>
               }
@@ -501,6 +519,105 @@
             </section>
                 </div>
               }
+
+              @case ('companion') {
+                <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
+                  <button type="button" class="gear-back" (click)="selectGear('home')">
+                    <mat-icon class="mi">chevron_left</mat-icon> Gear
+                  </button>
+
+                  <!-- Incubator: single slot, real-time hatch timer. -->
+                  <section class="card companion-card">
+                    <h3>Incubator</h3>
+                    @if (incubator(); as inc) {
+                      <div class="incubator" [attr.data-rarity]="tierRarity(inc.tier).key">
+                        <div class="hatch-egg-wrap" [class.ready]="incubatorReady()"
+                             (click)="tapHatch()">
+                          <img class="pet-sprite incubator-egg" [class.shake]="hatchShaking()"
+                               [src]="eggSpriteUrl(inc.tier)" alt="Egg" />
+                          @for (c of hatchChunks(); track c.id) {
+                            <span class="hatch-chunk" [style.--chunk-dest]="c.t"></span>
+                          }
+                        </div>
+                        <div class="incubator-body">
+                          <span class="rarity-badge {{ tierRarity(inc.tier).key }}">{{ tierRarity(inc.tier).label }} egg</span>
+                          @if (incubatorReady()) {
+                            <span class="incubator-note">Ready! Tap the egg to crack it open.</span>
+                            <span class="hatch-progress">{{ hatchRemaining() }} tap{{ hatchRemaining() === 1 ? '' : 's' }} to go</span>
+                          } @else {
+                            <span class="incubator-note">Warming — {{ incubatorLeftMin() }} min left</span>
+                          }
+                        </div>
+                      </div>
+                    } @else {
+                      <p class="muted bag-empty">The incubator is empty — tap an egg to warm it ({{ PET_INCUBATE_MINUTES }} min).</p>
+                    }
+
+                    @if (eggsList().length) {
+                      <div class="egg-strip">
+                        @for (egg of eggsList(); track egg.id) {
+                          <button type="button" class="egg-chip" [attr.data-rarity]="tierRarity(egg.tier).key"
+                                  (click)="openEgg(egg)">
+                            <img class="pet-sprite" [src]="eggSpriteUrl(egg.tier)" alt="Egg" />
+                            <span class="rarity-badge {{ tierRarity(egg.tier).key }}">{{ tierRarity(egg.tier).label }}</span>
+                          </button>
+                        }
+                      </div>
+                    } @else {
+                      <p class="muted bag-empty">No eggs yet. They drop from loot, mystery tiles, battles, and the bazaar.</p>
+                    }
+                  </section>
+
+                  <!-- Active companion -->
+                  <section class="card companion-card">
+                    <h3>Active Companion</h3>
+                    @if (activePet(); as pet) {
+                      <div class="active-pet" [attr.data-rarity]="petRarity(pet)">
+                        <img class="pet-sprite active-pet-ico" [src]="petSpriteUrl(pet.species)" [alt]="petInfo(pet.species).name" />
+                        <div class="active-pet-body">
+                          <span class="active-pet-name">{{ petInfo(pet.species).name }}
+                            <span class="rarity-badge {{ petRarity(pet) }}">{{ tierRarity(pet.tier).label }}</span>
+                          </span>
+                          <span class="active-pet-lvl">Lv {{ pet.level }} / {{ petLevelCap(pet.tier) }}</span>
+                          <span class="active-pet-blurb">{{ petInfo(pet.species).blurb }}</span>
+                          @if (petInfo(pet.species).kind === 'activated') {
+                            @if (petRoleOf(pet) === 'forage') {
+                              <button type="button" class="pet-btn" [disabled]="busy() || !petAbilityReady(pet)" (click)="usePetAbility(pet)">
+                                {{ petAbilityReady(pet) ? 'Send scavenging' : petAbilityLeftMin(pet) + ' min' }}
+                              </button>
+                            } @else if (petRoleOf(pet) === 'scout') {
+                              <button type="button" class="pet-btn" [disabled]="busy() || !petAbilityReady(pet)" (click)="openBirdScout()">
+                                {{ petAbilityReady(pet) ? 'Scout a bazaar' : petAbilityLeftMin(pet) + ' min' }}
+                              </button>
+                            }
+                          }
+                          <button type="button" class="pet-btn ghost" (click)="openPet(pet)">Manage</button>
+                        </div>
+                      </div>
+                    } @else {
+                      <p class="muted bag-empty">No companion active. Hatch an egg, then tap a pet below to activate it.</p>
+                    }
+                  </section>
+
+                  <!-- Inactive roster -->
+                  <section class="card companion-card">
+                    <h3>Roster</h3>
+                    @if (rosterPets().length) {
+                      <div class="pet-grid">
+                        @for (pet of rosterPets(); track pet.id) {
+                          <button type="button" class="pet-cell" [attr.data-rarity]="petRarity(pet)" (click)="openPet(pet)">
+                            <img class="pet-sprite" [src]="petSpriteUrl(pet.species)" [alt]="petInfo(pet.species).name" />
+                            <span class="pet-cell-name">{{ petInfo(pet.species).name }}</span>
+                            <span class="pet-cell-lvl">Lv {{ pet.level }}</span>
+                          </button>
+                        }
+                      </div>
+                    } @else {
+                      <p class="muted bag-empty">No other companions. Hatch more eggs to build a roster.</p>
+                    }
+                  </section>
+                </div>
+              }
             }
           }
           @case ('wardrobe') {
@@ -764,8 +881,228 @@
                   <mat-icon class="mi">storefront</mat-icon> Send to market
                 </button>
               }
+              <!-- Salvage without a trip to the Plaza Salvage Yard — grind into
+                   materials or sell back for Spores, previewing the yield. -->
+              @if (item.source === 'stash') {
+                <button class="uc-btn ghost" [disabled]="busy()" (click)="salvageFromPopup(item, 'grind')">
+                  <mat-icon class="mi">recycling</mat-icon> Grind +{{ salvageYield(gearMap[item.id].tier).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (salvageYield(gearMap[item.id].tier).ichor) {&nbsp;+{{ salvageYield(gearMap[item.id].tier).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
+                </button>
+                <button class="uc-btn ghost" [disabled]="busy()" (click)="salvageFromPopup(item, 'sell')">
+                  Sell +{{ sellSpores(item.id) }}
+                </button>
+              }
             </div>
           }
+        </div>
+      </div>
+    }
+
+    <!-- Companion detail popup: the one place all pet actions live. -->
+    @if (selectedPet(); as pet) {
+      <div class="item-sheet-backdrop" (click)="closePet()">
+        <div class="item-sheet" (click)="$event.stopPropagation()">
+          <button class="item-sheet-close" (click)="closePet()" aria-label="Close">
+            <mat-icon class="mi">close</mat-icon>
+          </button>
+
+          <header class="item-sheet-head">
+            <img class="pet-sprite slot-mi" [src]="petSpriteUrl(pet.species)" [alt]="petInfo(pet.species).name" />
+            <div class="item-sheet-title">
+              <span class="item-sheet-name">{{ petInfo(pet.species).name }}
+                <span class="rarity-badge {{ petRarity(pet) }}">{{ tierRarity(pet.tier).label }}</span>
+              </span>
+              <span class="item-sheet-sub">Lv {{ pet.level }} / {{ petLevelCap(pet.tier) }}</span>
+            </div>
+          </header>
+
+          <div class="item-sheet-effects">
+            <p class="effect-line"><span>{{ petInfo(pet.species).blurb }}</span></p>
+          </div>
+
+          <div class="item-sheet-actions">
+            @if (activePet()?.id !== pet.id) {
+              <button class="uc-btn" [disabled]="busy()" (click)="activatePet(pet)">Activate</button>
+            } @else {
+              <span class="item-sheet-hint muted">Your active companion.</span>
+            }
+
+            @if (!petAtLevelCap(pet)) {
+              <button class="uc-btn ghost" [disabled]="busy() || !canLevelPet(pet)" (click)="levelPet(pet)">
+                Level +1 · {{ petLevelCost(pet).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (petLevelCost(pet).ichor) {&nbsp;{{ petLevelCost(pet).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
+              </button>
+            } @else {
+              <span class="item-sheet-hint muted">At level cap{{ petAtMaxTier(pet) ? '' : ' — merge to raise its rarity' }}.</span>
+            }
+
+            <button class="uc-btn ghost" [disabled]="busy()" (click)="salvagePet(pet)">
+              <mat-icon class="mi">recycling</mat-icon> Salvage +{{ petSalvageYield(pet).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (petSalvageYield(pet).ichor) {&nbsp;+{{ petSalvageYield(pet).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
+            </button>
+
+            @if (petListOpen()) {
+              <div class="market-price">
+                <label>Price (Spores)</label>
+                <input #pp type="number" class="price-input" [value]="petListPrice()"
+                       [min]="petMarketBand(pet).lo" [max]="petMarketBand(pet).hi" />
+                <span class="band-note muted">{{ petMarketBand(pet).lo }}–{{ petMarketBand(pet).hi }}</span>
+                <button class="uc-btn" [disabled]="busy()" (click)="listPetOnMarket(pet, pp.valueAsNumber)">List</button>
+              </div>
+            } @else {
+              <button class="uc-btn ghost" [disabled]="busy()" (click)="beginPetList(pet)">
+                <mat-icon class="mi">storefront</mat-icon> Send to market
+              </button>
+            }
+          </div>
+
+          @if (!petAtMaxTier(pet) && mergeFodderFor(pet).length) {
+            <div class="merge-box">
+              <span class="merge-title">Merge dupes → {{ tierRarity(pet.tier + 1).label }}</span>
+              <div class="merge-fodder">
+                @for (f of mergeFodderFor(pet); track f.id) {
+                  <button type="button" class="merge-chip" [class.picked]="mergePicks().has(f.id)"
+                          [attr.data-rarity]="petRarity(f)" (click)="toggleMergePick(f.id)">
+                    <img class="pet-sprite" [src]="petSpriteUrl(f.species)" [alt]="petInfo(f.species).name" />
+                    <span>Lv {{ f.level }}</span>
+                  </button>
+                }
+              </div>
+              <button class="uc-btn" [disabled]="busy() || !mergeReady(pet)" (click)="mergePet(pet)">
+                {{ mergeReady(pet) ? 'Merge' : 'Pick more fodder' }}
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Egg detail popup: incubate it, or sell it on the market. -->
+    @if (selectedEgg(); as egg) {
+      <div class="item-sheet-backdrop" (click)="closeEgg()">
+        <div class="item-sheet" (click)="$event.stopPropagation()">
+          <button class="item-sheet-close" (click)="closeEgg()" aria-label="Close">
+            <mat-icon class="mi">close</mat-icon>
+          </button>
+
+          <header class="item-sheet-head">
+            <img class="pet-sprite slot-mi" [src]="eggSpriteUrl(egg.tier)" alt="Egg" />
+            <div class="item-sheet-title">
+              <span class="item-sheet-name">{{ tierRarity(egg.tier).label }} Egg
+                <span class="rarity-badge {{ tierRarity(egg.tier).key }}">{{ tierRarity(egg.tier).label }}</span>
+              </span>
+              <span class="item-sheet-sub">Hatches a random companion</span>
+            </div>
+          </header>
+
+          <div class="item-sheet-actions">
+            @if (incubator()) {
+              <span class="item-sheet-hint muted">The incubator is busy — hatch that egg first.</span>
+            } @else {
+              <button class="uc-btn" [disabled]="busy()" (click)="incubateEggFromPopup(egg)">
+                Incubate ({{ PET_INCUBATE_MINUTES }} min)
+              </button>
+            }
+
+            @if (eggListOpen()) {
+              <div class="market-price">
+                <label>Price (Spores)</label>
+                <input #ep type="number" class="price-input" [value]="eggListPrice()"
+                       [min]="eggMarketBand(egg.tier).lo" [max]="eggMarketBand(egg.tier).hi" />
+                <span class="band-note muted">{{ eggMarketBand(egg.tier).lo }}–{{ eggMarketBand(egg.tier).hi }}</span>
+                <button class="uc-btn" [disabled]="busy()" (click)="listEggOnMarket(egg, ep.valueAsNumber)">List</button>
+              </div>
+            } @else {
+              <button class="uc-btn ghost" [disabled]="busy()" (click)="beginEggList(egg)">
+                <mat-icon class="mi">storefront</mat-icon> Send to market
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Bird scout: pick a bazaar to reveal its stock without travelling. -->
+    @if (birdScoutOpen()) {
+      <div class="item-sheet-backdrop" (click)="closeBirdScout()">
+        <div class="item-sheet" (click)="$event.stopPropagation()">
+          <button class="item-sheet-close" (click)="closeBirdScout()" aria-label="Close">
+            <mat-icon class="mi">close</mat-icon>
+          </button>
+          <header class="item-sheet-head">
+            <mat-icon class="mi slot-mi">visibility</mat-icon>
+            <div class="item-sheet-title">
+              <span class="item-sheet-name">Send the Bird scouting</span>
+              <span class="item-sheet-sub">Reveal a bazaar's stock — puts the bird on cooldown</span>
+            </div>
+          </header>
+          <div class="bazaar-scout-list">
+            @for (node of bazaarNodes(); track node; let i = $index) {
+              <button type="button" class="bazaar-scout-row" [disabled]="busy()" (click)="scoutBazaar(node)">
+                <mat-icon class="mi bazaar-scout-ico">storefront</mat-icon>
+                <span class="bazaar-scout-name">Bazaar {{ i + 1 }}
+                  <span class="bazaar-scout-sub">{{ bazaarGearCount(node) }} gear in stock</span>
+                </span>
+                <span class="bazaar-scout-eggs">
+                  @for (e of bazaarEggs(node); track e.tier) {
+                    <img class="pet-sprite egg-mini" [src]="eggSpriteUrl(e.tier)"
+                         [attr.title]="tierRarity(e.tier).label + ' egg'" alt="Egg" />
+                  } @empty {
+                    <span class="muted">no eggs</span>
+                  }
+                </span>
+              </button>
+            } @empty {
+              <p class="muted bag-empty">No bazaars on the map right now.</p>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Bird scout result: the revealed bazaar stock. -->
+    @if (birdScoutResult(); as scout) {
+      <div class="item-sheet-backdrop" (click)="birdScoutResult.set(null)">
+        <div class="item-sheet" (click)="$event.stopPropagation()">
+          <button class="item-sheet-close" (click)="birdScoutResult.set(null)" aria-label="Close">
+            <mat-icon class="mi">close</mat-icon>
+          </button>
+          <header class="item-sheet-head">
+            <mat-icon class="mi slot-mi">storefront</mat-icon>
+            <div class="item-sheet-title">
+              <span class="item-sheet-name">Scouted bazaar</span>
+              <span class="item-sheet-sub">Your bird reports the stock</span>
+            </div>
+          </header>
+          <div class="item-sheet-effects">
+            @for (g of scout.stock.gear; track g.item) {
+              @if (gearMapRef[g.item]; as gi) {
+                <p class="effect-line"><strong class="effect-label">{{ gi.name }}</strong>
+                  <span>{{ tierRarity(gi.tier).label }} · ×{{ g.qty }}</span></p>
+              }
+            }
+            @for (e of scout.stock.eggs ?? []; track e.tier) {
+              <p class="effect-line"><strong class="effect-label">{{ tierRarity(e.tier).label }} Egg</strong>
+                <span>{{ e.cost }} Spores · ×{{ e.qty }}</span></p>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Hatch reveal: what came out of the egg. -->
+    @if (hatchReveal(); as pet) {
+      <div class="item-sheet-backdrop hatch-reveal-backdrop" (click)="closeReveal()">
+        <div class="hatch-reveal" (click)="$event.stopPropagation()" [attr.data-rarity]="petRarity(pet)">
+          <span class="hatch-reveal-title">It hatched!</span>
+          <div class="hatch-reveal-burst">
+            <img class="pet-sprite hatch-reveal-sprite" [src]="petSpriteUrl(pet.species)" [alt]="petInfo(pet.species).name" />
+          </div>
+          <span class="hatch-reveal-name">{{ petInfo(pet.species).name }}
+            <span class="rarity-badge {{ petRarity(pet) }}">{{ tierRarity(pet.tier).label }}</span>
+          </span>
+          <span class="hatch-reveal-blurb">{{ petInfo(pet.species).blurb }}</span>
+          <div class="hatch-reveal-actions">
+            <button class="uc-btn" [disabled]="busy()" (click)="activateFromReveal(pet)">Set active</button>
+            <button class="uc-btn ghost" (click)="closeReveal()">Nice!</button>
+          </div>
         </div>
       </div>
     }
