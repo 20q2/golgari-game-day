@@ -41,6 +41,7 @@ export const PASSIVE_NAMES: Record<string, string> = {
   wish: 'Wish',
   stonewright: 'Stonewright',
   stone_gaze: 'Stone Gaze',
+  shatter: 'Shatter',
 };
 
 export const PASSIVE_BLURBS: Record<string, string> = {
@@ -70,6 +71,7 @@ export const PASSIVE_BLURBS: Record<string, string> = {
   wish: 'Learn Wish: cast any spell in the world, from any list.',
   stonewright: 'Upgrades she forges come out hardened (Gear+); her active pet fights a step above its level.',
   stone_gaze: 'Reads come easily; each read petrifies the foe — stacking slow that ends in a one-round freeze.',
+  shatter: 'A winning Aggress cracks the foe (Brittle); your blows then hit the cracks for extra.',
 };
 
 export const STARTERS: FormInfo[] = [
@@ -118,7 +120,7 @@ export const TIER2: FormInfo[] = [
   { id: 'underrealm_lich', name: 'Underrealm Lich', tier: 2, line: 'zombie', passive: 'rootwall', passiveName: 'Rootwall', bonus: { maxHp: 6, atk: 2 }, blurb: 'Regenerating necromancer — 35% regrow + innate Mend Flesh (+HP/+ATK).' },
   { id: 'squirrel_warrior', name: 'Vinereap Mentor', tier: 2, line: 'squirrel', passive: 'spell_warrior', passiveName: 'Spell Warrior', bonus: { maxHp: 6, atk: 2 }, blurb: 'Spellblade — self-buffs doubled (+HP/+ATK).' },
   { id: 'squirrel_mage', name: 'Squirrel Mage', tier: 2, line: 'squirrel', passive: 'spell_mage', passiveName: 'Spell Mage', bonus: { maxHp: 4, spd: 2 }, blurb: 'Battlemage — +50% spell damage (+HP/+SPD).' },
-  { id: 'basalt_matron', name: 'Basalt Matron', tier: 2, line: 'gorgon', passive: 'spikeshell', passiveName: 'Spiked Shell', bonus: { maxHp: 6, def: 2 }, blurb: 'Stone bulwark (+HP/+DEF).' },
+  { id: 'basalt_matron', name: 'Basalt Matron', tier: 2, line: 'gorgon', passive: 'shatter', passiveName: 'Shatter', bonus: { atk: 2, maxHp: 4 }, blurb: 'Stone crusher (+ATK/+HP).' },
   { id: 'medusa_stalker', name: 'Medusa Stalker', tier: 2, line: 'gorgon', passive: 'stone_gaze', passiveName: 'Stone Gaze', bonus: { spd: 2, atk: 2 }, blurb: 'Gaze-hunter (+SPD/+ATK).' },
 ];
 
