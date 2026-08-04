@@ -2,7 +2,9 @@
   @if (store.you(); as you) {
     <div class="creature-scroll">
       <div class="creature-inner">
-      <!-- Hero: portrait + identity + HP/XP bars over the biome den -->
+      <!-- Creature hero (portrait + HP/XP) — hidden on the Gear tab, which is
+           just a launcher into the gear sub-menus. -->
+      @if (view() !== 'gear') {
       <section
         class="hero"
         style="background-image: linear-gradient(rgba(12, 16, 12, 0.5), rgba(12, 16, 12, 0.82)), url('undercity/swamp_background.webp')"
@@ -74,9 +76,10 @@
           <mat-icon class="mi">auto_awesome</mat-icon> EVOLUTION AWAITS — choose your form
         </button>
       }
+      }
 
       <div class="subtab-body">
-        @switch (subTab()) {
+        @switch (activeSubTab()) {
           @case ('stats') {
             <!-- Stats -->
             <section class="card">
@@ -202,41 +205,43 @@
             </section>
           }
           @case ('gear') {
+            <!-- Gear top bar: Back (in a sub-menu) on the left, resources on the right. -->
+            <div class="gear-topbar">
+              @if (gearSection() !== 'home') {
+                <button type="button" class="gear-back" (click)="selectGear('home')">
+                  <mat-icon class="mi">chevron_left</mat-icon> Gear
+                </button>
+              }
+              <div class="gear-mat-chips">
+                <span class="gear-mat-chip" title="Moltings">
+                  <mat-icon class="mi mtl-i">grass</mat-icon>{{ you.materials?.moltings ?? 0 }}
+                </span>
+                <span class="gear-mat-chip" title="Gemstones">
+                  <mat-icon class="mi ich-i">diamond</mat-icon>{{ you.materials?.ichor ?? 0 }}
+                </span>
+              </div>
+            </div>
             @switch (gearSection()) {
               @case ('home') {
                 <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
-                  <!-- Gear hub: three live-status tiles; bottom-right cell left empty. -->
+                  <!-- Gear hub: four big, chunky launchers into their sub-menus. -->
                   <section class="gear-hub">
                     <button type="button" class="gear-hub-tile" (click)="selectGear('equip')">
-                      <span class="gear-hub-count">{{ wornCount() }}/3</span>
-                      <span class="gear-hub-ico"><mat-icon class="mi" svgIcon="uc-carapace"></mat-icon></span>
+                      <span class="gear-hub-ico"><mat-icon class="mi" svgIcon="uc-shield"></mat-icon></span>
                       <span class="gear-hub-title">Equipment</span>
-                      <span class="gear-hub-status">{{ wornCount() }} worn · stash {{ stashRows().length }}/{{ stashCap }}</span>
-                      @if (gearModLabel(); as m) {
-                        <span class="gear-hub-pill">{{ m }}</span>
-                      }
                     </button>
 
                     <button type="button" class="gear-hub-tile magic" (click)="selectGear('magic')">
-                      <span class="gear-hub-count">{{ (you.grimoires ?? []).length }} books</span>
                       <span class="gear-hub-ico"><mat-icon class="mi">menu_book</mat-icon></span>
                       <span class="gear-hub-title">Magic</span>
-                      <span class="gear-hub-status">{{ equippedBook() ? equippedBook()!.name : 'No book open' }}</span>
-                      <span class="gear-hub-pill">{{ spellsReadyCount() }} ready</span>
                     </button>
 
                     <button type="button" class="gear-hub-tile" (click)="selectGear('bag')">
-                      <span class="gear-hub-count">{{ you.bag.length }}/3</span>
-                      <span class="gear-hub-ico"><mat-icon class="mi" svgIcon="uc-duffel"></mat-icon></span>
+                      <span class="gear-hub-ico"><mat-icon class="mi" svgIcon="uc-pouch"></mat-icon></span>
                       <span class="gear-hub-title">Bag</span>
-                      <span class="gear-hub-status">{{ you.bag.length ? you.bag.length + ' carried' : 'Empty' }}</span>
-                      @if (you.bag.length >= 3) {
-                        <span class="gear-hub-pill">full</span>
-                      }
                     </button>
 
                     <button type="button" class="gear-hub-tile companion" (click)="selectGear('companion')">
-                      <span class="gear-hub-count">{{ (you.pets ?? []).length }} pets</span>
                       <span class="gear-hub-ico">
                         @if (activePet(); as ap) {
                           <img class="pet-sprite" [src]="petSpriteUrl(ap.species)" [alt]="petInfo(ap.species).name" />
@@ -245,12 +250,6 @@
                         }
                       </span>
                       <span class="gear-hub-title">Companion</span>
-                      <span class="gear-hub-status">{{ activePet() ? petInfo(activePet()!.species).name + ' at your side' : 'None active' }}</span>
-                      @if (incubatorReady()) {
-                        <span class="gear-hub-pill">hatch!</span>
-                      } @else if ((you.eggs ?? []).length) {
-                        <span class="gear-hub-pill">{{ (you.eggs ?? []).length }} eggs</span>
-                      }
                     </button>
                   </section>
                 </div>
@@ -258,9 +257,6 @@
 
               @case ('equip') {
                 <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
-                <button type="button" class="gear-back" (click)="selectGear('home')">
-                  <mat-icon class="mi">chevron_left</mat-icon> Gear
-                </button>
             <!-- Equipment -->
             <section class="card">
               <h3>Equipment</h3>
@@ -294,7 +290,16 @@
                       <span class="gear-tile-name">{{ gearMap[g].name }}
                         <span class="rarity-badge {{ tierRarity(gearMap[g].tier).key }}">{{ tierRarity(gearMap[g].tier).label }}</span>
                       </span>
-                      <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
+                      @if (gearStatChips(g).length) {
+                        <div class="gear-tile-chips">
+                          @for (c of gearStatChips(g); track c.label) {
+                            <span class="chip chip--stat">{{ c.label }}</span>
+                          }
+                        </div>
+                      }
+                      @if (gearAbilityText(g); as ab) {
+                        <span class="gear-tile-desc">{{ ab }}</span>
+                      }
                     } @else {
                       <span class="gear-tile-empty">empty</span>
                     }
@@ -309,7 +314,16 @@
                       <span class="gear-tile-name">{{ gearMap[g].name }}
                         <span class="rarity-badge {{ tierRarity(gearMap[g].tier).key }}">{{ tierRarity(gearMap[g].tier).label }}</span>
                       </span>
-                      <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
+                      @if (gearStatChips(g).length) {
+                        <div class="gear-tile-chips">
+                          @for (c of gearStatChips(g); track c.label) {
+                            <span class="chip chip--stat">{{ c.label }}</span>
+                          }
+                        </div>
+                      }
+                      @if (gearAbilityText(g); as ab) {
+                        <span class="gear-tile-desc">{{ ab }}</span>
+                      }
                     } @else {
                       <span class="gear-tile-empty">empty</span>
                     }
@@ -324,7 +338,16 @@
                       <span class="gear-tile-name">{{ gearMap[g].name }}
                         <span class="rarity-badge {{ tierRarity(gearMap[g].tier).key }}">{{ tierRarity(gearMap[g].tier).label }}</span>
                       </span>
-                      <span class="gear-tile-desc">{{ gearMap[g].desc }}</span>
+                      @if (gearStatChips(g).length) {
+                        <div class="gear-tile-chips">
+                          @for (c of gearStatChips(g); track c.label) {
+                            <span class="chip chip--stat">{{ c.label }}</span>
+                          }
+                        </div>
+                      }
+                      @if (gearAbilityText(g); as ab) {
+                        <span class="gear-tile-desc">{{ ab }}</span>
+                      }
                     } @else {
                       <span class="gear-tile-empty">empty</span>
                     }
@@ -363,9 +386,6 @@
 
               @case ('bag') {
                 <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
-                <button type="button" class="gear-back" (click)="selectGear('home')">
-                  <mat-icon class="mi">chevron_left</mat-icon> Gear
-                </button>
             <!-- Bag -->
             <section class="card">
               <h3>Bag <span class="muted">({{ you.bag.length }}/3)</span></h3>
@@ -406,9 +426,6 @@
 
               @case ('magic') {
                 <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
-                <button type="button" class="gear-back" (click)="selectGear('home')">
-                  <mat-icon class="mi">chevron_left</mat-icon> Gear
-                </button>
             <!-- Grimoire -->
             <section class="card">
               <h3>Grimoire <span class="muted">({{ (you.grimoires ?? []).length }} collected)</span></h3>
@@ -522,10 +539,6 @@
 
               @case ('companion') {
                 <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
-                  <button type="button" class="gear-back" (click)="selectGear('home')">
-                    <mat-icon class="mi">chevron_left</mat-icon> Gear
-                  </button>
-
                   <!-- Incubator: single slot, real-time hatch timer. -->
                   <section class="card companion-card">
                     <h3>Incubator</h3>
@@ -703,7 +716,11 @@
               </p>
               <div class="sigil-grid">
                 @for (d of sigilEntries; track d.biome) {
-                  <div class="sigil-tile" [class.claimed]="hasSigil(d.biome)">
+                  <div class="sigil-tile" [class.claimed]="hasSigil(d.biome)"
+                       [class.selected]="selectedBoss() === d.biome"
+                       role="button" tabindex="0"
+                       (click)="toggleBoss(d.biome)"
+                       (keyup.enter)="toggleBoss(d.biome)">
                     <div class="sigil-portrait">
                       <img [src]="'undercity/guardians/' + d.lairNpcId + '.png'" [alt]="d.lairName" />
                       @if (!hasSigil(d.biome)) {
@@ -716,6 +733,26 @@
                   </div>
                 }
               </div>
+              @if (selectedDungeon(); as d) {
+                <div class="boss-codex">
+                  <div class="codex-head">
+                    <img [src]="'undercity/guardians/' + d.lairNpcId + '.png'" [alt]="d.lairName" />
+                    <div class="codex-title">
+                      <span class="codex-name">{{ d.lairName }}</span>
+                      <span class="codex-biome muted">{{ d.biomeName }} — {{ d.name }}</span>
+                    </div>
+                    <button type="button" class="codex-close" (click)="selectedBoss.set(null)"
+                            aria-label="Close">
+                      <mat-icon class="mi">close</mat-icon>
+                    </button>
+                  </div>
+                  <p class="codex-lore">{{ d.lore }}</p>
+                  <div class="codex-trait">
+                    <span class="trait-name">{{ d.trait.name }}</span>
+                    <span class="trait-blurb muted">{{ d.trait.blurb }}</span>
+                  </div>
+                </div>
+              }
             </section>
           }
         }
@@ -724,24 +761,24 @@
     </div>
 
     <app-uc-action-band>
-      <!-- Sub-tabs: Stats / Gear / Wardrobe / Sigils -->
-      <nav class="subtab-bar">
-        <button type="button" [class.active]="subTab() === 'stats'" (click)="subTab.set('stats')">
-          <mat-icon class="mi">bar_chart</mat-icon> Stats
-          @if (you.statPoints > 0) {
-            <span class="subtab-badge">{{ you.statPoints }}</span>
-          }
-        </button>
-        <button type="button" [class.active]="subTab() === 'gear'" (click)="selectGearTab()">
-          <mat-icon class="mi" svgIcon="uc-duffel"></mat-icon> Gear
-        </button>
-        <button type="button" [class.active]="subTab() === 'wardrobe'" (click)="subTab.set('wardrobe')">
-          <mat-icon class="mi">checkroom</mat-icon> Wardrobe
-        </button>
-        <button type="button" [class.active]="subTab() === 'sigils'" (click)="subTab.set('sigils')">
-          <mat-icon class="mi">workspace_premium</mat-icon> Sigils
-        </button>
-      </nav>
+      <!-- Sub-tabs: Stats / Wardrobe / Sigils. Gear now has its own bottom-nav
+           destination, so it's dropped from this bar (and hidden in the Gear view). -->
+      @if (view() === 'creature') {
+        <nav class="subtab-bar">
+          <button type="button" [class.active]="activeSubTab() === 'stats'" (click)="subTab.set('stats')">
+            <mat-icon class="mi">bar_chart</mat-icon> Stats
+            @if (you.statPoints > 0) {
+              <span class="subtab-badge">{{ you.statPoints }}</span>
+            }
+          </button>
+          <button type="button" [class.active]="activeSubTab() === 'wardrobe'" (click)="subTab.set('wardrobe')">
+            <mat-icon class="mi">checkroom</mat-icon> Wardrobe
+          </button>
+          <button type="button" [class.active]="activeSubTab() === 'sigils'" (click)="subTab.set('sigils')">
+            <mat-icon class="mi">workspace_premium</mat-icon> Sigils
+          </button>
+        </nav>
+      }
     </app-uc-action-band>
 
     @if (toast(); as t) {

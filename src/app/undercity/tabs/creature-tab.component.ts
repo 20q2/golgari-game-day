@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -146,9 +146,23 @@ export class CreatureTabComponent {
   /** Current price typed into the send-to-market control (Spores). */
   protected readonly listPrice = signal(0);
 
+  /** Which face this instance shows: the full creature screen, or the Gear
+   *  screen (its own bottom-nav destination). Gear lives here so it can reuse the
+   *  hub + all the gear/companion sub-sections and popups. */
+  readonly view = input<'creature' | 'gear'>('creature');
+
   /** Which sub-panel of the creature screen is showing below the pinned hero.
    *  Seeded from and persisted to localStorage so it survives leaving the tab. */
   protected readonly subTab = signal<CreatureSubTab>(loadSubTab());
+
+  /** The sub-panel to actually render: always 'gear' in the Gear view; in the
+   *  Creature view, gear now has its own tab so a legacy-persisted 'gear' falls
+   *  back to 'stats'. */
+  protected readonly activeSubTab = computed<CreatureSubTab>(() => {
+    if (this.view() === 'gear') return 'gear';
+    const t = this.subTab();
+    return t === 'gear' ? 'stats' : t;
+  });
 
   /** Which gear section is showing: the hub grid ('home') or a drilled-in
    *  panel. Always starts at the hub — entering the Gear tab should present
@@ -649,6 +663,28 @@ export class CreatureTabComponent {
     return chips;
   }
 
+  /** Stat chips (+2 DEF, +1 SPD…) for a gear id — shown on the equipment cards. */
+  protected gearStatChips(gearId: string): ItemChip[] {
+    const g = GEAR_MAP[gearId];
+    if (!g) return [];
+    const chips: ItemChip[] = [];
+    if (g.atk) chips.push({ label: `+${g.atk} ATK` });
+    if (g.def) chips.push({ label: `+${g.def} DEF` });
+    if (g.spd) chips.push({ label: `+${g.spd} SPD` });
+    if (g.maxHp) chips.push({ label: `+${g.maxHp} max HP` });
+    return chips;
+  }
+
+  /** A gear's description with its leading "+N STAT" summary stripped — those are
+   *  shown as chips now. Empty for a pure stat stick with no ability text. */
+  protected gearAbilityText(gearId: string): string {
+    const desc = GEAR_MAP[gearId]?.desc;
+    if (!desc) return '';
+    const parts = desc.split(' · ');
+    while (parts.length && /^[+-]?\d/.test(parts[0].trim())) parts.shift();
+    return parts.join(' · ');
+  }
+
   /** Expandable ability chips: gear rider + illumination, or a consumable's effect. */
   protected abilityChips(item: SelectedItem): ItemChip[] {
     if (item.kind === 'consumable') {
@@ -854,6 +890,16 @@ export class CreatureTabComponent {
   protected readonly sigilCount = computed(() => {
     const claims = this.store.you()?.poiClaims ?? [];
     return this.sigilEntries.filter((d) => claims.includes(`${d.biome}_lair`)).length;
+  });
+
+  /** Boss codex popout (Sigils tab): the biome whose lore card is open, or null. */
+  protected readonly selectedBoss = signal<string | null>(null);
+  protected toggleBoss(biome: string): void {
+    this.selectedBoss.update((b) => (b === biome ? null : biome));
+  }
+  protected readonly selectedDungeon = computed(() => {
+    const b = this.selectedBoss();
+    return b ? (this.sigilEntries.find((d) => d.biome === b) ?? null) : null;
   });
 
   protected readonly evolveReady = computed(() => {

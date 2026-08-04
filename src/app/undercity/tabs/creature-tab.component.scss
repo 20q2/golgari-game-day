@@ -746,8 +746,8 @@
 }
 
 .gear-tiles {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
@@ -762,18 +762,20 @@
 
 .gear-tile {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 10px;
+  text-align: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(74, 124, 89, 0.25);
-  // Rarity accent stripe — at-a-glance tier read.
-  border-left-width: 3px;
-  &[data-rarity='common'] { border-left-color: #9aa7a0; }
-  &[data-rarity='rare'] { border-left-color: #5fd18a; }
-  &[data-rarity='legendary'] { border-left-color: #fbbf24; }
-  &[data-rarity='mythic'] { border-left-color: #c084fc; }
+  // Rarity accent stripe on the top edge — at-a-glance tier read for the card.
+  border-top-width: 3px;
+  &[data-rarity='common'] { border-top-color: #9aa7a0; }
+  &[data-rarity='rare'] { border-top-color: #5fd18a; }
+  &[data-rarity='legendary'] { border-top-color: #fbbf24; }
+  &[data-rarity='mythic'] { border-top-color: #c084fc; }
 
   &.empty {
     opacity: 0.6;
@@ -782,16 +784,19 @@
 
   .slot-mi {
     color: #9aa79a;
-    font-size: 1.3rem;
-    width: 1.3rem;
-    height: 1.3rem;
+    font-size: 1.6rem;
+    width: 1.6rem;
+    height: 1.6rem;
     flex-shrink: 0;
   }
 
   .gear-tile-body {
     display: flex;
     flex-direction: column;
+    align-items: center;
+    gap: 3px;
     min-width: 0;
+    width: 100%;
   }
 
   .gear-tile-slot {
@@ -801,31 +806,49 @@
     color: #8a978a;
   }
 
+  // Name + rarity badge stack (centered), so a long name doesn't crowd the badge.
   .gear-tile-name {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
     font-weight: 700;
     color: #d8f3dc;
     font-size: 0.9rem;
+    line-height: 1.2;
   }
 
   .rarity-badge {
     display: inline-block;
-    margin-left: 6px;
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     border-radius: 8px;
     padding: 1px 6px;
     background: rgba(0, 0, 0, 0.35);
-    vertical-align: middle;
     &.common { color: #9aa7a0; }
     &.rare { color: #5fd18a; }
     &.legendary { color: #fbbf24; }
     &.mythic { color: #c084fc; }
   }
 
+  .gear-tile-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+
+    .chip {
+      font-size: 0.68rem;
+      padding: 1px 7px;
+      line-height: 1.3;
+    }
+  }
+
   .gear-tile-desc {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
+    line-height: 1.3;
     color: #9ac79a;
   }
 
@@ -1123,6 +1146,96 @@
 
   &.claimed .sigil-state {
     color: #fbbf24;
+  }
+
+  cursor: pointer;
+  transition: border-color 0.15s ease, opacity 0.15s ease;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &.selected {
+    opacity: 1;
+    border-color: var(--accent-color, #9ac26e);
+    box-shadow: 0 0 0 1px var(--accent-color, #9ac26e);
+  }
+}
+
+// ── Boss codex popout (Sigils tab) ───────────────────────────────────────────
+
+.boss-codex {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--accent-color, #9ac26e);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28);
+
+  .codex-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    img {
+      width: 52px;
+      height: 52px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .codex-title {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .codex-name {
+      font-weight: 800;
+      color: #eafff0;
+    }
+
+    .codex-biome {
+      font-size: 0.75rem;
+    }
+
+    .codex-close {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      background: none;
+      border: none;
+      color: #9aa79a;
+      cursor: pointer;
+      padding: 4px;
+
+      &:hover {
+        color: #eafff0;
+      }
+    }
+  }
+
+  .codex-lore {
+    margin: 10px 0;
+    font-style: italic;
+    line-height: 1.5;
+    color: #d6e2d6;
+  }
+
+  .codex-trait {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+
+    .trait-name {
+      font-weight: 800;
+      color: var(--accent-color, #9ac26e);
+    }
+
+    .trait-blurb {
+      font-size: 0.85rem;
+    }
   }
 }
 
@@ -1523,6 +1636,45 @@
 .item-sheet-hint { font-size: 0.85rem; }
 
 // Inline material glyphs inside the salvage "Grind +N" buttons.
+// Gear top bar: Back (when in a sub-menu) on the left, resource chips right.
+.gear-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 12px 8px;
+
+  .gear-back {
+    align-self: center;
+    margin: 0;
+  }
+}
+
+// Materials as small chips, pushed to the right of the top bar.
+.gear-mat-chips {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.gear-mat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #dfe7df;
+  background: #101709;
+  border: 1px solid #26331f;
+  border-radius: 999px;
+
+  .mi {
+    font-size: 17px;
+    width: 17px;
+    height: 17px;
+  }
+}
+
 .mi.tiny {
   font-size: 14px;
   width: 14px;
@@ -1561,9 +1713,12 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
   min-height: 150px;
-  padding: 15px 14px;
-  text-align: left;
+  padding: 20px 14px;
+  text-align: center;
   color: #dfe7df;
   background: linear-gradient(165deg, #121810 0%, #0d130b 100%);
   border: 1px solid #22301d;
@@ -1585,55 +1740,24 @@
 .gear-hub-ico {
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
-  margin-bottom: auto;
+  width: 68px;
+  height: 68px;
   color: #9ac26e;
   background: #0e160b;
   border: 1px solid #26331f;
-  border-radius: 13px;
+  border-radius: 18px;
 
   .mi {
-    width: 26px;
-    height: 26px;
-    font-size: 26px;
+    width: 38px;
+    height: 38px;
+    font-size: 38px;
   }
 }
 
-.gear-hub-count {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #8a9a8a;
-  font-variant-numeric: tabular-nums;
-}
-
 .gear-hub-title {
-  margin-top: 12px;
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.gear-hub-status {
-  margin-top: 3px;
-  font-size: 12px;
-  line-height: 1.35;
-  color: #8a9a8a;
-}
-
-.gear-hub-pill {
-  align-self: flex-start;
-  margin-top: 9px;
-  padding: 3px 9px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #b7e4c7;
-  background: rgba(107, 174, 117, 0.12);
-  border: 1px solid #2a3f24;
-  border-radius: 999px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
 }
 
 .gear-hub-tile.magic {
