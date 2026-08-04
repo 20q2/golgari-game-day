@@ -415,10 +415,10 @@ export interface CombatEntry {
   /** Chip damage a Guard leaks through on a stalled exchange. */
   guardChip?: boolean;
   rotApplied?: number;
-  /** Companion trigger tag: 'fox' (a follow-up hit, carries `dmg`) or 'turtle'
-   *  (a deflect, carries `deflect`). Lets playback badge the pet's action. */
-  pet?: 'fox' | 'turtle';
-  /** Points a Turtle companion shrugged off the decisive hit (with pet:'turtle'). */
+  /** Companion trigger tag by role: 'attack' (a follow-up hit, carries `dmg`) or
+   *  'defend' (a deflect, carries `deflect`). Lets playback badge the pet's action. */
+  pet?: 'attack' | 'defend';
+  /** Points a defend companion shrugged off the decisive hit (with pet:'defend'). */
   deflect?: number;
   /** Legacy environmental "collapse" damage — no longer emitted by the engine
    *  (combat now escalates via each creature's own swings). Kept for playback of

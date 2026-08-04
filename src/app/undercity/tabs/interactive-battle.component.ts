@@ -493,8 +493,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     } else if (e.miss || e.negated) {
       this.pop.set({ side: target, text: e.negated ? 'ward' : 'miss', kind: 'miss' });
     } else if (e.deflect) {
-      // Turtle companion shrugged off part of the hit — badge the blocker's side.
-      this.pop.set({ side: e.by as Side, text: 'Turtle!', kind: 'miss' });
+      // Defend companion shrugged off part of the hit — badge the blocker's side.
+      this.pop.set({ side: e.by as Side, text: 'Block!', kind: 'miss' });
     }
 
     if (e.heal) {
@@ -515,7 +515,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
    * ligature. Order matters — specific effect tags win over the plain strike.
    */
   private dmgIcon(e: CombatEntry, aStance?: Stance, dStance?: Stance): { icon: string; svg: boolean } | null {
-    if (e.pet === 'fox') return { icon: 'pets', svg: false }; // Fox companion follow-up
+    if (e.pet === 'attack') return { icon: 'pets', svg: false }; // Attack companion follow-up
     if (e.rot) return { icon: 'coronavirus', svg: false }; // rot damage-over-time
     if (e.frenzy) return { icon: 'local_fire_department', svg: false }; // legacy escalation
     if (e.retaliation) return { icon: 'uc-carapace', svg: true }; // thorns / spikeshell reflect

@@ -8,60 +8,82 @@
  * raises a pet's tier/rarity, leveling with moltings/gemstones fills the cap.
  *
  * Keep these numbers in sync with the server — the server is authoritative; the
- * client only displays previews and gates buttons. Placeholder art: each species
- * shows a Material icon until real sprites land in public/undercity/ (wire the
- * sprite key in PET_SPECIES.sprite, mirroring data/species.ts).
+ * client only displays previews and gates buttons. A pet's ROLE (not its species
+ * name) drives its ability, so each role has two collectible species that share
+ * one ability. Real pixel-art sprites live at
+ * public/undercity/pets/<role>/<species>.png.
  */
 import { Rarity, tierRarity } from './items';
 
-export type PetSpecies = 'fox' | 'turtle' | 'bird' | 'mouse' | 'grub';
+/** A companion species id — equals its sprite filename (no extension). */
+export type PetSpecies = string;
+
+/** The five ability roles; two species share each. */
+export type PetRole = 'attack' | 'defend' | 'forage' | 'scout' | 'economy';
 
 /** How a companion acts: passive combat trigger, activated ability, or a
  *  passive board/economy trickle. */
 export type PetKind = 'combat-passive' | 'activated' | 'economy';
 
+export interface PetRoleInfo {
+  kind: PetKind;
+  /** One-line player-facing ability description (mirrors PET_ROLES blurb). */
+  blurb: string;
+  /** Material icon fallback (used where a sprite isn't rendered, e.g. hub tile). */
+  icon: string;
+}
+
+/** Mirror of undercity_data.PET_ROLES. */
+export const PET_ROLES: Record<PetRole, PetRoleInfo> = {
+  attack: { kind: 'combat-passive', blurb: 'Chance to strike a follow-up hit in battle.', icon: 'pets' },
+  defend: { kind: 'combat-passive', blurb: 'Chance to deflect a few points of damage.', icon: 'shield' },
+  forage: { kind: 'activated', blurb: 'Scavenges a small cache of loot.', icon: 'savings' },
+  scout: { kind: 'activated', blurb: "Scouts a bazaar's stock before you arrive.", icon: 'visibility' },
+  economy: { kind: 'economy', blurb: 'Trickles moltings as you travel.', icon: 'grass' },
+};
+
 export interface PetSpeciesInfo {
   species: PetSpecies;
   name: string;
+  role: PetRole;
   kind: PetKind;
-  /** One-line player-facing ability description (mirrors PET_SPECIES.blurb). */
   blurb: string;
-  /** Material icon shown as placeholder art until a real sprite exists. */
   icon: string;
-  /** Intended sprite asset key (undercity/sprites/${sprite}.png); art TBD. */
-  sprite: string;
 }
 
-/** Mirror of undercity_data.PET_SPECIES (+ client-only icon/sprite hints). */
-export const PET_SPECIES: Record<PetSpecies, PetSpeciesInfo> = {
-  fox: {
-    species: 'fox', name: 'Fox', kind: 'combat-passive',
-    blurb: 'Chance to strike a follow-up hit in battle.',
-    icon: 'pets', sprite: 'pet_fox',
-  },
-  turtle: {
-    species: 'turtle', name: 'Turtle', kind: 'combat-passive',
-    blurb: 'Chance to deflect a few points of damage.',
-    icon: 'shield', sprite: 'pet_turtle',
-  },
-  bird: {
-    species: 'bird', name: 'Bird', kind: 'activated',
-    blurb: "Scouts a bazaar's stock before you arrive.",
-    icon: 'visibility', sprite: 'pet_bird',
-  },
-  mouse: {
-    species: 'mouse', name: 'Mouse', kind: 'activated',
-    blurb: 'Scavenges a small cache of loot.',
-    icon: 'savings', sprite: 'pet_mouse',
-  },
-  grub: {
-    species: 'grub', name: 'Grub', kind: 'economy',
-    blurb: 'Trickles moltings as you travel.',
-    icon: 'grass', sprite: 'pet_grub',
-  },
+/** species id (== sprite filename) -> [display name, role]. Mirror of
+ *  undercity_data._PET_ROSTER. Two species per role. */
+const PET_ROSTER: Record<string, [string, PetRole]> = {
+  baby_leyline_prowler: ['Leyline Prowler', 'attack'],
+  baby_moldering_karock: ['Moldering Karock', 'attack'],
+  decimator_beetle: ['Decimator Beetle', 'defend'],
+  small_bear: ['Bear Cub', 'defend'],
+  baby_broodspinner: ['Broodspinner', 'economy'],
+  slime: ['Slime', 'economy'],
+  baby_darkheart_sliver: ['Darkheart Sliver', 'forage'],
+  rat: ['Rat', 'forage'],
+  baby_gloomshrieker: ['Gloomshrieker', 'scout'],
+  baby_winding_constrictor: ['Winding Constrictor', 'scout'],
 };
 
+export const PET_SPECIES: Record<string, PetSpeciesInfo> = Object.fromEntries(
+  Object.entries(PET_ROSTER).map(([species, [name, role]]) => [
+    species,
+    { species, name, role, kind: PET_ROLES[role].kind, blurb: PET_ROLES[role].blurb, icon: PET_ROLES[role].icon },
+  ]),
+);
+
 export const PET_SPECIES_LIST: PetSpeciesInfo[] = Object.values(PET_SPECIES);
+
+/** Role of a species (defaults to 'attack' for an unknown id — never crashes). */
+export function petRole(species: PetSpecies): PetRole {
+  return PET_SPECIES[species]?.role ?? 'attack';
+}
+
+/** Public URL of a species' pixel-art sprite. */
+export function petSpriteUrl(species: PetSpecies): string {
+  return `undercity/pets/${petRole(species)}/${species}.png`;
+}
 
 // ── Progression (mirror undercity_data) ──────────────────────────────────────
 
@@ -85,9 +107,10 @@ export const PET_SALVAGE_ICHOR_MIN_TIER = 3;
 
 export const PET_INCUBATE_MINUTES = 15;
 
-/** Activated-ability base cooldowns (minutes), shortened as the pet levels. */
-export const PET_ABILITY_COOLDOWN_MIN: Partial<Record<PetSpecies, number>> = {
-  bird: 30, mouse: 20,
+/** Activated-ability base cooldowns (minutes), keyed by ROLE, shortened as the
+ *  pet levels. */
+export const PET_ABILITY_COOLDOWN_MIN: Partial<Record<PetRole, number>> = {
+  scout: 30, forage: 20,
 };
 export const PET_ABILITY_COOLDOWN_PER_LVL = 2;
 export const PET_ABILITY_COOLDOWN_FLOOR = 5;
@@ -128,7 +151,16 @@ export interface Egg {
 // ── Derived display helpers ──────────────────────────────────────────────────
 
 export function petInfo(species: PetSpecies): PetSpeciesInfo {
-  return PET_SPECIES[species];
+  return (
+    PET_SPECIES[species] ?? {
+      species,
+      name: species,
+      role: 'attack',
+      kind: PET_ROLES.attack.kind,
+      blurb: PET_ROLES.attack.blurb,
+      icon: PET_ROLES.attack.icon,
+    }
+  );
 }
 
 export function petRarity(pet: Pet): Rarity {
@@ -175,23 +207,23 @@ export function mergeWouldRankUp(target: Pet, fodder: Pet[]): boolean {
   return target.mergeProgress + mergePointsFor(fodder) >= need;
 }
 
-/** Real-time ability cooldown (minutes) for a species at a level. */
-export function abilityCooldownMin(species: PetSpecies, level: number): number {
-  const base = PET_ABILITY_COOLDOWN_MIN[species] ?? 0;
+/** Real-time ability cooldown (minutes) for a role at a level. */
+export function abilityCooldownMin(role: PetRole, level: number): number {
+  const base = PET_ABILITY_COOLDOWN_MIN[role] ?? 0;
   return Math.max(PET_ABILITY_COOLDOWN_FLOOR, base - PET_ABILITY_COOLDOWN_PER_LVL * (level - 1));
 }
 
-/** True if an activated pet's shared cooldown has elapsed (server clock, ISO
- *  without trailing Z — same convention as spellCooldowns). */
-export function abilityReady(petCooldowns: Record<string, string> | undefined, species: PetSpecies): boolean {
-  const readyAt = petCooldowns?.[species];
+/** True if an activated pet's shared cooldown (keyed by ROLE) has elapsed
+ *  (server clock, ISO without trailing Z — same convention as spellCooldowns). */
+export function abilityReady(petCooldowns: Record<string, string> | undefined, role: PetRole): boolean {
+  const readyAt = petCooldowns?.[role];
   if (!readyAt) return true;
   return new Date(readyAt + 'Z').getTime() <= Date.now();
 }
 
 /** Minutes left on an activated pet's cooldown (0 when ready). */
-export function abilityCooldownLeftMin(petCooldowns: Record<string, string> | undefined, species: PetSpecies): number {
-  const readyAt = petCooldowns?.[species];
+export function abilityCooldownLeftMin(petCooldowns: Record<string, string> | undefined, role: PetRole): number {
+  const readyAt = petCooldowns?.[role];
   if (!readyAt) return 0;
   const ms = new Date(readyAt + 'Z').getTime() - Date.now();
   return ms <= 0 ? 0 : Math.ceil(ms / 60000);
