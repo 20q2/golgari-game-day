@@ -4421,6 +4421,11 @@ def _conclude_round(table, sid, doc, rec, player_c, npc_c, entries, frenzy_from,
 
 def _combat_flee(table, sid, doc, payload):
     rec = doc.get('battle')
+    # Gorgon Petrify: a fully-petrified foe skips this round (the Gorgon strikes
+    # free), then the freeze counter resets. The SPD slow already applied persists.
+    if npc_c.petrify >= data.PETRIFY_FREEZE_AT:
+        force_winner = 'attacker'
+        npc_c.petrify = 0
     if not rec:
         return _err('No battle in progress.', 409)
     if rec['kind'] in ('barrier', 'boss'):

@@ -60,3 +60,21 @@ def test_no_stone_gaze_no_petrify(table, monkeypatch):
     db._combat_round(table, sid, doc, {'stance': 'guard'})
     npc = db._get_player(table, sid, 'user-alex')['battle']['npc']
     assert npc.get('petrify', 0) == 0
+
+
+def test_petrify_threshold_freezes_and_resets(table, monkeypatch):
+    sid, doc = _start_a_fight_as_gorgon(table, ['stonewright', 'stone_gaze'])
+    # Pre-load one below the freeze threshold (in-memory; _combat_round saves).
+    doc['battle']['npc']['petrify'] = data.PETRIFY_FREEZE_AT - 1
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)   # reads land
+    # This round's read pushes petrify up to the threshold.
+    db._combat_round(table, sid, doc, {'stance': 'aggress'})
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['battle']['npc']['petrify'] == data.PETRIFY_FREEZE_AT
+    # The NEXT round the enemy is frozen: the player's forced win lands, the foe
+    # never heals, and the freeze counter drops below the threshold.
+    hp_before = doc['battle']['npc']['hp']
+    db._combat_round(table, sid, doc, {'stance': 'aggress'})
+    npc = db._get_player(table, sid, 'user-alex')['battle']['npc']
+    assert npc['petrify'] < data.PETRIFY_FREEZE_AT       # freeze consumed the stacks
+    assert npc['hp'] <= hp_before
