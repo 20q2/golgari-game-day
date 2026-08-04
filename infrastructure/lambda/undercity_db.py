@@ -2791,6 +2791,9 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         # (same doc). Client draws a gold sparkle over shiny sprites.
         'shiny': _rng.random() < data.SHINY_HATCH_CHANCE,
     }
+    # Gorgon (Stonewright): born strong — spawn with banked points to spend now.
+    if 'stonewright' in doc.get('passives', []):
+        doc['statPoints'] = data.GORGON_START_POINTS
     # ── Home-biome hatch perks ──────────────────────────────────────────────
     if home == 'bone':
         # Marrowborn: flat +Max HP, hatched at full so the bonus is felt at once.
@@ -2914,7 +2917,7 @@ def _join(table, sid, user_id, username, payload):
         return _ok(existing)
     starter = payload.get('starter')
     if starter not in data.STARTERS:
-        return _err('Pick a starter: pest, kraul, saproling, or zombie.')
+        return _err('Pick a starter: pest, kraul, saproling, zombie, squirrel, or gorgon.')
     home = payload.get('home', data.DEFAULT_BIOME)
     if home not in data.BIOMES:
         return _err('Pick a home biome: ' + ', '.join(data.BIOMES) + '.')

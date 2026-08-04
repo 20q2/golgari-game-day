@@ -25,3 +25,19 @@ def test_gorgon_evolution_line():
     assert 'golgari_lich_lord' in data.apex_options('basalt_matron')
     assert 'swamp_dragon' in data.apex_options('medusa_stalker')
     assert 'izoni' in data.apex_options('medusa_stalker')
+
+
+def test_gorgon_starts_with_five_banked_points(table):
+    act(table, 'join', starter='gorgon')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['species'] == 'gorgon'
+    assert 'stonewright' in doc['passives']
+    assert doc['statPoints'] == 5
+
+
+def test_non_gorgon_starts_with_zero_points(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['statPoints'] == 0
