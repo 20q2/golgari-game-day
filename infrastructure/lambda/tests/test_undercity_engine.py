@@ -1314,9 +1314,13 @@ def test_gear_roster_doubled():
     # Mythic (tier 4, craft-only) adds one piece per rider family: +5 fang,
     # +5 carapace, +6 charm = 16 -> 69. The tier-2 Hybrid line (no-rider,
     # two-stat; design 2026-07-23) adds 1 per slot -> 72.
-    assert len(data.GEAR) == 72
+    # Gorgon "Gear+" masterwork variants (design 2026-08-04) are generated into
+    # GEAR for the bare-id pipeline; they are excluded here so this still guards
+    # the base roster (their own coverage lives in test_undercity_gorgon.py).
+    base = {gid: g for gid, g in data.GEAR.items() if not gid.endswith('+')}
+    assert len(base) == 72
     slots = {}
-    for g in data.GEAR.values():
+    for g in base.values():
         slots[g['slot']] = slots.get(g['slot'], 0) + 1
     assert slots == {'fang': 22, 'carapace': 24, 'charm': 26}
 

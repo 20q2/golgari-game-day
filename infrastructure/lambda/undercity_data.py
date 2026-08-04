@@ -356,6 +356,41 @@ for _gid, _g in GEAR.items():
     if _rider:
         GEAR_FAMILY.setdefault(_rider, {})[_g['tier']] = _gid
 
+# ── Gear+ (Gorgon Stonewright mint) ──────────────────────────────────────────
+# A Gorgon's Blacksmith upgrade mints a "+" variant of the piece: same slot,
+# tier, and rider, with its primary stat bumped. Generated here from the base
+# rider gear so the entire bare-id gear pipeline (equip, stash, market, salvage,
+# client lookup) carries "+" ids for free. Runs AFTER GEAR_FAMILY so "+" ids are
+# never treated as an upgrade rung.
+PLUS_SUFFIX = '+'
+
+
+def _gear_primary_stat(g):
+    """Stat a Gear+ bump lands on: the largest of atk/def/spd (ties resolve in
+    that order). maxHp is never the primary."""
+    best, best_val = 'atk', -1
+    for stat in ('atk', 'def', 'spd'):
+        v = g.get(stat, 0)
+        if v > best_val:
+            best, best_val = stat, v
+    return best
+
+
+def plus_id(gid):
+    """The Gear+ id for a base gid; idempotent (never doubles the suffix)."""
+    return gid if gid.endswith(PLUS_SUFFIX) else gid + PLUS_SUFFIX
+
+
+for _gid, _g in list(GEAR.items()):
+    if _g.get('rider') in GEAR_FAMILY:          # upgradeable pieces only
+        _p = dict(_g)
+        _prime = _gear_primary_stat(_g)
+        _bump = GEAR_PLUS_MYTHIC_BUMP if _g['tier'] >= 4 else GEAR_PLUS_BUMP
+        _p[_prime] = _g.get(_prime, 0) + _bump
+        _p['name'] = _g['name'] + ' +'
+        _p['plus'] = True
+        GEAR[plus_id(_gid)] = _p
+
 # Rider → the stance it modifies + a human blurb (client reads this in Plan 3).
 GEAR_RIDERS = {
     'barbed':    {'stance': 'aggress', 'blurb': 'Your Aggress applies rot even on a clash or loss.'},

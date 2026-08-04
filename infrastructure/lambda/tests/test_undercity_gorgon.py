@@ -41,3 +41,26 @@ def test_non_gorgon_starts_with_zero_points(table):
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
     assert doc['statPoints'] == 0
+
+
+def test_gear_plus_variants_generated():
+    base = 'bramble_hide'                 # tier-1 rider gear (primary stat: def)
+    pid = base + '+'
+    assert pid in data.GEAR
+    assert data.GEAR[pid]['plus'] is True
+    assert data.GEAR[pid]['name'] == data.GEAR[base]['name'] + ' +'
+    assert data.GEAR[pid]['def'] == data.GEAR[base]['def'] + data.GEAR_PLUS_BUMP
+    assert data.GEAR[pid]['tier'] == data.GEAR[base]['tier']
+    assert data.GEAR[pid]['rider'] == data.GEAR[base]['rider']
+
+
+def test_gear_plus_mythic_bump_is_larger():
+    mythic = data.GEAR_FAMILY['bramble'][4]
+    assert data.GEAR[mythic + '+']['def'] == data.GEAR[mythic]['def'] + data.GEAR_PLUS_MYTHIC_BUMP
+
+
+def test_gear_family_never_contains_plus_ids():
+    # "+" is a within-tier bonus, not an upgrade rung — it must not leak into the path.
+    for rider, tiers in data.GEAR_FAMILY.items():
+        for tier, gid in tiers.items():
+            assert not gid.endswith('+')
