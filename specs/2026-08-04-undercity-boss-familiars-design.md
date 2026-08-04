@@ -61,19 +61,25 @@ mechanic in `_wild_battle` is otherwise unchanged (still 40%, WILD-only).
 signature — the Lord of Extinction / Doomgape lairs are separate side content
 (`RESPAWN_LAIRS`) and out of scope here.
 
-### 2.2 Power level — mini-elite, but beatable
+### 2.2 Power level — a mini-elite you power through
 
-Familiars sit in the **tier-2 elite band** (a notch above the tier-2 *wild* pool
-the old signatures used), with richer `bounty` / `xp` / `itemChance`, so the boss's
-presence is felt. But they are tuned a clear step **below their own boss** and,
-critically, must remain **comfortably beatable**:
+**The trait is the threat, not the HP bar.** A level-5-ish creature must be able
+to power through the dungeon, so familiars run **low HP with elite-ish ATK** —
+around the **tier-1 *elite* band** (hp ~30-32), well **below** both their own boss
+(hp 40-48) and the tier-2 depths wilds (`DEPTHS_MID`, hp 42-56) they spawn among.
+Their identity comes from the signature trait and a modest bounty/xp bump, not
+attrition.
+
+**Low HP is also the primary balance lever for the snowball traits.** Because the
+fight ends fast, Grave Growth and Doom Counters rarely reach dangerous stacks —
+you burst the familiar down before it spirals. A player who *stalls* still gets
+punished, which is the lesson. The stack caps (§2.4) are a backstop, not the main
+control; Dredge's regen stays below the frenzy ramp for the same reason.
 
 > **Balance gate (hard requirement).** Each familiar is validated in
-> `infrastructure/lambda/sim/` against a level-appropriate creature (the
-> recommended level for that turf). A good-play win rate materially below the
-> existing tier-2 elite baseline fails the gate — familiars are *teachers*, not
-> walls. The stacking traits (§2.4) get **stack caps** and the regen trait stays
-> **below the Collapse's frenzy ramp**, so no familiar can become un-raceable.
+> `infrastructure/lambda/sim/` against a **~level-5** creature powering through
+> the dungeon. If good play can't reliably clear it — comparable to beating a
+> tier-1 elite — the numbers come down. Familiars are *teachers*, not walls.
 
 Starting stat blocks (pre-sim, to be confirmed by the sim pass — treat as a
 starting point, not final):
@@ -82,32 +88,32 @@ starting point, not final):
 LAIR_FAMILIAR = {
   'skullbriars_familiar': {
      'id': 'skullbriars_familiar', 'name': "Skullbriar's Familiar",
-     'hp': 52, 'atk': 12, 'def': 5, 'spd': 6, 'bounty': 30, 'xp': 48,
-     'itemChance': 0.28, 'personality': 'brute', 'bluff': 0.20,
+     'hp': 32, 'atk': 12, 'def': 4, 'spd': 6, 'bounty': 20, 'xp': 30,
+     'itemChance': 0.25, 'personality': 'brute', 'bluff': 0.18,
      'passives': ['grave_growth'],
      'sprites': ['skullbriars_familiar']},
   'slimefoots_saprolings': {
      'id': 'slimefoots_saprolings', 'name': "Slimefoot's Saprolings",
-     'hp': 50, 'atk': 11, 'def': 6, 'spd': 5, 'bounty': 30, 'xp': 48,
-     'itemChance': 0.28, 'personality': 'balanced', 'bluff': 0.15,
+     'hp': 34, 'atk': 10, 'def': 5, 'spd': 5, 'bounty': 20, 'xp': 30,
+     'itemChance': 0.25, 'personality': 'balanced', 'bluff': 0.12,
      'passives': ['swarm'],
      'sprites': ['slimefoots_saprolings']},
   'gitrog_spawn': {
      'id': 'gitrog_spawn', 'name': 'Gitrog Spawn',
-     'hp': 56, 'atk': 11, 'def': 6, 'spd': 5, 'bounty': 30, 'xp': 48,
-     'itemChance': 0.28, 'personality': 'turtle', 'bluff': 0.15,
+     'hp': 34, 'atk': 10, 'def': 6, 'spd': 5, 'bounty': 20, 'xp': 30,
+     'itemChance': 0.25, 'personality': 'turtle', 'bluff': 0.12,
      'passives': ['dredge'],
      'sprites': ['gitrog_spawn', 'gitrog_spawn2']},
   'sarulfs_packmate': {
      'id': 'sarulfs_packmate', 'name': "Sarulf's Packmate",
-     'hp': 48, 'atk': 12, 'def': 5, 'spd': 8, 'bounty': 30, 'xp': 48,
-     'itemChance': 0.28, 'personality': 'trickster', 'bluff': 0.20,
+     'hp': 30, 'atk': 11, 'def': 4, 'spd': 8, 'bounty': 20, 'xp': 30,
+     'itemChance': 0.25, 'personality': 'trickster', 'bluff': 0.18,
      'passives': ['doom_counters'],
      'sprites': ['sarulfs_packmate']},
   'ishkanahs_hatchling': {
      'id': 'ishkanahs_hatchling', 'name': "Ishkanah's Hatchling",
-     'hp': 50, 'atk': 12, 'def': 4, 'spd': 8, 'bounty': 30, 'xp': 48,
-     'itemChance': 0.28, 'personality': 'trickster', 'bluff': 0.20,
+     'hp': 30, 'atk': 11, 'def': 4, 'spd': 8, 'bounty': 20, 'xp': 30,
+     'itemChance': 0.25, 'personality': 'trickster', 'bluff': 0.18,
      'passives': ['web_venom'],
      'sprites': ['ishankas_hatchling']},
 }
