@@ -292,12 +292,16 @@ export function witchScrollPrice(spellId: string): number {
   return Math.round(inscribeCost(spellId) * WITCH_SCROLL_MARKUP);
 }
 
-export type MarketKind = 'gear' | 'consumable' | 'scroll';
+// 'pet'/'egg' are instance listings — their price band comes from the pet/egg
+// object (see pets.ts petMarketBand/eggMarketBand), not this id-keyed cost.
+export type MarketKind = 'gear' | 'consumable' | 'scroll' | 'pet' | 'egg';
 
-/** Base cost a market price band is derived from, per kind (mirrors _MARKET_KINDS). */
+/** Base cost a market price band is derived from, per kind (mirrors _MARKET_KINDS).
+ *  Instance kinds (pet/egg) have no id-based cost — return 0. */
 export function marketItemCost(kind: MarketKind, id: string): number {
   if (kind === 'consumable') return CONSUMABLE_MAP[id]?.cost ?? 0;
   if (kind === 'scroll') return INSCRIBE_COST[SPELL_MAP[id]?.tier ?? 1] ?? 0;
+  if (kind === 'pet' || kind === 'egg') return 0;
   return GEAR_MAP[id]?.cost ?? 0;
 }
 

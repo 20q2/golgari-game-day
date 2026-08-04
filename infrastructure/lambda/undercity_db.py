@@ -2076,7 +2076,8 @@ def handle_state(table, query_params):
         rec = shops.get(nid)
         st = rec if rec and rec.get('window') == shop_win else _gen_shop_stock(nid, shop_win)
         bazaars[nid] = {'gear': st['gear'], 'consumables': st['consumables'],
-                        'grimoires': st['grimoires'], 'refreshesAt': refreshes_at}
+                        'grimoires': st['grimoires'], 'eggs': st.get('eggs', []),
+                        'refreshesAt': refreshes_at}
 
     out = {
         'season': {'seasonId': sid, 'status': config.get('status'),

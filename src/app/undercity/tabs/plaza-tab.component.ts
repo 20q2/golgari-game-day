@@ -28,6 +28,8 @@ import {
   GearInfo,
 } from '../data/items';
 import { SPELL_MAP } from '../data/spells';
+import { PET_SPECIES, PetSpecies } from '../data/pets';
+import { MarketListing } from '../services/undercity-models';
 import { affordReason, containerFullReason, materialReason } from '../data/block-reasons';
 import { UcActionBandComponent } from './action-band.component';
 import { UcChatComponent } from './plaza-chat.component';
@@ -264,7 +266,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
     return affordReason(you.spores, cost.spores);
   }
 
-  private marketView(kind: MarketKind, id: string): MarketView | null {
+  private marketView(kind: MarketKind, id: string, payload?: MarketListing['payload']): MarketView | null {
     if (kind === 'gear') {
       const g = GEAR_MAP[id];
       if (!g) return null;
@@ -274,6 +276,25 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       const c = CONSUMABLE_MAP[id];
       if (!c) return null;
       return { name: c.name, desc: c.desc, icon: c.icon };
+    }
+    if (kind === 'pet') {
+      const sp = payload?.species ? PET_SPECIES[payload.species as PetSpecies] : undefined;
+      const tier = payload?.tier ?? 1;
+      return {
+        name: sp?.name ?? id ?? 'Companion',
+        desc: sp?.blurb ?? 'A companion.',
+        icon: sp?.icon ?? 'pets',
+        rarity: tierRarity(tier),
+      };
+    }
+    if (kind === 'egg') {
+      const tier = payload?.tier ?? 1;
+      return {
+        name: `${tierRarity(tier).label} Egg`,
+        desc: 'Incubate it to hatch a companion.',
+        icon: 'egg',
+        rarity: tierRarity(tier),
+      };
     }
     const s = SPELL_MAP[id];
     if (!s) return null;
@@ -292,7 +313,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
           price: l.price,
           sellerName: l.sellerName,
           kind,
-          view: this.marketView(kind, itemId),
+          view: this.marketView(kind, itemId, l.payload),
           own: l.sellerId === this.store.ownUserId,
         };
       })
@@ -305,6 +326,9 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
   protected buyReason(l: { price: number; own: boolean; kind: MarketKind }): string | null {
     const you = this.store.you();
     if (!you || l.own) return 'Unavailable';
+    // Pets/eggs have no capped container (they land in pets[]/eggs[]) — only
+    // affordability gates the buy.
+    if (l.kind === 'pet' || l.kind === 'egg') return affordReason(you.spores, l.price);
     const held =
       l.kind === 'consumable' ? you.bag : l.kind === 'scroll' ? you.scrolls : you.gearStash;
     const cap = l.kind === 'consumable' ? 3 : 6; // BAG_SIZE=3; gearStash/scrolls=6

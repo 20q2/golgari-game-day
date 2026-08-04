@@ -92,6 +92,21 @@ export const PET_ABILITY_COOLDOWN_MIN: Partial<Record<PetSpecies, number>> = {
 export const PET_ABILITY_COOLDOWN_PER_LVL = 2;
 export const PET_ABILITY_COOLDOWN_FLOOR = 5;
 
+// ── Player-market resale (mirror undercity_config PET/EGG_MARKET_*) ───────────
+
+export const PET_MARKET_VALUE: Record<number, number> = { 1: 20, 2: 55, 3: 120, 4: 240 };
+export const PET_MARKET_PER_LEVEL = 6;
+export const EGG_MARKET_VALUE: Record<number, number> = { 1: 25, 2: 60, 3: 130, 4: 250 };
+
+// Same band percentages the server uses (MARKET_PRICE_MIN/MAX_PCT).
+const MARKET_PRICE_MIN_PCT = 0.5;
+const MARKET_PRICE_MAX_PCT = 2.0;
+
+function band(base: number): { lo: number; hi: number } {
+  const lo = Math.max(1, Math.floor(base * MARKET_PRICE_MIN_PCT));
+  return { lo, hi: Math.max(lo, Math.floor(base * MARKET_PRICE_MAX_PCT)) };
+}
+
 // ── Instance shape (mirror the server pet dict) ──────────────────────────────
 
 export interface Pet {
@@ -180,4 +195,14 @@ export function abilityCooldownLeftMin(petCooldowns: Record<string, string> | un
   if (!readyAt) return 0;
   const ms = new Date(readyAt + 'Z').getTime() - Date.now();
   return ms <= 0 ? 0 : Math.ceil(ms / 60000);
+}
+
+/** Allowed Spore price band for selling a companion (scales with level). */
+export function petMarketBand(pet: Pet): { lo: number; hi: number } {
+  return band((PET_MARKET_VALUE[pet.tier] ?? 20) + PET_MARKET_PER_LEVEL * (pet.level - 1));
+}
+
+/** Allowed Spore price band for selling an egg (by tier). */
+export function eggMarketBand(tier: number): { lo: number; hi: number } {
+  return band(EGG_MARKET_VALUE[tier] ?? 25);
 }

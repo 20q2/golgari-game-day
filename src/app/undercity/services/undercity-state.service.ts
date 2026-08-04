@@ -50,7 +50,7 @@ export type FacilityKind =
 export interface OpenFacility {
   kind: FacilityKind;
   /** Only 'shop' uses this, to restore the selected Bazaar sub-tab. */
-  shopTab?: 'gear' | 'consumables' | 'grimoires';
+  shopTab?: 'gear' | 'consumables' | 'grimoires' | 'eggs';
   /** Only 'warp' uses this — the destination list isn't derivable from any
    * other store signal, so it's carried directly. */
   warpOptions?: string[];

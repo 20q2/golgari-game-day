@@ -296,12 +296,14 @@ export interface MarketListing {
   sellerId: string;
   sellerName: string;
   /** Absent on legacy rows written before kinds existed → treat as 'gear'. */
-  kind?: 'gear' | 'consumable' | 'scroll';
-  /** Absent on legacy rows → fall back to `gearId`. */
+  kind?: 'gear' | 'consumable' | 'scroll' | 'pet' | 'egg';
+  /** Absent on legacy rows → fall back to `gearId`. For pet/egg it's a display name. */
   itemId?: string;
   /** Legacy field, still emitted by old rows. */
   gearId?: string;
   price: number;
+  /** Instance payload for pet/egg listings (the sold object). */
+  payload?: { species?: string; tier: number; level?: number; mergeProgress?: number };
 }
 
 export interface GameState {
@@ -529,11 +531,20 @@ export interface ShopStockItem {
   blackMarket?: boolean;
 }
 
+/** One stocked companion egg (the Eggs tab). */
+export interface EggStockItem {
+  tier: number;
+  qty: number;
+  cost: number;
+}
+
 /** A bazaar node's current shared stock + when it restocks. */
 export interface BazaarView {
   gear: ShopStockItem[];
   consumables: ShopStockItem[];
   grimoires: string[];
+  /** Companion eggs stocked this window (the Eggs tab). */
+  eggs?: EggStockItem[];
   /** ISO timestamp (UTC, no suffix) of the next restock. */
   refreshesAt: string;
 }
