@@ -497,6 +497,8 @@ export interface BattleResume {
     /** Derived opponent power level shown in the battle screen. */
     level?: number;
     personality?: string;
+    /** Size tier (1-3) for relative arena sprite scaling (server-stamped). */
+    tier?: number;
   };
 }
 
@@ -711,6 +713,8 @@ export interface SpaceEvent {
     spd?: number;
     /** Derived opponent power level shown in the battle screen. */
     level?: number;
+    /** Size tier (1-3) for relative arena sprite scaling (server-stamped). */
+    tier?: number;
     bounty?: number;
     personality?: string;
     /** PvP clone-duel only: sprite descriptor so the client can draw the

@@ -21,6 +21,9 @@ export interface BattleSide {
   maxHp: number;
   /** Derived power level shown beside a foe's name (NPCs only). */
   level?: number;
+  /** Size tier (1-3) driving relative sprite scaling in the arena: player =
+   *  evolution tier, foe = spawn-zone difficulty tier (bosses always 3). */
+  tier?: number;
   /** A beaten lair boss re-fought at half strength — rendered with the same
    * drained/blurred vestige filter it wears in the overworld. */
   vestige?: boolean;
