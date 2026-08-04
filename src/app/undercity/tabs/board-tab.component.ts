@@ -70,7 +70,7 @@ import {
   witchScrollPrice,
 } from '../data/items';
 import { eggSpriteUrl, petSpriteUrl } from '../data/pets';
-import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome } from '../data/dungeons';
+import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome, enemyArtUrl } from '../data/dungeons';
 import { RUIN_LAIRS, RUIN_LAIR_NAMES, ruinLairAbandoned } from '../data/ruin-lairs';
 import { WORLD_EVENT, WORLD_EVENT_SPRITE } from '../data/world-event';
 import { MONSTER_SPACE } from '../data/enraged';
@@ -2491,7 +2491,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // creature art from the enemies folder (the enraged one borrows an enemy
     // sprite via its spriteId — see the callers).
     if (evType === 'wild' || evType === 'elite' || evType === 'enraged')
-      return `undercity/enemies/${npcId}.png`;
+      return enemyArtUrl(npcId);   // boss familiars resolve to boss_spawns/
     // The wilderness World Event beast lives in its own art folder.
     if (evType === 'world') return `undercity/sigil_boss/${npcId}.png`;
     // Barriers, lair mini-bosses, and the island boss all share the guardians folder.
@@ -2639,6 +2639,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         startHp: preHp,
         maxHp: you?.maxHp ?? preHp,
         level: you?.level,
+        tier: you?.tier,
       },
       defender: {
         name: ev.npc!.name,
@@ -2652,6 +2653,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         startHp: ev.npc!.hp,
         maxHp: ev.npc!.maxHp ?? ev.npc!.hp,
         level: ev.npc!.level,
+        tier: ev.npc!.tier,
         vestige: this.isVestigeFoe(ev.npc!.name),
       },
       personality: ev.npc!.personality ?? 'balanced',
@@ -2688,6 +2690,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         startHp: pb.playerHp,
         maxHp: you?.maxHp ?? pb.playerHp,
         level: you?.level,
+        tier: you?.tier,
       },
       defender: {
         name: pb.npc.name,
@@ -2696,6 +2699,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         startHp: pb.npc.hp,
         maxHp: pb.npc.maxHp,
         level: pb.npc.level,
+        tier: pb.npc.tier,
         vestige: this.isVestigeFoe(pb.npc.name),
       },
       personality: pb.npc.personality ?? 'balanced',
