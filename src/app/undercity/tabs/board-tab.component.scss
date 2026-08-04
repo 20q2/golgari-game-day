@@ -1218,6 +1218,15 @@
       vertical-align: middle;
     }
 
+    // Egg-tab sprite: fixed box, crisp pixels, sized to sit inline with the name.
+    .egg-row-sprite {
+      width: 1.9rem;
+      height: 1.9rem;
+      object-fit: contain;
+      image-rendering: pixelated;
+      vertical-align: middle;
+    }
+
     em {
       color: #9aa79a;
       font-style: normal;

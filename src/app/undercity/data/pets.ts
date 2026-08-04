@@ -85,6 +85,22 @@ export function petSpriteUrl(species: PetSpecies): string {
   return `undercity/pets/${petRole(species)}/${species}.png`;
 }
 
+// Egg art is ranked by rarity: the four supplied files ascend common < uncommon
+// < rare < legendary, which we map onto the game's four TIERS (1..4) by rank —
+// so a higher-tier egg always looks rarer even though the filenames use a
+// different rarity vocabulary than the gear scale (common/rare/legendary/mythic).
+const EGG_SPRITE_BY_TIER: Record<number, string> = {
+  1: 'common_egg',
+  2: 'uncommon_egg',
+  3: 'rare_egg',
+  4: 'legendary_egg',
+};
+
+/** Public URL of an egg's pixel-art sprite for a given tier. */
+export function eggSpriteUrl(tier: number): string {
+  return `undercity/pets/eggs/${EGG_SPRITE_BY_TIER[tier] ?? EGG_SPRITE_BY_TIER[1]}.png`;
+}
+
 // ── Progression (mirror undercity_data) ──────────────────────────────────────
 
 /** Level cap per tier — merging raises tier, leveling fills to the cap. */
