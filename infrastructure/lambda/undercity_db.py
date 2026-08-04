@@ -4467,6 +4467,11 @@ def _battle_resume(rec, player_hp):
         'fleeChance': _flee_pct(rec),
         'playerHp': player_hp,
         'playerStatus': _battle_status(rec.get('player', {})),
+    # Gorgon Stone Gaze: a landed read petrifies the foe — a stacking SPD slow.
+    if rec['read'] and 'stone_gaze' in (rec['player'].get('passives') or []):
+        npc = rec['npc']
+        npc['petrify'] = int(npc.get('petrify', 0)) + 1
+        npc['spd'] = max(1, int(npc['spd']) - data.PETRIFY_SLOW)
         'npcStatus': _battle_status(rec.get('npc', {})),
         'revealed': rec.get('npcActual') if peeked else None,
         'npc': {

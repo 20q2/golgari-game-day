@@ -28,3 +28,35 @@ def test_petrify_scalars_and_stone_gaze_read_bonus():
 
 def test_medusa_has_stone_gaze():
     assert data.TIER2['medusa_stalker']['passive'] == 'stone_gaze'
+
+
+def _start_a_fight_as_gorgon(table, passives):
+    """Join, force a wild fight, and stamp the battle player's passives (simulating
+    an evolved Gorgon form). `_wild_battle` already persisted the battle; we stamp
+    the in-memory doc only and let `_combat_round` do the next save (an extra save
+    here would desync the doc version and 409 the round)."""
+    act(table, 'join', starter='gorgon')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    ev = db._wild_battle(table, sid, doc, region='cavern')
+    assert ev['type'] == 'battle_start'
+    doc['battle']['player']['passives'] = sorted(passives)
+    return sid, doc
+
+
+def test_stone_gaze_read_applies_petrify(table, monkeypatch):
+    sid, doc = _start_a_fight_as_gorgon(table, ['stonewright', 'stone_gaze'])
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)   # force a read to land
+    start_spd = doc['battle']['npc']['spd']
+    db._combat_round(table, sid, doc, {'stance': 'guard'})
+    npc = db._get_player(table, sid, 'user-alex')['battle']['npc']
+    assert npc['petrify'] == 1
+    assert npc['spd'] == max(1, start_spd - data.PETRIFY_SLOW)
+
+
+def test_no_stone_gaze_no_petrify(table, monkeypatch):
+    sid, doc = _start_a_fight_as_gorgon(table, ['stonewright'])  # no gaze
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)
+    db._combat_round(table, sid, doc, {'stance': 'guard'})
+    npc = db._get_player(table, sid, 'user-alex')['battle']['npc']
+    assert npc.get('petrify', 0) == 0
