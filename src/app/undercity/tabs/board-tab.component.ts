@@ -99,6 +99,8 @@ import { MysteryReelComponent } from './mystery-reel.component';
 import { HazardWheelComponent, HazardWheelTarget } from './hazard-wheel.component';
 import { BoardEventFeedComponent } from './board-event-feed.component';
 import { UcActionBandComponent } from './action-band.component';
+import { BossIntroComponent } from './boss-intro.component';
+import { bossLines } from '../data/boss-dialogue';
 
 interface BattleView {
   battle: BattleResult;
@@ -127,6 +129,14 @@ interface LiveBattle {
   frenzyFrom: number | null;
   /** SPD-based escape % for the flee button (100 with a held Smoke Spore). */
   fleeChance: number | null;
+}
+
+/** Payload for the pre-fight boss dialogue overlay (design 2026-08-04). */
+interface BossIntroView {
+  name: string;
+  spriteUrl: string;
+  lines: string[];
+  vestige: boolean;
 }
 
 /** A row in the top-right focus picker (a player, or Umori). */
@@ -192,6 +202,7 @@ const FX_TINT: Record<string, [string, string]> = {
     MatIconModule,
     BattlePlaybackComponent,
     InteractiveBattleComponent,
+    BossIntroComponent,
     DiceRollComponent,
     ExcavationModalComponent,
     FlowPuzzleModalComponent,
@@ -333,6 +344,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly occupants = signal<Occupant[]>([]);
   protected readonly battleView = signal<BattleView | null>(null);
   protected readonly liveBattle = signal<LiveBattle | null>(null);
+  /** Pre-fight boss dialogue card; null when no boss is speaking. */
+  protected readonly bossIntro = signal<BossIntroView | null>(null);
+  /** The boss encounter deferred behind the dialogue card, replayed on Fight. */
+  private pendingBossEv: { ev: SpaceEvent; preHp: number } | null = null;
   @ViewChild(InteractiveBattleComponent) private liveB?: InteractiveBattleComponent;
   protected readonly showShop = signal(false);
   protected readonly shopTab = signal<'gear' | 'consumables' | 'grimoires' | 'eggs'>('gear');
@@ -2266,8 +2281,44 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     if (this.store.you()?.pendingMove) this.stepping.set(null);
   }
 
+  /** Player tapped Fight on the boss dialogue card: dismiss it and run the
+   *  deferred encounter through the normal dispatch (skipping re-interception). */
+  protected beginBossBattle(): void {
+    const pending = this.pendingBossEv;
+    this.bossIntro.set(null);
+    this.pendingBossEv = null;
+    if (pending) this.routeSpaceEvent(pending.ev, pending.preHp, true);
+  }
+
   /** Open the right modal/animation for a landing event (move or teleport). */
-  private routeSpaceEvent(ev: SpaceEvent, preHp: number): void {
+  private routeSpaceEvent(ev: SpaceEvent, preHp: number, skipBossIntro = false): void {
+    // A fresh biome-lair boss or Savra encounter gets a spoken dialogue card
+    // first (design 2026-08-04). Defer the real dispatch until the player taps
+    // Fight (beginBossBattle re-enters with skipBossIntro=true). Detection keys
+    // off the boss npc id; the Vestige variant comes from the display name. The
+    // reload/resume path (resumeLiveBattle) never routes through here, so the
+    // dialogue can't replay mid-fight.
+    if (!skipBossIntro && ev.npc && this.bossIntro() === null) {
+      const isBossFight =
+        (ev.type === 'battle_start' && (ev.kind === 'lair' || ev.kind === 'boss')) ||
+        ev.type === 'lair' ||
+        ev.type === 'boss';
+      if (isBossFight) {
+        const vestige = this.isVestigeFoe(ev.npc.name);
+        const lines = bossLines(ev.npc.id, vestige);
+        if (lines) {
+          this.pendingBossEv = { ev, preHp };
+          this.bossIntro.set({
+            name: ev.npc.name,
+            // Mirror the battle opener's sprite resolution (spriteId ?? id).
+            spriteUrl: this.npcSpriteUrl(ev.kind ?? ev.type, ev.npc.spriteId ?? ev.npc.id),
+            lines,
+            vestige,
+          });
+          return;
+        }
+      }
+    }
     // Silent free relocates — no modal. The bridge tollkeeper already confirmed
     // the crossing, so the carry-across just happens and the walk resumes on the
     // far side (the store effect restarts it from any banked leftover roll).

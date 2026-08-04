@@ -1026,6 +1026,17 @@
     />
   }
 
+  <!-- Pre-fight boss dialogue -->
+  @if (bossIntro(); as bi) {
+    <app-undercity-boss-intro
+      [name]="bi.name"
+      [spriteUrl]="bi.spriteUrl"
+      [lines]="bi.lines"
+      [vestige]="bi.vestige"
+      (begin)="beginBossBattle()"
+    />
+  }
+
   <!-- Guild Sigil claimed: auto-dismissing sunburst fanfare -->
   @if (sigilCelebration(); as sc) {
     <div
