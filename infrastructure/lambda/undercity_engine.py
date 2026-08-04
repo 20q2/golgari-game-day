@@ -458,6 +458,34 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             t.hp -= chip
             entries.append({'round': rnd, 'by': side, 'dmg': chip, 'guardChip': True})
 
+    # ── Boss signature traits (design 2026-08-04) ────────────────────────────
+    # Stat-mutating snowballs (grave_growth/doom_counters) edit atk/def/spd in
+    # place — the same pattern as bulwark — and persist via _bt_store's atk/spd
+    # write-back. `winner` is the exchange result bound at the top of this fn.
+    for side, c in (('attacker', attacker), ('defender', defender)):
+        if c.hp <= 0:
+            continue
+        # Grave Growth (Skullbriar): unconditional per-round ramp, ATK-leaning.
+        if c.has('grave_growth') and c.growth_stacks < data.GRAVE_GROWTH_MAX:
+            c.growth_stacks += 1
+            c.atk += data.GRAVE_GROWTH_ATK
+            c.dfn += data.GRAVE_GROWTH_DEF
+            entries.append({'round': rnd, 'by': side, 'growth': c.growth_stacks})
+        # Doom Counters (Sarulf): +stat each round the holder wins or ties a mirror.
+        won = (winner == side)
+        tied = winner in ('clash', 'stall', 'whiff')
+        if c.has('doom_counters') and (won or tied) and c.doom_stacks < data.DOOM_MAX:
+            c.doom_stacks += 1
+            c.atk += data.DOOM_STEP
+            c.dfn += data.DOOM_STEP
+            c.spd += data.DOOM_STEP
+            entries.append({'round': rnd, 'by': side, 'doom': c.doom_stacks})
+        # Dredge (Gitrog): flat regrow, bounded by max HP.
+        if c.has('dredge') and c.hp < c.max_hp:
+            heal = min(data.DREDGE_REGEN, c.max_hp - c.hp)
+            c.hp += heal
+            entries.append({'round': rnd, 'by': side, 'heal': heal, 'dredge': True})
+
     return entries
 
 

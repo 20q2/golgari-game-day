@@ -1659,3 +1659,43 @@ def test_npc_from_spec_carries_passives_and_sprite():
     bare = engine.npc_from_spec({'id': 'y', 'name': 'Y', 'hp': 20, 'atk': 5,
         'def': 2, 'spd': 4, 'bounty': 5, 'xp': 8, 'itemChance': 0.0})
     assert 'passives' not in bare and 'spriteId' not in bare
+
+
+# ── Boss signature traits: grave_growth / doom_counters / dredge ─────────────
+
+def test_grave_growth_ramps_atk_each_round_and_caps():
+    a = fighter(name='S', hp=999, max_hp=999, atk=10, dfn=4, spd=6,
+                passives=frozenset({'grave_growth'}))
+    d = fighter(name='D', hp=999, max_hp=999, atk=8, dfn=4, spd=6)
+    for rnd in range(1, cfg.GRAVE_GROWTH_MAX + 3):
+        resolve_round(a, d, 'guard', 'guard', rnd, FakeRng(uniform=1.0))
+    assert a.growth_stacks == cfg.GRAVE_GROWTH_MAX                 # capped
+    assert a.atk == 10 + cfg.GRAVE_GROWTH_ATK * cfg.GRAVE_GROWTH_MAX
+    assert a.dfn == 4 + cfg.GRAVE_GROWTH_DEF * cfg.GRAVE_GROWTH_MAX
+
+
+def test_doom_counters_stack_on_win_or_tie_only():
+    a = fighter(name='W', hp=999, max_hp=999, atk=10, dfn=4, spd=6,
+                passives=frozenset({'doom_counters'}))
+    d = fighter(name='D', hp=999, max_hp=999, atk=8, dfn=4, spd=6)
+    # aggress vs feint -> holder wins -> +1 doom.
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    assert a.doom_stacks == 1 and a.atk == 10 + cfg.DOOM_STEP
+    # A mirror tie (guard vs guard) also grants a counter.
+    resolve_round(a, d, 'guard', 'guard', 2, FakeRng(uniform=1.0))
+    assert a.doom_stacks == 2
+    # Holder LOSES the exchange (aggress into the foe's guard) -> no counter.
+    before = a.doom_stacks
+    resolve_round(a, d, 'aggress', 'guard', 3, FakeRng(uniform=1.0))
+    assert a.doom_stacks == before
+
+
+def test_dredge_regens_but_stays_below_max():
+    a = fighter(name='G', hp=10, max_hp=30, atk=8, dfn=6, spd=5,
+                passives=frozenset({'dredge'}))
+    d = fighter(name='D', hp=999, max_hp=999, atk=1, dfn=99, spd=1)
+    resolve_round(a, d, 'guard', 'guard', 1, FakeRng(uniform=1.0))
+    assert a.hp == 10 + cfg.DREDGE_REGEN
+    a.hp = 29
+    resolve_round(a, d, 'guard', 'guard', 2, FakeRng(uniform=1.0))
+    assert a.hp == 30                                              # never exceeds max
