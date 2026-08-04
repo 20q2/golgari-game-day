@@ -148,10 +148,13 @@ import { CommonModule } from '@angular/common';
         filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.6));
       }
       .body img.hidden { display: none; }
-      /* Vestige = a drained, spectral echo of the boss. */
+      /* Vestige = a spectral echo — kept bright and near-full-color so it reads
+       * clearly against the dark stage; a green halo is the only ghostly tell. */
       .stage.vestige .body img {
-        filter: grayscale(0.65) brightness(0.85) drop-shadow(0 0 14px rgba(120, 200, 160, 0.55));
-        opacity: 0.85;
+        filter: brightness(1.45) contrast(1.1) grayscale(0.25)
+          drop-shadow(0 0 8px rgba(150, 230, 190, 0.9))
+          drop-shadow(0 0 18px rgba(120, 200, 160, 0.55));
+        opacity: 1;
       }
       .portrait-fallback {
         width: 150px;
