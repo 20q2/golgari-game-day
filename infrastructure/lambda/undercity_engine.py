@@ -40,6 +40,8 @@ class Combatant:
     aggress_ramp: int = field(default=0, repr=False)   # rabid: +dmg to Aggress, stacks
     growth_stacks: int = field(default=0, repr=False)  # grave_growth ramp count
     doom_stacks: int = field(default=0, repr=False)    # doom_counters ramp count
+    petrify: int = field(default=0, repr=False)        # Gorgon Stone Gaze: enemy freeze counter
+    brittle: int = field(default=0, repr=False)        # Gorgon Shatter: enemy damage-amp stacks
     feint_won: bool = field(default=False, repr=False)  # cutpurse: landed a winning Feint
     # active companion combat contribution (Fox follow-up / Turtle deflect)
     pet_followup_chance: float = field(default=0.0, repr=False)

@@ -639,6 +639,7 @@ def _bt_snapshot(c):
         'dmg_penalty': int(c.dmg_penalty), 'reveal_next': bool(c.reveal_next),
         'aggress_ramp': int(c.aggress_ramp), 'feint_won': bool(c.feint_won),
         'growth_stacks': int(c.growth_stacks), 'doom_stacks': int(c.doom_stacks),
+        'petrify': int(c.petrify), 'brittle': int(c.brittle),
         'pet_followup_chance': float(c.pet_followup_chance),
         'pet_followup_mult': float(c.pet_followup_mult),
         'pet_deflect_chance': float(c.pet_deflect_chance),
@@ -669,6 +670,8 @@ def _bt_to_combatant(s):
     c.feint_won = bool(s.get('feint_won', False))
     c.growth_stacks = int(s.get('growth_stacks', 0))
     c.doom_stacks = int(s.get('doom_stacks', 0))
+    c.petrify = int(s.get('petrify', 0))
+    c.brittle = int(s.get('brittle', 0))
     return c
 
 
@@ -688,6 +691,8 @@ def _bt_store(c, rec_side):
     rec_side['feint_won'] = bool(c.feint_won)
     rec_side['growth_stacks'] = int(c.growth_stacks)
     rec_side['doom_stacks'] = int(c.doom_stacks)
+    rec_side['petrify'] = int(c.petrify)
+    rec_side['brittle'] = int(c.brittle)
 
 
 def _battle_status(side):
