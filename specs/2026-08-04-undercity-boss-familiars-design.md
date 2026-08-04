@@ -240,28 +240,28 @@ lore: string;                 // in-world flavor for the codex
 trait: { name: string; blurb: string };  // signature trait, mirrors the engine trait
 ```
 
-Draft copy (final wording refined during implementation):
+Draft copy — written in the game's **region-lore gazetteer voice** (grounded
+third-person, concrete and sensory, a dry closing beat; cf. `regions.ts` lore).
+Final wording refined during implementation:
 
-- **Skullbriar, the Walking Grave** (bone) — *"The Marrow Pits do not bury their
-  dead; they promote them. Skullbriar is what happens when a grave keeps eating —
-  a shamble of borrowed bone that grows heavier, and harder to kill, with every
-  blow it weathers."* — **Grave Growth:** grows stronger the longer it lives.
-- **Slimefoot, the Stowaway** (garden) — *"Slimefoot never fights alone. Split it
-  and it seeds; wound it and the Rotcellar answers with a dozen little mouths.
-  What you fight is never one thing — it is a garden with opinions."* —
-  **Saproling Swarm:** its brood piles on every round.
-- **The Gitrog Monster** (bog) — *"The Drownedway is the Gitrog's gut. It swallows
-  the moor and the moor swallows back, and what the black water takes, the beast
-  simply grows again. You do not outlast the Gitrog. You out-hurry it."* —
-  **Dredge:** knits its wounds shut each round.
-- **Sarulf, Realm Eater** (cavern) — *"Gloomroot's apex does not hunt — it
-  accrues. Every kill, every stalemate feeds the doom it carries, until the wolf
-  that entered the fight is not the wolf that finishes it. Give it nothing, or
-  give it everything."* — **Doom Counters:** compounds with every round it does
-  not lose.
-- **Ishkanah, Grafwidow** (city) — *"The Broodwarrens are her larder. Ishkanah
-  does not need to beat you quickly — a single bite is a promise, and her venom
-  keeps its word long after the web is cut."* — **Venom:** her strikes leave rot
+- **Skullbriar, the Walking Grave** (bone) — *"The Marrow Pits don't bury their
+  dead so much as promote them. Skullbriar is a shamble of borrowed bone that only
+  gets heavier — every blow it weathers is another rib lashed to the heap."* —
+  **Grave Growth:** grows stronger the longer it lives.
+- **Slimefoot, the Stowaway** (garden) — *"A fungal stowaway that treats the
+  Rotcellar as one big body. Cut it and it seeds; the thing that answers is never
+  one saproling but a whole squabbling patch of them."* — **Saproling Swarm:** its
+  brood piles on every round.
+- **The Gitrog Monster** (bog) — *"A frog the size of a barge, and the Drownedway
+  is its gut. The black water rots whatever it swallows, then hands it back for the
+  Gitrog to grow again."* — **Dredge:** knits its wounds shut each round.
+- **Sarulf, Realm Eater** (cavern) — *"Gloomroot's apex doesn't hunt so much as
+  accrue. Every kill and every stalemate settles onto the wolf like silt, until
+  what leaves the fight is a good deal larger than what walked into it."* — **Doom
+  Counters:** compounds with every round it doesn't lose.
+- **Ishkanah, Grafwidow** (city) — *"The Broodwarrens are her pantry, strung wall
+  to wall in grey silk. Ishkanah is in no hurry — a single bite keeps working long
+  after you've cut yourself free of the web."* — **Venom:** her strikes leave rot
   behind.
 
 ### 3.3 UI
