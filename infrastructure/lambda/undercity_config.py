@@ -97,6 +97,19 @@ BRAMBLE_REFLECT = 2   # flat damage a Bramble carapace reflects when struck
 GUARD_CHIP_COEFF = 0.5
 CARAPACE_GRIND_MAXHP = 15  # DEF-12: bonus Max HP granted while the perk is held
 DEATHDRIVE_MULT = 0.5  # ATK-15: Aggress swing multiplier while below half HP
+
+# ── Boss-familiar / boss signature traits (design 2026-08-04) ────────────────
+# Grave Growth (Skullbriar): unconditional per-round ramp, ATK-leaning, capped.
+GRAVE_GROWTH_ATK = 2
+GRAVE_GROWTH_DEF = 1
+GRAVE_GROWTH_MAX = 6
+# Doom Counters (Sarulf): +DOOM_STEP to ATK/DEF/SPD each round the holder wins or
+# ties a mirror; bigger but deniable (force it to LOSE and it stalls). Capped.
+DOOM_STEP = 2
+DOOM_MAX = 4
+# Dredge (Gitrog): flat HP regrow each round; kept small so escalating swings
+# (and the player's DPS) still out-pace it and the fight terminates.
+DREDGE_REGEN = 3
 MENACE_FACTOR = 0.5    # ATK-10: multiplies the enemy's telegraph bluff chance
 THICK_HIDE_MULT = 0.5  # DEF-5: fraction of hazard/mystery HP loss actually taken
 # DEF-6 Thick Hide hazard dodge (design 2026-08-01): a DEF-scaled chance to avoid

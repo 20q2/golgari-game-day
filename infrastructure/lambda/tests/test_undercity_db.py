@@ -4478,3 +4478,22 @@ def test_lair_familiar_registry_shape():
     assert data.LAIR_SIGNATURE['ruin'] == 'moldering_karock'
     # Familiars are EXCLUSIVE — never in a general wild/elite pool.
     assert not (set(fam) & set(data.ENEMY_SPECS_BY_ID))
+
+
+def test_snowball_counters_round_trip_and_persist_stats():
+    c = engine.Combatant(name='F', hp=30, max_hp=30, atk=12, dfn=4, spd=6,
+                         passives=frozenset({'grave_growth'}))
+    c.growth_stacks = 2
+    c.doom_stacks = 1
+    c.atk = 16
+    c.spd = 8
+    c.dfn = 6            # simulate a mid-fight snowball
+    snap = db._bt_snapshot(c)
+    assert snap['growth_stacks'] == 2 and snap['doom_stacks'] == 1
+    back = db._bt_to_combatant(snap)
+    assert back.growth_stacks == 2 and back.doom_stacks == 1
+    rec = {}
+    db._bt_store(c, rec)
+    # atk/spd now persist across rounds (previously only dfn did).
+    assert rec['atk'] == 16 and rec['spd'] == 8 and rec['dfn'] == 6
+    assert rec['growth_stacks'] == 2 and rec['doom_stacks'] == 1

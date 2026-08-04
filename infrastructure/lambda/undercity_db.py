@@ -636,6 +636,7 @@ def _bt_snapshot(c):
         'rot_stacks': int(c.rot_stacks), 'first_win_used': bool(c.first_win_used),
         'dmg_penalty': int(c.dmg_penalty), 'reveal_next': bool(c.reveal_next),
         'aggress_ramp': int(c.aggress_ramp), 'feint_won': bool(c.feint_won),
+        'growth_stacks': int(c.growth_stacks), 'doom_stacks': int(c.doom_stacks),
         'pet_followup_chance': float(c.pet_followup_chance),
         'pet_followup_mult': float(c.pet_followup_mult),
         'pet_deflect_chance': float(c.pet_deflect_chance),
@@ -664,6 +665,8 @@ def _bt_to_combatant(s):
     c.reveal_next = bool(s.get('reveal_next', False))
     c.aggress_ramp = int(s.get('aggress_ramp', 0))
     c.feint_won = bool(s.get('feint_won', False))
+    c.growth_stacks = int(s.get('growth_stacks', 0))
+    c.doom_stacks = int(s.get('doom_stacks', 0))
     return c
 
 
@@ -675,8 +678,14 @@ def _bt_store(c, rec_side):
     rec_side['first_win_used'] = bool(c.first_win_used)
     rec_side['reveal_next'] = bool(c.reveal_next)
     rec_side['dfn'] = int(c.dfn)
+    # atk/spd persist too so the Grave Growth / Doom Counters snowball (which
+    # mutates them in place) survives the round boundary — previously only dfn did.
+    rec_side['atk'] = int(c.atk)
+    rec_side['spd'] = int(c.spd)
     rec_side['aggress_ramp'] = int(c.aggress_ramp)
     rec_side['feint_won'] = bool(c.feint_won)
+    rec_side['growth_stacks'] = int(c.growth_stacks)
+    rec_side['doom_stacks'] = int(c.doom_stacks)
 
 
 def _battle_status(side):
