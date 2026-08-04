@@ -1663,7 +1663,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     if (this.sigilTimer) clearTimeout(this.sigilTimer);
     // Don't leave the page's level-up fanfare stuck deferred if we're torn down
     // mid-celebration (the sigil auto-dismiss timer won't fire its release).
-    this.store.levelUpHold.set(false);
+    this.store.landingDialogHold.set(false);
   }
 
   // ── Roll & move ────────────────────────────────────────────────────────────
@@ -2266,10 +2266,17 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       if (resp.you) this.board?.centerOn(resp.you.position);
       const uid = this.store.ownUserId;
       if (resp.heal && uid) this.board?.popHealNumber(uid, resp.heal.amount);
-      // Economy companion scavenged loot as you passed over it — poof grass at
-      // each loot node it grabbed from.
+      // Economy companion scavenged loot as you passed over it — poof grass and
+      // float a "+N" at each loot node it grabbed from. Split the total evenly
+      // across nodes (remainder on the first few) so the numbers sum to the bank.
       if (resp.scavenge && resp.scavenge.spores > 0) {
-        for (const n of resp.scavenge.nodes) this.board?.poofAtNode(n);
+        const nodes = resp.scavenge.nodes;
+        const per = Math.floor(resp.scavenge.spores / nodes.length);
+        const rem = resp.scavenge.spores - per * nodes.length;
+        nodes.forEach((n, i) => {
+          const amt = per + (i < rem ? 1 : 0);
+          this.board?.poofAtNode(n, amt);
+        });
       }
       const ev = resp.spaceEvent;
       this.occupants.set(resp.occupants ?? []);
@@ -2383,12 +2390,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       // Spin the reveal reel first; the event card opens once it lands. Hold the
       // page's level-up fanfare until that card is read (released in
       // closeSpaceModal) so it can't bury the reveal.
-      this.store.levelUpHold.set(true);
+      this.store.landingDialogHold.set(true);
       this.pendingMysteryEv = ev;
       this.reelSymbol.set(this.mysterySymbol(ev));
     } else if (ev.type === 'hazard') {
       // Spin the hazard wheel first; the effect card opens once it lands.
-      this.store.levelUpHold.set(true);
+      this.store.landingDialogHold.set(true);
       this.pendingHazardEv = ev;
       this.hazardWheel.set(this.hazardWheelTarget(ev));
     } else {
@@ -2396,7 +2403,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       // grants XP can push you over a level threshold in the same action; defer
       // the page's level-up celebration until the player dismisses this card,
       // otherwise the fanfare paints over the "what you found" explanation.
-      this.store.levelUpHold.set(true);
+      this.store.landingDialogHold.set(true);
       this.spaceModal.set(ev);
     }
   }
@@ -2996,7 +3003,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // dialog is still open. Hold the level-up fanfare now, synchronously (before
     // the watcher effect flushes), so it can't paint over the battle result.
     // Released in closeLiveBattle once the player dismisses the results.
-    this.store.levelUpHold.set(true);
+    this.store.landingDialogHold.set(true);
     const outcome = ev.battle?.outcome ?? 'timeout';
     const npcHp = ev.battle?.defenderHp ?? 0;
     // The killing round isn't returned as a `combat` payload — its blows live in
@@ -3035,7 +3042,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // Defer the page's level-up fanfare past these celebrations. Set BEFORE the
     // refresh, which flips `inBattle` false and would otherwise let the fanfare
     // fire on top of the sigil / raid summary we're about to open.
-    if (biome || raid) this.store.levelUpHold.set(true);
+    if (biome || raid) this.store.landingDialogHold.set(true);
     this.liveBattle.set(null);
     await this.store.refresh(); // so poiClaims / stash reflect the just-won loot
     if (raid) this.awayModal.set([raid]);
@@ -3048,8 +3055,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.maybeReleaseLevelUp();
   }
 
-  /** Release the level-up hold once every higher-priority celebration is gone,
-   * letting the page flush any banked level-up fanfare. */
+  /** Release the landing-dialog hold once every higher-priority celebration is
+   * gone, letting the page flush any banked level-up fanfare and open a queued
+   * overflow pickup ("bag is full") modal. */
   private maybeReleaseLevelUp(): void {
     if (
       !this.awayModal() &&
@@ -3058,7 +3066,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       !this.reelSymbol() &&
       !this.hazardWheel()
     ) {
-      this.store.levelUpHold.set(false);
+      this.store.landingDialogHold.set(false);
     }
   }
 

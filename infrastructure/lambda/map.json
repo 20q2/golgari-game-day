@@ -451,7 +451,7 @@
   },
   {
    "id": "city_r4",
-   "type": "hazard",
+   "type": "mystery",
    "x": 2011,
    "y": 3005,
    "region": "city",
@@ -1123,7 +1123,7 @@
   },
   {
    "id": "n129",
-   "type": "loot",
+   "type": "hazard",
    "x": 2059,
    "y": 2754,
    "region": "city",
@@ -1135,9 +1135,9 @@
   },
   {
    "id": "n130",
-   "type": "loot",
-   "x": 1590,
-   "y": 2758,
+   "type": "hazard",
+   "x": 1599,
+   "y": 2766,
    "region": "city",
    "neighbors": [
     "n128",

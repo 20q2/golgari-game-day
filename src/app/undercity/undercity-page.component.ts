@@ -245,7 +245,7 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
       if (
         this.pendingLevels > 0 &&
         !inBattle &&
-        !this.store.levelUpHold() &&
+        !this.store.landingDialogHold() &&
         !this.levelUpCelebration()
       ) {
         this.levelUpCelebration.set({ level: this.prevLevel, gained: this.pendingLevels });

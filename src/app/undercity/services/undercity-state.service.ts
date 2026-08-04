@@ -149,11 +149,13 @@ export class UndercityStateService {
    * Null until the board has been shown once. */
   readonly boardZoom = signal<number | null>(null);
 
-  /** Held true by the board tab while a higher-priority post-battle celebration
-   * (Guild Sigil fanfare, world-boss raid summary) is queued or showing, so the
-   * always-mounted page defers its level-up fanfare until those are dismissed.
+  /** Held true by the board tab while a landing/battle/reward card (loot cache,
+   * battle result, mystery/hazard reveal, Guild Sigil fanfare, world-boss raid
+   * summary) is queued or showing. The always-mounted page defers overlays that
+   * would paint over that card until it's dismissed: the level-up fanfare AND the
+   * overflow pickup ("bag is full") modal, which queues to open next.
    * A store signal so it survives BoardTabComponent teardown. */
-  readonly levelUpHold = signal(false);
+  readonly landingDialogHold = signal(false);
 
   /** Held true by the board tab while the plotted/walked route crosses a gate,
    * so the always-mounted page's buff HUD can show the pending gate-pass heal

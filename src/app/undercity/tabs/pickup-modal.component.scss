@@ -133,10 +133,25 @@
   }
 }
 
-// Full-width, low-emphasis "give up the find" action — deliberately quieter
-// than the slot-clearing buttons below so the eye favours keeping the item.
-.uc-btn-sell {
-  align-self: stretch;
+// "Give up the find" actions — salvage it for its yield or list it. Two equal
+// columns, deliberately quieter than the slot-clearing buttons below so the eye
+// favours keeping the item.
+.pu-new-actions {
+  display: flex;
+  gap: 8px;
+
+  .uc-btn {
+    flex: 1;
+  }
+}
+
+// Small inline rot coin sitting after a Spore amount on the salvage buttons.
+.pu-spore {
+  width: 14px;
+  height: 14px;
+  margin-left: 3px;
+  vertical-align: -2px;
+  object-fit: contain;
 }
 
 .pu-hint {

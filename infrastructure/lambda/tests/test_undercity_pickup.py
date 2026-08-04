@@ -126,6 +126,32 @@ def test_salvage_owned_consumable_gives_spores(table):
     assert len(doc['bag']) == db.data.BAG_SIZE                    # one salvaged, parked one placed
 
 
+def test_salvage_new_consumable_gives_spores_without_placing(table):
+    sid, doc = _player_at(table, 'city_r0')
+    cons = list(db.data.CONSUMABLES)[0]
+    doc['bag'] = [cons] * db.data.BAG_SIZE
+    _park_one(doc, 'consumable', cons)
+    spores_before = doc['spores']
+    status, _ = db._pickup_resolve(table, sid, doc, {'choice': 'salvage-new'})
+    assert status == 200
+    assert doc['spores'] == spores_before + 5
+    assert doc['pendingPickups'] == []
+    assert len(doc['bag']) == db.data.BAG_SIZE        # incoming item never entered the bag
+
+
+def test_salvage_new_gear_grinds_to_materials_without_placing(table):
+    sid, doc = _player_at(table, 'city_r0')
+    slot = db.data.GEAR['bark_hide']['slot']
+    doc['gear'] = {slot: 'bark_hide'}
+    doc['gearStash'] = ['bark_hide'] * db.data.GEAR_STASH_SIZE
+    _park_one(doc, 'gear', 'bark_hide', 'boss')
+    status, _ = db._pickup_resolve(table, sid, doc, {'choice': 'salvage-new'})
+    assert status == 200
+    assert doc['pendingPickups'] == []
+    assert doc['materials']['moltings'] > 0                       # ground the parked piece
+    assert len(doc['gearStash']) == db.data.GEAR_STASH_SIZE       # stash untouched, nothing placed
+
+
 def test_salvage_owned_escapes_full_market(table):
     """The guaranteed escape: even at the 5-listing cap, salvage-owned resolves."""
     sid, doc = _player_at(table, 'city_r0')

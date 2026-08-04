@@ -330,8 +330,8 @@ PET_MOUSE_ITEM_CHANCE_PER_LVL = 0.05
 # Per-loot yield + the bank cap scale with the pet's level; the cap keeps a bank
 # finite so it stays a "gather while you explore, then collect" loop. Mirror in
 # src/app/undercity/data/pets.ts.
-PET_SPORE_PER_LOOT_BASE = 6         # Spores banked per loot space passed, at level 1
-PET_SPORE_PER_LOOT_PER_LVL = 2      # added per level above 1
+PET_SPORE_PER_LOOT_BASE = 2         # Spores banked per loot space passed, at level 1
+PET_SPORE_PER_LOOT_PER_LVL = 1      # added per level above 1 (a leveled pet works up toward ~6)
 PET_SPORE_CAP_BASE = 60             # most that can bank before you must collect
 PET_SPORE_CAP_PER_LVL = 30          # added per level above 1
 

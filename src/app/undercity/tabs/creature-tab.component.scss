@@ -2369,6 +2369,13 @@ $grim-lock: #c96a5a;
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(183, 228, 199, 0.2);
+  // Tapping the portrait opens the pet detail sheet, same as a roster tap.
+  appearance: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+  &:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45); }
+  &:active { transform: translateY(0); }
 }
 
 .active-pet-body {
@@ -2394,6 +2401,80 @@ $grim-lock: #c96a5a;
   background: rgba(0, 0, 0, 0.35);
   border-radius: 10px;
   padding: 2px 8px;
+}
+
+// Companion hero card (design 2026-08-04): the rarity is read from the sprite
+// frame's border colour (no text badge), and the level badge sits in the card's
+// top-right corner.
+.active-pet--top {
+  position: relative;
+
+  .active-pet-lvl {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    z-index: 2;
+  }
+
+  .active-pet-portrait {
+    border-width: 2px;
+    border-color: #9aa7a0; // common
+  }
+  &[data-rarity='rare'] .active-pet-portrait { border-color: #5fd18a; }
+  &[data-rarity='legendary'] .active-pet-portrait { border-color: #fbbf24; }
+  &[data-rarity='mythic'] .active-pet-portrait { border-color: #c084fc; }
+}
+
+// Armed (first tap) state of a two-tap destructive Salvage/Grind button.
+.uc-btn.armed {
+  border-color: #f7b955;
+  color: #ffd88a;
+  background: rgba(120, 80, 20, 0.35);
+}
+
+// Level-scaled ability stats in the pet detail sheet (numbers rise as it levels).
+.pet-stat-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .pet-stat-label { color: #9fb0a2; }
+  .pet-stat-value {
+    color: #eafff0;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// Rename row in the pet detail sheet.
+.pet-rename {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 10px;
+
+  .pet-name-input {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 10px;
+    border-radius: 9px;
+    border: 1px solid rgba(183, 228, 199, 0.25);
+    background: rgba(0, 0, 0, 0.35);
+    color: #eafff0;
+    font-size: 14px;
+    &::placeholder { color: #7f8f7f; }
+    &:focus { outline: none; border-color: #5fd18a; }
+  }
 }
 
 .active-pet-name {

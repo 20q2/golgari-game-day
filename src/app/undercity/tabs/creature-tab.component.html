@@ -210,14 +210,13 @@
             @if (gearSection() === 'companion' && activePet(); as pet) {
               <div class="active-pet active-pet--top" [attr.data-rarity]="petRarity(pet)"
                    style="background-image: linear-gradient(rgba(12, 16, 12, 0.55), rgba(12, 16, 12, 0.85)), url('undercity/swamp_background.webp')">
-                <div class="active-pet-portrait">
-                  <img class="pet-sprite active-pet-ico" [src]="petSpriteUrl(pet.species)" [alt]="petInfo(pet.species).name" />
-                </div>
+                <button type="button" class="active-pet-portrait" (click)="openPet(pet)" [title]="'Manage ' + petName(pet)">
+                  <img class="pet-sprite active-pet-ico" [src]="petSpriteUrl(pet.species)" [alt]="petName(pet)" />
+                </button>
+                <span class="active-pet-lvl">Lv {{ pet.level }} / {{ petLevelCap(pet.tier) }}</span>
                 <div class="active-pet-body">
                   <div class="active-pet-titlerow">
-                    <h4 class="active-pet-name">{{ petInfo(pet.species).name }}</h4>
-                    <span class="rarity-badge {{ petRarity(pet) }}">{{ tierRarity(pet.tier).label }}</span>
-                    <span class="active-pet-lvl">Lv {{ pet.level }} / {{ petLevelCap(pet.tier) }}</span>
+                    <h4 class="active-pet-name">{{ petName(pet) }}</h4>
                   </div>
                   <span class="active-pet-blurb">{{ petInfo(pet.species).blurb }}</span>
                   <div class="active-pet-actions">
@@ -782,8 +781,8 @@
                       <div class="pet-grid">
                         @for (pet of rosterPets(); track pet.id) {
                           <button type="button" class="pet-cell" [attr.data-rarity]="petRarity(pet)" (click)="openPet(pet)">
-                            <img class="pet-sprite" [src]="petSpriteUrl(pet.species)" [alt]="petInfo(pet.species).name" />
-                            <span class="pet-cell-name">{{ petInfo(pet.species).name }}</span>
+                            <img class="pet-sprite" [src]="petSpriteUrl(pet.species)" [alt]="petName(pet)" />
+                            <span class="pet-cell-name">{{ petName(pet) }}</span>
                             <span class="pet-cell-lvl">Lv {{ pet.level }}</span>
                           </button>
                         }
@@ -1094,8 +1093,12 @@
               <!-- Salvage without a trip to the Plaza Salvage Yard — grind into
                    materials or sell back for Spores, previewing the yield. -->
               @if (item.source === 'stash') {
-                <button class="uc-btn ghost" [disabled]="busy()" (click)="salvageFromPopup(item, 'grind')">
-                  <mat-icon class="mi">recycling</mat-icon> Grind +{{ salvageYield(gearMap[item.id].tier).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (salvageYield(gearMap[item.id].tier).ichor) {&nbsp;+{{ salvageYield(gearMap[item.id].tier).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
+                <button class="uc-btn ghost" [class.armed]="salvageArmedFor('gear:' + item.index)" [disabled]="busy()" (click)="confirmSalvageGear(item)">
+                  @if (salvageArmedFor('gear:' + item.index)) {
+                    <mat-icon class="mi">warning</mat-icon> Tap again to grind
+                  } @else {
+                    <mat-icon class="mi">recycling</mat-icon> Grind +{{ salvageYield(gearMap[item.id].tier).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (salvageYield(gearMap[item.id].tier).ichor) {&nbsp;+{{ salvageYield(gearMap[item.id].tier).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
+                  }
                 </button>
                 <button class="uc-btn ghost" [disabled]="busy()" (click)="salvageFromPopup(item, 'sell')">
                   Sell +{{ sellSpores(item.id) }}
@@ -1116,17 +1119,30 @@
           </button>
 
           <header class="item-sheet-head">
-            <img class="pet-sprite slot-mi" [src]="petSpriteUrl(pet.species)" [alt]="petInfo(pet.species).name" />
+            <img class="pet-sprite slot-mi" [src]="petSpriteUrl(pet.species)" [alt]="petName(pet)" />
             <div class="item-sheet-title">
-              <span class="item-sheet-name">{{ petInfo(pet.species).name }}
+              <span class="item-sheet-name">{{ petName(pet) }}
                 <span class="rarity-badge {{ petRarity(pet) }}">{{ tierRarity(pet.tier).label }}</span>
               </span>
-              <span class="item-sheet-sub">Lv {{ pet.level }} / {{ petLevelCap(pet.tier) }}</span>
+              <span class="item-sheet-sub">{{ petInfo(pet.species).name }} · Lv {{ pet.level }} / {{ petLevelCap(pet.tier) }}</span>
             </div>
           </header>
 
+          <div class="pet-rename">
+            <input #nm class="pet-name-input" type="text" maxlength="16" [value]="pet.name ?? ''"
+                   [placeholder]="petInfo(pet.species).name" (keyup.enter)="renamePet(pet, nm.value)" />
+            <button class="uc-btn ghost" [disabled]="busy()" (click)="renamePet(pet, nm.value)">
+              <mat-icon class="mi">edit</mat-icon> Name
+            </button>
+          </div>
+
           <div class="item-sheet-effects">
             <p class="effect-line"><span>{{ petInfo(pet.species).blurb }}</span></p>
+            <ul class="pet-stat-list">
+              @for (s of petAbilityStats(pet); track s.label) {
+                <li><span class="pet-stat-label">{{ s.label }}</span><span class="pet-stat-value">{{ s.value }}</span></li>
+              }
+            </ul>
           </div>
 
           <div class="item-sheet-actions">
@@ -1144,8 +1160,12 @@
               <span class="item-sheet-hint muted">At level cap{{ petAtMaxTier(pet) ? '' : ' — merge to raise its rarity' }}.</span>
             }
 
-            <button class="uc-btn ghost" [disabled]="busy()" (click)="salvagePet(pet)">
-              <mat-icon class="mi">recycling</mat-icon> Salvage +{{ petSalvageYield(pet).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (petSalvageYield(pet).ichor) {&nbsp;+{{ petSalvageYield(pet).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
+            <button class="uc-btn ghost" [class.armed]="salvageArmedFor('pet:' + pet.id)" [disabled]="busy()" (click)="confirmSalvagePet(pet)">
+              @if (salvageArmedFor('pet:' + pet.id)) {
+                <mat-icon class="mi">warning</mat-icon> Tap again to salvage
+              } @else {
+                <mat-icon class="mi">recycling</mat-icon> Salvage +{{ petSalvageYield(pet).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (petSalvageYield(pet).ichor) {&nbsp;+{{ petSalvageYield(pet).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
+              }
             </button>
 
             @if (petListOpen()) {

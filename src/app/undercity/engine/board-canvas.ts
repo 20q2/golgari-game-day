@@ -1055,10 +1055,17 @@ export class BoardCanvas {
   }
 
   /** A green "poof of grass" burst over a board node — fired when an economy
-   *  companion scavenges Spores from a loot space you passed over. */
-  poofAtNode(nodeId: string): void {
+   *  companion scavenges Spores from a loot space you passed over. A dense double
+   *  burst plus a floating "+N" reads clearly against the busy board; pass the
+   *  node's Spore share to pop the number. */
+  poofAtNode(nodeId: string, spores = 0): void {
     const n = this.nodeMap.get(nodeId);
-    if (n) this.puffAt(n.x, n.y, '#8fe36b', '#43a047', 'burst', 12);
+    if (!n) return;
+    // Inner tuft implodes then an outer burst throws grass up — twice the
+    // particles of a plain effect so the grab is unmissable.
+    this.puffAt(n.x, n.y, '#c8f36b', '#5aa832', 'implode', 14);
+    this.puffAt(n.x, n.y, '#8fe36b', '#43a047', 'burst', 24);
+    if (spores > 0) this.floatNumber(n.x, n.y - 18, `+${spores}`, '#d8f77a');
   }
 
   centerOn(nodeId: string, animate = true): void {

@@ -48,6 +48,8 @@ import {
   Pet,
   PetSpecies,
   petInfo,
+  petName,
+  petAbilityStats,
   petRarity,
   levelCap,
   atLevelCap,
@@ -267,6 +269,8 @@ export class CreatureTabComponent {
   // Template-exposed pets.ts helpers (Angular templates can only call class
   // members, so re-bind the pure helpers here).
   protected readonly petInfo = petInfo;
+  protected readonly petName = petName;
+  protected readonly petAbilityStats = petAbilityStats;
   protected readonly petRarity = petRarity;
   protected readonly petLevelCap = levelCap;
   protected readonly petAtLevelCap = atLevelCap;
@@ -279,6 +283,9 @@ export class CreatureTabComponent {
 
   /** The pet whose detail popup is open (null = none). */
   protected readonly selectedPet = signal<Pet | null>(null);
+  /** Two-tap guard for destructive Salvage/Grind: holds the armed target's key
+   *  ('pet:<id>' or 'gear:<index>'), or null. First tap arms, second fires. */
+  protected readonly salvageArmed = signal<string | null>(null);
   /** Fodder pet ids ticked for a merge into the selected keeper. */
   protected readonly mergePicks = signal<Set<string>>(new Set());
   /** Whether the roster-wide Merge popup is open. */
@@ -400,6 +407,7 @@ export class CreatureTabComponent {
   protected openPet(pet: Pet): void {
     this.mergePicks.set(new Set());
     this.petListOpen.set(false);
+    this.salvageArmed.set(null);
     this.selectedPet.set(pet);
   }
 
@@ -407,6 +415,7 @@ export class CreatureTabComponent {
     this.selectedPet.set(null);
     this.mergePicks.set(new Set());
     this.petListOpen.set(false);
+    this.salvageArmed.set(null);
   }
 
   protected toggleMergePick(id: string): void {
@@ -545,9 +554,19 @@ export class CreatureTabComponent {
   async activatePet(pet: Pet): Promise<void> {
     await this.run(async () => {
       const resp = await this.store.action('activate-pet', { petId: pet.id });
-      this.showToast(resp.text ?? `${petInfo(pet.species).name} is now at your side.`);
+      this.showToast(resp.text ?? `${petName(pet)} is now at your side.`);
     });
     this.closePet();
+  }
+
+  /** Give the open pet a nickname (empty clears it back to the species name).
+   *  Keeps the detail sheet open, re-pointed at the freshly-named instance. */
+  async renamePet(pet: Pet, name: string): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('name-pet', { petId: pet.id, name: name.trim() });
+      this.showToast(resp.text ?? 'Companion renamed.');
+    });
+    this.selectedPet.set((this.store.you()?.pets ?? []).find((p) => p.id === pet.id) ?? null);
   }
 
   async levelPet(pet: Pet): Promise<void> {
@@ -558,6 +577,33 @@ export class CreatureTabComponent {
       const fresh = (this.store.you()?.pets ?? []).find((p) => p.id === pet.id);
       this.selectedPet.set(fresh ?? null);
     });
+  }
+
+  /** True while this exact salvage target is armed (drives the confirm label). */
+  protected salvageArmedFor(key: string): boolean {
+    return this.salvageArmed() === key;
+  }
+
+  /** Salvage a pet — first tap arms, second tap (still armed) salvages. */
+  protected confirmSalvagePet(pet: Pet): void {
+    const key = 'pet:' + pet.id;
+    if (this.salvageArmed() !== key) {
+      this.salvageArmed.set(key);
+      return;
+    }
+    this.salvageArmed.set(null);
+    void this.salvagePet(pet);
+  }
+
+  /** Grind (salvage) a gear item — first tap arms, second tap grinds. */
+  protected confirmSalvageGear(item: SelectedItem): void {
+    const key = 'gear:' + item.index;
+    if (this.salvageArmed() !== key) {
+      this.salvageArmed.set(key);
+      return;
+    }
+    this.salvageArmed.set(null);
+    void this.salvageFromPopup(item, 'grind');
   }
 
   async salvagePet(pet: Pet): Promise<void> {
@@ -752,6 +798,7 @@ export class CreatureTabComponent {
     if (!id) return;
     const kind: MarketKind = source === 'bag' ? 'consumable' : 'gear';
     this.listOpen.set(false);
+    this.salvageArmed.set(null);
     this.selectedItem.set({ source, kind, id, index, slotLabel });
   }
 
@@ -759,6 +806,7 @@ export class CreatureTabComponent {
   protected closeItem(): void {
     this.selectedItem.set(null);
     this.listOpen.set(false);
+    this.salvageArmed.set(null);
   }
 
   /** Stat chips (+2 ATK, +1 SPD, +3 max HP) for a gear item; empty for others. */

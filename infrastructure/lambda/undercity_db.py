@@ -1059,6 +1059,24 @@ def _activate_pet(table, sid, doc, payload):
     return _ok(doc, text=f"{data.PET_SPECIES[pet['species']]['name']} is at your side.")
 
 
+def _name_pet(table, sid, doc, payload):
+    """Give a companion a custom nickname (or clear it back to the species name
+    with an empty string). Trimmed + capped like the creature name."""
+    pet = _find_pet(doc, payload.get('petId'))
+    if not pet:
+        return _err('No such pet.', 409)
+    name = str(payload.get('name') or '').strip()[:16]
+    if name:
+        pet['name'] = name
+    else:
+        pet.pop('name', None)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    label = pet.get('name') or data.PET_SPECIES[pet['species']]['name']
+    return _ok(doc, text=f'Your companion is now called {label}.')
+
+
 def _merge_pet(table, sid, doc, payload):
     target = _find_pet(doc, payload.get('targetPetId'))
     if not target:
@@ -1749,17 +1767,12 @@ def _list_item_on_market(table, sid, doc, kind, item_id, price):
     return None
 
 
-def _salvage_owned_for_pickup(doc, kind, index):
-    """Salvage the owned same-kind item at `index` to free a slot: grind gear into
-    materials, convert a consumable/scroll to Spores at the standard overflow
-    rate. Returns (ok, text). The freed slot lets the caller place the parked
-    item next."""
-    field = _ACQUIRE_KINDS[kind]['field']
-    inv = doc.get(field) or []
-    if index < 0 or index >= len(inv):
-        return False, 'That slot is empty.'
-    item_id = inv.pop(index)
-    doc[field] = inv
+def _salvage_item(doc, kind, item_id):
+    """Grant the salvage yield of a single item onto the player doc and return the
+    flavor text: grind gear into materials, convert a consumable/scroll to Spores
+    at the standard overflow rate. Does NOT touch inventory arrays — the caller
+    owns slot bookkeeping (an owned piece is popped first; the parked newcomer is
+    never placed)."""
     if kind == 'gear':
         gained = _grind_materials(doc, item_id)
         parts = []
@@ -1767,16 +1780,30 @@ def _salvage_owned_for_pickup(doc, kind, index):
             parts.append(f"{gained['moltings']} Moltings")
         if gained['ichor']:
             parts.append(f"{gained['ichor']} Gemstones")
-        return True, f"Ground {data.GEAR[item_id]['name']} into " + ' + '.join(parts) + '.'
+        return f"Ground {data.GEAR[item_id]['name']} into " + ' + '.join(parts) + '.'
     spores = 5 if kind == 'consumable' else data.SCROLL_OVERFLOW_SPORES
     doc['spores'] = doc.get('spores', 0) + spores
     name = _MARKET_KINDS[kind]['name'](item_id)
-    return True, f"Salvaged {name} for {spores} Spores."
+    return f"Salvaged {name} for {spores} Spores."
+
+
+def _salvage_owned_for_pickup(doc, kind, index):
+    """Salvage the owned same-kind item at `index` to free a slot. Returns
+    (ok, text). The freed slot lets the caller place the parked item next."""
+    field = _ACQUIRE_KINDS[kind]['field']
+    inv = doc.get(field) or []
+    if index < 0 or index >= len(inv):
+        return False, 'That slot is empty.'
+    item_id = inv.pop(index)
+    doc[field] = inv
+    return True, _salvage_item(doc, kind, item_id)
 
 
 def _pickup_resolve(table, sid, doc, payload):
     """Resolve the head of the player's pendingPickups queue. Choices:
       list-new     {price}          — list the parked item on the market
+      salvage-new  {}               — salvage the parked item for its yield
+                                       (materials/Spores); it never enters the bag
       salvage-owned{index}          — salvage an owned same-kind piece to free a
                                        slot, then place the parked item
       list-owned   {index, price}   — list an owned same-kind piece to free a
@@ -1788,6 +1815,15 @@ def _pickup_resolve(table, sid, doc, payload):
     head = queue[0]
     kind, item_id = head['kind'], head['itemId']
     choice = payload.get('choice')
+
+    if choice == 'salvage-new':
+        salvage_text = _salvage_item(doc, kind, item_id)
+        queue.pop(0)
+        doc['pendingPickups'] = queue
+        conflict = _save_or_conflict(table, doc)
+        if conflict:
+            return conflict
+        return _ok(doc, text=salvage_text)
 
     if choice == 'list-new':
         err = _list_item_on_market(table, sid, doc, kind, item_id, payload.get('price'))
@@ -2356,6 +2392,7 @@ def handle_action(table, body):
         'incubate-egg': _incubate_egg, 'hatch-egg': _hatch_egg,
         'activate-pet': _activate_pet, 'merge-pet': _merge_pet,
         'level-pet': _level_pet, 'salvage-pet': _salvage_pet,
+        'name-pet': _name_pet,
         'use-pet-ability': _use_pet_ability,
     }
     handler = handlers.get(atype)

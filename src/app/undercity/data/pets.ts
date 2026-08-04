@@ -132,8 +132,8 @@ export const PET_ABILITY_COOLDOWN_FLOOR = 5;
 // scavenges Spores as you MOVE: each loot space you pass OVER banks a few onto
 // the pet (server-authoritative, stored on `you.petSporeBank`), up to a
 // level-scaled cap, which the player taps to redeem via its board quick-use box.
-export const PET_SPORE_PER_LOOT_BASE = 6;
-export const PET_SPORE_PER_LOOT_PER_LVL = 2;
+export const PET_SPORE_PER_LOOT_BASE = 2;
+export const PET_SPORE_PER_LOOT_PER_LVL = 1;
 export const PET_SPORE_CAP_BASE = 60;
 export const PET_SPORE_CAP_PER_LVL = 30;
 
@@ -145,6 +145,18 @@ export function economyPerLoot(level: number): number {
 export function economySporeCap(level: number): number {
   return Math.floor(PET_SPORE_CAP_BASE + PET_SPORE_CAP_PER_LVL * (level - 1));
 }
+
+// ── Combat magnitudes (mirror undercity_data.PET_COMBAT) ─────────────────────
+export const PET_COMBAT = {
+  attack: { followupChanceBase: 0.1, followupChancePerLvl: 0.03, followupMult: 0.3 },
+  defend: { deflectChanceBase: 0.12, deflectChancePerLvl: 0.03, deflectFlatBase: 2, deflectFlatPerLvl: 0.34 },
+} as const;
+
+// Forage (Mouse) yields (mirror undercity_config PET_MOUSE_*).
+export const PET_MOUSE_SPORES_BASE = 8;
+export const PET_MOUSE_SPORES_PER_LVL = 3;
+export const PET_MOUSE_ITEM_CHANCE_BASE = 0.2;
+export const PET_MOUSE_ITEM_CHANCE_PER_LVL = 0.05;
 
 // ── Player-market resale (mirror undercity_config PET/EGG_MARKET_*) ───────────
 
@@ -171,6 +183,8 @@ export interface Pet {
   level: number;
   /** Accumulated merge fuel toward the next tier. */
   mergeProgress: number;
+  /** Optional player-given nickname (falls back to the species name). */
+  name?: string;
 }
 
 export interface Egg {
@@ -180,6 +194,49 @@ export interface Egg {
 }
 
 // ── Derived display helpers ──────────────────────────────────────────────────
+
+/** Display name for a pet instance: its nickname if set, else the species name. */
+export function petName(pet: Pet): string {
+  return pet.name?.trim() || petInfo(pet.species).name;
+}
+
+/** Level-scaled ability stat lines for a pet (e.g. Follow-up chance → "13%").
+ *  Numbers mirror the server and change as the pet levels up. */
+export function petAbilityStats(pet: Pet): { label: string; value: string }[] {
+  const lvl = pet.level;
+  const pct = (x: number) => `${Math.round(x * 100)}%`;
+  switch (petRole(pet.species)) {
+    case 'attack': {
+      const c = PET_COMBAT.attack;
+      return [
+        { label: 'Follow-up chance', value: pct(c.followupChanceBase + c.followupChancePerLvl * (lvl - 1)) },
+        { label: 'Follow-up damage', value: `${pct(c.followupMult)} of the hit` },
+      ];
+    }
+    case 'defend': {
+      const c = PET_COMBAT.defend;
+      return [
+        { label: 'Deflect chance', value: pct(c.deflectChanceBase + c.deflectChancePerLvl * (lvl - 1)) },
+        { label: 'Damage blocked', value: `${Math.floor(c.deflectFlatBase + c.deflectFlatPerLvl * (lvl - 1))}` },
+      ];
+    }
+    case 'forage':
+      return [
+        { label: 'Spores scavenged', value: `${PET_MOUSE_SPORES_BASE + PET_MOUSE_SPORES_PER_LVL * (lvl - 1)}` },
+        { label: 'Bonus item chance', value: pct(PET_MOUSE_ITEM_CHANCE_BASE + PET_MOUSE_ITEM_CHANCE_PER_LVL * (lvl - 1)) },
+        { label: 'Cooldown', value: `${abilityCooldownMin('forage', lvl)} min` },
+      ];
+    case 'scout':
+      return [{ label: 'Cooldown', value: `${abilityCooldownMin('scout', lvl)} min` }];
+    case 'economy':
+      return [
+        { label: 'Spores per loot space', value: `${economyPerLoot(lvl)}` },
+        { label: 'Bank cap', value: `${economySporeCap(lvl)}` },
+      ];
+    default:
+      return [];
+  }
+}
 
 export function petInfo(species: PetSpecies): PetSpeciesInfo {
   return (

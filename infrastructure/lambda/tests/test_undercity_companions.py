@@ -373,6 +373,39 @@ def test_economy_redeem_rejects_when_bank_empty(table):
     assert status == 409
 
 
+# Dispatch directly (not via act) so the payload `name` key can't collide with
+# act()'s own `name` kwarg (the username) — same reason the admin tests do this.
+def _name_pet(table, pet_id, name):
+    return db.handle_action(table, {
+        'type': 'name-pet', 'userId': 'user-alex', 'username': 'Alex',
+        'payload': {'petId': pet_id, 'name': name}})
+
+
+def test_name_pet_sets_trims_and_clears(table):
+    sid, doc = _persist_active_pet(table, 'small_bear', level=1)
+    pet_id = doc['activePetId']
+    # Set a nickname — surrounding whitespace is trimmed.
+    status, body = _name_pet(table, pet_id, '  Rocky  ')
+    assert status == 200, body
+    pet = db._find_pet(db._get_player(table, sid, 'user-alex'), pet_id)
+    assert pet['name'] == 'Rocky'
+    # Capped at 16 chars (mirrors the creature-name rule).
+    _name_pet(table, pet_id, 'abcdefghijklmnopqrstuvwxyz')
+    pet = db._find_pet(db._get_player(table, sid, 'user-alex'), pet_id)
+    assert pet['name'] == 'abcdefghijklmnop'   # 16
+    # Empty name clears it back to the species default.
+    status, _ = _name_pet(table, pet_id, '   ')
+    assert status == 200
+    pet = db._find_pet(db._get_player(table, sid, 'user-alex'), pet_id)
+    assert 'name' not in pet
+
+
+def test_name_pet_rejects_unknown_pet(table):
+    _persist_active_pet(table, 'small_bear')
+    status, body = _name_pet(table, 'pet-nope', 'Ghost')
+    assert status == 409
+
+
 def test_forage_gives_spores_and_sets_cooldown(table):
     sid, doc = _persist_active_pet(table, 'rat', level=2)   # forage role
     before = doc.get('spores', 0)

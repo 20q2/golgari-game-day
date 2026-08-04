@@ -24,7 +24,6 @@ interface OwnedRow {
   index: number;
   itemId: string;
   name: string;
-  salvage: string;
 }
 
 /** Which item's inline Sell price-editor is open: the incoming item ('new'),
@@ -65,19 +64,23 @@ type SellTarget = 'new' | number | null;
               <span class="pu-name pu-name-lg">{{ itemName(p.kind, p.itemId) }}</span>
               <span class="pu-badge">NEW</span>
             </div>
-            <p class="pu-hint">{{ sourceLine(p) }} — clear a slot below to keep it, or</p>
+            <p class="pu-hint">{{ sourceLine(p) }} — clear a slot below to keep it, or:</p>
             @if (sellTarget() === 'new') {
               <ng-container
                 *ngTemplateOutlet="priceEditor; context: { $implicit: p.kind, id: p.itemId }"
               ></ng-container>
             } @else {
-              <button
-                class="uc-btn uc-btn-ghost uc-btn-sell"
-                [disabled]="busy()"
-                (click)="openSell('new')"
-              >
-                <mat-icon class="mi">sell</mat-icon> Sell on Market
-              </button>
+              <div class="pu-new-actions">
+                <button class="uc-btn uc-btn-sm" [disabled]="busy()" (click)="salvageNew()">
+                  Salvage ·
+                  <ng-container
+                    *ngTemplateOutlet="salvageAmt; context: { $implicit: p.kind, id: p.itemId }"
+                  ></ng-container>
+                </button>
+                <button class="uc-btn uc-btn-ghost" [disabled]="busy()" (click)="openSell('new')">
+                  <mat-icon class="mi">sell</mat-icon> Sell
+                </button>
+              </div>
             }
           </div>
 
@@ -109,7 +112,10 @@ type SellTarget = 'new' | number | null;
                         [disabled]="busy()"
                         (click)="salvageOwned(row)"
                       >
-                        Salvage · {{ row.salvage }}
+                        Salvage ·
+                        <ng-container
+                          *ngTemplateOutlet="salvageAmt; context: { $implicit: p.kind, id: row.itemId }"
+                        ></ng-container>
                       </button>
                       <button
                         class="uc-btn uc-btn-sm"
@@ -130,6 +136,17 @@ type SellTarget = 'new' | number | null;
           }
         </div>
       </div>
+
+      <!-- Salvage yield, reused by the newcomer and every owned row: gear grinds
+           into materials (text); consumables/scrolls refund Spores (icon). -->
+      <ng-template #salvageAmt let-kind let-id="id">
+        @if (kind === 'gear') {
+          {{ salvageMaterials(id) }}
+        } @else {
+          {{ salvageSpores(kind)
+          }}<img class="pu-spore" src="undercity/icons/rot.png" alt="Spores" />
+        }
+      </ng-template>
 
       <!-- Inline price editor, reused by the newcomer and every owned row. -->
       <ng-template #priceEditor let-kind let-id="id">
@@ -165,9 +182,13 @@ export class PickupModalComponent {
   protected readonly price = signal(0);
   protected readonly sellTarget = signal<SellTarget>(null);
 
-  protected readonly head = computed<PendingPickup | null>(
-    () => this.store.you()?.pendingPickups?.[0] ?? null,
-  );
+  protected readonly head = computed<PendingPickup | null>(() => {
+    // Queue behind any landing/battle/reward card: the "bag is full" modal opens
+    // only once that dialog is dismissed, so it never paints over the loot,
+    // battle, or cache reveal that produced the overflow in the first place.
+    if (this.store.landingDialogHold()) return null;
+    return this.store.you()?.pendingPickups?.[0] ?? null;
+  });
   protected readonly queueCount = computed(() => this.store.you()?.pendingPickups?.length ?? 0);
 
   protected itemName(kind: MarketKind, itemId: string): string {
@@ -197,18 +218,20 @@ export class PickupModalComponent {
     return tierRarity(GEAR_MAP[itemId]?.tier ?? 1).key;
   }
 
-  /** Human-readable yield from salvaging an item — materials for gear, a flat
-   * Spore refund for consumables/scrolls (mirrors the server salvage rates). */
-  protected salvageYield(kind: MarketKind, itemId: string): string {
-    if (kind === 'gear') {
-      const tier = GEAR_MAP[itemId]?.tier ?? 1;
-      const y = SALVAGE_YIELD[tier] ?? { moltings: 1, ichor: 0 };
-      const parts = [`${y.moltings} Molting${y.moltings === 1 ? '' : 's'}`];
-      if (y.ichor) parts.push(`${y.ichor} Gemstone${y.ichor === 1 ? '' : 's'}`);
-      return parts.join(' + ');
-    }
-    const spores = kind === 'consumable' ? CONSUMABLE_SALVAGE_SPORES : SCROLL_SALVAGE_SPORES;
-    return `${spores} Spores`;
+  /** Flat Spore refund from salvaging a consumable/scroll (mirrors the server
+   * salvage rates). Gear yields materials instead — see {@link salvageMaterials}. */
+  protected salvageSpores(kind: MarketKind): number {
+    return kind === 'consumable' ? CONSUMABLE_SALVAGE_SPORES : SCROLL_SALVAGE_SPORES;
+  }
+
+  /** Human-readable material yield from grinding a gear piece (mirrors the
+   * server's SALVAGE_YIELD table). */
+  protected salvageMaterials(itemId: string): string {
+    const tier = GEAR_MAP[itemId]?.tier ?? 1;
+    const y = SALVAGE_YIELD[tier] ?? { moltings: 1, ichor: 0 };
+    const parts = [`${y.moltings} Molting${y.moltings === 1 ? '' : 's'}`];
+    if (y.ichor) parts.push(`${y.ichor} Gemstone${y.ichor === 1 ? '' : 's'}`);
+    return parts.join(' + ');
   }
 
   protected bandFor(kind: MarketKind, itemId: string): { lo: number; hi: number } {
@@ -248,7 +271,6 @@ export class PickupModalComponent {
       index,
       itemId,
       name: this.itemName(p.kind, itemId),
-      salvage: this.salvageYield(p.kind, itemId),
     }));
   }
 
@@ -295,5 +317,11 @@ export class PickupModalComponent {
 
   protected salvageOwned(row: OwnedRow): void {
     void this.resolve({ choice: 'salvage-owned', index: row.index });
+  }
+
+  /** Salvage the incoming item outright — it never enters the bag; the player
+   * takes its materials/Spores instead of listing it or clearing a slot. */
+  protected salvageNew(): void {
+    void this.resolve({ choice: 'salvage-new' });
   }
 }
