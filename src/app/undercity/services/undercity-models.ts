@@ -433,6 +433,10 @@ export interface BattleStatus {
   /** Net temporary stat swing from those buffs/curses (server-computed): +N from
    *  self-buffs, -N from curses. Drives the ±N annotation beside each stat. */
   delta?: { atk: number; def: number; spd: number };
+  /** Signature enemy trait kinds (boss familiars) -> STATUS_INFO chips. */
+  traits?: string[];
+  /** Live stack counts for stacking traits (grave_growth / doom_counters). */
+  stacks?: Record<string, number>;
 }
 
 export interface CombatRound {

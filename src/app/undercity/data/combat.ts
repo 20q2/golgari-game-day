@@ -160,6 +160,18 @@ export const STATUS_INFO: Record<string, StatusInfo> = {
     blurb: '+1 ATK/DEF/SPD this battle.' },
   trophy: { label: 'Soul Trophy', icon: 'military_tech', tone: 'buff',
     blurb: 'A trophy from the slain: +[foe level] to a chosen stat this battle.' },
+  // Boss-familiar signature traits (design 2026-08-04). Shown on the foe so the
+  // familiar teaches the boss's trick; stacking ones carry a live ×N count.
+  grave_growth: { label: 'Grave Growth', icon: 'trending_up', tone: 'debuff',
+    blurb: 'The grave keeps growing: gains ATK/DEF every round it survives.' },
+  doom_counters: { label: 'Doom', icon: 'change_history', tone: 'debuff',
+    blurb: 'Compounds: +2 ATK/DEF/SPD each round it wins or ties. Force it to lose.' },
+  dredge: { label: 'Dredge', icon: 'healing', tone: 'debuff',
+    blurb: 'Knits its wounds shut a little each round. Out-pace the regrowth.' },
+  swarm: { label: 'Swarm', icon: 'grain', tone: 'debuff',
+    blurb: 'The brood piles on: an extra chip hit every round.' },
+  web_venom: { label: 'Venom', icon: 'coronavirus', tone: 'debuff',
+    blurb: 'Its winning strikes leave rot behind.' },
 };
 
 export interface StatusChip {
@@ -178,5 +190,9 @@ export function statusChips(status: BattleStatus | null | undefined): StatusChip
     .filter((k) => k !== 'rot' && STATUS_INFO[k])
     .map((k) => ({ kind: k, count: 1, info: STATUS_INFO[k] }));
   mapped.sort((a, b) => Number(a.info.tone === 'debuff') - Number(b.info.tone === 'debuff'));
-  return [...chips, ...mapped];
+  // Boss-familiar signature traits, with a live ×N badge for the stacking ones.
+  const traits = (status.traits ?? [])
+    .filter((k) => STATUS_INFO[k])
+    .map((k) => ({ kind: k, count: status.stacks?.[k] ?? 1, info: STATUS_INFO[k] }));
+  return [...chips, ...mapped, ...traits];
 }

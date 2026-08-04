@@ -690,13 +690,21 @@ def _bt_store(c, rec_side):
 
 def _battle_status(side):
     """Client-facing standing status for one combatant snapshot: the rot stack
-    count (drives the DoT), the list of active buff/debuff effect kinds, and the
-    net temporary stat modifier those buffs/curses apply (so the battle UI can
-    annotate each fighter's ATK/DEF/SPD with a ±N)."""
+    count (drives the DoT), the list of active buff/debuff effect kinds, the net
+    temporary stat modifier those buffs/curses apply (so the battle UI can
+    annotate each fighter's ATK/DEF/SPD with a ±N), and any signature trait chips
+    (boss familiars) with live stack counts for the two stacking traits."""
     delta = side.get('statDelta') or {}
+    traits = [p for p in (side.get('passives') or []) if p in data.TRAIT_PASSIVES]
+    stacks = {}
+    if side.get('growth_stacks'):
+        stacks['grave_growth'] = int(side['growth_stacks'])
+    if side.get('doom_stacks'):
+        stacks['doom_counters'] = int(side['doom_stacks'])
     return {'rot': int(side.get('rot_stacks', 0)),
             'buffs': list(side.get('buffs') or []),
-            'delta': {s: int(delta.get(s, 0)) for s in ('atk', 'def', 'spd')}}
+            'delta': {s: int(delta.get(s, 0)) for s in ('atk', 'def', 'spd')},
+            'traits': traits, 'stacks': stacks}
 
 
 def _npc_combatant(npc):

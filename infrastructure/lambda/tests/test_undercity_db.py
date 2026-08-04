@@ -4542,3 +4542,14 @@ def test_lair_boss_combatant_carries_its_trait(table):
     doc['position'] = 'city_lair'
     db._lair(table, sid, doc, 'city_lair')
     assert 'web_venom' in (doc['battle']['npc'].get('passives') or [])
+
+
+def test_battle_status_surfaces_trait_chips_with_stacks():
+    side = {'rot_stacks': 0, 'buffs': [], 'statDelta': {},
+            'passives': ['doom_counters'], 'doom_stacks': 3, 'growth_stacks': 0}
+    st = db._battle_status(side)
+    assert 'doom_counters' in st['traits']
+    assert st['stacks']['doom_counters'] == 3
+    # A non-trait passive is not surfaced as a chip.
+    plain = db._battle_status({'rot_stacks': 0, 'passives': ['brute']})
+    assert plain['traits'] == []
