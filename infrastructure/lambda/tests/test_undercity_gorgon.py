@@ -13,13 +13,13 @@ def test_gorgon_scalars_defined():
 
 
 def test_gorgon_starter_defined():
-    g = data.STARTERS['gorgon']
+    g = data.STARTERS['elf']
     assert g['passive'] == 'stonewright'
     assert (g['hp'], g['atk'], g['def'], g['spd']) == (25, 6, 6, 4)
 
 
 def test_gorgon_evolution_line():
-    assert set(data.tier2_options('gorgon')) == {'basalt_matron', 'medusa_stalker'}
+    assert set(data.tier2_options('elf')) == {'basalt_matron', 'medusa_stalker'}
     # Each gorgon tier-2 form has two apex options grafted onto existing apexes.
     assert 'grave_titan' in data.apex_options('basalt_matron')
     assert 'golgari_lich_lord' in data.apex_options('basalt_matron')
@@ -28,10 +28,10 @@ def test_gorgon_evolution_line():
 
 
 def test_gorgon_starts_with_five_banked_points(table):
-    act(table, 'join', starter='gorgon')
+    act(table, 'join', starter='elf')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    assert doc['species'] == 'gorgon'
+    assert doc['species'] == 'elf'
     assert 'stonewright' in doc['passives']
     assert doc['statPoints'] == 5
 

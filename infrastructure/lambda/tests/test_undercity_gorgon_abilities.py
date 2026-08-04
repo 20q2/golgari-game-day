@@ -35,7 +35,7 @@ def _start_a_fight_as_gorgon(table, passives):
     an evolved Gorgon form). `_wild_battle` already persisted the battle; we stamp
     the in-memory doc only and let `_combat_round` do the next save (an extra save
     here would desync the doc version and 409 the round)."""
-    act(table, 'join', starter='gorgon')
+    act(table, 'join', starter='elf')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
     ev = db._wild_battle(table, sid, doc, region='cavern')

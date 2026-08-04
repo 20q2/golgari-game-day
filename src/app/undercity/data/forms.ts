@@ -101,7 +101,7 @@ export const STARTERS: FormInfo[] = [
     stats: { hp: 25, atk: 5, def: 4, spd: 7 },
   },
   {
-    id: 'gorgon', name: 'Elf', tier: 1, passive: 'stonewright', passiveName: 'Stonewright',
+    id: 'elf', name: 'Elf', tier: 1, passive: 'stonewright', passiveName: 'Stonewright',
     blurb: 'Ancient and long-lived — born gifted, slow to grow; her power is in her works.',
     stats: { hp: 25, atk: 6, def: 6, spd: 4 },
   },
@@ -120,8 +120,8 @@ export const TIER2: FormInfo[] = [
   { id: 'underrealm_lich', name: 'Underrealm Lich', tier: 2, line: 'zombie', passive: 'rootwall', passiveName: 'Rootwall', bonus: { maxHp: 6, atk: 2 }, blurb: 'Regenerating necromancer — 35% regrow + innate Mend Flesh (+HP/+ATK).' },
   { id: 'squirrel_warrior', name: 'Vinereap Mentor', tier: 2, line: 'squirrel', passive: 'spell_warrior', passiveName: 'Spell Warrior', bonus: { maxHp: 6, atk: 2 }, blurb: 'Spellblade — self-buffs doubled (+HP/+ATK).' },
   { id: 'squirrel_mage', name: 'Squirrel Mage', tier: 2, line: 'squirrel', passive: 'spell_mage', passiveName: 'Spell Mage', bonus: { maxHp: 4, spd: 2 }, blurb: 'Battlemage — +50% spell damage (+HP/+SPD).' },
-  { id: 'basalt_matron', name: 'Basalt Matron', tier: 2, line: 'gorgon', passive: 'shatter', passiveName: 'Shatter', bonus: { atk: 2, maxHp: 4 }, blurb: 'Stone crusher (+ATK/+HP).' },
-  { id: 'medusa_stalker', name: 'Medusa Stalker', tier: 2, line: 'gorgon', passive: 'stone_gaze', passiveName: 'Stone Gaze', bonus: { spd: 2, atk: 2 }, blurb: 'Gaze-hunter (+SPD/+ATK).' },
+  { id: 'basalt_matron', name: 'Basalt Matron', tier: 2, line: 'elf', passive: 'shatter', passiveName: 'Shatter', bonus: { atk: 2, maxHp: 4 }, blurb: 'Stone crusher (+ATK/+HP).' },
+  { id: 'medusa_stalker', name: 'Medusa Stalker', tier: 2, line: 'elf', passive: 'stone_gaze', passiveName: 'Stone Gaze', bonus: { spd: 2, atk: 2 }, blurb: 'Gaze-hunter (+SPD/+ATK).' },
 ];
 
 export const APEX: (FormInfo & { from: string[] })[] = [

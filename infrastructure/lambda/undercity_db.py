@@ -3014,7 +3014,7 @@ def _join(table, sid, user_id, username, payload):
         return _ok(existing)
     starter = payload.get('starter')
     if starter not in data.STARTERS:
-        return _err('Pick a starter: pest, kraul, saproling, zombie, squirrel, or gorgon.')
+        return _err('Pick a starter: pest, kraul, saproling, zombie, squirrel, or elf.')
     home = payload.get('home', data.DEFAULT_BIOME)
     if home not in data.BIOMES:
         return _err('Pick a home biome: ' + ', '.join(data.BIOMES) + '.')

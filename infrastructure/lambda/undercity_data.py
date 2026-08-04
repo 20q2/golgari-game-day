@@ -66,7 +66,7 @@ STARTERS = {
         'passive': 'spell_haste',
         'blurb': 'A twitchy little caster. Spell Haste: your spell cooldowns are halved — cast twice as often as anyone else.',
     },
-    'gorgon': {
+    'elf': {
         'name': 'Elf', 'hp': 25, 'atk': 6, 'def': 6, 'spd': 4,
         'passive': 'stonewright',
         'blurb': 'Ancient and long-lived — born gifted, slow to change; her power is in '
@@ -154,13 +154,13 @@ TIER2 = {
         'blurb': 'Battlemage. Spell Mage: your damaging spells deal +50% and are twice as likely to land (and you still cast 50% faster).',
     },
     'basalt_matron': {
-        'name': 'Basalt Matron', 'line': 'gorgon', 'bonus': {'atk': 2, 'maxHp': 4},
+        'name': 'Basalt Matron', 'line': 'elf', 'bonus': {'atk': 2, 'maxHp': 4},
         'passive': 'shatter',
         'blurb': 'Stone crusher. Shatter: a winning Aggress cracks the foe (Brittle) — '
                  'your blows then hit the cracks for extra.',
     },
     'medusa_stalker': {
-        'name': 'Medusa Stalker', 'line': 'gorgon', 'bonus': {'spd': 2, 'atk': 2},
+        'name': 'Medusa Stalker', 'line': 'elf', 'bonus': {'spd': 2, 'atk': 2},
         'passive': 'stone_gaze',
         'blurb': 'Gaze-hunter. Stone Gaze: reads come easily, and every read you land '
                  'petrifies the foe — stacking slow that ends in a one-round freeze.',
