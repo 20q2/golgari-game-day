@@ -20,24 +20,33 @@ import { CommonModule } from '@angular/common';
   template: `
     <div class="boss-overlay">
       <div class="boss-card">
-        <div class="portrait" [class.vestige]="vestige">
-          @if (spriteUrl) {
-            <img [src]="spriteUrl" [alt]="name" (error)="imgFailed = true" [class.hidden]="imgFailed" />
-          }
-          @if (!spriteUrl || imgFailed) {
-            <div class="portrait-fallback" aria-hidden="true"></div>
-          }
+        <div
+          class="stage"
+          [class.vestige]="vestige"
+          style="background-image: linear-gradient(rgba(10, 12, 10, 0.3), rgba(10, 12, 10, 0.55)), url('undercity/arena_background.webp')"
+        >
+          <div class="platform" aria-hidden="true"></div>
+          <div class="body">
+            @if (spriteUrl) {
+              <img [src]="spriteUrl" [alt]="name" (error)="imgFailed = true" [class.hidden]="imgFailed" />
+            }
+            @if (!spriteUrl || imgFailed) {
+              <div class="portrait-fallback" aria-hidden="true"></div>
+            }
+          </div>
         </div>
 
-        <h2 class="boss-name">{{ name }}</h2>
+        <div class="content">
+          <h2 class="boss-name">{{ name }}</h2>
 
-        <div class="speech">
-          @for (line of lines; track $index) {
-            <p class="line">&ldquo;{{ line }}&rdquo;</p>
-          }
+          <div class="speech">
+            @for (line of lines; track $index) {
+              <p class="line">&ldquo;{{ line }}&rdquo;</p>
+            }
+          </div>
+
+          <button class="fight-btn" type="button" (click)="begin.emit()">Fight</button>
         </div>
-
-        <button class="fight-btn" type="button" (click)="begin.emit()">Fight</button>
       </div>
     </div>
   `,
@@ -67,12 +76,10 @@ import { CommonModule } from '@angular/common';
         background: #1a1815;
         border: 1px solid rgba(74, 124, 89, 0.45);
         border-radius: 16px;
-        padding: 24px 20px 20px;
+        padding: 0;
+        overflow: hidden;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        gap: 16px;
-        text-align: center;
         box-shadow:
           0 24px 60px rgba(0, 0, 0, 0.65),
           inset 0 1px 0 rgba(183, 228, 199, 0.08);
@@ -82,30 +89,83 @@ import { CommonModule } from '@angular/common';
         from { opacity: 0; transform: translateY(16px) scale(0.94); }
         to { opacity: 1; transform: none; }
       }
-      .portrait {
-        width: 160px;
-        height: 160px;
+      /* Arena stage — same background + framing as the battle screen. */
+      .stage {
+        position: relative;
+        flex-shrink: 0;
+        height: 230px;
         display: flex;
-        align-items: center;
+        align-items: flex-end;
         justify-content: center;
+        padding-bottom: 22px;
+        border-radius: 16px 16px 0 0;
+        border-bottom: 2px solid rgba(74, 124, 89, 0.5);
+        /* background-image is set inline in the template (webpack won't try to
+         * resolve the runtime asset URL), matching the battle stage. */
+        background-size: cover;
+        background-position: center;
       }
-      .portrait img {
+      /* Ground shadow under the boss, breathing counter-phase to the sprite. */
+      .platform {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 150px;
+        max-width: 70%;
+        height: 34px;
+        background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55) 0%, transparent 68%);
+        pointer-events: none;
+        animation: uc-shadow-breathe 3.2s ease-in-out 0.5s infinite;
+      }
+      /* Wrapper carries the drop-in + breathe so the img stays clean. */
+      .body {
+        display: inline-block;
+        transform-origin: 50% 100%;
+        animation:
+          uc-boss-drop 0.5s cubic-bezier(0.2, 1.2, 0.4, 1) both,
+          uc-breathe 3.2s ease-in-out 0.5s infinite;
+      }
+      @keyframes uc-boss-drop {
+        0% { opacity: 0; transform: translateY(-90px); }
+        70% { opacity: 1; transform: translateY(8px); }
+        100% { transform: translateY(0); }
+      }
+      @keyframes uc-breathe {
+        0%, 100% { transform: translateY(0) scale(1); }
+        50% { transform: translateY(-4px) scale(1.04); }
+      }
+      @keyframes uc-shadow-breathe {
+        0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.85; }
+        50% { transform: translateX(-50%) scale(0.9); opacity: 0.62; }
+      }
+      .body img {
+        display: block;
+        width: 200px;
         max-width: 100%;
-        max-height: 100%;
+        height: auto;
         image-rendering: pixelated;
-        filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.6));
+        filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.6));
       }
-      .portrait img.hidden { display: none; }
+      .body img.hidden { display: none; }
       /* Vestige = a drained, spectral echo of the boss. */
-      .portrait.vestige img {
-        filter: grayscale(0.65) brightness(0.85) drop-shadow(0 0 12px rgba(120, 200, 160, 0.5));
+      .stage.vestige .body img {
+        filter: grayscale(0.65) brightness(0.85) drop-shadow(0 0 14px rgba(120, 200, 160, 0.55));
         opacity: 0.85;
       }
       .portrait-fallback {
-        width: 120px;
-        height: 120px;
+        width: 150px;
+        height: 150px;
         border-radius: 50%;
         background: radial-gradient(circle at 40% 35%, rgba(74, 124, 89, 0.5), rgba(20, 18, 15, 0.9));
+      }
+      .content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        text-align: center;
+        padding: 20px 20px 20px;
       }
       .boss-name {
         margin: 0;
