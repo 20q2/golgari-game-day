@@ -1381,6 +1381,10 @@ def _upgrade_gear(table, sid, doc, payload):
     if not next_gid:
         top = 'Mythic' if g['tier'] >= 4 else 'Legendary'
         return _err(f'That piece is already {top}.', 409)
+    # Gorgon Stonewright mints a Gear+; and an existing "+" stamp is permanent,
+    # surviving further upgrades no matter who performs them.
+    if 'stonewright' in _passives(doc) or gid.endswith(data.PLUS_SUFFIX):
+        next_gid = data.plus_id(next_gid)
 
     spores_cost = data.UPGRADE_SPORES.get(next_tier, 0)
     moltings_cost = data.UPGRADE_MOLTINGS.get(next_tier, 0)

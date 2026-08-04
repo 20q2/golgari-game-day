@@ -64,3 +64,38 @@ def test_gear_family_never_contains_plus_ids():
     for rider, tiers in data.GEAR_FAMILY.items():
         for tier, gid in tiers.items():
             assert not gid.endswith('+')
+
+
+def test_gorgon_upgrade_mints_plus(table):
+    sid, doc = _player_at(table, 'city_r0', spores=100)
+    doc['passives'] = ['stonewright']                    # act as a Gorgon
+    doc['gear'] = {'carapace': 'bramble_hide'}           # tier-1 bramble
+    doc['materials'] = {'moltings': 10, 'ichor': 0}
+    status, _ = db._upgrade_gear(
+        table, sid, doc, {'target': {'where': 'equipped', 'slot': 'carapace'}})
+    assert status == 200
+    base_next = data.GEAR_FAMILY['bramble'][2]
+    assert doc['gear']['carapace'] == base_next + '+'
+    got = data.GEAR[doc['gear']['carapace']]
+    assert got['plus'] is True
+    assert got['def'] == data.GEAR[base_next]['def'] + data.GEAR_PLUS_BUMP
+
+
+def test_non_gorgon_upgrade_stays_plain(table):
+    sid, doc = _player_at(table, 'city_r0', spores=100)   # joined as pest (no stonewright)
+    doc['gear'] = {'carapace': 'bramble_hide'}
+    doc['materials'] = {'moltings': 10, 'ichor': 0}
+    status, _ = db._upgrade_gear(
+        table, sid, doc, {'target': {'where': 'equipped', 'slot': 'carapace'}})
+    assert status == 200
+    assert doc['gear']['carapace'] == data.GEAR_FAMILY['bramble'][2]   # no "+"
+
+
+def test_plus_stamp_survives_non_gorgon_upgrade(table):
+    sid, doc = _player_at(table, 'city_r0', spores=100)   # a pest, not a Gorgon
+    doc['gear'] = {'carapace': data.GEAR_FAMILY['bramble'][2] + '+'}   # a forged tier-2+
+    doc['materials'] = {'moltings': 10, 'ichor': data.UPGRADE_ICHOR[3]}
+    status, _ = db._upgrade_gear(
+        table, sid, doc, {'target': {'where': 'equipped', 'slot': 'carapace'}})
+    assert status == 200
+    assert doc['gear']['carapace'] == data.GEAR_FAMILY['bramble'][3] + '+'  # "+" preserved
