@@ -1699,3 +1699,16 @@ def test_dredge_regens_but_stays_below_max():
     a.hp = 29
     resolve_round(a, d, 'guard', 'guard', 2, FakeRng(uniform=1.0))
     assert a.hp == 30                                              # never exceeds max
+
+
+def test_web_venom_applies_rot_on_a_win():
+    a = fighter(name='I', hp=999, max_hp=999, atk=12, dfn=4, spd=8,
+                passives=frozenset({'web_venom'}))
+    d = fighter(name='D', hp=999, max_hp=999, atk=6, dfn=4, spd=6)
+    # aggress vs feint -> holder wins decisively -> +1 rot on the loser.
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    assert d.rot_stacks == 1
+    # A loss applies no venom (holder aggress into foe guard -> holder loses).
+    d.rot_stacks = 0
+    resolve_round(a, d, 'aggress', 'guard', 2, FakeRng(uniform=1.0))
+    assert d.rot_stacks == 0

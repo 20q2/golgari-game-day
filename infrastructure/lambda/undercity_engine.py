@@ -342,6 +342,10 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             if win_stance == 'aggress' and winr.has_perk('rend') and losr.hp > 0:
                 losr.rot_stacks += 1
                 entries.append({'round': rnd, 'by': win_side, 'rotApplied': 1})
+            # Web Venom (Ishkanah): any decisive win injects a rot stack.
+            if winr.has('web_venom') and losr.hp > 0:
+                losr.rot_stacks += 1
+                entries.append({'round': rnd, 'by': win_side, 'rotApplied': 1})
             # A winning Feint: serrated debuffs enemy next round; glint reveals;
             # venomtrick poisons; cutpurse's flag is armed for the post-fight payout.
             if win_stance == 'feint':
