@@ -28,7 +28,12 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   saproling: { sprite: 'saproling', regions: MASK_REGIONS, scale: 0.7 },
   zombie: { sprite: 'zombie', regions: MASK_REGIONS, scale: 0.7 },
   squirrel: { sprite: 'squirrel', regions: MASK_REGIONS, scale: 0.7 },
+  gorgon: { sprite: 'gorgon', regions: MASK_REGIONS, scale: 0.7 },
   // Tier 2 — same line sprite, grown up
+  // Gorgon line (basalt_matron / medusa_stalker) reuses the gorgon placeholder
+  // sprite until dedicated art lands.
+  basalt_matron: { sprite: 'gorgon', regions: MASK_REGIONS, scale: 0.9 },
+  medusa_stalker: { sprite: 'gorgon', regions: MASK_REGIONS, scale: 0.9 },
   brackish_trudge: { sprite: 'brackish_trudge', regions: MASK_REGIONS, scale: 1.0 },
   vexing_pest: { sprite: 'vexing_pest', regions: MASK_REGIONS, scale: 0.9 },
   kraul_warrior: { sprite: 'grave_shell_scarab', regions: MASK_REGIONS, scale: 1.0 },
