@@ -1035,22 +1035,57 @@ def region_tier(region):
     return REGION_TIER.get(region or '', 1)
 
 
-# ── Boss-area signature minions (design 2026-08-02) ──────────────────────────
-# One themed enemy per boss area, thematically aligned with the lair boss that
-# rules it. Keyed by biome (for the five depths pockets) and by region for the
-# ruins. Rolled at WILD spaces via SIGNATURE_SPAWN_CHANCE in _wild_battle, so the
-# signature dominates its turf without erasing pool variety. The chosen ids are
-# ordinary tier-2 roster members (tier-appropriate power), looked up by
-# ENEMY_SPECS_BY_ID. Ruin holds two bosses but one wild pool, so it gets one
-# signature (Moldering Karock, for the decaying ruins / Lord of Extinction).
-LAIR_SIGNATURE = {
-    'bone':   'mosspit_skeleton',    # Skullbriar, the Walking Grave — skeletons
-    'garden': 'infested_thrinax',    # Slimefoot — dies into saprolings
-    'bog':    'golgari_rotwurm',     # The Gitrog Monster — swamp rot
-    'cavern': 'large_bear',          # Sarulf, Realm Eater — apex beast
-    'city':   'sluiceway_scorpion',  # Ishkanah, Grafwidow — arthropod kin
-    'ruin':   'moldering_karock',    # Lord of Extinction / Doomgape — dead ruins
+# ── Boss familiars (design 2026-08-04) ───────────────────────────────────────
+# Bespoke minions that exist ONLY in their boss's turf (not in any wild/elite
+# pool). Each is a mini-elite whose menace is its signature trait, not its HP —
+# low HP (below the boss and the depths wilds) so a ~level-5 creature powers
+# through, which also keeps the stacking traits from spiralling. Each shares its
+# trait with its lair boss (LAIR_BOSSES), so the familiar teaches the fight.
+# Rolled at WILD spaces via SIGNATURE_SPAWN_CHANCE in _wild_battle. Sprite art
+# lives in public/undercity/boss_spawns/; `sprites` lists the variants that art
+# rotates through per encounter (Gitrog has two). Starting numbers pre-sim
+# (design §2.2) — the sim gate (sim/sim_boss_familiars.py) may retune them.
+LAIR_FAMILIAR = {
+    'skullbriars_familiar': {
+        'id': 'skullbriars_familiar', 'name': "Skullbriar's Familiar",
+        'hp': 32, 'atk': 12, 'def': 4, 'spd': 6, 'bounty': 20, 'xp': 30,
+        'itemChance': 0.25, 'personality': 'brute', 'bluff': 0.18,
+        'passives': ['grave_growth'], 'sprites': ['skullbriars_familiar']},
+    'slimefoots_saprolings': {
+        'id': 'slimefoots_saprolings', 'name': "Slimefoot's Saprolings",
+        'hp': 34, 'atk': 10, 'def': 5, 'spd': 5, 'bounty': 20, 'xp': 30,
+        'itemChance': 0.25, 'personality': 'balanced', 'bluff': 0.12,
+        'passives': ['swarm'], 'sprites': ['slimefoots_saprolings']},
+    'gitrog_spawn': {
+        'id': 'gitrog_spawn', 'name': 'Gitrog Spawn',
+        'hp': 34, 'atk': 10, 'def': 6, 'spd': 5, 'bounty': 20, 'xp': 30,
+        'itemChance': 0.25, 'personality': 'turtle', 'bluff': 0.12,
+        'passives': ['dredge'], 'sprites': ['gitrog_spawn', 'gitrog_spawn2']},
+    'sarulfs_packmate': {
+        'id': 'sarulfs_packmate', 'name': "Sarulf's Packmate",
+        'hp': 30, 'atk': 11, 'def': 4, 'spd': 8, 'bounty': 20, 'xp': 30,
+        'itemChance': 0.25, 'personality': 'trickster', 'bluff': 0.18,
+        'passives': ['doom_counters'], 'sprites': ['sarulfs_packmate']},
+    'ishkanahs_hatchling': {
+        'id': 'ishkanahs_hatchling', 'name': "Ishkanah's Hatchling",
+        'hp': 30, 'atk': 11, 'def': 4, 'spd': 8, 'bounty': 20, 'xp': 30,
+        'itemChance': 0.25, 'personality': 'trickster', 'bluff': 0.18,
+        'passives': ['web_venom'], 'sprites': ['ishankas_hatchling']},
 }
+
+# The five biome bosses spawn their familiar on WILD turf; the ruin keeps its
+# borrowed pool signature (Lord of Extinction / Doomgape are separate content).
+LAIR_SIGNATURE = {
+    'bone':   'skullbriars_familiar',   # Skullbriar, the Walking Grave
+    'garden': 'slimefoots_saprolings',  # Slimefoot, the Stowaway
+    'bog':    'gitrog_spawn',           # The Gitrog Monster
+    'cavern': 'sarulfs_packmate',       # Sarulf, Realm Eater
+    'city':   'ishkanahs_hatchling',    # Ishkanah, Grafwidow
+    'ruin':   'moldering_karock',       # Lord of Extinction / Doomgape (unchanged)
+}
+
+# Trait passives surfaced as inspectable battle chips (client STATUS_INFO mirror).
+TRAIT_PASSIVES = ('grave_growth', 'doom_counters', 'dredge', 'swarm', 'web_venom')
 
 # Every wild/elite enemy spec, indexed by id, so a signature can be pulled from
 # whichever pool it lives in.

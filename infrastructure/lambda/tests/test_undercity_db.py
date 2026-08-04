@@ -4437,3 +4437,23 @@ def test_field_spell_rejects_a_respawn_lair_target(table):
     res = db._cast_field(table, sid, doc, 'stub', {'effect': 'damage'}, 'lair_titan')
     # Error tuple (status int, body) — the caster's cooldown is left unstarted.
     assert isinstance(res[0], int) and res[0] >= 400
+
+
+# ── Boss familiars (design 2026-08-04) ───────────────────────────────────────
+
+def test_lair_familiar_registry_shape():
+    fam = data.LAIR_FAMILIAR
+    assert set(fam) == {'skullbriars_familiar', 'slimefoots_saprolings',
+                        'gitrog_spawn', 'sarulfs_packmate', 'ishkanahs_hatchling'}
+    for fid, spec in fam.items():
+        assert spec['id'] == fid
+        assert spec['passives'] and isinstance(spec['passives'], list)
+        assert spec['sprites'] and isinstance(spec['sprites'], list)
+        # Mini-elite HP band: below the bosses (40-48) and depths wilds (42-56).
+        assert 28 <= spec['hp'] <= 36
+    # The five biomes now point at familiars; ruin stays a pool enemy.
+    for biome in ('bone', 'garden', 'bog', 'cavern', 'city'):
+        assert data.LAIR_SIGNATURE[biome] in fam
+    assert data.LAIR_SIGNATURE['ruin'] == 'moldering_karock'
+    # Familiars are EXCLUSIVE — never in a general wild/elite pool.
+    assert not (set(fam) & set(data.ENEMY_SPECS_BY_ID))
