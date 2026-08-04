@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { UndercityApiService, UndercityApiError } from '../services/undercity-api.service';
 import { HostPanelComponent } from '../host/host-panel.component';
+import { PET_SPECIES_LIST } from '../data/pets';
 
 const HOST_KEY_STORAGE = 'undercity-host-key';
 
@@ -53,6 +54,16 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
   // Grant form state.
   protected grantResource: 'rolls' | 'xp' | 'spores' = 'rolls';
   protected grantAmount = 3;
+
+  // Give-pet form state. Species options are labeled by role so you can force an
+  // attack/defend pet to test the combat companion; 'random' picks from the roster.
+  protected readonly petTiers = [1, 2, 3, 4];
+  protected readonly petSpeciesOptions = PET_SPECIES_LIST.slice()
+    .sort((a, b) => a.role.localeCompare(b.role) || a.name.localeCompare(b.name))
+    .map((p) => ({ id: p.species, label: `${p.name} — ${p.role}` }));
+  protected givePetSpecies = 'random';
+  protected givePetTier = 1;
+  protected givePetLevel = 1;
 
   // Broadcast state.
   protected broadcastText = '';
@@ -108,6 +119,17 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
 
   protected grant(userId: string): void {
     void this.admin('grant', { target: userId, [this.grantResource]: this.grantAmount });
+  }
+
+  /** Drop a companion into a player's roster (species/tier/level from the form).
+   *  Never auto-activates — it joins their pets like a freshly hatched egg. */
+  protected givePet(userId: string): void {
+    void this.admin('give-pet', {
+      target: userId,
+      species: this.givePetSpecies,
+      tier: this.givePetTier,
+      level: this.givePetLevel,
+    });
   }
 
   protected heal(userId: string): void {

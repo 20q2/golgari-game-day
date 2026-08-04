@@ -121,6 +121,11 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   protected readonly showItems = signal(false);
   protected readonly attackerSpriteFailed = signal(false);
   protected readonly defenderSpriteFailed = signal(false);
+  protected readonly companionSpriteFailed = signal(false);
+  /** Which activation the sidekick is playing this beat (drives its CSS class). */
+  protected readonly petAnim = signal<'attack' | 'defend' | null>(null);
+  /** The companion's own popover text ('-N' follow-up dmg, or 'N' deflected). */
+  protected readonly petPop = signal<{ text: string; kind: 'dmg' | 'block' } | null>(null);
 
   /** Relative sprite size for each fighter, driven by the tier gap. */
   protected attackerScale(): number {
@@ -461,9 +466,10 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     let first = true;
     for (const e of effects) {
       // First blow lands at the aggressor's impact (~mid leap); rest space out.
-      at(first ? (header ? 780 : 220) : 560, () =>
-        this.animateEntry(e, header?.aStance, header?.dStance),
-      );
+      const lead = first ? (header ? 780 : 220) : 560;
+      // A companion beat waits a touch longer so it reads as its own moment.
+      const delay = e.pet ? Math.max(lead, 720) : lead;
+      at(delay, () => this.animateEntry(e, header?.aStance, header?.dStance));
       first = false;
     }
 
@@ -475,6 +481,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
       this.actWord.set({});
       this.struck.set(null);
       this.pop.set(null);
+      this.petAnim.set(null);
+      this.petPop.set(null);
       this.resolving.set(false);
       onDone();
     });
@@ -491,6 +499,27 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     // rot tick: `by` is the side taking the rot → it IS the target.
     const target: Side = rot ? (e.by as Side) : e.by === 'attacker' ? 'defender' : 'attacker';
 
+    // Companion trigger: give the pet its own beat (lunge / block) + popover, and
+    // skip the generic pop for this entry so the pet's message stands alone.
+    if (e.pet === 'attack' && e.dmg) {
+      const cur = target === 'attacker' ? this.attackerHp() : this.defenderHp();
+      (target === 'attacker' ? this.attackerHp : this.defenderHp).set(Math.max(0, cur - e.dmg));
+      this.struck.set(target);
+      this.timers.push(setTimeout(() => this.struck.set(null), 380));
+      this.petAnim.set('attack');
+      this.petPop.set({ text: `-${e.dmg}`, kind: 'dmg' });
+      this.timers.push(setTimeout(() => this.petAnim.set(null), 650));
+      this.timers.push(setTimeout(() => this.petPop.set(null), 900));
+      return;
+    }
+    if (e.pet === 'defend' && e.deflect) {
+      this.petAnim.set('defend');
+      this.petPop.set({ text: `${e.deflect}`, kind: 'block' });
+      this.timers.push(setTimeout(() => this.petAnim.set(null), 650));
+      this.timers.push(setTimeout(() => this.petPop.set(null), 900));
+      return;
+    }
+
     if (e.dmg) {
       const cur = target === 'attacker' ? this.attackerHp() : this.defenderHp();
       (target === 'attacker' ? this.attackerHp : this.defenderHp).set(Math.max(0, cur - e.dmg));
@@ -500,9 +529,6 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
       this.timers.push(setTimeout(() => this.struck.set(null), 380));
     } else if (e.miss || e.negated) {
       this.pop.set({ side: target, text: e.negated ? 'ward' : 'miss', kind: 'miss' });
-    } else if (e.deflect) {
-      // Defend companion shrugged off part of the hit — badge the blocker's side.
-      this.pop.set({ side: e.by as Side, text: 'Block!', kind: 'miss' });
     }
 
     if (e.heal) {
@@ -523,7 +549,6 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
    * ligature. Order matters — specific effect tags win over the plain strike.
    */
   private dmgIcon(e: CombatEntry, aStance?: Stance, dStance?: Stance): { icon: string; svg: boolean } | null {
-    if (e.pet === 'attack') return { icon: 'pets', svg: false }; // Attack companion follow-up
     if (e.rot) return { icon: 'coronavirus', svg: false }; // rot damage-over-time
     if (e.frenzy) return { icon: 'local_fire_department', svg: false }; // legacy escalation
     if (e.retaliation) return { icon: 'uc-carapace', svg: true }; // thorns / spikeshell reflect

@@ -1150,6 +1150,34 @@
   }
 }
 
+// Restock countdown pinned to the shop dialog's top-right corner, out of the
+// title block. Anchored to the modal (position: relative below).
+.shop-modal {
+  position: relative;
+
+  .shop-restock {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 8px;
+    font-size: 0.7rem;
+    color: #9aa79a;
+    background: rgba(0, 0, 0, 0.42);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    white-space: nowrap;
+
+    .mi {
+      font-size: 13px;
+      width: 13px;
+      height: 13px;
+    }
+  }
+}
+
 // Vendor flavor line — an in-character quote under the shopkeeper portrait.
 .shop-quote {
   margin: -2px 0 2px;
@@ -1326,6 +1354,55 @@
     font-size: 0.82rem;
     flex-shrink: 0;
     white-space: nowrap;
+  }
+}
+
+// Bazaar shop rows: a fixed three-column grid (name │ description │ buy) so the
+// priced buy button always keeps its own right-hand column and never shifts or
+// wraps under a long description the way the shared flex .shop-row does. Mirrors
+// the .spell-cast-row layout.
+.shop-row.grid3 {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 4px 10px;
+
+  // Name column stacks the icon+name line above its rarity/black-market chips.
+  .shop-name {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .shop-name-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .shop-badges {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+
+    // Chips sit flush under the name now, not inline with margins around them.
+    .rarity-badge,
+    .black-market-tag {
+      margin: 0;
+    }
+  }
+
+  .shop-desc {
+    min-width: 0;
+    color: #9aa79a;
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  // Structural blocker line (e.g. "Out of stock", "Stash full") spans the whole
+  // row beneath the three columns instead of squeezing into one cell.
+  .block-reason {
+    grid-column: 1 / -1;
   }
 }
 

@@ -60,19 +60,26 @@
     @case ('play') {
       @if (store.you(); as you) {
         <header class="hud">
-          @if (youSpriteUrl(); as url) {
-            <img
-              class="hud-avatar"
-              [class.tappable]="tab() === 'board'"
-              [src]="url"
-              [alt]="formName(you.form)"
-              [title]="tab() === 'board' ? 'Center the map on your creature' : ''"
-              (click)="focusOwnCreature()"
-            />
-          }
+          <div class="hud-avatar-wrap">
+            @if (youSpriteUrl(); as url) {
+              <img
+                class="hud-avatar"
+                [class.tappable]="tab() === 'board'"
+                [src]="url"
+                [alt]="formName(you.form)"
+                [title]="tab() === 'board' ? 'Center the map on your creature' : ''"
+                (click)="focusOwnCreature()"
+              />
+            }
+            <span class="hud-avatar-badge" [title]="'Level ' + you.level">{{ you.level }}</span>
+          </div>
           <div class="hud-creature">
-            <span class="hud-name">{{ you.creatureName || formName(you.form) }}</span>
-            <span class="hud-level">{{ formName(you.form) }} · L{{ you.level }}</span>
+            <span class="hud-name"
+              >{{ you.creatureName || formName(you.form) }}
+              @if (you.creatureName) {
+                <span class="hud-species">{{ formName(you.form) }}</span>
+              }</span
+            >
             <div class="bar hp-bar" [title]="you.hp + ' / ' + effectiveMaxHp() + ' HP'">
               <div class="bar-fill" [style.width.%]="hpPct()"></div>
               <span class="bar-text">{{ you.hp }}/{{ effectiveMaxHp() }}</span>

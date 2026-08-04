@@ -15,7 +15,7 @@ export interface Perk {
 
 export const PERK_TRACKS: Record<PerkTrack, { threshold: 6 | 12 | 18; id: string }[]> = {
   atk: [
-    { threshold: 6, id: 'rend' },
+    { threshold: 6, id: 'brutal_strikes' },
     { threshold: 12, id: 'menace' },
     { threshold: 18, id: 'deathdrive' },
   ],
@@ -32,12 +32,12 @@ export const PERK_TRACKS: Record<PerkTrack, { threshold: 6 | 12 | 18; id: string
 };
 
 export const PERKS: Record<string, Perk> = {
-  rend: { id: 'rend', name: 'Rend', track: 'atk', threshold: 6, blurb: 'A winning Aggress always applies 1 rot.' },
+  brutal_strikes: { id: 'brutal_strikes', name: 'Brutal Strikes', track: 'atk', threshold: 6, blurb: 'Landing a decisive hit deals +30% damage.' },
   menace: { id: 'menace', name: 'Menace', track: 'atk', threshold: 12, blurb: 'Enemies bluff you less often.' },
   deathdrive: { id: 'deathdrive', name: 'Deathdrive', track: 'atk', threshold: 18, blurb: 'Below half HP, your Aggress swings hit harder.' },
-  thick_hide: { id: 'thick_hide', name: 'Thick Hide', track: 'def', threshold: 6, blurb: 'A chance to dodge hazards entirely; if caught, your hide still halves the HP loss.' },
-  carapace_grind: { id: 'carapace_grind', name: 'Carapace Grind', track: 'def', threshold: 12, blurb: '+15 Max HP, and holding Guard grinds the foe down even when you don’t win the exchange.' },
-  last_stand: { id: 'last_stand', name: 'Last Stand', track: 'def', threshold: 18, blurb: 'Survive one lethal blow, rising at half your max HP. Recharges every hour.' },
+  thick_hide: { id: 'thick_hide', name: 'Thick Hide', track: 'def', threshold: 6, blurb: '+5 Max HP and increased resistance against hazards.' },
+  carapace_grind: { id: 'carapace_grind', name: 'Carapace Grind', track: 'def', threshold: 12, blurb: '+10 Max HP, and holding Guard grinds the foe down.' },
+  last_stand: { id: 'last_stand', name: 'Last Stand', track: 'def', threshold: 18, blurb: '+15 Max HP. Survive one lethal blow, rising at half your max HP. Recharges every hour.' },
   fleetfoot: { id: 'fleetfoot', name: 'Fleetfoot', track: 'spd', threshold: 6, blurb: 'You may reroll a die that shows 1.' },
   pathfinder: { id: 'pathfinder', name: 'Pathfinder', track: 'spd', threshold: 12, blurb: 'Roll with advantage — roll two dice, keep either.' },
   blink: { id: 'blink', name: 'Blink', track: 'spd', threshold: 18, blurb: 'Choose your die value — then recharges for one roll.' },

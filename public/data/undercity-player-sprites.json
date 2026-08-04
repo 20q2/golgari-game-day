@@ -26,6 +26,11 @@
       "hasHat": true
     },
     {
+      "name": "elf",
+      "hasMask": true,
+      "hasHat": false
+    },
+    {
       "name": "golgari_lich_lord",
       "hasMask": true,
       "hasHat": true

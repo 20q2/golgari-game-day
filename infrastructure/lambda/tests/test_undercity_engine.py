@@ -460,7 +460,9 @@ def test_effective_stats_include_gear_and_buffs():
     assert eff['atk'] == 6 + 6 + 3
     assert eff['def'] == 5 + 5
     assert eff['spd'] == 5 + 1
-    assert eff['maxHp'] == 36
+    # 30 base + 6 (troll_hide) + 5 (troll_hide's +5 def lifts DEF to 10, lighting
+    # the Thick Hide perk's +5 Max HP).
+    assert eff['maxHp'] == 36 + data.THICK_HIDE_MAXHP
 
 
 def test_cursed_idol_debuff():

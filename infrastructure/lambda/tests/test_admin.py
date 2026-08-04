@@ -116,6 +116,54 @@ def test_grant_unknown_target(table):
     assert 'no such player' in resp['error'].lower()
 
 
+def test_give_pet_specific_species_tier_level(table):
+    _join_alex(table)
+    status, resp = _admin(table, 'give-pet', target='user-alex',
+                          species='small_bear', tier=2, level=3)
+    assert status == 200 and resp['ok'] is True
+    pet = resp['pet']
+    assert pet['species'] == 'small_bear'
+    assert pet['tier'] == 2 and pet['level'] == 3 and pet['mergeProgress'] == 0
+    # It lands in the player's roster (not auto-activated).
+    me = db._get_player(table, db._active_season(table)[0], 'user-alex')
+    assert any(p['id'] == pet['id'] for p in me['pets'])
+    assert me.get('activePetId') != pet['id']
+
+
+def test_give_pet_random_species(table):
+    _join_alex(table)
+    status, resp = _admin(table, 'give-pet', target='user-alex')  # no species => random
+    assert status == 200
+    assert resp['pet']['species'] in data.PET_SPECIES
+
+
+def test_give_pet_rejects_bad_species(table):
+    _join_alex(table)
+    status, resp = _admin(table, 'give-pet', target='user-alex', species='dragon')
+    assert status == 400
+
+
+def test_give_pet_rejects_bad_tier(table):
+    _join_alex(table)
+    status, resp = _admin(table, 'give-pet', target='user-alex',
+                          species='small_bear', tier=9)
+    assert status == 400
+
+
+def test_give_pet_clamps_level_to_tier_cap(table):
+    _join_alex(table)
+    status, resp = _admin(table, 'give-pet', target='user-alex',
+                          species='small_bear', tier=1, level=99)
+    assert status == 200
+    assert resp['pet']['level'] == data.PET_LEVEL_CAP[1]  # tier-1 cap is 3
+
+
+def test_give_pet_unknown_target(table):
+    status, resp = _admin(table, 'give-pet', target='nobody', species='small_bear')
+    assert status == 400
+    assert 'no such player' in resp['error'].lower()
+
+
 def test_heal_restores_full_hp(table):
     _join_alex(table)
     # Wound Alex directly, then heal.

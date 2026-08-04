@@ -3,7 +3,15 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { PendingPickup } from '../services/undercity-models';
-import { GEAR_MAP, CONSUMABLE_MAP, MarketKind, marketBand, SALVAGE_YIELD } from '../data/items';
+import {
+  GEAR_MAP,
+  CONSUMABLE_MAP,
+  MarketKind,
+  marketBand,
+  SALVAGE_YIELD,
+  tierRarity,
+  Rarity,
+} from '../data/items';
 import { SPELL_MAP } from '../data/spells';
 
 // Flat salvage refund for a non-gear item, mirroring the constants used in
@@ -44,19 +52,30 @@ type SellTarget = 'new' | number | null;
             }
           </header>
 
-          <!-- Incoming item -->
+          <!-- Incoming item — the highlighted "prize" -->
           <div class="pu-newcomer">
             <div class="pu-row-main">
+              <span class="pu-icon pu-icon-new">
+                @if (p.kind === 'gear') {
+                  <mat-icon [svgIcon]="slotIcon(p.itemId)"></mat-icon>
+                } @else {
+                  <mat-icon>{{ ligIcon(p.kind, p.itemId) }}</mat-icon>
+                }
+              </span>
+              <span class="pu-name pu-name-lg">{{ itemName(p.kind, p.itemId) }}</span>
               <span class="pu-badge">NEW</span>
-              <span class="pu-name">{{ itemName(p.kind, p.itemId) }}</span>
             </div>
-            <p class="pu-hint">{{ sourceLine(p) }} — keep it by clearing a slot below, or:</p>
+            <p class="pu-hint">{{ sourceLine(p) }} — clear a slot below to keep it, or</p>
             @if (sellTarget() === 'new') {
               <ng-container
                 *ngTemplateOutlet="priceEditor; context: { $implicit: p.kind, id: p.itemId }"
               ></ng-container>
             } @else {
-              <button class="uc-btn uc-btn-primary" [disabled]="busy()" (click)="openSell('new')">
+              <button
+                class="uc-btn uc-btn-ghost uc-btn-sell"
+                [disabled]="busy()"
+                (click)="openSell('new')"
+              >
                 <mat-icon class="mi">sell</mat-icon> Sell on Market
               </button>
             }
@@ -69,28 +88,39 @@ type SellTarget = 'new' | number | null;
           <!-- Existing same-kind inventory -->
           <ul class="pu-owned">
             @for (row of owned(p); track row.index) {
-              <li>
-                <div class="pu-row-main">
+              <li [attr.data-rarity]="rarityFor(p.kind, row.itemId)">
+                <span class="pu-icon">
+                  @if (p.kind === 'gear') {
+                    <mat-icon [svgIcon]="slotIcon(row.itemId)"></mat-icon>
+                  } @else {
+                    <mat-icon>{{ ligIcon(p.kind, row.itemId) }}</mat-icon>
+                  }
+                </span>
+                <div class="pu-owned-body">
                   <span class="pu-name">{{ row.name }}</span>
+                  @if (sellTarget() === row.index) {
+                    <ng-container
+                      *ngTemplateOutlet="priceEditor; context: { $implicit: p.kind, id: row.itemId }"
+                    ></ng-container>
+                  } @else {
+                    <div class="pu-row-actions">
+                      <button
+                        class="uc-btn uc-btn-sm"
+                        [disabled]="busy()"
+                        (click)="salvageOwned(row)"
+                      >
+                        Salvage · {{ row.salvage }}
+                      </button>
+                      <button
+                        class="uc-btn uc-btn-sm"
+                        [disabled]="busy()"
+                        (click)="openSell(row.index)"
+                      >
+                        Sell ▸
+                      </button>
+                    </div>
+                  }
                 </div>
-                @if (sellTarget() === row.index) {
-                  <ng-container
-                    *ngTemplateOutlet="priceEditor; context: { $implicit: p.kind, id: row.itemId }"
-                  ></ng-container>
-                } @else {
-                  <div class="pu-row-actions">
-                    <button class="uc-btn uc-btn-sm" [disabled]="busy()" (click)="salvageOwned(row)">
-                      Salvage · {{ row.salvage }}
-                    </button>
-                    <button
-                      class="uc-btn uc-btn-sm"
-                      [disabled]="busy()"
-                      (click)="openSell(row.index)"
-                    >
-                      Sell ▸
-                    </button>
-                  </div>
-                }
               </li>
             }
           </ul>
@@ -144,6 +174,27 @@ export class PickupModalComponent {
     if (kind === 'gear') return GEAR_MAP[itemId]?.name ?? itemId;
     if (kind === 'consumable') return CONSUMABLE_MAP[itemId]?.name ?? itemId;
     return SPELL_MAP[itemId]?.name ?? itemId;
+  }
+
+  /** Registered `uc-<slot>` SVG icon for a gear piece's chip (fang/carapace/
+   * charm), matching the gear stash and board loot rows. */
+  protected slotIcon(itemId: string): string {
+    return `uc-${GEAR_MAP[itemId]?.slot ?? 'charm'}`;
+  }
+
+  /** Material ligature icon for a consumable or scroll chip (both data maps
+   * carry an `icon` field). Gear uses {@link slotIcon} instead. */
+  protected ligIcon(kind: MarketKind, itemId: string): string {
+    if (kind === 'consumable') return CONSUMABLE_MAP[itemId]?.icon ?? 'category';
+    return SPELL_MAP[itemId]?.icon ?? 'auto_stories';
+  }
+
+  /** Rarity key that tints an item's icon chip. Gear derives it from tier
+   * (mirrors the gear stash); consumables/scrolls have no tier, so they use a
+   * neutral chip. */
+  protected rarityFor(kind: MarketKind, itemId: string): Rarity | 'neutral' {
+    if (kind !== 'gear') return 'neutral';
+    return tierRarity(GEAR_MAP[itemId]?.tier ?? 1).key;
   }
 
   /** Human-readable yield from salvaging an item — materials for gear, a flat

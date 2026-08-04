@@ -136,6 +136,21 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
         },
       });
     }
+    // Pending economy-companion scavenge: a client-only anticipatory buff shown
+    // while the plotted route passes over a loot space with an economy pet out.
+    // The Spores are banked server-side when the move commits (collect from the
+    // pet's board box).
+    if (this.store.petScavengePending()) {
+      list.unshift({
+        kind: 'pet_scavenge',
+        info: {
+          label: 'Scavenging',
+          icon: 'grass',
+          tone: 'buff',
+          blurb: 'Your companion banks Spores from each loot space you pass over.',
+        },
+      });
+    }
     return list;
   });
 
@@ -170,6 +185,8 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
    * Seeding silently on first read means reopening an existing creature never
    * fires a false celebration. */
   private prevLevel: number | null = null;
+  /** Last castRequest id acted on, so the tab-switch fires once per request. */
+  private lastCastReqId = 0;
   /** Levels gained but not yet celebrated — banked while a battle is in
    * progress so the fanfare pops once the victory screen closes. */
   private pendingLevels = 0;
@@ -233,6 +250,17 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
       ) {
         this.levelUpCelebration.set({ level: this.prevLevel, gained: this.pendingLevels });
         this.pendingLevels = 0;
+      }
+    });
+
+    // Magic-menu cast routing: when a spell aimed from the Gear menu needs board
+    // context, the store bumps castRequest — switch to the Board so its targeting
+    // picker (opened by the board tab's own watcher) is visible.
+    effect(() => {
+      const req = this.store.castRequest();
+      if (req && req.id !== this.lastCastReqId) {
+        this.lastCastReqId = req.id;
+        this.setTab('board');
       }
     });
 

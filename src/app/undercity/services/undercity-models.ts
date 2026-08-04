@@ -199,8 +199,10 @@ export interface YouDoc {
   incubator?: { eggId: string; startedAt: string; tier: number } | null;
   /** species -> ISO time its activated ability comes off cooldown (no trailing Z). */
   petCooldowns?: Record<string, string>;
-  /** ISO time (no trailing Z) the active economy pet started gathering Spores;
-   *  redeeming banks the accrued amount and resets this clock. */
+  /** Spores an active economy pet has scavenged from loot spaces passed over,
+   *  waiting to be collected from its board box. Server-authoritative. */
+  petSporeBank?: number;
+  /** @deprecated Legacy real-time accrual clock — economy pets now bank on move. */
   petSporeSince?: string | null;
   awayEvents?: AwayEvent[];
   taughtClaims: number;
@@ -797,6 +799,9 @@ export interface ActionResponse {
   occupants?: Occupant[];
   /** A gate heal from the last move: passing through (50%) or landing (100%). */
   heal?: { amount: number; hp: number; kind: 'gate_pass' | 'gate_land' } | null;
+  /** An economy companion's scavenge from the last move: Spores banked from loot
+   *  spaces passed over, the new bank total, and which loot nodes to poof. */
+  scavenge?: { spores: number; bank: number; nodes: string[] } | null;
   battle?: BattleResult;
   combat?: CombatRound | CombatFlee;
   peek?: CombatPeek;

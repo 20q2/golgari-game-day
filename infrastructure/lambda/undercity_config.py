@@ -95,8 +95,17 @@ BRAMBLE_REFLECT = 2   # flat damage a Bramble carapace reflects when struck
 # (pure-DEF/Guard co-equal with ATK/Aggress vs the boss: 142 -> ~330 dmg; 0.7
 # stronger, 1.0 overshoots). See infrastructure/lambda/sim/proto_fix.py.
 GUARD_CHIP_COEFF = 0.5
-CARAPACE_GRIND_MAXHP = 15  # DEF-12: bonus Max HP granted while the perk is held
+# DEF track now grants stacking bonus Max HP at each node (design 2026-08-04).
+# Cumulative: DEF 6 -> +5, DEF 12 -> +15 (=5+10, matches the old flat +15 on
+# Carapace Grind), DEF 18 -> +30. Applied in effective_stats while the perk holds.
+THICK_HIDE_MAXHP = 5       # DEF-6:  bonus Max HP from Thick Hide
+CARAPACE_GRIND_MAXHP = 10  # DEF-12: additional bonus Max HP from Carapace Grind
+LAST_STAND_MAXHP = 15      # DEF-18: additional bonus Max HP from Last Stand
 DEATHDRIVE_MULT = 0.5  # ATK-15: Aggress swing multiplier while below half HP
+# Brutal Strikes (ATK-6 perk, design 2026-08-04): a decisive win hits for this
+# much extra damage. Replaces Rend — a flat damage amp that leads naturally into
+# Menace (ATK-12) making foes easier to read and out-hit.
+BRUTAL_STRIKES_MULT = 0.30
 
 # ── Boss-familiar / boss signature traits (design 2026-08-04) ────────────────
 # Grave Growth (Skullbriar): unconditional per-round ramp, ATK-leaning, capped.
@@ -315,13 +324,14 @@ PET_MOUSE_SPORES_PER_LVL = 3
 PET_MOUSE_ITEM_CHANCE_BASE = 0.20
 PET_MOUSE_ITEM_CHANCE_PER_LVL = 0.05
 
-# Economy companion: instead of a per-move trickle, it slowly gathers Spores in
-# real time (an idle accumulator) that the player taps to redeem via the pet's
-# board quick-use box. Rate + cap scale with the pet's level; the cap keeps AFK
-# banking finite so it stays a "check in and collect" loop. Mirror in
+# Economy companion: scavenges Spores as you MOVE. Each loot space you pass OVER
+# (an interior node of the walk, not the space you land on) banks a few Spores
+# onto the pet, which the player taps to redeem via its board quick-use box.
+# Per-loot yield + the bank cap scale with the pet's level; the cap keeps a bank
+# finite so it stays a "gather while you explore, then collect" loop. Mirror in
 # src/app/undercity/data/pets.ts.
-PET_SPORE_PER_MIN_BASE = 0.25       # Spores gathered per minute at level 1
-PET_SPORE_PER_MIN_PER_LVL = 0.10    # added per level above 1
+PET_SPORE_PER_LOOT_BASE = 6         # Spores banked per loot space passed, at level 1
+PET_SPORE_PER_LOOT_PER_LVL = 2      # added per level above 1
 PET_SPORE_CAP_BASE = 60             # most that can bank before you must collect
 PET_SPORE_CAP_PER_LVL = 30          # added per level above 1
 

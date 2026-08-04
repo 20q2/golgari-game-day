@@ -1346,9 +1346,18 @@
 }
 
 // Grimoire panel local palette — purple (matching the Magic gear tile) marks the
-// "active loadout", a muted red marks the swap cooldown. Green stays the app accent.
+// "active loadout", a muted red marks the swap cooldown, and green (not the app's
+// global orange --accent-color) carries the spell/library accents on this page.
 $grim-purple: #a78bfa;
 $grim-lock: #c96a5a;
+
+// The global --accent-color is orange (#d4793a); the Magic page reads as green
+// instead. Redefining the custom property on the cards re-points every
+// var(--accent-color) used by descendants (icons, chips, pills) to green — scoped
+// to this page via the DOM, so the rest of the app keeps its orange accent.
+.grimoire {
+  --accent-color: #9ac26e;
+}
 
 // Size every grimoire mat-icon to its surrounding text (one rule instead of a
 // width/height/font-size triple per context).
@@ -1492,6 +1501,10 @@ $grim-lock: #c96a5a;
       color: #c4b5fd;
       background: rgba(167, 139, 250, 0.14);
     }
+    &.scroll {
+      color: #7fd4c8;
+      background: rgba(127, 212, 200, 0.14);
+    }
   }
 
   .spell-desc {
@@ -1502,25 +1515,31 @@ $grim-lock: #c96a5a;
     line-height: 1.35;
   }
 
-  .spell-meta {
-    text-align: right;
-    font-size: 0.72rem;
-  }
+  .spell-cast-btn {
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: #1a1030;
+    background: linear-gradient(180deg, #b39cfb, #8b6ee0);
+    border-color: transparent;
 
-  .spell-cd {
-    opacity: 0.7;
-
-    &.ready {
-      color: var(--accent-color, #9ac26e);
-      font-weight: 600;
-      opacity: 1;
+    // "Aim" (needs a board target): a quieter outline so it reads as a hand-off,
+    // not an instant cast.
+    &.aim {
+      color: #c4b5fd;
+      background: transparent;
+      border: 1px solid rgba(167, 139, 250, 0.5);
     }
-  }
 
-  .spell-cdlen {
-    display: block;
-    font-size: 0.62rem;
-    opacity: 0.45;
+    // On cooldown: muted, shows the minutes-left countdown.
+    &:disabled {
+      color: #9aa79a;
+      background: rgba(154, 194, 110, 0.08);
+      border-color: transparent;
+      opacity: 0.8;
+      cursor: default;
+    }
   }
 }
 
@@ -1643,10 +1662,18 @@ $grim-lock: #c96a5a;
   }
 }
 
-@media (max-width: 480px) {
-  .compare {
-    grid-template-columns: 1fr;
-  }
+// Numeric magnitude chip (e.g. "14 HP", "10 dmg") beside a spell's name — a solid
+// green pill so the number reads as a value, distinct from the soft-tinted
+// Innate / Book / Scroll category chips.
+.spell-power-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #10221a;
+  background: #9ac26e;
 }
 
 .commit-btn {

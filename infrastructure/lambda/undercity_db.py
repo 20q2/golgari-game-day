@@ -1034,12 +1034,9 @@ def _activate_pet(table, sid, doc, payload):
     if not pet:
         return _err('No such pet.', 409)
     doc['activePetId'] = pet['id']
-    # Start (or clear) the economy accrual clock so Spores only gather while an
-    # economy companion is the one at your side.
-    if data.pet_role(pet['species']) == 'economy':
-        doc['petSporeSince'] = _now()
-    else:
-        doc.pop('petSporeSince', None)
+    # Economy companions bank Spores as you MOVE (see _move), not on a clock —
+    # nothing to start here. Clear any stale accrual clock from the old model.
+    doc.pop('petSporeSince', None)
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
@@ -1141,31 +1138,17 @@ def _start_pet_cooldown(doc, role, level):
     doc.setdefault('petCooldowns', {})[role] = until.isoformat(timespec='seconds')
 
 
-def _economy_spore_rate(level):
-    """Spores-per-minute an active economy companion gathers, scaled by level."""
-    return (data.PET_SPORE_PER_MIN_BASE
-            + data.PET_SPORE_PER_MIN_PER_LVL * (int(level) - 1))
+def _economy_per_loot(level):
+    """Spores an active economy companion banks per loot space it passes over,
+    scaled by the pet's level."""
+    return int(data.PET_SPORE_PER_LOOT_BASE
+               + data.PET_SPORE_PER_LOOT_PER_LVL * (int(level) - 1))
 
 
 def _economy_spore_cap(level):
     """Most Spores an economy companion can bank before the player must collect."""
     return int(data.PET_SPORE_CAP_BASE
                + data.PET_SPORE_CAP_PER_LVL * (int(level) - 1))
-
-
-def _economy_accrued(doc, level):
-    """Spores an active economy pet has gathered since `petSporeSince` (its accrual
-    clock), floored and capped. Read-only — does not mutate the doc."""
-    since = doc.get('petSporeSince')
-    if not since:
-        return 0
-    try:
-        elapsed = datetime.utcnow() - datetime.fromisoformat(since)
-    except (ValueError, TypeError):
-        return 0
-    mins = max(0.0, elapsed.total_seconds() / 60.0)
-    return max(0, min(_economy_spore_cap(level),
-                      int(mins * _economy_spore_rate(level))))
 
 
 def _pet_forage(doc, level):
@@ -1207,16 +1190,17 @@ def _use_pet_ability(table, sid, doc, payload):
     # Economy pets have no activated ability — tapping their box redeems the
     # Spores they've gathered in real time and restarts the accrual clock.
     if kind == 'economy':
-        amount = _economy_accrued(doc, level)
+        amount = int(doc.get('petSporeBank', 0))
         if amount <= 0:
-            return _err('Your companion is still gathering — nothing to collect yet.', 409)
+            return _err("Your companion hasn't scavenged anything yet — "
+                        "pass over loot spaces while it's at your side.", 409)
         doc['spores'] = doc.get('spores', 0) + amount
-        doc['petSporeSince'] = _now()
+        doc['petSporeBank'] = 0
         conflict = _save_or_conflict(table, doc)
         if conflict:
             return conflict
         result = {'kind': 'economy', 'spores': amount,
-                  'text': f'Your companion hands over {amount} Spores it gathered.'}
+                  'text': f'Your companion hands over {amount} Spores it scavenged.'}
         return _ok(doc, text=result['text'], petAbility=result)
 
     if kind != 'activated':
@@ -2661,6 +2645,39 @@ def _admin_grant(table, sid, payload):
     return 200, {'ok': True}
 
 
+def _admin_give_pet(table, sid, payload):
+    """Drop a companion straight into a player's roster (host testing tool). Full
+    control: pick the species (or 'random'), tier 1–4, and starting level (clamped
+    to the tier's cap). Never auto-activates — it just joins their pets list, like
+    a hatched egg would."""
+    doc, err = _admin_target(table, sid, payload)
+    if err:
+        return err
+    species = payload.get('species')
+    if species in (None, '', 'random'):
+        species = random.choice(list(data.PET_SPECIES))
+    if species not in data.PET_SPECIES:
+        return _err('Unknown pet species: ' + str(species))
+    try:
+        tier = int(payload.get('tier') or 1)
+    except (TypeError, ValueError):
+        return _err('Bad tier.')
+    if tier not in data.PET_LEVEL_CAP:
+        return _err('Tier must be 1–4.')
+    try:
+        level = int(payload.get('level') or 1)
+    except (TypeError, ValueError):
+        return _err('Bad level.')
+    level = max(1, min(level, data.PET_LEVEL_CAP[tier]))
+    pet = {'id': _new_id('pet-'), 'species': species, 'tier': tier,
+           'level': level, 'mergeProgress': 0}
+    doc.setdefault('pets', []).append(pet)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return 200, {'ok': True, 'pet': pet}
+
+
 def _admin_heal(table, sid, payload):
     doc, err = _admin_target(table, sid, payload)
     if err:
@@ -2789,6 +2806,7 @@ _ADMIN_CMDS = {
     'broadcast': _admin_broadcast,
     'bot-add': _admin_bot_add,
     'grant': _admin_grant,
+    'give-pet': _admin_give_pet,
     'heal': _admin_heal,
     'teleport': _admin_teleport,
     'bot-step': _admin_bot_step,
@@ -3318,12 +3336,25 @@ def _move(table, sid, doc, payload):
         healed = space_event.get('healed', 0)
         heal = {'amount': healed, 'hp': doc['hp'], 'kind': 'gate_land'} if healed else None
 
-    # Economy companion gathers Spores in real time (redeemed via its board box).
-    # Make sure the accrual clock is running for an active economy pet — covers
-    # pets that were already active before this feature existed.
+    # Economy companion scavenges Spores as you move: each loot space passed OVER
+    # (an interior node of the walk, never the space you land on — that still
+    # gives its own loot event) banks a few onto the pet, clamped to its cap. The
+    # player redeems the bank from the pet's board box. Mirrors the gate-pass
+    # rule above; needs the walked `path`, so a stale client that omits it just
+    # banks nothing this move.
+    scavenge = None
     econ = _find_pet(doc, doc.get('activePetId'))
-    if econ and data.pet_role(econ.get('species')) == 'economy':
-        doc.setdefault('petSporeSince', _now())
+    if econ and data.pet_role(econ.get('species')) == 'economy' and path:
+        loot_nodes = [n for n in path[1:-1] if nodes[n]['type'] == 'loot']
+        if loot_nodes:
+            level = int(econ.get('level', 1))
+            bank = int(doc.get('petSporeBank', 0))
+            gain = min(len(loot_nodes) * _economy_per_loot(level),
+                       max(0, _economy_spore_cap(level) - bank))
+            if gain > 0:
+                doc['petSporeBank'] = bank + gain
+                scavenge = {'spores': gain, 'bank': doc['petSporeBank'],
+                            'nodes': loot_nodes}
 
     conflict = _save_or_conflict(table, doc)
     if conflict:
@@ -3332,7 +3363,8 @@ def _move(table, sid, doc, payload):
     # _resolve_space may relocate the unit (tunnel crossing, wild warp) — report
     # occupants of where it actually ended up, not the pre-resolution target.
     occupants = _occupants(table, sid, doc['position'], doc['userId'])
-    return _ok(doc, spaceEvent=space_event, occupants=occupants, heal=heal)
+    return _ok(doc, spaceEvent=space_event, occupants=occupants, heal=heal,
+               scavenge=scavenge)
 
 
 def _ladder_cross(table, sid, doc, payload):
@@ -6175,8 +6207,8 @@ def _equip_grimoire(table, sid, doc, payload):
     if conflict:
         return conflict
     if gid:
-        return _ok(doc, text=f"You crack open the {data.GRIMOIRES[gid]['name']}.")
-    return _ok(doc, text='You stow your grimoire.')
+        return _ok(doc, text=f"You attune to the {data.GRIMOIRES[gid]['name']}.")
+    return _ok(doc, text='You release your grimoire.')
 
 
 def _ack_events(table, sid, doc, payload):

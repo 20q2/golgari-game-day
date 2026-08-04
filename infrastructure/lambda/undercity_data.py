@@ -219,27 +219,27 @@ ALL_FORMS = {**{k: dict(v, tier=1) for k, v in STARTERS.items()},
 # A perk unlocks when the INVESTED base stat (species base + level spends +
 # evolution bonuses) PLUS equipped gear reaches its threshold; temporary buffs
 # still never light a perk (see engine.perk_stat). Nodes at 6/12/18;
-# base stats can already light the tier-1 node (kraul atk 8 -> Rend). Client
-# mirror: src/app/undercity/data/perks.ts
+# base stats can already light the tier-1 node (kraul atk 8 -> Brutal Strikes).
+# Client mirror: src/app/undercity/data/perks.ts
 PERK_TRACKS = {
-    'atk': [(6, 'rend'), (12, 'menace'), (18, 'deathdrive')],
+    'atk': [(6, 'brutal_strikes'), (12, 'menace'), (18, 'deathdrive')],
     'def': [(6, 'thick_hide'), (12, 'carapace_grind'), (18, 'last_stand')],
     'spd': [(6, 'fleetfoot'), (12, 'pathfinder'), (18, 'blink')],
 }
 
 PERKS = {
-    'rend':           {'name': 'Rend', 'track': 'atk', 'threshold': 6,
-                       'blurb': 'A winning Aggress always applies 1 rot.'},
+    'brutal_strikes': {'name': 'Brutal Strikes', 'track': 'atk', 'threshold': 6,
+                       'blurb': 'Landing a decisive hit deals +30% damage.'},
     'menace':         {'name': 'Menace', 'track': 'atk', 'threshold': 12,
                        'blurb': 'Enemies bluff you less often.'},
     'deathdrive':     {'name': 'Deathdrive', 'track': 'atk', 'threshold': 18,
                        'blurb': 'Below half HP, your Aggress swings hit harder.'},
     'thick_hide':     {'name': 'Thick Hide', 'track': 'def', 'threshold': 6,
-                       'blurb': 'A chance to dodge hazards entirely; if caught, your hide still halves the HP loss.'},
+                       'blurb': '+5 Max HP and increased resistance against hazards.'},
     'carapace_grind': {'name': 'Carapace Grind', 'track': 'def', 'threshold': 12,
-                       'blurb': '+15 Max HP, and holding Guard grinds the foe down even when you don’t win the exchange.'},
+                       'blurb': '+10 Max HP, and holding Guard grinds the foe down.'},
     'last_stand':     {'name': 'Last Stand', 'track': 'def', 'threshold': 18,
-                       'blurb': 'Survive one lethal blow, rising at half your max HP. Recharges every hour.'},
+                       'blurb': '+15 Max HP. Survive one lethal blow, rising at half your max HP. Recharges every hour.'},
     'fleetfoot':      {'name': 'Fleetfoot', 'track': 'spd', 'threshold': 6,
                        'blurb': 'You may reroll a die that shows 1.'},
     'pathfinder':     {'name': 'Pathfinder', 'track': 'spd', 'threshold': 12,
@@ -1700,7 +1700,7 @@ PET_ROLES = {
     'defend':  {'kind': 'combat-passive', 'blurb': 'Chance to deflect a few points of damage.'},
     'forage':  {'kind': 'activated',      'blurb': 'Scavenges a small cache of loot.'},
     'scout':   {'kind': 'activated',      'blurb': "Scouts a bazaar's stock before you arrive."},
-    'economy': {'kind': 'economy',        'blurb': 'Gathers Spores over time — tap to collect.'},
+    'economy': {'kind': 'economy',        'blurb': 'Scavenges Spores from loot spaces you pass — tap to collect.'},
 }
 
 # species id (== sprite filename) -> (display name, role). Two per role.

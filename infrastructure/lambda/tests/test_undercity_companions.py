@@ -300,18 +300,47 @@ def test_pet_ability_cooldown_shortens_with_level():
     assert db._pet_ability_cooldown_min('forage', 99) == config.PET_ABILITY_COOLDOWN_FLOOR
 
 
-def test_economy_accrued_scales_and_caps():
-    # 40 minutes on the clock at level 1 -> floor(40 * rate), under the cap.
-    doc = {'petSporeSince':
-           (datetime.utcnow() - timedelta(minutes=40)).isoformat(timespec='seconds')}
-    assert db._economy_accrued(doc, 1) == int(40 * db._economy_spore_rate(1))
-    # A long AFK stint is clamped to the level cap.
-    doc['petSporeSince'] = (datetime.utcnow() - timedelta(days=10)).isoformat(timespec='seconds')
-    assert db._economy_accrued(doc, 1) == db._economy_spore_cap(1)
-    # Rate and cap both climb with level; no clock -> nothing accrued.
-    assert db._economy_spore_rate(3) > db._economy_spore_rate(1)
+def test_economy_per_loot_scales_and_cap_climbs():
+    # Per-loot yield and the bank cap both climb with the pet's level.
+    assert db._economy_per_loot(1) == config.PET_SPORE_PER_LOOT_BASE
+    assert db._economy_per_loot(3) > db._economy_per_loot(1)
     assert db._economy_spore_cap(3) > db._economy_spore_cap(1)
-    assert db._economy_accrued({}, 1) == 0
+
+
+# A legal 2-hop walk whose INTERIOR node is a loot space: fog -> loot -> fog.
+# (Derived from the live map graph; endpoints are benign so nothing else fires.)
+_LOOT_PASS = ('n257', 'n258', 'n259')
+
+
+def _prime_walk(table, sid, start):
+    """Put user-alex on `start` with a 2-step pending move ready to commit."""
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = start
+    doc['pendingMove'] = {'value': 2, 'dests': [_LOOT_PASS[2]]}
+    db._save_or_conflict(table, doc)
+
+
+def test_economy_pet_banks_spores_passing_over_loot(table):
+    start, loot, end = _LOOT_PASS
+    assert data.MAP_NODES[loot]['type'] == 'loot'   # guard the fixture path
+    sid, _ = _persist_active_pet(table, 'baby_broodspinner', level=2)   # economy role
+    _prime_walk(table, sid, start)
+    status, resp = act(table, 'move', to=end, path=list(_LOOT_PASS))
+    assert status == 200, resp
+    assert resp['scavenge'] == {
+        'spores': db._economy_per_loot(2), 'bank': db._economy_per_loot(2), 'nodes': [loot]}
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['petSporeBank'] == db._economy_per_loot(2)
+
+
+def test_non_economy_pet_does_not_bank(table):
+    start, _loot, end = _LOOT_PASS
+    sid, _ = _persist_active_pet(table, 'baby_leyline_prowler')   # attack role, not economy
+    _prime_walk(table, sid, start)
+    status, resp = act(table, 'move', to=end, path=list(_LOOT_PASS))
+    assert status == 200, resp
+    assert resp['scavenge'] is None
+    assert 'petSporeBank' not in db._get_player(table, sid, 'user-alex')
 
 
 def test_use_pet_ability_rejects_combat_pet(table):
@@ -321,27 +350,25 @@ def test_use_pet_ability_rejects_combat_pet(table):
     assert status == 409
 
 
-def test_economy_redeem_banks_spores_and_resets_clock(table):
+def test_economy_redeem_pays_out_bank_and_resets(table):
     sid, doc = _persist_active_pet(table, 'baby_broodspinner', level=2)   # economy role
-    doc['petSporeSince'] = (datetime.utcnow() - timedelta(minutes=30)).isoformat(timespec='seconds')
+    doc['petSporeBank'] = 24
     doc['spores'] = 5
     db._save_or_conflict(table, doc)
     status, body = act(table, 'use-pet-ability')
     assert status == 200
     assert body['petAbility']['kind'] == 'economy'
-    gained = body['petAbility']['spores']
-    assert gained > 0
+    assert body['petAbility']['spores'] == 24
     doc = db._get_player(table, sid, 'user-alex')
-    assert doc['spores'] == 5 + gained
-    # Clock reset by the redeem -> collecting again immediately yields nothing.
+    assert doc['spores'] == 5 + 24
+    assert doc['petSporeBank'] == 0
+    # Bank drained -> collecting again immediately yields nothing.
     status, _ = act(table, 'use-pet-ability')
     assert status == 409
 
 
-def test_economy_redeem_rejects_when_nothing_gathered(table):
-    sid, doc = _persist_active_pet(table, 'slime', level=1)   # economy role
-    doc['petSporeSince'] = datetime.utcnow().isoformat(timespec='seconds')  # just started
-    db._save_or_conflict(table, doc)
+def test_economy_redeem_rejects_when_bank_empty(table):
+    sid, doc = _persist_active_pet(table, 'slime', level=1)   # economy role, bank untouched
     status, body = act(table, 'use-pet-ability')
     assert status == 409
 

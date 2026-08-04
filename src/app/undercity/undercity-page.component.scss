@@ -146,10 +146,16 @@
   flex-shrink: 0;
 }
 
+.hud-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
 .hud-avatar {
   width: 44px;
   height: 44px;
-  flex-shrink: 0;
+  display: block;
   object-fit: contain;
   image-rendering: pixelated;
   border-radius: 10px;
@@ -173,11 +179,31 @@
   }
 }
 
+.hud-avatar-badge {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f0d9a8, #d4af5f);
+  border: 1.5px solid #1a1815;
+  color: #2a2213;
+  font-weight: 600;
+  font-size: 0.62rem;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
 .hud-creature {
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto auto;
-  column-gap: 8px;
   row-gap: 3px;
   align-items: center;
   min-width: 0;
@@ -192,10 +218,11 @@
     text-overflow: ellipsis;
   }
 
-  .hud-level {
-    color: #fbbf24;
-    font-weight: 600;
-    font-size: 0.85rem;
+  .hud-species {
+    color: rgba(183, 228, 199, 0.32);
+    font-weight: 400;
+    font-size: 0.78rem;
+    margin-left: 5px;
   }
 }
 
@@ -227,7 +254,9 @@
 }
 
 .hp-bar .bar-fill {
-  background: linear-gradient(90deg, #6cae75, #99d98c);
+  // Darkened a step so the white bar-text reads clearly (was #6cae75→#99d98c;
+  // the light end washed out the label).
+  background: linear-gradient(90deg, #4f9560, #78bf7d);
 }
 
 .xp-bar {

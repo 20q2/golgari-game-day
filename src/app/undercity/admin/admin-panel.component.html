@@ -43,6 +43,21 @@
   </section>
 
   <section class="admin-section">
+    <h2>Give pet</h2>
+    <div class="grant-controls">
+      <select [(ngModel)]="givePetSpecies">
+        <option value="random">random</option>
+        @for (p of petSpeciesOptions; track p.id) { <option [value]="p.id">{{ p.label }}</option> }
+      </select>
+      <select [(ngModel)]="givePetTier">
+        @for (t of petTiers; track t) { <option [ngValue]="t">Tier {{ t }}</option> }
+      </select>
+      <input type="number" [(ngModel)]="givePetLevel" min="1" class="amt" title="Level (clamped to the tier cap)" />
+      <span class="hint">applied by each row's Give pet button</span>
+    </div>
+  </section>
+
+  <section class="admin-section">
     <h2 class="roster-head">
       Roster ({{ store.players().length }})
       <button class="step-all" (click)="stepAllBots()" [disabled]="busy() || !hostKey.trim()">
@@ -76,6 +91,7 @@
                   <button (click)="botStep(p.userId)" [disabled]="busy()">Take turn</button>
                 }
                 <button (click)="grant(p.userId)" [disabled]="busy()">Grant</button>
+                <button (click)="givePet(p.userId)" [disabled]="busy()">Give pet</button>
                 <button (click)="heal(p.userId)" [disabled]="busy()">Heal</button>
                 <select #tp (change)="teleport(p.userId, tp.value); tp.value=''"
                         [disabled]="busy()">

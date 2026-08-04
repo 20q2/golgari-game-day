@@ -161,12 +161,28 @@ export class UndercityStateService {
    * the heal itself is applied server-side when the move commits. */
   readonly gateHealPending = signal(false);
 
+  /** Held true by the board tab while the plotted/walked route passes over a loot
+   * space AND an economy companion is at your side, so the page's buff HUD shows
+   * a "Scavenging" badge — the companion banks Spores from loot passed over. */
+  readonly petScavengePending = signal(false);
+
   /** Monotonic pulse asking the mounted board canvas to re-center on the
    * player's own creature (e.g. tapping the HUD portrait). Bumped, not toggled,
    * so repeat taps keep firing. */
   readonly recenterRequest = signal(0);
   requestRecenter(): void {
     this.recenterRequest.update((n) => n + 1);
+  }
+
+  /** A spell the player asked to cast from the Magic menu that needs board
+   * context (a target, a value, or a tap-a-space). The always-mounted page
+   * switches to the Board on a new `id`, and the board tab opens that spell's
+   * targeting picker. `id` is monotonic so each request fires even when the same
+   * spell is aimed twice in a row. */
+  readonly castRequest = signal<{ id: number; spellId: string; asScroll: boolean } | null>(null);
+  private castRequestId = 0;
+  requestBoardCast(spellId: string, asScroll = false): void {
+    this.castRequest.set({ id: ++this.castRequestId, spellId, asScroll });
   }
 
   private pollTimer: ReturnType<typeof setInterval> | null = null;

@@ -568,13 +568,12 @@
         (click)="$event.stopPropagation()"
         style="background-image: linear-gradient(rgba(16, 14, 11, 0.82), rgba(16, 14, 11, 0.9)), url('undercity/pub_background.webp')"
       >
+        <span class="shop-restock">
+          <mat-icon class="mi">schedule</mat-icon> Restocks in {{ bazaarRestockLabel() }}
+        </span>
         <img class="modal-art" [src]="bazaarKeeper().art" alt="" />
         <h3><mat-icon class="mi">storefront</mat-icon> {{ bazaarTitle() }}</h3>
         <p class="shop-quote">“{{ bazaarKeeper().quote }}”</p>
-        <p class="modal-sub">
-          You carry <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ store.you()?.spores }}
-          · Restocks in {{ bazaarRestockLabel() }}
-        </p>
 
         <div class="shop-tabs" role="tablist">
           <button class="shop-tab" [class.active]="shopTab() === 'gear'" (click)="setShopTab('gear')">
@@ -594,24 +593,29 @@
         @switch (shopTab()) {
           @case ('gear') {
             <div class="shop-hint">
-              Purchases go to your stash — equip them at the Plaza.
+              Purchases go to your stash.
               @if (stashFull()) {
                 <span class="shop-warn">Stash full ({{ GEAR_STASH_SIZE }}/{{ GEAR_STASH_SIZE }}) — salvage a piece at the Plaza to buy more.</span>
               }
             </div>
             @for (r of shopGearRows(); track r.info.id) {
-              <div class="shop-row" [attr.data-rarity]="tierRarity(r.info.tier).key">
+              <div class="shop-row grid3" [attr.data-rarity]="tierRarity(r.info.tier).key">
                 <span class="shop-name">
-                  <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + r.info.slot"></mat-icon>
-                  {{ r.info.name }}
-                  <span class="rarity-badge {{ tierRarity(r.info.tier).key }}">{{ tierRarity(r.info.tier).label }}</span>
-                  @if (r.blackMarket) {
-                    <span class="black-market-tag">Black Market</span>
-                  }
-                  <em>{{ r.info.desc }}</em></span>
+                  <span class="shop-name-line">
+                    <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + r.info.slot"></mat-icon>
+                    {{ r.info.name }}
+                  </span>
+                  <span class="shop-badges">
+                    <span class="rarity-badge {{ tierRarity(r.info.tier).key }}">{{ tierRarity(r.info.tier).label }}</span>
+                    @if (r.blackMarket) {
+                      <span class="black-market-tag">Black Market</span>
+                    }
+                  </span>
+                </span>
+                <span class="shop-desc">{{ r.info.desc }}</span>
                 <button
                   class="uc-btn shop-buy"
-                  [disabled]="busy() || !!shopGearReason(r.info, r.qty)"
+                  [disabled]="busy() || !canAfford(r.info.cost) || !!shopGearReason(r.info, r.qty)"
                   (click)="buy(r.info)"
                 >
                   {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
@@ -625,11 +629,14 @@
           @case ('consumables') {
             <div class="shop-hint">Bag {{ store.you()?.bag?.length ?? 0 }}/3.</div>
             @for (r of shopConsumableRows(); track r.info.id) {
-              <div class="shop-row">
+              <div class="shop-row grid3">
                 <span class="shop-name">
-                  <mat-icon class="mi">{{ r.info.icon }}</mat-icon> {{ r.info.name }} <em>{{ r.info.desc }}</em>
+                  <span class="shop-name-line">
+                    <mat-icon class="mi">{{ r.info.icon }}</mat-icon> {{ r.info.name }}
+                  </span>
                 </span>
-                <button class="uc-btn shop-buy" [disabled]="busy() || !!shopConsumableReason(r.info, r.qty)" (click)="buy(r.info)">
+                <span class="shop-desc">{{ r.info.desc }}</span>
+                <button class="uc-btn shop-buy" [disabled]="busy() || !canAfford(r.info.cost) || !!shopConsumableReason(r.info, r.qty)" (click)="buy(r.info)">
                   {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                 </button>
                 @if (!busy() && shopConsumableReason(r.info, r.qty); as reason) { <span class="block-reason">{{ reason }}</span> }
@@ -641,14 +648,16 @@
           @case ('grimoires') {
             <div class="shop-hint">Yours forever; open one from the Creature tab.</div>
             @for (g of shopGrimoireRows(); track g.id) {
-              <div class="shop-row">
+              <div class="shop-row grid3" [attr.data-rarity]="tierRarity(g.tier).key">
                 <span class="shop-name">
-                  <mat-icon class="mi">menu_book</mat-icon> {{ g.name }} <em>{{ grimoireSpellList(g) }}</em>
+                  <span class="shop-name-line">
+                    <mat-icon class="mi">menu_book</mat-icon> {{ g.name }}
+                  </span>
                 </span>
-                <button class="uc-btn shop-buy" [disabled]="busy() || ownsGrimoire(g.id) || !!shopGrimoireReason(g)" (click)="buy(g)">
+                <span class="shop-desc">{{ grimoireSpellList(g) }}</span>
+                <button class="uc-btn shop-buy" [disabled]="busy() || ownsGrimoire(g.id) || !canAfford(g.cost)" (click)="buy(g)">
                   {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                 </button>
-                @if (!busy() && shopGrimoireReason(g); as reason) { <span class="block-reason">{{ reason }}</span> }
               </div>
             } @empty {
               <div class="shop-empty">No tomes on the shelf right now.</div>
@@ -657,16 +666,17 @@
           @case ('eggs') {
             <div class="shop-hint">Companion eggs — hatch them in the Creature tab's incubator.</div>
             @for (e of shopEggRows(); track e.tier) {
-              <div class="shop-row" [attr.data-rarity]="tierRarity(e.tier).key">
+              <div class="shop-row grid3" [attr.data-rarity]="tierRarity(e.tier).key">
                 <span class="shop-name">
-                  <img class="pet-sprite egg-row-sprite" [src]="eggSpriteUrl(e.tier)" alt="Egg" />
-                  {{ tierRarity(e.tier).label }} Egg
-                  <span class="rarity-badge {{ tierRarity(e.tier).key }}">{{ tierRarity(e.tier).label }}</span>
-                  <em>A random companion — richer eggs skew rarer.</em></span>
-                <button class="uc-btn shop-buy" [disabled]="busy() || !!shopEggReason(e.cost)" (click)="buyEgg(e.tier)">
+                  <span class="shop-name-line">
+                    <img class="pet-sprite egg-row-sprite" [src]="eggSpriteUrl(e.tier)" alt="Egg" />
+                    {{ tierRarity(e.tier).label }} Egg
+                  </span>
+                </span>
+                <span class="shop-desc">{{ eggBlurb(e.tier) }}</span>
+                <button class="uc-btn shop-buy" [disabled]="busy() || !canAfford(e.cost)" (click)="buyEgg(e.tier)">
                   {{ e.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                 </button>
-                @if (!busy() && shopEggReason(e.cost); as reason) { <span class="block-reason">{{ reason }}</span> }
               </div>
             } @empty {
               <div class="shop-empty">No eggs in the nest right now. Check back after the restock.</div>

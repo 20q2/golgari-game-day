@@ -77,7 +77,6 @@ import {
   petRole,
   abilityReady,
   abilityCooldownLeftMin,
-  economyAccrued,
 } from '../data/pets';
 import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome, enemyArtUrl } from '../data/dungeons';
 import { RUIN_LAIRS, RUIN_LAIR_NAMES, ruinLairAbandoned } from '../data/ruin-lairs';
@@ -251,9 +250,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected petIsEconomy(pet: Pet): boolean {
     return petInfo(pet.species).kind === 'economy';
   }
-  /** Spores an active economy pet has gathered and can collect right now. */
-  protected economyAccruedNow(pet: Pet): number {
-    return economyAccrued(this.store.you()?.petSporeSince, pet.level);
+  /** Spores an active economy pet has scavenged and can collect right now
+   *  (server-authoritative bank). `pet` is unused now the bank lives on the doc. */
+  protected economyAccruedNow(_pet: Pet): number {
+    return this.store.you()?.petSporeBank ?? 0;
   }
 
   /** The active pet, only when it has something to tap on the board: an activated
@@ -1069,7 +1069,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Why a shop GEAR line can't be bought — structural blockers only (out of
    *  stock → stash full). Affordability is handled by canAfford + the priced
    *  button, not shown here. Null when there's no structural blocker. */
-  protected shopGearReason(info: GearInfo, qty: number): string | null {
+  protected shopGearReason(_info: GearInfo, qty: number): string | null {
     if (qty <= 0) return 'Out of stock';
     if (this.stashFull())
       return containerFullReason(this.GEAR_STASH_SIZE, this.GEAR_STASH_SIZE, 'Stash');
@@ -1078,7 +1078,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Why a shop CONSUMABLE line can't be bought — out of stock only (see
    *  shopGearReason on why affordability isn't surfaced). */
-  protected shopConsumableReason(info: ConsumableInfo, qty: number): string | null {
+  protected shopConsumableReason(_info: ConsumableInfo, qty: number): string | null {
     if (qty <= 0) return 'Out of stock';
     return null;
   }
@@ -1098,6 +1098,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** In-stock companion eggs for the bazaar's Eggs tab. */
   protected shopEggRows(): { tier: number; qty: number; cost: number }[] {
     return (this.currentBazaar()?.eggs ?? []).filter((e) => e.qty > 0);
+  }
+
+  /** Short egg blurb — the row name ("Legendary Egg") already shows rarity, so
+   *  this just hints at the companion's power by tier. */
+  protected eggBlurb(tier: number): string {
+    const strength = ['a normal', 'a normal', 'a strong', 'a powerful', 'a mythic'][tier] ?? 'a normal';
+    return `Contains ${strength} companion.`;
   }
 
   async buyEgg(tier: number): Promise<void> {
@@ -1295,6 +1302,21 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     );
   });
 
+  /** True while an economy companion is at your side AND the route walked so far
+   *  passes OVER a loot space (an interior node — the landing space, path[-1],
+   *  gives its own loot event). Mirrors gateBlessing; drives the "Scavenging"
+   *  buff badge so you know your pet will bank Spores when the move ends. */
+  protected readonly petScavengeBlessing = computed(() => {
+    const step = this.stepping();
+    if (!step) return false;
+    const you = this.store.you();
+    const pet = (you?.pets ?? []).find((p) => p.id === you?.activePetId);
+    if (!pet || petRole(pet.species) !== 'economy') return false;
+    return step.path
+      .slice(1, -1)
+      .some((id) => this.map?.nodes.find((n) => n.id === id)?.type === 'loot');
+  });
+
   /** Label of the biome the player stands in, from the authoritative
    * map.regions table — used by the on-board biome chip. */
   protected readonly currentBiome = computed(() => {
@@ -1424,7 +1446,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       if (!req || req.id === this.lastCastReqId) return;
       this.lastCastReqId = req.id;
       const spell = SPELL_MAP[req.spellId];
-      if (spell) this.pickSpell(spell);
+      if (!spell) return;
+      // A scroll routes through pickScrollCast so the cast is consumed as a
+      // one-shot (source 'scroll'); a grimoire/innate spell goes through pickSpell.
+      if (req.asScroll) this.pickScrollCast(spell);
+      else this.pickSpell(spell);
     });
     // First time this run you drop below half HP, surface the healing coach.
     // Held back during a live battle so it lands once the fight resolves; the
@@ -2146,6 +2172,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const willHeal = this.gateBlessing();
     this.board.setSelfHealPending(willHeal); // token sparkle
     this.store.gateHealPending.set(willHeal); // buff HUD badge (always-mounted page)
+    this.store.petScavengePending.set(this.petScavengeBlessing()); // "Scavenging" badge
     const ownId = this.store.ownUserId;
     const you = this.store.you();
     this.board.setPlayers(
@@ -2224,6 +2251,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       if (resp.you) this.board?.centerOn(resp.you.position);
       const uid = this.store.ownUserId;
       if (resp.heal && uid) this.board?.popHealNumber(uid, resp.heal.amount);
+      // Economy companion scavenged loot as you passed over it — poof grass at
+      // each loot node it grabbed from.
+      if (resp.scavenge && resp.scavenge.spores > 0) {
+        for (const n of resp.scavenge.nodes) this.board?.poofAtNode(n);
+      }
       const ev = resp.spaceEvent;
       this.occupants.set(resp.occupants ?? []);
       if (!ev) return;

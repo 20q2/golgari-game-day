@@ -1054,6 +1054,13 @@ export class BoardCanvas {
     if (amount > 0) this.pendingHealPops.push({ userId, amount });
   }
 
+  /** A green "poof of grass" burst over a board node — fired when an economy
+   *  companion scavenges Spores from a loot space you passed over. */
+  poofAtNode(nodeId: string): void {
+    const n = this.nodeMap.get(nodeId);
+    if (n) this.puffAt(n.x, n.y, '#8fe36b', '#43a047', 'burst', 12);
+  }
+
   centerOn(nodeId: string, animate = true): void {
     this.focusOn(nodeId, undefined, animate);
   }

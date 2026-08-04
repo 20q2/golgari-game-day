@@ -30,6 +30,7 @@ import {
   cooldownLeftMin,
   grimoireSwapLeftMin,
   GRIMOIRE_SWAP_COOLDOWN_MIN,
+  spellPowerLabel,
 } from '../data/spells';
 import {
   HATS,
@@ -58,7 +59,6 @@ import {
   PET_MERGE_COST,
   abilityReady,
   abilityCooldownLeftMin,
-  economyAccrued,
   petMarketBand,
   eggMarketBand,
   petRole,
@@ -383,9 +383,10 @@ export class CreatureTabComponent {
     return petRole(pet.species);
   }
 
-  /** Spores an active economy pet has gathered and can collect right now. */
-  protected economyAccruedNow(pet: Pet): number {
-    return economyAccrued(this.store.you()?.petSporeSince, pet.level);
+  /** Spores an active economy pet has scavenged and can collect right now
+   *  (server-authoritative bank). `pet` is unused now the bank lives on the doc. */
+  protected economyAccruedNow(_pet: Pet): number {
+    return this.store.you()?.petSporeBank ?? 0;
   }
 
   /** Enough materials to level this pet? */
@@ -1068,6 +1069,11 @@ export class CreatureTabComponent {
     return id ? (GRIMOIRE_MAP[id] ?? null) : null;
   });
 
+  /** One-shot scrolls the player holds, as SpellInfos (for the Scrolls card). */
+  protected readonly ownedScrolls = computed<SpellInfo[]>(() =>
+    (this.store.you()?.scrolls ?? []).map((id) => SPELL_MAP[id]).filter((sp): sp is SpellInfo => !!sp),
+  );
+
   protected readonly ownedBooks = computed<GrimoireInfo[]>(() => {
     const owned = new Set(this.store.you()?.grimoires ?? []);
     return GRIMOIRES.filter((g) => owned.has(g.id));
@@ -1114,14 +1120,56 @@ export class CreatureTabComponent {
     return !!prev && prev.id !== this.store.you()?.equippedGrimoire;
   });
 
+  /** Level-scaled magnitude label for a spell ("14 HP", "10 dmg", '' for buffs). */
+  protected readonly spellPowerLabel = spellPowerLabel;
+  protected playerLevel(): number {
+    return this.store.you()?.level ?? 1;
+  }
+
   /** Source label for a spell row in the loadout list. */
   spellSource(spellId: string): 'Innate' | 'Book' {
     return this.innateSpells().some((sp) => sp.id === spellId) ? 'Innate' : 'Book';
   }
 
-  /** Human-readable base cooldown for a spell ("30m cooldown" / "no cooldown"). */
-  spellCooldownText(sp: SpellInfo): string {
-    return sp.cooldownMin > 0 ? `${sp.cooldownMin}m cooldown` : 'no cooldown';
+  /** Spell effects that need board context (a target, a value, or a tap-a-space)
+   *  and so route to the Board's picker rather than casting inline. */
+  private static readonly NEEDS_BOARD = new Set([
+    'field_damage',
+    'field_curse',
+    'boss_strike',
+    'teleport',
+    'fate_die',
+    'wish',
+  ]);
+
+  /** Whether tapping a spell here casts it on the spot (self-buff/heal/recall)
+   *  or "aims" it — routing to the Board so its targeting picker can open. */
+  spellCastsInline(sp: SpellInfo): boolean {
+    return !CreatureTabComponent.NEEDS_BOARD.has(sp.effect);
+  }
+
+  /** Cast a loadout spell or held scroll straight from the Magic menu.
+   *  Self-targeting effects resolve here (server cast + toast); anything needing
+   *  a target/value/space hands off to the Board via the shared castRequest.
+   *  Scrolls (`asScroll`) are one-shot with no cooldown — the server consumes one
+   *  on success. */
+  async castFromMenu(sp: SpellInfo, asScroll = false): Promise<void> {
+    if (this.busy()) return;
+    // Grimoire/innate spells gate on cooldown; scrolls never do.
+    if (!asScroll && this.cooldownLabel(sp.id) !== 'Ready') return;
+    if (!this.spellCastsInline(sp)) {
+      this.store.requestBoardCast(sp.id, asScroll);
+      return;
+    }
+    const source = asScroll
+      ? 'scroll'
+      : this.spellSource(sp.id) === 'Innate'
+        ? 'innate'
+        : 'grimoire';
+    await this.run(async () => {
+      const resp = await this.store.action('cast', { spellId: sp.id, source });
+      this.showToast(resp.cast?.text ?? resp.text ?? `${sp.name} cast.`);
+    });
   }
 
   async equipBook(id: string): Promise<void> {
@@ -1129,7 +1177,7 @@ export class CreatureTabComponent {
     // silently strips every spell and confuses players). Opening a *different*
     // book is what the swap cooldown gates.
     if (this.store.you()?.equippedGrimoire === id) {
-      this.showToast('Already open.');
+      this.showToast('Already attuned.');
       return;
     }
     await this.run(async () => {

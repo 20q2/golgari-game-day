@@ -134,6 +134,106 @@
   }
 }
 
+// Combat companion (attack/defend pet) — a small sidekick tucked at the player's
+// near foot. Absolute within the attacker .side so its lunge/hop never disturbs
+// the creature's own layout. Sits left of the creature so a lunge reads as moving
+// toward the foe (arena is player-left, foe-right).
+.companion {
+  position: absolute;
+  bottom: -4px;
+  left: calc(50% - 66px);
+  z-index: 3; // above platform + creature, below the dmg-pop (z 4)
+  width: 44px;
+  height: 44px;
+  pointer-events: none;
+  animation: uc-pet-bob 2.4s ease-in-out infinite;
+
+  .pet-art {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.55));
+  }
+  .pet-art-icon {
+    font-size: 40px;
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+    color: #d8b5b5;
+    filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.55));
+  }
+}
+@keyframes uc-pet-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+// Follow-up: the sidekick darts toward the foe (rightward) and snaps back. The
+// lunge animation replaces the idle bob for its duration.
+.companion.lunge { animation: uc-pet-lunge 0.6s cubic-bezier(0.3, 1.4, 0.5, 1); }
+@keyframes uc-pet-lunge {
+  0%   { transform: translateX(0) scale(1); }
+  35%  { transform: translateX(46px) scale(1.12); }
+  55%  { transform: translateX(46px) scale(1.12); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+// Deflect: the sidekick hops up as it throws up a guard.
+.companion.block { animation: uc-pet-block 0.6s ease; }
+@keyframes uc-pet-block {
+  0%   { transform: translateY(0) scale(1); }
+  30%  { transform: translateY(-12px) scale(1.12); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+// Brief shield flash on a deflect (the guard .barrier motif, sidekick-sized).
+.companion .pet-shield {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  border: 2px solid rgba(130, 205, 255, 0.85);
+  background: radial-gradient(circle, rgba(130, 205, 255, 0.18), transparent 68%);
+  box-shadow: 0 0 12px rgba(130, 205, 255, 0.55);
+  pointer-events: none;
+  animation: uc-pet-shield 0.6s ease;
+}
+@keyframes uc-pet-shield {
+  0% { opacity: 0; transform: scale(0.6); }
+  30% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+
+// The companion's own popover — sits just above the sidekick. Reuses uc-pop
+// (defined for .dmg-pop) for the float-up-and-fade motion.
+.companion .pet-pop {
+  position: absolute;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  white-space: nowrap;
+  font-weight: 800;
+  font-size: 1rem;
+  color: #fca5a5; // follow-up damage
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.85);
+  animation: uc-pop 0.9s ease forwards;
+  &.block { color: #93c5fd; } // deflect
+  .pet-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    opacity: 0.9;
+  }
+}
+
 .outcome-banner {
   position: absolute;
   left: 0;

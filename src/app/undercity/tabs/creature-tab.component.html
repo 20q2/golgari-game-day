@@ -493,12 +493,84 @@
 
               @case ('magic') {
                 <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
-            <!-- Grimoire -->
+            @let bookCount = (you.grimoires ?? []).length;
+
+            <!-- Spells: everything the creature can cast right now -->
             <section class="card grimoire">
-              @let bookCount = (you.grimoires ?? []).length;
-              @let showSwitcher = bookCount > 1 || (bookCount > 0 && !you.equippedGrimoire);
               <div class="grimoire-head">
-                <h3>Grimoire <span class="muted">({{ bookCount }} collected)</span></h3>
+                <h3>Spells</h3>
+              </div>
+
+              @if (innateSpells().length || equippedBook()) {
+                <div class="spell-rows">
+                  @for (sp of innateSpells(); track sp.id) {
+                    <div class="spell-row">
+                      <mat-icon class="mi glyph">{{ sp.icon }}</mat-icon>
+                      <span class="spell-body">
+                        <span class="spell-line">
+                          <span class="spell-name">{{ sp.name }}</span>
+                          <span class="spell-src innate">Innate</span>
+                          @if (spellPowerLabel(sp, playerLevel()); as pw) {
+                            <span class="spell-power-chip">{{ pw }}</span>
+                          }
+                        </span>
+                        <span class="spell-desc">{{ sp.desc }}</span>
+                      </span>
+                      <button
+                        type="button"
+                        class="uc-btn spell-cast-btn"
+                        [class.aim]="!spellCastsInline(sp)"
+                        [disabled]="busy() || cooldownLabel(sp.id) !== 'Ready'"
+                        (click)="castFromMenu(sp)"
+                      >
+                        @if (cooldownLabel(sp.id) === 'Ready') {
+                          {{ spellCastsInline(sp) ? 'Cast' : 'Aim' }}
+                        } @else {
+                          {{ cooldownLabel(sp.id) }}
+                        }
+                      </button>
+                    </div>
+                  }
+                  @if (equippedBook(); as book) {
+                    @for (sp of bookSpells(book); track sp.id) {
+                      <div class="spell-row">
+                        <mat-icon class="mi glyph">{{ sp.icon }}</mat-icon>
+                        <span class="spell-body">
+                          <span class="spell-line">
+                            <span class="spell-name">{{ sp.name }}</span>
+                            <span class="spell-src book">Book</span>
+                            @if (spellPowerLabel(sp, playerLevel()); as pw) {
+                              <span class="spell-power-chip">{{ pw }}</span>
+                            }
+                          </span>
+                          <span class="spell-desc">{{ sp.desc }}</span>
+                        </span>
+                        <button
+                          type="button"
+                          class="uc-btn spell-cast-btn"
+                          [class.aim]="!spellCastsInline(sp)"
+                          [disabled]="busy() || cooldownLabel(sp.id) !== 'Ready'"
+                          (click)="castFromMenu(sp)"
+                        >
+                          @if (cooldownLabel(sp.id) === 'Ready') {
+                            {{ spellCastsInline(sp) ? 'Cast' : 'Aim' }}
+                          } @else {
+                            {{ cooldownLabel(sp.id) }}
+                          }
+                        </button>
+                      </div>
+                    }
+                  }
+                </div>
+              } @else {
+                <p class="muted bag-empty">No spells to cast yet. Grimoires wait in the bazaars.</p>
+              }
+            </section>
+
+            <!-- Library: every grimoire you own, and swapping between them -->
+            <section class="card grimoire">
+              <div class="grimoire-head">
+                <h3>Library <span class="muted">({{ bookCount }} collected)</span></h3>
                 @if (bookCount > 1) {
                   @if (swapReady()) {
                     <span class="swap-pill ready">
@@ -513,55 +585,7 @@
                 }
               </div>
 
-              <!-- Active loadout -->
-              @if (equippedBook(); as book) {
-                <div class="active-book">
-                  <mat-icon class="mi bookicon">menu_book</mat-icon>
-                  <span class="active-name">{{ book.name }}</span>
-                  <span class="active-tag">Active</span>
-                </div>
-                <div class="spell-rows">
-                  @for (sp of innateSpells(); track sp.id) {
-                    <div class="spell-row">
-                      <mat-icon class="mi glyph">{{ sp.icon }}</mat-icon>
-                      <span class="spell-body">
-                        <span class="spell-line">
-                          <span class="spell-name">{{ sp.name }}</span>
-                          <span class="spell-src innate">Innate</span>
-                        </span>
-                        <span class="spell-desc">{{ sp.desc }}</span>
-                      </span>
-                      <span class="spell-meta">
-                        <span class="spell-cd" [class.ready]="cooldownLabel(sp.id) === 'Ready'">{{ cooldownLabel(sp.id) }}</span>
-                        <span class="spell-cdlen">{{ spellCooldownText(sp) }}</span>
-                      </span>
-                    </div>
-                  }
-                  @for (sp of bookSpells(book); track sp.id) {
-                    <div class="spell-row">
-                      <mat-icon class="mi glyph">{{ sp.icon }}</mat-icon>
-                      <span class="spell-body">
-                        <span class="spell-line">
-                          <span class="spell-name">{{ sp.name }}</span>
-                          <span class="spell-src book">Book</span>
-                        </span>
-                        <span class="spell-desc">{{ sp.desc }}</span>
-                      </span>
-                      <span class="spell-meta">
-                        <span class="spell-cd" [class.ready]="cooldownLabel(sp.id) === 'Ready'">{{ cooldownLabel(sp.id) }}</span>
-                        <span class="spell-cdlen">{{ spellCooldownText(sp) }}</span>
-                      </span>
-                    </div>
-                  }
-                </div>
-              } @else if (bookCount) {
-                <p class="muted bag-empty">Open a book below to load its spells.</p>
-              } @else {
-                <p class="muted bag-empty">No grimoire open. Books wait in the bazaars.</p>
-              }
-
-              <!-- Book switcher + compare -->
-              @if (showSwitcher) {
+              @if (bookCount) {
                 <p class="switcher-label">Your books — tap to preview</p>
                 <div class="book-tabs">
                   @for (g of ownedBooks(); track g.id) {
@@ -591,20 +615,30 @@
                       @if (equippedBook(); as book) {
                         @for (sp of bookSpells(book); track sp.id) {
                           <div class="compare-cell">
-                            <span class="cc-name"><mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}</span>
+                            <span class="cc-name">
+                              <mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}
+                              @if (spellPowerLabel(sp, playerLevel()); as pw) {
+                                <span class="spell-power-chip">{{ pw }}</span>
+                              }
+                            </span>
                             <span class="cc-desc">{{ sp.desc }}</span>
                           </div>
                         }
                       } @else {
-                        <div class="compare-cell empty">No book open — no spells loaded.</div>
+                        <div class="compare-cell empty">No book attuned — no spells loaded.</div>
                       }
                     </div>
                     <div class="compare-col">
-                      <div class="compare-head next">If you open {{ cand?.name }}</div>
+                      <div class="compare-head next">If you attune to {{ cand?.name }}</div>
                       @if (cand) {
                         @for (sp of bookSpells(cand); track sp.id) {
                           <div class="compare-cell">
-                            <span class="cc-name"><mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}</span>
+                            <span class="cc-name">
+                              <mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}
+                              @if (spellPowerLabel(sp, playerLevel()); as pw) {
+                                <span class="spell-power-chip">{{ pw }}</span>
+                              }
+                            </span>
                             <span class="cc-desc">{{ sp.desc }}</span>
                           </div>
                         }
@@ -616,7 +650,7 @@
                     @if (swapReady()) {
                       <button type="button" class="uc-btn commit-btn" [disabled]="busy()" (click)="equipBook(cand.id)">
                         <mat-icon class="mi">auto_stories</mat-icon>
-                        Open {{ cand.name }} — locks swapping 30m
+                        Attune to {{ cand.name }}
                       </button>
                     } @else {
                       <button type="button" class="uc-btn commit-btn locked" disabled>
@@ -627,9 +661,50 @@
                   }
                 }
 
-                <p class="muted grimoire-hint">
-                  One loadout at a time — opening a different book locks swapping for 30 min.
-                </p>
+                @if (bookCount > 1) {
+                  <p class="muted grimoire-hint">
+                    One loadout at a time — attuning to a different book locks swapping for 30 min.
+                  </p>
+                }
+              } @else {
+                <p class="muted bag-empty">Your library is empty — grimoires wait in the bazaars.</p>
+              }
+            </section>
+
+            <!-- Scrolls: one-shot spells held in hand -->
+            <section class="card grimoire">
+              <div class="grimoire-head">
+                <h3>Scrolls <span class="muted">({{ ownedScrolls().length }} held)</span></h3>
+              </div>
+              @if (ownedScrolls().length) {
+                <div class="spell-rows">
+                  @for (sp of ownedScrolls(); track $index) {
+                    <div class="spell-row">
+                      <mat-icon class="mi glyph">{{ sp.icon }}</mat-icon>
+                      <span class="spell-body">
+                        <span class="spell-line">
+                          <span class="spell-name">{{ sp.name }}</span>
+                          <span class="spell-src scroll">Scroll</span>
+                          @if (spellPowerLabel(sp, playerLevel()); as pw) {
+                            <span class="spell-power-chip">{{ pw }}</span>
+                          }
+                        </span>
+                        <span class="spell-desc">{{ sp.desc }}</span>
+                      </span>
+                      <button
+                        type="button"
+                        class="uc-btn spell-cast-btn"
+                        [class.aim]="!spellCastsInline(sp)"
+                        [disabled]="busy()"
+                        (click)="castFromMenu(sp, true)"
+                      >
+                        {{ spellCastsInline(sp) ? 'Use' : 'Aim' }}
+                      </button>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="muted bag-empty">No scrolls in hand. Scribe them at the Sedgemoor Witch.</p>
               }
             </section>
                 </div>
@@ -996,6 +1071,9 @@
               @switch (item.source) {
                 @case ('stash') {
                   <button class="uc-btn" [disabled]="busy()" (click)="equipFromPopup(item)">Equip</button>
+                  @if (isApexGorgon()) {
+                    <button class="uc-btn" [disabled]="busy()" (click)="equipToWildcard(item)">+ Wildcard</button>
+                  }
                 }
                 @case ('bag') {
                   @if (itemAction(item.id) === 'plant') {
@@ -1048,9 +1126,6 @@
           </header>
 
           <div class="item-sheet-effects">
-                  @if (isApexGorgon()) {
-                    <button class="uc-btn" [disabled]="busy()" (click)="equipToWildcard(item)">+ Wildcard</button>
-                  }
             <p class="effect-line"><span>{{ petInfo(pet.species).blurb }}</span></p>
           </div>
 

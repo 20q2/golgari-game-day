@@ -84,6 +84,25 @@
             }
           </span>
         }
+        @if (enteredFighters() && attacker.companion; as pet) {
+          <span
+            class="companion"
+            [class.lunge]="petAnim() === 'attack'"
+            [class.block]="petAnim() === 'defend'"
+          >
+            @if (petAnim() === 'defend') { <span class="pet-shield"></span> }
+            @if (!companionSpriteFailed()) {
+              <img class="pet-art" [src]="pet.spriteUrl" [alt]="pet.name" (error)="companionSpriteFailed.set(true)" />
+            } @else {
+              <mat-icon class="pet-art-icon">{{ pet.role === 'defend' ? 'shield' : 'pets' }}</mat-icon>
+            }
+            @if (petPop(); as pp) {
+              <span class="pet-pop" [class.block]="pp.kind === 'block'">
+                <span class="pet-label">{{ pp.kind === 'block' ? 'Blocked' : 'Follow-up!' }}</span>{{ pp.text }}
+              </span>
+            }
+          </span>
+        }
         @if (pop()?.side === 'attacker') {
           <span class="dmg-pop" [class.heal]="pop()?.kind === 'heal'" [class.miss]="pop()?.kind === 'miss'">
             @if (pop()?.icon; as ic) {

@@ -59,25 +59,29 @@
 .pu-newcomer {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 10px;
+  padding: 14px;
   border-radius: 14px;
-  background: rgba(224, 192, 120, 0.1);
-  border: 1px solid rgba(224, 192, 120, 0.4);
+  background: rgba(224, 192, 120, 0.12);
+  border: 1px solid rgba(224, 192, 120, 0.45);
+  box-shadow:
+    inset 0 0 0 1px rgba(224, 192, 120, 0.12),
+    0 6px 22px rgba(224, 192, 120, 0.1);
 }
 
 .pu-row-main {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .pu-badge {
   flex: none;
+  margin-left: auto;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
-  padding: 2px 6px;
+  padding: 3px 7px;
   border-radius: 6px;
   color: #17140f;
   background: linear-gradient(180deg, #e6c078, #cba75c);
@@ -87,6 +91,52 @@
   font-size: 15px;
   font-weight: 600;
   color: #f4ecda;
+}
+
+.pu-name-lg {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+// ── item icon chip ───────────────────────────────────────────────────────────
+// Rounded glyph tile. Bag rows tint it by rarity via the --rarity custom prop
+// set on the <li>; the newcomer chip is always gold ("prize").
+.pu-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  color: #efe7d6;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(239, 231, 214, 0.14);
+
+  mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+}
+
+.pu-icon-new {
+  width: 44px;
+  height: 44px;
+  color: #e6c078;
+  background: rgba(224, 192, 120, 0.18);
+  border-color: rgba(224, 192, 120, 0.6);
+
+  mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+  }
+}
+
+// Full-width, low-emphasis "give up the find" action — deliberately quieter
+// than the slot-clearing buttons below so the eye favours keeping the item.
+.uc-btn-sell {
+  align-self: stretch;
 }
 
 .pu-hint {
@@ -121,17 +171,47 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   overflow-y: auto;
 
   li {
+    --rarity: #9aa7a0; // common (default)
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 8px 10px;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
     border-radius: 12px;
     background: rgba(74, 124, 89, 0.14);
+    border-left: 3px solid var(--rarity);
+
+    &[data-rarity='rare'] {
+      --rarity: #5fd18a;
+    }
+    &[data-rarity='legendary'] {
+      --rarity: #fbbf24;
+    }
+    &[data-rarity='mythic'] {
+      --rarity: #c084fc;
+    }
+    &[data-rarity='neutral'] {
+      --rarity: #6cae75;
+    }
+
+    // Tint the chip with the row's rarity.
+    .pu-icon {
+      color: var(--rarity);
+      background: color-mix(in srgb, var(--rarity) 16%, transparent);
+      border-color: color-mix(in srgb, var(--rarity) 50%, transparent);
+    }
   }
+}
+
+.pu-owned-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .pu-row-actions {

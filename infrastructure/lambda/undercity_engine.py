@@ -298,6 +298,9 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             raw = _base_hit(winr, losr, rng, pierce, stance=win_stance, ramp=ramp)
             mult = data.STANCE_WIN_MULT
             mult += winr.mag('deep_biter', 0.0)
+            # Brutal Strikes (ATK-6 perk): landing a decisive hit swings harder.
+            if winr.has_perk('brutal_strikes'):
+                mult += data.BRUTAL_STRIKES_MULT
             if (win_stance == 'aggress'
                     and losr.max_hp and losr.hp / losr.max_hp < 0.30):
                 mult += winr.mag('gutcleaver', 0.0)   # execute a low-HP foe
@@ -346,10 +349,6 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             # Brittle debuff that amplifies the Gorgon's future hits.
             if win_stance == 'aggress' and winr.has('shatter') and losr.hp > 0:
                 losr.brittle = min(data.BRITTLE_MAX, losr.brittle + 1)
-            # Rend (ATK-5 perk): a winning Aggress always applies 1 rot stack.
-            if win_stance == 'aggress' and winr.has_perk('rend') and losr.hp > 0:
-                losr.rot_stacks += 1
-                entries.append({'round': rnd, 'by': win_side, 'rotApplied': 1})
             # Web Venom (Ishkanah): any decisive win injects a rot stack.
             if winr.has('web_venom') and losr.hp > 0:
                 losr.rot_stacks += 1
@@ -827,11 +826,17 @@ def effective_stats(player: dict) -> dict:
             stat = buff.get('stat')
             if stat in ('atk', 'def', 'spd'):
                 eff[stat] += int(buff.get('amount', 0))
-    # Carapace Grind (DEF-12 perk): a flat Max HP bump while the perk is held.
-    # Derived here (not persisted) so it appears in state and combat and vanishes
-    # cleanly if the perk ever stops applying — same layer as gear maxHp.
-    if 'carapace_grind' in attribute_perks(player):
+    # DEF track Max HP: each held node adds a flat, stacking Max HP bump. Derived
+    # here (not persisted) so it appears in state and combat and vanishes cleanly
+    # if a perk ever stops applying — same layer as gear maxHp. Cumulative:
+    # DEF 6 -> +5, DEF 12 -> +15, DEF 18 -> +30.
+    perks = attribute_perks(player)
+    if 'thick_hide' in perks:
+        eff['maxHp'] += data.THICK_HIDE_MAXHP
+    if 'carapace_grind' in perks:
         eff['maxHp'] += data.CARAPACE_GRIND_MAXHP
+    if 'last_stand' in perks:
+        eff['maxHp'] += data.LAST_STAND_MAXHP
     return eff
 
 

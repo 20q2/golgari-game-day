@@ -32,30 +32,33 @@ def test_no_perks_below_first_threshold():
 
 
 def test_thresholds_unlock_in_order():
-    assert engine.attribute_perks(_doc(atk=6)) == frozenset({'rend'})
-    assert engine.attribute_perks(_doc(atk=12)) == frozenset({'rend', 'menace'})
-    assert engine.attribute_perks(_doc(atk=18)) == frozenset({'rend', 'menace', 'deathdrive'})
+    assert engine.attribute_perks(_doc(atk=6)) == frozenset({'brutal_strikes'})
+    assert engine.attribute_perks(_doc(atk=12)) == frozenset({'brutal_strikes', 'menace'})
+    assert engine.attribute_perks(_doc(atk=18)) == frozenset({'brutal_strikes', 'menace', 'deathdrive'})
 
 
 def test_base_stat_lights_tier1_across_tracks():
     assert 'thick_hide' in engine.attribute_perks(_doc(dfn=7))
-    assert 'rend' in engine.attribute_perks(_doc(atk=8))
+    assert 'brutal_strikes' in engine.attribute_perks(_doc(atk=8))
     assert 'fleetfoot' in engine.attribute_perks(_doc(spd=7))
 
 
 def test_all_three_tracks_independent():
     perks = engine.attribute_perks(_doc(atk=12, dfn=18, spd=6))
-    assert perks == frozenset({'rend', 'menace', 'thick_hide', 'carapace_grind',
+    assert perks == frozenset({'brutal_strikes', 'menace', 'thick_hide', 'carapace_grind',
                                'last_stand', 'fleetfoot'})
 
 
-def test_carapace_grind_grants_maxhp_via_effective_stats():
-    # DEF 12 lights carapace_grind, which adds a flat Max HP bump in
-    # effective_stats (derived, not persisted).
-    below = {'atk': 1, 'def': 11, 'spd': 1, 'maxHp': 30}
-    assert engine.effective_stats(below)['maxHp'] == 30
-    at = {'atk': 1, 'def': 12, 'spd': 1, 'maxHp': 30}
-    assert engine.effective_stats(at)['maxHp'] == 30 + data.CARAPACE_GRIND_MAXHP
+def test_def_track_grants_stacking_maxhp_via_effective_stats():
+    # Each DEF node adds a flat, stacking Max HP bump in effective_stats (derived,
+    # not persisted): DEF 6 -> +5, DEF 12 -> +15, DEF 18 -> +30.
+    def mh(dfn):
+        return engine.effective_stats({'atk': 1, 'def': dfn, 'spd': 1, 'maxHp': 30})['maxHp']
+    assert mh(5) == 30                                        # below tier-1: no bonus
+    assert mh(6) == 30 + data.THICK_HIDE_MAXHP                # +5
+    assert mh(12) == 30 + data.THICK_HIDE_MAXHP + data.CARAPACE_GRIND_MAXHP           # +15
+    assert mh(18) == (30 + data.THICK_HIDE_MAXHP + data.CARAPACE_GRIND_MAXHP
+                      + data.LAST_STAND_MAXHP)                # +30
 
 
 def test_gear_can_bridge_to_a_threshold():
@@ -94,11 +97,11 @@ def test_combatant_carries_perks_and_survives_serde():
     doc = {'username': 'x', 'hp': 30, 'maxHp': 30, 'atk': 18, 'def': 5, 'spd': 5,
            'stance': 'fight'}
     c = db._combatant(doc)
-    assert c.has_perk('rend') and c.has_perk('deathdrive')
+    assert c.has_perk('brutal_strikes') and c.has_perk('deathdrive')
     assert not c.has_perk('carapace_grind')
     snap = db._bt_snapshot(c)
     c2 = db._bt_to_combatant(snap)
-    assert c2.has_perk('rend') and c2.has_perk('deathdrive')
+    assert c2.has_perk('brutal_strikes') and c2.has_perk('deathdrive')
 
 
 # ── Task 3: Carapace Grind (Guard/DEF fix) ───────────────────────────────────
@@ -123,18 +126,28 @@ def test_carapace_grind_absent_without_perk():
     assert not any(e.get('guardChip') for e in entries)
 
 
-# ── Task 5: Rend ─────────────────────────────────────────────────────────────
+# ── Task 5: Brutal Strikes ───────────────────────────────────────────────────
 
-def test_rend_applies_rot_on_winning_aggress():
+def _decisive_dmg(perks):
+    """Damage dealt by one aggress>feint decisive win (fixed seed) with `perks`."""
     import random
     me = engine.Combatant(name='m', hp=40, max_hp=40, atk=12, dfn=5, spd=6,
-                          perks=frozenset({'rend'}))
-    foe = engine.Combatant(name='f', hp=60, max_hp=60, atk=5, dfn=3, spd=3)
-    engine.resolve_round(me, foe, 'aggress', 'feint', 1, random.Random(3))  # aggress>feint
-    assert foe.rot_stacks >= 1
+                          perks=perks)
+    foe = engine.Combatant(name='f', hp=200, max_hp=200, atk=5, dfn=3, spd=3)
+    engine.resolve_round(me, foe, 'aggress', 'feint', 1, random.Random(3))
+    return 200 - foe.hp
 
 
-def test_rend_no_rot_without_perk():
+def test_brutal_strikes_amps_a_decisive_hit():
+    boosted = _decisive_dmg(frozenset({'brutal_strikes'}))
+    plain = _decisive_dmg(frozenset())
+    assert boosted > plain
+    # +30% of the base winning hit (mult is additive, like deep_biter/gutcleaver).
+    assert boosted == pytest.approx(plain * (1 + data.BRUTAL_STRIKES_MULT), rel=0.15)
+
+
+def test_brutal_strikes_no_amp_without_perk():
+    # A plain aggress win never applies the old Rend rot stack.
     import random
     me = engine.Combatant(name='m', hp=40, max_hp=40, atk=12, dfn=5, spd=6)
     foe = engine.Combatant(name='f', hp=60, max_hp=60, atk=5, dfn=3, spd=3)
