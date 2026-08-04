@@ -717,15 +717,17 @@
           }
           @case ('sigils') {
             <section class="card">
-              <h3>
-                Guild Sigils
-                <span class="stats-hint muted">defeat a lair boss to claim its sigil</span>
-              </h3>
-              <p class="sigil-progress">
-                <mat-icon class="mi gold">workspace_premium</mat-icon>
-                {{ sigilCount() }} / {{ sigilsRequired }} claimed
-                <span class="muted">— the island boss unseals at {{ sigilsRequired }}</span>
-              </p>
+              <div class="sigil-head">
+                <h3>
+                  Guild Sigils
+                  <span class="stats-hint muted">defeat a lair boss to claim its sigil</span>
+                </h3>
+                <span class="sigil-progress">
+                  <mat-icon class="mi gold">workspace_premium</mat-icon>
+                  {{ sigilCount() }} / {{ sigilsRequired }} claimed
+                </span>
+              </div>
+              <p class="sigil-unseal muted">The island boss unseals at {{ sigilsRequired }}.</p>
               <div class="sigil-grid">
                 @for (d of sigilEntries; track d.biome) {
                   <div class="sigil-tile" [class.claimed]="hasSigil(d.biome)"
