@@ -40,6 +40,7 @@ export const PASSIVE_NAMES: Record<string, string> = {
   spell_mage: 'Spell Mage',
   wish: 'Wish',
   stonewright: 'Stonewright',
+  stone_gaze: 'Stone Gaze',
 };
 
 export const PASSIVE_BLURBS: Record<string, string> = {
@@ -68,6 +69,7 @@ export const PASSIVE_BLURBS: Record<string, string> = {
   spell_mage: 'Your damaging spells deal +50% and are twice as likely to land.',
   wish: 'Learn Wish: cast any spell in the world, from any list.',
   stonewright: 'Upgrades she forges come out hardened (Gear+); her active pet fights a step above its level.',
+  stone_gaze: 'Reads come easily; each read petrifies the foe — stacking slow that ends in a one-round freeze.',
 };
 
 export const STARTERS: FormInfo[] = [
@@ -117,7 +119,7 @@ export const TIER2: FormInfo[] = [
   { id: 'squirrel_warrior', name: 'Vinereap Mentor', tier: 2, line: 'squirrel', passive: 'spell_warrior', passiveName: 'Spell Warrior', bonus: { maxHp: 6, atk: 2 }, blurb: 'Spellblade — self-buffs doubled (+HP/+ATK).' },
   { id: 'squirrel_mage', name: 'Squirrel Mage', tier: 2, line: 'squirrel', passive: 'spell_mage', passiveName: 'Spell Mage', bonus: { maxHp: 4, spd: 2 }, blurb: 'Battlemage — +50% spell damage (+HP/+SPD).' },
   { id: 'basalt_matron', name: 'Basalt Matron', tier: 2, line: 'gorgon', passive: 'spikeshell', passiveName: 'Spiked Shell', bonus: { maxHp: 6, def: 2 }, blurb: 'Stone bulwark (+HP/+DEF).' },
-  { id: 'medusa_stalker', name: 'Medusa Stalker', tier: 2, line: 'gorgon', passive: 'vexing', passiveName: 'Vexing', bonus: { spd: 2, atk: 2 }, blurb: 'Gaze-hunter (+SPD/+ATK).' },
+  { id: 'medusa_stalker', name: 'Medusa Stalker', tier: 2, line: 'gorgon', passive: 'stone_gaze', passiveName: 'Stone Gaze', bonus: { spd: 2, atk: 2 }, blurb: 'Gaze-hunter (+SPD/+ATK).' },
 ];
 
 export const APEX: (FormInfo & { from: string[] })[] = [
