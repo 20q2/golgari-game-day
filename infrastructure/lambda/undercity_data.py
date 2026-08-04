@@ -153,14 +153,14 @@ TIER2 = {
         'passive': 'spell_mage',
         'blurb': 'Battlemage. Spell Mage: your damaging spells deal +50% and are twice as likely to land (and you still cast 50% faster).',
     },
-    'basalt_matron': {
-        'name': 'Basalt Matron', 'line': 'elf', 'bonus': {'atk': 2, 'maxHp': 4},
-        'passive': 'shatter',
-        'blurb': 'Stone crusher. Shatter: a winning Aggress cracks the foe (Brittle) — '
-                 'your blows then hit the cracks for extra.',
+    'wood_lurker': {
+        'name': 'Wood Lurker', 'line': 'elf', 'bonus': {'maxHp': 6},
+        'passive': 'mimicry',
+        'blurb': 'Ambush shapeshifter. Mimicry: at the first blow it takes on the shape '
+                 'of its prey — a stat bump matching how the foe fights.',
     },
-    'medusa_stalker': {
-        'name': 'Medusa Stalker', 'line': 'elf', 'bonus': {'spd': 2, 'atk': 2},
+    'gorgon': {
+        'name': 'Gorgon', 'line': 'elf', 'bonus': {'spd': 2, 'atk': 2},
         'passive': 'stone_gaze',
         'blurb': 'Gaze-hunter. Stone Gaze: reads come easily, and every read you land '
                  'petrifies the foe — stacking slow that ends in a one-round freeze.',
@@ -172,25 +172,25 @@ APEX = {
     'grave_titan': {
         'name': 'Grave Titan', 'bonus': {'maxHp': 6, 'def': 2},
         'passive': 'deathtouch_stomp',
-        'from': ['brackish_trudge', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'basalt_matron'],
+        'from': ['brackish_trudge', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'],
         'blurb': 'Deathtouch Stomp: your strikes ignore 3 of the enemy’s DEF.',
     },
     'golgari_lich_lord': {
         'name': 'Golgari Lich Lord', 'bonus': {'atk': 2, 'maxHp': 6},
         'passive': 'drain_life',
-        'from': ['brackish_trudge', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'basalt_matron'],
+        'from': ['brackish_trudge', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'],
         'blurb': 'Drain Life: heal for 50% of damage you deal.',
     },
     'swamp_dragon': {
         'name': 'Swamp Dragon', 'bonus': {'atk': 2, 'spd': 2},
         'passive': 'rot_breath',
-        'from': ['vexing_pest', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior', 'medusa_stalker'],
+        'from': ['vexing_pest', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior', 'gorgon'],
         'blurb': 'Rot Breath: round-1 strike hits for double.',
     },
     'izoni': {
         'name': 'Daemogoth Titan', 'bonus': {'spd': 4},
         'passive': 'swarm',
-        'from': ['vexing_pest', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage', 'medusa_stalker'],
+        'from': ['vexing_pest', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage', 'gorgon'],
         'blurb': 'Swarm: one extra strike every battle round.',
     },
     'calamity_beast': {

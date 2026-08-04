@@ -19,12 +19,12 @@ def test_gorgon_starter_defined():
 
 
 def test_gorgon_evolution_line():
-    assert set(data.tier2_options('elf')) == {'basalt_matron', 'medusa_stalker'}
-    # Each gorgon tier-2 form has two apex options grafted onto existing apexes.
-    assert 'grave_titan' in data.apex_options('basalt_matron')
-    assert 'golgari_lich_lord' in data.apex_options('basalt_matron')
-    assert 'swamp_dragon' in data.apex_options('medusa_stalker')
-    assert 'izoni' in data.apex_options('medusa_stalker')
+    assert set(data.tier2_options('elf')) == {'gorgon', 'wood_lurker'}
+    # Each elf tier-2 form has two apex options grafted onto existing apexes.
+    assert 'grave_titan' in data.apex_options('wood_lurker')
+    assert 'golgari_lich_lord' in data.apex_options('wood_lurker')
+    assert 'swamp_dragon' in data.apex_options('gorgon')
+    assert 'izoni' in data.apex_options('gorgon')
 
 
 def test_gorgon_starts_with_five_banked_points(table):

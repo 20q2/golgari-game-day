@@ -28,7 +28,7 @@
     {
       "name": "elf",
       "hasMask": true,
-      "hasHat": false
+      "hasHat": true
     },
     {
       "name": "golgari_lich_lord",
@@ -37,6 +37,11 @@
     },
     {
       "name": "golgari_longlegs",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
+      "name": "gorgon",
       "hasMask": true,
       "hasHat": true
     },

@@ -63,3 +63,16 @@ def test_start_battle_applies_mimicry(table):
     assert ev['type'] == 'battle_start'
     # The hook applied a mimic buff to the doc, matching whatever wild was drawn.
     assert any(b.get('kind') == 'mimic' for b in (doc.get('buffs') or []))
+
+
+def test_tier2_forms_renamed():
+    assert set(data.tier2_options('elf')) == {'gorgon', 'wood_lurker'}
+    assert data.TIER2['gorgon']['passive'] == 'stone_gaze'
+    assert data.TIER2['gorgon']['name'] == 'Gorgon'
+    wl = data.TIER2['wood_lurker']
+    assert wl['passive'] == 'mimicry'
+    assert wl['name'] == 'Wood Lurker'
+    assert wl['bonus'] == {'maxHp': 6}
+    # apex routing preserved under the new ids
+    assert 'swamp_dragon' in data.apex_options('gorgon')
+    assert 'grave_titan' in data.apex_options('wood_lurker')
