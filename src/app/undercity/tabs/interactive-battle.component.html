@@ -87,6 +87,7 @@
         @if (enteredFighters() && attacker.companion; as pet) {
           <span
             class="companion"
+            [style.--sprite-scale]="attackerScale()"
             [class.lunge]="petAnim() === 'attack'"
             [class.block]="petAnim() === 'defend'"
           >

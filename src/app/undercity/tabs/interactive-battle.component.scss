@@ -143,8 +143,9 @@
   bottom: -4px;
   left: calc(50% - 66px);
   z-index: 3; // above platform + creature, below the dmg-pop (z 4)
-  width: 44px;
-  height: 44px;
+  // Sidekick tracks the player's own tier scaling so it stays proportional.
+  width: calc(44px * var(--sprite-scale, 1));
+  height: calc(44px * var(--sprite-scale, 1));
   pointer-events: none;
   animation: uc-pet-bob 2.4s ease-in-out infinite;
 
@@ -156,10 +157,10 @@
     filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.55));
   }
   .pet-art-icon {
-    font-size: 40px;
-    width: 44px;
-    height: 44px;
-    line-height: 44px;
+    font-size: calc(40px * var(--sprite-scale, 1));
+    width: calc(44px * var(--sprite-scale, 1));
+    height: calc(44px * var(--sprite-scale, 1));
+    line-height: calc(44px * var(--sprite-scale, 1));
     color: #d8b5b5;
     filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.55));
   }

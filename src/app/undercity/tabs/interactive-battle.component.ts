@@ -43,13 +43,13 @@ const ACTION_WORD: Record<Stance, string> = {
 };
 
 /** Relative arena sprite scale for a fighter given its tier and its foe's tier.
- *  Symmetric: +12.5% per tier of advantage, clamped so a 2-tier gap lands at
- *  ±25% (e.g. a T1 pest vs a T3 apex → 0.75 vs 1.25). Missing either tier → 1
+ *  Symmetric: +25% per tier of advantage, clamped so a 2-tier gap lands at
+ *  ±50% (e.g. a T1 pest vs a T3 apex → 0.5 vs 1.5). Missing either tier → 1
  *  (no scaling), so any tier-less path renders unchanged. */
 export function spriteScale(mine?: number, theirs?: number): number {
   if (!mine || !theirs) return 1;
-  const s = 1 + 0.125 * (mine - theirs);
-  return Math.min(1.25, Math.max(0.75, s));
+  const s = 1 + 0.25 * (mine - theirs);
+  return Math.min(1.5, Math.max(0.5, s));
 }
 
 /**
