@@ -84,3 +84,36 @@ def test_basalt_has_shatter_and_bruiser_bonus():
     b = data.TIER2['basalt_matron']
     assert b['passive'] == 'shatter'
     assert b['bonus'] == {'atk': 2, 'maxHp': 4}
+
+
+def _gorgon_apex_at(table, node='city_r0'):
+    sid, doc = _player_at(table, node)
+    doc['passives'] = ['stonewright']     # a Gorgon…
+    doc['tier'] = 3                        # …at apex
+    return sid, doc
+
+
+def test_tier3_gorgon_equips_wildcard(table):
+    sid, doc = _gorgon_apex_at(table)
+    doc['gear'] = {'fang': 'rusted_fang'}          # already wearing a fang
+    doc['gearStash'] = ['rusted_fang']             # a duplicate fang to slot as wildcard
+    status, body = db._equip_gear(table, sid, doc, {'index': 0, 'slot': 'wild'})
+    assert status == 200
+    assert doc['gear']['wild'] == 'rusted_fang'    # duplicate type allowed in wild
+    assert engine.effective_stats(doc)['atk'] >= doc['atk'] + 2 * data.GEAR['rusted_fang']['atk']
+
+
+def test_non_gorgon_cannot_use_wildcard(table):
+    sid, doc = _player_at(table, 'city_r0')         # pest, no stonewright
+    doc['tier'] = 3
+    doc['gearStash'] = ['rusted_fang']
+    status, _ = db._equip_gear(table, sid, doc, {'index': 0, 'slot': 'wild'})
+    assert status == 409
+
+
+def test_pre_apex_gorgon_cannot_use_wildcard(table):
+    sid, doc = _player_at(table, 'city_r0')
+    doc['passives'] = ['stonewright']; doc['tier'] = 2   # Gorgon but not apex
+    doc['gearStash'] = ['rusted_fang']
+    status, _ = db._equip_gear(table, sid, doc, {'index': 0, 'slot': 'wild'})
+    assert status == 409

@@ -1412,6 +1412,12 @@ def _upgrade_gear(table, sid, doc, payload):
     if where == 'equipped':
         doc['gear'][slot] = next_gid
     else:
+    if (payload or {}).get('slot') == 'wild':
+        # Apex Gorgon wildcard: any one extra piece (duplicates allowed). Gated on
+        # the Stonewright passive + tier 3 (not the shared apex form).
+        if 'stonewright' not in _passives(doc) or int(doc.get('tier', 1)) < 3:
+            return _err('Only an apex Gorgon has a wildcard slot.', 409)
+        slot = 'wild'
         doc['gearStash'][index] = next_gid
     conflict = _save_or_conflict(table, doc)
     if conflict:
