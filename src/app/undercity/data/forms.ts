@@ -41,7 +41,6 @@ export const PASSIVE_NAMES: Record<string, string> = {
   wish: 'Wish',
   stonewright: 'Stonewright',
   stone_gaze: 'Stone Gaze',
-  shatter: 'Shatter',
   mimicry: 'Mimicry',
 };
 
@@ -72,7 +71,6 @@ export const PASSIVE_BLURBS: Record<string, string> = {
   wish: 'Learn Wish: cast any spell in the world, from any list.',
   stonewright: 'Upgrades she forges come out hardened (Gear+); her active pet fights a step above its level.',
   stone_gaze: 'Reads come easily; each read petrifies the foe — stacking slow that ends in a one-round freeze.',
-  shatter: 'A winning Aggress cracks the foe (Brittle); your blows then hit the cracks for extra.',
   mimicry: 'At the first blow it takes the shape of its prey — a stat bump matching how the foe fights.',
 };
 

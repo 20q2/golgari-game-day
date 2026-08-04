@@ -175,8 +175,6 @@ export const STATUS_INFO: Record<string, StatusInfo> = {
   // Gorgon abilities (design 2026-08-04).
   petrify: { label: 'Petrify', icon: 'hourglass_bottom', tone: 'debuff',
     blurb: 'Turning to stone: −SPD per stack; at 4 it freezes for a round, then resets.' },
-  brittle: { label: 'Brittle', icon: 'broken_image', tone: 'debuff',
-    blurb: 'Cracked open: takes extra damage from the Gorgon.' },
   mimic: { label: 'Mimic', icon: 'theater_comedy', tone: 'buff',
     blurb: 'Shapeshifted to match the foe — a stat bump mirroring its fighting style.' },
 };
