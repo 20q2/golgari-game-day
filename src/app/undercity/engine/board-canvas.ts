@@ -37,6 +37,7 @@ import { computeEnemyTiers, drawTierBadge, EnemyTier } from './board-enemy-tier'
 import { computeProgress, drawProgressRing } from './board-progress-ring';
 import { WORLD_EVENT_SPRITE, WORLD_EVENT_PIECE_SPRITE } from '../data/world-event';
 import { MONSTER_SPACE } from '../data/enraged';
+import { enemyArtUrl } from '../data/dungeons';
 import { drawTunnelSignpost } from './board-signpost';
 import { DigGrid, EnragedMonster, VeinState, WorldEventState } from '../services/undercity-models';
 
@@ -2385,7 +2386,7 @@ export class BoardCanvas {
       this.enemyMiss.add(enemyId);
       this.enemyLoading.delete(enemyId);
     };
-    img.src = `undercity/enemies/${enemyId}.png`;
+    img.src = enemyArtUrl(enemyId);   // boss familiars resolve to boss_spawns/
   }
 
   /** Space-info popover, drawn in world space so it pans/zooms with the board. */

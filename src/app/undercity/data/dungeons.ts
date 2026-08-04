@@ -75,6 +75,24 @@ export const DUNGEONS: Record<string, DungeonInfo> = {
   },
 };
 
+/** Familiar sprite ids whose battle art lives in public/undercity/boss_spawns/
+ *  rather than undercity/enemies/. Mirrors LAIR_FAMILIAR[*].sprites in
+ *  undercity_data.py (boss familiars, design 2026-08-04). */
+export const BOSS_SPAWN_SPRITES = new Set<string>([
+  'skullbriars_familiar',
+  'slimefoots_saprolings',
+  'gitrog_spawn',
+  'gitrog_spawn2',
+  'sarulfs_packmate',
+  'ishankas_hatchling',
+]);
+
+/** Battle-art URL for an enemy sprite id, honoring the boss_spawns/ folder. */
+export function enemyArtUrl(spriteId: string): string {
+  const folder = BOSS_SPAWN_SPRITES.has(spriteId) ? 'boss_spawns' : 'enemies';
+  return `undercity/${folder}/${spriteId}.png`;
+}
+
 /** Guild Sigils needed to unseal the island boss — mirrors SIGILS_REQUIRED. */
 export const SIGILS_REQUIRED = 3;
 
