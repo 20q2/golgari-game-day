@@ -998,10 +998,15 @@ def mystery_outcome(res, out):
 # ── Wild NPCs ────────────────────────────────────────────────────────────────
 
 def npc_from_spec(spec: dict) -> dict:
-    """Instantiate a battle NPC dict from a fixed-stat spec."""
-    return {k: spec[k] for k in
-            ('id', 'name', 'hp', 'atk', 'def', 'spd', 'bounty', 'xp',
-             'itemChance')}
+    """Instantiate a battle NPC dict from a fixed-stat spec. Optional combat
+    identity (`passives`) and art override (`spriteId`) ride along when present."""
+    npc = {k: spec[k] for k in
+           ('id', 'name', 'hp', 'atk', 'def', 'spd', 'bounty', 'xp', 'itemChance')}
+    if spec.get('passives'):
+        npc['passives'] = list(spec['passives'])
+    if spec.get('spriteId'):
+        npc['spriteId'] = spec['spriteId']
+    return npc
 
 
 def pick_npc(rng, pool=None) -> dict:

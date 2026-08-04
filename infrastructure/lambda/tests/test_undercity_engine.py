@@ -4,8 +4,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import undercity_config as cfg
 import undercity_data as data
 import undercity_db as db
+import undercity_engine as engine
 from undercity_engine import (
     Combatant, resolve_battle, legal_destinations, validate_walk, board_distance,
     roll_mystery, roll_fog, apply_level_ups, spend_stat, effective_stats, regen_hp,
@@ -1642,3 +1644,18 @@ def test_defend_deflect_skipped_when_roll_high():
     rng = FakeRng(randoms=[0.99], uniform=1.0)
     entries = resolve_round(a, d, 'aggress', 'feint', 1, rng)
     assert not any(e.get('pet') == 'defend' for e in entries)
+
+
+# ── Boss familiars: spec passthrough (design 2026-08-04) ─────────────────────
+
+def test_npc_from_spec_carries_passives_and_sprite():
+    spec = {'id': 'x', 'name': 'X', 'hp': 30, 'atk': 10, 'def': 4, 'spd': 6,
+            'bounty': 12, 'xp': 15, 'itemChance': 0.1,
+            'passives': ['grave_growth'], 'spriteId': 'x_art'}
+    npc = engine.npc_from_spec(spec)
+    assert npc['passives'] == ['grave_growth']
+    assert npc['spriteId'] == 'x_art'
+    # A spec without them stays clean (no keys invented).
+    bare = engine.npc_from_spec({'id': 'y', 'name': 'Y', 'hp': 20, 'atk': 5,
+        'def': 2, 'spd': 4, 'bounty': 5, 'xp': 8, 'itemChance': 0.0})
+    assert 'passives' not in bare and 'spriteId' not in bare
