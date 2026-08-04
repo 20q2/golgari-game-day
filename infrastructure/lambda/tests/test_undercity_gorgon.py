@@ -99,3 +99,18 @@ def test_plus_stamp_survives_non_gorgon_upgrade(table):
         table, sid, doc, {'target': {'where': 'equipped', 'slot': 'carapace'}})
     assert status == 200
     assert doc['gear']['carapace'] == data.GEAR_FAMILY['bramble'][3] + '+'  # "+" preserved
+
+
+def test_plus_gear_resolves_name_and_cost():
+    # Market/name lookups (data.GEAR[i]['name'/'cost']) must resolve "+" ids.
+    pid = data.GEAR_FAMILY['bramble'][2] + '+'
+    assert data.GEAR[pid]['name'].endswith(' +')
+    assert isinstance(data.GEAR[pid]['cost'], int)
+
+
+def test_plus_gear_contributes_stats_when_equipped():
+    import undercity_engine as engine
+    base = data.GEAR_FAMILY['bramble'][2]
+    plain = {'gear': {'carapace': base}, 'atk': 5, 'def': 5, 'spd': 5, 'maxHp': 25}
+    forged = {'gear': {'carapace': base + '+'}, 'atk': 5, 'def': 5, 'spd': 5, 'maxHp': 25}
+    assert engine.effective_stats(forged)['def'] == engine.effective_stats(plain)['def'] + data.GEAR_PLUS_BUMP
