@@ -737,7 +737,10 @@ def apply_level_ups(player: dict) -> int:
         player['level'] += 1
         player['maxHp'] += data.HP_PER_LEVEL
         player['hp'] += data.HP_PER_LEVEL
-        player['statPoints'] = player.get('statPoints', 0) + data.STAT_POINTS_PER_LEVEL
+        rate = (data.GORGON_STAT_POINTS_PER_LEVEL
+                if 'stonewright' in (player.get('passives') or [])
+                else data.STAT_POINTS_PER_LEVEL)
+        player['statPoints'] = player.get('statPoints', 0) + rate
         player['spentThisLevel'] = {'atk': 0, 'def': 0, 'spd': 0}
         gained += 1
     return gained

@@ -88,6 +88,14 @@ def test_level_cap():
     assert p['level'] == 12
 
 
+def test_gorgon_levels_slower():
+    p = {'level': 1, 'xp': 25, 'maxHp': 30, 'hp': 10, 'statPoints': 0,
+         'passives': ['stonewright'], 'spentThisLevel': {}}
+    assert apply_level_ups(p) == 1
+    assert p['statPoints'] == 1          # Gorgon banks 1, not the usual 2
+    assert p['maxHp'] == 33              # HP-per-level unchanged
+
+
 def test_spend_stat_stacks_freely_until_out_of_points():
     p = {'statPoints': 2, 'atk': 6, 'def': 5, 'spd': 5,
          'spentThisLevel': {'atk': 0, 'def': 0, 'spd': 0}}
