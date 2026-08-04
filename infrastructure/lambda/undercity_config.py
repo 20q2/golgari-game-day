@@ -287,7 +287,7 @@ SCROLL_DROP_CHANCE = {
 
 # ── Companions ────────────────────────────────────────────────────────────
 # Minutes an egg sits in the (single) incubator before it can hatch.
-PET_INCUBATE_MINUTES = 15
+PET_INCUBATE_MINUTES = 5
 
 # Activated-ability real-time cooldowns (minutes), keyed by ROLE; leveling the
 # pet shortens the wait down to a floor. Mirrors the spell-cooldown idiom.

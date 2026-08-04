@@ -118,7 +118,7 @@ export const PET_SALVAGE_ICHOR_MIN_TIER = 3;
 
 // ── Timers / activated-ability cadence (mirror undercity_config) ─────────────
 
-export const PET_INCUBATE_MINUTES = 15;
+export const PET_INCUBATE_MINUTES = 5;
 
 /** Activated-ability base cooldowns (minutes), keyed by ROLE, shortened as the
  *  pet levels. */

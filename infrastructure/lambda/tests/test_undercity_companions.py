@@ -21,7 +21,7 @@ def test_pet_tables_wellformed():
     # Progression tables cover the four rarity tiers.
     assert set(data.PET_LEVEL_CAP) == {1, 2, 3, 4}
     assert data.PET_MERGE_COST.keys() == {2, 3, 4}       # cost to REACH tier 2/3/4
-    assert config.PET_INCUBATE_MINUTES == 15
+    assert config.PET_INCUBATE_MINUTES == 5
 
 
 def test_new_player_has_empty_companion_state(table):
