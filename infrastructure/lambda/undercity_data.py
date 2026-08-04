@@ -66,6 +66,13 @@ STARTERS = {
         'passive': 'spell_haste',
         'blurb': 'A twitchy little caster. Spell Haste: your spell cooldowns are halved — cast twice as often as anyone else.',
     },
+    'gorgon': {
+        'name': 'Gorgon', 'hp': 25, 'atk': 6, 'def': 6, 'spd': 4,
+        'passive': 'stonewright',
+        'blurb': 'Ancient and stone-scaled — born strong, slow to change; her power is in '
+                 'her works. Stonewright: gear she upgrades comes out hardened (Gear+), and '
+                 'her pet fights a step above its level.',
+    },
 }
 
 # Cosmetic-only alternate sprite per starter. Client mirror: FORM_VARIANTS in

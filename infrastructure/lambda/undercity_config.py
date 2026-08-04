@@ -344,3 +344,10 @@ LAIR_RESPAWN_MINUTES = 60
 # a small chance of one minor consumable.
 LAIR_SCAVENGE_SPORES = (5, 10)
 LAIR_SCAVENGE_ITEM_CHANCE = 0.18
+
+# ── Gorgon ("Stonewright") species ───────────────────────────────────────────
+GORGON_START_POINTS = 5           # banked stat points a Gorgon spawns with
+GORGON_STAT_POINTS_PER_LEVEL = 1  # she banks 1/level instead of the usual 2
+GORGON_PET_LEVEL_BONUS = 1        # her active pet fights as if this many levels higher
+GEAR_PLUS_BUMP = 1                # Gear+ adds this to a piece's primary stat…
+GEAR_PLUS_MYTHIC_BUMP = 2         # …or this at Mythic (tier 4)
