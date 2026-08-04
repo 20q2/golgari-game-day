@@ -239,14 +239,32 @@ def test_non_wilderness_battle_still_uses_base_pools(table):
 
 
 def test_boss_area_signature_spawns_themed_minion(table, monkeypatch):
-    # In a boss's depths pocket, a hit signature roll spawns its themed minion.
+    # In a boss's depths pocket, a hit signature roll spawns its bespoke familiar.
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
     doc['position'] = 'bone_d0'                       # Skullbriar's ossuary pocket
-    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)   # under the chance -> signature
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)   # under the chance -> familiar
     ev = db._wild_battle(table, sid, doc, elite=False, region='depths')
-    assert ev['npc']['id'] == data.LAIR_SIGNATURE['bone'] == 'mosspit_skeleton'
+    assert ev['npc']['id'] == data.LAIR_SIGNATURE['bone'] == 'skullbriars_familiar'
+    assert ev['npc']['spriteId'] == 'skullbriars_familiar'
+    # The familiar's trait rides into the battle record (client reads it via npcStatus).
+    assert 'grave_growth' in (doc['battle']['npc'].get('passives') or [])
+
+
+def test_gitrog_spawn_rotates_sprite(table, monkeypatch):
+    # The Gitrog familiar randomly shows one of its two sprite variants.
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'bog_d0'
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.0)
+    seen = set()
+    for choice in ('gitrog_spawn', 'gitrog_spawn2'):
+        monkeypatch.setattr(db._rng, 'choice', lambda seq, c=choice: c)
+        ev = db._wild_battle(table, sid, doc, elite=False, region='depths')
+        seen.add(ev['npc']['spriteId'])
+    assert seen == {'gitrog_spawn', 'gitrog_spawn2'}
 
 
 def test_boss_area_signature_missed_roll_uses_flat_pool(table, monkeypatch):

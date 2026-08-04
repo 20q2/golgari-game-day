@@ -798,7 +798,7 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
     shown = _telegraph_next(rec)
     return {'type': 'battle_start', 'kind': kind,
             'npc': {'name': npc['name'], 'id': npc.get('id'),
-                    'spriteId': npc.get('sprite'),
+                    'spriteId': npc.get('spriteId') or npc.get('sprite'),
                     'hp': npc_snap['hp'], 'maxHp': npc_snap['maxHp'],
                     'atk': npc_snap['atk'], 'def': npc_snap['dfn'],
                     'spd': npc_snap['spd'],
@@ -3976,10 +3976,13 @@ def _wild_battle(table, sid, doc, elite=False, region=None):
         area = 'ruin'
     sig_id = None if elite else data.LAIR_SIGNATURE.get(area)
     if sig_id and _rng.random() < data.SIGNATURE_SPAWN_CHANCE:
-        spec = data.ENEMY_SPECS_BY_ID[sig_id]
+        # A boss familiar (bespoke, exclusive) or the ruin's borrowed pool enemy.
+        spec = data.LAIR_FAMILIAR.get(sig_id) or data.ENEMY_SPECS_BY_ID[sig_id]
     else:
         spec = _rng.choice(pool)
     npc = engine.npc_from_spec(spec)
+    if spec.get('sprites'):
+        npc['spriteId'] = _rng.choice(spec['sprites'])
     npc['personality'] = spec.get('personality', data.NPC_DEFAULT_PERSONALITY)
     npc['bluff'] = spec.get('bluff', data.NPC_DEFAULT_BLUFF)
     return _start_battle(table, sid, doc, 'elite' if elite else 'wild', npc,
@@ -4437,7 +4440,8 @@ def _battle_resume(rec, player_hp):
         'revealed': rec.get('npcActual') if peeked else None,
         'npc': {
             'id': (rec.get('npcMeta') or {}).get('id'),
-            'spriteId': (rec.get('npcMeta') or {}).get('sprite'),
+            'spriteId': ((rec.get('npcMeta') or {}).get('spriteId')
+                         or (rec.get('npcMeta') or {}).get('sprite')),
             'name': npc.get('name'),
             'hp': npc.get('hp'),
             'maxHp': npc.get('maxHp', npc.get('hp')),
