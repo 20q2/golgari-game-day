@@ -328,6 +328,20 @@ const HIGH_FIVE_MS = 1000; // full ready→jump→clap→settle high-five
 const BREATH_SPEED = 2.2; // idle breathing rate
 const BREATH_AMT = 0.04; // idle vertical scale wobble (±4%)
 
+// Active-companion follower: hops after its owner between spaces (arriving a
+// beat late), then pokes around the space when idle.
+const PET_DRAW_H = 30; // on-board display height (px); sprites scaled to this
+const PET_HOP_DUR = 300; // ms per follower hop
+const PET_HOP_HEIGHT = 7; // px lift at a hop's peak
+const PET_HOP_STEP = 34; // max px one hop advances toward the target (far = chain hops)
+const PET_REST_DIST = 5; // within this of the target the pet is "at rest"
+const PET_FOLLOW_DX = -20; // resting offset from the owner's feet (lower-left)
+const PET_FOLLOW_DY = 7;
+const PET_EXPLORE_MIN = 2600; // ms at rest before it may wander
+const PET_EXPLORE_MAX = 6000;
+const PET_EXPLORE_RADIUS = 30; // px it wanders around the space
+const PET_EXPLORE_DWELL = 2200; // ms it pokes around before settling back
+
 // A barrier guardian stands its ground and hops "ever so slightly" to read as
 // actively blocking the way — a shallow, slow bob with a touch of side sway.
 const GUARDIAN_H = 64; // draw height, a shade bigger than a player token
@@ -762,6 +776,38 @@ export class BoardCanvas {
 
   setUmori(umori: { node: string; movesAt: string } | null): void {
     this.umori = umori;
+  }
+
+  // ── Active companion follower ──────────────────────────────────────────────
+  private activePetSprite: string | null = null;
+  private petImg: HTMLImageElement | null = null;
+  private pet: {
+    x: number;
+    y: number;
+    hopStart: number;
+    hopFrom: { x: number; y: number };
+    hopTo: { x: number; y: number };
+    hopping: boolean;
+    facing: number;
+    exploring: boolean;
+    exploreUntil: number;
+    nextExplore: number;
+    explore: { x: number; y: number };
+  } | null = null;
+
+  /** Set (or clear) the sprite of the owner's active companion, drawn trailing
+   *  the own token on the board. Pass null to hide it. */
+  setActivePet(spriteUrl: string | null): void {
+    if (spriteUrl === this.activePetSprite) return;
+    this.activePetSprite = spriteUrl;
+    this.pet = null; // re-seed beside the owner on the next frame
+    if (!spriteUrl) {
+      this.petImg = null;
+      return;
+    }
+    const img = new Image();
+    img.src = spriteUrl;
+    this.petImg = img;
   }
 
   setPlayers(players: BoardPlayer[]): void {
@@ -1526,6 +1572,9 @@ export class BoardCanvas {
     // Painter's algorithm: lower tokens draw over higher ones; labels last so
     // no sprite occludes a name.
     placed.sort((a, b) => a.y - b.y);
+    // Active companion trails its owner (drawn under the tokens so it peeks out
+    // from beside/behind the creatures).
+    this.updateAndDrawPet(ts, elapsed, placed);
     for (const t of placed) this.drawToken(t.p, t.x, t.y, t.hopY, t.breath);
     for (const t of placed) this.drawLabel(t.p, t.x, t.y);
     // Pop any queued heal numbers at their token's current position.
@@ -2893,6 +2942,133 @@ export class BoardCanvas {
     // Evolved units (Tier 2+) loom larger on the board so their upgrade
     // reads at a glance.
     return tier >= 2 ? base * 1.35 : base;
+  }
+
+  /** Update + draw the owner's active companion: it hops after the own token
+   *  between spaces (arriving a beat late) and pokes around the space when idle. */
+  private updateAndDrawPet(
+    ts: number,
+    elapsed: number,
+    placed: { p: BoardPlayer; x: number; y: number; hopY: number; breath: number }[],
+  ): void {
+    const img = this.petImg;
+    if (!this.activePetSprite || !img || !img.complete || !img.naturalWidth) return;
+    const ownT = placed.find((t) => t.p.userId === this.ownUserId);
+    if (!ownT) return; // own token not on this layer / not visible
+
+    const ownSpr = formSprite(ownT.p.form, ownT.p.spriteVariant);
+    const ownH = this.tokenHeight(true, ownT.p.tier) * ownSpr.scale;
+    const ownFootY = ownT.y + ownH * 0.48;
+    const baseX = ownT.x + PET_FOLLOW_DX;
+    const baseY = ownFootY + PET_FOLLOW_DY;
+
+    const oa = this.ownUserId ? this.tokenAnims.get(this.ownUserId) : undefined;
+    const ownMoving = !!oa && ts - oa.start < MOVE_MS;
+
+    const node = this.ownPosition ? this.nodeMap.get(this.ownPosition) : undefined;
+    const nodeCx = node ? node.x : ownT.x;
+    const nodeTopY = node ? node.y - DISC_RY : ownFootY;
+
+    const rollNext = () =>
+      ts + PET_EXPLORE_MIN + Math.random() * (PET_EXPLORE_MAX - PET_EXPLORE_MIN);
+
+    let s = this.pet;
+    if (!s) {
+      s = {
+        x: baseX,
+        y: baseY,
+        hopStart: -1,
+        hopFrom: { x: baseX, y: baseY },
+        hopTo: { x: baseX, y: baseY },
+        hopping: false,
+        facing: 1,
+        exploring: false,
+        exploreUntil: 0,
+        nextExplore: rollNext(),
+        explore: { x: baseX, y: baseY },
+      };
+      this.pet = s;
+    }
+
+    // Where does it want to be this frame?
+    if (ownMoving) {
+      s.exploring = false;
+      s.nextExplore = rollNext();
+    } else if (s.exploring && ts > s.exploreUntil) {
+      s.exploring = false;
+    }
+    const tx = s.exploring ? s.explore.x : baseX;
+    const ty = s.exploring ? s.explore.y : baseY;
+
+    // Advance an in-flight hop; when landed, decide the next move.
+    let hopY = 0;
+    if (s.hopping) {
+      const pr = (ts - s.hopStart) / PET_HOP_DUR;
+      if (pr >= 1) {
+        s.x = s.hopTo.x;
+        s.y = s.hopTo.y;
+        s.hopping = false;
+      } else {
+        const e = easeInOut(pr);
+        s.x = s.hopFrom.x + (s.hopTo.x - s.hopFrom.x) * e;
+        s.y = s.hopFrom.y + (s.hopTo.y - s.hopFrom.y) * e;
+        hopY = -Math.sin(pr * Math.PI) * PET_HOP_HEIGHT;
+      }
+    }
+    if (!s.hopping) {
+      const dx = tx - s.x;
+      const dy = ty - s.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > PET_REST_DIST) {
+        const step = Math.min(dist, PET_HOP_STEP);
+        s.hopFrom = { x: s.x, y: s.y };
+        s.hopTo = { x: s.x + (dx / dist) * step, y: s.y + (dy / dist) * step };
+        s.hopStart = ts;
+        s.hopping = true;
+        if (Math.abs(dx) > 1) s.facing = dx < 0 ? -1 : 1;
+      } else if (!ownMoving) {
+        // Resting by its owner → occasionally wander, hopping spot to spot.
+        if (!s.exploring && ts >= s.nextExplore) {
+          s.exploring = true;
+          s.exploreUntil = ts + PET_EXPLORE_DWELL;
+          s.nextExplore = rollNext();
+        }
+        if (s.exploring) {
+          s.explore = {
+            x: nodeCx + (Math.random() - 0.5) * 2 * PET_EXPLORE_RADIUS,
+            y: nodeTopY + (Math.random() - 0.5) * PET_EXPLORE_RADIUS,
+          };
+        }
+      }
+    }
+
+    // Subtle idle breath so a resting pet isn't frozen.
+    if (!s.hopping) hopY += Math.sin(elapsed * BREATH_SPEED * 0.8) * 0.6;
+
+    const drawH = PET_DRAW_H;
+    const drawW = img.naturalWidth * (drawH / img.naturalHeight);
+    const top = s.y - drawH + hopY;
+    const ctx = this.ctx;
+
+    // Ground shadow (shrinks a touch at a hop's peak to sell the height).
+    const shadowShrink = 1 - Math.min(0.3, -hopY / PET_HOP_HEIGHT / 3);
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y, drawH * 0.34 * shadowShrink, drawH * 0.14 * shadowShrink, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    if (s.facing < 0) {
+      ctx.translate(s.x, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, -drawW / 2, top, drawW, drawH);
+    } else {
+      ctx.drawImage(img, s.x - drawW / 2, top, drawW, drawH);
+    }
+    ctx.restore();
   }
 
   private drawToken(
