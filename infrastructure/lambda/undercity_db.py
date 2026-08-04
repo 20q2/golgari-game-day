@@ -646,7 +646,7 @@ def _bt_snapshot(c):
         'dmg_penalty': int(c.dmg_penalty), 'reveal_next': bool(c.reveal_next),
         'aggress_ramp': int(c.aggress_ramp), 'feint_won': bool(c.feint_won),
         'growth_stacks': int(c.growth_stacks), 'doom_stacks': int(c.doom_stacks),
-        'petrify': int(c.petrify), 'brittle': int(c.brittle),
+        'petrify': int(c.petrify),
         'pet_followup_chance': float(c.pet_followup_chance),
         'pet_followup_mult': float(c.pet_followup_mult),
         'pet_deflect_chance': float(c.pet_deflect_chance),
@@ -678,7 +678,6 @@ def _bt_to_combatant(s):
     c.growth_stacks = int(s.get('growth_stacks', 0))
     c.doom_stacks = int(s.get('doom_stacks', 0))
     c.petrify = int(s.get('petrify', 0))
-    c.brittle = int(s.get('brittle', 0))
     return c
 
 
@@ -699,7 +698,6 @@ def _bt_store(c, rec_side):
     rec_side['growth_stacks'] = int(c.growth_stacks)
     rec_side['doom_stacks'] = int(c.doom_stacks)
     rec_side['petrify'] = int(c.petrify)
-    rec_side['brittle'] = int(c.brittle)
 
 
 def _battle_status(side):
@@ -710,7 +708,7 @@ def _battle_status(side):
     (boss familiars) with live stack counts for the two stacking traits."""
     delta = side.get('statDelta') or {}
     traits = [p for p in (side.get('passives') or []) if p in data.TRAIT_PASSIVES]
-    traits += [k for k in ('petrify', 'brittle') if side.get(k)]   # Gorgon debuffs
+    traits += [k for k in ('petrify',) if side.get(k)]   # Gorgon debuff
     stacks = {}
     if side.get('growth_stacks'):
         stacks['grave_growth'] = int(side['growth_stacks'])
@@ -718,8 +716,6 @@ def _battle_status(side):
         stacks['doom_counters'] = int(side['doom_stacks'])
     if side.get('petrify'):
         stacks['petrify'] = int(side['petrify'])
-    if side.get('brittle'):
-        stacks['brittle'] = int(side['brittle'])
     return {'rot': int(side.get('rot_stacks', 0)),
             'buffs': list(side.get('buffs') or []),
             'delta': {s: int(delta.get(s, 0)) for s in ('atk', 'def', 'spd')},

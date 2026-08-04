@@ -41,7 +41,6 @@ class Combatant:
     growth_stacks: int = field(default=0, repr=False)  # grave_growth ramp count
     doom_stacks: int = field(default=0, repr=False)    # doom_counters ramp count
     petrify: int = field(default=0, repr=False)        # Gorgon Stone Gaze: enemy freeze counter
-    brittle: int = field(default=0, repr=False)        # Gorgon Shatter: enemy damage-amp stacks
     feint_won: bool = field(default=False, repr=False)  # cutpurse: landed a winning Feint
     # active companion combat contribution (Fox follow-up / Turtle deflect)
     pet_followup_chance: float = field(default=0.0, repr=False)
@@ -304,8 +303,6 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             if (win_stance == 'aggress'
                     and losr.max_hp and losr.hp / losr.max_hp < 0.30):
                 mult += winr.mag('gutcleaver', 0.0)   # execute a low-HP foe
-            if winr.has('shatter') and losr.brittle:
-                mult += data.BRITTLE_AMP * min(losr.brittle, data.BRITTLE_MAX)   # crack the stone
             bonus = 0
             if not winr.first_win_used:
                 if winr.has('rot_breath'):
@@ -345,10 +342,6 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             # Rabid: each Aggress win ramps future Aggress hits (applies next win).
             if win_stance == 'aggress' and winr.has_rider('rabid'):
                 winr.aggress_ramp += winr.mag('rabid', 0)
-            # Shatter (Basalt Matron): a winning Aggress cracks the foe — a stacking
-            # Brittle debuff that amplifies the Gorgon's future hits.
-            if win_stance == 'aggress' and winr.has('shatter') and losr.hp > 0:
-                losr.brittle = min(data.BRITTLE_MAX, losr.brittle + 1)
             # Web Venom (Ishkanah): any decisive win injects a rot stack.
             if winr.has('web_venom') and losr.hp > 0:
                 losr.rot_stacks += 1

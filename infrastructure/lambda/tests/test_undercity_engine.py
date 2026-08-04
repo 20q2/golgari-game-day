@@ -1736,29 +1736,3 @@ def test_web_venom_applies_rot_on_a_win():
     assert d.rot_stacks == 0
 
 
-# ── Gorgon Shatter / Brittle (design 2026-08-04) ─────────────────────────────
-def test_shatter_applies_brittle_on_aggress_win():
-    import random
-    atk = fighter(passives=frozenset({'shatter'}))
-    dfn = fighter(name='D')
-    # Aggress beats Feint → decisive attacker win.
-    engine.resolve_round(atk, dfn, 'aggress', 'feint', 1, random.Random(1), frenzy_from=None)
-    assert dfn.brittle == 1
-
-
-def test_brittle_amplifies_gorgon_damage():
-    import random
-    # Same seed + exchange; only difference is the target's Brittle stacks.
-    a1 = fighter(passives=frozenset({'shatter'})); d1 = fighter(name='D', dfn=5)
-    a2 = fighter(passives=frozenset({'shatter'})); d2 = fighter(name='D', dfn=5, brittle=2)
-    engine.resolve_round(a1, d1, 'aggress', 'feint', 1, random.Random(7), frenzy_from=None)
-    engine.resolve_round(a2, d2, 'aggress', 'feint', 1, random.Random(7), frenzy_from=None)
-    assert (d2.max_hp - d2.hp) > (d1.max_hp - d1.hp)     # brittle target took more
-
-
-def test_brittle_caps():
-    import random
-    d = fighter(name='D', brittle=data.BRITTLE_MAX)
-    a = fighter(passives=frozenset({'shatter'}))
-    engine.resolve_round(a, d, 'aggress', 'feint', 1, random.Random(1), frenzy_from=None)
-    assert d.brittle == data.BRITTLE_MAX                 # never exceeds the cap
