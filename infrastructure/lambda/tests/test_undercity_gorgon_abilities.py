@@ -64,6 +64,10 @@ def test_no_stone_gaze_no_petrify(table, monkeypatch):
 
 def test_petrify_threshold_freezes_and_resets(table, monkeypatch):
     sid, doc = _start_a_fight_as_gorgon(table, ['stonewright', 'stone_gaze'])
+    # Neutralize enemy-selection variance (the wild foe is drawn from the module
+    # rng, which advances across tests): a bulky, feeble foe survives both rounds
+    # and can't kill the player, so we isolate the freeze behavior deterministically.
+    doc['battle']['npc'].update({'hp': 999, 'maxHp': 999, 'atk': 1, 'def': 1, 'spd': 1})
     # Pre-load one below the freeze threshold (in-memory; _combat_round saves).
     doc['battle']['npc']['petrify'] = data.PETRIFY_FREEZE_AT - 1
     monkeypatch.setattr(db._rng, 'random', lambda: 0.0)   # reads land
