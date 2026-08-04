@@ -1,6 +1,7 @@
 // Blocking overflow-pickup modal. Full-screen backdrop + centered card, styled
-// to match the level-up overlay (Golgari gold-on-dark). Buttons are re-declared
-// here because .uc-btn is component-scoped, not global.
+// to match the level-up overlay (Golgari gold-on-dark). One panel: the incoming
+// item on top, existing same-kind inventory below. Buttons are re-declared here
+// because .uc-btn is component-scoped, not global.
 
 :host {
   display: contents;
@@ -21,99 +22,160 @@
 
 .pu-card {
   position: relative;
-  width: min(360px, 100%);
-  text-align: center;
+  width: min(380px, 100%);
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  padding: 22px;
+  gap: 12px;
+  padding: 20px;
   background: linear-gradient(180deg, #201d17, #17140f);
   border: 1px solid rgba(224, 192, 120, 0.5);
   border-radius: 18px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
   color: #efe7d6;
+  overflow: hidden;
+}
+
+.pu-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .pu-eyebrow {
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(224, 192, 120, 0.85);
-}
-
-.pu-card h3 {
-  margin: 2px 0 0;
-  font-size: 20px;
+  font-size: 15px;
+  font-weight: 700;
   color: #f4ecda;
 }
 
-.pu-sub {
-  margin: 0;
-  font-size: 13px;
-  color: rgba(239, 231, 214, 0.75);
-}
-
 .pu-count {
+  flex: none;
   font-size: 11px;
-  color: rgba(224, 192, 120, 0.7);
+  color: rgba(224, 192, 120, 0.75);
 }
 
-.pu-price {
+// ── incoming item ────────────────────────────────────────────────────────────
+.pu-newcomer {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  text-align: left;
-  margin: 6px 0 2px;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(224, 192, 120, 0.1);
+  border: 1px solid rgba(224, 192, 120, 0.4);
+}
 
-  label {
-    font-size: 12px;
-    color: rgba(239, 231, 214, 0.8);
-  }
+.pu-row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
-  input {
-    padding: 8px 10px;
-    border-radius: 10px;
-    border: 1px solid rgba(224, 192, 120, 0.35);
-    background: #12100b;
-    color: #f4ecda;
-    font-size: 15px;
-  }
+.pu-badge {
+  flex: none;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 6px;
+  color: #17140f;
+  background: linear-gradient(180deg, #e6c078, #cba75c);
+}
 
-  small {
-    color: rgba(239, 231, 214, 0.55);
-    font-size: 11px;
+.pu-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #f4ecda;
+}
+
+.pu-hint {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(239, 231, 214, 0.72);
+}
+
+// ── divider label ────────────────────────────────────────────────────────────
+.pu-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(239, 231, 214, 0.55);
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(239, 231, 214, 0.14);
   }
 }
 
+// ── existing inventory ───────────────────────────────────────────────────────
 .pu-owned {
   list-style: none;
-  margin: 4px 0 0;
+  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 42vh;
   overflow-y: auto;
 
   li {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 6px;
-    padding: 6px 8px;
-    border-radius: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
     background: rgba(74, 124, 89, 0.14);
   }
 }
 
-.pu-owned-name {
-  flex: 1;
-  text-align: left;
-  font-size: 13px;
+.pu-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+// ── inline sell editor ───────────────────────────────────────────────────────
+.pu-sell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  label {
+    font-size: 11px;
+    color: rgba(239, 231, 214, 0.75);
+  }
+
+  small {
+    font-size: 11px;
+    color: rgba(239, 231, 214, 0.5);
+  }
+}
+
+.pu-sell-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 9px;
+    border-radius: 9px;
+    border: 1px solid rgba(224, 192, 120, 0.35);
+    background: #12100b;
+    color: #f4ecda;
+    font-size: 14px;
+  }
 }
 
 .pu-error {
-  margin: 2px 0 0;
+  margin: 0;
   font-size: 12px;
   color: #e6a5a5;
 }
@@ -156,7 +218,7 @@
 }
 
 .uc-btn-sm {
-  padding: 6px 10px;
+  padding: 7px 10px;
   font-size: 12px;
   border-radius: 9px;
 }

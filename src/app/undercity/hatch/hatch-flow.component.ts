@@ -311,7 +311,7 @@ export class HatchFlowComponent {
   private static readonly ARCHETYPES: Record<string, string> = {
     pest: 'Balanced',
     kraul: 'Glass Cannon',
-    saproling: 'Horde',
+    saproling: 'Speedster',
     zombie: 'Tank',
     squirrel: 'Caster',
   };

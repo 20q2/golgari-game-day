@@ -69,7 +69,7 @@ import {
   inscribeCost,
   witchScrollPrice,
 } from '../data/items';
-import { eggSpriteUrl } from '../data/pets';
+import { eggSpriteUrl, petSpriteUrl } from '../data/pets';
 import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome } from '../data/dungeons';
 import { RUIN_LAIRS, RUIN_LAIR_NAMES, ruinLairAbandoned } from '../data/ruin-lairs';
 import { WORLD_EVENT, WORLD_EVENT_SPRITE } from '../data/world-event';
@@ -2060,6 +2060,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         };
       }),
     );
+    // Active companion follows the own token around the board.
+    const activePet = (you?.pets ?? []).find((p) => p.id === you?.activePetId);
+    this.board.setActivePet(activePet ? petSpriteUrl(activePet.species) : null);
     this.board.setSnares(this.store.snares());
     this.board.setUmori(this.store.umori());
     this.board.setBarriersOpen(this.store.barriersOpen());

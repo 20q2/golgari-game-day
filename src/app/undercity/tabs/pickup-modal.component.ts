@@ -3,20 +3,32 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { PendingPickup } from '../services/undercity-models';
-import { GEAR_MAP, CONSUMABLE_MAP, MarketKind, marketBand } from '../data/items';
+import { GEAR_MAP, CONSUMABLE_MAP, MarketKind, marketBand, SALVAGE_YIELD } from '../data/items';
 import { SPELL_MAP } from '../data/spells';
+
+// Flat salvage refund for a non-gear item, mirroring the constants used in
+// undercity_db._salvage_owned_for_pickup (consumable = 5, scroll =
+// SCROLL_OVERFLOW_SPORES = 12).
+const CONSUMABLE_SALVAGE_SPORES = 5;
+const SCROLL_SALVAGE_SPORES = 12;
 
 interface OwnedRow {
   index: number;
   itemId: string;
   name: string;
+  salvage: string;
 }
+
+/** Which item's inline Sell price-editor is open: the incoming item ('new'),
+ * an owned row (its index), or none (null). */
+type SellTarget = 'new' | number | null;
 
 /** Blocking modal that drains the player's pendingPickups queue one item at a
  * time. Every item gained through the server's _acquire pipeline that overflows
- * a full inventory lands here; the player either lists the new item on the
- * market or frees a slot (salvage / list an owned same-kind piece) so the new
- * item can be kept. Self-hides when the queue is empty. */
+ * a full inventory lands here. A single panel shows the incoming item on top and
+ * the player's existing same-kind inventory below; the player either sells the
+ * incoming item, or frees a slot by salvaging/selling an owned piece (the
+ * incoming item then drops in). Self-hides when the queue is empty. */
 @Component({
   selector: 'app-pickup-modal',
   standalone: true,
@@ -25,58 +37,92 @@ interface OwnedRow {
     @if (head(); as p) {
       <div class="pu-backdrop" role="dialog" aria-modal="true" aria-live="assertive">
         <div class="pu-card">
-          <span class="pu-eyebrow">{{ sourceLine(p) }}</span>
-          <h3>{{ itemName(p.kind, p.itemId) }}</h3>
-          <p class="pu-sub">{{ fullLine(p) }}</p>
+          <header class="pu-head">
+            <span class="pu-eyebrow">{{ fullLine(p) }}</span>
+            @if (queueCount() > 1) {
+              <span class="pu-count">+{{ queueCount() - 1 }} more waiting</span>
+            }
+          </header>
 
-          @if (queueCount() > 1) {
-            <span class="pu-count">{{ queueCount() - 1 }} more waiting</span>
-          }
-
-          @if (mode() === 'root') {
-            <div class="pu-price">
-              <label [attr.for]="'pu-price-new'">Sell price (Spores)</label>
-              <input
-                id="pu-price-new"
-                type="number"
-                [min]="band(p).lo"
-                [max]="band(p).hi"
-                [value]="price()"
-                (input)="setPrice($event)"
-              />
-              <small>{{ band(p).lo }}–{{ band(p).hi }} Spores</small>
+          <!-- Incoming item -->
+          <div class="pu-newcomer">
+            <div class="pu-row-main">
+              <span class="pu-badge">NEW</span>
+              <span class="pu-name">{{ itemName(p.kind, p.itemId) }}</span>
             </div>
-            <button class="uc-btn uc-btn-primary" [disabled]="busy()" (click)="listNew()">
-              <mat-icon class="mi">sell</mat-icon> List on Market
-            </button>
-            <button class="uc-btn" [disabled]="busy()" (click)="mode.set('manage')">
-              <mat-icon class="mi">inventory_2</mat-icon> Manage Inventory
-            </button>
-          } @else {
-            <p class="pu-sub">Free a slot — salvage or list one you already own:</p>
-            <ul class="pu-owned">
-              @for (row of owned(p); track row.index) {
-                <li>
-                  <span class="pu-owned-name">{{ row.name }}</span>
-                  <button class="uc-btn uc-btn-sm" [disabled]="busy()" (click)="salvageOwned(row)">
-                    Salvage
-                  </button>
-                  <button class="uc-btn uc-btn-sm" [disabled]="busy()" (click)="listOwned(row)">
-                    List
-                  </button>
-                </li>
-              }
-            </ul>
-            <button class="uc-btn uc-btn-ghost" [disabled]="busy()" (click)="mode.set('root')">
-              Back
-            </button>
-          }
+            <p class="pu-hint">{{ sourceLine(p) }} — keep it by clearing a slot below, or:</p>
+            @if (sellTarget() === 'new') {
+              <ng-container
+                *ngTemplateOutlet="priceEditor; context: { $implicit: p.kind, id: p.itemId }"
+              ></ng-container>
+            } @else {
+              <button class="uc-btn uc-btn-primary" [disabled]="busy()" (click)="openSell('new')">
+                <mat-icon class="mi">sell</mat-icon> Sell on Market
+              </button>
+            }
+          </div>
+
+          <div class="pu-divider">
+            <span>Your {{ whereLabel(p.kind) }} — clear a slot to keep it</span>
+          </div>
+
+          <!-- Existing same-kind inventory -->
+          <ul class="pu-owned">
+            @for (row of owned(p); track row.index) {
+              <li>
+                <div class="pu-row-main">
+                  <span class="pu-name">{{ row.name }}</span>
+                </div>
+                @if (sellTarget() === row.index) {
+                  <ng-container
+                    *ngTemplateOutlet="priceEditor; context: { $implicit: p.kind, id: row.itemId }"
+                  ></ng-container>
+                } @else {
+                  <div class="pu-row-actions">
+                    <button class="uc-btn uc-btn-sm" [disabled]="busy()" (click)="salvageOwned(row)">
+                      Salvage · {{ row.salvage }}
+                    </button>
+                    <button
+                      class="uc-btn uc-btn-sm"
+                      [disabled]="busy()"
+                      (click)="openSell(row.index)"
+                    >
+                      Sell ▸
+                    </button>
+                  </div>
+                }
+              </li>
+            }
+          </ul>
 
           @if (error()) {
             <p class="pu-error">{{ error() }}</p>
           }
         </div>
       </div>
+
+      <!-- Inline price editor, reused by the newcomer and every owned row. -->
+      <ng-template #priceEditor let-kind let-id="id">
+        <div class="pu-sell">
+          <label>Sell price (Spores)</label>
+          <div class="pu-sell-controls">
+            <input
+              type="number"
+              [min]="bandFor(kind, id).lo"
+              [max]="bandFor(kind, id).hi"
+              [value]="price()"
+              (input)="setPrice($event)"
+            />
+            <button class="uc-btn uc-btn-sm uc-btn-primary" [disabled]="busy()" (click)="confirmSell()">
+              List
+            </button>
+            <button class="uc-btn uc-btn-sm uc-btn-ghost" [disabled]="busy()" (click)="cancelSell()">
+              Cancel
+            </button>
+          </div>
+          <small>{{ bandFor(kind, id).lo }}–{{ bandFor(kind, id).hi }} Spores</small>
+        </div>
+      </ng-template>
     }
   `,
   styleUrls: ['./pickup-modal.component.scss'],
@@ -84,10 +130,10 @@ interface OwnedRow {
 export class PickupModalComponent {
   private readonly store = inject(UndercityStateService);
 
-  protected readonly mode = signal<'root' | 'manage'>('root');
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly price = signal(0);
+  protected readonly sellTarget = signal<SellTarget>(null);
 
   protected readonly head = computed<PendingPickup | null>(
     () => this.store.you()?.pendingPickups?.[0] ?? null,
@@ -100,28 +146,42 @@ export class PickupModalComponent {
     return SPELL_MAP[itemId]?.name ?? itemId;
   }
 
-  protected band(p: PendingPickup): { lo: number; hi: number } {
-    const b = marketBand(p.kind, p.itemId);
-    if (this.price() < b.lo || this.price() > b.hi) this.price.set(b.lo);
-    return b;
+  /** Human-readable yield from salvaging an item — materials for gear, a flat
+   * Spore refund for consumables/scrolls (mirrors the server salvage rates). */
+  protected salvageYield(kind: MarketKind, itemId: string): string {
+    if (kind === 'gear') {
+      const tier = GEAR_MAP[itemId]?.tier ?? 1;
+      const y = SALVAGE_YIELD[tier] ?? { moltings: 1, ichor: 0 };
+      const parts = [`${y.moltings} Molting${y.moltings === 1 ? '' : 's'}`];
+      if (y.ichor) parts.push(`${y.ichor} Gemstone${y.ichor === 1 ? '' : 's'}`);
+      return parts.join(' + ');
+    }
+    const spores = kind === 'consumable' ? CONSUMABLE_SALVAGE_SPORES : SCROLL_SALVAGE_SPORES;
+    return `${spores} Spores`;
+  }
+
+  protected bandFor(kind: MarketKind, itemId: string): { lo: number; hi: number } {
+    return marketBand(kind, itemId);
   }
 
   protected sourceLine(p: PendingPickup): string {
     const bySource: Record<string, string> = {
       battle: 'Battle spoils',
-      boss: 'The Queen falls',
-      loot: 'You found',
+      boss: "The Queen's hoard",
+      loot: 'A fresh find',
       dig: 'Unearthed',
       scavenge: 'Scavenged',
-      reward: 'Game-day reward',
+      reward: 'A game-day reward',
     };
-    return bySource[p.source] ?? 'You found';
+    return bySource[p.source] ?? 'A fresh find';
+  }
+
+  protected whereLabel(kind: MarketKind): string {
+    return kind === 'gear' ? 'gear stash' : kind === 'consumable' ? 'bag' : 'scroll satchel';
   }
 
   protected fullLine(p: PendingPickup): string {
-    const where =
-      p.kind === 'gear' ? 'gear stash' : p.kind === 'consumable' ? 'bag' : 'scroll satchel';
-    return `Your ${where} is full. Sell it, or make room to keep it.`;
+    return `Your ${this.whereLabel(p.kind)} is full!`;
   }
 
   protected owned(p: PendingPickup): OwnedRow[] {
@@ -137,6 +197,7 @@ export class PickupModalComponent {
       index,
       itemId,
       name: this.itemName(p.kind, itemId),
+      salvage: this.salvageYield(p.kind, itemId),
     }));
   }
 
@@ -144,12 +205,27 @@ export class PickupModalComponent {
     this.price.set(Number((e.target as HTMLInputElement).value) || 0);
   }
 
+  /** Open the inline price editor for a target, seeding a valid default price. */
+  protected openSell(target: 'new' | number): void {
+    const p = this.head();
+    if (!p) return;
+    const itemId = target === 'new' ? p.itemId : this.owned(p)[target]?.itemId;
+    if (!itemId) return;
+    this.price.set(marketBand(p.kind, itemId).lo);
+    this.error.set('');
+    this.sellTarget.set(target);
+  }
+
+  protected cancelSell(): void {
+    this.sellTarget.set(null);
+  }
+
   private async resolve(payload: Record<string, unknown>): Promise<void> {
     this.busy.set(true);
     this.error.set('');
     try {
       await this.store.action('pickup-resolve', payload);
-      this.mode.set('root'); // re-render for the next queued item, if any
+      this.sellTarget.set(null); // re-render for the next queued item, if any
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'Could not resolve — try again.');
     } finally {
@@ -157,15 +233,16 @@ export class PickupModalComponent {
     }
   }
 
-  protected listNew(): void {
-    void this.resolve({ choice: 'list-new', price: this.price() });
+  protected confirmSell(): void {
+    const target = this.sellTarget();
+    if (target === 'new') {
+      void this.resolve({ choice: 'list-new', price: this.price() });
+    } else if (typeof target === 'number') {
+      void this.resolve({ choice: 'list-owned', index: target, price: this.price() });
+    }
   }
 
   protected salvageOwned(row: OwnedRow): void {
     void this.resolve({ choice: 'salvage-owned', index: row.index });
-  }
-
-  protected listOwned(row: OwnedRow): void {
-    void this.resolve({ choice: 'list-owned', index: row.index, price: this.price() });
   }
 }
