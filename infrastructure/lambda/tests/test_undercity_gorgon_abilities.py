@@ -78,3 +78,9 @@ def test_petrify_threshold_freezes_and_resets(table, monkeypatch):
     npc = db._get_player(table, sid, 'user-alex')['battle']['npc']
     assert npc['petrify'] < data.PETRIFY_FREEZE_AT       # freeze consumed the stacks
     assert npc['hp'] <= hp_before
+
+
+def test_basalt_has_shatter_and_bruiser_bonus():
+    b = data.TIER2['basalt_matron']
+    assert b['passive'] == 'shatter'
+    assert b['bonus'] == {'atk': 2, 'maxHp': 4}
