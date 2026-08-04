@@ -42,6 +42,16 @@ const ACTION_WORD: Record<Stance, string> = {
   feint: 'Feint!',
 };
 
+/** Relative arena sprite scale for a fighter given its tier and its foe's tier.
+ *  Symmetric: +12.5% per tier of advantage, clamped so a 2-tier gap lands at
+ *  ±25% (e.g. a T1 pest vs a T3 apex → 0.75 vs 1.25). Missing either tier → 1
+ *  (no scaling), so any tier-less path renders unchanged. */
+export function spriteScale(mine?: number, theirs?: number): number {
+  if (!mine || !theirs) return 1;
+  const s = 1 + 0.125 * (mine - theirs);
+  return Math.min(1.25, Math.max(0.75, s));
+}
+
 /**
  * Interactive PvE battle (Plan 3): shows the monster's telegraph + personality,
  * takes one stance (± peek/flee/consumable) per round, then plays the
@@ -111,6 +121,14 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   protected readonly showItems = signal(false);
   protected readonly attackerSpriteFailed = signal(false);
   protected readonly defenderSpriteFailed = signal(false);
+
+  /** Relative sprite size for each fighter, driven by the tier gap. */
+  protected attackerScale(): number {
+    return spriteScale(this.attacker.tier, this.defender.tier);
+  }
+  protected defenderScale(): number {
+    return spriteScale(this.defender.tier, this.attacker.tier);
+  }
 
   // Bout animation state driven by the beat sequence.
   protected readonly stanceAnim = signal<{ attacker?: Stance; defender?: Stance }>({});

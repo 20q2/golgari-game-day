@@ -73,6 +73,7 @@
           <span
             class="body drop-in"
             [class.vestige]="attacker.vestige"
+            [style.--sprite-scale]="attackerScale()"
             [style.--uc-sprite]="attacker.spriteUrl && !attackerSpriteFailed() ? 'url(\'' + attacker.spriteUrl + '\')' : null"
           >
             @if (guard().attacker) { <span class="barrier"></span> }
@@ -126,6 +127,7 @@
           <span
             class="body drop-in"
             [class.vestige]="defender.vestige"
+            [style.--sprite-scale]="defenderScale()"
             [style.--uc-sprite]="defender.spriteUrl && !defenderSpriteFailed() ? 'url(\'' + defender.spriteUrl + '\')' : null"
           >
             @if (guard().defender) { <span class="barrier"></span> }
