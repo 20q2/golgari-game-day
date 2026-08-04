@@ -87,10 +87,10 @@ import { formName } from '../data/forms';
 import { RegionInfo, regionInfo, tunnelDest } from '../data/regions';
 import { formSprite } from '../data/species';
 import { getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
-import { BattlePlaybackComponent, BattleSide, BattleRewards } from './battle-playback.component';
+import { BattlePlaybackComponent, BattleSide, BattleRewards, BattleCompanion } from './battle-playback.component';
 import { InteractiveBattleComponent, BattleItem, CombatStats } from './interactive-battle.component';
 import { computeStanceAugments, StanceAugment } from '../data/combat';
-import { affordReason, containerFullReason } from '../data/block-reasons';
+import { containerFullReason } from '../data/block-reasons';
 import { DiceRollComponent } from './dice-roll.component';
 import { ExcavationModalComponent } from './excavation.component';
 import { FlowPuzzleModalComponent } from './flow-puzzle.component';
@@ -266,6 +266,17 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const kind = petInfo(pet.species).kind;
     return kind === 'activated' || kind === 'economy' ? pet : null;
   });
+
+  /** The player's active combat companion for the arena — a sidekick sprite for
+   *  attack/defend pets only (forage/scout/economy never appear in a fight). */
+  private youCompanion(): BattleCompanion | undefined {
+    const you = this.store.you();
+    const pet = (you?.pets ?? []).find((p) => p.id === you?.activePetId);
+    if (!pet) return undefined;
+    const role = petRole(pet.species);
+    if (role !== 'attack' && role !== 'defend') return undefined;
+    return { role, spriteUrl: petSpriteUrl(pet.species), name: petInfo(pet.species).name };
+  }
 
   /** Is the board box tappable? Activated pets gate on cooldown; economy pets
    *  gate on having gathered at least 1 Spore to collect. */
@@ -1047,27 +1058,29 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     () => (this.store.you()?.gearStash?.length ?? 0) >= this.GEAR_STASH_SIZE,
   );
 
-  /** Why a shop GEAR line can't be bought (out of stock → stash full → price),
-   *  or null when buyable. */
+  /** Can the player cover a spore price? Drives each buy button's disabled state.
+   *  Affordability is intentionally NOT surfaced as a block-reason line — the
+   *  price is already printed on the (greyed) button, so a "Not enough Spores"
+   *  caption just adds noise. */
+  protected canAfford(cost: number): boolean {
+    return (this.store.you()?.spores ?? 0) >= cost;
+  }
+
+  /** Why a shop GEAR line can't be bought — structural blockers only (out of
+   *  stock → stash full). Affordability is handled by canAfford + the priced
+   *  button, not shown here. Null when there's no structural blocker. */
   protected shopGearReason(info: GearInfo, qty: number): string | null {
     if (qty <= 0) return 'Out of stock';
     if (this.stashFull())
       return containerFullReason(this.GEAR_STASH_SIZE, this.GEAR_STASH_SIZE, 'Stash');
-    return affordReason(this.store.you()?.spores ?? 0, info.cost);
+    return null;
   }
 
-  /** Why a shop CONSUMABLE line can't be bought (out of stock → price). */
+  /** Why a shop CONSUMABLE line can't be bought — out of stock only (see
+   *  shopGearReason on why affordability isn't surfaced). */
   protected shopConsumableReason(info: ConsumableInfo, qty: number): string | null {
     if (qty <= 0) return 'Out of stock';
-    return affordReason(this.store.you()?.spores ?? 0, info.cost);
-  }
-
-  /** Why a GRIMOIRE line can't be bought. Owned tomes return null — the buy
-   *  button is disabled separately (ownsGrimoire) so we skip the "Already owned"
-   *  tag, which would otherwise add a dead column and throw off the row layout. */
-  protected shopGrimoireReason(g: GrimoireInfo): string | null {
-    if (this.ownsGrimoire(g.id)) return null;
-    return affordReason(this.store.you()?.spores ?? 0, g.cost);
+    return null;
   }
 
   protected shopConsumableRows(): { info: ConsumableInfo; qty: number }[] {
@@ -1085,11 +1098,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** In-stock companion eggs for the bazaar's Eggs tab. */
   protected shopEggRows(): { tier: number; qty: number; cost: number }[] {
     return (this.currentBazaar()?.eggs ?? []).filter((e) => e.qty > 0);
-  }
-
-  /** Why an egg line can't be bought (affordability), or null when buyable. */
-  protected shopEggReason(cost: number): string | null {
-    return affordReason(this.store.you()?.spores ?? 0, cost);
   }
 
   async buyEgg(tier: number): Promise<void> {
@@ -1352,6 +1360,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       }));
   });
 
+  /** Last castRequest id acted on, so a menu-aimed spell opens its picker once. */
+  private lastCastReqId = 0;
+
   constructor() {
     // Keep the canvas (and the local walk) in sync with the polled store.
     effect(() => {
@@ -1405,6 +1416,15 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       this.store.recenterRequest();
       const pos = untracked(() => this.store.you()?.position);
       if (pos) this.board?.spectateOn(pos);
+    });
+    // A spell aimed from the Magic menu that needs board context: the page has
+    // switched us to the Board, so open that spell's normal targeting picker.
+    effect(() => {
+      const req = this.store.castRequest();
+      if (!req || req.id === this.lastCastReqId) return;
+      this.lastCastReqId = req.id;
+      const spell = SPELL_MAP[req.spellId];
+      if (spell) this.pickSpell(spell);
     });
     // First time this run you drop below half HP, surface the healing coach.
     // Held back during a live battle so it lands once the fight resolves; the
@@ -2737,6 +2757,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         maxHp: you?.maxHp ?? preHp,
         level: you?.level,
         tier: you?.tier,
+        companion: this.youCompanion(),
       },
       defender: {
         name: ev.npc!.name,
@@ -2788,6 +2809,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         maxHp: you?.maxHp ?? pb.playerHp,
         level: you?.level,
         tier: you?.tier,
+        companion: this.youCompanion(),
       },
       defender: {
         name: pb.npc.name,

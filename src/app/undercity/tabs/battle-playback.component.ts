@@ -12,6 +12,14 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { BattleResult, CombatEntry } from '../services/undercity-models';
 
+/** A combat companion rendered beside the player in the arena. Only attack/defend
+ *  pets appear (the only roles that act in a fight); set on the attacker side only. */
+export interface BattleCompanion {
+  role: 'attack' | 'defend';
+  spriteUrl: string;
+  name: string;
+}
+
 export interface BattleSide {
   name: string;
   spriteUrl?: string | null;
@@ -27,6 +35,9 @@ export interface BattleSide {
   /** A beaten lair boss re-fought at half strength — rendered with the same
    * drained/blurred vestige filter it wears in the overworld. */
   vestige?: boolean;
+  /** The player's active combat companion (attack/defend only), shown as a
+   *  sidekick in the arena. Only ever set on the attacker side. */
+  companion?: BattleCompanion;
 }
 
 /** Spoils shown in the victory popup after a won battle. */
