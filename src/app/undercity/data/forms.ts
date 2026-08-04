@@ -101,8 +101,8 @@ export const STARTERS: FormInfo[] = [
     stats: { hp: 25, atk: 5, def: 4, spd: 7 },
   },
   {
-    id: 'gorgon', name: 'Gorgon', tier: 1, passive: 'stonewright', passiveName: 'Stonewright',
-    blurb: 'Ancient and stone-scaled — born strong, slow to grow; her power is in her works.',
+    id: 'gorgon', name: 'Elf', tier: 1, passive: 'stonewright', passiveName: 'Stonewright',
+    blurb: 'Ancient and long-lived — born gifted, slow to grow; her power is in her works.',
     stats: { hp: 25, atk: 6, def: 6, spd: 4 },
   },
 ];
