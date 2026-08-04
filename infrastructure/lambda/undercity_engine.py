@@ -310,12 +310,12 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             # trickster: a lost Feint is not fully punished.
             if lose_stance == 'feint' and losr.has_rider('trickster'):
                 dmg = round(dmg * (1 - losr.mag('trickster', 0.0)))
-            # Turtle companion: occasionally shrugs off part of the decisive hit.
+            # Defend companion: occasionally shrugs off part of the decisive hit.
             if dmg > 0 and losr.pet_deflect_chance and rng.random() < losr.pet_deflect_chance:
                 blocked = min(dmg, losr.pet_deflect_flat)
                 dmg -= blocked
                 entries.append({'round': rnd, 'by': lose_side, 'deflect': blocked,
-                                'pet': 'turtle'})
+                                'pet': 'defend'})
             if dmg > 0:
                 losr.hp -= dmg
                 entry = {'round': rnd, 'by': win_side, 'dmg': dmg, 'winner': win_side}
@@ -327,12 +327,12 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                     winr.hp = min(winr.max_hp, winr.hp + heal); entry['heal'] = heal
                 entries.append(entry)
                 _bramble(losr, winr, lose_side, rnd, entries)
-                # Fox companion: an occasional follow-up nip on the decisive hit.
+                # Attack companion: an occasional follow-up nip on the decisive hit.
                 if winr.pet_followup_chance and losr.hp > 0 and rng.random() < winr.pet_followup_chance:
                     extra = max(1, round(dmg * winr.pet_followup_mult))
                     losr.hp -= extra
                     entries.append({'round': rnd, 'by': win_side, 'dmg': extra,
-                                    'pet': 'fox', 'winner': win_side})
+                                    'pet': 'attack', 'winner': win_side})
             # Rabid: each Aggress win ramps future Aggress hits (applies next win).
             if win_stance == 'aggress' and winr.has_rider('rabid'):
                 winr.aggress_ramp += winr.mag('rabid', 0)
@@ -820,20 +820,22 @@ def attribute_perks(player: dict) -> frozenset:
 
 
 def pet_combat(pet: dict) -> dict:
-    """Derive an active pet's combat contribution: follow-up (Fox) and deflect
-    (Turtle), scaled by level. Non-combat species / None -> all zeros."""
+    """Derive an active pet's combat contribution by ROLE: an 'attack' pet adds a
+    follow-up hit, a 'defend' pet deflects, both scaled by level. Non-combat role
+    / None -> all zeros."""
     out = {'followup_chance': 0.0, 'followup_mult': 0.0,
            'deflect_chance': 0.0, 'deflect_flat': 0}
     if not pet:
         return out
-    cfg = data.PET_COMBAT.get(pet.get('species'))
+    role = data.pet_role(pet.get('species'))
+    cfg = data.PET_COMBAT.get(role)
     if not cfg:
         return out
     lvl = int(pet.get('level', 1))
-    if pet['species'] == 'fox':
+    if role == 'attack':
         out['followup_chance'] = cfg['followup_chance_base'] + cfg['followup_chance_per_lvl'] * (lvl - 1)
         out['followup_mult'] = cfg['followup_mult']
-    elif pet['species'] == 'turtle':
+    elif role == 'defend':
         out['deflect_chance'] = cfg['deflect_chance_base'] + cfg['deflect_chance_per_lvl'] * (lvl - 1)
         out['deflect_flat'] = int(cfg['deflect_flat_base'] + cfg['deflect_flat_per_lvl'] * (lvl - 1))
     return out

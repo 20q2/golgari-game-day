@@ -1595,37 +1595,70 @@ def flow_puzzle(pid):
 
 # ── Companions ────────────────────────────────────────────────────────────
 # Each pet is an instance whose `tier` is its rarity (1 Common .. 4 Mythic),
-# mirroring gear. `kind` selects how the pet acts.
-PET_SPECIES = {
-    'fox':    {'name': 'Fox',    'kind': 'combat-passive',
-               'blurb': 'Chance to strike a follow-up hit in battle.'},
-    'turtle': {'name': 'Turtle', 'kind': 'combat-passive',
-               'blurb': 'Chance to deflect a few points of damage.'},
-    'bird':   {'name': 'Bird',   'kind': 'activated',
-               'blurb': "Scouts a bazaar's stock before you arrive."},
-    'mouse':  {'name': 'Mouse',  'kind': 'activated',
-               'blurb': 'Scavenges a small cache of loot.'},
-    'grub':   {'name': 'Grub',   'kind': 'economy',
-               'blurb': 'Trickles moltings as you travel.'},
+# mirroring gear. A pet's ROLE (not its species name) selects how it acts, so
+# every role has two collectible species that share one ability. Art lives at
+# public/undercity/pets/<role>/<species>.png (client mirror: data/pets.ts).
+PET_ROLES = {
+    'attack':  {'kind': 'combat-passive', 'blurb': 'Chance to strike a follow-up hit in battle.'},
+    'defend':  {'kind': 'combat-passive', 'blurb': 'Chance to deflect a few points of damage.'},
+    'forage':  {'kind': 'activated',      'blurb': 'Scavenges a small cache of loot.'},
+    'scout':   {'kind': 'activated',      'blurb': "Scouts a bazaar's stock before you arrive."},
+    'economy': {'kind': 'economy',        'blurb': 'Trickles moltings as you travel.'},
 }
+
+# species id (== sprite filename) -> (display name, role). Two per role.
+_PET_ROSTER = {
+    'baby_leyline_prowler':     ('Leyline Prowler', 'attack'),
+    'baby_moldering_karock':    ('Moldering Karock', 'attack'),
+    'decimator_beetle':         ('Decimator Beetle', 'defend'),
+    'small_bear':               ('Bear Cub', 'defend'),
+    'baby_broodspinner':        ('Broodspinner', 'economy'),
+    'slime':                    ('Slime', 'economy'),
+    'baby_darkheart_sliver':    ('Darkheart Sliver', 'forage'),
+    'rat':                      ('Rat', 'forage'),
+    'baby_gloomshrieker':       ('Gloomshrieker', 'scout'),
+    'baby_winding_constrictor': ('Winding Constrictor', 'scout'),
+}
+
+# Denormalize role -> kind/blurb onto each species so callers can keep reading
+# PET_SPECIES[sid]['kind'] / ['blurb'] / ['role'] directly.
+PET_SPECIES = {
+    sid: {'name': name, 'role': role,
+          'kind': PET_ROLES[role]['kind'], 'blurb': PET_ROLES[role]['blurb']}
+    for sid, (name, role) in _PET_ROSTER.items()
+}
+
+
+def _pet_hatch_weight(role, tier):
+    """Higher-tier eggs skew away from the economy role toward the rarer actives."""
+    if role == 'economy':
+        return {1: 1.0, 2: 0.6, 3: 0.4, 4: 0.3}[tier]
+    if role in ('forage', 'scout'):
+        return {1: 1.0, 2: 1.0, 3: 0.8, 4: 0.6}[tier]
+    return 1.0
+
 
 # Egg tier -> weighted species outcomes. An egg always hatches; the egg's tier
-# also becomes the hatched pet's starting tier. Higher-tier eggs skew away from
-# the economy Grub toward the rarer actives.
+# also becomes the hatched pet's starting tier.
 PET_HATCH = {
-    1: {'fox': 1.0, 'turtle': 1.0, 'bird': 1.0, 'mouse': 1.0, 'grub': 1.0},
-    2: {'fox': 1.0, 'turtle': 1.0, 'bird': 1.0, 'mouse': 1.0, 'grub': 0.6},
-    3: {'fox': 1.0, 'turtle': 1.0, 'bird': 0.8, 'mouse': 0.8, 'grub': 0.4},
-    4: {'fox': 1.0, 'turtle': 1.0, 'bird': 0.6, 'mouse': 0.6, 'grub': 0.3},
+    tier: {sid: _pet_hatch_weight(spec['role'], tier) for sid, spec in PET_SPECIES.items()}
+    for tier in (1, 2, 3, 4)
 }
 
-# Combat-pet magnitudes. Small and level-scaled; the two combat species only.
+# Combat-pet magnitudes, keyed by ROLE (both attack species share one profile,
+# both defend species another). Small and level-scaled.
 PET_COMBAT = {
-    'fox':    {'followup_chance_base': 0.10, 'followup_chance_per_lvl': 0.03,
+    'attack': {'followup_chance_base': 0.10, 'followup_chance_per_lvl': 0.03,
                'followup_mult': 0.30},
-    'turtle': {'deflect_chance_base': 0.12, 'deflect_chance_per_lvl': 0.03,
+    'defend': {'deflect_chance_base': 0.12, 'deflect_chance_per_lvl': 0.03,
                'deflect_flat_base': 2, 'deflect_flat_per_lvl': 0.34},
 }
+
+
+def pet_role(species):
+    """Role of a companion species ('attack'|'defend'|'forage'|'scout'|'economy'),
+    or None for an unknown species."""
+    return PET_SPECIES.get(species, {}).get('role')
 
 # Egg drops mirror GEAR_DROP: source -> (chance, {egg_tier: weight}).
 # Eggs are rarer than gear; richer sources skew toward higher-tier eggs.

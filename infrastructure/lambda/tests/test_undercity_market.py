@@ -204,7 +204,7 @@ def test_market_buy_legacy_gear_row(table):
 
 # ── Companion pets / eggs on the player market (instance listings) ────────────
 
-def _give_pet_to(doc, species='fox', tier=2, level=3):
+def _give_pet_to(doc, species='baby_leyline_prowler', tier=2, level=3):
     pet = {'id': db._new_id('pet-'), 'species': species, 'tier': tier,
            'level': level, 'mergeProgress': 0}
     doc.setdefault('pets', []).append(pet)
@@ -213,7 +213,7 @@ def _give_pet_to(doc, species='fox', tier=2, level=3):
 
 def test_market_list_and_buy_pet(table):
     sid, seller, buyer = _two_players(table)
-    pet = _give_pet_to(seller, 'fox', tier=2, level=3)
+    pet = _give_pet_to(seller, 'baby_leyline_prowler', tier=2, level=3)
     lo, _hi = db._instance_price_band('pet', pet)
     status, body = db._market_list(table, sid, seller, {'kind': 'pet', 'petId': pet['id'], 'price': lo})
     assert status == 200
@@ -225,7 +225,7 @@ def test_market_list_and_buy_pet(table):
     assert status == 200
     assert len(buyer['pets']) == 1
     got = buyer['pets'][0]
-    assert got['species'] == 'fox' and got['tier'] == 2 and got['level'] == 3
+    assert got['species'] == 'baby_leyline_prowler' and got['tier'] == 2 and got['level'] == 3
     assert got['id'] != pet['id']                  # a fresh instance id was minted
     assert buyer['spores'] == 500 - lo
     assert _listing_gone(table, sid, lid)

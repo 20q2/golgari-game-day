@@ -289,9 +289,9 @@ SCROLL_DROP_CHANCE = {
 # Minutes an egg sits in the (single) incubator before it can hatch.
 PET_INCUBATE_MINUTES = 15
 
-# Activated-ability real-time cooldowns (minutes), keyed by species; leveling
-# the pet shortens the wait down to a floor. Mirrors the spell-cooldown idiom.
-PET_ABILITY_COOLDOWN_MIN = {'bird': 30, 'mouse': 20}
+# Activated-ability real-time cooldowns (minutes), keyed by ROLE; leveling the
+# pet shortens the wait down to a floor. Mirrors the spell-cooldown idiom.
+PET_ABILITY_COOLDOWN_MIN = {'scout': 30, 'forage': 20}
 PET_ABILITY_COOLDOWN_PER_LVL = 2      # minutes shaved per level above 1
 PET_ABILITY_COOLDOWN_FLOOR = 5        # never faster than this
 

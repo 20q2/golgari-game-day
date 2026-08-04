@@ -11,11 +11,13 @@ from test_undercity_db import table, act, _player_at, _sid  # noqa: F401
 
 
 def test_pet_tables_wellformed():
-    # Five species, each with a name/kind/blurb.
-    assert set(data.PET_SPECIES) == {'fox', 'turtle', 'bird', 'mouse', 'grub'}
+    # Ten species across five roles (two per role), each with name/role/kind/blurb.
+    assert len(data.PET_SPECIES) == 10
+    assert {sp['role'] for sp in data.PET_SPECIES.values()} == {
+        'attack', 'defend', 'forage', 'scout', 'economy'}
     for sp in data.PET_SPECIES.values():
         assert sp['kind'] in ('combat-passive', 'activated', 'economy')
-        assert sp['name'] and sp['blurb']
+        assert sp['name'] and sp['blurb'] and sp['role']
     # Progression tables cover the four rarity tiers.
     assert set(data.PET_LEVEL_CAP) == {1, 2, 3, 4}
     assert data.PET_MERGE_COST.keys() == {2, 3, 4}       # cost to REACH tier 2/3/4
@@ -35,7 +37,7 @@ def test_pet_helpers(table):
     sid, doc = _player_at(table, 'n1')
     pid = db._new_id('pet-')
     assert pid.startswith('pet-') and len(pid) > 4
-    pet = {'id': pid, 'species': 'fox', 'tier': 1, 'level': 1, 'mergeProgress': 0}
+    pet = {'id': pid, 'species': 'baby_leyline_prowler', 'tier': 1, 'level': 1, 'mergeProgress': 0}
     doc['pets'] = [pet]
     assert db._find_pet(doc, pid) is pet
     assert db._find_pet(doc, 'missing') is None
@@ -82,7 +84,7 @@ def test_incubate_rejects_when_slot_busy(table):
     assert status == 409
 
 
-def _give_pet(doc, species='fox', tier=1, level=1):
+def _give_pet(doc, species='baby_leyline_prowler', tier=1, level=1):
     pet = {'id': db._new_id('pet-'), 'species': species, 'tier': tier,
            'level': level, 'mergeProgress': 0}
     doc.setdefault('pets', []).append(pet)
@@ -91,7 +93,7 @@ def _give_pet(doc, species='fox', tier=1, level=1):
 
 def test_activate_pet(table):
     sid, doc = _player_at(table, 'n1')
-    pet = _give_pet(doc, 'turtle')
+    pet = _give_pet(doc, 'decimator_beetle')
     status, body = db._activate_pet(table, sid, doc, {'petId': pet['id']})
     assert status == 200
     assert doc['activePetId'] == pet['id']
@@ -103,9 +105,9 @@ def test_activate_pet(table):
 
 def test_merge_same_species_ranks_up(table):
     sid, doc = _player_at(table, 'n1')
-    keeper = _give_pet(doc, 'fox', tier=1)
-    f1 = _give_pet(doc, 'fox', tier=1)
-    f2 = _give_pet(doc, 'fox', tier=1)
+    keeper = _give_pet(doc, 'baby_leyline_prowler', tier=1)
+    f1 = _give_pet(doc, 'baby_leyline_prowler', tier=1)
+    f2 = _give_pet(doc, 'baby_leyline_prowler', tier=1)
     status, body = db._merge_pet(table, sid, doc, {
         'targetPetId': keeper['id'], 'fodderPetIds': [f1['id'], f2['id']]})
     assert status == 200
@@ -116,8 +118,8 @@ def test_merge_same_species_ranks_up(table):
 
 def test_merge_rejects_cross_species(table):
     sid, doc = _player_at(table, 'n1')
-    keeper = _give_pet(doc, 'fox')
-    fodder = _give_pet(doc, 'turtle')
+    keeper = _give_pet(doc, 'baby_leyline_prowler')
+    fodder = _give_pet(doc, 'decimator_beetle')
     status, _ = db._merge_pet(table, sid, doc, {
         'targetPetId': keeper['id'], 'fodderPetIds': [fodder['id']]})
     assert status == 409
@@ -126,8 +128,8 @@ def test_merge_rejects_cross_species(table):
 
 def test_merge_partial_progress_carries(table):
     sid, doc = _player_at(table, 'n1')
-    keeper = _give_pet(doc, 'fox', tier=1)
-    f1 = _give_pet(doc, 'fox', tier=1)
+    keeper = _give_pet(doc, 'baby_leyline_prowler', tier=1)
+    f1 = _give_pet(doc, 'baby_leyline_prowler', tier=1)
     status, _ = db._merge_pet(table, sid, doc, {
         'targetPetId': keeper['id'], 'fodderPetIds': [f1['id']]})
     assert status == 200
@@ -136,7 +138,7 @@ def test_merge_partial_progress_carries(table):
 
 def test_level_pet_spends_materials(table):
     sid, doc = _player_at(table, 'n1')
-    pet = _give_pet(doc, 'fox', tier=1, level=1)   # tier-1 level cost: 2 moltings
+    pet = _give_pet(doc, 'baby_leyline_prowler', tier=1, level=1)   # tier-1 level cost: 2 moltings
     doc['materials'] = {'moltings': 5, 'ichor': 0}
     status, body = db._level_pet(table, sid, doc, {'petId': pet['id']})
     assert status == 200
@@ -146,7 +148,7 @@ def test_level_pet_spends_materials(table):
 
 def test_level_pet_rejects_when_short(table):
     sid, doc = _player_at(table, 'n1')
-    pet = _give_pet(doc, 'fox', tier=1, level=1)
+    pet = _give_pet(doc, 'baby_leyline_prowler', tier=1, level=1)
     doc['materials'] = {'moltings': 0, 'ichor': 0}
     status, _ = db._level_pet(table, sid, doc, {'petId': pet['id']})
     assert status == 402
@@ -155,7 +157,7 @@ def test_level_pet_rejects_when_short(table):
 
 def test_level_pet_rejects_at_cap(table):
     sid, doc = _player_at(table, 'n1')
-    pet = _give_pet(doc, 'fox', tier=1, level=data.PET_LEVEL_CAP[1])
+    pet = _give_pet(doc, 'baby_leyline_prowler', tier=1, level=data.PET_LEVEL_CAP[1])
     doc['materials'] = {'moltings': 99, 'ichor': 99}
     status, _ = db._level_pet(table, sid, doc, {'petId': pet['id']})
     assert status == 409
@@ -164,7 +166,7 @@ def test_level_pet_rejects_at_cap(table):
 
 def test_salvage_low_tier_gives_moltings(table):
     sid, doc = _player_at(table, 'n1')
-    pet = _give_pet(doc, 'fox', tier=1, level=1)   # base 1 molting, no ichor
+    pet = _give_pet(doc, 'baby_leyline_prowler', tier=1, level=1)   # base 1 molting, no ichor
     doc['materials'] = {'moltings': 0, 'ichor': 0}
     status, body = db._salvage_pet(table, sid, doc, {'petId': pet['id']})
     assert status == 200
@@ -175,7 +177,7 @@ def test_salvage_low_tier_gives_moltings(table):
 
 def test_salvage_high_tier_gives_ichor_and_scales_with_level(table):
     sid, doc = _player_at(table, 'n1')
-    pet = _give_pet(doc, 'fox', tier=3, level=3)   # base 4 + (level-1)=2 -> 6 moltings, +1 ichor
+    pet = _give_pet(doc, 'baby_leyline_prowler', tier=3, level=3)   # base 4 + (level-1)=2 -> 6 moltings, +1 ichor
     doc['materials'] = {'moltings': 0, 'ichor': 0}
     status, _ = db._salvage_pet(table, sid, doc, {'petId': pet['id']})
     assert status == 200
@@ -185,7 +187,7 @@ def test_salvage_high_tier_gives_ichor_and_scales_with_level(table):
 
 def test_salvage_clears_active_pointer(table):
     sid, doc = _player_at(table, 'n1')
-    pet = _give_pet(doc, 'fox')
+    pet = _give_pet(doc, 'baby_leyline_prowler')
     doc['activePetId'] = pet['id']
     db._salvage_pet(table, sid, doc, {'petId': pet['id']})
     assert doc['activePetId'] is None
@@ -253,7 +255,7 @@ def test_mystery_can_drop_egg(table, monkeypatch):
 
 def test_active_combat_pet_flows_into_combatant(table):
     sid, doc = _player_at(table, 'n1')
-    pet = _give_pet(doc, 'fox', tier=1, level=1)
+    pet = _give_pet(doc, 'baby_leyline_prowler', tier=1, level=1)
     doc['activePetId'] = pet['id']
     c = db._combatant(doc)
     assert c.pet_followup_chance > 0
@@ -265,7 +267,7 @@ def test_active_combat_pet_flows_into_combatant(table):
 
 def test_pet_fields_survive_snapshot_roundtrip(table):
     sid, doc = _player_at(table, 'n1')
-    pet = _give_pet(doc, 'turtle', tier=1, level=2)
+    pet = _give_pet(doc, 'decimator_beetle', tier=1, level=2)
     doc['activePetId'] = pet['id']
     c = db._combatant(doc)
     restored = db._bt_to_combatant(db._bt_snapshot(c))
@@ -289,12 +291,13 @@ def _persist_active_pet(table, species, level=1):
 
 
 def test_pet_ability_cooldown_shortens_with_level():
-    lo = db._pet_ability_cooldown_min('mouse', 1)
-    hi = db._pet_ability_cooldown_min('mouse', 4)
-    assert lo == config.PET_ABILITY_COOLDOWN_MIN['mouse']
+    # Cooldowns are keyed by ROLE (e.g. 'forage'), not species.
+    lo = db._pet_ability_cooldown_min('forage', 1)
+    hi = db._pet_ability_cooldown_min('forage', 4)
+    assert lo == config.PET_ABILITY_COOLDOWN_MIN['forage']
     assert hi < lo
     # Never faster than the floor.
-    assert db._pet_ability_cooldown_min('mouse', 99) == config.PET_ABILITY_COOLDOWN_FLOOR
+    assert db._pet_ability_cooldown_min('forage', 99) == config.PET_ABILITY_COOLDOWN_FLOOR
 
 
 def test_grub_moltings_scales_with_level():
@@ -304,37 +307,37 @@ def test_grub_moltings_scales_with_level():
 
 def test_use_pet_ability_rejects_without_activated_pet(table):
     # No active pet at all.
-    _persist_active_pet(table, 'fox')   # active, but combat-passive
+    _persist_active_pet(table, 'baby_leyline_prowler')   # active, but combat-passive
     status, body = act(table, 'use-pet-ability')
     assert status == 409
 
 
-def test_mouse_scavenge_gives_spores_and_sets_cooldown(table):
-    sid, doc = _persist_active_pet(table, 'mouse', level=2)
+def test_forage_gives_spores_and_sets_cooldown(table):
+    sid, doc = _persist_active_pet(table, 'rat', level=2)   # forage role
     before = doc.get('spores', 0)
     status, body = act(table, 'use-pet-ability')
     assert status == 200
     doc = db._get_player(table, sid, 'user-alex')
     assert doc['spores'] > before
-    assert doc['petCooldowns'].get('mouse')          # cooldown stamped
+    assert doc['petCooldowns'].get('forage')         # cooldown stamped by role
     # Still resting -> rejected.
     status, _ = act(table, 'use-pet-ability')
     assert status == 429
 
 
-def test_bird_scout_returns_bazaar_stock(table):
-    sid, doc = _persist_active_pet(table, 'bird', level=1)
+def test_scout_returns_bazaar_stock(table):
+    sid, doc = _persist_active_pet(table, 'baby_gloomshrieker', level=1)   # scout role
     nodes = db._season_map(table, sid)  # live map (may differ from MAP_NODES)
     shop_node = next(n for n, v in nodes.items() if v.get('type') == 'shop')
     status, body = db._use_pet_ability(table, sid, doc, {'targetNode': shop_node})
     assert status == 200
-    assert body['petAbility']['kind'] == 'bird'
+    assert body['petAbility']['kind'] == 'scout'
     assert body['petAbility']['node'] == shop_node
     assert 'stock' in body['petAbility']
 
 
-def test_bird_scout_rejects_non_bazaar_target(table):
-    sid, doc = _persist_active_pet(table, 'bird')
+def test_scout_rejects_non_bazaar_target(table):
+    sid, doc = _persist_active_pet(table, 'baby_gloomshrieker')
     status, _ = db._use_pet_ability(table, sid, doc, {'targetNode': 'n1'})
     assert status == 409
 

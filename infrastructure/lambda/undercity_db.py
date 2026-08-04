@@ -1055,37 +1055,39 @@ def _salvage_pet(table, sid, doc, payload):
 
 # ── Companion activated / economy abilities (Plan 3) ─────────────────────────
 
-def _pet_ability_cooldown_min(species, level):
-    """Real-time cooldown (minutes) for an activated ability, shortened as the
-    pet levels but never below the floor. Mirrors _start_spell_cooldown."""
-    base = data.PET_ABILITY_COOLDOWN_MIN.get(species, 0)
+def _pet_ability_cooldown_min(role, level):
+    """Real-time cooldown (minutes) for an activated ability, keyed by role and
+    shortened as the pet levels but never below the floor."""
+    base = data.PET_ABILITY_COOLDOWN_MIN.get(role, 0)
     mins = base - data.PET_ABILITY_COOLDOWN_PER_LVL * (int(level) - 1)
     return max(data.PET_ABILITY_COOLDOWN_FLOOR, mins)
 
 
-def _pet_cd_ready(doc, species):
-    ready_at = (doc.get('petCooldowns') or {}).get(species)
+def _pet_cd_ready(doc, role):
+    """Cooldowns are keyed by ROLE so swapping between two same-role species can't
+    reset the timer."""
+    ready_at = (doc.get('petCooldowns') or {}).get(role)
     return not ready_at or ready_at <= _now()
 
 
-def _start_pet_cooldown(doc, species, level):
-    until = datetime.utcnow() + timedelta(minutes=_pet_ability_cooldown_min(species, level))
-    doc.setdefault('petCooldowns', {})[species] = until.isoformat(timespec='seconds')
+def _start_pet_cooldown(doc, role, level):
+    until = datetime.utcnow() + timedelta(minutes=_pet_ability_cooldown_min(role, level))
+    doc.setdefault('petCooldowns', {})[role] = until.isoformat(timespec='seconds')
 
 
 def _grub_moltings(level):
-    """Passive per-move moltings trickle for an active Grub, scaled by level."""
+    """Passive per-move moltings trickle for an active economy pet, scaled by level."""
     return int(data.PET_GRUB_MOLTINGS_BASE
                + data.PET_GRUB_MOLTINGS_PER_LVL * (int(level) - 1))
 
 
-def _pet_mouse_scavenge(doc, level):
-    """Mouse activated ability: a small spore cache plus a level-scaled chance to
-    also dig up a consumable. Mutates the player doc; returns a result slice."""
+def _pet_forage(doc, level):
+    """Forage ability: a small spore cache plus a level-scaled chance to also dig
+    up a consumable. Mutates the player doc; returns a result slice."""
     spores = int(data.PET_MOUSE_SPORES_BASE + data.PET_MOUSE_SPORES_PER_LVL * (level - 1))
     doc['spores'] = doc.get('spores', 0) + spores
-    out = {'kind': 'mouse', 'spores': spores,
-           'text': f'Your mouse scurries off and scavenges {spores} Spores.'}
+    out = {'kind': 'forage', 'spores': spores,
+           'text': f'Your companion scurries off and scavenges {spores} Spores.'}
     chance = data.PET_MOUSE_ITEM_CHANCE_BASE + data.PET_MOUSE_ITEM_CHANCE_PER_LVL * (level - 1)
     if _rng.random() < chance:
         item = _give_consumable(doc)
@@ -1095,37 +1097,37 @@ def _pet_mouse_scavenge(doc, level):
     return out
 
 
-def _pet_bird_scout(table, sid, doc, payload):
-    """Bird activated ability: reveal a bazaar's current-window stock without a
-    visit. Read-only — no state mutation beyond the shared cooldown."""
+def _pet_scout(table, sid, doc, payload):
+    """Scout ability: reveal a bazaar's current-window stock without a visit.
+    Read-only — no state mutation beyond the shared cooldown."""
     node = payload.get('targetNode')
     n = _season_map(table, sid).get(node)
     if not n or n.get('type') != 'shop':
-        return _err('Send the bird to scout a bazaar.', 409)
+        return _err('Send your scout to a bazaar.', 409)
     stock = _shop_stock(table, sid, node)
-    return {'kind': 'bird', 'node': node, 'stock': _clean(stock),
-            'text': 'Your bird wings ahead and scouts the bazaar.'}
+    return {'kind': 'scout', 'node': node, 'stock': _clean(stock),
+            'text': 'Your scout ranges ahead and reports the bazaar stock.'}
 
 
 def _use_pet_ability(table, sid, doc, payload):
     pet = _find_pet(doc, doc.get('activePetId'))
     if not pet:
         return _err('You have no active companion.', 409)
-    species = pet['species']
-    if data.PET_SPECIES.get(species, {}).get('kind') != 'activated':
+    role = data.pet_role(pet['species'])
+    if data.PET_SPECIES.get(pet['species'], {}).get('kind') != 'activated':
         return _err('That companion has no ability to activate.', 409)
-    if not _pet_cd_ready(doc, species):
+    if not _pet_cd_ready(doc, role):
         return _err('Your companion is still resting.', 429)
     level = int(pet.get('level', 1))
-    if species == 'mouse':
-        result = _pet_mouse_scavenge(doc, level)
-    elif species == 'bird':
-        result = _pet_bird_scout(table, sid, doc, payload)
+    if role == 'forage':
+        result = _pet_forage(doc, level)
+    elif role == 'scout':
+        result = _pet_scout(table, sid, doc, payload)
     else:
         return _err('That companion has no ability to activate.', 409)
     if isinstance(result, tuple):       # a sub-handler returned an (status, err)
         return result
-    _start_pet_cooldown(doc, species, level)
+    _start_pet_cooldown(doc, role, level)
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
@@ -3199,10 +3201,10 @@ def _move(table, sid, doc, payload):
         healed = space_event.get('healed', 0)
         heal = {'amount': healed, 'hp': doc['hp'], 'kind': 'gate_land'} if healed else None
 
-    # Grub companion: a small moltings trickle for completing a move.
+    # Economy companion: a small moltings trickle for completing a move.
     grub_trickle = None
     grub = _find_pet(doc, doc.get('activePetId'))
-    if grub and grub.get('species') == 'grub':
+    if grub and data.pet_role(grub.get('species')) == 'economy':
         n = _grub_moltings(grub.get('level', 1))
         if n:
             _mine_materials(doc, moltings=n)
