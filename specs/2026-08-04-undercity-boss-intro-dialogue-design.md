@@ -110,21 +110,26 @@ export function bossLines(npcId: string, vestige: boolean): string[] | null;
 implementation, no emojis per project convention; stage directions like
 *(a wet croak)* are allowed as plain italic text):
 
+> **Vestige voice:** the Vestige is *shared* season state — after the season's
+> first global kill the boss reforms, and **any** player then fights the
+> Vestige, so the challenger usually isn't the one who slew it. Vestige lines are
+> therefore player-agnostic ("another slew me", never "you slew me").
+
 - **Ishkanah, Grafwidow**
   - intro: "Little morsel, you have wandered into my web. My daughters are so hungry — and you look *delicious*."
-  - vestige: "You cut me down once, little morsel. But a web has a thousand threads, and I still remember your taste."
+  - vestige: "Another already cut me down — but a web has a thousand threads. I have reknit myself, morsel, and I am so hungry again."
 - **Sarulf, Realm Eater**
   - intro: "I have swallowed whole realms, whelp. What is one more scrap of meat to the maw of the end?"
-  - vestige: "You laid me low, and still I gnaw at the edge of things. Dying only left me hungrier for you."
+  - vestige: "One challenger laid me low; still I gnaw at the edge of things. Dying only left me hungrier — and here you are."
 - **The Gitrog Monster**
   - intro: "*A wet, rumbling croak.* The bog takes all things, small one. Sink. Sink down into the muck with the rest."
-  - vestige: "You dredged me up from the dark once. The mire always coughs me back — and it never forgives a debt."
+  - vestige: "Something dredged me up from the dark before. The mire always coughs me back, and it never forgives a debt. Sink with the rest, small one."
 - **Skullbriar, the Walking Grave**
   - intro: "Every step I take, I grow. Every grave I pass, I feed. Hold still — you will make fine soil."
-  - vestige: "You buried me. Foolish. A grave is where I grow *strongest* — see how much larger I have become."
+  - vestige: "I have been buried once already. Foolish — a grave is where I grow *strongest*. See how much larger I have risen."
 - **Slimefoot, the Stowaway**
   - intro: "We are many. We are patient. We will bloom from the husk you leave behind."
-  - vestige: "You scattered us before, little host. But spores drift, and spores return. We have been *waiting*."
+  - vestige: "We were scattered once, little host. But spores drift, and spores return. We have bloomed anew — and you look like fertile ground."
 - **Savra, Queen of the Golgari** (intro only)
   - intro: "So — a subject climbs to my throne uninvited. Kneel, or be composted with the rest of my garden."
 

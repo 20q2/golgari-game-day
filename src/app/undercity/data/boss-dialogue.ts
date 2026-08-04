@@ -29,7 +29,7 @@ export const BOSS_DIALOGUE: Record<string, BossDialogue> = {
       'Little morsel, you have wandered into my web. My daughters are so hungry — and you look delicious.',
     ],
     vestige: [
-      'You cut me down once, little morsel. But a web has a thousand threads, and I still remember your taste.',
+      'Another already cut me down — but a web has a thousand threads. I have reknit myself, morsel, and I am so hungry again.',
     ],
   },
   sarulf: {
@@ -37,7 +37,7 @@ export const BOSS_DIALOGUE: Record<string, BossDialogue> = {
       'I have swallowed whole realms, whelp. What is one more scrap of meat to the maw of the end?',
     ],
     vestige: [
-      'You laid me low, and still I gnaw at the edge of things. Dying only left me hungrier for you.',
+      'One challenger laid me low; still I gnaw at the edge of things. Dying only left me hungrier — and here you are.',
     ],
   },
   gitrog_monster: {
@@ -45,7 +45,7 @@ export const BOSS_DIALOGUE: Record<string, BossDialogue> = {
       'A wet, rumbling croak. The bog takes all things, small one. Sink. Sink down into the muck with the rest.',
     ],
     vestige: [
-      'You dredged me up from the dark once. The mire always coughs me back — and it never forgives a debt.',
+      'Something dredged me up from the dark before. The mire always coughs me back, and it never forgives a debt. Sink with the rest, small one.',
     ],
   },
   skullbriar: {
@@ -53,7 +53,7 @@ export const BOSS_DIALOGUE: Record<string, BossDialogue> = {
       'Every step I take, I grow. Every grave I pass, I feed. Hold still — you will make fine soil.',
     ],
     vestige: [
-      'You buried me. Foolish. A grave is where I grow strongest — see how much larger I have become.',
+      'I have been buried once already. Foolish — a grave is where I grow strongest. See how much larger I have risen.',
     ],
   },
   slimefoot: {
@@ -61,7 +61,7 @@ export const BOSS_DIALOGUE: Record<string, BossDialogue> = {
       'We are many. We are patient. We will bloom from the husk you leave behind.',
     ],
     vestige: [
-      'You scattered us before, little host. But spores drift, and spores return. We have been waiting.',
+      'We were scattered once, little host. But spores drift, and spores return. We have bloomed anew — and you look like fertile ground.',
     ],
   },
   rot_sovereign: {
