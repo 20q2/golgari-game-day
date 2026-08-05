@@ -213,14 +213,24 @@
                 </button>
               }
             </div>
+            @if (marketFilter() !== 'mine') {
             <div class="market-controls">
               <div class="market-seg" role="group" aria-label="Sort listings">
                 <button [attr.aria-pressed]="marketSort() === 'price-asc'" (click)="setMarketSort('price-asc')">Price ↑</button>
                 <button [attr.aria-pressed]="marketSort() === 'price-desc'" (click)="setMarketSort('price-desc')">Price ↓</button>
                 <button [attr.aria-pressed]="marketSort() === 'rarity'" (click)="setMarketSort('rarity')">Rarity</button>
               </div>
-              <!-- affordable toggle added in Task 3 -->
+              <button
+                class="market-toggle"
+                [class.on]="marketAffordable()"
+                [attr.aria-pressed]="marketAffordable()"
+                (click)="toggleMarketAffordable()"
+              >
+                <mat-icon class="mi">{{ marketAffordable() ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+                Affordable
+              </button>
             </div>
+            }
           </div>
 
           @if (marketFilter() === 'mine') {

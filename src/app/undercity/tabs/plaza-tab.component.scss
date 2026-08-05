@@ -731,3 +731,31 @@ button.mat-chip {
     }
   }
 }
+
+.market-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px 6px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(216, 243, 220, 0.14);
+  background: transparent;
+  color: #9aa79a;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+  .mi {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &.on {
+    background: rgba(95, 209, 138, 0.14);
+    border-color: rgba(95, 209, 138, 0.5);
+    color: #5fd18a;
+  }
+}
