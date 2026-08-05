@@ -103,9 +103,10 @@ TIER2 = {
         'blurb': 'Bruiser. Undying: first compost each hour revives you at 50% HP instead.',
     },
     'vexing_pest': {
-        'name': 'Vexing Pest', 'line': 'pest', 'bonus': {'spd': 2, 'atk': 2},
-        'passive': 'vexing',
-        'blurb': 'Speedster. Vexing: 25% chance enemy strikes miss.',
+        'name': 'Vexing Pest', 'line': 'pest', 'bonus': {'maxHp': 6, 'atk': 1, 'def': 1, 'spd': 1},
+        'passive': 'improvise',
+        'blurb': 'All-rounder. Improvise: at the start of each battle it shores up its '
+                 'weakest stat (+3 to the lowest of ATK/DEF/SPD) for that fight.',
     },
     'kraul_warrior': {
         'name': 'Grave Scarab', 'line': 'kraul', 'bonus': {'atk': 4},
@@ -516,7 +517,7 @@ SWARM_CHIP_MULT = 0.5 # swarm: extra hit each round = hit * this (min 1)
 FLURRY_CHANCE   = 0.25 # flurry: per-round chance for a bonus strike (weaker swarm)
 SPIKESHELL_RETALIATE = 2  # spikeshell: damage dealt back when you LOSE an exchange
 DEATHTOUCH_PIERCE  = 3  # RETIRED 2026-08-04 (Grave Titan is now Colossus); kept defined for save/backcompat only
-FLYBY_DODGE        = 0.25  # chance to dodge the punish when you LOSE an exchange
+FLYBY_DODGE        = 0.25  # skitter (fungus line): chance to dodge the punish when you LOSE an exchange
 VENOM_BARB_BONUS   = 3   # first winning exchange +this
 FIRST_WIN_ROT_BREATH_MULT = 2  # rot_breath: first winning exchange * this
 
@@ -546,7 +547,7 @@ READ_BASE = 0.25
 READ_MAX = 0.80              # cap so a read is never near-guaranteed (was 0.90)
 READ_SPD_COEFF = 0.008       # faster creatures read better, but SPD no longer
                              # monopolises reads (was 0.015)
-READ_PASSIVE_BONUS = {'first_bite': 0.20, 'vexing': 0.15, 'stone_gaze': 0.15}  # fast insects + Gorgon gaze
+READ_PASSIVE_BONUS = {'first_bite': 0.20, 'stone_gaze': 0.15}  # First Bite insects + Gorgon gaze
 # gear read bonuses live on GEAR[*]['readBonus'] (Glint + Seer charms)
 
 # Monster AI (spec §1). Each personality is a weight triple over

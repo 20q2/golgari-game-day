@@ -841,12 +841,21 @@ def test_negate_loss_cancels_punish():
     assert d.hp == 30   # punish negated
 
 
-def test_vexing_dodges_the_punish():
+def test_improvise_buff_raises_the_chosen_stat():
+    # effective_stats reads the dynamic {kind:'improvise', stat, amount} buff,
+    # same shape as Soul Trophy / Mimicry.
+    doc = {'atk': 5, 'def': 3, 'spd': 7, 'maxHp': 25,
+           'buffs': [{'kind': 'improvise', 'stat': 'def', 'amount': 3}]}
+    assert effective_stats(doc)['def'] == 6
+
+
+def test_vexing_no_longer_dodges():
+    # After the rework, 'vexing' is a retired key with no engine behavior; only
+    # 'skitter' (fungus line) keeps the dodge.
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'vexing'}))
-    # random() returns 0.10 < 0.25 => dodge
     resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(randoms=[0.10], uniform=1.0))
-    assert d.hp == 30   # punish dodged
+    assert d.hp < 30   # the punish lands — no dodge
 
 
 def test_reach_negates_round1_punish_only():

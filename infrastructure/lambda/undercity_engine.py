@@ -277,8 +277,8 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             # decisive blow finds only air (a guaranteed one-round negate).
             entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
                             'miss': True, 'winner': win_side})
-        elif (losr.has('vexing') or losr.has('skitter')) and rng.random() < data.FLYBY_DODGE:
-            # Vexing / Skitter: loser evades the whole punish.
+        elif losr.has('skitter') and rng.random() < data.FLYBY_DODGE:
+            # Skitter (fungus line): loser evades the whole punish.
             entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
                             'miss': True, 'winner': win_side})
         elif win_stance == 'guard':
@@ -829,10 +829,10 @@ def effective_stats(player: dict) -> dict:
             eff['atk'] += 1 * mult
             eff['def'] += 1 * mult
             eff['spd'] += 1 * mult
-        elif kind in ('trophy', 'mimic'):
+        elif kind in ('trophy', 'mimic', 'improvise'):
             # Variable +N to a chosen stat for one battle — the amount + stat ride
-            # on the buff entry itself. Soul Trophy (Deathrite Shaman) and Mimicry
-            # (Wood Lurker) share this shape.
+            # on the buff entry itself. Soul Trophy (Deathrite Shaman), Mimicry
+            # (Wood Lurker), and Improvise (Vexing Pest) share this shape.
             stat = buff.get('stat')
             if stat in ('atk', 'def', 'spd'):
                 eff[stat] += int(buff.get('amount', 0))

@@ -847,6 +847,21 @@ def _battle_tier(table, sid, kind, npc, node):
 _MIMIC_STAT = {'brute': 'atk', 'turtle': 'def', 'trickster': 'spd'}
 
 
+_IMPROVISE_ORDER = ('atk', 'def', 'spd')  # tie-break priority for the lowest stat
+
+
+def _apply_improvise(doc):
+    """Vexing Pest 'Improvise': shore up the weakest of ATK/DEF/SPD for one battle.
+    Computed from base effective stats (strip any prior improvise buff first so a
+    re-application can't chase its own bump). Tie-break: first of atk/def/spd."""
+    buffs = [b for b in (doc.get('buffs') or []) if b.get('kind') != 'improvise']
+    doc['buffs'] = buffs
+    eff = engine.effective_stats(doc)
+    lowest = min(_IMPROVISE_ORDER, key=lambda s: eff[s])
+    buffs.append({'kind': 'improvise', 'stat': lowest, 'amount': data.IMPROVISE_BONUS})
+    doc['buffs'] = buffs
+
+
 def _apply_mimicry(doc, npc):
     """Wood Lurker Mimicry: take on the prey's shape — a one-battle buff matching
     the foe's fighting style. brute→ATK, turtle→DEF, trickster→SPD, balanced→a
@@ -868,6 +883,9 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
     # Wood Lurker Mimicry: shape to the prey before the combatant freezes.
     if 'mimicry' in _passives(doc):
         _apply_mimicry(doc, npc)
+    # Vexing Pest Improvise: shore up the weakest stat before the snapshot freezes.
+    if 'improvise' in _passives(doc):
+        _apply_improvise(doc)
     player_c = _combatant(doc)
     npc_snap = _bt_snapshot(_npc_combatant(npc))
     npc_snap['personality'] = npc.get('personality', data.NPC_DEFAULT_PERSONALITY)
@@ -920,7 +938,8 @@ def _creature_label(doc):
 
 ONE_BATTLE_BUFFS = ('rot_surge', 'acorn_fury', 'bone_chill', 'grave_chill', 'glowveil',
                     'harden_shell', 'weaken_hex', 'savage_roar', 'iron_hide', 'fleetfoot',
-                    'warding_dance', 'sap_vigor', 'rust_curse', 'high_five', 'trophy', 'mimic')
+                    'warding_dance', 'sap_vigor', 'rust_curse', 'high_five', 'trophy',
+                    'mimic', 'improvise')
 
 
 def _consume_one_battle_buffs(doc):
