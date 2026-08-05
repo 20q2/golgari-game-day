@@ -134,6 +134,14 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   protected defenderScale(): number {
     return spriteScale(this.defender.tier, this.attacker.tier);
   }
+  /** The sidekick never grows with the player — it's a small companion, not a
+   *  co-fighter. When the player towers over the foe (tier advantage) the pet
+   *  shrinks a touch so the size gap reads clearly; it's floored so it never
+   *  vanishes. */
+  protected companionScale(): number {
+    const s = this.attackerScale();
+    return Math.min(1, Math.max(0.6, 1 - 0.5 * (s - 1)));
+  }
 
   // Bout animation state driven by the beat sequence.
   protected readonly stanceAnim = signal<{ attacker?: Stance; defender?: Stance }>({});

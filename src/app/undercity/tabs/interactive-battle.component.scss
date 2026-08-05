@@ -960,7 +960,10 @@
 // Slay-the-Spire style intent icon floating over the foe.
 .intent-float {
   position: absolute;
-  top: -14px;
+  // Hover just over the foe's head. Anchored to the sprite's *scaled* box height
+  // (bottom-up) rather than the side's top edge, so a shrunken foe keeps the
+  // bubble on its head instead of stranding it up in empty space.
+  bottom: calc(96px * var(--sprite-scale, 1) - 24px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
@@ -1405,8 +1408,10 @@
   filter: drop-shadow(0 13px 9px rgba(0, 0, 0, 0.82));
 }
 .side .platform {
-  width: 112px;
-  height: 34px;
+  // Shadow tracks the sprite scale so a shrunken foe stands on a proportionate
+  // pool, not an oversized one.
+  width: calc(112px * var(--sprite-scale, 1));
+  height: calc(34px * var(--sprite-scale, 1));
   background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.72) 0%, transparent 70%);
 }
 
@@ -1491,9 +1496,11 @@
   top: 50%;
   left: 50%;
   z-index: 1;
-  width: 116px;
-  height: 116px;
-  margin: -58px 0 0 -58px;
+  // Sized to the fighter's scaled sprite so the bubble wraps the creature
+  // instead of dwarfing a small one.
+  width: calc(116px * var(--sprite-scale, 1));
+  height: calc(116px * var(--sprite-scale, 1));
+  margin: calc(-58px * var(--sprite-scale, 1)) 0 0 calc(-58px * var(--sprite-scale, 1));
   border-radius: 50%;
   border: 2px solid rgba(130, 205, 255, 0.85);
   background: radial-gradient(circle, rgba(130, 205, 255, 0.14), transparent 68%);
@@ -1519,8 +1526,10 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 96px;
-  height: 96px;
+  // Match the sprite's scaled box so the hit flash lands on a small foe at its
+  // true size instead of a jarring full-size splash.
+  width: calc(96px * var(--sprite-scale, 1));
+  height: calc(96px * var(--sprite-scale, 1));
   transform: translate(-50%, -50%);
   border-radius: 12px; // only shows in the no-sprite (icon) fallback where the mask is absent
   background: rgba(255, 55, 40, 0.6);

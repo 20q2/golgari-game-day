@@ -192,6 +192,93 @@ def test_list_owned_rejects_at_listing_cap(table):
     assert len(doc['pendingPickups']) == 1                    # unchanged on reject
 
 
+# ── Auto-place on room (a slot freed elsewhere, e.g. at the Plaza) ────────────
+
+def test_flush_places_consumable_when_slot_freed(table):
+    _s, doc = _player_at(table, 'city_r0')
+    cons = list(db.data.CONSUMABLES)[0]
+    doc['bag'] = [cons] * (db.data.BAG_SIZE - 1)   # a slot opened up (sold at the Plaza)
+    _park_one(doc, 'consumable', cons)
+    assert db._flush_pickups(doc) == 1
+    assert doc['pendingPickups'] == []
+    assert len(doc['bag']) == db.data.BAG_SIZE     # parked item dropped straight in
+
+
+def test_flush_noop_when_container_still_full(table):
+    _s, doc = _player_at(table, 'city_r0')
+    cons = list(db.data.CONSUMABLES)[0]
+    doc['bag'] = [cons] * db.data.BAG_SIZE         # still full — no room opened
+    _park_one(doc, 'consumable', cons)
+    assert db._flush_pickups(doc) == 0
+    assert len(doc['pendingPickups']) == 1         # stays parked
+    assert len(doc['bag']) == db.data.BAG_SIZE
+
+
+def test_flush_gear_equips_empty_slot(table):
+    _s, doc = _player_at(table, 'city_r0')
+    slot = db.data.GEAR['bark_hide']['slot']
+    doc['gear'] = {}                                # slot empty
+    doc['gearStash'] = ['bark_hide'] * db.data.GEAR_STASH_SIZE  # stash full
+    _park_one(doc, 'gear', 'bark_hide')
+    assert db._flush_pickups(doc) == 1
+    assert doc['gear'][slot] == 'bark_hide'         # auto-equipped, not stashed
+    assert doc['pendingPickups'] == []
+
+
+def test_flush_gear_stashes_when_stash_has_room(table):
+    _s, doc = _player_at(table, 'city_r0')
+    slot = db.data.GEAR['bark_hide']['slot']
+    doc['gear'] = {slot: 'bark_hide'}               # slot filled
+    doc['gearStash'] = []                           # but the stash has room
+    _park_one(doc, 'gear', 'bark_hide')
+    assert db._flush_pickups(doc) == 1
+    assert doc['gearStash'] == ['bark_hide']
+    assert doc['pendingPickups'] == []
+
+
+def test_flush_places_only_fitting_kinds(table):
+    """A mixed queue: the kind with room places; the still-full kind stays parked."""
+    _s, doc = _player_at(table, 'city_r0')
+    cons = list(db.data.CONSUMABLES)[0]
+    scroll = (db.data.SCROLLABLE_BY_TIER.get(1) or [None])[0]
+    assert scroll
+    doc['bag'] = [cons] * (db.data.BAG_SIZE - 1)    # bag has a free slot
+    doc['scrolls'] = [scroll] * db.data.SCROLL_SATCHEL_CAP  # satchel full
+    _park_one(doc, 'consumable', cons)
+    _park_one(doc, 'scroll', scroll)
+    assert db._flush_pickups(doc) == 1
+    assert [p['kind'] for p in doc['pendingPickups']] == ['scroll']  # scroll stays
+    assert len(doc['bag']) == db.data.BAG_SIZE
+
+
+def test_state_read_auto_places_freed_pickup(table):
+    """Display path: a poll after a slot frees shows the item placed + queue empty,
+    so the pickup dialogue closes without a manual resolve."""
+    sid, doc = _player_at(table, 'city_r0')
+    cons = list(db.data.CONSUMABLES)[0]
+    doc['bag'] = [cons] * (db.data.BAG_SIZE - 1)
+    _park_one(doc, 'consumable', cons)
+    db._put_player(table, doc)
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert state['you']['pendingPickups'] == []
+    assert len(state['you']['bag']) == db.data.BAG_SIZE
+
+
+def test_action_persists_auto_placed_pickup(table):
+    """Persist path: the next action's preprocess flushes and the handler's save
+    commits it, so the placement survives in the stored doc."""
+    sid, doc = _player_at(table, 'city_r0')
+    cons = list(db.data.CONSUMABLES)[0]
+    doc['bag'] = [cons] * (db.data.BAG_SIZE - 1)
+    _park_one(doc, 'consumable', cons)
+    db._put_player(table, doc)
+    status, _ = act(table, 'set-status', status='sorting')
+    assert status == 200
+    after = db._get_player(table, sid, 'user-alex')
+    assert after.get('pendingPickups') == []
+    assert len(after['bag']) == db.data.BAG_SIZE
+
+
 def test_board_game_reward_parks_when_bag_full(table):
     sid, doc = _player_at(table, 'city_r0')
     cons = list(db.data.CONSUMABLES)[0]

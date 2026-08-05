@@ -77,7 +77,8 @@ STARTERS = {
         'name': 'Elf', 'hp': 25, 'atk': 6, 'def': 6, 'spd': 4,
         'passive': 'stonewright',
         'blurb': 'Ancient and long-lived — born gifted, slow to change; her power is in '
-                 'her works. Stonewright: gear she upgrades comes out hardened (Gear+), and '
+                 'her works. Stonewright: starts with higher stats but her stat growth is '
+                 'lower each level; gear she upgrades comes out hardened (Gear+), and '
                  'her pet fights a step above its level.',
     },
 }

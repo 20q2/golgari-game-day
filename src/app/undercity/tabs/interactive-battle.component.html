@@ -61,6 +61,7 @@
 
       <div
         class="side"
+        [style.--sprite-scale]="attackerScale()"
         [class.act-aggress]="stanceOf('attacker') === 'aggress'"
         [class.act-guard]="stanceOf('attacker') === 'guard'"
         [class.act-feint]="stanceOf('attacker') === 'feint'"
@@ -73,7 +74,6 @@
           <span
             class="body drop-in"
             [class.vestige]="attacker.vestige"
-            [style.--sprite-scale]="attackerScale()"
             [style.--uc-sprite]="attacker.spriteUrl && !attackerSpriteFailed() ? 'url(\'' + attacker.spriteUrl + '\')' : null"
           >
             @if (guard().attacker) { <span class="barrier"></span> }
@@ -87,7 +87,7 @@
         @if (enteredFighters() && attacker.companion; as pet) {
           <span
             class="companion"
-            [style.--sprite-scale]="attackerScale()"
+            [style.--sprite-scale]="companionScale()"
             [class.lunge]="petAnim() === 'attack'"
             [class.block]="petAnim() === 'defend'"
           >
@@ -119,6 +119,7 @@
 
       <div
         class="side flipped"
+        [style.--sprite-scale]="defenderScale()"
         [class.act-aggress]="stanceOf('defender') === 'aggress'"
         [class.act-guard]="stanceOf('defender') === 'guard'"
         [class.act-feint]="stanceOf('defender') === 'feint'"
@@ -147,7 +148,6 @@
           <span
             class="body drop-in"
             [class.vestige]="defender.vestige"
-            [style.--sprite-scale]="defenderScale()"
             [style.--uc-sprite]="defender.spriteUrl && !defenderSpriteFailed() ? 'url(\'' + defender.spriteUrl + '\')' : null"
           >
             @if (guard().defender) { <span class="barrier"></span> }

@@ -314,6 +314,7 @@ export class HatchFlowComponent {
     saproling: 'Speedster',
     zombie: 'Tank',
     squirrel: 'Caster',
+    elf: 'Crafter',
   };
   archetype(form: FormInfo): string {
     return HatchFlowComponent.ARCHETYPES[form.id] ?? 'Balanced';

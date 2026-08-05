@@ -1396,6 +1396,41 @@ def _acquire(doc, kind, item_id, source='loot'):
     return {'kind': kind, 'itemId': item_id, 'outcome': 'pending'}
 
 
+def _pickup_fits(doc, kind, item_id):
+    """True when a parked item of this kind would place right now (rather than
+    re-park) — mirrors _acquire's capacity rules exactly so _flush_pickups never
+    triggers a fresh re-park. Gear also fits when its equip slot is empty even if
+    the stash is full, since that's _acquire's auto-equip path."""
+    if kind == 'gear':
+        slot = data.GEAR[item_id]['slot']
+        if not (doc.get('gear') or {}).get(slot):
+            return True
+        return len(doc.get('gearStash') or []) < data.GEAR_STASH_SIZE
+    spec = _ACQUIRE_KINDS[kind]
+    return len(doc.get(spec['field']) or []) < spec['cap']
+
+
+def _flush_pickups(doc):
+    """Auto-place any parked pickups that now fit because a slot opened up elsewhere
+    — the player salvaged/sold/traded at the Plaza, etc. Walks the queue in order,
+    placing each item the moment its kind has room, so freeing a slot "just works":
+    the item drops into the bag and the pickup dialogue closes on the next state
+    read, no manual resolve needed. Items that still overflow stay queued verbatim.
+    Returns the number placed (0 when nothing moved)."""
+    queue = list(doc.get('pendingPickups') or [])
+    if not queue:
+        return 0
+    doc['pendingPickups'] = []        # rebuilt below; any re-park re-appends here
+    placed = 0
+    for item in queue:
+        if _pickup_fits(doc, item['kind'], item['itemId']):
+            _acquire(doc, item['kind'], item['itemId'], item.get('source', 'loot'))
+            placed += 1
+        else:
+            doc['pendingPickups'].append(item)
+    return placed
+
+
 def _gain_gear(doc, gid, source='loot'):
     """Route a newly-acquired gear piece through the shared pipeline. Auto-equips
     an empty slot, else stashes, else parks it for the pickup modal. Returns
@@ -2247,6 +2282,7 @@ def handle_state(table, query_params):
             engine.regen_rolls(item, now)
             _expire_buffs(item)
             _prune_cooldowns(item)
+            _flush_pickups(item)  # display-only; auto-place now-fitting parked items
             players.append(_public_player(item))
             if item['userId'] == user_id:
                 umori_reveal = _collect_umori(table, sid, item)  # settle closed auctions
@@ -2456,6 +2492,7 @@ def handle_action(table, body):
     engine.regen_rolls(doc, _now())
     _expire_buffs(doc)
     _prune_cooldowns(doc)
+    _flush_pickups(doc)  # auto-place parked items that fit now (slot freed last turn)
     doc['lastActionAt'] = _now()  # idle signal for the roll-refill nudge sweep
 
     handlers = {
@@ -3018,7 +3055,10 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
     s = data.STARTERS[starter]
     body_hue = 130
     if seals_before >= 1 and isinstance(egg_hue, (int, float)):
-        body_hue = int(egg_hue) % 360
+        eh = int(egg_hue)
+        # Neutral paints (white/grey/black) are sub-zero sentinels stored verbatim
+        # (see PAINTS in undercity_data.py); only wrap real hues into 0–359.
+        body_hue = eh if eh < 0 else eh % 360
     doc = {
         'pk': _season_pk(sid), 'sk': f'PLAYER#{user_id}',
         'userId': user_id, 'username': username or user_id,

@@ -34,8 +34,7 @@ import {
   PublicPlayer,
   SpaceEvent,
   Stance,
-  TradeOffer,
-  TradeStockItem,
+  UmoriReveal,
   VaultView,
   YouDoc,
   isShielded,
@@ -367,12 +366,15 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly pickedBook = signal<string | null>(null);
   protected readonly burnTarget = signal<string | null>(null);
   protected readonly showTradingPost = signal(false);
-  protected readonly tradingStock = signal<TradeStockItem[]>([]);
   protected readonly giveItem = signal<string | null>(null);
   /** Index of the stock line whose trade-in picker is open (take-first flow). */
   protected readonly selectedStock = signal<number | null>(null);
-  /** True once the player has spent this rotation's single barter. */
-  protected readonly umoriTraded = computed(() => !!this.store.umori()?.traded);
+  /** Umori auction: the player's chosen bid amount in the modal input. */
+  protected readonly bidAmount = signal<number>(0);
+  /** Live auction snapshot from the store (null when Umori isn't this tile). */
+  protected readonly umoriAuction = computed(() => this.store.umori());
+  /** The player's current escrowed bid this window (0 if none). */
+  protected readonly yourBid = computed(() => this.umoriAuction()?.yourBid ?? 0);
   /** Top-right focus picker: pick any player (or Umori) to center the camera on. */
   protected readonly showFocusMenu = signal(false);
   protected readonly showExcavation = signal(false);
@@ -890,87 +892,56 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     charm: 'auto_awesome',
   };
 
-  /** Owned items that qualify as a trade-in for a given stock line — same-slot
-   *  gear (equipped + stashed, equipped flagged) or, for the grimoire line, owned
-   *  grimoires. Mirror of the server match rule. */
-  protected qualifyingGiveOffers(stockItem: string): TradeOffer[] {
-    const you = this.store.you();
-    if (!you) return [];
-    const gear = GEAR_MAP[stockItem];
-    if (gear) {
-      const slot = gear.slot;
-      const offers: TradeOffer[] = [];
-      const equippedId = (you.gear ?? {})[slot];
-      if (equippedId && GEAR_MAP[equippedId]) {
-        const g = GEAR_MAP[equippedId];
-        const r = tierRarity(g.tier);
-        offers.push({ id: equippedId, kind: 'gear', icon: '', slot, rarity: r.key,
-                      rarityLabel: r.label, label: g.name, sub: g.desc, equipped: true });
-      }
-      for (const id of you.gearStash ?? []) {
-        const g = GEAR_MAP[id];
-        if (g && g.slot === slot) {
-          const r = tierRarity(g.tier);
-          offers.push({ id, kind: 'gear', icon: '', slot, rarity: r.key,
-                        rarityLabel: r.label, label: g.name, sub: g.desc });
-        }
-      }
-      return offers;
-    }
-    const gr = GRIMOIRE_MAP[stockItem];
-    if (gr) {
-      return (you.grimoires ?? []).map((id) => {
-        const t = GRIMOIRE_MAP[id];
-        return { id, kind: 'grimoire' as const, icon: 'menu_book',
-                 label: t?.name ?? id, sub: t ? this.grimoireSpellList(t) : '' };
-      });
-    }
-    return [];
+  /** Reserve rows for the modal, rank 1→3 with their unlock thresholds. */
+  protected reserveRows(): { rank: number; name: string; reserve: number }[] {
+    const res = this.umoriAuction()?.reserves ?? {};
+    const names: Record<number, string> = { 1: 'Gilded Coffer', 2: 'Curio Box', 3: 'Trinket Pouch' };
+    return [1, 2, 3].map((r) => ({ rank: r, name: names[r], reserve: Number(res[r] ?? 0) }));
   }
-
-  /** Display detail for a stock line — same icon/rarity vocabulary as the Bazaar
-   *  (svg slot icon + rarity badge for gear; item icon for consumables/tomes). */
-  protected tradeStockDetail(id: string): TradeOffer {
-    const c = CONSUMABLE_MAP[id];
-    if (c) return { id, kind: 'consumable', icon: c.icon, label: c.name, sub: c.desc };
-    const g = GEAR_MAP[id];
-    if (g) {
-      const r = tierRarity(g.tier);
-      return { id, kind: 'gear', icon: '', slot: g.slot, rarity: r.key,
-               rarityLabel: r.label, label: g.name, sub: g.desc };
-    }
-    const gr = GRIMOIRE_MAP[id];
-    if (gr) return { id, kind: 'grimoire', icon: 'menu_book', label: gr.name, sub: this.grimoireSpellList(gr) };
-    return { id, kind: 'consumable', icon: 'help', label: id, sub: '' };
-  }
-
-  /** Why a stock line's "Trade for this" is blocked (mirrors the server disable
-   *  conditions, in prose), or null when the trade is live. */
-  protected tradeReason(stockItem: string): string | null {
-    if (this.umoriTraded()) return 'Already traded here';
-    const gives = this.qualifyingGiveOffers(stockItem);
-    if (gives.length === 0) return 'Nothing to trade for this';
-    // Taking gear grows the stash by one; if it's full and the only trade-in is the
-    // equipped piece (also net +1), there's no room. A stashed give is net-zero.
-    if (GEAR_MAP[stockItem] && this.stashFull() && !gives.some((o) => !o.equipped)) {
-      return containerFullReason(this.GEAR_STASH_SIZE, this.GEAR_STASH_SIZE, 'Stash');
-    }
-    const you = this.store.you();
-    if (GRIMOIRE_MAP[stockItem] && (you?.grimoires ?? []).includes(stockItem)) return 'Already owned';
+  /** Why the bid button is blocked (mirrors the server guards), or null when live. */
+  protected bidReason(): string | null {
+    const a = this.umoriAuction();
+    if (!a) return 'Umori is not here';
+    const amt = this.bidAmount();
+    if (amt < a.minBid) return `Bids start at ${a.minBid} Spores`;
+    if (amt <= this.yourBid()) return `Raise above your current ${this.yourBid()} Spores`;
+    const delta = amt - this.yourBid();
+    if ((this.store.you()?.spores ?? 0) < delta) return 'Not enough Spores';
     return null;
   }
-
-  /** Whether a stock line's "Trade for this" button is live — the null-check of
-   *  tradeReason() so the button and its reason line never drift. */
-  protected canTradeFor(stockItem: string): boolean {
-    return this.tradeReason(stockItem) === null;
+  protected canBid(): boolean {
+    return !this.busy() && this.bidReason() === null;
+  }
+  /** Seal (or raise) the bid. */
+  protected async placeBid(): Promise<void> {
+    if (!this.canBid()) return;
+    await this.run(async () => {
+      const resp = await this.store.action('umori-bid', { amount: this.bidAmount() });
+      this.showToast(resp.text ?? 'Bid sealed.');
+    });
   }
 
-  /** Within the trade-in picker, whether this specific give can be handed over: an
-   *  equipped gear give overflows a full stash (net +1); a stashed give is net-zero. */
-  protected canUseGive(stockItem: string, give: TradeOffer): boolean {
-    if (GEAR_MAP[stockItem] && give.equipped && this.stashFull()) return false;
-    return true;
+  /** The auction settlement to celebrate (null when nothing to show). */
+  protected readonly umoriReveal = signal<UmoriReveal | null>(null);
+
+  /** Human phrase for what a reveal reward was. */
+  protected revealRewardText(rev: UmoriReveal): string {
+    if (rev.placed === null) return `Outbid — ${rev.refund} Spores refunded.`;
+    const rw = rev.reward;
+    if (!rw) return 'An empty box?';
+    if (rw.kind === 'materials') {
+      const parts: string[] = [];
+      if (rw.ichor) parts.push(`${rw.ichor} Gemstones`);
+      if (rw.moltings) parts.push(`${rw.moltings} Moltings`);
+      return parts.join(' + ') || 'a puff of dust';
+    }
+    if (rw.kind === 'egg') return `a tier-${rw.tier} companion egg`;
+    if (rw.kind === 'gear') return `${GEAR_MAP[rw.item!]?.name ?? rw.item} (gear)`;
+    if (rw.kind === 'grimoire') return `${rw.item} (grimoire)`;
+    return `a ${rw.item}`;
+  }
+  protected closeReveal(): void {
+    this.umoriReveal.set(null);
   }
 
   /** Tap a stock line: open its trade-in picker (clear any prior selection). */
@@ -1481,6 +1452,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       if (localStorage.getItem(key)) return;
       localStorage.setItem(key, '1');
       this.showHpTip.set(true);
+    });
+    // Surface the one-shot auction reveal the server attaches when a closed
+    // auction settles on a state read.
+    effect(() => {
+      const rev = this.store.umori()?.reveal;
+      if (rev) this.umoriReveal.set(rev);
     });
   }
 
@@ -2384,7 +2361,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     } else if (ev.type === 'witch') {
       this.showWitch.set(true);
     } else if (ev.type === 'trading_post') {
-      this.openTradingPost(ev.stock);
+      this.openTradingPost();
     } else if (ev.type === 'excavation') {
       this.openExcavation(ev.grid);
     } else if (ev.type === 'loot_puzzle') {
@@ -2493,27 +2470,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   protected readonly consumableMap = CONSUMABLE_MAP;
 
-  /** Open the post, seeding the modal from the landing event or polled state. */
-  openTradingPost(stock?: TradeStockItem[] | null): void {
-    const pos = this.store.you()?.position ?? '';
-    this.tradingStock.set(stock ?? this.store.tradingPosts()[pos] ?? []);
+  /** Open Umori's auction panel (the modal reads bid state straight off the
+   *  store, so there's nothing to seed). */
+  openTradingPost(): void {
     this.giveItem.set(null);
     this.selectedStock.set(null);
     this.showTradingPost.set(true);
     this.store.openFacility.set({ kind: 'tradingPost' });
-  }
-
-  /** Hand over the selected give item for stock slot `takeIndex`. */
-  async trade(takeIndex: number): Promise<void> {
-    const give = this.giveItem();
-    if (!give) return;
-    await this.run(async () => {
-      const resp = await this.store.action('trade', { give, takeIndex });
-      if (resp.stock) this.tradingStock.set(resp.stock);
-      this.giveItem.set(null);
-      this.selectedStock.set(null);
-      this.showToast(resp.text ?? 'Traded.');
-    });
   }
 
   async warpTo(to: string): Promise<void> {

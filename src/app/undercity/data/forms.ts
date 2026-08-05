@@ -71,7 +71,7 @@ export const PASSIVE_BLURBS: Record<string, string> = {
   spell_mage: 'Your damaging spells deal +50% and are twice as likely to land.',
   wish: 'Learn Wish: cast any spell in the world, from any list.',
   arsenal: 'A fourth equipment slot — strap on one extra piece of gear that no other creature can wield.',
-  stonewright: 'Upgrades she forges come out hardened (Gear+); her active pet fights a step above its level.',
+  stonewright: 'Born gifted: starts with higher stats, but her stat growth is lower each level. Upgrades she forges come out hardened (Gear+); her active pet fights a step above its level.',
   stone_gaze: 'Reads come easily; each read petrifies the foe — stacking slow that ends in a one-round freeze.',
   mimicry: 'At the first blow it takes the shape of its prey — a stat bump matching how the foe fights.',
 };

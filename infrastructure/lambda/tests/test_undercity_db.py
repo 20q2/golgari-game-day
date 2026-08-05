@@ -1341,6 +1341,24 @@ def test_join_grants_veteran_rolled_shell_color_as_owned(table):
     assert resp['you']['paint']['stripes'] == 270
 
 
+def test_join_veteran_neutral_shell_color_stored_verbatim(table):
+    # Neutral paints (white/grey/black) carry sub-zero sentinel hues (-1/-2/-3)
+    # that the client recolor reads as greyscale. The server must store them
+    # verbatim — a naive `% 360` turns -1 into 359 (a red hue), so the wheel's
+    # white spin would hatch a red creature instead.
+    perm = db._get_perm(table, 'user-vet')
+    perm['seals'] = 2
+    table.put_item(Item=perm)
+
+    status, resp = act(table, 'join', user='user-vet', name='Vet',
+                       starter='zombie', eggHue=-1)  # -1 = white
+    assert status == 200
+    assert resp['you']['paint']['body'] == -1  # not 359
+
+    perm2 = db._get_perm(table, 'user-vet')
+    assert 'white' in perm2['paints']  # rolled neutral now owned
+
+
 def test_join_non_veteran_grants_no_shell_color(table):
     # A first-time player hatches forest(130, a default) and gets no extra grant.
     act(table, 'join', user='user-new', name='New', starter='pest', eggHue=270)
