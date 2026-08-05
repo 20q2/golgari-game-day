@@ -5,11 +5,14 @@
 
 ## Summary
 
-Make companion eggs a signature reward of the two **Ruin lairs** and a chance
-reward of **treasure caches**, and surface dropped eggs in the UI (they are
-currently granted silently). Sigil lairs and the existing loot/mystery/combat
-egg drops are unchanged. This also cleans up two dead `EGG_DROP` entries found
-during the egg-source audit.
+Make the two **Ruin lairs** (Lord of Extinction, Doomgape) the game's dedicated
+place to farm companions: they **always** hand out an egg — a strong one for
+beating the boss, a lesser one for scavenging the lair while the boss is down,
+*every* time you visit, not just once per cycle. Treasure caches gain a chance
+egg like other loot, and dropped eggs are surfaced in the UI (they are currently
+granted silently). Sigil lairs and the existing loot/mystery/combat egg drops
+are unchanged. This also cleans up two dead `EGG_DROP` entries found during the
+egg-source audit.
 
 ## Background
 
@@ -43,8 +46,8 @@ T4) entries that **nothing ever called** — dead config. This design wires
 
 ## Goals
 
-- Ruin-boss kills reliably reward a strong egg; visiting a downed Ruin lair
-  gives a lesser consolation egg.
+- Make Ruin lairs the reliable pet-farm destination: a strong egg for beating
+  the boss, and a lesser egg on **every** scavenge visit while the lair is down.
 - Treasure caches occasionally drop an egg like other loot.
 - Players actually *see* an egg drop when it happens.
 
@@ -73,11 +76,11 @@ if egg:
 Fold a mention into `out['text']` (e.g. `"… A clutch of eggs lies in the
 nest — you take a Legendary egg!"`).
 
-### 2. Ruin lair — scavenge while abandoned (lesser egg)
+### 2. Ruin lair — scavenge while abandoned (lesser egg, every visit)
 
-In `_lair_scavenge`, on the once-per-abandonment grab (guarded by
-`entry['scavenged']`), grant a **guaranteed egg weighted {T1:70%, T2:30%}**
-alongside the existing Spores and the 18% consumable chance:
+In `_lair_scavenge`, grant a **guaranteed egg weighted {T1:70%, T2:30%}** on
+**every** scavenge visit — this is the pet-farm loop, so it is deliberately
+*not* gated by `entry['scavenged']`:
 
 ```python
 egg = _maybe_drop_egg(doc, 'ruin_scavenge')  # (1.0, {1: 0.7, 2: 0.3})
@@ -85,8 +88,19 @@ if egg:
     out['egg'] = {'tier': egg['tier']}
 ```
 
-Extend the scavenge text to mention the egg. The existing `scavenged` flag means
-this cannot be farmed within one abandonment window.
+The Spores payout and the 18% consumable chance stay gated to the first scavenge
+per abandonment (the `entry['scavenged']` "picked it clean" path); only the egg
+is ungated. Restructure `_lair_scavenge` so the early "already picked it clean"
+return still rolls and surfaces the egg before returning, e.g.:
+
+- First scavenge this cycle: Spores (+ maybe consumable) **and** an egg.
+- Repeat scavenge this cycle: no Spores/consumable ("picked clean"), but still an
+  egg from the nest.
+
+Egg throughput is paced by the roll economy (you must keep landing on the tile)
+and the single 5-min incubator slot, so an ungated egg is a steady farm rather
+than an instant flood. Update the scavenge text for both the first-grab and
+picked-clean cases to mention the egg.
 
 ### 3. Treasure caches — chance egg (like other loot)
 
@@ -141,7 +155,7 @@ computed on the client.
 | Source | Rate | Tiers |
 |---|---|---|
 | Ruin boss kill | **guaranteed** | T3 |
-| Ruin scavenge (once/cycle) | **guaranteed** | {T1:70, T2:30} |
+| Ruin scavenge (every visit) | **guaranteed** | {T1:70, T2:30} |
 | Cache | 10% | {T1:40, T2:40, T3:20} |
 | Loot / Mystery / Combat | 6 / 8 / 5% | unchanged |
 | Sigil lairs | — | none (unchanged) |
@@ -156,8 +170,9 @@ Backend (`infrastructure/lambda/tests/`, in-memory FakeTable suite):
 
 - Ruin-boss kill grants a T3 egg: assert `out['egg']['tier'] == 3` and a new egg
   in `doc['eggs']`, on both first-ever and repeat kills.
-- Ruin scavenge grants an egg once per abandonment: assert `out['egg']` present
-  with tier ∈ {1, 2}, and that a second scavenge in the same window does not.
+- Ruin scavenge grants an egg on **every** visit: assert `out['egg']` present
+  with tier ∈ {1, 2} on the first scavenge, and that a **repeat** scavenge in the
+  same abandonment window still returns an egg but no Spores ("picked clean").
 - Cache egg fires from the `'cache'` table (force `_rng` under the chance) and
   is absent when the roll misses.
 - Existing companion / egg tests stay green.
