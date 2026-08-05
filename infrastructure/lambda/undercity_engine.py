@@ -185,9 +185,16 @@ def _base_hit(striker: Combatant, target: Combatant, rng, pierce: int = 0,
     return hit
 
 
+def _incoming_mult(target) -> float:
+    """Grave Titan 'Colossus': a flat proportional reduction on incoming enemy
+    strike damage (on top of DEF's mitigation). Strike sites only — rot ticks and
+    the Collapse ramp are left untouched."""
+    return (1 - data.COLOSSUS_DR) if target.has('colossus') else 1.0
+
+
 def _deal(striker, target, side, rnd, raw, mult, entries, tag=None):
     """Apply round(raw*mult) damage striker->target; log an entry; drain_life."""
-    dmg = max(0, round(raw * mult))
+    dmg = max(0, round(raw * mult * _incoming_mult(target)))
     if dmg <= 0:
         return
     target.hp -= dmg
@@ -292,9 +299,7 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             _spikeshell(losr, winr, lose_side, rnd, entries)
         else:
             lose_stance = d_stance if winner == 'attacker' else a_stance
-            pierce = (data.DEATHTOUCH_PIERCE
-                      if win_stance == 'aggress' and winr.has('deathtouch_stomp') else 0)
-            raw = _base_hit(winr, losr, rng, pierce, stance=win_stance, ramp=ramp)
+            raw = _base_hit(winr, losr, rng, stance=win_stance, ramp=ramp)
             mult = data.STANCE_WIN_MULT
             mult += winr.mag('deep_biter', 0.0)
             # Brutal Strikes (ATK-6 perk): landing a decisive hit swings harder.
@@ -311,6 +316,8 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                     bonus += data.VENOM_BARB_BONUS
                 winr.first_win_used = True
             dmg = max(0, round(raw * mult) + bonus)
+            if losr.has('colossus'):
+                dmg = round(dmg * (1 - data.COLOSSUS_DR))
             if double_win_for == win_side:
                 dmg *= 2
             # trickster: a lost Feint is not fully punished.
@@ -411,7 +418,8 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                  or (s.has('flurry') and rng.random() < data.FLURRY_CHANCE))
         if fires and s.hp > 0 and t.hp > 0:
             st = a_stance if side == 'attacker' else d_stance
-            chip = max(1, round(_base_hit(s, t, rng, stance=st, ramp=ramp) * data.SWARM_CHIP_MULT))
+            chip = max(1, round(_base_hit(s, t, rng, stance=st, ramp=ramp)
+                                * data.SWARM_CHIP_MULT * _incoming_mult(t)))
             t.hp -= chip
             entry = {'round': rnd, 'by': side, 'dmg': chip, 'swarm': True}
             if s.has('drain_life'):

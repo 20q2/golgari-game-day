@@ -66,15 +66,17 @@ def fighter(**kw):
 # ── Leveling ─────────────────────────────────────────────────────────────────
 
 def test_xp_curve():
-    # Progressive curve (design 2026-08-04): flat-ish early, ramps after L4.
+    # Progressive curve (design 2026-08-04): flat-ish early, ramps after L5.
+    # Calibrated to a ~48-roll night; total L1->12 = 677.
     assert data.xp_to_next(1) == 20      # anchor: 2 basic wild kills (10 XP each)
-    assert data.xp_to_next(4) == 50
-    assert data.xp_to_next(5) == 62      # ramp begins
-    assert data.xp_to_next(9) == 150
-    assert data.xp_to_next(11) == 218
-    # A single T2/T3 elite (35-100 XP) must never auto-level in the ramp band.
-    assert data.xp_to_next(5) > 47       # vs a T2 elite
-    assert data.xp_to_next(8) > 100      # vs the fattest T3 apex elite
+    assert data.xp_to_next(5) == 40
+    assert data.xp_to_next(6) == 47      # ramp begins
+    assert data.xp_to_next(9) == 92
+    assert data.xp_to_next(11) == 142
+    assert sum(data.xp_to_next(l) for l in range(1, 12)) == 677
+    # A single mid/high elite shouldn't reliably auto-level in the ramp band.
+    assert data.xp_to_next(7) > 47       # a T2 elite (~47) no longer levels you
+    assert data.xp_to_next(11) > 100     # nor the fattest T3 apex elite (~100)
 
 
 def test_level_up_grants():
@@ -894,12 +896,45 @@ def test_flurry_skips_bonus_on_failed_roll():
     assert d.hp == 29 and a.hp == 29
 
 
-def test_deathtouch_aggress_pierces_def():
-    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'deathtouch_stomp'}))
-    d = fighter(atk=10, dfn=8, hp=60, max_hp=60)
-    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
-    # aggress base 15; pierce 3 => eff def 5; hit 15-5=10 *1.5 => 15
-    assert d.hp == 60 - 15
+def test_colossus_reduces_incoming_strike():
+    # Identical exchange, with and without colossus on the target: the tank
+    # takes exactly (1 - COLOSSUS_DR) of the normal decisive hit.
+    a1 = fighter(atk=10, dfn=5, hp=100, max_hp=100)
+    normal = fighter(atk=10, dfn=5, hp=100, max_hp=100)
+    resolve_round(a1, normal, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    normal_dmg = 100 - normal.hp
+    assert normal_dmg > 0
+
+    a2 = fighter(atk=10, dfn=5, hp=100, max_hp=100)
+    tank = fighter(atk=10, dfn=5, hp=100, max_hp=100,
+                   passives=frozenset({'colossus'}))
+    resolve_round(a2, tank, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    tank_dmg = 100 - tank.hp
+    assert tank_dmg == round(normal_dmg * (1 - data.COLOSSUS_DR))
+    assert tank_dmg < normal_dmg
+
+
+def test_colossus_does_not_reduce_rot():
+    # Guard vs Guard = stall, no strike damage (ramp disabled). Only rot ticks,
+    # which Colossus must NOT reduce.
+    a = fighter(atk=10, dfn=5, hp=100, max_hp=100)
+    tank = fighter(atk=10, dfn=5, hp=100, max_hp=100,
+                   passives=frozenset({'colossus'}))
+    tank.rot_stacks = 2
+    resolve_round(a, tank, 'guard', 'guard', 1, FakeRng(uniform=1.0))
+    assert tank.hp == 100 - 2 * data.ROT_PER_STACK
+
+
+def test_colossus_reduces_guard_counter():
+    # Guard counter flows through _deal; colossus on the aggressor reduces it.
+    tank = fighter(atk=10, dfn=5, hp=100, max_hp=100,
+                   passives=frozenset({'colossus'}))
+    guard = fighter(atk=10, dfn=5, hp=100, max_hp=100)
+    a = fighter(atk=10, dfn=5, hp=100, max_hp=100)
+    g = fighter(atk=10, dfn=5, hp=100, max_hp=100)
+    resolve_round(tank, guard, 'aggress', 'guard', 1, FakeRng(uniform=1.0))
+    resolve_round(a, g, 'aggress', 'guard', 1, FakeRng(uniform=1.0))
+    assert (100 - tank.hp) == round((100 - a.hp) * (1 - data.COLOSSUS_DR))
 
 
 def test_first_bite_wins_clash_order():

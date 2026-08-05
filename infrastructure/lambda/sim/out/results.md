@@ -5,114 +5,121 @@
 Turns are per roll+move; rolls are free in-sim so this is the raw power curve, independent of roll income. See the economy overlay note below.
 
 
-**pest/city — rusher**  (median deaths 44, max 53)
-- milestone turns: level2=4, level3=7, level5=13, evolve_t2=13, level8=20, level10=26, evolve_t3=26, level12=30
-- power@turn: 10:61, 25:98, 50:113, 100:113, 150:113, 200:113
-- winrate: wild[1-4]=76%(n17), wild[5-9]=89%(n57), wild[10-12]=91%(n911), elite[1-4]=26%(n246), elite[5-9]=75%(n232), elite[10-12]=83%(n4309)
+**pest/city — rusher**  (median deaths 10, max 21)
+- milestone turns: level2=5, level3=8, level5=16, evolve_t2=16, level8=24, level10=34, evolve_t3=34, level12=46
+- power@turn: 10:54, 25:86, 50:118, 100:122, 150:122, 200:122
+- winrate: wild[1-4]=62%(n47), wild[5-9]=95%(n91), wild[10-12]=100%(n1225), elite[1-4]=20%(n212), elite[5-9]=80%(n290), elite[10-12]=100%(n3532)
 
-**saproling/cavern — rusher**  (median deaths 9, max 17)
-- milestone turns: level2=5, level3=8, level5=16, evolve_t2=16, level8=22, level10=26, evolve_t3=26, level12=30
-- power@turn: 10:63, 25:106, 50:122, 100:122, 150:122, 200:122
-- winrate: wild[1-4]=79%(n67), wild[5-9]=98%(n56), wild[10-12]=100%(n998), elite[1-4]=14%(n218), elite[5-9]=82%(n138), elite[10-12]=100%(n4030)
+**saproling/cavern — rusher**  (median deaths 32, max 45)
+- milestone turns: level2=5, level3=12, level5=22, evolve_t2=22, level8=36, level10=51, evolve_t3=51, level12=65
+- power@turn: 10:46, 25:70, 50:98, 100:116, 150:117, 200:117
+- winrate: wild[1-4]=43%(n130), wild[5-9]=92%(n264), wild[10-12]=96%(n1579), elite[1-4]=9%(n192), elite[5-9]=66%(n230), elite[10-12]=82%(n1996)
 
-**pest/city — farmer**  (median deaths 77, max 105)
-- milestone turns: level2=14, level3=30, level5=64, evolve_t2=64, level8=92, level10=118, evolve_t3=118, level12=130
-- power@turn: 10:48, 25:53, 50:63, 100:93, 150:119, 200:119
-- winrate: wild[1-4]=45%(n206), wild[5-9]=81%(n275), wild[10-12]=30%(n947), elite[1-4]=6%(n224), elite[5-9]=43%(n215), elite[10-12]=19%(n809)
+**pest/city — farmer**  (median deaths 28, max 40)
+- milestone turns: level2=8, level3=17, level5=40, evolve_t2=40, level8=63, level10=92, evolve_t3=92, level12=114
+- power@turn: 10:52, 25:58, 50:90, 100:139, 150:146, 200:147
+- winrate: wild[1-4]=34%(n207), wild[5-9]=85%(n313), wild[10-12]=94%(n1100), elite[1-4]=2%(n181), elite[5-9]=57%(n236), elite[10-12]=87%(n711)
 
-**saproling/cavern — farmer**  (median deaths 18, max 24)
-- milestone turns: level2=13, level3=32, level5=74, evolve_t2=74, level8=86, level10=89, evolve_t3=89, level12=96
-- power@turn: 10:53, 25:58, 50:63, 100:124, 150:126, 200:126
-- winrate: wild[1-4]=28%(n271), wild[5-9]=94%(n143), wild[10-12]=100%(n1402), elite[1-4]=2%(n200), elite[5-9]=89%(n91), elite[10-12]=100%(n1118)
+**saproling/cavern — farmer**  (median deaths 23, max 41)
+- milestone turns: level2=9, level3=24, level5=56, evolve_t2=56, level8=93, level10=130, evolve_t3=130, level12=168
+- power@turn: 10:51, 25:56, 50:64, 100:100, 150:121, 200:141
+- winrate: wild[1-4]=26%(n249), wild[5-9]=82%(n417), wild[10-12]=96%(n800), elite[1-4]=3%(n149), elite[5-9]=57%(n194), elite[10-12]=87%(n399)
 
-**pest/city — speedster**  (median deaths 2, max 5)
-- milestone turns: level2=31, level3=51, level5=154, evolve_t2=154, level8=225
-- power@turn: 10:46, 25:48, 50:54, 100:60, 150:70, 200:75
-- winrate: wild[1-4]=51%(n70), wild[5-9]=91%(n64), elite[1-4]=17%(n12), elite[5-9]=57%(n7)
+**pest/city — speedster**  (median deaths 2, max 6)
+- milestone turns: level2=19, level3=42, level5=105, evolve_t2=105, level8=208
+- power@turn: 10:46, 25:53, 50:61, 100:68, 150:77, 200:84
+- winrate: wild[1-4]=24%(n37), wild[5-9]=83%(n29), elite[1-4]=0%(n18), elite[5-9]=100%(n1)
 
-**saproling/cavern — speedster**  (median deaths 2, max 3)
-- milestone turns: level2=36, level3=72, level5=133, evolve_t2=133, level8=213, level10=215, evolve_t3=215
-- power@turn: 10:53, 25:54, 50:59, 100:65, 150:82, 200:87
-- winrate: wild[1-4]=64%(n58), wild[5-9]=98%(n122), wild[10-12]=100%(n12), elite[1-4]=60%(n10), elite[5-9]=80%(n20), elite[10-12]=100%(n4)
+**saproling/cavern — speedster**  (median deaths 1, max 2)
+- milestone turns: level2=20, level3=44, level5=122, evolve_t2=122, level8=215, level10=220, evolve_t3=220
+- power@turn: 10:43, 25:48, 50:56, 100:66, 150:79, 200:83
+- winrate: wild[1-4]=64%(n33), wild[5-9]=94%(n18), wild[10-12]=100%(n2), elite[1-4]=0%(n2), elite[10-12]=100%(n1)
 
-**pest/city — tank**  (median deaths 40, max 64)
-- milestone turns: level2=8, level3=18, level5=45, evolve_t2=45, level8=88, level10=117, evolve_t3=117, level12=134
-- power@turn: 10:53, 25:58, 50:76, 100:91, 150:119, 200:119
-- winrate: wild[1-4]=61%(n231), wild[5-9]=81%(n315), wild[10-12]=34%(n577), elite[1-4]=10%(n141), elite[5-9]=51%(n213), elite[10-12]=35%(n340)
+**pest/city — tank**  (median deaths 18, max 31)
+- milestone turns: level2=8, level3=22, level5=51, evolve_t2=51, level8=96, level10=167, evolve_t3=167, level12=192
+- power@turn: 10:53, 25:59, 50:66, 100:102, 150:107, 200:142
+- winrate: wild[1-4]=38%(n191), wild[5-9]=82%(n366), wild[10-12]=98%(n482), elite[1-4]=8%(n135), elite[5-9]=60%(n220), elite[10-12]=98%(n256)
 
-**saproling/cavern — tank**  (median deaths 16, max 63)
-- milestone turns: level2=8, level3=18, level5=42, evolve_t2=42, level8=56, level10=66, evolve_t3=66, level12=78
-- power@turn: 10:58, 25:63, 50:86, 100:124, 150:126, 200:126
-- winrate: wild[1-4]=38%(n288), wild[5-9]=95%(n216), wild[10-12]=97%(n1225), elite[1-4]=4%(n161), elite[5-9]=85%(n79), elite[10-12]=97%(n448)
+**saproling/cavern — tank**  (median deaths 30, max 40)
+- milestone turns: level2=7, level3=18, level5=50, evolve_t2=50, level8=150, level10=212, evolve_t3=212, level12=200
+- power@turn: 10:51, 25:56, 50:69, 100:82, 150:96, 200:104
+- winrate: wild[1-4]=17%(n243), wild[5-9]=64%(n397), wild[10-12]=97%(n125), elite[1-4]=2%(n181), elite[5-9]=32%(n266), elite[10-12]=88%(n69)
 
 ## 2. Starter × level (arena, 300 fights/cell, neutral skilled player)
 
 
 ### Level 1
 
-| build | drudge_beetle | myconid | fetid_imp | rot_shambler | cinder_wolf | bramble_horror | embermaw_alpha | thornclad_revenant | Savra dmg/att |
+| build | drudge_beetle | myconid | fetid_imp | rot_shambler | large_bear | loleth_troll | embermaw_alpha | thornclad_revenant | Savra dmg/att |
 |---|---|---|---|---|---|---|---|---|---|
-| pest |   95% |   75% |   24% |   24% |    2% |    5% |    0% |    2% | 12/400 (0%) |
-| kraul |   88% |   87% |   43% |   24% |    4% |   22% |    0% |    4% | 19/400 (0%) |
-| saproling |   99% |   85% |   20% |   48% |    1% |    4% |    0% |    0% | 10/400 (0%) |
-| zombie |   90% |   64% |    9% |    9% |    0% |    1% |    0% |    0% | 7/400 (0%) |
+| pest |   92% |   77% |   27% |   28% |    3% |   11% |    0% |    2% | 11/400 (0%) |
+| kraul |   91% |   91% |   51% |   33% |    7% |   28% |    0% |    9% | 19/400 (0%) |
+| saproling |   93% |   80% |   29% |   30% |    4% |   13% |    0% |    3% | 11/400 (0%) |
+| zombie |   97% |   83% |   33% |   42% |    6% |   13% |    0% |    3% | 13/400 (0%) |
+| squirrel |   90% |   77% |   28% |   25% |    4% |   12% |    0% |    3% | 11/400 (0%) |
+| elf |   98% |   88% |   38% |   48% |    9% |   18% |    0% |    4% | 15/400 (0%) |
 
 ### Level 5
 
-| build | drudge_beetle | myconid | fetid_imp | rot_shambler | cinder_wolf | bramble_horror | embermaw_alpha | thornclad_revenant | Savra dmg/att |
+| build | drudge_beetle | myconid | fetid_imp | rot_shambler | large_bear | loleth_troll | embermaw_alpha | thornclad_revenant | Savra dmg/att |
 |---|---|---|---|---|---|---|---|---|---|
-| pest |  100% |  100% |   76% |   98% |   60% |   67% |   16% |   32% | 40/400 (0%) |
-| kraul |  100% |  100% |   88% |   93% |   57% |   80% |   21% |   48% | 63/400 (0%) |
-| saproling |  100% |  100% |   80% |  100% |   77% |   72% |   32% |   39% | 46/400 (0%) |
-| zombie |  100% |  100% |   77% |   99% |   64% |   65% |   14% |   27% | 37/400 (0%) |
+| pest |  100% |  100% |   79% |   99% |   69% |   76% |   26% |   45% | 45/400 (0%) |
+| kraul |  100% |  100% |   91% |   96% |   69% |   90% |   36% |   64% | 76/400 (0%) |
+| saproling |  100% |  100% |   81% |   99% |   72% |   84% |   29% |   52% | 48/400 (0%) |
+| zombie |  100% |  100% |   78% |   99% |   73% |   75% |   29% |   42% | 44/400 (0%) |
+| squirrel |  100% |  100% |   79% |   97% |   62% |   76% |   22% |   46% | 47/400 (0%) |
+| elf |  100% |  100% |   92% |   98% |   71% |   90% |   34% |   65% | 72/400 (0%) |
 
 ### Level 10
 
-| build | drudge_beetle | myconid | fetid_imp | rot_shambler | cinder_wolf | bramble_horror | embermaw_alpha | thornclad_revenant | Savra dmg/att |
+| build | drudge_beetle | myconid | fetid_imp | rot_shambler | large_bear | loleth_troll | embermaw_alpha | thornclad_revenant | Savra dmg/att |
 |---|---|---|---|---|---|---|---|---|---|
-| pest |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 231/400 (4%) |
-| kraul |  100% |  100% |  100% |  100% |  100% |  100% |   94% |  100% | 249/400 (9%) |
-| saproling |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 341/400 (53%) |
-| zombie |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 240/400 (3%) |
+| pest |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 347/400 (58%) |
+| kraul |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 371/400 (76%) |
+| saproling |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 286/400 (21%) |
+| zombie |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 353/400 (61%) |
+| squirrel |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 278/400 (18%) |
+| elf |  100% |  100% |   96% |  100% |   92% |   99% |   75% |   97% | 197/400 (7%) |
 
 ## 3. Stat allocation (arena, pest L10, no gear)
 
 
 ### pest L10 stat spreads
 
-| build | drudge_beetle | myconid | fetid_imp | rot_shambler | cinder_wolf | bramble_horror | embermaw_alpha | thornclad_revenant | Savra dmg/att |
+| build | drudge_beetle | myconid | fetid_imp | rot_shambler | large_bear | loleth_troll | embermaw_alpha | thornclad_revenant | Savra dmg/att |
 |---|---|---|---|---|---|---|---|---|---|
-| pure-ATK (a28/d5/s7) |  100% |  100% |  100% |  100% |   99% |  100% |   93% |   97% | 362/400 (61%) |
-| pure-DEF (a8/d25/s5) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 309/400 (10%) |
-| pure-SPD (a8/d5/s29) |  100% |  100% |  100% |   99% |   83% |  100% |   61% |   98% | 236/400 (18%) |
-| balanced (a19/d14/s7) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 382/400 (70%) |
-| ATK/SPD (a19/d5/s16) |  100% |  100% |  100% |  100% |   99% |  100% |   90% |   95% | 320/400 (37%) |
-| DEF/ATK (a17/d16/s5) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 234/400 (2%) |
+| pure-ATK (a30/d5/s5) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 399/400 (99%) |
+| pure-DEF (a10/d25/s5) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 383/400 (60%) |
+| pure-SPD (a10/d5/s29) |  100% |  100% |  100% |   99% |   84% |  100% |   64% |   98% | 239/400 (22%) |
+| balanced (a21/d14/s5) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 400/400 (100%) |
+| ATK/SPD (a21/d5/s14) |  100% |  100% |  100% |  100% |  100% |  100% |   99% |  100% | 395/400 (95%) |
+| DEF/ATK (a19/d16/s5) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 297/400 (23%) |
 
 ## 4. Equipment archetype (arena, pest L10 balanced stats)
 
 
 ### pest L10 loadouts
 
-| build | drudge_beetle | myconid | fetid_imp | rot_shambler | cinder_wolf | bramble_horror | embermaw_alpha | thornclad_revenant | Savra dmg/att |
+| build | drudge_beetle | myconid | fetid_imp | rot_shambler | large_bear | loleth_troll | embermaw_alpha | thornclad_revenant | Savra dmg/att |
 |---|---|---|---|---|---|---|---|---|---|
-| none |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 231/400 (4%) |
-| T1 fang (aggro) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 286/400 (31%) |
-| T3 fang (aggro) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 297/400 (28%) |
-| T3 carapace (tank) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 337/400 (32%) |
-| T3 charm (feint) |  100% |  100% |  100% |  100% |  100% |  100% |   99% |  100% | 277/400 (13%) |
-| T3 full mixed |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 388/400 (83%) |
+| none |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 347/400 (58%) |
+| T1 fang (aggro) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 337/400 (53%) |
+| T3 fang (aggro) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 362/400 (69%) |
+| T3 carapace (tank) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 398/400 (96%) |
+| T3 charm (feint) |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 368/400 (72%) |
+| T3 full mixed |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 400/400 (100%) |
 
 ## 5. Evolution path (arena, saproling L12, balanced stats)
 
 
 ### saproling apex lines
 
-| line | drudge_beetle | myconid | fetid_imp | rot_shambler | cinder_wolf | bramble_horror | embermaw_alpha | thornclad_revenant | Savra dmg/att |
+| line | drudge_beetle | myconid | fetid_imp | rot_shambler | large_bear | loleth_troll | embermaw_alpha | thornclad_revenant | Savra dmg/att |
 |---|---|---|---|---|---|---|---|---|---|
-| Slitherhead→Golgari Lich Lord |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 386/400(78%) |
-| Slitherhead→Izoni, Thousand-Eyed |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 378/400(61%) |
-| Myconid Sporetender→Grave Titan |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 356/400(36%) |
-| Myconid Sporetender→Golgari Lich Lord |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 389/400(82%) |
-| Corpsejack Menace→Golgari Lich Lord |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 381/400(78%) |
-| Corpsejack Menace→Izoni, Thousand-Eyed |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 368/400(52%) |
+| Slitherhead→Swamp Dragon |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 334/400(36%) |
+| Slitherhead→Primeval Warden |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 365/400(56%) |
+| Sporeback Skirmisher→Swamp Dragon |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 312/400(20%) |
+| Sporeback Skirmisher→Primeval Warden |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 345/400(31%) |
+| Jungle Creeper→Swamp Dragon |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 308/400(22%) |
+| Jungle Creeper→Primeval Warden |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 342/400(33%) |
+| Jungle Creeper→Calamity Beast |  100% |  100% |  100% |  100% |  100% |  100% |  100% |  100% | 290/400(15%) |

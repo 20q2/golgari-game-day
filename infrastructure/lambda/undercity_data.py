@@ -177,10 +177,10 @@ TIER2 = {
 # Apex forms (level 10).
 APEX = {
     'grave_titan': {
-        'name': 'Grave Titan', 'bonus': {'maxHp': 6, 'def': 2},
-        'passive': 'deathtouch_stomp',
+        'name': 'Grave Titan', 'bonus': {'maxHp': 12, 'def': 4},
+        'passive': 'colossus',
         'from': ['brackish_trudge', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'],
-        'blurb': 'Deathtouch Stomp: your strikes ignore 3 of the enemy’s DEF.',
+        'blurb': 'Colossus: a hulking wall — shrugs off 20% of every blow and outlasts anything.',
     },
     'golgari_lich_lord': {
         'name': 'Golgari Lich Lord', 'bonus': {'atk': 2, 'maxHp': 6},
@@ -515,7 +515,7 @@ ROT_PER_STACK   = 2   # damage per rot stack, ticked at end of each round
 SWARM_CHIP_MULT = 0.5 # swarm: extra hit each round = hit * this (min 1)
 FLURRY_CHANCE   = 0.25 # flurry: per-round chance for a bonus strike (weaker swarm)
 SPIKESHELL_RETALIATE = 2  # spikeshell: damage dealt back when you LOSE an exchange
-DEATHTOUCH_PIERCE  = 3  # deathtouch_stomp: Aggress reduces target eff-DEF by this
+DEATHTOUCH_PIERCE  = 3  # RETIRED 2026-08-04 (Grave Titan is now Colossus); kept defined for save/backcompat only
 FLYBY_DODGE        = 0.25  # chance to dodge the punish when you LOSE an exchange
 VENOM_BARB_BONUS   = 3   # first winning exchange +this
 FIRST_WIN_ROT_BREATH_MULT = 2  # rot_breath: first winning exchange * this

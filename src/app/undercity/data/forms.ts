@@ -31,7 +31,7 @@ export const PASSIVE_NAMES: Record<string, string> = {
   dredge: 'Dredge',
   doubling_rot: 'Doubling Rot',
   soul_trophy: 'Soul Trophy',
-  deathtouch_stomp: 'Deathtouch Stomp',
+  colossus: 'Colossus',
   drain_life: 'Drain Life',
   rot_breath: 'Rot Breath',
   swarm: 'Swarm',
@@ -62,7 +62,7 @@ export const PASSIVE_BLURBS: Record<string, string> = {
   dredge: 'Reclaim your snare after it triggers.',
   doubling_rot: 'Mystery-event Spore payouts doubled.',
   soul_trophy: 'After any won fight, choose a stat — gain +[foe level] to it for your next battle.',
-  deathtouch_stomp: 'Your strikes ignore 3 of the enemy’s DEF.',
+  colossus: 'Shrugs off 20% of every blow, and its huge frame simply outlasts the enemy.',
   drain_life: 'Heal for 50% of damage you deal.',
   rot_breath: 'Round-1 strike hits for double.',
   swarm: 'One extra strike every battle round.',
@@ -127,7 +127,7 @@ export const TIER2: FormInfo[] = [
 ];
 
 export const APEX: (FormInfo & { from: string[] })[] = [
-  { id: 'grave_titan', name: 'Grave Titan', tier: 3, passive: 'deathtouch_stomp', passiveName: 'Deathtouch Stomp', bonus: { maxHp: 6, def: 2 }, blurb: 'HP/DEF colossus.', from: ['brackish_trudge', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'] },
+  { id: 'grave_titan', name: 'Grave Titan', tier: 3, passive: 'colossus', passiveName: 'Colossus', bonus: { maxHp: 12, def: 4 }, blurb: 'Hulking tank.', from: ['brackish_trudge', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'] },
   { id: 'golgari_lich_lord', name: 'Golgari Lich Lord', tier: 3, passive: 'drain_life', passiveName: 'Drain Life', bonus: { atk: 2, maxHp: 6 }, blurb: 'ATK/HP sovereign of rot.', from: ['brackish_trudge', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'] },
   { id: 'swamp_dragon', name: 'Swamp Dragon', tier: 3, passive: 'rot_breath', passiveName: 'Rot Breath', bonus: { atk: 2, spd: 2 }, blurb: 'ATK/SPD terror of the deep tunnels.', from: ['vexing_pest', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior', 'gorgon'] },
   { id: 'izoni', name: 'Primeval Warden', tier: 3, passive: 'swarm', passiveName: 'Swarm', bonus: { spd: 4 }, blurb: 'SPD incarnate — strikes from the shadows, faster than the eye can track.', from: ['vexing_pest', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage'] },
@@ -150,9 +150,9 @@ export function formName(form: string | undefined): string {
 }
 
 // Mirror of undercity_data.xp_to_next (undercity_config XP_CURVE_* scalars).
-// Progressive curve (design 2026-08-04): flat-ish early, ramps after level 4.
+// Progressive curve (design 2026-08-04): flat-ish early, ramps after level 5.
 // Keep in sync with the server — the client only displays this for the XP bar.
 export function xpToNext(level: number): number {
-  const ramp = Math.max(0, level - 4);
-  return 10 + 10 * level + 2 * ramp * ramp;
+  const ramp = Math.max(0, level - 5);
+  return 15 + 5 * level + 2 * ramp * ramp;
 }

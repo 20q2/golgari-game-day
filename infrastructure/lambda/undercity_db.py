@@ -366,6 +366,24 @@ def get_active_season(table):
     return _active_season(table)
 
 
+# Renamed creature passives — remapped on load so live saves pick up the reworked
+# behavior. Maps STORED key -> current key; collapses chains (flyby->vexing->improvise
+# resolves in one pass). Extend here whenever a passive is renamed.
+_PASSIVE_RENAMES = {
+    'flyby': 'improvise',           # oldest pest T2 key
+    'vexing': 'improvise',          # 2026-08-04: Vexing -> Improvise
+    'undying': 'bog_forager',       # 2026-08-04: Undying -> Bog Forager
+    'deathtouch_stomp': 'colossus', # 2026-08-04: Deathtouch Stomp -> Colossus
+}
+
+
+def _migrate_passives(passives):
+    """Remap renamed passive keys on a loaded creature's passives list."""
+    if not passives:
+        return passives
+    return [_PASSIVE_RENAMES.get(p, p) for p in passives]
+
+
 def _get_player(table, sid, user_id):
     doc = _get(table, _season_pk(sid), f'PLAYER#{user_id}')
     if doc:
@@ -377,10 +395,13 @@ def _get_player(table, sid, user_id):
         # Backward-compat: the pest T2 was renamed stinkweed_imp -> vexing_pest.
         if doc.get('form') == 'stinkweed_imp':
             doc['form'] = 'vexing_pest'
-        # Backward-compat: the pest T2 passive was renamed flyby -> vexing.
+        # Backward-compat: reworked passive keys (flyby/vexing->improvise,
+        # undying->bog_forager, deathtouch_stomp->colossus).
         passives = doc.get('passives')
-        if passives and 'flyby' in passives:
-            doc['passives'] = ['vexing' if p == 'flyby' else p for p in passives]
+        if passives:
+            migrated = _migrate_passives(passives)
+            if migrated != passives:
+                doc['passives'] = migrated
     return doc
 
 

@@ -625,11 +625,13 @@ export function drawEffectMasked(
     sc.fillStyle = grad;
     sc.fillRect(0, 0, w, h);
   } else if (effect === 'prismatic') {
-    sc.globalAlpha = 0.12;
-    const hue = Math.floor((now * 10 + 180) % 360);
-    sc.fillStyle = `hsl(${hue}, 100%, 70%)`;
+    // Solid, fully-opaque animated hue clipped to the silhouette. Composited
+    // below with the 'color' blend so it recolors the WHOLE creature (hue+sat
+    // from this fill, luminosity/shading from the sprite) and cycles the hue
+    // over time — a true colorize, not the faint translucent veil it once was.
+    const hue = Math.floor((now * 30 + 200) % 360);
+    sc.fillStyle = `hsl(${hue}, 90%, 55%)`;
     sc.fillRect(0, 0, w, h);
-    sc.globalAlpha = 1;
   } else if (effect === 'starry') {
     const tex = starryImage;
     if (!tex) return; // texture not loaded yet — skip this frame
@@ -646,8 +648,22 @@ export function drawEffectMasked(
     return; // unknown effect id — draw nothing
   }
 
-  // Blit the silhouette-clipped effect onto the destination.
-  ctx.drawImage(effectScratch!, 0, 0, w, h, dx, dy, dw, dh);
+  // Blit the silhouette-clipped effect onto the destination. Prismatic uses the
+  // 'color' HSL blend to recolor the whole creature (keeping its shading) instead
+  // of a translucent overlay; the others composite with plain source-over. Save
+  // and restore the caller's composite op + alpha — the plaza passes a fade alpha
+  // (dinoAlpha) and draws the hat afterward, both of which must be left intact.
+  if (effect === 'prismatic') {
+    const prevOp = ctx.globalCompositeOperation;
+    const prevAlpha = ctx.globalAlpha;
+    ctx.globalCompositeOperation = 'color';
+    ctx.globalAlpha = prevAlpha * 0.9;
+    ctx.drawImage(effectScratch!, 0, 0, w, h, dx, dy, dw, dh);
+    ctx.globalCompositeOperation = prevOp;
+    ctx.globalAlpha = prevAlpha;
+  } else {
+    ctx.drawImage(effectScratch!, 0, 0, w, h, dx, dy, dw, dh);
+  }
 }
 
 /**

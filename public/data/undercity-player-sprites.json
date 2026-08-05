@@ -141,6 +141,11 @@
       "hasHat": true
     },
     {
+      "name": "woodlurker_mimic",
+      "hasMask": true,
+      "hasHat": true
+    },
+    {
       "name": "zombie",
       "hasMask": true,
       "hasHat": true

@@ -30,10 +30,9 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   squirrel: { sprite: 'squirrel', regions: MASK_REGIONS, scale: 0.7 },
   elf: { sprite: 'elf', regions: MASK_REGIONS, scale: 0.7 },
   // Tier 2 — same line sprite, grown up
-  // Elf line tier-2: Gorgon has its own art; Wood Lurker reuses the elf
-  // placeholder until dedicated art lands.
+  // Elf line tier-2: Gorgon and Wood Lurker each have dedicated art.
   gorgon: { sprite: 'gorgon', regions: MASK_REGIONS, scale: 0.9 },
-  wood_lurker: { sprite: 'elf', regions: MASK_REGIONS, scale: 0.9 },
+  wood_lurker: { sprite: 'woodlurker_mimic', regions: MASK_REGIONS, scale: 0.9 },
   brackish_trudge: { sprite: 'brackish_trudge', regions: MASK_REGIONS, scale: 1.0 },
   vexing_pest: { sprite: 'vexing_pest', regions: MASK_REGIONS, scale: 0.9 },
   kraul_warrior: { sprite: 'grave_shell_scarab', regions: MASK_REGIONS, scale: 1.0 },

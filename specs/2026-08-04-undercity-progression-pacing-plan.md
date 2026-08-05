@@ -43,15 +43,17 @@ In `tests/test_undercity_engine.py`, replace `test_xp_curve`, `test_level_up_gra
 
 ```python
 def test_xp_curve():
-    # Progressive curve (design 2026-08-04): flat-ish early, ramps after L4.
+    # Progressive curve (design 2026-08-04): flat-ish early, ramps after L5.
+    # Calibrated to a ~48-roll night; total L1->12 = 677.
     assert data.xp_to_next(1) == 20      # anchor: 2 basic wild kills (10 XP each)
-    assert data.xp_to_next(4) == 50
-    assert data.xp_to_next(5) == 62      # ramp begins
-    assert data.xp_to_next(9) == 150
-    assert data.xp_to_next(11) == 218
-    # A single T2/T3 elite (35-100 XP) must never auto-level in the ramp band.
-    assert data.xp_to_next(5) > 47       # vs a T2 elite
-    assert data.xp_to_next(8) > 100      # vs the fattest T3 apex elite
+    assert data.xp_to_next(5) == 40
+    assert data.xp_to_next(6) == 47      # ramp begins
+    assert data.xp_to_next(9) == 92
+    assert data.xp_to_next(11) == 142
+    assert sum(data.xp_to_next(l) for l in range(1, 12)) == 677
+    # A single mid/high elite shouldn't reliably auto-level in the ramp band.
+    assert data.xp_to_next(7) > 47       # a T2 elite (~47) no longer levels you
+    assert data.xp_to_next(11) > 100     # nor the fattest T3 apex elite (~100)
 
 
 def test_level_up_grants():
@@ -90,12 +92,12 @@ In `infrastructure/lambda/undercity_config.py`, add a block after the roll-econo
 # capping in ~4h. Flat-ish early (casuals unaffected), ramps after RAMP_FROM so
 # a single T2/T3 elite never auto-levels. Total L1->12 = 1050 (was 550). Cap
 # stays 12 — this changes PACE, not the power ceiling. Client mirror in
-# src/app/undercity/data/forms.ts::xpToNext. C=3 (1190) / C=4 (1330) are the
-# steeper reserves; sim harness in infrastructure/lambda/sim/.
-XP_CURVE_BASE = 10
-XP_CURVE_LINEAR = 10
-XP_CURVE_RAMP = 2          # the "C" coefficient
-XP_CURVE_RAMP_FROM = 4     # ramp only bites for levels above this
+# src/app/undercity/data/forms.ts::xpToNext; sim harness in
+# infrastructure/lambda/sim/. Calibrated to a real ~8-9h / ~48-roll night.
+XP_CURVE_BASE = 15
+XP_CURVE_LINEAR = 5
+XP_CURVE_RAMP = 2          # the "C" coefficient (quadratic ramp magnitude)
+XP_CURVE_RAMP_FROM = 5     # ramp only bites for levels above this
 ```
 
 - [ ] **Step 4: Rewrite `xp_to_next` to use the scalars**
@@ -304,7 +306,7 @@ git commit -m "feat(undercity): mirror progressive XP curve in client XP bar"
 
 - [ ] Backend green: `cd infrastructure/lambda && python -m pytest tests -q` → all pass.
 - [ ] Client builds: `npm run build` → success.
-- [ ] Sanity-read the curve: `python -c "import undercity_data as d; print([d.xp_to_next(l) for l in range(1,12)], 'total', sum(d.xp_to_next(l) for l in range(1,12)))"` from `infrastructure/lambda` → `[20, 30, 40, 50, 62, 78, 98, 122, 150, 182, 218] total 1050`.
+- [ ] Sanity-read the curve: `python -c "import undercity_data as d; print([d.xp_to_next(l) for l in range(1,12)], 'total', sum(d.xp_to_next(l) for l in range(1,12)))"` from `infrastructure/lambda` → `[20, 25, 30, 35, 40, 47, 58, 73, 92, 115, 142] total 677`.
 - [ ] **Deploy is the host's job.** Nothing changes for players until the host `cdk deploy`s the Lambda. End with tests green and note a deploy is needed. Optionally re-run the `sim/` harness first to confirm pacing.
 
 ---

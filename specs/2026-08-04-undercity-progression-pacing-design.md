@@ -52,7 +52,7 @@ level cap and therefore the boss/enemy balance are untouched).
 
 ## Change 1 — Steeper, anchored XP curve (cap stays 12)
 
-Replace the linear curve with a progressive one that ramps after level 4:
+Replace the linear curve with a progressive one that ramps after level 5:
 
 ```
 xp_to_next(level) = XP_CURVE_BASE
@@ -60,41 +60,55 @@ xp_to_next(level) = XP_CURVE_BASE
                   + XP_CURVE_RAMP  · max(0, level − XP_CURVE_RAMP_FROM)²
 ```
 
-Approved values: `XP_CURVE_BASE = 10`, `XP_CURVE_LINEAR = 10`,
-`XP_CURVE_RAMP = 2` (the "C=2" curve), `XP_CURVE_RAMP_FROM = 4`.
+Approved values: `XP_CURVE_BASE = 15`, `XP_CURVE_LINEAR = 5`,
+`XP_CURVE_RAMP = 2`, `XP_CURVE_RAMP_FROM = 5`.
 
 Resulting per-level costs and total:
 
 | L→L+1 | XP | vs enemy you meet there |
 |---|---|---|
 | 1→2 | **20** | 2 basic wild kills (10 XP each) — the "2 enemies to level" anchor |
-| 2→3 | 30 | |
-| 3→4 | 40 | |
-| 4→5 | 50 | ~2× a T1 elite (25) |
-| 5→6 | 62 | ~1.3× a T2 elite (~47) |
-| 6→7 | 78 | ~1.7× |
-| 7→8 | 98 | ~2.1× |
-| 8→9 | 122 | ~1.2–1.7× a T3 elite (70–100) |
-| 9→10 | 150 | ~1.5–2.1× |
-| 10→11 | 182 | ~1.8–2.6× |
-| 11→12 | 218 | ~2.2–3.1× |
-| **Total** | **1050** | **1.9× today's 550** |
+| 2→3 | 25 | |
+| 3→4 | 30 | |
+| 4→5 | 35 | ~1.4× a T1 elite (25) |
+| 5→6 | 40 | ~0.9× a T2 elite (~47) — T2-entry level |
+| 6→7 | 47 | ~1× a T2 elite; ramp begins |
+| 7→8 | 58 | ~1.2× |
+| 8→9 | 73 | ~0.7–1× a T3 elite (70–100) |
+| 9→10 | 92 | ~0.9–1.3× |
+| 10→11 | 115 | ~1.2–1.6× |
+| 11→12 | 142 | ~1.4–2× |
+| **Total** | **677** | **1.23× today's 550** |
 
-**Anchors met:** L1→2 = 20 (two basic wild kills). Across the whole T2/T3 band a
-single elite always *advances* you but never auto-levels you (tightest ratio
-~1.2× at each tier's entry, rising to 2–3× deeper in). Levels 1–4 stay near
-today's values, so casuals are unaffected.
+**Anchors met:** L1→2 = 20 (two basic wild kills). The ramp keeps most T2/T3
+elites below a full level (a fat apex elite can still ≈1 level at a tier's entry —
+an accepted trade for fitting the night budget). Levels 1–5 stay at/below today's
+values, so casuals are unaffected.
 
-**Pacing** (using the session's observed XP/hour): the steady engaged player
-(~94 XP/h) reaches cap only very late in a long night; the hardest elite-farmer
-(~185 XP/h) caps ~5.7 h in — no longer inside a short session. In practice most
-players will finish the night mid-climb (≈L9–11), which is the intended shape:
-leveling stays meaningful all night and the overcap-waste problem dissolves on
-its own (almost nobody caps early), so **no post-cap XP conversion is needed**.
+**Pacing — calibrated to the real night, sim-confirmed.** A game night runs
+~8–9 h = **16 roll-recharges × 3 = ~48 rolls** (plus a handful from pokes). A sim
+"turn" ≈ one roll/landing, so ~48 rolls ≈ ~48 turns. The `sim/` full-game driver
+(24 seeds) on the aggressive **pest/city rusher** reaches:
+
+| milestone | turn | vs old curve (550) |
+|---|---|---|
+| L5 / tier-2 evolve | 16 | 20 |
+| L8 | 24 | 34 |
+| **apex / tier-3 evolve (L10)** | **34** | 48 |
+| **L12 (cap)** | **46** | 34 |
+
+So a dedicated player reaches the **apex form (L10) by ~turn 34 — ~14 rolls to
+spare** for the boss questline + Savra — and can push to the **L12 cap right at
+the ~48-roll wire** if they really want to. Because lair/boss/sigil fights all
+grant XP, "reach apex *and* fight bosses" is one overlapping climb, not two
+budgets. This is the exact shape the owner asked for. Slower playstyles
+(farmer/tank) finish the night mid-climb, and casuals keep brisk early levels
+(L5 by ~turn 16). Overcap XP waste effectively disappears — hitting cap now takes
+almost the whole night, so post-cap conversion is unneeded.
 
 The four coefficients live in `undercity_config.py` as new scalars so the curve
-is tunable in the `sim/` harness without touching engine code. C=3 (total 1190)
-and C=4 (total 1330) are steeper alternatives held in reserve.
+is tunable in the `sim/` harness without touching engine code. Steeper reserves
+(RAMP 3/4, or RAMP_FROM 4) push cap later if a night ever feels too fast.
 
 **Files:**
 - `infrastructure/lambda/undercity_config.py` — add `XP_CURVE_BASE`,

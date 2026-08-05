@@ -39,14 +39,16 @@ GRIMOIRE_SWAP_COOLDOWN_MIN = 30  # opening a different grimoire is gated for N m
 # ── XP curve (design 2026-08-04 progression pacing) ──────────────────────────
 # Progressive per-level cost so leveling paces a whole game night instead of
 # capping in ~4h. Flat-ish early (casuals unaffected), ramps after RAMP_FROM so
-# a single T2/T3 elite never auto-levels. Total L1->12 = 1050 (was 550). Cap
-# stays 12 — this changes PACE, not the power ceiling. Client mirror in
-# src/app/undercity/data/forms.ts::xpToNext. C=3 (1190) / C=4 (1330) are the
-# steeper reserves; sim harness in infrastructure/lambda/sim/.
-XP_CURVE_BASE = 10
-XP_CURVE_LINEAR = 10
-XP_CURVE_RAMP = 2          # the "C" coefficient
-XP_CURVE_RAMP_FROM = 4     # ramp only bites for levels above this
+# a single T2/T3 elite rarely auto-levels. Total L1->12 = 677 (was 550). Cap
+# stays 12 — this changes PACE, not the power ceiling. Calibrated to a real
+# ~8-9h night ≈ 48 rolls (16 x 3/30min + pokes): a dedicated aggressive player
+# reaches L12 near turn ~40-45 (sim-confirmed), leaving rolls for the boss
+# questline + Savra. Client mirror in src/app/undercity/data/forms.ts::xpToNext;
+# sim harness in infrastructure/lambda/sim/.
+XP_CURVE_BASE = 15
+XP_CURVE_LINEAR = 5
+XP_CURVE_RAMP = 2          # the "C" coefficient (quadratic ramp magnitude)
+XP_CURVE_RAMP_FROM = 5     # ramp only bites for levels above this
 # Flat XP granted the first time a player claims a biome Guild Sigil (on top of
 # the lair boss's own XP). Five biome sigils => up to 250 bonus XP over a night,
 # an alternative progression path to grinding wilds.
@@ -103,6 +105,13 @@ SCROUNGER_LOSS_FRACTION = 0.3  # Pest passive: even on a LOST / fled / stalemate
 # Gear rider knobs (combat riders in undercity_engine.resolve_round).
 CUTPURSE_SPORES = 6   # flat Spores after a won fight in which you landed a Feint
 BRAMBLE_REFLECT = 2   # flat damage a Bramble carapace reflects when struck
+
+# Form-passive combat knobs (design 2026-08-04 pest-line/Grave Titan rework).
+COLOSSUS_DR = 0.20    # Grave Titan "Colossus": incoming enemy STRIKE damage is
+                      # scaled by (1 - this). Applies to decisive/counter/clash/
+                      # chip/swarm hits — NOT rot ticks or the Collapse ramp.
+IMPROVISE_BONUS = 3   # Vexing Pest "Improvise": +this to the creature's lowest of
+                      # ATK/DEF/SPD, applied as a one-battle buff at battle start.
 
 # ── Attribute perks (design 2026-07-21) ──────────────────────────────────────
 # Carapace Grind (DEF-10 perk): a Guard holder deals a DEF-scaled chip each round
