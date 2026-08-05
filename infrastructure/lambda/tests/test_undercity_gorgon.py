@@ -24,7 +24,7 @@ def test_gorgon_evolution_line():
     assert 'grave_titan' in data.apex_options('wood_lurker')
     assert 'golgari_lich_lord' in data.apex_options('wood_lurker')
     assert 'swamp_dragon' in data.apex_options('gorgon')
-    assert 'izoni' in data.apex_options('gorgon')
+    assert 'daemogoth' in data.apex_options('gorgon')
 
 
 def test_gorgon_starts_with_five_banked_points(table):

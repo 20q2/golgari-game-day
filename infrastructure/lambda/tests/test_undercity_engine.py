@@ -66,12 +66,19 @@ def fighter(**kw):
 # ── Leveling ─────────────────────────────────────────────────────────────────
 
 def test_xp_curve():
-    assert data.xp_to_next(1) == 25
-    assert data.xp_to_next(9) == 65
+    # Progressive curve (design 2026-08-04): flat-ish early, ramps after L4.
+    assert data.xp_to_next(1) == 20      # anchor: 2 basic wild kills (10 XP each)
+    assert data.xp_to_next(4) == 50
+    assert data.xp_to_next(5) == 62      # ramp begins
+    assert data.xp_to_next(9) == 150
+    assert data.xp_to_next(11) == 218
+    # A single T2/T3 elite (35-100 XP) must never auto-level in the ramp band.
+    assert data.xp_to_next(5) > 47       # vs a T2 elite
+    assert data.xp_to_next(8) > 100      # vs the fattest T3 apex elite
 
 
 def test_level_up_grants():
-    p = {'level': 1, 'xp': 25, 'maxHp': 30, 'hp': 10, 'statPoints': 0,
+    p = {'level': 1, 'xp': 20, 'maxHp': 30, 'hp': 10, 'statPoints': 0,
          'spentThisLevel': {'atk': 1, 'def': 0, 'spd': 0}}
     leveled = apply_level_ups(p)
     assert leveled == 1
@@ -89,7 +96,7 @@ def test_level_cap():
 
 
 def test_gorgon_levels_slower():
-    p = {'level': 1, 'xp': 25, 'maxHp': 30, 'hp': 10, 'statPoints': 0,
+    p = {'level': 1, 'xp': 20, 'maxHp': 30, 'hp': 10, 'statPoints': 0,
          'passives': ['stonewright'], 'spentThisLevel': {}}
     assert apply_level_ups(p) == 1
     assert p['statPoints'] == 1          # Gorgon banks 1, not the usual 2

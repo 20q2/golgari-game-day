@@ -773,6 +773,14 @@ def effective_stats(player: dict) -> dict:
             continue
         for stat in ('atk', 'def', 'spd', 'maxHp'):
             eff[stat] += g.get(stat, 0)
+    # Daemogoth "Arsenal": the Elf apex's wildcard piece (its extra equipment)
+    # pulls double duty — count its stats again. Wildcard-only, and only while
+    # the passive is held; an empty wildcard slot grants nothing.
+    if 'arsenal' in (player.get('passives') or []):
+        wild = data.GEAR.get((player.get('gear') or {}).get('wild'))
+        if wild:
+            for stat in ('atk', 'def', 'spd', 'maxHp'):
+                eff[stat] += data.ARSENAL_EXTRA_COPIES * wild.get(stat, 0)
     for buff in (player.get('buffs') or []):
         kind = buff.get('kind')
         # Beneficial self-buffs may carry a `mult` (Squirrel Warrior doubles

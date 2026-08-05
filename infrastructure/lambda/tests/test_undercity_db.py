@@ -2083,6 +2083,7 @@ def test_global_first_kill_pays_major_then_vestige_pays_minor_with_sigil(table, 
     alex, out = _lair_fight(table, sid, 'user-alex', 'attacker', 0, monkeypatch)
     assert out['spores'] == b['first']['spores']
     assert out['sigil'] == 'city'
+    assert out['xp'] == b['first']['xp'] + data.SIGIL_XP     # first clear + sigil bonus
     assert 'city_lair' in alex['poiClaims']
 
     # Bea now faces the Vestige — reformed at HALF strength; her kill pays
@@ -2093,12 +2094,14 @@ def test_global_first_kill_pays_major_then_vestige_pays_minor_with_sigil(table, 
     assert out2['npc']['maxHp'] == b['hp'] // 2
     assert out2['spores'] == b['repeat']['spores']
     assert out2['sigil'] == 'city'
+    assert out2['xp'] == b['repeat']['xp'] + data.SIGIL_XP   # Bea's first sigil, vestige reward
     assert 'city_lair' in bea['poiClaims']
 
     # Alex again: vestige, minor reward, no second sigil.
     _, out3 = _lair_fight(table, sid, 'user-alex', 'attacker', 0, monkeypatch)
     assert out3['spores'] == b['repeat']['spores']
     assert 'sigil' not in out3
+    assert out3['xp'] == b['repeat']['xp']                   # no sigil -> no sigil XP
 
 
 def test_vestige_hp_also_lingers(table, monkeypatch):

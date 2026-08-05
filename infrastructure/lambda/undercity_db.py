@@ -4928,6 +4928,10 @@ def _award_lair_kill(table, sid, doc, node, slain, out):
         have = len([c for c in claims if c in data.SIGIL_LAIRS])
         biome_name = data.BIOMES[sigil_biome]['name']
         out['sigil'] = sigil_biome
+        sigil_levels = _grant_xp(table, sid, doc, data.SIGIL_XP)
+        out['xp'] = reward['xp'] + data.SIGIL_XP
+        if levels + sigil_levels:
+            out['levels'] = levels + sigil_levels
         out['text'] = (f"The {display} falls! +{reward['spores']} Spores — "
                        f"you claim the {biome_name} Guild Sigil! "
                        f"({have}/{data.SIGILS_REQUIRED} unlocks the island)")

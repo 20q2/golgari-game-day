@@ -39,6 +39,7 @@ export const PASSIVE_NAMES: Record<string, string> = {
   spell_warrior: 'Spell Warrior',
   spell_mage: 'Spell Mage',
   wish: 'Wish',
+  arsenal: 'Arsenal',
   stonewright: 'Stonewright',
   stone_gaze: 'Stone Gaze',
   mimicry: 'Mimicry',
@@ -69,6 +70,7 @@ export const PASSIVE_BLURBS: Record<string, string> = {
   spell_warrior: 'Buffs and heals you cast on yourself are doubled.',
   spell_mage: 'Your damaging spells deal +50% and are twice as likely to land.',
   wish: 'Learn Wish: cast any spell in the world, from any list.',
+  arsenal: 'Your wildcard gear piece counts twice — the Elf apex’s extra equipment slot pays out double.',
   stonewright: 'Upgrades she forges come out hardened (Gear+); her active pet fights a step above its level.',
   stone_gaze: 'Reads come easily; each read petrifies the foe — stacking slow that ends in a one-round freeze.',
   mimicry: 'At the first blow it takes the shape of its prey — a stat bump matching how the foe fights.',
@@ -128,7 +130,8 @@ export const APEX: (FormInfo & { from: string[] })[] = [
   { id: 'grave_titan', name: 'Grave Titan', tier: 3, passive: 'deathtouch_stomp', passiveName: 'Deathtouch Stomp', bonus: { maxHp: 6, def: 2 }, blurb: 'HP/DEF colossus.', from: ['brackish_trudge', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'] },
   { id: 'golgari_lich_lord', name: 'Golgari Lich Lord', tier: 3, passive: 'drain_life', passiveName: 'Drain Life', bonus: { atk: 2, maxHp: 6 }, blurb: 'ATK/HP sovereign of rot.', from: ['brackish_trudge', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'] },
   { id: 'swamp_dragon', name: 'Swamp Dragon', tier: 3, passive: 'rot_breath', passiveName: 'Rot Breath', bonus: { atk: 2, spd: 2 }, blurb: 'ATK/SPD terror of the deep tunnels.', from: ['vexing_pest', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior', 'gorgon'] },
-  { id: 'izoni', name: 'Daemogoth Titan', tier: 3, passive: 'swarm', passiveName: 'Swarm', bonus: { spd: 4 }, blurb: 'SPD incarnate — strikes from the shadows, faster than the eye can track.', from: ['vexing_pest', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage', 'gorgon'] },
+  { id: 'izoni', name: 'Primeval Warden', tier: 3, passive: 'swarm', passiveName: 'Swarm', bonus: { spd: 4 }, blurb: 'SPD incarnate — strikes from the shadows, faster than the eye can track.', from: ['vexing_pest', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage'] },
+  { id: 'daemogoth', name: 'Daemogoth Titan', tier: 3, passive: 'arsenal', passiveName: 'Arsenal', bonus: { atk: 2, def: 2 }, blurb: 'The Elf apex — its wildcard extra-gear slot counts twice, a second armory strapped to its hide.', from: ['wood_lurker', 'gorgon'] },
   { id: 'calamity_beast', name: 'Calamity Beast', tier: 3, passive: 'wish', passiveName: 'Wish', bonus: { maxHp: 6, spd: 2 }, blurb: 'Learns Wish — cast ANY spell in the world.', from: ['squirrel_warrior', 'squirrel_mage', 'deathrite_shaman', 'vexing_pest', 'corpsejack_menace'] },
 ];
 
@@ -146,6 +149,10 @@ export function formName(form: string | undefined): string {
   return ALL_FORMS[form ?? '']?.name ?? 'Creature';
 }
 
+// Mirror of undercity_data.xp_to_next (undercity_config XP_CURVE_* scalars).
+// Progressive curve (design 2026-08-04): flat-ish early, ramps after level 4.
+// Keep in sync with the server — the client only displays this for the XP bar.
 export function xpToNext(level: number): number {
-  return 20 + 5 * level;
+  const ramp = Math.max(0, level - 4);
+  return 10 + 10 * level + 2 * ramp * ramp;
 }

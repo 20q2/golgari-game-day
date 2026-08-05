@@ -332,7 +332,7 @@ const BREATH_AMT = 0.04; // idle vertical scale wobble (±4%)
 // Active-companion follower: hops after its owner between spaces (arriving a
 // beat late), then pokes around the space when idle.
 const PET_DRAW_H = 30; // on-board display height (px); sprites scaled to this
-const PET_HOP_DUR = 300; // ms per follower hop
+const PET_HOP_DUR = 150; // ms per follower hop (2× follow speed)
 const PET_HOP_HEIGHT = 7; // px lift at a hop's peak
 const PET_HOP_STEP = 34; // max px one hop advances toward the target (far = chain hops)
 const PET_REST_DIST = 5; // within this of the target the pet is "at rest"

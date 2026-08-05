@@ -50,7 +50,8 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   grave_titan: { sprite: 'grave_titan', regions: MASK_REGIONS, scale: 1.25 },
   golgari_lich_lord: { sprite: 'golgari_lich_lord', regions: MASK_REGIONS, scale: 1.3 },
   swamp_dragon: { sprite: 'swamp_dragon', regions: MASK_REGIONS, scale: 1.3 },
-  izoni: { sprite: 'daemogoth', regions: MASK_REGIONS, scale: 1.3 },
+  izoni: { sprite: 'primeval_warden', regions: MASK_REGIONS, scale: 1.3 },
+  daemogoth: { sprite: 'daemogoth', regions: MASK_REGIONS, scale: 1.3 },
   // Squirrel T2/T3
   // squirrel_warrior id displays as Vinereap Mentor; art = vinereap_mentor.
   squirrel_warrior: { sprite: 'vinereap_mentor', regions: MASK_REGIONS, scale: 1.0 },

@@ -32,8 +32,15 @@ XP_REWARDS = {
 
 
 def xp_to_next(level: int) -> int:
-    """XP cost to go from `level` to `level + 1`."""
-    return 20 + 5 * level
+    """XP cost to go from `level` to `level + 1`.
+
+    Progressive curve (design 2026-08-04): flat-ish early so casuals keep fast
+    early levels, then a quadratic ramp above XP_CURVE_RAMP_FROM so leveling
+    lasts the night and a single elite never auto-levels. Scalars in
+    undercity_config; client mirror in src/app/undercity/data/forms.ts.
+    """
+    ramp = max(0, level - XP_CURVE_RAMP_FROM)
+    return XP_CURVE_BASE + XP_CURVE_LINEAR * level + XP_CURVE_RAMP * ramp * ramp
 
 
 # ── Creatures ────────────────────────────────────────────────────────────────
@@ -188,10 +195,17 @@ APEX = {
         'blurb': 'Rot Breath: round-1 strike hits for double.',
     },
     'izoni': {
-        'name': 'Daemogoth Titan', 'bonus': {'spd': 4},
+        'name': 'Primeval Warden', 'bonus': {'spd': 4},
         'passive': 'swarm',
-        'from': ['vexing_pest', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage', 'gorgon'],
+        'from': ['vexing_pest', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage'],
         'blurb': 'Swarm: one extra strike every battle round.',
+    },
+    'daemogoth': {
+        'name': 'Daemogoth Titan', 'bonus': {'atk': 2, 'def': 2},
+        'passive': 'arsenal',
+        'from': ['wood_lurker', 'gorgon'],
+        'blurb': 'Arsenal: your wildcard gear piece counts twice — the Elf apex '
+                 'that turns its extra equipment into a second armory.',
     },
     'calamity_beast': {
         'name': 'Calamity Beast', 'bonus': {'maxHp': 6, 'spd': 2},
@@ -966,17 +980,19 @@ ELITE_NPCS = [
 # units forced onto the travel layer always face tier-appropriate danger.
 # See specs/2026-07-20-undercity-wilderness-expansion-design.md.
 WILDERNESS_NPCS = [
+    # xp bumped 2026-08-04: as the tier-2 ELITE pool (TIER_NPCS[2]) these must
+    # out-reward the tier-2 wild (DEPTHS_MID, xp 42-45). Bounty left alone.
     {'id': 'sluiceway_scorpion', 'name': 'Sluiceway Scorpion',
-     'hp': 48, 'atk': 14, 'def': 6, 'spd': 9, 'bounty': 22, 'xp': 35,
+     'hp': 48, 'atk': 14, 'def': 6, 'spd': 9, 'bounty': 22, 'xp': 46,
      'itemChance': 0.15, 'personality': 'trickster', 'bluff': 0.15},
     {'id': 'loleth_troll', 'name': 'Lotleth Troll',
-     'hp': 58, 'atk': 13, 'def': 8, 'spd': 4, 'bounty': 24, 'xp': 38,
+     'hp': 58, 'atk': 13, 'def': 8, 'spd': 4, 'bounty': 24, 'xp': 48,
      'itemChance': 0.15, 'personality': 'turtle', 'bluff': 0.10},
     {'id': 'large_bear', 'name': 'Large Bear',
-     'hp': 46, 'atk': 16, 'def': 5, 'spd': 10, 'bounty': 22, 'xp': 35,
+     'hp': 46, 'atk': 16, 'def': 5, 'spd': 10, 'bounty': 22, 'xp': 46,
      'itemChance': 0.15, 'personality': 'brute', 'bluff': 0.10},
     {'id': 'mosspit_skeleton', 'name': 'Mosspit Skeleton',
-     'hp': 52, 'atk': 15, 'def': 6, 'spd': 7, 'bounty': 24, 'xp': 38,
+     'hp': 52, 'atk': 15, 'def': 6, 'spd': 7, 'bounty': 24, 'xp': 49,
      'itemChance': 0.20, 'personality': 'balanced', 'bluff': 0.15},
 ]
 

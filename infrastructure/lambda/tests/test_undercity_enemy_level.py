@@ -49,6 +49,18 @@ def test_monotonic_with_stats():
     assert strong > weak
 
 
+def test_tier2_elite_outrewards_tier2_wild_by_xp():
+    # Region-tier remap made WILDERNESS_NPCS the tier-2 ELITE pool; the tankier
+    # elite must out-reward the tier-2 wild (DEPTHS_MID) on XP, and stay below
+    # the tier-3 wild floor. Bounty is deliberately left alone (spore economy
+    # out of scope) — see the 2026-08-04 progression-pacing design carve-out.
+    t2_wild_max = max(n['xp'] for n in data.DEPTHS_MID)
+    t2_elite = [n['xp'] for n in data.WILDERNESS_NPCS]
+    t3_wild_min = min(n['xp'] for n in (data.DEPTHS_DEEP + data.WILDERNESS_ELITE_NPCS))
+    assert min(t2_elite) > t2_wild_max          # elite floor beats wild ceiling
+    assert max(t2_elite) < t3_wild_min          # still below the next tier
+
+
 def test_shared_pool_boss_hp_is_capped():
     # Savra's 400-HP SHARED persistent pool must not inflate her per-fight level;
     # capped, her stat block reads as a strong single-digit finale, not Lv 25+.

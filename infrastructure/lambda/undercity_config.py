@@ -36,6 +36,22 @@ GRIMOIRE_SWAP_COOLDOWN_MIN = 30  # opening a different grimoire is gated for N m
                              # (stowing your open book is always free) — client
                              # mirror in src/app/undercity/data/spells.ts
 
+# ── XP curve (design 2026-08-04 progression pacing) ──────────────────────────
+# Progressive per-level cost so leveling paces a whole game night instead of
+# capping in ~4h. Flat-ish early (casuals unaffected), ramps after RAMP_FROM so
+# a single T2/T3 elite never auto-levels. Total L1->12 = 1050 (was 550). Cap
+# stays 12 — this changes PACE, not the power ceiling. Client mirror in
+# src/app/undercity/data/forms.ts::xpToNext. C=3 (1190) / C=4 (1330) are the
+# steeper reserves; sim harness in infrastructure/lambda/sim/.
+XP_CURVE_BASE = 10
+XP_CURVE_LINEAR = 10
+XP_CURVE_RAMP = 2          # the "C" coefficient
+XP_CURVE_RAMP_FROM = 4     # ramp only bites for levels above this
+# Flat XP granted the first time a player claims a biome Guild Sigil (on top of
+# the lair boss's own XP). Five biome sigils => up to 250 bonus XP over a night,
+# an alternative progression path to grinding wilds.
+SIGIL_XP = 50
+
 # ── Overgrown Cache (loot Flow puzzle) ───────────────────────────────────────
 # The cache is a routing puzzle: connect the green start to the amber goal by
 # any path. Every tile crossed grants spores, capped so the space stays economy-
@@ -374,3 +390,8 @@ PETRIFY_FREEZE_AT = 4     # Petrify stacks that trigger a one-round freeze (then
 # ── Wood Lurker (Mimicry) ────────────────────────────────────────────────────
 MIMIC_MIRROR = 3     # +stat matching the foe's fighting style (brute/turtle/trickster)
 MIMIC_BALANCED = 1   # +ATK/+DEF/+SPD vs a balanced foe
+
+# ── Daemogoth (Arsenal) ──────────────────────────────────────────────────────
+# The Elf apex's wildcard "extra equipment" piece pulls extra duty: its stats
+# are counted this many EXTRA times (1 = counts twice). Only the wildcard slot.
+ARSENAL_EXTRA_COPIES = 1
