@@ -694,3 +694,40 @@ button.mat-chip {
     }
   }
 }
+
+.market-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 2px 0;
+}
+
+.market-seg {
+  display: inline-flex;
+  border: 1px solid rgba(216, 243, 220, 0.14);
+  border-radius: 10px;
+  overflow: hidden;
+
+  button {
+    padding: 6px 10px;
+    border: 0;
+    border-right: 1px solid rgba(216, 243, 220, 0.14);
+    background: transparent;
+    color: #9aa79a;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+
+    &:last-child {
+      border-right: 0;
+    }
+
+    &[aria-pressed='true'] {
+      background: rgba(224, 192, 120, 0.16);
+      color: #e6c078;
+    }
+  }
+}

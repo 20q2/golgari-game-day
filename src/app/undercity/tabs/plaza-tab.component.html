@@ -213,7 +213,14 @@
                 </button>
               }
             </div>
-            <!-- market-controls (sort + affordable) added in Tasks 2–3 -->
+            <div class="market-controls">
+              <div class="market-seg" role="group" aria-label="Sort listings">
+                <button [attr.aria-pressed]="marketSort() === 'price-asc'" (click)="setMarketSort('price-asc')">Price ↑</button>
+                <button [attr.aria-pressed]="marketSort() === 'price-desc'" (click)="setMarketSort('price-desc')">Price ↓</button>
+                <button [attr.aria-pressed]="marketSort() === 'rarity'" (click)="setMarketSort('rarity')">Rarity</button>
+              </div>
+              <!-- affordable toggle added in Task 3 -->
+            </div>
           </div>
 
           @if (marketFilter() === 'mine') {
