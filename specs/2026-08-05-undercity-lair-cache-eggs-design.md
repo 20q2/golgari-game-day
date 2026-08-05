@@ -12,7 +12,8 @@ beating the boss, a lesser one for scavenging the lair while the boss is down,
 egg like other loot, and dropped eggs are surfaced in the UI (they are currently
 granted silently). Sigil lairs and the existing loot/mystery/combat egg drops
 are unchanged. This also cleans up two dead `EGG_DROP` entries found during the
-egg-source audit.
+egg-source audit. To match, the two Ruin lairs are re-themed in the UI as
+**Monster Nests** — a powerful guardian standing over the egg clutches within.
 
 ## Background
 
@@ -150,6 +151,35 @@ Dropped eggs currently land in `doc['eggs']` with **no** modal feedback — the
 No balance mirror is required — drop odds are server-authoritative and never
 computed on the client.
 
+### 6. Copy — reframe the two Ruin lairs as "Monster Nests"
+
+The player-facing name and tooltip change from a generic lair to a **Monster
+Nest**: a powerful guardian standing over the egg clutches within. This is
+copy-only and scoped to the two Ruin nodes — internal identifiers
+(`RESPAWN_LAIRS`, `lair_titan`/`n288`, `LAIR_BOSSES`) are unchanged, and the 6
+Sigil lairs keep their existing "den / Guild Sigil" copy.
+
+Space-info card in `board-tab.component.ts` (the `RUIN_LAIRS.has(nodeId)` branch,
+~lines 2062–2076). Guardian present:
+
+- title: `Monster Nest`
+- body: `A clutch of eggs lies within, watched over by ${name}, a powerful
+  guardian. Land here to fight — beat ${name} to seize a prize egg. A fresh
+  challenge each time; win and the nest falls quiet for an hour.`
+
+Guardian slain (unguarded / refilling) — now that **every** scavenge yields an
+egg, both sub-cases advertise an egg:
+
+- title: `Monster Nest — Unguarded`
+- not yet scavenged: `${name} lies slain and its nest is unguarded — land here to
+  raid the egg clutch and scrounge what's left. ${name} returns in ~${minsLeft}m.`
+- already scavenged: `You've picked this nest clean of loot, but the clutch still
+  holds eggs — land here to take another. ${name} returns in ~${minsLeft}m.`
+
+For thematic consistency, the server drop-text (§1–§3) uses the same
+nest/clutch/guardian language. Also check the `lairAbandoned` event modal and any
+board legend/label for a stray "Lair" on these two nodes and rename to "Nest".
+
 ## Resulting egg-source table (post-change)
 
 | Source | Rate | Tiers |
@@ -195,6 +225,8 @@ Client: `npm run build` from repo root after the model + template edits.
   test module) — new coverage.
 - `src/app/undercity/services/undercity-models.ts` — `SpaceEvent.egg`.
 - `src/app/undercity/tabs/board-tab.component.html` — egg reward chip.
+- `src/app/undercity/tabs/board-tab.component.ts` — "Monster Nest" space-info
+  copy for the two Ruin nodes (`RUIN_LAIRS` branch).
 
 ## Deploy
 
