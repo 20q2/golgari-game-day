@@ -200,8 +200,34 @@
 
           @if (marketTab() === 'buy') {
           <p class="forge-hint">Buy what other players listed for Spores.</p>
-          <h4 class="forge-subhead">On the market</h4>
-          @for (l of marketRows(); track l.id) {
+          <div class="market-toolbar">
+            <div class="market-chips" role="group" aria-label="Filter listings by kind">
+              @for (c of marketChips(); track c.key) {
+                <button
+                  class="market-chip"
+                  [class.mine]="c.mine"
+                  [attr.aria-pressed]="marketFilter() === c.key"
+                  (click)="setMarketFilter(c.key)"
+                >
+                  {{ c.label }}<span class="market-chip-ct">{{ c.count }}</span>
+                </button>
+              }
+            </div>
+            <!-- market-controls (sort + affordable) added in Tasks 2–3 -->
+          </div>
+
+          @if (marketFilter() === 'mine') {
+            <div class="market-mine-head">
+              <span class="lbl">Your listings</span>
+              <span class="cnt" [class.full]="mineListingCount() >= maxListings">
+                {{ mineListingCount() }} / {{ maxListings }}@if (mineListingCount() >= maxListings) {
+                  · cancel one to free a slot
+                }
+              </span>
+            </div>
+          }
+
+          @for (l of visibleMarketRows(); track l.id) {
             <div class="forge-row" [attr.data-rarity]="l.view!.rarity?.key ?? 'common'">
               @if (l.view!.imgUrl) {
                 <img class="slot-mi" [src]="l.view!.imgUrl" [alt]="l.view!.name"
@@ -228,7 +254,7 @@
               }
             </div>
           } @empty {
-            <div class="forge-empty">No listings yet. Be the first to sell something.</div>
+            <div class="forge-empty">{{ marketEmptyMessage() }}</div>
           }
           } @else {
           <p class="forge-hint">List your own gear, bag items, or scrolls for Spores.</p>

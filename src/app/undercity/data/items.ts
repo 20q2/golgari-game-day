@@ -198,6 +198,11 @@ export function tierRarity(tier: number): RarityInfo {
   return RARITY_BY_TIER[tier] ?? RARITY_BY_TIER[1];
 }
 
+/** Mirror of undercity_config.MARKET_MAX_LISTINGS — active market listings a
+ *  seller may hold. Display-only (the server enforces the cap); keep in sync
+ *  when tuning the server value. */
+export const MARKET_MAX_LISTINGS = 10;
+
 // ── Forge economy mirrors (undercity_data.GEAR_FAMILY + undercity_config knobs) ──
 
 /** Effect-family rungs: rider -> { tier: gearId }. Mirrors GEAR_FAMILY. */

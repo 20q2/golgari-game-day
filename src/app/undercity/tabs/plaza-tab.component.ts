@@ -24,6 +24,8 @@ import {
   SALVAGE_YIELD,
   marketBand,
   MarketKind,
+  MARKET_MAX_LISTINGS,
+  Rarity,
   RarityInfo,
   GearInfo,
 } from '../data/items';
@@ -34,6 +36,22 @@ import { affordReason, containerFullReason, materialReason } from '../data/block
 import { UcActionBandComponent } from './action-band.component';
 import { UcChatComponent } from './plaza-chat.component';
 import { PokeWheelComponent } from './poke-wheel.component';
+
+// ── Player Market browse groups & sort (design 2026-08-05) ───────────────────
+type MarketFilter = 'all' | 'gear' | 'consumable' | 'scroll' | 'pets' | 'mine';
+
+// A filter chip maps to one or more stored MarketKinds. Only "Pets" bundles more
+// than one (pets + eggs); the backend still stores them distinctly (they route
+// into pets[] vs eggs[] on buy) — this is display grouping.
+const MARKET_GROUPS: { key: Exclude<MarketFilter, 'all' | 'mine'>; label: string; kinds: MarketKind[] }[] = [
+  { key: 'gear', label: 'Gear', kinds: ['gear'] },
+  { key: 'consumable', label: 'Consumables', kinds: ['consumable'] },
+  { key: 'scroll', label: 'Scrolls', kinds: ['scroll'] },
+  { key: 'pets', label: 'Pets', kinds: ['pet', 'egg'] },
+];
+
+// Rarity sort order, best first. Consumables carry no rarity (see marketView) and rank last.
+const MARKET_RARITY_RANK: Record<Rarity, number> = { mythic: 0, legendary: 1, rare: 2, common: 3 };
 
 /**
  * A run of the upgraded description. `same` is unchanged carry-over text; a change
@@ -341,6 +359,89 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       containerFullReason(held?.length ?? 0, cap, label) ?? affordReason(you.spores, l.price)
     );
   }
+
+  // ── Player Market browse state (design 2026-08-05) ────────────────────────
+  protected readonly marketFilter = signal<MarketFilter>('all');
+  protected readonly marketSort = signal<'price-asc' | 'price-desc' | 'rarity'>('price-asc');
+  protected readonly marketAffordable = signal(false);
+  protected readonly maxListings = MARKET_MAX_LISTINGS;
+
+  /** Chip descriptors: All + each non-empty kind group + Mine, with live counts. */
+  protected readonly marketChips = computed(() => {
+    const rows = this.marketRows();
+    const countIn = (kinds: MarketKind[]) => rows.filter((r) => kinds.includes(r.kind)).length;
+    const groups = MARKET_GROUPS.map((g) => ({
+      key: g.key as MarketFilter,
+      label: g.label,
+      count: countIn(g.kinds),
+      mine: false,
+    })).filter((c) => c.count > 0);
+    return [
+      { key: 'all' as MarketFilter, label: 'All', count: rows.length, mine: false },
+      ...groups,
+      { key: 'mine' as MarketFilter, label: 'Mine', count: rows.filter((r) => r.own).length, mine: true },
+    ];
+  });
+
+  /** Count of the player's own active listings (for the Mine N / cap header). */
+  protected readonly mineListingCount = computed(() => this.marketRows().filter((r) => r.own).length);
+
+  /** marketRows() narrowed by the active chip + affordability, then sorted. */
+  protected readonly visibleMarketRows = computed(() => {
+    const filter = this.marketFilter();
+    const sort = this.marketSort();
+    const spores = this.store.you()?.spores ?? 0;
+    let rows = this.marketRows();
+
+    if (filter === 'mine') {
+      rows = rows.filter((r) => r.own);
+    } else if (filter !== 'all') {
+      const kinds = MARKET_GROUPS.find((g) => g.key === filter)?.kinds ?? [];
+      rows = rows.filter((r) => kinds.includes(r.kind));
+    }
+    // Price-only; never hides your own; container-full stays a per-row note.
+    if (this.marketAffordable() && filter !== 'mine') {
+      rows = rows.filter((r) => r.own || spores >= r.price);
+    }
+
+    const rankOf = (r: (typeof rows)[number]) => {
+      const rar = r.view?.rarity;
+      return rar ? MARKET_RARITY_RANK[rar.key] : 4;
+    };
+    const nameOf = (r: (typeof rows)[number]) => r.view?.name ?? '';
+    return [...rows].sort((a, b) => {
+      if (sort === 'price-asc') return a.price - b.price || nameOf(a).localeCompare(nameOf(b));
+      if (sort === 'price-desc') return b.price - a.price || nameOf(a).localeCompare(nameOf(b));
+      return rankOf(a) - rankOf(b) || a.price - b.price || nameOf(a).localeCompare(nameOf(b));
+    });
+  });
+
+  protected setMarketFilter(f: MarketFilter): void {
+    this.marketFilter.set(f);
+  }
+  protected setMarketSort(s: 'price-asc' | 'price-desc' | 'rarity'): void {
+    this.marketSort.set(s);
+  }
+  protected toggleMarketAffordable(): void {
+    this.marketAffordable.update((v) => !v);
+  }
+
+  /** Empty-state line tailored to the active filter. */
+  protected marketEmptyMessage(): string {
+    const f = this.marketFilter();
+    if (f === 'mine') return 'No active listings — switch to Sell to list something.';
+    if (this.marketAffordable()) return 'Nothing here you can afford yet.';
+    if (f === 'all') return 'The market is empty right now.';
+    const label = MARKET_GROUPS.find((g) => g.key === f)?.label ?? 'items';
+    return `No ${label.toLowerCase()} listed right now.`;
+  }
+
+  // Reset an emptied kind filter back to All (last of that kind bought/cancelled).
+  private readonly _marketFilterGuard = effect(() => {
+    const f = this.marketFilter();
+    if (f === 'all' || f === 'mine') return;
+    if (!this.marketChips().some((c) => c.key === f)) this.marketFilter.set('all');
+  });
 
   protected openBuilding(b: 'salvage' | 'blacksmith' | 'market'): void {
     if (b === 'market') this.marketTab.set('buy');
