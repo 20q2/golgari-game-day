@@ -62,7 +62,7 @@ export const PASSIVE_BLURBS: Record<string, string> = {
   dredge: 'Reclaim your snare after it triggers.',
   doubling_rot: 'Mystery-event Spore payouts doubled.',
   soul_trophy: 'After any won fight, choose a stat — gain +[foe level] to it for your next battle.',
-  colossus: 'Shrugs off 20% of every blow, and its huge frame simply outlasts the enemy.',
+  colossus: 'Shrugs off 15% of every blow, and its huge frame simply outlasts the enemy.',
   drain_life: 'Heal for 50% of damage you deal.',
   rot_breath: 'Round-1 strike hits for double.',
   swarm: 'One extra strike every battle round.',

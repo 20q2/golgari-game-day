@@ -182,7 +182,7 @@ APEX = {
         'name': 'Grave Titan', 'bonus': {'maxHp': 12, 'def': 4},
         'passive': 'colossus',
         'from': ['brackish_trudge', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'],
-        'blurb': 'Colossus: a hulking wall — shrugs off 20% of every blow and outlasts anything.',
+        'blurb': 'Colossus: a hulking wall — shrugs off 15% of every blow and outlasts anything.',
     },
     'golgari_lich_lord': {
         'name': 'Golgari Lich Lord', 'bonus': {'atk': 2, 'maxHp': 6},

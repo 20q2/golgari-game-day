@@ -935,15 +935,19 @@ def test_colossus_does_not_reduce_rot():
 
 
 def test_colossus_reduces_guard_counter():
-    # Guard counter flows through _deal; colossus on the aggressor reduces it.
-    tank = fighter(atk=10, dfn=5, hp=100, max_hp=100,
+    # Guard counter flows through _deal, which applies the DR inside its own
+    # rounding — so compare with a ±1 tolerance rather than exact double-rounding.
+    # Big stats so the counter is large enough that the DR moves the integer.
+    tank = fighter(atk=40, dfn=20, hp=200, max_hp=200,
                    passives=frozenset({'colossus'}))
-    guard = fighter(atk=10, dfn=5, hp=100, max_hp=100)
-    a = fighter(atk=10, dfn=5, hp=100, max_hp=100)
-    g = fighter(atk=10, dfn=5, hp=100, max_hp=100)
+    guard = fighter(atk=40, dfn=20, hp=200, max_hp=200)
+    a = fighter(atk=40, dfn=20, hp=200, max_hp=200)
+    g = fighter(atk=40, dfn=20, hp=200, max_hp=200)
     resolve_round(tank, guard, 'aggress', 'guard', 1, FakeRng(uniform=1.0))
     resolve_round(a, g, 'aggress', 'guard', 1, FakeRng(uniform=1.0))
-    assert (100 - tank.hp) == round((100 - a.hp) * (1 - data.COLOSSUS_DR))
+    tank_taken, ctrl_taken = 200 - tank.hp, 200 - a.hp
+    assert tank_taken < ctrl_taken
+    assert abs(tank_taken - ctrl_taken * (1 - data.COLOSSUS_DR)) <= 1
 
 
 def test_first_bite_wins_clash_order():

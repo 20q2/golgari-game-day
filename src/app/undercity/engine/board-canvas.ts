@@ -335,6 +335,7 @@ const PET_DRAW_H = 30; // on-board display height (px); sprites scaled to this
 const PET_HOP_DUR = 150; // ms per follower hop (2× follow speed)
 const PET_HOP_HEIGHT = 7; // px lift at a hop's peak
 const PET_HOP_STEP = 34; // max px one hop advances toward the target (far = chain hops)
+const PET_DUST_SCALE = 0.55; // little critter → smaller, wispier landing puff than a token
 const PET_REST_DIST = 5; // within this of the target the pet is "at rest"
 const PET_FOLLOW_DX = -20; // resting offset from the owner's feet (lower-left)
 const PET_FOLLOW_DY = 7;
@@ -2542,20 +2543,20 @@ export class BoardCanvas {
     return a;
   }
 
-  private spawnDust(x: number, footY: number): void {
-    const count = 5 + Math.floor(Math.random() * 3);
+  private spawnDust(x: number, footY: number, scale = 1): void {
+    const count = Math.max(2, Math.round((5 + Math.floor(Math.random() * 3)) * scale));
     for (let i = 0; i < count; i++) {
       const angle = Math.PI + (Math.random() - 0.5) * Math.PI * 0.9; // kick sideways/back
-      const speed = 20 + Math.random() * 26;
+      const speed = (20 + Math.random() * 26) * scale;
       const ttl = 0.3 + Math.random() * 0.22;
       this.dust.push({
-        x: x + (Math.random() - 0.5) * 10,
+        x: x + (Math.random() - 0.5) * 10 * scale,
         y: footY,
         vx: Math.cos(angle) * speed * (Math.random() < 0.5 ? -1 : 1),
-        vy: -8 - Math.random() * 14,
+        vy: (-8 - Math.random() * 14) * scale,
         life: ttl,
         maxLife: ttl,
-        size: 2.5 + Math.random() * 3,
+        size: (2.5 + Math.random() * 3) * scale,
       });
     }
   }
@@ -3023,6 +3024,7 @@ export class BoardCanvas {
         s.x = s.hopTo.x;
         s.y = s.hopTo.y;
         s.hopping = false;
+        this.spawnDust(s.x, s.y, PET_DUST_SCALE); // little puff as the follower lands
       } else {
         const e = easeInOut(pr);
         s.x = s.hopFrom.x + (s.hopTo.x - s.hopFrom.x) * e;

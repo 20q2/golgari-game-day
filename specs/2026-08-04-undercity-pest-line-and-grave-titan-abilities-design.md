@@ -71,7 +71,7 @@ avoids "heal after battle" so it doesn't step on the zombie line's `regrowth`).
 Collapse (highest HP-fraction side) by simply outlasting everything.
 
 - **New passive `colossus`:** all **enemy strike damage against it is reduced by
-  `COLOSSUS_DR` (0.20)** — a flat multiplier applied *on top of* DEF's proportional
+  `COLOSSUS_DR` (0.15)** — a flat multiplier applied *on top of* DEF's proportional
   mitigation. Applies to decisive hits, Guard counters/mitigated hits, clash, and whiff/chip
   strikes. **Does NOT apply to rot ticks or the Collapse ramp** (the tank already wins the
   Collapse on HP fraction — DR there would double-dip).
@@ -117,7 +117,7 @@ creatures that evolve **after** deploy.
 In `undercity_config.py` (scalar tunables) unless noted:
 
 - `IMPROVISE_BONUS = 3`
-- `COLOSSUS_DR = 0.20`
+- `COLOSSUS_DR = 0.15`
 - `BOG_FORAGER_LOSS_FRACTION = 0.5`
 
 (`SPIKESHELL_RETALIATE`, `DEATHTOUCH_PIERCE`, `FLYBY_DODGE` stay in `undercity_data.py`
@@ -126,7 +126,7 @@ alongside the other combat scalars; `DEATHTOUCH_PIERCE` is now unused.)
 ## Testing
 
 - **Engine** (`tests/test_undercity_engine.py`): Improvise buffs exactly the lowest base
-  stat (and the documented tie-break); Colossus reduces enemy strike damage by ~20% but
+  stat (and the documented tie-break); Colossus reduces enemy strike damage by ~15% but
   leaves rot/frenzy untouched; deathtouch pierce no longer applies.
 - **DB/flow** (new `tests/test_undercity_pest_line.py`, mirroring the existing
   `test_undercity_gorgon.py` / `test_undercity_wood_lurker.py` shape): the three
@@ -134,7 +134,7 @@ alongside the other combat scalars; `DEATHTOUCH_PIERCE` is now unused.)
   rerolls a bad mystery; evolving into each form grants the new passive.
 - Keep `test_balance_good_play_beats_fodder` and the SPD/DEF regressions green.
 - **Balance validation:** run the headless sim in `infrastructure/lambda/sim/` to confirm
-  `COLOSSUS_DR = 0.20` doesn't trivialize deep/abyss/boss content (the boss is intentionally
+  `COLOSSUS_DR = 0.15` doesn't trivialize deep/abyss/boss content (the boss is intentionally
   a hard epic — do not soften it to fit the tank).
 
 ## Out of scope

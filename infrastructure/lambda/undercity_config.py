@@ -110,7 +110,7 @@ CUTPURSE_SPORES = 6   # flat Spores after a won fight in which you landed a Fein
 BRAMBLE_REFLECT = 2   # flat damage a Bramble carapace reflects when struck
 
 # Form-passive combat knobs (design 2026-08-04 pest-line/Grave Titan rework).
-COLOSSUS_DR = 0.20    # Grave Titan "Colossus": incoming enemy STRIKE damage is
+COLOSSUS_DR = 0.15    # Grave Titan "Colossus": incoming enemy STRIKE damage is
                       # scaled by (1 - this). Applies to decisive/counter/clash/
                       # chip/swarm hits — NOT rot ticks or the Collapse ramp.
 IMPROVISE_BONUS = 3   # Vexing Pest "Improvise": +this to the creature's lowest of
