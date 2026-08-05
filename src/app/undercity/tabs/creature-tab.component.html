@@ -394,8 +394,8 @@
                     }
                   </div>
                 </div>
-                @if (isApexGorgon()) {
-                  <!-- Apex-Gorgon wildcard: any one extra piece, stats only. -->
+                @if (hasWildcardSlot()) {
+                  <!-- Daemogoth Titan wildcard: its 4th slot, any one extra piece, stats only. -->
                   <div class="gear-tile" [class.empty]="!you.gear['wild']" [attr.data-rarity]="rarityKey(you.gear['wild'])"
                        (click)="you.gear['wild'] && selectItem('equipped', you.gear['wild']!, -1, 'Wildcard')">
                     <mat-icon class="mi slot-mi">star</mat-icon>
@@ -1070,7 +1070,7 @@
               @switch (item.source) {
                 @case ('stash') {
                   <button class="uc-btn" [disabled]="busy()" (click)="equipFromPopup(item)">Equip</button>
-                  @if (isApexGorgon()) {
+                  @if (hasWildcardSlot()) {
                     <button class="uc-btn" [disabled]="busy()" (click)="equipToWildcard(item)">+ Wildcard</button>
                   }
                 }

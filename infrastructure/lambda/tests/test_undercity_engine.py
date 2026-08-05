@@ -63,6 +63,32 @@ def fighter(**kw):
     return Combatant(**base)
 
 
+# ── Renown ─────────────────────────────────────────────────────────────────
+
+def test_win_renown_scales_by_tier_and_class():
+    # Normal < elite within a tier; both rise with tier (design 2026-08-05).
+    assert data.win_renown('wild', 1) == 2
+    assert data.win_renown('wild', 3) == 4
+    assert data.win_renown('elite', 1) == 3
+    assert data.win_renown('elite', 3) == 6
+    assert data.win_renown('lair') == 8          # mini-boss premium (flat)
+    assert (data.win_renown('wild', 1)
+            < data.win_renown('wild', 3)
+            < data.win_renown('elite', 3)
+            < data.win_renown('lair'))
+    # Unknown kinds fall back to the flat per-win value — no regression.
+    assert data.win_renown('enraged') == data.RENOWN['per_wild_win']
+
+
+def test_compute_renown_uses_win_renown_with_grandfather_fallback():
+    # New-style doc: winRenown drives the combat term (+poi 50 +boss 5).
+    p = {'winRenown': 40, 'wildWins': 99, 'poiClaims': ['a', 'b'], 'bossDamage': 50}
+    assert data.compute_renown(p) == 40 + 25 * 2 + 5
+    # Old doc without winRenown falls back to flat per_wild_win * wildWins.
+    old = {'wildWins': 10, 'poiClaims': []}
+    assert data.compute_renown(old) == data.RENOWN['per_wild_win'] * 10
+
+
 # ── Leveling ─────────────────────────────────────────────────────────────────
 
 def test_xp_curve():

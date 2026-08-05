@@ -1,5 +1,13 @@
 # Gorgon Abilities ("The Petrifiers") Implementation Plan
 
+> **Superseded in part (2026-08-05):** Phases 1–2 (Petrify/Stone Gaze, Brittle/Shatter)
+> shipped and are current. **Phase 3 (Tasks 10–11, the tier-3 wildcard gear slot) is
+> no longer a Gorgon feature** — the 4th slot was reassigned to the **Daemogoth Titan**
+> (Elf apex) and re-gated on the `arsenal` passive, and the wildcard piece **counts once**
+> (no doubling). The `stonewright`+tier-3 gate and the `'Only an apex Gorgon…'` error
+> string in the Phase-3 tasks below are obsolete. Current gate lives in `_equip_gear`; see
+> [2026-08-04-undercity-elf-tier2-rework-design.md](2026-08-04-undercity-elf-tier2-rework-design.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give the Gorgon line a signature combat identity — Medusa Stalker's **Stone Gaze** (reads petrify the enemy → slow → freeze), Basalt Matron's **Shatter** (Aggress wins make the enemy Brittle → +damage), and a tier-3 Gorgon-only **wildcard gear slot**.
@@ -594,136 +602,20 @@ git commit -m "feat(undercity): client mirror for Basalt Shatter + bruiser bonus
 
 ---
 
-# PHASE 3 — Tier-3 wildcard gear slot
+# PHASE 3 — Tier-3 wildcard gear slot — SUPERSEDED (2026-08-05)
 
-### Task 10: Equip into the `wild` slot (backend, gated)
+The 4th ("wildcard") gear slot was **reassigned from the Gorgon to the Daemogoth
+Titan** (the Elf apex added in the elf-tier2 rework), so Tasks 10–11 as written no
+longer apply. Its shipped form:
 
-The equip action gains a `wild` target: a tier-3 Gorgon may equip any one piece into `gear['wild']` (duplicates of an existing slot type allowed). Anyone else is rejected.
+- Gated on the `arsenal` passive in `_equip_gear` — **Daemogoth-only** (no other
+  creature, not even another Elf apex, gets a 4th slot). No `stonewright`/tier-3 gate.
+- The wildcard piece **counts once** (no doubling); its rider is inert (stats-only).
+- Client: `hasWildcardSlot` (gated on `arsenal`) renders the 4th slot in the
+  creature tab.
 
-**Files:**
-- Modify: `infrastructure/lambda/undercity_db.py` (`_equip_gear`)
-- Modify: `infrastructure/lambda/tests/test_undercity_gorgon_abilities.py`
-
-- [ ] **Step 1: Write the failing tests**
-
-Add to `test_undercity_gorgon_abilities.py`:
-
-```python
-def _gorgon_apex_at(table, node='city_r0'):
-    sid, doc = _player_at(table, node)
-    doc['passives'] = ['stonewright']     # a Gorgon…
-    doc['tier'] = 3                        # …at apex
-    return sid, doc
-
-
-def test_tier3_gorgon_equips_wildcard(table):
-    sid, doc = _gorgon_apex_at(table)
-    doc['gear'] = {'fang': 'rusted_fang'}          # already wearing a fang
-    doc['gearStash'] = ['rusted_fang']             # a duplicate fang to slot as wildcard
-    status, body = db._equip_gear(
-        table, sid, doc, {'index': 0, 'slot': 'wild'})
-    assert status == 200
-    assert doc['gear']['wild'] == 'rusted_fang'    # duplicate type allowed in wild
-    # It contributes to effective stats (two fangs' ATK now sum).
-    assert engine.effective_stats(doc)['atk'] >= doc['atk'] + 2 * data.GEAR['rusted_fang']['atk']
-
-
-def test_non_gorgon_cannot_use_wildcard(table):
-    sid, doc = _player_at(table, 'city_r0')         # pest, no stonewright
-    doc['tier'] = 3
-    doc['gearStash'] = ['rusted_fang']
-    status, _ = db._equip_gear(table, sid, doc, {'index': 0, 'slot': 'wild'})
-    assert status == 409
-
-
-def test_pre_apex_gorgon_cannot_use_wildcard(table):
-    sid, doc = _player_at(table, 'city_r0')
-    doc['passives'] = ['stonewright']; doc['tier'] = 2   # Gorgon but not apex
-    doc['gearStash'] = ['rusted_fang']
-    status, _ = db._equip_gear(table, sid, doc, {'index': 0, 'slot': 'wild'})
-    assert status == 409
-```
-
-- [ ] **Step 2: Run tests to verify they fail**
-
-Run: `cd infrastructure/lambda && python -m pytest tests/test_undercity_gorgon_abilities.py -q -k "wildcard"`
-Expected: FAIL — `_equip_gear` ignores `slot`, equips into the piece's own slot.
-
-- [ ] **Step 3: Add the wildcard branch to `_equip_gear`**
-
-In `undercity_db.py` `_equip_gear`, after `slot = g['slot']` (~1350), honor an explicit `wild` target with the gate:
-
-```python
-    if (payload or {}).get('slot') == 'wild':
-        if 'stonewright' not in _passives(doc) or int(doc.get('tier', 1)) < 3:
-            return _err('Only an apex Gorgon has a wildcard slot.', 409)
-        slot = 'wild'
-```
-
-(The rest of the function already swaps `gear[slot]` and returns the displaced piece to the stash — a `wild` piece rides that path unchanged, and `effective_stats`/`perk_stat` already sum `gear.values()`.)
-
-- [ ] **Step 4: Run tests to verify they pass**
-
-Run: `cd infrastructure/lambda && python -m pytest tests/test_undercity_gorgon_abilities.py -q -k "wildcard"`
-Expected: PASS (3 tests).
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add infrastructure/lambda/undercity_db.py infrastructure/lambda/tests/test_undercity_gorgon_abilities.py
-git commit -m "feat(undercity): apex Gorgon wildcard gear slot (equip + gate)"
-```
-
----
-
-### Task 11: Wildcard slot in the client gear UI
-
-Show a 4th "wildcard" slot for tier-3 Gorgons and let the equip modal target it.
-
-**Files:**
-- Modify: the equipped-gear component (locate in Step 1).
-
-- [ ] **Step 1: Locate the equipped-slots UI**
-
-Run: `grep -rnE "'fang'|'carapace'|'charm'|gear\?\.\[|slot" src/app/undercity/tabs --include=*.ts | grep -i gear | head`
-Identify the component that renders the three equipped slots (fang/carapace/charm) and the equip action call.
-
-- [ ] **Step 2: Render a wildcard slot for apex Gorgons**
-
-In that component's template, after the three fixed slots, conditionally render a 4th slot when the player is a tier-3 Gorgon:
-
-```typescript
-// in the component: a getter for visibility
-get hasWildcard(): boolean {
-  const p = this.player();               // however the component reads player state
-  return p?.tier === 3 && (p?.passives ?? []).includes('stonewright');
-}
-```
-
-Template (mirror the existing slot markup, labelled "Wildcard", reading `player().gear?.wild` and resolving via `gearById`/`GEAR_MAP` — the "+"-aware resolver from the Gear+ work):
-
-```html
-@if (hasWildcard) {
-  <!-- one more slot cell, same markup as the fang/carapace/charm cells,
-       bound to gear.wild; its equip button posts { slot: 'wild' } -->
-}
-```
-
-- [ ] **Step 3: Post the wildcard target on equip**
-
-Where the component posts the `equip-gear` action, pass `slot: 'wild'` when the chosen destination is the wildcard cell (the stash-piece equip flow already sends `{ index }`; add `slot` for this path). Keep the existing three-slot equip calls unchanged (no `slot` key → backend equips into the piece's own slot as today).
-
-- [ ] **Step 4: Verify build**
-
-Run: `npm run build`
-Expected: succeeds.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/app/undercity/tabs/
-git commit -m "feat(undercity): client wildcard gear slot for apex Gorgons"
-```
+See [2026-08-04-undercity-elf-tier2-rework-design.md](2026-08-04-undercity-elf-tier2-rework-design.md)
+and the current `_equip_gear` / `creature-tab.component` implementation.
 
 ---
 

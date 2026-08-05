@@ -1,7 +1,15 @@
 # Undercity: Gorgon Abilities — "The Petrifiers"
 
 **Date:** 2026-08-04
-**Status:** Approved, ready for implementation plan
+**Status:** Implemented. **Phase 3 superseded 2026-08-05 — see banner.**
+
+> **Superseded in part (2026-08-05):** Phase 3's tier-3 wildcard gear slot is
+> **no longer a Gorgon feature.** It was reassigned to be the **Daemogoth Titan's**
+> signature (the Elf apex added in the elf-tier2 rework): gated on the `arsenal`
+> passive — which only the Daemogoth ever holds, so **no other creature, not even
+> another Elf apex, gets a 4th slot** — and the wildcard piece **counts once** (no
+> doubling). Phases 1–2 below (Petrify/Stone Gaze, Brittle/Shatter) remain current.
+> See [2026-08-04-undercity-elf-tier2-rework-design.md](2026-08-04-undercity-elf-tier2-rework-design.md).
 
 ## Goal
 
@@ -178,8 +186,9 @@ Each phase is independently shippable and testable.
 ## Non-goals
 
 - No base-form combat passive (base stays economy-only).
-- No new tier-3 apex forms (the wildcard slot is the Gorgon-exclusive apex payoff;
-  apexes stay shared).
+- No new tier-3 apex forms (apexes stay shared). *(Superseded 2026-08-05: the
+  wildcard slot is no longer a Gorgon payoff — it became the Daemogoth Titan's
+  Arsenal signature; see the banner at the top of this doc.)*
 - No damage from Petrify (pure tempo denial) and no general vulnerability from
   Brittle (Gorgon-only amp).
 - No new gear pieces or riders — abilities only. (Gear+ already exists.)

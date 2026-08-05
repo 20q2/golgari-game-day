@@ -30,25 +30,34 @@ interface OwnedRow {
  * an owned row (its index), or none (null). */
 type SellTarget = 'new' | number | null;
 
-/** Blocking modal that drains the player's pendingPickups queue one item at a
- * time. Every item gained through the server's _acquire pipeline that overflows
- * a full inventory lands here. A single panel shows the incoming item on top and
- * the player's existing same-kind inventory below; the player either sells the
- * incoming item, or frees a slot by salvaging/selling an owned piece (the
- * incoming item then drops in). Self-hides when the queue is empty. */
+/** Board-scoped dialogue that drains the player's pendingPickups queue one item
+ * at a time. Every item gained through the server's _acquire pipeline that
+ * overflows a full inventory lands here. A single panel shows the incoming item on
+ * top and the player's existing same-kind inventory below; the player either sells
+ * the incoming item, or frees a slot by salvaging/selling an owned piece (the
+ * incoming item then drops in). It is NOT a hard modal — it dims only the board and
+ * leaves navigation free, so the player can pop over to the Plaza to sort things
+ * out instead; only rolling is locked (board-tab's rollBlocked) until the queue
+ * clears. Rendered inside the board tab, so it self-hides on other tabs and when
+ * the queue is empty. */
 @Component({
   selector: 'app-pickup-modal',
   standalone: true,
   imports: [CommonModule, MatIconModule],
   template: `
     @if (head(); as p) {
-      <div class="pu-backdrop" role="dialog" aria-modal="true" aria-live="assertive">
+      <!-- Non-blocking board dialogue: dims only the board, leaves the tab bar
+           free (visit the Plaza to make room), and locks rolling until resolved.
+           Always resolvable in place too — salvaging the incoming item clears it. -->
+      <div class="pu-backdrop" role="dialog" aria-live="assertive">
         <div class="pu-card">
           <header class="pu-head">
-            <span class="pu-eyebrow">{{ fullLine(p) }}</span>
-            @if (queueCount() > 1) {
-              <span class="pu-count">+{{ queueCount() - 1 }} more waiting</span>
-            }
+            <div class="pu-head-titles">
+              <span class="pu-eyebrow">{{ fullLine(p) }}</span>
+              @if (queueCount() > 1) {
+                <span class="pu-count">+{{ queueCount() - 1 }} more waiting</span>
+              }
+            </div>
           </header>
 
           <!-- Incoming item — the highlighted "prize" -->

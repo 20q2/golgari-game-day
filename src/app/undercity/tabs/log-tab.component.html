@@ -1,68 +1,126 @@
 <div class="log-tab">
-  <!-- Leaderboard -->
-  <section class="card">
-    <h3>Leaderboard</h3>
-    <div class="lb-rows">
-      @for (p of leaderboard(); track p.userId; let i = $index) {
-        <div class="lb-row" [class.own]="p.userId === store.ownUserId">
-          <span class="lb-rank">{{ i + 1 }}</span>
-          <span class="lb-sprite">
-            @if (p.spriteUrl) {
-              <img [src]="p.spriteUrl" [alt]="p.formName" />
-            }
-          </span>
-          <span class="lb-name">
-            {{ p.username }}
-            <small>{{ p.creatureName || p.formName }} · L{{ p.level }}</small>
-          </span>
-          <span class="lb-stats" title="Rolls left / PvP wins / creature wins / Guild Sigils">
-            <span class="lb-stat"><mat-icon class="mi">casino</mat-icon>{{ p.rolls }}</span>
-            <span class="lb-stat"><mat-icon class="mi">sports_kabaddi</mat-icon>{{ p.pvpWins }}</span>
-            <span class="lb-stat"><mat-icon class="mi">bug_report</mat-icon>{{ p.wildWins }}</span>
-            <span class="lb-stat"><mat-icon class="mi">workspace_premium</mat-icon>{{ p.sigils }}</span>
-          </span>
-          <span class="lb-renown">{{ p.renown }}</span>
-          @if (p.userId !== store.ownUserId) {
-            @if (p.pokeCooldownUntil) {
-              <app-uc-poke-wheel [until]="p.pokeCooldownUntil" />
+  <div class="log-scroll">
+    <!-- Leaderboard -->
+    <section class="card">
+      <h3 class="lb-head">
+        Leaderboard
+        <button
+          class="lb-info-btn"
+          (click)="renownInfoOpen.set(true)"
+          aria-label="How is renown earned?"
+          title="How is renown earned?"
+        >
+          <mat-icon class="mi">info_outline</mat-icon>
+        </button>
+      </h3>
+      <div class="lb-rows">
+        @for (p of leaderboard(); track p.userId; let i = $index) {
+          <div class="lb-row" [class.own]="p.userId === store.ownUserId">
+            <span class="lb-rank">{{ i + 1 }}</span>
+            <span class="lb-sprite">
+              @if (p.spriteUrl) {
+                <img [src]="p.spriteUrl" [alt]="p.formName" />
+              }
+            </span>
+            <span class="lb-name">
+              {{ p.username }}
+              <small>{{ p.creatureName || p.formName }} · L{{ p.level }}</small>
+            </span>
+            <span class="lb-stats" title="Rolls left / PvP wins / creature wins / Guild Sigils">
+              <span class="lb-stat"><mat-icon class="mi">casino</mat-icon>{{ p.rolls }}</span>
+              <span class="lb-stat"><mat-icon class="mi">sports_kabaddi</mat-icon>{{ p.pvpWins }}</span>
+              <span class="lb-stat"><mat-icon class="mi">bug_report</mat-icon>{{ p.wildWins }}</span>
+              <span class="lb-stat"><mat-icon class="mi">workspace_premium</mat-icon>{{ p.sigils }}</span>
+            </span>
+            <span class="lb-renown">{{ p.renown }}</span>
+            @if (p.userId !== store.ownUserId) {
+              @if (p.pokeCooldownUntil) {
+                <app-uc-poke-wheel [until]="p.pokeCooldownUntil" />
+              } @else {
+                <button
+                  class="lb-poke"
+                  [disabled]="busy()"
+                  title="Poke — gift a roll"
+                  [attr.aria-label]="'Poke ' + p.username"
+                  (click)="poke(p.userId, p.username)"
+                >
+                  <mat-icon class="mi">touch_app</mat-icon>
+                </button>
+              }
             } @else {
-              <button
-                class="lb-poke"
-                [disabled]="busy()"
-                title="Poke — gift a roll"
-                [attr.aria-label]="'Poke ' + p.username"
-                (click)="poke(p.userId, p.username)"
-              >
-                <mat-icon class="mi">touch_app</mat-icon>
-              </button>
+              <span class="lb-poke-spacer"></span>
             }
-          } @else {
-            <span class="lb-poke-spacer"></span>
+          </div>
+        }
+      </div>
+    </section>
+
+    @if (toast(); as t) {
+      <div class="lb-toast">{{ t }}</div>
+    }
+
+    <!-- The Grapevine -->
+    <section class="card">
+      <h3><mat-icon class="mi">forum</mat-icon> The Grapevine</h3>
+      <div class="feed">
+        @for (e of store.events(); track e.ts) {
+          <div class="feed-row">
+            <mat-icon class="mi feed-icon">{{ eventIcon(e.type) }}</mat-icon>
+            <span class="feed-text">{{ e.text }}</span>
+            <span class="feed-time">{{ timeAgo(e.ts) }}</span>
+          </div>
+        } @empty {
+          <p class="muted">Nothing yet. Be the first spore to stir.</p>
+        }
+      </div>
+    </section>
+
+    <app-undercity-host-panel />
+  </div>
+
+  <!-- "How is renown earned?" pop-up dialog -->
+  @if (renownInfoOpen()) {
+    <div class="uc-modal-backdrop" (click)="renownInfoOpen.set(false)">
+      <div
+        class="uc-modal renown-modal"
+        role="dialog"
+        aria-label="How Renown is earned"
+        (click)="$event.stopPropagation()"
+      >
+        <button class="ri-close" (click)="renownInfoOpen.set(false)" aria-label="Close">
+          <mat-icon class="mi">close</mat-icon>
+        </button>
+        <h3><mat-icon class="mi">military_tech</mat-icon> How Renown is earned</h3>
+
+        <div class="ri-body">
+          <h4 class="ri-group">Winning fights</h4>
+          @for (r of renownFights; track r.label) {
+            <div class="ri-row">
+              <mat-icon class="mi">{{ r.icon }}</mat-icon>
+              <span class="ri-label">{{ r.label }}</span>
+              <span class="ri-val">{{ r.value }}</span>
+            </div>
+            @if (r.note) {
+              <div class="ri-note">{{ r.note }}</div>
+            }
           }
-        </div>
-      }
-    </div>
-  </section>
 
-  @if (toast(); as t) {
-    <div class="lb-toast">{{ t }}</div>
+          <h4 class="ri-group">First clears — +25 each</h4>
+          @for (r of renownFirstClears; track r.label) {
+            <div class="ri-row">
+              <mat-icon class="mi">{{ r.icon }}</mat-icon>
+              <span class="ri-label">{{ r.label }}</span>
+              <span class="ri-val">{{ r.value }}</span>
+            </div>
+            @if (r.note) {
+              <div class="ri-note">{{ r.note }}</div>
+            }
+          }
+          <div class="ri-note ri-note-block">{{ renownFirstNote }}</div>
+        </div>
+
+        <p class="ri-foot">{{ renownFootnote }}</p>
+      </div>
+    </div>
   }
-
-  <!-- The Grapevine -->
-  <section class="card">
-    <h3><mat-icon class="mi">forum</mat-icon> The Grapevine</h3>
-    <div class="feed">
-      @for (e of store.events(); track e.ts) {
-        <div class="feed-row">
-          <mat-icon class="mi feed-icon">{{ eventIcon(e.type) }}</mat-icon>
-          <span class="feed-text">{{ e.text }}</span>
-          <span class="feed-time">{{ timeAgo(e.ts) }}</span>
-        </div>
-      } @empty {
-        <p class="muted">Nothing yet. Be the first spore to stir.</p>
-      }
-    </div>
-  </section>
-
-  <app-undercity-host-panel />
 </div>

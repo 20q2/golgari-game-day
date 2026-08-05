@@ -8,16 +8,19 @@
 }
 
 .pu-backdrop {
-  position: fixed;
+  // Board-scoped and non-blocking: absolutely positioned inside the board tab like
+  // every other board dialog (.uc-modal-backdrop), so it dims ONLY the board — never
+  // the HUD or the tab bar. That keeps the Plaza (and every other tab) reachable
+  // while a full bag is being sorted. Rolling is what's locked, not navigation.
+  position: absolute;
   inset: 0;
-  z-index: 1500; // above the level-up overlay (1400)
+  z-index: 1100; // the board-dialogue layer (matches .uc-modal-backdrop)
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: rgba(6, 5, 3, 0.82);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  // Dim only, deliberately no backdrop-filter blur — the board behind stays sharp.
+  background: rgba(6, 5, 3, 0.72);
 }
 
 .pu-card {
@@ -38,9 +41,16 @@
 
 .pu-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.pu-head-titles {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
 }
 
 .pu-eyebrow {

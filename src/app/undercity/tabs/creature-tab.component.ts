@@ -891,14 +891,15 @@ export class CreatureTabComponent {
     this.closeItem();
   }
 
-  /** Apex Gorgons (tier-3 with the Stonewright passive) unlock a wildcard gear
-   *  slot — any one extra piece, stats-only (its rider effect is inert). */
-  protected readonly isApexGorgon = computed(() => {
+  /** The Daemogoth Titan's signature: a 4th equipment slot. Gated on its apex
+   *  Arsenal passive (which no other creature has). The extra piece is stats-only
+   *  — its rider effect is inert. */
+  protected readonly hasWildcardSlot = computed(() => {
     const you = this.store.you();
-    return you?.tier === 3 && (you?.passives ?? []).includes('stonewright');
+    return (you?.passives ?? []).includes('arsenal');
   });
 
-  /** Equip a stash piece into the apex-Gorgon wildcard slot (stats only). */
+  /** Equip a stash piece into the Daemogoth's wildcard slot (stats only). */
   protected async equipToWildcard(item: SelectedItem): Promise<void> {
     await this.run(async () => {
       const resp = await this.store.action('equip-gear', { index: item.index, slot: 'wild' });

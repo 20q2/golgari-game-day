@@ -99,6 +99,7 @@ import { MysteryReelComponent } from './mystery-reel.component';
 import { HazardWheelComponent, HazardWheelTarget } from './hazard-wheel.component';
 import { BoardEventFeedComponent } from './board-event-feed.component';
 import { UcActionBandComponent } from './action-band.component';
+import { PickupModalComponent } from './pickup-modal.component';
 import { BossIntroComponent } from './boss-intro.component';
 import { bossLines } from '../data/boss-dialogue';
 
@@ -212,6 +213,7 @@ const FX_TINT: Record<string, [string, string]> = {
     HazardWheelComponent,
     BoardEventFeedComponent,
     UcActionBandComponent,
+    PickupModalComponent,
   ],
   templateUrl: './board-tab.component.html',
   styleUrls: ['./board-tab.component.scss'],
@@ -1692,6 +1694,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
    *  roll freely. No user-facing text — the disabled button + the next-roll
    *  countdown (nextRollLabel()) already convey "out of rolls". */
   protected rollBlocked(): boolean {
+    // A full bag parks overflow in the (non-blocking) pickup dialogue. Lock rolls
+    // until the player clears it so they can't move off this space or stack another
+    // turn while an item decision is pending. They stay free to browse other tabs
+    // (e.g. sell at the Plaza to make room) — only rolling is gated. Even in debug.
+    if ((this.store.you()?.pendingPickups?.length ?? 0) > 0) return true;
     if (this.debugMode()) return false;
     return this.rollsBanked() < 1;
   }

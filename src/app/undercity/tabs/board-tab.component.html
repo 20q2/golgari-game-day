@@ -282,6 +282,12 @@
     }
   </app-uc-action-band>
 
+  <!-- Bag-full sorter: a non-blocking board dialogue. It dims only the board (like
+       every other board dialog), never the HUD or tab bar, so the player can still
+       hop to the Plaza to free a slot. Rolling stays locked (rollBlocked) until the
+       overflow is resolved. Self-hides when pendingPickups is empty. -->
+  <app-pickup-modal />
+
   <!-- Respawn gate choice (after a compost). Held until the battle-result dialog
        is dismissed so the DEFEAT screen reads before the Composted gate takes over. -->
   @if (!liveBattle() && store.you()?.pendingRespawn; as pr) {

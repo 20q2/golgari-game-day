@@ -318,9 +318,19 @@ export interface GameState {
   snares: string[];
   /** Trading post node id -> its 3 shared stock slots. */
   tradingPosts?: Record<string, TradeStockItem[]>;
-  /** The wandering trading post's current node + when it next hops (ISO, UTC no suffix).
-   *  `traded` is true once the requesting player has spent this rotation's one barter. */
-  umori?: { node: string; movesAt: string; traded?: boolean };
+  /** Umori the collector's sealed auction for the current wander window. `reserves`
+   *  keys are ranks ("1"|"2"|"3") → the min winning bid to unlock that box's rich
+   *  table. `yourBid` is the requesting player's live escrowed bid this window (0 if
+   *  none). `reveal` appears on the ONE state read that settles a just-closed
+   *  auction the player bid in. */
+  umori?: {
+    node: string;
+    movesAt: string;
+    minBid: number;
+    reserves: Record<string, number>;
+    yourBid: number;
+    reveal?: UmoriReveal;
+  };
   /** Shop node id -> its current shared stock and restock clock. */
   bazaars?: Record<string, BazaarView>;
   /** Player Market — priced gear listings (mirrors undercity_db MARKET# records). */
@@ -511,27 +521,34 @@ export interface BattleResume {
   };
 }
 
-/** One slot of a trading post's shared stock. */
+/** One slot of a trading post's shared stock.
+ * @deprecated Umori's give-junk-get-legendary barter is gone (replaced by the
+ * sealed-bid auction — see UmoriBoxReward/UmoriReveal); kept only because
+ * `GameState.tradingPosts`/`SpaceEvent.stock`/`ActionResponse.stock` still carry
+ * the shape for any other trading-post consumer. */
 export interface TradeStockItem {
   item: string;
   foundBy: string;
 }
 
-/** Something the player can offer at a trading post: a bag item, an equipped
- * gear piece, or an owned grimoire. */
-export interface TradeOffer {
-  id: string;
-  kind: 'consumable' | 'gear' | 'grimoire';
-  icon: string;
-  /** Gear slot ('fang'|'carapace'|'charm') -> the 'uc-<slot>' svg icon. */
-  slot?: string;
-  /** Rarity key ('common'|'rare'|'legendary') for coloring + the badge. */
-  rarity?: string;
-  rarityLabel?: string;
-  label: string;
-  sub: string;
-  /** For a same-slot gear offer: this is the piece currently worn (badged in UI). */
-  equipped?: boolean;
+/** One reward pulled from an auction box. */
+export interface UmoriBoxReward {
+  kind: 'gear' | 'grimoire' | 'egg' | 'consumable' | 'materials';
+  item?: string;
+  tier?: number;
+  ichor?: number;
+  moltings?: number;
+  outcome?: 'equipped' | 'stashed' | 'stored' | 'pending';
+}
+
+/** The settlement of a closed auction the player bid in. `placed` is their rank
+ *  (1-3) or null when they were outbid (4th+) and refunded. */
+export interface UmoriReveal {
+  window: number;
+  placed: number | null;
+  boxName?: string;
+  reward?: UmoriBoxReward;
+  refund?: number;
 }
 
 /** One stocked line in a bazaar tab (grimoires carry no qty). */
@@ -698,6 +715,13 @@ export interface SpaceEvent {
   options?: string[];
   node?: string;
   stock?: TradeStockItem[];
+  /** trading_post: true when this space is Umori's sealed-bid auction (the only
+   *  producer of the 'trading_post' event type — see the umori/minBid/reserves/
+   *  yourBid fields below). */
+  umori?: boolean;
+  minBid?: number;
+  reserves?: Record<string, number>;
+  yourBid?: number;
   grid?: DigGrid;
   /** loot_puzzle: the masked Flow puzzle to solve for the deferred loot. */
   puzzle?: FlowPuzzleView;

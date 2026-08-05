@@ -89,7 +89,6 @@ export const RIDER_AUGMENTS: Record<string, Omit<StanceAugment, 'source'>> = {
  *  are deliberately omitted so the buttons stay honest. */
 export const PASSIVE_AUGMENTS: Record<string, Omit<StanceAugment, 'source'>> = {
   venom_barb: { stance: 'aggress', label: 'Venom Barb', blurb: 'Your first strike each battle deals +3.' },
-  deathtouch_stomp: { stance: 'aggress', label: 'Deathtouch Stomp', blurb: "Your strikes ignore 3 of the enemy's DEF." },
   rot_breath: { stance: 'aggress', label: 'Rot Breath', blurb: 'Your round-1 strike hits for double.' },
 };
 

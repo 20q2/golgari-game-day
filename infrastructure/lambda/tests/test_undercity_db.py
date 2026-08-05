@@ -204,7 +204,7 @@ def test_wild_win_surfaces_rewards(table, monkeypatch):
     assert se['spores'] >= 1                        # bounty
     assert se['xp'] == 10                           # per-NPC xp (normal tier)
     assert 'levels' not in se                       # 10 xp < first level-up cost
-    assert se['renownGained'] == data.RENOWN['per_wild_win']  # a composted wild = +renown
+    assert se['renownGained'] == data.win_renown('wild', 1)  # T1 wild = tier-scaled renown (2)
 
 
 def test_elite_battle_pulls_from_elite_pool(table, monkeypatch):
@@ -1121,166 +1121,6 @@ def _stand_on_umori(table):
     doc['position'] = node
     db._put_player(table, doc)
     return sid, db._get_player(table, sid, 'user-alex'), node
-
-
-def _t3_fang():
-    return next(g for g, v in data.GEAR.items() if v['tier'] == 3 and v['slot'] == 'fang')
-
-
-def _t3_tome():
-    return next(g for g, v in data.GRIMOIRES.items() if v['tier'] == 3)
-
-
-def _t3_carapace():
-    return next(g for g, v in data.GEAR.items() if v['tier'] == 3 and v['slot'] == 'carapace')
-
-
-def test_umori_pre_seeds_t3_stock(table):
-    sid, doc, node = _stand_on_umori(table)
-    ev = db._resolve_space(table, sid, doc, node, 'somewhere')
-    assert ev['type'] == 'trading_post' and ev['umori'] is True
-    assert all(s['foundBy'] == 'the Swarm' for s in ev['stock'])
-    for s in ev['stock']:
-        defn = data.GEAR.get(s['item']) or data.GRIMOIRES[s['item']]
-        assert defn['tier'] == 3
-
-
-def test_umori_swap_gear(table):
-    sid, doc, node = _stand_on_umori(table)
-    win = db._umori_window()
-    take = _t3_fang()
-    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'POST#UMORI#{win}',
-                         'stock': [{'item': take, 'foundBy': 'the Swarm'}]})
-    doc['gear'] = {'fang': 'rusted_fang'}
-    db._put_player(table, doc)
-    status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
-    assert status == 200
-    assert resp['you']['gear']['fang'] == take                 # gave worn fang → slot empty → auto-equipped
-    assert take not in (resp['you'].get('gearStash') or [])
-    assert resp['stock'][0] == {'item': 'rusted_fang', 'foundBy': 'Alex'}  # old piece left
-
-
-def test_umori_swap_grimoire_auto_equips(table):
-    sid, doc, node = _stand_on_umori(table)
-    win = db._umori_window()
-    take = _t3_tome()
-    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'POST#UMORI#{win}',
-                         'stock': [{'item': take, 'foundBy': 'the Swarm'}]})
-    doc['grimoires'] = ['moldering_folio']
-    doc['equippedGrimoire'] = 'moldering_folio'
-    db._put_player(table, doc)
-    status, resp = act(table, 'trade', give='moldering_folio', takeIndex=0)
-    assert status == 200
-    assert resp['you']['grimoires'] == [take]
-    assert resp['you']['equippedGrimoire'] == take
-    assert resp['stock'][0] == {'item': 'moldering_folio', 'foundBy': 'Alex'}
-
-
-def test_umori_rejects_consumable_give(table):
-    sid, doc, node = _stand_on_umori(table)
-    doc['bag'] = ['healing_moss']
-    db._put_player(table, doc)
-    status, resp = act(table, 'trade', give='healing_moss', takeIndex=0)
-    assert status == 409 and 'gear and grimoires' in resp['error']
-
-
-def test_umori_rejects_trade_when_not_on_node(table):
-    act(table, 'join', starter='pest')
-    sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex')
-    other = next(n for n in data.UMORI_NODES if n != db._umori_node(db._umori_window()))
-    doc['position'] = other
-    doc['gear'] = {'fang': 'rusted_fang'}
-    db._put_player(table, doc)
-    status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
-    assert status == 409 and 'Umori is not here' in resp['error']
-
-
-def test_umori_rejects_out_of_range_take(table):
-    sid, doc, node = _stand_on_umori(table)
-    doc['gear'] = {'fang': 'rusted_fang'}
-    db._put_player(table, doc)
-    status, _ = act(table, 'trade', give='rusted_fang', takeIndex=9)
-    assert status == 409  # take index out of range
-
-
-def test_umori_rejects_cross_slot_gear(table):
-    sid, doc, node = _stand_on_umori(table)
-    win = db._umori_window()
-    take = _t3_carapace()
-    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'POST#UMORI#{win}',
-                         'stock': [{'item': take, 'foundBy': 'the Swarm'}]})
-    doc['gear'] = {'fang': 'rusted_fang'}                       # a fang, not a carapace
-    db._put_player(table, doc)
-    status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
-    assert status == 409 and 'same slot' in resp['error']
-
-
-def test_umori_rejects_cross_kind(table):
-    sid, doc, node = _stand_on_umori(table)
-    win = db._umori_window()
-    take = _t3_tome()                                          # a grimoire line
-    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'POST#UMORI#{win}',
-                         'stock': [{'item': take, 'foundBy': 'the Swarm'}]})
-    doc['gear'] = {'fang': 'rusted_fang'}                      # offering gear for a grimoire
-    db._put_player(table, doc)
-    status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
-    assert status == 409 and 'grimoire' in resp['error']
-
-
-def test_umori_gives_from_stash(table):
-    sid, doc, node = _stand_on_umori(table)
-    win = db._umori_window()
-    take = _t3_fang()
-    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'POST#UMORI#{win}',
-                         'stock': [{'item': take, 'foundBy': 'the Swarm'}]})
-    doc['gear'] = {}                                           # nothing equipped
-    doc['gearStash'] = ['rusted_fang']                         # a stashed fang qualifies
-    db._put_player(table, doc)
-    status, resp = act(table, 'trade', give='rusted_fang', takeIndex=0)
-    assert status == 200
-    assert 'rusted_fang' not in (resp['you'].get('gearStash') or [])  # removed from stash
-    assert resp['you']['gear']['fang'] == take                 # fang slot was empty → auto-equipped
-    assert resp['stock'][0] == {'item': 'rusted_fang', 'foundBy': 'Alex'}
-
-
-def test_state_reports_umori_traded_flag(table):
-    sid, doc, node = _stand_on_umori(table)
-    win = db._umori_window()
-    # Before trading: traded is False.
-    _, state = db.handle_state(table, {'userId': 'user-alex'})
-    assert state['umori']['traded'] is False
-    # After marking this window traded: True.
-    doc = db._get_player(table, sid, 'user-alex')
-    doc['umoriTradedWindow'] = win
-    db._put_player(table, doc)
-    _, state = db.handle_state(table, {'userId': 'user-alex'})
-    assert state['umori']['traded'] is True
-
-
-def test_umori_one_barter_per_rotation(table):
-    sid, doc, node = _stand_on_umori(table)
-    win = db._umori_window()
-    take = _t3_fang()
-    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'POST#UMORI#{win}',
-                         'stock': [{'item': take, 'foundBy': 'the Swarm'}]})
-    doc['gear'] = {'fang': 'rusted_fang'}
-    db._put_player(table, doc)
-    status, _ = act(table, 'trade', give='rusted_fang', takeIndex=0)
-    assert status == 200
-    # second trade this window is blocked
-    d2 = db._get_player(table, sid, 'user-alex')
-    d2['gear'] = {'fang': 'bloodfang'}
-    db._put_player(table, d2)
-    status, resp = act(table, 'trade', give='bloodfang', takeIndex=0)
-    assert status == 409 and 'already bartered' in resp['error']
-    # a later window lets them barter again
-    d3 = db._get_player(table, sid, 'user-alex')
-    d3['umoriTradedWindow'] = win - 1                          # simulate an older stop
-    d3['gear'] = {'fang': 'bloodfang'}
-    db._put_player(table, d3)
-    status, _ = act(table, 'trade', give='bloodfang', takeIndex=0)
-    assert status == 200
 
 
 def test_dig_grid_generation():
@@ -2975,8 +2815,11 @@ def test_biome_black_market_is_rare_and_deterministic():
 def test_umori_window_math():
     base = datetime(2026, 7, 21, 12, 0, 0)
     w = db._umori_window(base)
-    assert db._umori_window(base + timedelta(minutes=90)) == w          # same 2h window
-    assert db._umori_window(base + timedelta(minutes=121)) == w + 1      # next window
+    # Stale literals from the 120m barter window predate Task 4's 75m auction
+    # dwell (undercity_config.UMORI_DWELL_MIN); rebased so the assertions still
+    # exercise "same window" vs "next window" rather than assuming 120m.
+    assert db._umori_window(base + timedelta(minutes=20)) == w           # same window
+    assert db._umori_window(base + timedelta(minutes=40)) == w + 1       # next window
     assert db._umori_window_end(w) > base.isoformat(timespec='seconds')
 
 
@@ -2990,45 +2833,25 @@ def test_umori_node_is_deterministic_wilderness():
     assert len({db._umori_node(w) for w in range(0, 50)}) > 1
 
 
-def test_umori_stock_is_all_t3_and_deterministic():
-    for w in range(0, 30):
-        stock = db._umori_stock(w)
-        assert len(stock) == (
-            len(data.UMORI_GEAR_SLOTS) * data.UMORI_STOCK_SPEC['gear_per_slot']
-            + data.UMORI_STOCK_SPEC['grimoire']
-        )
-        gears = [s['item'] for s in stock if s['item'] in data.GEAR]
-        tomes = [s['item'] for s in stock if s['item'] in data.GRIMOIRES]
-        # one gear per slot, covering every slot exactly once
-        assert sorted(data.GEAR[g]['slot'] for g in gears) == sorted(data.UMORI_GEAR_SLOTS)
-        assert len(tomes) == data.UMORI_STOCK_SPEC['grimoire']
-        assert all(data.GEAR[g]['tier'] == 3 for g in gears)
-        assert all(data.GRIMOIRES[t]['tier'] == 3 for t in tomes)
-    assert db._umori_stock(5) == db._umori_stock(5)
-
-
-def test_resolve_on_umori_node_opens_a_trading_post(table):
-    act(table, 'join', starter='pest')
-    sid = _sid(table)
-    doc = db._get_player(table, sid, 'user-alex')
+def test_resolve_on_umori_node_opens_the_auction(table):
+    sid, doc, node = _stand_on_umori(table)
     win = db._umori_window()
-    node = db._umori_node(win)
-    ev = db._resolve_space(table, sid, doc, node, doc.get('position'))
+    ev = db._resolve_space(table, sid, doc, node, 'somewhere')
     assert ev['type'] == 'trading_post' and ev['umori'] is True
-    assert ev['node'] == node
     assert ev['movesAt'] == db._umori_window_end(win)
-    # Stock is the T3 seed for this window.
-    assert [s['item'] for s in ev['stock']] == [s['item'] for s in db._umori_stock(win)]
+    assert ev['minBid'] == data.UMORI_MIN_BID
+    assert 'stock' not in ev            # barter is gone
 
 
-def test_state_surfaces_umori(table):
-    act(table, 'join', starter='pest')
-    _, state = db.handle_state(table, {'userId': 'user-alex'})
+def test_state_surfaces_umori_auction(table):
+    sid, doc, node = _stand_on_umori(table)
     win = db._umori_window()
-    assert state['umori']['node'] == db._umori_node(win)
-    assert state['umori']['movesAt'] == db._umori_window_end(win)
-    # Display stock is seeded for the current Umori node.
-    assert state['tradingPosts'][db._umori_node(win)]
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    u = state['umori']
+    assert u['node'] == db._umori_node(win)
+    assert u['movesAt'] == db._umori_window_end(win)
+    assert u['minBid'] == data.UMORI_MIN_BID
+    assert u['yourBid'] == 0
 
 
 def test_shop_stock_reads_current_regenerates_stale(table):
@@ -4559,3 +4382,270 @@ def test_battle_status_surfaces_trait_chips_with_stacks():
     # A non-trait passive is not surfaced as a chip.
     plain = db._battle_status({'rot_stacks': 0, 'passives': ['brute']})
     assert plain['traits'] == []
+
+
+def test_umori_auction_config_present():
+    # The auction is tuned by scalars in undercity_config (surfaced via data's
+    # `from undercity_config import *`).
+    assert data.UMORI_MIN_BID >= 1
+    assert data.UMORI_WINNERS == 3
+    assert set(data.UMORI_RESERVES) == {1, 2, 3}
+    # Reserves must strictly descend so 1st place is the hardest box to unlock.
+    assert data.UMORI_RESERVES[1] > data.UMORI_RESERVES[2] > data.UMORI_RESERVES[3]
+    # Dwell shortened so a 6-8h event gets several auctions (see design §4.1).
+    assert data.UMORI_DWELL_MIN <= 90
+
+
+def test_umori_box_tables_shape():
+    # Three ranked box tables + a consolation table; every reward spec is one of
+    # the five allowed kinds, and no table references a nonexistent item pool.
+    assert set(data.UMORI_BOX_TABLES) == {1, 2, 3}
+    assert set(data.UMORI_BOX_NAMES) == {1, 2, 3}
+    tables = list(data.UMORI_BOX_TABLES.values()) + [data.UMORI_BOX_CONSOLATION]
+    for tbl in tables:
+        assert tbl, 'box table must be non-empty'
+        for spec, weight in tbl.items():
+            assert weight > 0
+            kind = spec[0]
+            assert kind in {'gear', 'grimoire', 'egg', 'consumable', 'materials'}
+            if kind == 'gear':
+                assert any(g['tier'] == spec[1] for g in data.GEAR.values())
+            elif kind == 'grimoire':
+                assert any(g['tier'] == spec[1] for g in data.GRIMOIRES.values())
+
+
+def test_roll_umori_box_is_deterministic_and_valid():
+    # Same (window, rank) → identical contents for every caller (no coordination).
+    a = db._roll_umori_box(1000, 1, under_reserve=False)
+    b = db._roll_umori_box(1000, 1, under_reserve=False)
+    assert a == b
+    assert a['kind'] in {'gear', 'grimoire', 'egg', 'consumable', 'materials'}
+    if a['kind'] == 'gear':
+        assert a['item'] in data.GEAR
+    if a['kind'] == 'grimoire':
+        assert a['item'] in data.GRIMOIRES
+    if a['kind'] == 'consumable':
+        assert a['item'] in data.CONSUMABLES
+    if a['kind'] == 'materials':
+        assert a['ichor'] >= 0 and a['moltings'] >= 0
+
+
+def test_roll_umori_box_under_reserve_uses_consolation():
+    # Under reserve, rank 1 must draw only from the consolation table's kinds
+    # (no ('gear',3)/('grimoire',3)/('egg',3) jackpot lines).
+    allowed = {spec[0] for spec in data.UMORI_BOX_CONSOLATION}
+    seen = {db._roll_umori_box(w, 1, under_reserve=True)['kind'] for w in range(200)}
+    assert seen <= allowed
+
+
+def _seed_bid(table, sid, win, uid, amount, name, ts):
+    table.put_item(Item={'pk': db._season_pk(sid),
+                         'sk': f'POST#UMORI#{win}#BID#{uid}',
+                         'amount': amount, 'username': name, 'ts': ts})
+
+
+def test_umori_bids_and_ranking(table):
+    sid = _sid(table)
+    win = db._umori_window()
+    _seed_bid(table, sid, win, 'user-a', 40, 'A', '2026-01-01T00:00:00.000')
+    _seed_bid(table, sid, win, 'user-b', 70, 'B', '2026-01-01T00:00:01.000')
+    _seed_bid(table, sid, win, 'user-c', 70, 'C', '2026-01-01T00:00:00.500')  # earlier tie
+    bids = db._umori_bids(table, sid, win)
+    assert bids['user-b']['amount'] == 70
+    ranked = db._rank_bids(bids)
+    # 70s outrank 40; the earlier-ts 70 (C) beats the later-ts 70 (B).
+    assert [uid for uid, _ in ranked] == ['user-c', 'user-b', 'user-a']
+
+
+def _join_on_umori(table, user, name):
+    """Join `user` and stand them on the current Umori node. Returns (sid, node)."""
+    act(table, 'join', starter='pest', user=user, name=name)
+    sid = _sid(table)
+    doc = db._get_player(table, sid, user)
+    node = db._umori_node(db._umori_window())
+    doc['position'] = node
+    doc['spores'] = 500
+    db._put_player(table, doc)
+    return sid, node
+
+
+def test_umori_bid_escrows_spores(table):
+    sid, node = _join_on_umori(table, 'user-alex', 'Alex')
+    status, resp = act(table, 'umori-bid', amount=40)
+    assert status == 200
+    assert resp['you']['spores'] == 460                 # 500 - 40 escrowed
+    assert resp['you']['umoriBidAmount'] == 40
+    win = db._umori_window()
+    assert db._umori_bids(table, sid, win)['user-alex']['amount'] == 40
+
+
+def test_umori_bid_requires_presence(table):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = next(n for n in data.UMORI_NODES
+                           if n != db._umori_node(db._umori_window()))
+    doc['spores'] = 500
+    db._put_player(table, doc)
+    status, resp = act(table, 'umori-bid', amount=40)
+    assert status == 409 and 'not here' in resp['error']
+
+
+def test_umori_bid_enforces_min(table):
+    _join_on_umori(table, 'user-alex', 'Alex')
+    status, resp = act(table, 'umori-bid', amount=data.UMORI_MIN_BID - 1)
+    assert status == 409 and 'start at' in resp['error']
+
+
+def test_umori_bid_is_raise_only_and_escrows_delta(table):
+    sid, node = _join_on_umori(table, 'user-alex', 'Alex')
+    act(table, 'umori-bid', amount=40)
+    status, resp = act(table, 'umori-bid', amount=30)          # lower → rejected
+    assert status == 409 and 'raise' in resp['error']
+    status, resp = act(table, 'umori-bid', amount=60)          # raise by 20
+    assert status == 200
+    assert resp['you']['spores'] == 440                        # 500 - 60 total escrow
+    assert resp['you']['umoriBidAmount'] == 60
+
+
+def test_umori_bid_rejects_when_broke(table):
+    sid, node = _join_on_umori(table, 'user-alex', 'Alex')
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['spores'] = 10
+    db._put_player(table, doc)
+    status, resp = act(table, 'umori-bid', amount=40)
+    assert status == 409 and 'Not enough' in resp['error']
+
+
+def test_umori_results_ranks_and_reserve_gates(table):
+    sid = _sid(table)
+    win = db._umori_window()
+    _seed_bid(table, sid, win, 'user-a', data.UMORI_RESERVES[1] + 5, 'A',
+              '2026-01-01T00:00:00.000')                       # clears rank-1 reserve
+    _seed_bid(table, sid, win, 'user-b', data.UMORI_RESERVES[2] - 1, 'B',
+              '2026-01-01T00:00:01.000')                       # UNDER rank-2 reserve
+    results = db._umori_results(table, sid, win)
+    assert [r['userId'] for r in results] == ['user-a', 'user-b']
+    assert results[0]['rank'] == 1 and results[0]['underReserve'] is False
+    assert results[1]['rank'] == 2 and results[1]['underReserve'] is True
+    for r in results:
+        assert r['box']['kind'] in {'gear', 'grimoire', 'egg', 'consumable', 'materials'}
+
+
+def test_umori_results_caps_at_winners(table):
+    sid = _sid(table)
+    win = db._umori_window()
+    for i in range(5):
+        _seed_bid(table, sid, win, f'user-{i}', 100 - i, f'P{i}',
+                  f'2026-01-01T00:00:0{i}.000')
+    results = db._umori_results(table, sid, win)
+    assert len(results) == data.UMORI_WINNERS      # only the top 3 place
+
+
+def test_collect_umori_grants_winner_box(table, monkeypatch):
+    sid, node = _join_on_umori(table, 'user-alex', 'Alex')
+    win = db._umori_window()
+    # Alex bids and clears rank-1 reserve; force the box roll to a known egg.
+    act(table, 'umori-bid', amount=data.UMORI_RESERVES[1] + 10)
+    monkeypatch.setattr(db, '_roll_umori_box',
+                        lambda w, r, under_reserve: {'kind': 'egg', 'tier': 2})
+    # Advance past the window so the auction is closed.
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['umoriBidWindow'] = win - 1                 # pretend the bid was last window
+    # (re-point the bid record to the prior window too)
+    db._put_player(table, doc)
+    table.put_item(Item={'pk': db._season_pk(sid),
+                         'sk': f'POST#UMORI#{win - 1}#BID#user-alex',
+                         'amount': data.UMORI_RESERVES[1] + 10, 'username': 'Alex',
+                         'ts': '2026-01-01T00:00:00.000'})
+    doc = db._get_player(table, sid, 'user-alex')
+    before = len(doc.get('eggs') or [])
+    reveal = db._collect_umori(table, sid, doc)
+    assert reveal['placed'] == 1
+    assert reveal['reward']['kind'] == 'egg'
+    doc2 = db._get_player(table, sid, 'user-alex')
+    assert len(doc2.get('eggs') or []) == before + 1
+    assert doc2['umoriCollectedWindow'] == win - 1
+    assert 'umoriBidWindow' not in doc2             # bid fields cleared
+
+
+def test_collect_umori_refunds_non_winner(table):
+    sid, node = _join_on_umori(table, 'user-alex', 'Alex')
+    win = db._umori_window()
+    # Alex bid last window but 3 others outbid him → 4th place → full refund.
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['spores'] = 100
+    doc['umoriBidWindow'] = win - 1
+    doc['umoriBidAmount'] = 20
+    db._put_player(table, doc)
+    for i in range(3):
+        table.put_item(Item={'pk': db._season_pk(sid),
+                             'sk': f'POST#UMORI#{win - 1}#BID#rich-{i}',
+                             'amount': 200 + i, 'username': f'R{i}',
+                             'ts': f'2026-01-01T00:00:0{i}.000'})
+    table.put_item(Item={'pk': db._season_pk(sid),
+                         'sk': f'POST#UMORI#{win - 1}#BID#user-alex',
+                         'amount': 20, 'username': 'Alex',
+                         'ts': '2026-01-01T00:00:09.000'})
+    doc = db._get_player(table, sid, 'user-alex')
+    reveal = db._collect_umori(table, sid, doc)
+    assert reveal['placed'] is None and reveal['refund'] == 20
+    doc2 = db._get_player(table, sid, 'user-alex')
+    assert doc2['spores'] == 120                    # 100 + 20 refunded
+    assert doc2['umoriCollectedWindow'] == win - 1
+
+
+def test_collect_umori_is_idempotent(table):
+    sid, node = _join_on_umori(table, 'user-alex', 'Alex')
+    win = db._umori_window()
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['spores'] = 100
+    doc['umoriBidWindow'] = win - 1
+    doc['umoriBidAmount'] = 20
+    db._put_player(table, doc)
+    table.put_item(Item={'pk': db._season_pk(sid),
+                         'sk': f'POST#UMORI#{win - 1}#BID#user-alex',
+                         'amount': 20, 'username': 'Alex', 'ts': '2026-01-01T00:00:00.000'})
+    # 3 richer bidders outrank Alex so he lands 4th (outside the top-3 winners) and
+    # is refunded rather than boxed — without these, Alex is the sole bidder and
+    # would auto-place at rank 1 (per _umori_results), which isn't the path this
+    # test means to exercise.
+    for i in range(3):
+        table.put_item(Item={'pk': db._season_pk(sid),
+                             'sk': f'POST#UMORI#{win - 1}#BID#rich-{i}',
+                             'amount': 200 + i, 'username': f'R{i}',
+                             'ts': f'2026-01-01T00:00:0{i}.000'})
+    doc = db._get_player(table, sid, 'user-alex')
+    db._collect_umori(table, sid, doc)              # first pull refunds
+    doc2 = db._get_player(table, sid, 'user-alex')
+    assert db._collect_umori(table, sid, doc2) is None   # second pull is a no-op
+    doc3 = db._get_player(table, sid, 'user-alex')
+    assert doc3['spores'] == 120                    # not double-refunded
+
+
+def test_state_settles_closed_auction_and_reveals(table, monkeypatch):
+    sid, node = _join_on_umori(table, 'user-alex', 'Alex')
+    win = db._umori_window()
+    monkeypatch.setattr(db, '_roll_umori_box',
+                        lambda w, r, under_reserve: {'kind': 'materials',
+                                                     'ichor': 1, 'moltings': 2})
+    # Alex has an un-collected winning bid in the PRIOR (closed) window.
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['spores'] = 100
+    doc['umoriBidWindow'] = win - 1
+    doc['umoriBidAmount'] = data.UMORI_RESERVES[1] + 5
+    db._put_player(table, doc)
+    table.put_item(Item={'pk': db._season_pk(sid),
+                         'sk': f'POST#UMORI#{win - 1}#BID#user-alex',
+                         'amount': data.UMORI_RESERVES[1] + 5, 'username': 'Alex',
+                         'ts': '2026-01-01T00:00:00.000'})
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert state['umori']['reveal']['placed'] == 1
+    assert state['umori']['reveal']['reward']['kind'] == 'materials'
+    # Durable: the materials landed and the window is marked collected.
+    doc2 = db._get_player(table, sid, 'user-alex')
+    assert doc2['materials']['ichor'] >= 1
+    assert doc2['umoriCollectedWindow'] == win - 1
+    # A second state read does not re-reveal.
+    _, state2 = db.handle_state(table, {'userId': 'user-alex'})
+    assert 'reveal' not in state2['umori']

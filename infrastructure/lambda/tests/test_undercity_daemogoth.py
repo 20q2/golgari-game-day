@@ -26,10 +26,6 @@ def test_daemogoth_is_the_elf_apex():
     assert 'izoni' in data.apex_options('slitherhead')
 
 
-def test_arsenal_scalar_defined():
-    assert data.ARSENAL_EXTRA_COPIES == 1
-
-
 def _doc(**kw):
     base = {'atk': 5, 'def': 5, 'spd': 5, 'maxHp': 25, 'hp': 25,
             'gear': {}, 'buffs': [], 'passives': []}
@@ -37,25 +33,21 @@ def _doc(**kw):
     return base
 
 
-def test_arsenal_doubles_only_the_wildcard_piece():
+def test_arsenal_wildcard_piece_counts_once():
     # fang = duelist_fang (+3 atk / +2 spd); wild = warbrand_plate (+3 def / +2 atk).
     gear = {'fang': 'duelist_fang', 'wild': 'warbrand_plate'}
 
-    # Without Arsenal: every piece counts once.
+    # Arsenal grants the extra slot but does NOT double it: the wildcard piece
+    # contributes its stats exactly once, so the passive never alters the totals.
     plain = engine.effective_stats(_doc(gear=gear))
-    assert plain['atk'] == 5 + 3 + 2      # base + fang + wild
-    assert plain['def'] == 5 + 3          # base + wild
-    assert plain['spd'] == 5 + 2          # base + fang
-
-    # With Arsenal: the wildcard piece's stats are counted a second time.
     armed = engine.effective_stats(_doc(gear=gear, passives=['arsenal']))
-    assert armed['atk'] == plain['atk'] + 2   # +wild atk again
-    assert armed['def'] == plain['def'] + 3   # +wild def again
-    assert armed['spd'] == plain['spd']       # wild has no spd
-    assert armed['maxHp'] == plain['maxHp']
+    assert armed == plain
+    assert armed['atk'] == 5 + 3 + 2      # base + fang.atk + wild.atk (each once)
+    assert armed['def'] == 5 + 3          # base + wild.def
+    assert armed['spd'] == 5 + 2          # base + fang.spd
 
 
-def test_arsenal_no_bonus_when_wildcard_empty():
+def test_arsenal_does_not_alter_stats_without_wildcard():
     gear = {'fang': 'duelist_fang'}
     plain = engine.effective_stats(_doc(gear=gear))
     armed = engine.effective_stats(_doc(gear=gear, passives=['arsenal']))

@@ -1,5 +1,13 @@
 # The Undercity — Game Design Document
 
+> **Historical vision doc (2026-07-06).** This is the original design. The
+> **Evolution section below was refreshed 2026-08-05 to match current code** (new
+> species — zombie, squirrel, elf/Gorgon — and reworked forms, passives, and
+> apexes). **Other sections** (economy numbers, board layout, specific mechanics)
+> may still be vision-era and lag the implementation. **Sources of truth:** the code
+> (`infrastructure/lambda/undercity_data.py`) and the living references
+> [undercity-combat.md](undercity-combat.md) / [undercity-spells.md](undercity-spells.md).
+
 **Status:** Approved design, pre-implementation
 **Date:** 2026-07-06
 **Host site:** Golgari Palace Game Day (Angular 20 PWA, GitHub Pages, Python Lambda + DynamoDB)
@@ -106,27 +114,29 @@ Four stats, integers, always visible:
 
 Evolutions trigger at **level 5** (Tier 2) and **level 10** (Tier 3) as a full-screen choice moment — two cards, stat previews, no takebacks. Evolving grants an immediate **full heal**, a **+4 bonus** spread across the form's featured stats, swaps the sprite everywhere, and posts to the event log.
 
-**Tier 2 (level 5) — pick one of two per line:**
+**Tier 2 (level 5) — each starter line offers two or three forms:**
 
-| From | Option A | Option B |
-|---|---|---|
-| Pest | **Brackish Trudge** — bruiser (+HP/+ATK); passive: *Undying* — first compost each hour, revive at 50% HP instead | **Vexing Pest** — speedster (+SPD/+ATK); passive: *Vexing* — 25% chance enemy strikes miss |
-| Kraul Grub | **Kraul Warrior** — striker (+ATK); passive: *Venom Barb* — your first strike each battle deals +3 | **Kraul Forager** — raider (+DEF); passive: *Deathrite* — +50% Spores stolen on PvP wins |
-| Saproling | **Slitherhead** — counterpuncher (+ATK/+HP); passive: *Scavenge* — retaliate for 2 damage whenever struck | **Woodwraith Strangler** — fortress (+DEF/+HP); passive: *Rootwall* — Regrowth improves to 35% |
-| Spore | **Shambling Shell** — durable trickster (+HP/+DEF); passive: *Dredge* — reclaim your snare after it triggers | **Corpsejack Menace** — fungal tycoon (+ATK); passive: *Doubling Rot* — mystery-event Spore payouts doubled |
+| Line | Tier-2 forms |
+|---|---|
+| **Pest** | **Brackish Trudge** — scavenger bruiser (+HP/ATK); *Bog Forager*: deeper Spore scavenge even from lost/fled fights, rerolls bad mystery events · **Vexing Pest** — all-rounder (+HP/ATK/DEF/SPD); *Improvise*: +3 to its lowest stat each battle |
+| **Kraul Grub** | **Grave Scarab** — striker (+ATK); *Venom Barb*: first strike each battle deals +3 · **Golgari Longlegs** — skirmisher (+SPD); *Reach*: round 1 the enemy's decisive blow finds only air |
+| **Saproling** | **Slitherhead** — darter (+SPD); *Skitter*: 25% of enemy strikes miss · **Sporeback Skirmisher** — skirmisher (+SPD/HP); *Outpace*: round 1 the enemy's blow finds air · **Jungle Creeper** — whirlwind (+SPD/ATK); *Flurry*: 25% chance of a bonus strike each round |
+| **Zombie** | **Shambling Shell** — thorned bulwark (+HP/DEF); *Spiked Shell*: retaliate 2 whenever a blow lands · **Underrealm Lich** — regenerating necromancer (+HP/ATK); *Rootwall*: Regrowth → 35% plus an innate Mend Flesh · **Deathrite Shaman** — grave ritualist (+HP/DEF); *Soul Trophy*: after a win, +[foe level] to a stat you choose next battle |
+| **Squirrel** | **Vinereap Mentor** — spellblade (+HP/ATK); *Spell Warrior*: self-cast buffs/heals doubled · **Squirrel Mage** — battlemage (+HP/SPD); *Spell Mage*: damage spells +50% and twice as likely to land |
+| **Elf** | **Wood Lurker** — ambush shapeshifter (+HP); *Mimicry*: at the first blow, a stat bump matching how the foe fights · **Gorgon** — gaze-hunter (+SPD/ATK); *Stone Gaze*: reads come easily and each read petrifies the foe |
 
-**Tier 3 (level 10) — apex forms.** Each Tier-2 form offers two of the four apexes (overlap is intentional — different roads to the same throne):
+**Tier 3 (level 10) — six apex forms.** Overlap is intentional (multiple roads to the same throne); each tier-2 form offers a different subset.
 
-| Apex | Offered to | Featured stats | Passive |
+| Apex | Passive | Stats | Reached from |
 |---|---|---|---|
-| **Grave Titan** | Brackish Trudge, Kraul Forager, Woodwraith Strangler, Shambling Shell | HP/DEF | *Deathtouch Stomp:* your strikes ignore 3 of the enemy's DEF |
-| **Golgari Lich Lord** | Kraul Forager, Slitherhead, Woodwraith Strangler, Corpsejack Menace | ATK/HP | *Drain Life:* heal for 50% of damage you deal |
-| **Swamp Dragon** | Brackish Trudge, Vexing Pest, Kraul Warrior | ATK/SPD | *Rot Breath:* round-1 strike hits for double |
-| **Izoni, Thousand-Eyed** | Vexing Pest, Kraul Warrior, Slitherhead, Shambling Shell, Corpsejack Menace | SPD | *Swarm:* one extra strike every battle round |
+| **Grave Titan** | *Colossus*: shrug off 15% of every blow | HP/DEF | Brackish Trudge, Shambling Shell, Deathrite Shaman, Underrealm Lich, Wood Lurker |
+| **Golgari Lich Lord** | *Drain Life*: heal 50% of the damage you deal | ATK/HP | Brackish Trudge, Grave Scarab, Shambling Shell, Deathrite Shaman, Underrealm Lich, Wood Lurker |
+| **Swamp Dragon** | *Rot Breath*: round-1 strike hits for double | ATK/SPD | Vexing Pest, Grave Scarab, Golgari Longlegs, Slitherhead, Sporeback Skirmisher, Jungle Creeper, Vinereap Mentor, Gorgon |
+| **Primeval Warden** | *Swarm*: one extra strike every battle round | SPD | Vexing Pest, Golgari Longlegs, Slitherhead, Sporeback Skirmisher, Jungle Creeper, Squirrel Mage |
+| **Daemogoth Titan** *(Elf-only)* | *Arsenal*: a fourth equipment slot | ATK/DEF | Wood Lurker, Gorgon |
+| **Calamity Beast** | *Wish*: learn Wish — cast ANY spell in the world | HP/SPD | Vinereap Mentor, Squirrel Mage, Deathrite Shaman, Vexing Pest, Jungle Creeper |
 
-*(Matrix invariant: every Tier-2 form offers exactly two apexes.)*
-
-*(Names are Golgari-flavored placeholders — real MTG cards where they exist (Brackish Trudge, Vexing Pest, Shambling Shell, Slitherhead, Corpsejack Menace, Grave Titan, Izoni) and thematic inventions elsewhere. Swap freely; only archetype/stat identities are load-bearing.)*
+*(Names use real MTG cards where they exist and thematic inventions elsewhere; internal ids persist for save-compat even when the display name changed — e.g. `izoni` = Primeval Warden, `woodwraith_strangler` = Sporeback Skirmisher, `corpsejack_menace` = Jungle Creeper, `kraul_warrior` = Grave Scarab. Only archetype/stat identities are load-bearing.)*
 
 ### Sprite placeholders
 

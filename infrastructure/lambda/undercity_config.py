@@ -193,7 +193,7 @@ UPGRADE_ICHOR = {2: 0, 3: 1, 4: 3}  # Rare->Legendary needs 1 Ichor; Legendary->
 # Trading Post (which stays). See specs/2026-07-20-undercity-forge-economy-design.md.
 MARKET_PRICE_MIN_PCT = 0.5    # floor = ceil(base cost * this)
 MARKET_PRICE_MAX_PCT = 2.0    # ceiling = floor(base cost * this)
-MARKET_MAX_LISTINGS = 5       # active listings per seller
+MARKET_MAX_LISTINGS = 10      # active listings per seller
 
 # Per-rarity rider magnitude ladder (see gear-rarity Phase 1 plan). Each value is
 # anchored to the rider's current live magnitude at the tier it occupies today, so
@@ -246,10 +246,17 @@ SHOP_CONSUMABLE_QTY = 2      # units per stocked consumable line
 # sighting per bazaar every ~10 hours. Island bazaars ignore this (they stock T3
 # directly). Endgame T3 gear should be a treat, never a shortcut.
 BAZAAR_BLACKMARKET_CHANCE = 0.05
-# Umori, the wandering trading post: minutes it dwells at one wilderness node
-# before hopping to a new random one. Location/stock are pure functions of this
-# window (see undercity_db._umori_window) — no server tick.
-UMORI_DWELL_MIN = 120
+# Umori, the wandering collector: minutes he dwells at one wilderness node before
+# hopping. Each window is ONE sealed-bid auction. Shortened from 120 so a 6-8h
+# game-day event gets ~5-8 auction beats rather than 3-4 (see the auction design).
+UMORI_DWELL_MIN = 75
+# Sealed-bid auction (design 2026-08-05). Bids are Spores; the top UMORI_WINNERS
+# bidders each pull a ranked mystery box. A rank whose winning bid is below its
+# reserve rolls the consolation table instead of its rich table — the anti-exploit
+# floor that stops a lone cheap bid from cracking the best box.
+UMORI_MIN_BID = 5
+UMORI_WINNERS = 3
+UMORI_RESERVES = {1: 80, 2: 40, 3: 15}
 SHRINE_BLESSING_COST = 30
 OSSUARY_MAX_BET = 20
 OSSUARY_ROLLS_PER_VISIT = 3  # gambles allowed per landing; refills when you land again
@@ -300,7 +307,9 @@ ENRAGED_KILL_XP = 30         # XP to the killer
 # (data.LAIR_SIGNATURE). At a WILD space in that boss's area this fraction of
 # encounters roll the signature instead of the flat region pool, so it reads as
 # that boss's turf without erasing variety. Elite spaces keep the full pool.
-SIGNATURE_SPAWN_CHANCE = 0.40
+# Tuned high (2026-08-05): a boss lair should crawl with its familiars — the
+# signature dominates wild encounters, leaving ~1-in-4 for pool variety.
+SIGNATURE_SPAWN_CHANCE = 0.75
 
 # ── Procedural dungeons ──────────────────────────────────────────────────────
 # When True, each night's five dungeon pockets are regenerated from a per-season
@@ -402,8 +411,3 @@ PETRIFY_FREEZE_AT = 4     # Petrify stacks that trigger a one-round freeze (then
 # ── Wood Lurker (Mimicry) ────────────────────────────────────────────────────
 MIMIC_MIRROR = 3     # +stat matching the foe's fighting style (brute/turtle/trickster)
 MIMIC_BALANCED = 1   # +ATK/+DEF/+SPD vs a balanced foe
-
-# ── Daemogoth (Arsenal) ──────────────────────────────────────────────────────
-# The Elf apex's wildcard "extra equipment" piece pulls extra duty: its stats
-# are counted this many EXTRA times (1 = counts twice). Only the wildcard slot.
-ARSENAL_EXTRA_COPIES = 1

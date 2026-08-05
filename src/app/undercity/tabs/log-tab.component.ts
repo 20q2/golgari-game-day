@@ -44,6 +44,35 @@ export class LogTabComponent {
   protected readonly busy = signal(false);
   protected readonly toast = signal<string | null>(null);
 
+  /** "How is renown earned?" explainer — a pop-up dialog off the leaderboard. */
+  protected readonly renownInfoOpen = signal(false);
+
+  /** Display mirror of the server renown weights (undercity_data.RENOWN /
+   * RENOWN_WIN). Descriptive-with-numbers for curious players; keep in sync if
+   * the server weights are retuned. */
+  protected readonly renownFights = [
+    { icon: 'bug_report', label: 'Beat a normal enemy', value: '2–4', note: 'tougher zones pay more' },
+    { icon: 'local_fire_department', label: 'Beat an elite', value: '3–6', note: '' },
+    { icon: 'fort', label: 'Slay a lair boss', value: '8', note: '' },
+    { icon: 'shield', label: 'Beat a lair guardian (barrier)', value: '—', note: 'renown comes from the first-clear below' },
+    { icon: 'sports_kabaddi', label: 'Win a duel — vs an equal or stronger foe', value: '15', note: '' },
+    { icon: 'whatshot', label: 'Chip the Queen (Savra)', value: '1 / 10 dmg', note: '' },
+  ];
+
+  /** First-time landmark clears — the per-player +25 (poiClaims). */
+  protected readonly renownFirstClears = [
+    { icon: 'shield', label: 'Break a lair guardian (barrier)', value: '25', note: '' },
+    { icon: 'fort', label: 'Slay a lair boss — first time', value: '25', note: 'stacks with the +8 fight' },
+    { icon: 'inventory_2', label: 'Crack a vault, trove, or cache', value: '25', note: '' },
+  ];
+
+  protected readonly renownFirstNote =
+    'Once per landmark, per player — later visitors still earn the full 25.';
+
+  protected readonly renownFootnote =
+    'Your leaderboard score is this total. Cosmetic renown for the pre-hatch shop is a ' +
+    'separate wallet — your night’s score plus roaming-beast and world-event kills.';
+
   eventIcon(type: string): string {
     return EVENT_ICONS[type] ?? 'spa';
   }

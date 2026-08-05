@@ -115,25 +115,6 @@ def _enraged_monster(window):
     return rng.choice(data.ENRAGED_ORDER)
 
 
-def _umori_stock(window):
-    """Fresh T3 barter seed for a window: one T3 gear per slot (fixed order) +
-    UMORI_STOCK_SPEC['grimoire'] T3 grimoires. Deterministic per window."""
-    rng = random.Random(zlib.crc32(f'umori-stock:{window}'.encode()))
-    by_slot = {}
-    for gid, g in data.GEAR.items():
-        if g['tier'] == 3:
-            by_slot.setdefault(g['slot'], []).append(gid)
-    picks = []
-    for slot in data.UMORI_GEAR_SLOTS:
-        pool = sorted(by_slot.get(slot, []))
-        if pool:
-            picks.append(rng.choice(pool))
-    tomes = sorted(gid for gid, gr in data.GRIMOIRES.items() if gr['tier'] == 3)
-    rng.shuffle(tomes)
-    picks += tomes[:data.UMORI_STOCK_SPEC['grimoire']]
-    return [{'item': i, 'foundBy': 'the Swarm'} for i in picks]
-
-
 def _weighted_tier(rng, weights):
     """Deterministic weighted pick from {tier: weight}. Sorted for stability."""
     total = sum(weights.values())
@@ -979,6 +960,19 @@ def _grant_xp(table, sid, doc, amount):
     return gained
 
 
+def _add_win_renown(doc, kind, tier=1):
+    """Accumulate tier/class-scaled leaderboard renown for a combat win.
+
+    compute_renown reads doc['winRenown'] (design 2026-08-05), falling back to the
+    legacy flat per_wild_win * wildWins for docs from before the field existed. We
+    seed the accumulator from those prior flat wins the first time it's touched, so
+    a mid-season deploy never drops already-earned renown. Call BEFORE the
+    matching wildWins increment so the seed counts only prior kills.
+    """
+    base = data.RENOWN['per_wild_win'] * doc.get('wildWins', 0)
+    doc['winRenown'] = doc.get('winRenown', base) + data.win_renown(kind, tier)
+
+
 def _give_consumable(doc, source='reward'):
     """Grant a random consumable through the shared pipeline: into the bag if it
     fits, otherwise parked for the pickup modal. Returns the consumable id
@@ -1427,6 +1421,66 @@ def _roll_gear_drop(doc, tier_weights):
     return _gain_gear(doc, _rng.choice(pool))
 
 
+def _roll_umori_box(window, rank, under_reserve):
+    """Deterministic single-reward roll for an auction box, seeded by
+    (window, rank) so every request computes the identical contents with no
+    coordination. under_reserve swaps the rank's rich table for the consolation
+    table (the reserve-price anti-exploit floor). Returns a box dict (see the
+    field contract in the plan header)."""
+    rng = random.Random(zlib.crc32(f'umori-box:{window}:{rank}'.encode()))
+    table = data.UMORI_BOX_CONSOLATION if under_reserve else data.UMORI_BOX_TABLES[rank]
+    spec = _pick_weighted(rng, table)
+    kind = spec[0]
+    if kind == 'gear':
+        pool = sorted(gid for gid, g in data.GEAR.items() if g['tier'] == spec[1])
+        return {'kind': 'gear', 'item': rng.choice(pool)}
+    if kind == 'grimoire':
+        pool = sorted(gid for gid, g in data.GRIMOIRES.items() if g['tier'] == spec[1])
+        return {'kind': 'grimoire', 'item': rng.choice(pool)}
+    if kind == 'egg':
+        return {'kind': 'egg', 'tier': int(spec[1])}
+    if kind == 'consumable':
+        return {'kind': 'consumable', 'item': rng.choice(sorted(data.CONSUMABLES))}
+    return {'kind': 'materials', 'ichor': int(spec[1]), 'moltings': int(spec[2])}
+
+
+def _umori_bids(table, sid, window):
+    """Every sealed bid for a window, read from the per-user POST#UMORI#{w}#BID#
+    records (separate items so concurrent bidders never clobber each other).
+    Returns {userId: {'amount': int, 'username': str, 'ts': str}}."""
+    prefix = f'POST#UMORI#{window}#BID#'
+    rows = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': _season_pk(sid), ':sk': prefix})['Items']
+    out = {}
+    for r in (_clean(x) for x in rows):
+        uid = r['sk'].split('#BID#', 1)[1]
+        out[uid] = {'amount': int(r['amount']),
+                    'username': r.get('username', 'someone'), 'ts': r.get('ts', '')}
+    return out
+
+
+def _rank_bids(bids):
+    """Bidders ranked best-first: highest amount, ties broken by earliest ts."""
+    return sorted(bids.items(), key=lambda kv: (-kv[1]['amount'], kv[1]['ts']))
+
+
+def _umori_results(table, sid, window):
+    """Deterministic auction outcome for a window: the ranked top-UMORI_WINNERS
+    bidders and their rolled boxes, a pure function of the stored bids (safe to
+    recompute any number of times — no writes). Each result:
+    {'userId','username','rank','amount','underReserve','box'}."""
+    ranked = _rank_bids(_umori_bids(table, sid, window))
+    results = []
+    for i, (uid, info) in enumerate(ranked[:data.UMORI_WINNERS]):
+        rank = i + 1
+        under = info['amount'] < data.UMORI_RESERVES[rank]
+        results.append({'userId': uid, 'username': info['username'], 'rank': rank,
+                        'amount': info['amount'], 'underReserve': under,
+                        'box': _roll_umori_box(window, rank, under)})
+    return results
+
+
 def _salvage_gear(table, sid, doc, payload):
     """Salvage Yard: convert a stashed gear piece into materials (mode 'grind')
     or sell it for Spores (mode 'sell' — the 50% sell-back). Plaza service; not
@@ -1480,10 +1534,12 @@ def _equip_gear(table, sid, doc, payload):
         return _err('Unknown gear.', 409)
     slot = g['slot']
     if (payload or {}).get('slot') == 'wild':
-        # Apex Gorgon wildcard: any one extra piece (duplicates allowed). Gated on
-        # the Stonewright passive + tier 3 (not the shared apex form).
-        if 'stonewright' not in _passives(doc) or int(doc.get('tier', 1)) < 3:
-            return _err('Only an apex Gorgon has a wildcard slot.', 409)
+        # Daemogoth Titan signature: a 4th equipment slot — any one extra piece
+        # (duplicates allowed); its rider is inert, stats-only (see _riders).
+        # Gated on the apex Arsenal passive, which ONLY the Daemogoth ever holds,
+        # so no other creature (not even another Elf apex) gets a fourth slot.
+        if 'arsenal' not in _passives(doc):
+            return _err('Only the Daemogoth Titan has a fourth gear slot.', 409)
         slot = 'wild'
     gear = doc.setdefault('gear', {})
     old = gear.get(slot)
@@ -2183,6 +2239,7 @@ def handle_state(table, query_params):
 
     players, you, snares, result, posts, sites = [], None, [], None, {}, {}
     veins, vaults, shops = {}, {}, {}
+    umori_reveal = None
     now = _now()
     for item in items:
         if item['sk'].startswith('PLAYER#'):
@@ -2192,6 +2249,7 @@ def handle_state(table, query_params):
             _prune_cooldowns(item)
             players.append(_public_player(item))
             if item['userId'] == user_id:
+                umori_reveal = _collect_umori(table, sid, item)  # settle closed auctions
                 you = {k: v for k, v in item.items() if k not in ('pk', 'sk')}
                 you.update(_roll_meta(item))
                 you['perks'] = sorted(engine.attribute_perks(item))
@@ -2202,6 +2260,8 @@ def handle_state(table, query_params):
                 you['maxHp'] = engine.effective_stats(item)['maxHp']
         elif item['sk'].startswith('SPACE#'):
             snares.append(item['sk'].replace('SPACE#', ''))
+        elif item['sk'].startswith('POST#UMORI#'):
+            pass  # auction bid records, not a rendered trading post
         elif item['sk'].startswith('POST#'):
             posts[item['sk'].replace('POST#', '')] = item.get('stock') or []
         elif item['sk'].startswith('SITE#'):
@@ -2230,11 +2290,10 @@ def handle_state(table, query_params):
         if n['type'] == 'trading_post' and nid not in posts:
             posts[nid] = _seed_stock()
 
-    # Umori the wandering post: its current node + display-seeded T3 stock so the
-    # board can render it anywhere and the exchange opens from turn one.
+    # Umori the wandering collector: just its current node/window for the auction
+    # block below (no display stock — the auction is bid-driven, not barter).
     umori_win = _umori_window()
     umori_node = _umori_node(umori_win)
-    posts[umori_node] = _umori_barter_stock(table, sid, umori_win)
 
     # Masked dig-site views for every excavation node (empty/covered until dug).
     excavations = {nid: _dig_view(sites.get(nid))
@@ -2271,7 +2330,10 @@ def handle_state(table, query_params):
         'snares': snares,
         'tradingPosts': posts,
         'umori': {'node': umori_node, 'movesAt': _umori_window_end(umori_win),
-                  'traded': bool(you and you.get('umoriTradedWindow') == umori_win)},
+                  'minBid': data.UMORI_MIN_BID, 'reserves': data.UMORI_RESERVES,
+                  'yourBid': (you.get('umoriBidAmount', 0)
+                              if you and you.get('umoriBidWindow') == umori_win else 0),
+                  **({'reveal': umori_reveal} if umori_reveal else {})},
         'bazaars': bazaars,
         'market': market,
         'excavations': excavations,
@@ -2408,7 +2470,7 @@ def handle_action(table, body):
         'set-status': _set_status, 'chat': _chat,
         'drop-item': _drop_item,
         'attack-boss': _attack_boss, 'world-engage': _world_engage,
-        'trade': _trade, 'dig': _dig, 'strike': _strike,
+        'umori-bid': _umori_bid, 'dig': _dig, 'strike': _strike,
         'vault-guess': _vault_guess, 'respawn': _respawn,
         'cast': _cast,
         'witch-inscribe': _witch_inscribe, 'witch-buy-scroll': _witch_buy_scroll,
@@ -3767,15 +3829,20 @@ def _resolve_space(table, sid, doc, node, prev):
                 'text': f"The {data.WORLD_EVENT['name']} looms over the mire. "
                         'Wade in and strike — every blow is tallied.'}
 
-    # Umori the wandering ooze pacifies whatever wilderness space it sits on this
-    # window and opens a T3 barter (overrides the node's normal event). Runs after
-    # snare/pile so player traps still fire, before the normal type dispatch.
+    # Umori the wandering collector pacifies whatever wilderness space it sits on
+    # this window and opens a sealed-bid auction (overrides the node's normal
+    # event). Runs after snare/pile so player traps still fire.
     _uwin = _umori_window()
     if node == _umori_node(_uwin):
         return {'type': 'trading_post', 'node': node, 'umori': True,
                 'movesAt': _umori_window_end(_uwin),
-                'text': 'Umori the ooze has oozed up a crooked stall here. Leave one, take one.',
-                'stock': _umori_barter_stock(table, sid, _uwin)}
+                'minBid': data.UMORI_MIN_BID,
+                'reserves': data.UMORI_RESERVES,
+                'yourBid': (doc.get('umoriBidAmount', 0)
+                            if doc.get('umoriBidWindow') == _uwin else 0),
+                'text': 'Umori the collector oozes up a crooked stall. Seal a Spore '
+                        'bid — when it wanders on, the top three bidders each pull a '
+                        'mystery box.'}
 
     # Enraged monster overlay: a periodic wilderness terror squats on one node and
     # overrides its normal event with a guardian-style fight. Shared HP; also
@@ -4847,6 +4914,7 @@ def _finish_wild(table, sid, doc, rec, result):
     if result['outcome'] == 'attacker':
         bounty = _scrounge(doc, npc['bounty'])
         doc['spores'] = doc.get('spores', 0) + bounty
+        _add_win_renown(doc, 'elite' if elite else 'wild', npc.get('tier', 1))
         doc['wildWins'] = doc.get('wildWins', 0) + 1
         levels = _grant_xp(table, sid, doc, npc['xp'])
         out['spores'] = bounty
@@ -4946,6 +5014,7 @@ def _award_lair_kill(table, sid, doc, node, slain, out):
         claims.append(node)
     reward = b['repeat'] if slain else b['first']
     doc['spores'] = doc.get('spores', 0) + reward['spores']
+    _add_win_renown(doc, 'lair')
     doc['wildWins'] = doc.get('wildWins', 0) + 1
     levels = _grant_xp(table, sid, doc, reward['xp'])
     out['spores'] = reward['spores']
@@ -5001,6 +5070,7 @@ def _award_respawn_lair_kill(table, sid, doc, node, out):
     first_ever = node not in ruin
     reward = b['first'] if first_ever else b['repeat']
     doc['spores'] = doc.get('spores', 0) + reward['spores']
+    _add_win_renown(doc, 'lair')
     doc['wildWins'] = doc.get('wildWins', 0) + 1
     if first_ever:
         claims = doc.setdefault('poiClaims', [])
@@ -5143,6 +5213,7 @@ def _award_enraged_kill(table, sid, doc, monster_id, out):
     perm = _get_perm(table, doc['userId'])
     perm['renown'] = perm.get('renown', 0) + data.ENRAGED_KILL_RENOWN
     table.put_item(Item=perm)
+    _add_win_renown(doc, 'enraged')   # flat fallback — preserves prior +3 leaderboard
     doc['wildWins'] = doc.get('wildWins', 0) + 1
     levels = _grant_xp(table, sid, doc, data.ENRAGED_KILL_XP)
     out['renown'] = data.ENRAGED_KILL_RENOWN
@@ -6387,6 +6458,102 @@ def _evolve(table, sid, doc, payload):
     return _ok(doc)
 
 
+def _grant_umori_box(doc, box):
+    """Apply one rolled box reward to the player doc via the standard grant paths
+    (gear/consumable overflow auto-parks to the pickup modal). Returns a reveal
+    dict for the client."""
+    kind = box['kind']
+    if kind == 'gear':
+        r = _gain_gear(doc, box['item'])
+        return {'kind': 'gear', 'item': box['item'], 'outcome': r['outcome']}
+    if kind == 'grimoire':
+        gid = box['item']
+        if gid not in (doc.get('grimoires') or []):
+            doc.setdefault('grimoires', []).append(gid)
+            if not doc.get('equippedGrimoire'):
+                doc['equippedGrimoire'] = gid
+        return {'kind': 'grimoire', 'item': gid}
+    if kind == 'egg':
+        egg = _grant_egg(doc, box['tier'])
+        return {'kind': 'egg', 'tier': int(box['tier']), 'eggId': egg['id']}
+    if kind == 'consumable':
+        r = _acquire(doc, 'consumable', box['item'])
+        return {'kind': 'consumable', 'item': box['item'], 'outcome': r['outcome']}
+    _mine_materials(doc, ichor=box.get('ichor', 0), moltings=box.get('moltings', 0))
+    return {'kind': 'materials', 'ichor': box.get('ichor', 0),
+            'moltings': box.get('moltings', 0)}
+
+
+def _collect_umori(table, sid, doc, persist=True):
+    """Pull-model settlement: if the player has an un-collected bid in a CLOSED
+    window, grant their box (top-3) or refund their escrow (else). Mutates doc;
+    self-persists when persist=True (best-effort — a version conflict just leaves
+    it for the next read). Returns a reveal dict, or None if nothing to settle."""
+    win = doc.get('umoriBidWindow')
+    if win is None or win >= _umori_window():          # no bid, or still open
+        return None
+    if doc.get('umoriCollectedWindow') == win:
+        return None                                     # already settled
+    amount = doc.get('umoriBidAmount', 0)
+    doc['umoriCollectedWindow'] = win
+    doc.pop('umoriBidWindow', None)
+    doc.pop('umoriBidAmount', None)
+
+    mine = next((r for r in _umori_results(table, sid, win)
+                 if r['userId'] == doc.get('userId')), None)
+    if mine:
+        reward = _grant_umori_box(doc, mine['box'])
+        reveal = {'window': win, 'placed': mine['rank'],
+                  'boxName': data.UMORI_BOX_NAMES[mine['rank']], 'reward': reward}
+    else:
+        doc['spores'] = doc.get('spores', 0) + amount   # 4th+ → full refund
+        reveal = {'window': win, 'placed': None, 'refund': amount}
+
+    if persist and not _put_player(table, doc):
+        return None                                     # lost the race; retry next read
+    return reveal
+
+
+def _umori_bid(table, sid, doc, payload):
+    """Drop or raise a sealed Spore bid at Umori's auction. Presence-gated to his
+    current tile; raise-only; the bid (or raise delta) is escrowed immediately
+    and refunded at close if the player doesn't place top-3."""
+    win = _umori_window()
+    if doc.get('position') != _umori_node(win):
+        return _err('Umori is not here.', 409)
+    try:
+        amount = int(payload.get('amount'))
+    except (TypeError, ValueError):
+        return _err('Enter a bid amount.')
+    if amount < data.UMORI_MIN_BID:
+        return _err(f'Bids start at {data.UMORI_MIN_BID} Spores.', 409)
+
+    _collect_umori(table, sid, doc, persist=False)   # settle any stale window first
+
+    prev = doc.get('umoriBidAmount', 0) if doc.get('umoriBidWindow') == win else 0
+    if amount <= prev:
+        return _err(f'You must raise above your current bid of {prev} Spores.', 409)
+    delta = amount - prev
+    if doc.get('spores', 0) < delta:
+        return _err('Not enough Spores.', 409)
+    doc['spores'] -= delta
+    doc['umoriBidWindow'] = win
+    doc['umoriBidAmount'] = amount
+
+    conflict = _save_or_conflict(table, doc)         # guard the player write first
+    if conflict:
+        return conflict
+    # Then the per-user sealed-bid record (own sk → no cross-bidder clobber).
+    table.put_item(Item={'pk': _season_pk(sid),
+                         'sk': f'POST#UMORI#{win}#BID#{doc["userId"]}',
+                         'amount': amount, 'username': doc.get('username', 'someone'),
+                         'ts': _now_ms()})
+    _event(table, sid, 'umori-bid',
+           f"{doc['username']} sealed a bid at Umori's auction.", actor=doc['userId'])
+    return _ok(doc, text=f'Sealed bid: {amount} Spores.',
+               umoriBid=amount, movesAt=_umori_window_end(win))
+
+
 # ── Economy ──────────────────────────────────────────────────────────────────
 
 def _buy(table, sid, doc, payload):
@@ -6493,15 +6660,6 @@ def _trading_post_stock(table, sid, node):
     return _seed_stock()
 
 
-def _umori_barter_stock(table, sid, window):
-    """Intra-window barter state for Umori (POST#UMORI#<window>); a fresh T3 seed
-    when nobody has traded yet this window. A stale window is ignored → reset."""
-    rec = _get(table, _season_pk(sid), f'POST#UMORI#{window}')
-    if rec and rec.get('stock'):
-        return rec['stock']
-    return _umori_stock(window)
-
-
 def _save_trading_post(table, sid, node, stock):
     table.put_item(Item={'pk': _season_pk(sid), 'sk': f'POST#{node}', 'stock': stock})
 
@@ -6525,120 +6683,6 @@ def _item_name(item_id):
     if kind == 'grimoire':
         return data.GRIMOIRES[item_id]['name']
     return item_id
-
-
-def _trade(table, sid, doc, payload):
-    """Barter one owned item for one of Umori's stock lines. Match rule: a gear
-    line wants a gear piece of the *same slot* (equipped or stashed); the grimoire
-    line wants a grimoire. One barter per rotation. The item you leave fills that
-    stock slot for the rest of the window; the taken gear lands in your stash."""
-    node = doc.get('position')
-    win = _umori_window()
-    if node != _umori_node(win):
-        return _err('Umori is not here.', 409)
-    if doc.get('umoriTradedWindow') == win:
-        return _err("You've already bartered with Umori this stop — "
-                    'catch it after it wanders on.', 409)
-
-    give = payload.get('give')
-    take_index = payload.get('takeIndex')
-    give_kind = _item_kind(give)
-    if give_kind is None:
-        return _err('Unknown item.')
-    if give_kind == 'consumable':
-        return _err('Umori only trades in gear and grimoires.', 409)
-
-    stock = _umori_barter_stock(table, sid, win)
-    if not isinstance(take_index, int) or not (0 <= take_index < len(stock)):
-        return _err('Pick something to take.', 409)
-    taken = stock[take_index]
-    take_kind = _item_kind(taken['item'])
-
-    # Match rule — one slot at a time.
-    if take_kind == 'gear':
-        if give_kind != 'gear' or data.GEAR[give]['slot'] != data.GEAR[taken['item']]['slot']:
-            slot = data.GEAR[taken['item']]['slot']
-            return _err(f'Umori wants the same slot — offer a {slot} for that {slot}.', 409)
-    elif take_kind == 'grimoire':
-        if give_kind != 'grimoire':
-            return _err('Umori wants a grimoire for that grimoire.', 409)
-
-    gear = doc.get('gear') or {}
-    grimoires = doc.get('grimoires') or []
-    stash = doc.get('gearStash') or []
-
-    # Give-side ownership: gear may come from the equipped slot OR the stash.
-    give_from_stash = False
-    if give_kind == 'gear':
-        slot = data.GEAR[give]['slot']
-        if gear.get(slot) == give:
-            give_from_stash = False
-        elif give in stash:
-            give_from_stash = True
-        else:
-            return _err("You don't have that piece to trade.", 409)
-    elif give_kind == 'grimoire' and give not in grimoires:
-        return _err("You don't own that grimoire.", 409)
-
-    # Take-side guards.
-    if take_kind == 'grimoire' and taken['item'] in grimoires:
-        return _err('You already own that grimoire.', 409)
-    if take_kind == 'gear':
-        take_slot = data.GEAR[taken['item']]['slot']
-        # After the give, the taken piece auto-equips iff its slot is empty:
-        # true when we gave the worn piece of that slot, or the slot was empty.
-        taken_will_equip = (not give_from_stash) or not gear.get(take_slot)
-        if not taken_will_equip:
-            effective_stash = len(stash) - (1 if give_from_stash else 0)
-            if effective_stash >= data.GEAR_STASH_SIZE:
-                return _err('Your gear stash is full — salvage a piece at the Plaza first.', 409)
-
-    # Remove the given item from wherever it lives.
-    if give_kind == 'gear':
-        if give_from_stash:
-            stash = list(stash)
-            stash.remove(give)
-            doc['gearStash'] = stash
-        else:
-            gear = dict(gear)
-            del gear[data.GEAR[give]['slot']]
-            doc['gear'] = gear
-    elif give_kind == 'grimoire':
-        doc['grimoires'] = [g for g in grimoires if g != give]
-        if doc.get('equippedGrimoire') == give:
-            doc['equippedGrimoire'] = None
-
-    # Apply the taken item. The give-side removal above already updated
-    # doc['gear']/doc['gearStash'], so _gain_gear sees the post-give state.
-    if take_kind == 'gear':
-        got = _gain_gear(doc, taken['item'])
-    elif take_kind == 'grimoire':
-        doc.setdefault('grimoires', []).append(taken['item'])
-        if not doc.get('equippedGrimoire'):
-            doc['equippedGrimoire'] = taken['item']
-
-    # Leave the given piece in that stock slot for the rest of the window.
-    stock = list(stock)
-    stock[take_index] = {'item': give, 'foundBy': doc.get('username', 'someone')}
-
-    doc['umoriTradedWindow'] = win                       # spend the rotation's barter
-
-    conflict = _save_or_conflict(table, doc)             # guard the player write first
-    if conflict:
-        return conflict
-    table.put_item(Item={'pk': _season_pk(sid),          # then the shared window stock
-                         'sk': f'POST#UMORI#{win}', 'stock': stock})
-
-    give_name = _item_name(give)
-    take_name = _item_name(taken['item'])
-    _event(table, sid, 'trade',
-           f"{doc['username']} bartered a {give_name} for {take_name} at Umori's stall.",
-           actor=doc['userId'])
-    if take_kind == 'gear' and got['outcome'] == 'equipped':
-        take_text = f"You hand over your {give_name} and equip {take_name}."
-    else:
-        take_text = f"You hand over your {give_name} and take {take_name}."
-    return _ok(doc, text=take_text, node=node, stock=stock)
 
 
 # ── Excavation dig sites ──────────────────────────────────────────────────────

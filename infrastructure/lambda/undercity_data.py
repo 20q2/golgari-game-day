@@ -206,8 +206,8 @@ APEX = {
         'name': 'Daemogoth Titan', 'bonus': {'atk': 2, 'def': 2},
         'passive': 'arsenal',
         'from': ['wood_lurker', 'gorgon'],
-        'blurb': 'Arsenal: your wildcard gear piece counts twice — the Elf apex '
-                 'that turns its extra equipment into a second armory.',
+        'blurb': 'Arsenal: a fourth equipment slot — the Elf apex straps on one '
+                 'extra piece of gear that no other creature can wield.',
     },
     'calamity_beast': {
         'name': 'Calamity Beast', 'bonus': {'maxHp': 6, 'spd': 2},
@@ -864,12 +864,49 @@ ISLAND_BAZAAR_GEAR_TIERS = {2: 7, 3: 3}
 # Bazaar nodes that use ISLAND_BAZAAR_GEAR_TIERS instead of the biome table.
 ISLAND_BAZAAR_NODES = {'isl_bg1'}
 
-# Umori barter seed per move: one T3 gear piece for EACH gear slot + this many T3
-# grimoires (all tier 3 — the endgame payoff for reaching the wandering post).
-UMORI_STOCK_SPEC = {'gear_per_slot': 1, 'grimoire': 1}
+# ── Umori's sealed auction — ranked mystery boxes (design 2026-08-05) ─────────
+# Each rank rolls ONE reward from its weighted table (a treat, never a guaranteed
+# endgame piece — the fix for the give-junk-get-legendary exploit). Reward specs:
+#   ('gear', tier)                  a random gear piece of that tier
+#   ('grimoire', tier)              a random grimoire of that tier
+#   ('egg', tier)                   a companion egg of that tier
+#   ('consumable',)                 a random consumable
+#   ('materials', ichor, moltings)  crafting materials (ichor == Gemstones)
+# Higher ranks skew toward the rare end; the materials entries are the "never a
+# total whiff" floor. A rank whose winning bid is under its reserve
+# (UMORI_RESERVES) rolls UMORI_BOX_CONSOLATION instead of its own table. Weights
+# are tunable (tune-undercity-balance skill); client mirror in data/undercity-*.ts.
+UMORI_BOX_TABLES = {
+    1: {  # Gilded Coffer
+        ('gear', 3): 3,
+        ('grimoire', 3): 2,
+        ('egg', 3): 2,
+        ('gear', 2): 3,
+        ('materials', 3, 4): 5,
+    },
+    2: {  # Curio Box
+        ('gear', 2): 4,
+        ('grimoire', 2): 2,
+        ('egg', 2): 2,
+        ('consumable',): 2,
+        ('materials', 1, 3): 5,
+    },
+    3: {  # Trinket Pouch
+        ('consumable',): 4,
+        ('egg', 1): 2,
+        ('materials', 0, 2): 6,
+    },
+}
 
-# Fixed slot order for Umori's gear lines (keeps takeIndex + the UI stable).
-UMORI_GEAR_SLOTS = ['fang', 'carapace', 'charm']
+# Rolled by any rank whose winning bid fell short of its reserve.
+UMORI_BOX_CONSOLATION = {
+    ('consumable',): 3,
+    ('materials', 0, 2): 6,
+    ('egg', 1): 1,
+}
+
+# Display names per rank (client mirror in data/undercity-*.ts).
+UMORI_BOX_NAMES = {1: 'Gilded Coffer', 2: 'Curio Box', 3: 'Trinket Pouch'}
 
 # Excavation dig sites (Ossuary Fields focus). A shared 5x5 grid holds four
 # buried items sized by footprint; each landing grants 6 digs (reveal one cell
@@ -1521,10 +1558,28 @@ def dungeon_entrance(biome):
 #                        lair first-kill, vault, trove, and treasure cache
 RENOWN = {
     'per_pvp_win': 15,
-    'per_wild_win': 3,
+    'per_wild_win': 3,  # legacy flat combat-win value; still the fallback (see below)
     'per_poi': 25,  # each barrier broken / lair first-kill / vault / trove / cache
     'boss_damage_per_point': 10,
 }
+
+# Per-kill leaderboard renown, scaled by enemy class and zone tier (design
+# 2026-08-05). Harder kills pay a little more; T1 fodder pays a hair less than the
+# old flat 3. Accumulated at kill-time into the player's `winRenown` field (the
+# flat `wildWins` counter can't know tier/class after the fact); compute_renown
+# reads winRenown, falling back to per_wild_win * wildWins for older docs. Kinds
+# absent here (e.g. 'enraged') fall back to per_wild_win, so nothing regresses.
+RENOWN_WIN = {
+    'wild':  {1: 2, 2: 3, 3: 4},   # normal wild-space kill
+    'elite': {1: 3, 2: 4, 3: 6},   # elite-space kill
+    'lair':  8,                    # lair mini-boss (flat, any biome)
+}
+
+
+def win_renown(kind: str, tier: int = 1) -> int:
+    """Leaderboard renown for one combat win of `kind` at zone `tier`."""
+    w = RENOWN_WIN.get(kind, RENOWN['per_wild_win'])
+    return w.get(tier, RENOWN['per_wild_win']) if isinstance(w, dict) else w
 
 
 def compute_renown(player: dict) -> int:
@@ -1532,8 +1587,12 @@ def compute_renown(player: dict) -> int:
     # pvpRenownWins. Players from before the split fall back to their raw pvpWins
     # so their already-earned renown is grandfathered in.
     pvp_renown_wins = player.get('pvpRenownWins', player.get('pvpWins', 0))
+    # Combat renown: tier/class-scaled winRenown accumulator, falling back to the
+    # legacy flat per_wild_win * wildWins for docs from before the split.
+    win_renown_total = player.get('winRenown',
+                                  RENOWN['per_wild_win'] * player.get('wildWins', 0))
     return (RENOWN['per_pvp_win'] * pvp_renown_wins
-            + RENOWN['per_wild_win'] * player.get('wildWins', 0)
+            + win_renown_total
             + RENOWN['per_poi'] * len(player.get('poiClaims', []))
             + player.get('bossDamage', 0) // RENOWN['boss_damage_per_point'])
 

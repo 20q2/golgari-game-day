@@ -83,41 +83,56 @@ def test_petrify_threshold_freezes_and_resets(table, monkeypatch):
     assert npc['hp'] <= hp_before
 
 
-def _gorgon_apex_at(table, node='city_r0'):
+def _daemogoth_apex_at(table, node='city_r0'):
+    # An Elf that reached the Daemogoth Titan apex: carries the Elf starter
+    # (stonewright) plus the apex Arsenal passive that grants the 4th slot.
     sid, doc = _player_at(table, node)
-    doc['passives'] = ['stonewright']     # a Gorgon…
-    doc['tier'] = 3                        # …at apex
+    doc['passives'] = ['stonewright', 'arsenal']
+    doc['tier'] = 3
     return sid, doc
 
 
-def test_tier3_gorgon_equips_wildcard(table):
-    sid, doc = _gorgon_apex_at(table)
+def test_daemogoth_equips_wildcard(table):
+    sid, doc = _daemogoth_apex_at(table)
     doc['gear'] = {'fang': 'rusted_fang'}          # already wearing a fang
     doc['gearStash'] = ['rusted_fang']             # a duplicate fang to slot as wildcard
     status, body = db._equip_gear(table, sid, doc, {'index': 0, 'slot': 'wild'})
     assert status == 200
     assert doc['gear']['wild'] == 'rusted_fang'    # duplicate type allowed in wild
-    assert engine.effective_stats(doc)['atk'] >= doc['atk'] + 2 * data.GEAR['rusted_fang']['atk']
+    # The wildcard piece counts ONCE, like any other slot (no Arsenal doubling):
+    # base + the fang + the wild fang, each rusted_fang contributing its +2 once.
+    assert engine.effective_stats(doc)['atk'] == doc['atk'] + 2 * data.GEAR['rusted_fang']['atk']
 
 
-def test_non_gorgon_cannot_use_wildcard(table):
-    sid, doc = _player_at(table, 'city_r0')         # pest, no stonewright
+def test_non_daemogoth_elf_apex_has_no_wildcard(table):
+    # An Elf that evolved into a NON-Daemogoth apex (e.g. Grave Titan) still
+    # carries stonewright and is tier 3, but lacks Arsenal — so no 4th slot.
+    sid, doc = _player_at(table, 'city_r0')
+    doc['passives'] = ['stonewright', 'colossus']   # elf → Grave Titan, not Daemogoth
     doc['tier'] = 3
     doc['gearStash'] = ['rusted_fang']
     status, _ = db._equip_gear(table, sid, doc, {'index': 0, 'slot': 'wild'})
     assert status == 409
 
 
-def test_pre_apex_gorgon_cannot_use_wildcard(table):
+def test_non_arsenal_cannot_use_wildcard(table):
+    sid, doc = _player_at(table, 'city_r0')         # pest, no arsenal
+    doc['tier'] = 3
+    doc['gearStash'] = ['rusted_fang']
+    status, _ = db._equip_gear(table, sid, doc, {'index': 0, 'slot': 'wild'})
+    assert status == 409
+
+
+def test_pre_apex_elf_cannot_use_wildcard(table):
     sid, doc = _player_at(table, 'city_r0')
-    doc['passives'] = ['stonewright']; doc['tier'] = 2   # Gorgon but not apex
+    doc['passives'] = ['stonewright']; doc['tier'] = 2   # Elf, not yet the Daemogoth apex
     doc['gearStash'] = ['rusted_fang']
     status, _ = db._equip_gear(table, sid, doc, {'index': 0, 'slot': 'wild'})
     assert status == 409
 
 
 def test_wildcard_is_stats_only_no_rider(table):
-    sid, doc = _gorgon_apex_at(table)
+    sid, doc = _daemogoth_apex_at(table)
     # seer_charm: rider='seer', readBonus=0.30, spd=1.
     wild = {**doc, 'gear': {'wild': 'seer_charm'}}
     normal = {**doc, 'gear': {'charm': 'seer_charm'}}

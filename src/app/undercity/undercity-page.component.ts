@@ -23,7 +23,6 @@ import { BoardTabComponent } from './tabs/board-tab.component';
 import { CreatureTabComponent } from './tabs/creature-tab.component';
 import { PlazaTabComponent } from './tabs/plaza-tab.component';
 import { LogTabComponent } from './tabs/log-tab.component';
-import { PickupModalComponent } from './tabs/pickup-modal.component';
 import { HostPanelComponent } from './host/host-panel.component';
 import { CeremonyComponent } from './ceremony/ceremony.component';
 
@@ -40,7 +39,6 @@ type Tab = 'board' | 'creature' | 'gear' | 'plaza' | 'log';
     CreatureTabComponent,
     PlazaTabComponent,
     LogTabComponent,
-    PickupModalComponent,
     HostPanelComponent,
     CeremonyComponent,
   ],
