@@ -99,8 +99,9 @@ STARTER_VARIANTS = {
 TIER2 = {
     'brackish_trudge': {
         'name': 'Brackish Trudge', 'line': 'pest', 'bonus': {'maxHp': 6, 'atk': 2},
-        'passive': 'undying',
-        'blurb': 'Bruiser. Undying: first compost each hour revives you at 50% HP instead.',
+        'passive': 'bog_forager',
+        'blurb': 'Scavenger. Bog Forager: scrounge a bigger share of the bounty even '
+                 'from lost or fled fights, and bad mystery events reroll once.',
     },
     'vexing_pest': {
         'name': 'Vexing Pest', 'line': 'pest', 'bonus': {'maxHp': 6, 'atk': 1, 'def': 1, 'spd': 1},

@@ -19,7 +19,7 @@ export const PASSIVE_NAMES: Record<string, string> = {
   first_bite: 'First Bite',
   regrowth: 'Regrowth',
   drift: 'Endless Ranks',
-  undying: 'Undying',
+  bog_forager: 'Bog Forager',
   improvise: 'Improvise',
   venom_barb: 'Venom Barb',
   reach: 'Reach',
@@ -50,7 +50,7 @@ export const PASSIVE_BLURBS: Record<string, string> = {
   first_bite: 'Always strikes first in round 1.',
   regrowth: 'Heal 20% max HP after any battle.',
   drift: '+15% flee chance; bad mystery events reroll once.',
-  undying: 'First compost each hour: revive at 50% HP instead.',
+  bog_forager: 'Scrounge a bigger share of the bounty even from fights you lose or flee, and bad mystery events reroll once.',
   improvise: 'At the start of each battle, its lowest of ATK/DEF/SPD gains +3 for that fight — never lopsided.',
   venom_barb: 'Your first strike each battle deals +3.',
   reach: "Round 1: the enemy's decisive blow misses — you strike from out of range.",
@@ -110,7 +110,7 @@ export const STARTERS: FormInfo[] = [
 ];
 
 export const TIER2: FormInfo[] = [
-  { id: 'brackish_trudge', name: 'Brackish Trudge', tier: 2, line: 'pest', passive: 'undying', passiveName: 'Undying', bonus: { maxHp: 6, atk: 2 }, blurb: 'Bruiser (+HP/+ATK).' },
+  { id: 'brackish_trudge', name: 'Brackish Trudge', tier: 2, line: 'pest', passive: 'bog_forager', passiveName: 'Bog Forager', bonus: { maxHp: 6, atk: 2 }, blurb: 'Scavenger (+HP/+ATK).' },
   { id: 'vexing_pest', name: 'Vexing Pest', tier: 2, line: 'pest', passive: 'improvise', passiveName: 'Improvise', bonus: { maxHp: 6, atk: 1, def: 1, spd: 1 }, blurb: 'All-rounder (+a bit of everything).' },
   { id: 'kraul_warrior', name: 'Grave Scarab', tier: 2, line: 'kraul', passive: 'venom_barb', passiveName: 'Venom Barb', bonus: { atk: 4 }, blurb: 'Striker (+ATK).' },
   { id: 'golgari_longlegs', name: 'Golgari Longlegs', tier: 2, line: 'kraul', passive: 'reach', passiveName: 'Reach', bonus: { spd: 4 }, blurb: 'Skirmisher (+SPD).' },

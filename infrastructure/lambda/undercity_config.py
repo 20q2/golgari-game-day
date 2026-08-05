@@ -101,6 +101,9 @@ SCROUNGER_LOSS_FRACTION = 0.3  # Pest passive: even on a LOST / fled / stalemate
                           # bounty it would have won. Makes the pest's income
                           # survival-independent — the economy identity doesn't
                           # collapse when a fragile balanced statline dies.
+BOG_FORAGER_LOSS_FRACTION = 0.5  # Brackish Trudge "Bog Forager": a deeper scavenge
+                          # than base Scrounger on a lost/fled/stalemated wild or
+                          # elite fight. Layers on the pest's inherited scrounger.
 
 # Gear rider knobs (combat riders in undercity_engine.resolve_round).
 CUTPURSE_SPORES = 6   # flat Spores after a won fight in which you landed a Feint

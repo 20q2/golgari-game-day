@@ -2049,17 +2049,8 @@ def _apply_hp_loss(doc, amount, floor=1):
 
 
 def _compost(table, sid, doc, cause_text):
-    """Handle death: Undying check, else respawn at the gate with a shield."""
+    """Handle death: respawn at the gate with a shield."""
     now = datetime.utcnow()
-    if 'undying' in _passives(doc):
-        last = doc.get('lastUndying')
-        if not last or (now - datetime.fromisoformat(last)) > timedelta(hours=1):
-            doc['lastUndying'] = _now()
-            doc['hp'] = max(1, round(engine.effective_stats(doc)['maxHp'] * 0.5))
-            _event(table, sid, 'undying',
-                   f"{doc['username']}'s {_creature_label(doc)} refuses to die! (Undying)",
-                   actor=doc['userId'])
-            return False
     _metric(doc, 'deaths')
     died_at = doc.get('position')
     died_biome = data.dungeon_biome(died_at)
@@ -3601,7 +3592,9 @@ def _scrounge_consolation(doc, rec):
     grind fight)."""
     if rec.get('kind') not in ('wild', 'elite') or 'scrounger' not in _passives(doc):
         return 0
-    amount = round((rec.get('npcMeta') or {}).get('bounty', 0) * data.SCROUNGER_LOSS_FRACTION)
+    frac = (data.BOG_FORAGER_LOSS_FRACTION if 'bog_forager' in _passives(doc)
+            else data.SCROUNGER_LOSS_FRACTION)
+    amount = round((rec.get('npcMeta') or {}).get('bounty', 0) * frac)
     if amount > 0:
         doc['spores'] = doc.get('spores', 0) + amount
     return amount
@@ -3979,7 +3972,8 @@ def _mystery(table, sid, doc):
     biome = nodes.get(doc['position'], {}).get('region')
     if biome not in data.BIOMES:
         biome = None
-    res = engine.roll_mystery(_rng, 'drift' in _passives(doc),
+    has_reroll = 'drift' in _passives(doc) or 'bog_forager' in _passives(doc)
+    res = engine.roll_mystery(_rng, has_reroll,
                               'doubling_rot' in _passives(doc), biome)
     eff = engine.effective_stats(doc)
     if res['spores']:
