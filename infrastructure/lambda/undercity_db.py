@@ -2437,6 +2437,7 @@ def handle_state(table, query_params):
     out = {
         'season': {'seasonId': sid, 'status': config.get('status'),
                    'startedAt': config.get('startedAt'),
+                   'launchAt': config.get('launchAt'),
                    'bossPhase': bool(config.get('bossPhase'))},
         'you': you,
         'players': players,
@@ -2537,6 +2538,9 @@ def handle_action(table, body):
 
     if atype == 'season-start':
         return _season_start(table, payload)
+
+    if atype == 'season-lobby':
+        return _season_lobby(table, payload)
 
     sid, config = _active_season(table)
 
@@ -2797,6 +2801,48 @@ def _season_start(table, payload):
     _event(table, sid, 'season',
            'A new night falls on the Undercity. The swarm stirs…')
     return 200, {'ok': True, 'seasonId': sid}
+
+
+def _season_lobby(table, payload):
+    """
+    Host "Waiting to launch": open (or re-time) a pre-game lobby. The season is
+    registered as CURRENT with status='lobby' and a `launchAt` countdown target,
+    but every gameplay action stays blocked by the active-status gate — curious
+    early arrivals only see the countdown. `season-start` later promotes this
+    same season into the live night. Re-submitting while already in lobby just
+    pushes the target time; refuses outright if a night is already running.
+    """
+    host_key = (payload.get('hostKey') or '').strip()
+    if not host_key:
+        return _err('hostKey required')
+    launch_at = (payload.get('launchAt') or '').strip()
+    if not launch_at:
+        return _err('launchAt required')
+    try:
+        datetime.fromisoformat(launch_at.replace('Z', '+00:00'))
+    except ValueError:
+        return _err('launchAt must be an ISO-8601 timestamp')
+
+    sid_old, config_old = _active_season(table)
+    if config_old and config_old.get('hostKey') and config_old.get('hostKey') != host_key:
+        return _err('Wrong host passphrase.', 403)
+    if config_old and config_old.get('status') == 'active':
+        return _err('A night is already running — end it before opening a lobby.', 409)
+
+    # Reuse a waiting lobby's id (and its pre-generated maps); otherwise mint fresh.
+    if config_old and config_old.get('status') == 'lobby':
+        sid = sid_old
+    else:
+        sid = datetime.utcnow().strftime('%Y%m%d-%H%M%S')
+        if data.PROCEDURAL_DUNGEONS:
+            table.put_item(Item={'pk': _season_pk(sid), 'sk': 'MAP',
+                                 'depths': mapgen.generate_all_depths(sid)})
+    table.put_item(Item={'pk': _season_pk(sid), 'sk': 'CONFIG',
+                         'status': 'lobby', 'hostKey': host_key,
+                         'launchAt': launch_at, 'bossPhase': False})
+    table.put_item(Item={'pk': META_PK, 'sk': 'CURRENT', 'seasonId': sid})
+    _event(table, sid, 'season', 'The gates are sealed. The night begins soon…')
+    return 200, {'ok': True, 'seasonId': sid, 'launchAt': launch_at}
 
 
 def _season_end(table, sid, config, payload):
@@ -7221,12 +7267,12 @@ def _vein_strike_once(table, sid, doc):
         # remaining swings and can keep picking at the shaft.
         held = level - 1                                   # unchanged shared depth
         _event(table, sid, 'vein',
-               f"{doc['username']} triggered a cave-in at level {level} of the "
-               'crystal vein — battered by the rockfall, but the shaft holds.',
+               f"Ouch! {doc['username']} triggered a cave-in at level {level} of the "
+               'crystal vein',
                actor=doc['userId'])
         return {'collapsed': True, 'hp': -dmg, 'depth': held,
                 'text': f'CAVE-IN at level {level}! A rockfall hits you for {dmg} '
-                        'damage — but the shaft holds.'}
+                        'damage.'}
 
     # Mining pays NO Spores — it is the crafting-material tap only (Moltings +
     # Gemstones + the occasional item find).
