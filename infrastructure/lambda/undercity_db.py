@@ -2785,6 +2785,15 @@ def _season_start(table, payload):
     sid_old, config_old = _active_season(table)
     if config_old and config_old.get('hostKey') != host_key:
         return _err('Wrong host passphrase.', 403)
+
+    # Promote a waiting "lobby" season into the live night in place: keep the
+    # same id and its pre-generated maps, just flip status and stamp startedAt.
+    if config_old and config_old.get('status') == 'lobby':
+        table.put_item(Item=dict(config_old, status='active', startedAt=_now()))
+        _event(table, sid_old, 'season',
+               'A new night falls on the Undercity. The swarm stirs…')
+        return 200, {'ok': True, 'seasonId': sid_old}
+
     if config_old and config_old.get('status') == 'active':
         # Archive the running night without ceremony before starting fresh.
         _archive_season(table, sid_old, config_old)

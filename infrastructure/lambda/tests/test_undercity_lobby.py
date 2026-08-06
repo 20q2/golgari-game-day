@@ -68,3 +68,21 @@ def test_season_lobby_requires_valid_launch_at():
     assert status == 400
     status, resp = act(t, 'season-lobby', hostKey='swampking')
     assert status == 400
+
+
+def test_season_start_promotes_lobby_in_place():
+    t = FakeTable()
+    act(t, 'season-lobby', hostKey='swampking', launchAt=LAUNCH)
+    sid_lobby, _ = db._active_season(t)
+    status, resp = act(t, 'season-start', hostKey='swampking')
+    assert status == 200
+    sid_active, config = db._active_season(t)
+    assert sid_active == sid_lobby          # same season, promoted in place
+    assert config['status'] == 'active'
+    assert config.get('startedAt')          # start time stamped
+    # In-place promotion carries the lobby config forward (a fresh mint would
+    # drop launchAt) — proves it wasn't just a same-second sid collision.
+    assert config.get('launchAt') == LAUNCH
+    # A player can now actually join the promoted night.
+    status, resp = act(t, 'join', starter='saproling', home='cavern')
+    assert status == 200
