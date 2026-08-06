@@ -35,6 +35,7 @@ import {
   SpaceEvent,
   Stance,
   UmoriReveal,
+  WelcomeGift,
   VaultView,
   YouDoc,
   isShielded,
@@ -72,6 +73,7 @@ import {
   Pet,
   eggSpriteUrl,
   petSpriteUrl,
+  petTemperament,
   petInfo,
   petRole,
   abilityReady,
@@ -293,53 +295,78 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Is the board box tappable? Activated pets gate on cooldown; economy pets
    *  gate on having gathered at least 1 Spore to collect. */
   protected petBoxReady(pet: Pet): boolean {
+    // The scout box only opens the courier modal (peeking is free); the buy is
+    // gated inside the modal, so the box is always tappable.
+    if (petRole(pet.species) === 'scout') return true;
     return this.petIsEconomy(pet) ? this.economyAccruedNow(pet) > 0 : this.petAbilityReady(pet);
   }
 
-  /** Tap the board pet box — forage scavenges immediately; scout opens a bazaar
-   *  picker (it needs a target); economy collects its gathered Spores. No-op
-   *  while busy or not yet ready. */
+  /** Tap the board pet box — forage scavenges immediately; scout opens the biome
+   *  courier modal (free peek, buy is cooldown-gated); economy collects its
+   *  gathered Spores. No-op while busy. */
   async tapBoardPet(): Promise<void> {
     const pet = this.activeUsablePet();
-    if (!pet || this.busy() || !this.petBoxReady(pet)) return;
+    if (!pet || this.busy()) return;
     if (petRole(pet.species) === 'scout') {
-      this.openBirdScout();
+      await this.openScoutCourier();
       return;
     }
+    if (!this.petBoxReady(pet)) return;
     await this.run(async () => {
       const resp = await this.store.action('use-pet-ability', {});
       this.showToast(resp.text ?? 'Your companion goes to work.');
     });
   }
 
-  // ── Bird scout: pick a bazaar to reveal its stock, off the board ────────────
-  protected readonly birdScoutOpen = signal(false);
-  protected readonly birdScoutResult = signal<{ node: string; stock: BazaarView } | null>(null);
+  // ── Scout courier: peek the biome bazaar (free), haul back one tier-capped item
+  protected readonly scoutOpen = signal(false);
+  protected readonly scoutView = signal<{ node: string; tierCap: number; stock: BazaarView } | null>(null);
   protected readonly gearMapRef = GEAR_MAP;
-  protected bazaarNodes(): string[] {
-    return Object.keys(this.store.bazaars());
+
+  /** True while the active scout's shared cooldown has NOT elapsed (buy-gated). */
+  protected scoutOnCooldown(): boolean {
+    const pet = this.activeUsablePet();
+    return !!pet && petRole(pet.species) === 'scout' && !this.petAbilityReady(pet);
   }
-  protected bazaarEggs(node: string): { tier: number; qty: number }[] {
-    return (this.store.bazaars()[node]?.eggs ?? []).filter((e) => e.qty > 0);
-  }
-  protected bazaarGearCount(node: string): number {
-    return (this.store.bazaars()[node]?.gear ?? []).filter((g) => g.qty > 0).length;
-  }
-  protected openBirdScout(): void {
-    this.birdScoutResult.set(null);
-    this.birdScoutOpen.set(true);
-  }
-  protected closeBirdScout(): void {
-    this.birdScoutOpen.set(false);
-  }
-  async scoutBazaar(node: string): Promise<void> {
+
+  async openScoutCourier(): Promise<void> {
+    this.scoutView.set(null);
     await this.run(async () => {
-      const resp = await this.store.action('use-pet-ability', { targetNode: node });
-      const pa = (resp as { petAbility?: { node: string; stock: BazaarView } }).petAbility;
-      if (pa) this.birdScoutResult.set(pa);
-      this.showToast(resp.text ?? 'Your bird scouts ahead.');
+      const resp = await this.store.action('pet-scout-peek', {});
+      const pa = (resp as { petAbility?: { node: string; tierCap: number; stock: BazaarView } }).petAbility;
+      if (pa) {
+        this.scoutView.set(pa);
+        this.scoutOpen.set(true);
+      } else {
+        this.showToast(resp.text ?? 'Your scout finds no bazaar nearby.');
+      }
     });
-    this.birdScoutOpen.set(false);
+  }
+
+  protected closeScoutCourier(): void {
+    this.scoutOpen.set(false);
+  }
+
+  /** Gear locked because its tier exceeds the scout's ceiling. */
+  protected scoutGearLocked(item: string): boolean {
+    const cap = this.scoutView()?.tierCap ?? 0;
+    return (GEAR_MAP[item]?.tier ?? 99) > cap;
+  }
+  protected scoutEggLocked(tier: number): boolean {
+    return tier > (this.scoutView()?.tierCap ?? 0);
+  }
+
+  /** Haul one item back. `payload` mirrors the shop buy contract (itemId, or
+   *  {kind:'egg', tier}). Re-peeks so depleted stock + the armed cooldown show. */
+  async scoutBuy(payload: Record<string, unknown>): Promise<void> {
+    if (this.scoutOnCooldown()) return;
+    await this.run(async () => {
+      const resp = await this.store.action('pet-scout-buy', payload);
+      this.showToast(resp.text ?? 'Your scout hauls it back.');
+    });
+    const resp = await this.store.action('pet-scout-peek', {}).catch(() => null);
+    const pa = (resp as { petAbility?: { node: string; tierCap: number; stock: BazaarView } } | null)?.petAbility;
+    if (pa) this.scoutView.set(pa);
   }
   protected readonly spaceModal = signal<SpaceEvent | null>(null);
   protected readonly occupants = signal<Occupant[]>([]);
@@ -351,6 +378,17 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   private pendingBossEv: { ev: SpaceEvent; preHp: number } | null = null;
   @ViewChild(InteractiveBattleComponent) private liveB?: InteractiveBattleComponent;
   protected readonly showShop = signal(false);
+  /** The current bazaar's first-visit gift dialogue, carried from the shop
+   *  SpaceEvent (`line` = the shopkeeper's text). Null when no gift was given.
+   *  Cleared when the shop closes. */
+  protected readonly welcomeGift = signal<(WelcomeGift & { line: string }) | null>(null);
+  /** Material icon for the welcome-gift callout: the consumable's icon, or grass
+   *  for the Molting fallback (matches the game's molting symbol). */
+  protected welcomeGiftIcon(): string {
+    const g = this.welcomeGift();
+    if (!g) return '';
+    return g.kind === 'material' ? 'grass' : (CONSUMABLE_MAP[g.item ?? '']?.icon ?? 'redeem');
+  }
   protected readonly shopTab = signal<'gear' | 'consumables' | 'grimoires' | 'eggs'>('gear');
   protected setShopTab(tab: 'gear' | 'consumables' | 'grimoires' | 'eggs'): void {
     this.shopTab.set(tab);
@@ -1262,7 +1300,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // Loot spores are shown inline in the grass scene, not as a chip — so a
     // plain forage doesn't render an empty chip row.
     const spores = ev.spores && ev.spores > 0 && ev.type !== 'loot';
-    return !!(spores || ev.sporesLost || ev.hp || ev.item || ev.gear || ev.materials?.moltings);
+    return !!(spores || ev.sporesLost || ev.hp || ev.item || ev.gear || ev.egg || ev.materials?.moltings);
   }
 
   protected readonly nodeType = computed(() => {
@@ -1667,6 +1705,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly blinkAllowed = computed(() => this.hasBlink() && !this.blinkRecharging());
   protected readonly rollsBanked = computed(() => this.store.you()?.rolls ?? 0);
 
+  /** Rested rolls banked past the cap (server-owned; display only). */
+  protected readonly restedRolls = computed(() => this.store.you()?.rested ?? 0);
+
   /** True when the roll button should be disabled (out of rolls). Debug builds
    *  roll freely. No user-facing text — the disabled button + the next-roll
    *  countdown (nextRollLabel()) already convey "out of rolls". */
@@ -2048,19 +2089,21 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // them. Give them their own fight / abandoned copy driven by the per-player
     // respawn timer.
     if (RUIN_LAIRS.has(nodeId)) {
-      const name = RUIN_LAIR_NAMES[nodeId] ?? 'a ruin beast';
+      const name = RUIN_LAIR_NAMES[nodeId] ?? 'a powerful guardian';
       const ab = ruinLairAbandoned(nodeId, this.store.you()?.ruinLairs);
       if (ab) {
-        title = `${name}'s Lair — Abandoned`;
+        title = 'Monster Nest — Unguarded';
         body = ab.scavenged
-          ? `You already picked this lair clean. ${name} will stir again in ~${ab.minsLeft}m.`
-          : `${name} lies slain and its lair is abandoned — land here to scrounge what's left. ` +
-            `It respawns in ~${ab.minsLeft}m.`;
+          ? `You've picked this nest clean of loot, but the clutch still holds eggs — ` +
+            `land here to take another. ${name} returns in ~${ab.minsLeft}m.`
+          : `${name} lies slain and the nest is unguarded — land here to raid the egg clutch ` +
+            `and scrounge what's left. ${name} returns in ~${ab.minsLeft}m.`;
       } else {
-        title = `${name}'s Lair`;
+        title = 'Monster Nest';
         body =
-          `${name} prowls this ruin. Land on it to fight — a fresh challenge each time. ` +
-          `Beat it and its lair falls quiet for an hour, leaving scraps to scavenge.`;
+          `A clutch of eggs lies within, watched over by ${name}, a powerful guardian. ` +
+          `Land here to fight — beat ${name} to seize a prize egg. A fresh challenge each ` +
+          `time; win and the nest falls quiet for an hour.`;
       }
     }
     // The Ashen Wilds (wilderness region) draw from the tougher T2+ enemy pools,
@@ -2205,7 +2248,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     );
     // Active companion follows the own token around the board.
     const activePet = (you?.pets ?? []).find((p) => p.id === you?.activePetId);
-    this.board.setActivePet(activePet ? petSpriteUrl(activePet.species) : null);
+    this.board.setActivePet(
+      activePet ? petSpriteUrl(activePet.species) : null,
+      activePet ? petTemperament(activePet.species) : null,
+    );
     this.board.setSnares(this.store.snares());
     this.board.setUmori(this.store.umori());
     this.board.setBarriersOpen(this.store.barriersOpen());
@@ -2350,6 +2396,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       this.store.openFacility.set({ kind: 'warp', warpOptions: ev.options });
     } else if (ev.type === 'shop') {
       this.shopTab.set('gear');
+      this.welcomeGift.set(ev.welcomeGift ? { ...ev.welcomeGift, line: ev.text } : null);
       this.showShop.set(true);
       this.store.openFacility.set({ kind: 'shop', shopTab: 'gear' });
     } else if (ev.type === 'shrine') {
@@ -2710,6 +2757,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     levels?: number;
     item?: string;
     gear?: SpaceEvent['gear'];
+    egg?: SpaceEvent['egg'];
   }): BattleRewards {
     const rewards: BattleRewards = {
       spores: src.spores,
@@ -2727,6 +2775,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       rewards.gearName = g?.name ?? src.gear.id;
       rewards.gearIcon = this.SLOT_ICONS[src.gear.slot] ?? 'hardware';
       rewards.gearStashed = src.gear.outcome === 'stashed';
+    }
+    if (src.egg) {
+      rewards.eggTier = src.egg.tier;
     }
     return rewards;
   }
@@ -2955,7 +3006,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       if (c?.fled) {
         this.liveB?.fleeResult(true);
       } else if (c && c.entries) {
-        // Failed flee: announce it, then play the enemy's free action.
+        // Failed flee: announce it, then play the scramble round (random stance).
         this.liveB?.fleeFailed(c.entries, c.telegraph ?? null, c.playerHp ?? 0, c.npcHp ?? 0, c.playerStatus ?? null, c.npcStatus ?? null);
       } else {
         this.liveB?.unlock();
@@ -3076,6 +3127,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   closeFacilities(): void {
     this.showShop.set(false);
+    this.welcomeGift.set(null);
     this.showShrine.set(false);
     this.showWarp.set(null);
     this.showOssuary.set(false);

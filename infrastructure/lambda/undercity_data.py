@@ -76,10 +76,12 @@ STARTERS = {
     'elf': {
         'name': 'Elf', 'hp': 25, 'atk': 6, 'def': 6, 'spd': 4,
         'passive': 'stonewright',
-        'blurb': 'Ancient and long-lived — born gifted, slow to change; her power is in '
-                 'her works. Stonewright: starts with higher stats but her stat growth is '
-                 'lower each level; gear she upgrades comes out hardened (Gear+), and '
-                 'her pet fights a step above its level.',
+        'passives': ['stonewright', 'gift_of_fair_folk'],
+        'blurb': 'Ancient and long-lived; her power is in her works. Natural Enchanter: '
+                 'gear she upgrades comes out hardened (Gear+), and her pet fights a step '
+                 'above its level. Gift of the Fair Folk: born gifted but slow to grow — '
+                 'she starts with 5 attribute points to allocate but banks only 1 per '
+                 'level instead of the usual 2.',
     },
 }
 
@@ -93,6 +95,11 @@ STARTER_VARIANTS = {
     'zombie': ['zombie_2'],
     'kraul': ['insect_2'],
 }
+
+# Consumables every freshly-hatched creature carries in its bag on a new night —
+# a starter cushion so the first bad fight isn't a dead end. Item ids from
+# CONSUMABLES. Keep the total within BAG_SIZE.
+STARTER_BAG = ['healing_moss']
 
 # Tier 2 forms (level 5). `bonus` is applied on evolution (maxHp values already
 # ×3 relative to a stat point). Creatures keep their line passive AND gain the
@@ -207,8 +214,9 @@ APEX = {
         'name': 'Daemogoth Titan', 'bonus': {'atk': 2, 'def': 2},
         'passive': 'arsenal',
         'from': ['wood_lurker', 'gorgon'],
-        'blurb': 'Arsenal: a fourth equipment slot — the Elf apex straps on one '
-                 'extra piece of gear that no other creature can wield.',
+        'blurb': 'Arsenal: a fourth equipment slot — a demon of shadow and moss '
+                 'wields an extra piece of gear in its spare arms that no other '
+                 'creature can bear.',
     },
     'calamity_beast': {
         'name': 'Calamity Beast', 'bonus': {'maxHp': 6, 'spd': 2},
@@ -409,6 +417,14 @@ for _gid, _g in list(GEAR.items()):
         _p['name'] = _g['name'] + ' +'
         _p['plus'] = True
         GEAR[plus_id(_gid)] = _p
+
+# Gear the world is allowed to hand out: drops, bazaar stock, loot chests, and
+# starter pieces. Excludes Gear+ ("+") variants — those are craft-only, minted
+# solely by the Gorgon Stonewright at the Blacksmith (see undercity_db
+# `_upgrade_gear`). Every random spawn pool MUST iterate this, never raw GEAR;
+# equip/stash/salvage/market still look pieces up by id in GEAR, so "+" ids keep
+# flowing through those by-id paths — they just can't be *found* in the wild.
+WORLD_GEAR = {_gid: _g for _gid, _g in GEAR.items() if not _g.get('plus')}
 
 # Rider → the stance it modifies + a human blurb (client reads this in Plan 3).
 GEAR_RIDERS = {
@@ -1777,7 +1793,7 @@ PET_ROLES = {
     'attack':  {'kind': 'combat-passive', 'blurb': 'Chance to strike a follow-up hit in battle.'},
     'defend':  {'kind': 'combat-passive', 'blurb': 'Chance to deflect a few points of damage.'},
     'forage':  {'kind': 'activated',      'blurb': 'Scavenges a small cache of loot.'},
-    'scout':   {'kind': 'activated',      'blurb': "Scouts a bazaar's stock before you arrive."},
+    'scout':   {'kind': 'activated',      'blurb': 'Delivers gear from your local bazaar without a visit.'},
     'economy': {'kind': 'economy',        'blurb': 'Scavenges Spores from loot spaces you pass — tap to collect.'},
 }
 
@@ -1838,11 +1854,17 @@ def pet_role(species):
 # Egg drops mirror GEAR_DROP: source -> (chance, {egg_tier: weight}).
 # Eggs are rarer than gear; richer sources skew toward higher-tier eggs.
 EGG_DROP = {
-    'loot':    (0.06, {1: 0.7, 2: 0.3}),
-    'mystery': (0.08, {1: 0.5, 2: 0.4, 3: 0.1}),
-    'combat':  (0.05, {1: 0.6, 2: 0.4}),
-    'cache':   (0.10, {1: 0.4, 2: 0.4, 3: 0.2}),
-    'lair':    (0.25, {2: 0.5, 3: 0.4, 4: 0.1}),
+    # Monster Nests (the two RESPAWN_LAIRS) are the signature companion farm:
+    # `ruin_lair` (guaranteed T3 on the guardian kill) and `ruin_scavenge`
+    # (guaranteed lesser egg on EVERY scavenge of a downed nest). Caches trickle
+    # eggs like other loot. loot/mystery/combat are unchanged; the old unused
+    # 'lair' entry was removed (Sigil lairs stay eggless).
+    'loot':          (0.06, {1: 0.7, 2: 0.3}),
+    'mystery':       (0.08, {1: 0.5, 2: 0.4, 3: 0.1}),
+    'combat':        (0.05, {1: 0.6, 2: 0.4}),
+    'cache':         (0.10, {1: 0.4, 2: 0.4, 3: 0.2}),
+    'ruin_lair':     (1.0,  {3: 1.0}),
+    'ruin_scavenge': (1.0,  {1: 0.7, 2: 0.3}),
 }
 
 # Level cap per tier — merging raises tier, leveling fills to the cap.

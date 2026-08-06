@@ -2050,7 +2050,9 @@ def test_vein_cave_in_hurts_but_shaft_holds(table, monkeypatch):
     assert resp['depth'] == 9                              # shaft holds at its prior depth
     doc = db._get_player(table, sid, 'user-alex')
     assert doc['hp'] == max(1, hp_before - 10 * data.VEIN_CAVE_IN_DMG_PER_LEVEL)
-    assert doc['veinStrikesLeft'] == 0                     # the visit still ends
+    # A cave-in only costs the one swing that triggered it — the digger keeps
+    # the rest of their swings and can keep picking at the shaft.
+    assert doc['veinStrikesLeft'] == data.VEIN_STRIKES_PER_VISIT - 1
     rec = db._get(table, db._season_pk(sid), 'VEIN#cavern')
     assert rec['depth'] == 9                               # NOT reset — progress is kept
 
@@ -2324,6 +2326,9 @@ def test_start_battle_persists_record_with_first_telegraph(table, monkeypatch):
     assert rec['npcShown'] in data.STANCES and rec['npcActual'] in data.STANCES
     assert ev['telegraph'] == rec['npcShown']
     assert rec['player']['hp'] == doc['hp']
+    # The client reads ev.npc.personality to show the stance tell; without it
+    # every foe falls back to 'balanced' ("reading you").
+    assert ev['npc']['personality'] == 'brute'
 
 
 # ── Interactive combat flow (Plan 2) ─────────────────────────────────────────
@@ -2937,9 +2942,10 @@ def test_cannot_flee_before_acting(table, monkeypatch):
     assert status == 200 and resp['combat']['fled'] is True
 
 
-def test_failed_flee_lets_enemy_perform_its_action(table, monkeypatch):
-    """A failed flee is not a free retry: the enemy takes its telegraphed action
-    for free, the player takes the hit, and the fight continues at the next round."""
+def test_failed_flee_unlucky_scramble_loses_the_exchange(table, monkeypatch):
+    """A failed flee is not a free retry: the fleer scrambles into a random stance,
+    and an unlucky draw ('feint' vs the telegraphed 'aggress') loses — the player
+    takes the hit and the fight continues at the next round."""
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
@@ -2953,19 +2959,54 @@ def test_failed_flee_lets_enemy_perform_its_action(table, monkeypatch):
     rec['npcActual'] = 'aggress'   # the enemy will swing this round
     start_hp = rec['player']['hp']
     db._put_player(table, doc)
-    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)  # flee roll fails
+    # 0.99 => flee roll fails, then the stance pick lands on 'feint' (index 2).
+    monkeypatch.setattr(db._rng, 'random', lambda: 0.99)
     status, resp = act(table, 'combat-flee')
     assert status == 200
     c = resp['combat']
     assert c['fled'] is False
-    assert c['entries']                       # a round actually resolved
-    assert c['playerHp'] < start_hp           # the enemy performed its action
+    header = next(e for e in c['entries'] if e.get('aStance'))
+    assert header['aStance'] == 'feint' and header['winner'] == 'defender'
+    assert c['playerHp'] < start_hp           # the losing exchange landed
     assert c['round'] == 3                     # fight continues at the next round
     assert db._get_player(table, sid, 'user-alex').get('battle') is not None
 
 
+def test_failed_flee_lucky_scramble_can_win_the_exchange(table, monkeypatch):
+    """A failed flee is no longer certain death: the fleer scrambles into a random
+    stance and the round resolves normally, so a lucky draw ('guard' vs the
+    telegraphed 'aggress') wins the exchange and counters instead of eating a free
+    hit. The old auto-loss could never hand the player the win."""
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['spd'] = 1        # low SPD => flee roll fails
+    doc['atk'] = 10       # a counter that clearly bites a def-0 foe
+    doc['hp'] = 500
+    db._put_player(table, doc)
+    _begin(table, sid, npc=dict(_FODDER, atk=3, spd=1, hp=60))
+    doc = db._get_player(table, sid, 'user-alex')
+    rec = doc['battle']
+    rec['round'] = 2
+    rec['npcActual'] = 'aggress'   # telegraphed swing
+    npc_start = rec['npc']['hp']
+    db._put_player(table, doc)
+    # First random() = flee roll (fails at low SPD); second = stance pick -> 'guard'.
+    seq = iter([0.99, 0.5])
+    monkeypatch.setattr(db._rng, 'random', lambda: next(seq, 0.99))
+    status, resp = act(table, 'combat-flee')
+    assert status == 200
+    c = resp['combat']
+    assert c['fled'] is False
+    header = next(e for e in c['entries'] if e.get('aStance'))
+    assert header['aStance'] == 'guard'       # a random stance, not a forced loss
+    assert header['winner'] == 'attacker'     # guard beats the telegraphed aggress
+    assert c['npcHp'] < npc_start             # the fleer countered — turned the fight
+    assert db._get_player(table, sid, 'user-alex').get('battle') is not None
+
+
 def test_failed_flee_can_be_lethal(table, monkeypatch):
-    """The enemy's free swing on a failed flee can drop the player — the fight
+    """A losing scramble on a failed flee can still drop the player — the fight
     ends in defeat rather than silently continuing."""
     act(table, 'join', starter='pest')
     sid = _sid(table)
@@ -3045,12 +3086,16 @@ def test_state_reports_debug_and_next_roll(table, monkeypatch):
     assert state['you']['nextRollAt'] > state['you']['rollRegenAt']
 
 
-def test_next_roll_hidden_at_cap(table, monkeypatch):
+def test_next_roll_hidden_when_fully_maxed(table, monkeypatch):
+    # The countdown hides only when there's nothing left to accrue — both the roll
+    # bank AND rested at their caps. (At cap with rested still filling it stays
+    # visible; that path is covered in test_undercity_rested.py.)
     monkeypatch.setattr(data, 'DEBUG', False)
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
     doc['rolls'] = data.ROLL_CAP
+    doc['rested'] = data.RESTED_CAP
     db._put_player(table, doc)
     status, state = db.handle_state(table, {'userId': 'user-alex'})
     assert 'nextRollAt' not in state['you']
@@ -3083,8 +3128,8 @@ def test_grant_board_game_rewards_applies_rolls_and_item(monkeypatch):
     sam = db._get_player(t, _sid(t), 'user-sam')
     assert alex['rolls'] == data.CLAIM_FINISHED_ROLLS            # participation only
     assert sam['rolls'] == data.CLAIM_FINISHED_ROLLS + data.CLAIM_WON_BONUS_ROLLS
-    assert len(sam['bag']) == 1                                  # winner got an item
-    assert alex['bag'] == []
+    assert len(sam['bag']) == 2                                  # starter moss + winner item
+    assert alex['bag'] == ['healing_moss']                       # starter moss only — no reward item
 
 
 def test_board_game_reward_notifies_with_game_name(monkeypatch):
@@ -3176,7 +3221,7 @@ def test_banked_rewards_applied_on_join():
     # JOIN_ROLLS=3 + banked (2 participation + 1 winner) = 6, capped at ROLL_CAP.
     assert you['rolls'] == min(data.ROLL_CAP,
                                data.JOIN_ROLLS + data.CLAIM_FINISHED_ROLLS + data.CLAIM_WON_BONUS_ROLLS)
-    assert len(you['bag']) == 1                       # banked item delivered
+    assert len(you['bag']) == 2                       # starter moss + banked item delivered
     # Bank record consumed.
     assert db._get(t, db._reward_pk(_sid(t)), 'USER#user-late') is None
 

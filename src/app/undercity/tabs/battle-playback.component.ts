@@ -52,6 +52,8 @@ export interface BattleRewards {
   gearIcon?: string;
   /** true = sent to the stash; false = stash was full, auto-ground for materials. */
   gearStashed?: boolean;
+  /** Companion egg tier dropped by a won fight (e.g. a Monster Nest guardian). */
+  eggTier?: number;
 }
 
 /** One spore coin in the victory rain — pre-randomized so it doesn't jitter on
@@ -124,7 +126,7 @@ export class BattlePlaybackComponent implements OnInit, OnDestroy {
     return (
       this.battle.outcome === 'attacker' &&
       !!r &&
-      (!!r.spores || !!r.xp || !!r.renown || !!r.levels || !!r.itemName || !!r.gearName)
+      (!!r.spores || !!r.xp || !!r.renown || !!r.levels || !!r.itemName || !!r.gearName || !!r.eggTier)
     );
   }
 

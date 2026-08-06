@@ -1187,6 +1187,33 @@
   line-height: 1.35;
 }
 
+// First-visit "on the house" gift callout, shown in place of the keeper quote.
+.shop-welcome {
+  margin: 0 0 0.6rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(154, 205, 50, 0.12); // molting-green tint, on-brand
+  border: 1px solid rgba(154, 205, 50, 0.4);
+  text-align: center;
+
+  .shop-welcome-line {
+    margin: 0 0 0.4rem;
+    font-style: italic;
+    opacity: 0.92;
+  }
+
+  .shop-welcome-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.95rem;
+
+    .mi {
+      font-size: 1.15rem;
+    }
+  }
+}
+
 .shop-section {
   font-size: 0.75rem;
   font-weight: 700;

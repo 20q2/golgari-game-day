@@ -10,6 +10,9 @@ export interface FormInfo {
   blurb: string;
   passive: string;
   passiveName: string;
+  /** Forms with more than one innate ability list every passive id here
+   *  (mirror: `passives` in undercity_data.py). Absent = the single `passive`. */
+  passives?: string[];
   stats?: { hp: number; atk: number; def: number; spd: number };
   bonus?: Record<string, number>;
 }
@@ -40,7 +43,8 @@ export const PASSIVE_NAMES: Record<string, string> = {
   spell_mage: 'Spell Mage',
   wish: 'Wish',
   arsenal: 'Arsenal',
-  stonewright: 'Stonewright',
+  stonewright: 'Natural Enchanter',
+  gift_of_fair_folk: 'Gift of the Fair Folk',
   stone_gaze: 'Stone Gaze',
   mimicry: 'Mimicry',
 };
@@ -71,7 +75,8 @@ export const PASSIVE_BLURBS: Record<string, string> = {
   spell_mage: 'Your damaging spells deal +50% and are twice as likely to land.',
   wish: 'Learn Wish: cast any spell in the world, from any list.',
   arsenal: 'A fourth equipment slot — strap on one extra piece of gear that no other creature can wield.',
-  stonewright: 'Born gifted: starts with higher stats, but her stat growth is lower each level. Upgrades she forges come out hardened (Gear+); her active pet fights a step above its level.',
+  stonewright: 'Anything it upgrades comes out hardened (Gear+); its companions hatch one rarity higher, and its active pet fights a step above its level.',
+  gift_of_fair_folk: 'Born gifted but slow to grow: starts with 5 attribute points to allocate, but gains only 1 point on level up instead of the normal 2.',
   stone_gaze: 'Reads come easily; each read petrifies the foe — stacking slow that ends in a one-round freeze.',
   mimicry: 'At the first blow it takes the shape of its prey — a stat bump matching how the foe fights.',
 };
@@ -103,8 +108,9 @@ export const STARTERS: FormInfo[] = [
     stats: { hp: 25, atk: 5, def: 4, spd: 7 },
   },
   {
-    id: 'elf', name: 'Elf', tier: 1, passive: 'stonewright', passiveName: 'Stonewright',
-    blurb: 'Ancient and long-lived — born gifted, slow to grow; her power is in her works.',
+    id: 'elf', name: 'Elf', tier: 1, passive: 'stonewright', passiveName: 'Natural Enchanter',
+    passives: ['stonewright', 'gift_of_fair_folk'],
+    blurb: 'Ancient and long-lived; her power is in her works.',
     stats: { hp: 25, atk: 6, def: 6, spd: 4 },
   },
 ];
@@ -131,7 +137,7 @@ export const APEX: (FormInfo & { from: string[] })[] = [
   { id: 'golgari_lich_lord', name: 'Golgari Lich Lord', tier: 3, passive: 'drain_life', passiveName: 'Drain Life', bonus: { atk: 2, maxHp: 6 }, blurb: 'ATK/HP sovereign of rot.', from: ['brackish_trudge', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'] },
   { id: 'swamp_dragon', name: 'Swamp Dragon', tier: 3, passive: 'rot_breath', passiveName: 'Rot Breath', bonus: { atk: 2, spd: 2 }, blurb: 'ATK/SPD terror of the deep tunnels.', from: ['vexing_pest', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior', 'gorgon'] },
   { id: 'izoni', name: 'Primeval Warden', tier: 3, passive: 'swarm', passiveName: 'Swarm', bonus: { spd: 4 }, blurb: 'SPD incarnate — strikes from the shadows, faster than the eye can track.', from: ['vexing_pest', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage'] },
-  { id: 'daemogoth', name: 'Daemogoth Titan', tier: 3, passive: 'arsenal', passiveName: 'Arsenal', bonus: { atk: 2, def: 2 }, blurb: 'The Elf apex — a fourth equipment slot, one extra piece of gear no other creature can wield.', from: ['wood_lurker', 'gorgon'] },
+  { id: 'daemogoth', name: 'Daemogoth Titan', tier: 3, passive: 'arsenal', passiveName: 'Arsenal', bonus: { atk: 2, def: 2 }, blurb: 'A demon of shadow and moss whose spare arms wield a fourth piece of gear — one no other creature can bear.', from: ['wood_lurker', 'gorgon'] },
   { id: 'calamity_beast', name: 'Calamity Beast', tier: 3, passive: 'wish', passiveName: 'Wish', bonus: { maxHp: 6, spd: 2 }, blurb: 'Learns Wish — cast ANY spell in the world.', from: ['squirrel_warrior', 'squirrel_mage', 'deathrite_shaman', 'vexing_pest', 'corpsejack_menace'] },
 ];
 

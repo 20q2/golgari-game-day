@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
-import { STARTERS, TIER2, FormInfo, PASSIVE_BLURBS } from '../data/forms';
+import { STARTERS, TIER2, FormInfo, PASSIVE_BLURBS, PASSIVE_NAMES } from '../data/forms';
 import { REGION_LIST } from '../data/regions';
 import {
   PAINTS,
@@ -116,7 +116,16 @@ export class HatchFlowComponent {
 
   protected readonly starters = STARTERS;
   protected readonly paints = PAINTS;
-  protected readonly passiveBlurbs = PASSIVE_BLURBS;
+
+  /** Innate-ability cards to show for a starter: one per passive id
+   *  (`form.passives`), or the single `form.passive` when a form has one. Name
+   *  and blurb resolve from the shared PASSIVE_* maps so copy never drifts. */
+  formAbilities(form: FormInfo): { name: string; blurb: string }[] {
+    return (form.passives ?? [form.passive]).map((id) => ({
+      name: PASSIVE_NAMES[id] ?? id,
+      blurb: PASSIVE_BLURBS[id] ?? '',
+    }));
+  }
 
   /** Chosen creature, held while the player then picks a home biome. */
   protected readonly chosenStarter = signal<FormInfo | null>(null);
@@ -260,27 +269,32 @@ export class HatchFlowComponent {
     this.burst.set(this.burst() + 1);
   }
 
-  /** One locked spin: cycle the highlight with an ease-out cadence, land on a
-   *  random catalog color, set the egg hue, and lock. No re-spins. */
+  /** One locked spin: cycle the highlight with an ease-out cadence that
+   *  decelerates *onto* a random catalog color, set the egg hue, and lock. No
+   *  re-spins. */
   spinShell(): void {
     if (this.shellLocked() || this.spinning()) return;
     this.spinning.set(true);
     const n = this.paints.length;
     const finalIdx = Math.floor(Math.random() * n);
-    const total = 28; // ticks before landing
+    // Ticks = a couple of whole loops plus the offset that lands the +1-per-tick
+    // highlight exactly on finalIdx, so the swatch the wheel visibly slows to a
+    // stop on is the one that locks in — no snap to a different color at the end.
+    const start = ((this.spinHighlight() % n) + n) % n;
+    const total = 2 * n + ((finalIdx - start + n) % n);
     let tick = 0;
     const step = (): void => {
+      this.spinHighlight.set((this.spinHighlight() + 1 + n) % n);
+      tick++;
       if (tick >= total) {
+        // Last hop already landed the highlight on finalIdx; lock that color.
         const paint = this.paints[finalIdx];
-        this.spinHighlight.set(finalIdx);
         this.rolledPaint.set(paint);
         this.eggHue.set(paint.hue);
         this.shellLocked.set(true);
         this.spinning.set(false);
         return;
       }
-      this.spinHighlight.set((this.spinHighlight() + 1 + n) % n);
-      tick++;
       const delay = 40 + Math.round((tick / total) ** 2 * 220); // ease-out 40→260ms
       setTimeout(step, delay);
     };

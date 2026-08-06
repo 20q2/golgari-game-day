@@ -960,10 +960,11 @@
 // Slay-the-Spire style intent icon floating over the foe.
 .intent-float {
   position: absolute;
-  // Hover just over the foe's head. Anchored to the sprite's *scaled* box height
-  // (bottom-up) rather than the side's top edge, so a shrunken foe keeps the
-  // bubble on its head instead of stranding it up in empty space.
-  bottom: calc(96px * var(--sprite-scale, 1) - 24px);
+  // Hover just over the foe's head. Anchored to the measured silhouette height
+  // (opaque pixels, not the padded box) times the current scale, so the bubble
+  // sits on the real head at any size instead of a fixed constant that drifts as
+  // the foe shrinks. Falls back to the full box height until the art measures.
+  bottom: calc(var(--content-h, 1) * 96px * var(--sprite-scale, 1) + 6px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
@@ -1415,7 +1416,17 @@
   background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.72) 0%, transparent 70%);
 }
 
-.side .body { position: relative; }
+.side .body {
+  position: relative;
+  // Seat the creature on the shared floor line: shift it down by the empty space
+  // measured below its lowest opaque pixel (fraction of the scaled sprite box),
+  // so art with different bottom padding / aspect ratios all stand on the same
+  // ground instead of drifting as they scale. `top` is independent of the
+  // drop-in / breathe transforms, so it composes cleanly. Icon fallbacks keep
+  // the neutral 0 offset.
+  top: calc(var(--ground-offset, 0) * 96px * var(--sprite-scale, 1));
+  transition: top 0.35s ease;
+}
 
 // The action word ("Strike!/Guard!/Feint!") pops off the sprite and fades.
 .act-word {

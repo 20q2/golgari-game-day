@@ -124,10 +124,12 @@ def test_level_cap():
 
 
 def test_gorgon_levels_slower():
+    # The slow-leveling half of the Elf's kit is Gift of the Fair Folk (design
+    # 2026-08-05); the Elf carries it from hatch.
     p = {'level': 1, 'xp': 20, 'maxHp': 30, 'hp': 10, 'statPoints': 0,
-         'passives': ['stonewright'], 'spentThisLevel': {}}
+         'passives': ['stonewright', 'gift_of_fair_folk'], 'spentThisLevel': {}}
     assert apply_level_ups(p) == 1
-    assert p['statPoints'] == 1          # Gorgon banks 1, not the usual 2
+    assert p['statPoints'] == 1          # banks 1, not the usual 2
     assert p['maxHp'] == 33              # HP-per-level unchanged
 
 
@@ -1057,24 +1059,40 @@ def test_flee_attempt_success_and_smoke_fallback():
     e2 = fighter(spd=9)
     r = flee_attempt(f2, e2, FakeRng(randoms=[0.99]))
     assert r['escaped'] is True and r['smokeSporeUsed'] is True
-    # fail, no smoke => not escaped, DEF drop applied
+    # fail, no smoke => not escaped, and DEF is left untouched (a failed flee
+    # rolls into a fully clean scramble round, no caught-off-guard penalty)
     f3 = fighter(spd=1, hp=20, max_hp=30, dfn=5)
     r3 = flee_attempt(f3, fighter(spd=9), FakeRng(randoms=[0.99]))
-    assert r3['escaped'] is False and f3.dfn == 4
+    assert r3['escaped'] is False and f3.dfn == 5
 
 
-from undercity_engine import flee_punish
+from undercity_engine import flee_scramble
 
 
-def test_flee_punish_lets_enemy_land_its_action_for_free():
-    # A caught-off-guard fleer eats the enemy's telegraphed (aggress) hit and
-    # does no offense of its own.
+def test_flee_scramble_lucky_stance_wins_the_exchange():
+    # A FAILED flee no longer auto-loses: the fleer scrambles into a RANDOM stance
+    # and the round resolves normally. A 'guard' draw (index 1) beats the enemy's
+    # telegraphed 'aggress' — the fleer survives AND counters instead of eating a
+    # free hit.
     fleer = fighter(name='Fleer', hp=40, max_hp=40, atk=6, dfn=5, spd=1)
     enemy = fighter(name='Foe', hp=40, max_hp=40, atk=10, dfn=5, spd=1)
-    entries = flee_punish(fleer, enemy, 'aggress', rnd=2, rng=FakeRng())
-    assert fleer.hp < 40           # the enemy performed its action
-    assert enemy.hp == 40          # the fleer landed nothing back
-    assert entries and any(e.get('dmg') for e in entries)
+    entries = flee_scramble(fleer, enemy, 'aggress', rnd=2, rng=FakeRng(randoms=[0.5]))
+    header = next(e for e in entries if e.get('aStance'))
+    assert header['aStance'] == 'guard'     # a random stance, not a forced loss
+    assert header['winner'] == 'attacker'   # guard beats the telegraphed aggress
+    assert enemy.hp < 40                     # the fleer landed a counter
+
+
+def test_flee_scramble_unlucky_stance_still_loses():
+    # An unlucky 'feint' draw (index 2) loses to the telegraphed 'aggress': the
+    # fleer takes the big hit. Fleeing stays risky — just not a guaranteed death.
+    fleer = fighter(name='Fleer', hp=40, max_hp=40, atk=6, dfn=5, spd=1)
+    enemy = fighter(name='Foe', hp=40, max_hp=40, atk=10, dfn=5, spd=1)
+    entries = flee_scramble(fleer, enemy, 'aggress', rnd=2, rng=FakeRng(randoms=[0.99]))
+    header = next(e for e in entries if e.get('aStance'))
+    assert header['aStance'] == 'feint'
+    assert header['winner'] == 'defender'
+    assert fleer.hp < 40
 
 
 from undercity_engine import pick_stance, telegraph

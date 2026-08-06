@@ -149,6 +149,10 @@ export interface YouDoc {
   /** ISO time the next timed roll banks; absent while at the roll cap. */
   nextRollAt?: string;
   rollRegenAt?: string;
+  /** Rested rolls (in rolls, not "stacks"): overflow banked past the roll cap.
+   * While > 0 and the bank has room, each timed tick pays DOUBLE and draws this
+   * down. Server-owned; the client only displays it. */
+  rested?: number;
   spores: number;
   /** Ossuary gambles left this visit; refills to 3 when you land there again. */
   ossuaryRollsLeft?: number;
@@ -473,9 +477,10 @@ export interface CombatFlee {
   smokeSporeUsed?: boolean;
   round?: number;
   telegraph?: Stance | null;
-  /** On a FAILED flee the enemy takes its telegraphed action for free — the
-   *  server resolves a full round and returns its playback (unless the blow was
-   *  lethal, in which case the outcome arrives as a spaceEvent instead). */
+  /** On a FAILED flee the fleer scrambles into a random stance and the server
+   *  resolves a full round against the enemy's telegraphed action — returning its
+   *  playback (unless someone dropped, in which case the outcome arrives as a
+   *  spaceEvent instead). A lucky stance can win the exchange. */
   entries?: CombatEntry[];
   frenzyFrom?: number | null;
   playerHp?: number;
@@ -653,6 +658,18 @@ export interface FlowPuzzleView {
   rewards: FlowReward[];
 }
 
+/** The Rot-Farm Bazaar's first-visit handout (mirrors undercity_db._maybe_bazaar_welcome):
+ *  a random consumable, or a Molting when the bag was full. */
+export interface WelcomeGift {
+  kind: 'consumable' | 'material';
+  /** Consumable id (present only when kind === 'consumable'). */
+  item?: string;
+  /** Display name — the consumable's name, or "Molting". */
+  name: string;
+  /** Quantity for the material case (1). */
+  amount?: number;
+}
+
 export interface SpaceEvent {
   type: string;
   text: string;
@@ -673,9 +690,14 @@ export interface SpaceEvent {
     outcome: 'equipped' | 'stashed' | 'stash-full';
     materials?: { moltings: number; ichor: number };
   };
+  /** Companion egg dropped by this event (Monster Nest scavenge, cache, loot…). */
+  egg?: { tier: number };
   /** Crafting materials gained from this space (e.g. an Overgrown Cache molting
    *  pickup). Mirrors the server event's `materials`. */
   materials?: { moltings: number; ichor: number };
+  /** Present only on a first-visit bazaar landing where the shopkeeper gifts a
+   *  broke newcomer (mirrors undercity_db shop branch). Drives the panel callout. */
+  welcomeGift?: WelcomeGift;
   xp?: number;
   levels?: number;
   /** Renown this fight earned (marginal compute_renown delta): +wild win, +POI

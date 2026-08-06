@@ -1,0 +1,442 @@
+{
+  "ok": true,
+  "season": "20260805-132646",
+  "exportedAt": "2026-08-06T02:22:08",
+  "players": [
+    {
+      "ver": 160,
+      "pendingPickups": [],
+      "spd": 4,
+      "pvpWins": 0,
+      "spentThisLevel": {
+        "atk": 1,
+        "spd": 0,
+        "def": 0
+      },
+      "userId": "user-andrew",
+      "petCooldowns": {
+        "scout": "2026-08-05T21:43:58"
+      },
+      "creatureName": "Creeper",
+      "rolls": 12,
+      "scrolls": [],
+      "shiny": false,
+      "grimoireSpells": {},
+      "tier": 2,
+      "taughtClaims": 0,
+      "bossDamage": 0,
+      "materials": {
+        "moltings": 0,
+        "ichor": 0
+      },
+      "lastFinishedClaim": null,
+      "gear": {
+        "fang": "rusted_fang",
+        "carapace": "ironshell_bulwark"
+      },
+      "pokesReceived": 0,
+      "species": "elf",
+      "eggs": [],
+      "xp": 71,
+      "username": "Andrew",
+      "pk": "UNDERCITY#20260805-132646",
+      "activePetId": "pet-42166cb8",
+      "incubator": null,
+      "rollRegenAt": "2026-08-06T00:56:46",
+      "statPoints": 0,
+      "stance": "fight",
+      "hp": 65,
+      "maxHp": 58,
+      "highFiveCooldowns": {},
+      "homeBiome": "bog",
+      "buffs": [
+        {
+          "amount": 1,
+          "kind": "mimic",
+          "stat": "atk"
+        },
+        {
+          "stat": "def",
+          "amount": 1,
+          "kind": "mimic"
+        },
+        {
+          "kind": "mimic",
+          "amount": 1,
+          "stat": "spd"
+        }
+      ],
+      "wildWins": 13,
+      "spellCooldowns": {},
+      "equippedGrimoire": null,
+      "effect": null,
+      "joinedAt": "2026-08-05T13:45:51",
+      "grimoires": [],
+      "def": 6,
+      "bag": [
+        "snare",
+        "snare",
+        "rot_bomb"
+      ],
+      "passives": [
+        "stonewright",
+        "mimicry"
+      ],
+      "pendingMove": null,
+      "spores": 224,
+      "gearStash": [],
+      "awayEvents": [],
+      "paint": {
+        "stripes": 200,
+        "body": 200,
+        "belly": 50
+      },
+      "level": 10,
+      "atk": 20,
+      "pets": [
+        {
+          "tier": 1,
+          "level": 1,
+          "mergeProgress": 0,
+          "species": "baby_winding_constrictor",
+          "id": "pet-42166cb8"
+        }
+      ],
+      "composts": 4,
+      "hat": null,
+      "hpUpdatedAt": "2026-08-06T01:09:39",
+      "form": "wood_lurker",
+      "position": "cavern_i1",
+      "rollNudged": true,
+      "lastActionAt": "2026-08-06T01:09:46",
+      "metrics": {
+        "battle.barrier.win": 1,
+        "space.ladder": 3,
+        "rolls": 32,
+        "space.cache": 1,
+        "space.lair": 3,
+        "space.warp": 1,
+        "space.barrier": 1,
+        "spaces": 36,
+        "battle.elite.loss": 1,
+        "space.tunnel": 1,
+        "battle.wild.loss": 1,
+        "space.gate": 2,
+        "space.elite": 8,
+        "battle.elite.win": 6,
+        "dmgDealt": 785,
+        "space.loot": 1,
+        "battles": 18,
+        "deaths": 4,
+        "dmgTaken": 279,
+        "space.wild": 7,
+        "xpGained": 491,
+        "space.mystery": 1,
+        "battle.lair.loss": 2,
+        "space.rest": 1,
+        "battle.lair.win": 1,
+        "space.shop": 2,
+        "space.hazard": 4,
+        "battle.wild.win": 6
+      },
+      "lastBiome": "cavern",
+      "winRenown": 44,
+      "shieldUntil": "2026-08-05T21:40:12",
+      "poiClaims": [
+        "bar_e",
+        "cache:bog_cache",
+        "bog_lair"
+      ],
+      "evolvedAt": "2026-08-05T21:16:58",
+      "restsUsed": [],
+      "battle": {
+        "node": "cavern_i1",
+        "peeked": false,
+        "npcTier": 1,
+        "readChance": 0.29,
+        "npc": {
+          "feint_won": false,
+          "growth_stacks": 0,
+          "doom_stacks": 0,
+          "pet_followup_mult": 0,
+          "pet_deflect_chance": 0,
+          "bluff": 0.12,
+          "perks": [],
+          "pet_deflect_flat": 0,
+          "personality": "balanced",
+          "flee_bonus": 0,
+          "pet_followup_chance": 0,
+          "rot_stacks": 0,
+          "petrify": 0,
+          "hp": 31,
+          "aggress_ramp": 0,
+          "spd": 6,
+          "passives": [],
+          "maxHp": 31,
+          "dmg_penalty": 0,
+          "first_win_used": false,
+          "has_smoke_spore": false,
+          "rider_mag": {},
+          "buffs": [],
+          "reveal_next": false,
+          "riders": [],
+          "dfn": 6,
+          "name": "Fiend Artisan",
+          "atk": 10
+        },
+        "read": false,
+        "kind": "elite",
+        "ctx": {},
+        "npcActual": "aggress",
+        "round": 1,
+        "npcMeta": {
+          "atk": 10,
+          "tier": 1,
+          "spd": 6,
+          "xp": 25,
+          "bluff": 0.12,
+          "def": 6,
+          "personality": "balanced",
+          "id": "fiend_artisan",
+          "hp": 31,
+          "bounty": 18,
+          "name": "Fiend Artisan",
+          "itemChance": 0.28
+        },
+        "strikes": [],
+        "npcShown": "aggress",
+        "readTrue": false,
+        "player": {
+          "rider_mag": {
+            "bulwark": 2,
+            "barbed": 1
+          },
+          "perks": [
+            "brutal_strikes",
+            "deathdrive",
+            "menace",
+            "thick_hide"
+          ],
+          "reveal_next": false,
+          "pet_deflect_chance": 0,
+          "feint_won": false,
+          "dfn": 12,
+          "passives": [
+            "mimicry",
+            "stonewright"
+          ],
+          "hp": 65,
+          "buffs": [
+            "mimic"
+          ],
+          "first_win_used": false,
+          "maxHp": 69,
+          "name": "Andrew",
+          "riders": [
+            "barbed",
+            "bulwark"
+          ],
+          "atk": 23,
+          "dmg_penalty": 0,
+          "spd": 5,
+          "aggress_ramp": 0,
+          "doom_stacks": 0,
+          "rot_stacks": 0,
+          "pet_followup_chance": 0,
+          "statDelta": {
+            "spd": 1,
+            "atk": 1,
+            "def": 1
+          },
+          "flee_bonus": 0,
+          "petrify": 0,
+          "growth_stacks": 0,
+          "pet_followup_mult": 0,
+          "has_smoke_spore": false,
+          "pet_deflect_flat": 0
+        }
+      },
+      "sk": "PLAYER#user-andrew"
+    }
+  ],
+  "events": [
+    {
+      "ts": "2026-08-05T13:26:47.290",
+      "text": "A new night falls on the Undercity. The swarm stirs…",
+      "pk": "UNDERCITY#20260805-132646",
+      "type": "season",
+      "sk": "EVENT#2026-08-05T13:26:47.290#3b7b4b"
+    },
+    {
+      "ts": "2026-08-05T13:45:51.953",
+      "text": "Andrew's egg cracks open in The Sedgemoor — a Elf named Creeper skitters out! (Mirefoot: Hazards cost you half, and rival spells more often miss you.)",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "hatch",
+      "sk": "EVENT#2026-08-05T13:45:51.953#b45801"
+    },
+    {
+      "ts": "2026-08-05T13:52:37.656",
+      "text": "Andrew's Creeper reached level 2!",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-05T13:52:37.656#0d27e9"
+    },
+    {
+      "ts": "2026-08-05T13:57:31.955",
+      "text": "Andrew's Creeper reached level 3!",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-05T13:57:31.955#408651"
+    },
+    {
+      "ts": "2026-08-05T14:05:00.212",
+      "text": "Andrew's Creeper reached level 4!",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-05T14:05:00.212#82829b"
+    },
+    {
+      "ts": "2026-08-05T14:06:23.942",
+      "text": "Andrew's Creeper was composted by a Gitrog Spawn.",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "compost",
+      "sk": "EVENT#2026-08-05T14:06:23.942#3b24aa"
+    },
+    {
+      "ts": "2026-08-05T14:07:52.864",
+      "text": "Andrew's Creeper was composted by a Rot Shambler.",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "compost",
+      "sk": "EVENT#2026-08-05T14:07:52.864#61abfc"
+    },
+    {
+      "ts": "2026-08-05T21:15:34.822",
+      "text": "Andrew's Creeper reached level 5!",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-05T21:15:34.822#70bbaa"
+    },
+    {
+      "ts": "2026-08-05T21:15:34.842",
+      "text": "Andrew shattered the Golgari Grave-Troll — a new route is open to all!",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "barrier",
+      "sk": "EVENT#2026-08-05T21:15:34.842#cc86af"
+    },
+    {
+      "ts": "2026-08-05T21:16:58.622",
+      "text": "Andrew's creature evolves into Wood Lurker!",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "evolve",
+      "sk": "EVENT#2026-08-05T21:16:58.622#eea5ef"
+    },
+    {
+      "ts": "2026-08-05T21:19:36.805",
+      "text": "Andrew's Creeper reached level 6!",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-05T21:19:36.805#e3c768"
+    },
+    {
+      "ts": "2026-08-05T21:22:22.870",
+      "text": "Andrew's Creeper reached level 7!",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-05T21:22:22.870#7b1474"
+    },
+    {
+      "ts": "2026-08-05T21:23:55.611",
+      "text": "Andrew was devoured by the Lord of Extinction.",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "compost",
+      "sk": "EVENT#2026-08-05T21:23:55.611#24cdd8"
+    },
+    {
+      "ts": "2026-08-05T21:25:12.873",
+      "text": "Andrew's Creeper reached level 8!",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-05T21:25:12.873#db7ff1"
+    },
+    {
+      "ts": "2026-08-05T21:25:12.938",
+      "text": "Andrew was devoured by the Lord of Extinction.",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "compost",
+      "sk": "EVENT#2026-08-05T21:25:12.938#ae5ebf"
+    },
+    {
+      "ts": "2026-08-05T22:01:41.800",
+      "text": "Andrew's Creeper reached level 9!",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-05T22:01:41.799#320618"
+    },
+    {
+      "ts": "2026-08-05T22:02:19.338",
+      "text": "Andrew was first to plunder the treasure of The Drownedway!",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "cache",
+      "sk": "EVENT#2026-08-05T22:02:19.338#1b94cd"
+    },
+    {
+      "ts": "2026-08-05T22:03:33.228",
+      "text": "A The Moor-Wyrm has emerged in the wilderness — rally and bring it down together!",
+      "pk": "UNDERCITY#20260805-132646",
+      "type": "boss",
+      "sk": "EVENT#2026-08-05T22:03:33.228#19db00"
+    },
+    {
+      "ts": "2026-08-05T22:03:33.449",
+      "text": "Andrew's Creeper reached level 10!",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-05T22:03:33.449#77def0"
+    },
+    {
+      "ts": "2026-08-05T22:03:33.469",
+      "text": "Andrew cleared the The Sedgemoor dungeon and claimed its Guild Sigil (1/3)!",
+      "pk": "UNDERCITY#20260805-132646",
+      "actor": "user-andrew",
+      "type": "sigil",
+      "sk": "EVENT#2026-08-05T22:03:33.468#ff0464"
+    }
+  ],
+  "chat": [],
+  "firsts": [
+    {
+      "by": "Andrew",
+      "at": "2026-08-05T22:02:19",
+      "pk": "UNDERCITY#20260805-132646",
+      "uid": "user-andrew",
+      "kind": "cache",
+      "sk": "FIRST#bog_cache"
+    },
+    {
+      "by": "Andrew",
+      "pk": "UNDERCITY#20260805-132646",
+      "at": "2026-08-05T22:03:33",
+      "kind": "lair",
+      "uid": "user-andrew",
+      "sk": "FIRST#bog_lair"
+    }
+  ],
+  "fogReveals": []
+}

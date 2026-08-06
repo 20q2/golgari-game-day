@@ -62,6 +62,8 @@
       <div
         class="side"
         [style.--sprite-scale]="attackerScale()"
+        [style.--ground-offset]="attackerSeat().ground"
+        [style.--content-h]="attackerSeat().contentH"
         [class.act-aggress]="stanceOf('attacker') === 'aggress'"
         [class.act-guard]="stanceOf('attacker') === 'guard'"
         [class.act-feint]="stanceOf('attacker') === 'feint'"
@@ -120,6 +122,8 @@
       <div
         class="side flipped"
         [style.--sprite-scale]="defenderScale()"
+        [style.--ground-offset]="defenderSeat().ground"
+        [style.--content-h]="defenderSeat().contentH"
         [class.act-aggress]="stanceOf('defender') === 'aggress'"
         [class.act-guard]="stanceOf('defender') === 'guard'"
         [class.act-feint]="stanceOf('defender') === 'feint'"
@@ -367,6 +371,7 @@
           @if (r.renown) { <span class="reward-chip renown"><mat-icon class="mi">military_tech</mat-icon> +{{ r.renown }} Renown</span> }
           @if (r.itemName) { <span class="reward-chip item"><mat-icon class="mi">{{ r.itemIcon ?? 'backpack' }}</mat-icon> {{ r.itemName }}</span> }
           @if (r.gearName) { <span class="reward-chip item"><mat-icon class="mi">{{ r.gearIcon ?? 'hardware' }}</mat-icon> {{ r.gearName }}{{ r.gearStashed ? '' : ' — stash full → materials' }}</span> }
+          @if (r.eggTier) { <span class="reward-chip item"><mat-icon class="mi">egg</mat-icon> Tier-{{ r.eggTier }} egg</span> }
           @if (r.levels) { <span class="reward-chip levelup"><mat-icon class="mi">arrow_upward</mat-icon> Level up{{ r.levels > 1 ? ' ×' + r.levels : '' }}!</span> }
         </div>
       </div>

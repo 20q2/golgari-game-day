@@ -23,6 +23,85 @@ export interface BattleItem {
   desc: string;
 }
 
+/** Where a sprite's real pixels sit inside its 96px arena box, as fractions of
+ *  that box (after `object-fit: contain` letterboxing). `ground` is the empty
+ *  space below the lowest opaque pixel — we shift the sprite down by this so
+ *  every creature's feet share one floor line regardless of the art's padding
+ *  or aspect ratio. `contentH` is the opaque silhouette's height — the intent
+ *  bubble hovers just above `contentH`, so it tracks the real head at any scale. */
+export interface SpriteSeat {
+  ground: number;
+  contentH: number;
+}
+
+const NEUTRAL_SEAT: SpriteSeat = { ground: 0, contentH: 1 };
+
+/** Measured seats keyed by image URL (data-URL for recolored player art, file
+ *  path for foes). Populated once per unique sprite; recolor/hat variants each
+ *  measure themselves since alpha is unchanged by tint. */
+const seatCache = new Map<string, SpriteSeat>();
+
+/**
+ * Find where a sprite's opaque pixels sit inside its square arena box so it can
+ * be seated on a shared ground line. Draws the image to an offscreen canvas,
+ * scans for the top/bottom opaque rows, then maps them through the same
+ * `object-fit: contain` fit the CSS uses (fit to the square, center any
+ * letterbox). Returns fractions of the box height. Falls back to a neutral seat
+ * on any failure (missing/transparent/untainted-canvas image).
+ */
+export function measureSpriteSeat(url: string): Promise<SpriteSeat> {
+  const cached = seatCache.get(url);
+  if (cached) return Promise.resolve(cached);
+  return new Promise<SpriteSeat>((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      if (!w || !h) return resolve(NEUTRAL_SEAT);
+      const cv = document.createElement('canvas');
+      cv.width = w;
+      cv.height = h;
+      const ctx = cv.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return resolve(NEUTRAL_SEAT);
+      ctx.drawImage(img, 0, 0);
+      let data: Uint8ClampedArray;
+      try {
+        data = ctx.getImageData(0, 0, w, h).data;
+      } catch {
+        return resolve(NEUTRAL_SEAT); // tainted canvas — leave unseated
+      }
+      const ALPHA = 12; // ignore near-transparent antialiased fringe
+      let minY = h;
+      let maxY = -1;
+      for (let y = 0; y < h; y++) {
+        const row = y * w * 4;
+        for (let x = 0; x < w; x++) {
+          if (data[row + x * 4 + 3] > ALPHA) {
+            if (y < minY) minY = y;
+            maxY = y;
+            break; // one opaque pixel marks the row; no need to scan the rest
+          }
+        }
+      }
+      if (maxY < 0) return resolve(NEUTRAL_SEAT); // fully transparent
+
+      // `object-fit: contain` into a square box: portrait art fills the height
+      // (no vertical letterbox); landscape art fits the width and letterboxes
+      // top+bottom equally. Express everything as a fraction of box height.
+      const fittedH = w >= h ? h / w : 1;
+      const letterboxBottom = w >= h ? (1 - fittedH) / 2 : 0;
+      const seat: SpriteSeat = {
+        ground: letterboxBottom + (fittedH * (h - 1 - maxY)) / h,
+        contentH: (fittedH * (maxY - minY + 1)) / h,
+      };
+      seatCache.set(url, seat);
+      resolve(seat);
+    };
+    img.onerror = () => resolve(NEUTRAL_SEAT);
+    img.src = url;
+  });
+}
+
 /** Combat stats shown beside a fighter. The atk/def/spd are the effective values
  *  the fight actually uses (base + gear + any active buffs/curses); `delta` is the
  *  temporary buff/curse portion of that total, surfaced as a colored ±N. */
@@ -122,6 +201,9 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   protected readonly attackerSpriteFailed = signal(false);
   protected readonly defenderSpriteFailed = signal(false);
   protected readonly companionSpriteFailed = signal(false);
+  /** Measured ground/head seat for each fighter's sprite (neutral until loaded). */
+  protected readonly attackerSeat = signal<SpriteSeat>(NEUTRAL_SEAT);
+  protected readonly defenderSeat = signal<SpriteSeat>(NEUTRAL_SEAT);
   /** Which activation the sidekick is playing this beat (drives its CSS class). */
   protected readonly petAnim = signal<'attack' | 'defend' | null>(null);
   /** The companion's own popover text ('-N' follow-up dmg, or 'N' deflected). */
@@ -184,6 +266,9 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     this.dStatus.set(this.defenderStatus);
     this.round.set(this.startRound);
     this.hasActed.set(this.startRound > 1); // resumed mid-fight: already acted
+    // Seat each sprite on the shared floor line as soon as its art is measured.
+    this.loadSeat(this.attacker.spriteUrl, this.attackerSeat);
+    this.loadSeat(this.defender.spriteUrl, this.defenderSeat);
     if (this.resume) {
       // Reopened after a reload: fighters are already in the ring.
       this.enteredFighters.set(true);
@@ -206,6 +291,14 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   private clearTimers(): void {
     for (const t of this.timers) clearTimeout(t);
     this.timers = [];
+  }
+
+  /** Measure a sprite's content bounds (async) and stash the resulting seat so
+   *  the template can plant it on the floor and hang the intent bubble at head
+   *  height. No-op when there's no sprite URL (icon fallback stays neutral). */
+  private loadSeat(url: string | null | undefined, target: typeof this.attackerSeat): void {
+    if (!url) return;
+    measureSpriteSeat(url).then((seat) => target.set(seat));
   }
 
   protected tellText(): string {
@@ -416,9 +509,10 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * A flee attempt failed. Flash the notice, then play the enemy's free action
-   * (the caught-off-guard round the server resolved). With no round args the
-   * blow was lethal and the parent drives finish() separately — just flash.
+   * A flee attempt failed. Flash the notice, then play the scramble round the
+   * server resolved — the fleer fought on with a random stance (which can win or
+   * lose). With no round args someone dropped and the parent drives finish()
+   * separately — just flash.
    */
   fleeFailed(
     entries?: CombatEntry[],
@@ -571,7 +665,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
 
   protected hasRewards(): boolean {
     const r = this.rewards();
-    return this.outcome() === 'attacker' && !!r && (!!r.spores || !!r.xp || !!r.renown || !!r.levels || !!r.itemName || !!r.gearName);
+    return this.outcome() === 'attacker' && !!r && (!!r.spores || !!r.xp || !!r.renown || !!r.levels || !!r.itemName || !!r.gearName || !!r.eggTier);
   }
 
   // Built once on first read (when a win is shown) so the victory rain doesn't

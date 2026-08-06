@@ -90,34 +90,39 @@
                 }
                 <span class="stats-hint stats-hint-end muted">tap to learn more</span>
               </h3>
-              <div class="stats-body">
-                <div class="stat-tiles">
-                  @for (stat of ['atk', 'def', 'spd']; track stat) {
-                    <button
-                      type="button"
-                      class="stat-tile"
-                      [class.active]="openStat() === stat"
-                      [class.celebrate]="rollStat() === stat"
-                      (click)="selectStat(stat)"
-                    >
+              <!-- Attribute cards: each stat fuses its effective value + base/gear
+                   breakdown (the header) with its perk chain (6 → 18, top to bottom).
+                   The header is the interactive tile: tap to open the description aside,
+                   +1 to spend a stat point, and the number rolls on increase. Perk nodes
+                   light as invested atk/def/spd PLUS equipped gear cross 6 / 12 / 18;
+                   temporary buffs never light a node. -->
+              <div class="perk-cards">
+                @for (stat of perkTrackOrder; track stat) {
+                  <div
+                    class="pcard"
+                    [class.active]="openStat() === stat"
+                    [class.celebrate]="rollStat() === stat"
+                  >
+                    <button type="button" class="pcard-head" (click)="selectStat(stat)">
+                      <span class="pcard-corner pcard-corner-base" title="base value">{{ $any(you)[stat] }}</span>
+                      @if (gearMods()[stat] > 0) {
+                        <span class="pcard-corner pcard-corner-gear" title="from equipped gear">+{{ gearMods()[stat] }}</span>
+                      }
                       @if (statInfo[stat].icon.startsWith('uc-')) {
                         <mat-icon class="mi" [svgIcon]="statInfo[stat].icon"></mat-icon>
                       } @else {
                         <mat-icon class="mi">{{ statInfo[stat].icon }}</mat-icon>
                       }
                       @if (rollStat() === stat) {
-                        <span class="stat-tile-val rolling">
-                          <span class="roll-out">{{ rollFrom() }}</span>
-                          <span class="roll-in">{{ $any(you)[stat] }}</span>
+                        <span class="pcard-val rolling">
+                          <span class="roll-out">{{ rollFrom() + gearMods()[stat] }}</span>
+                          <span class="roll-in">{{ trackValue(stat) }}</span>
                         </span>
                         <span class="stat-pop">+1</span>
                       } @else {
-                        <span class="stat-tile-val">{{ $any(you)[stat] }}</span>
+                        <span class="pcard-val">{{ trackValue(stat) }}</span>
                       }
-                      @if (gearMods()[stat] > 0) {
-                        <span class="stat-tile-mod" title="from equipped gear">+{{ gearMods()[stat] }}</span>
-                      }
-                      <span class="stat-tile-name">{{ stat.toUpperCase() }}</span>
+                      <span class="pcard-name">{{ stat.toUpperCase() }}</span>
                       @if (you.statPoints > 0) {
                         <span
                           class="uc-btn plus-btn"
@@ -129,43 +134,8 @@
                         </span>
                       }
                     </button>
-                  }
-                </div>
-                @if (openStat(); as s) {
-                  <aside class="stat-desc">
-                    <div class="stat-desc-head">
-                      @if (statInfo[s].icon.startsWith('uc-')) {
-                        <mat-icon class="mi" [svgIcon]="statInfo[s].icon"></mat-icon>
-                      } @else {
-                        <mat-icon class="mi">{{ statInfo[s].icon }}</mat-icon>
-                      }
-                      {{ statInfo[s].label }}
-                    </div>
-                    <p>{{ statInfo[s].desc }}</p>
-                    @if (gearMods()[s] > 0) {
-                      <p class="stat-breakdown">
-                        <span class="base">{{ $any(you)[s] }} base</span>
-                        <span class="plus">+ {{ gearMods()[s] }} gear</span>
-                        <span class="total">= {{ $any(you)[s] + gearMods()[s] }}</span>
-                      </p>
-                    }
-                  </aside>
-                }
-              </div>
-              <!-- Attribute perk tracks: nodes light as invested atk/def/spd
-                   plus equipped gear cross 6 / 12 / 18. Temporary buffs never
-                   light a node. Each track's three perks lay out as a 3-up
-                   card row to keep the panel short. -->
-              <div class="perk-tracks">
-                <h4 class="perk-tracks-title">Attribute perks</h4>
-                @for (track of perkTrackOrder; track track) {
-                  <div class="perk-track">
-                    <div class="perk-track-head">
-                      <span class="perk-track-name">{{ track.toUpperCase() }}</span>
-                      <span class="perk-track-val">{{ trackValue(track) }}</span>
-                    </div>
-                    <div class="perk-nodes">
-                      @for (node of trackNodes(track); track node.perk.id) {
+                    <div class="perk-chain">
+                      @for (node of trackNodes(stat); track node.perk.id; let last = $last) {
                         <div
                           class="perk-node"
                           [class.lit]="node.lit"
@@ -175,16 +145,30 @@
                             <mat-icon class="mi perk-node-icon" [svgIcon]="statInfo[node.perk.track].icon"></mat-icon>
                             {{ node.threshold }}
                           </span>
-                          <span class="perk-node-body">
-                            <span class="perk-node-name">{{ node.perk.name }}</span>
-                            <span class="perk-node-blurb">{{ node.perk.blurb }}</span>
-                          </span>
+                          <span class="perk-node-name">{{ node.perk.name }}</span>
+                          <span class="perk-node-blurb">{{ node.perk.blurb }}</span>
                         </div>
+                        @if (!last) {
+                          <div class="perk-link" [class.lit]="node.lit"></div>
+                        }
                       }
                     </div>
                   </div>
                 }
               </div>
+              @if (openStat(); as s) {
+                <aside class="stat-desc">
+                  <div class="stat-desc-head">
+                    @if (statInfo[s].icon.startsWith('uc-')) {
+                      <mat-icon class="mi" [svgIcon]="statInfo[s].icon"></mat-icon>
+                    } @else {
+                      <mat-icon class="mi">{{ statInfo[s].icon }}</mat-icon>
+                    }
+                    {{ statInfo[s].label }}
+                  </div>
+                  <p>{{ statInfo[s].desc }}</p>
+                </aside>
+              }
 
               <!-- Traits: the home-biome innate ability plus any form passives.
                    Sits below the perk tracks. -->
@@ -226,8 +210,8 @@
                           {{ petAbilityReady(pet) ? 'Send scavenging' : petAbilityLeftMin(pet) + ' min' }}
                         </button>
                       } @else if (petRoleOf(pet) === 'scout') {
-                        <button type="button" class="pet-btn" [disabled]="busy() || !petAbilityReady(pet)" (click)="openBirdScout()">
-                          {{ petAbilityReady(pet) ? 'Scout a bazaar' : petAbilityLeftMin(pet) + ' min' }}
+                        <button type="button" class="pet-btn" [disabled]="busy()" (click)="openScoutCourier()">
+                          {{ petAbilityReady(pet) ? 'Scout Courier' : 'Courier · ' + petAbilityLeftMin(pet) + ' min' }}
                         </button>
                       }
                     } @else if (petInfo(pet.species).kind === 'economy') {
@@ -249,10 +233,10 @@
                 </button>
               }
               <div class="gear-mat-chips">
-                <span class="gear-mat-chip" title="Moltings">
+                <span class="gear-mat-chip mtl" title="Moltings">
                   <mat-icon class="mi mtl-i">grass</mat-icon>{{ you.materials?.moltings ?? 0 }}
                 </span>
-                <span class="gear-mat-chip" title="Gemstones">
+                <span class="gear-mat-chip ich" title="Gemstones">
                   <mat-icon class="mi ich-i">diamond</mat-icon>{{ you.materials?.ichor ?? 0 }}
                 </span>
               </div>
@@ -771,7 +755,7 @@
                   <section class="card companion-card">
                     <div class="roster-head">
                       <h3>Roster</h3>
-                      @if (mergeableSpeciesExist()) {
+                      @if (canMerge()) {
                         <button type="button" class="uc-btn merge-btn" (click)="openMerge()">
                           <mat-icon class="mi">call_merge</mat-icon> Merge
                         </button>
@@ -1200,62 +1184,60 @@
             <mat-icon class="mi slot-mi">call_merge</mat-icon>
             <div class="item-sheet-title">
               <span class="item-sheet-name">Merge Companions</span>
-              <span class="item-sheet-sub">Feed duplicates into one to raise its rarity</span>
+              <span class="item-sheet-sub">Feed any pets into one to raise its rarity</span>
             </div>
           </header>
 
           <div class="merge-popup-body">
-            @for (group of mergeGroups(); track group.species) {
-              <div class="merge-group" [attr.data-rarity]="petRarity(group.keeper)">
+            @if (mergeState(); as st) {
+              <div class="merge-group" [attr.data-rarity]="petRarity(st.keeper)">
                 <div class="merge-keeper">
-                  <img class="pet-sprite" [src]="petSpriteUrl(group.keeper.species)" [alt]="group.name" />
+                  <img class="pet-sprite" [src]="petSpriteUrl(st.keeper.species)" [alt]="petInfo(st.keeper.species).name" />
                   <div class="merge-keeper-info">
-                    <span class="merge-keeper-name">{{ group.name }}
-                      <span class="rarity-badge {{ petRarity(group.keeper) }}">{{ group.currentRarity }}</span>
+                    <span class="merge-keeper-name">{{ petInfo(st.keeper.species).name }}
+                      <span class="rarity-badge {{ petRarity(st.keeper) }}">{{ st.currentRarity }}</span>
                     </span>
-                    <span class="merge-keeper-rarity">{{ group.currentRarity }} → {{ group.nextRarity }} · keeper Lv {{ group.keeper.level }}</span>
+                    <span class="merge-keeper-rarity">{{ st.currentRarity }} → {{ st.nextRarity }} · keeper Lv {{ st.keeper.level }}</span>
                   </div>
-                  <button type="button" class="merge-change" (click)="toggleKeeperPicker(group.species)">
-                    Change
-                  </button>
                 </div>
 
-                @if (mergeKeeperPicker() === group.species) {
-                  <div class="merge-keeper-picker">
-                    @for (p of speciesPets(group.species); track p.id) {
-                      <button type="button" class="merge-chip" [class.picked]="p.id === group.keeper.id"
-                              [attr.data-rarity]="petRarity(p)" (click)="chooseKeeper(group.species, p.id)">
-                        <img class="pet-sprite" [src]="petSpriteUrl(p.species)" [alt]="group.name" />
-                        <span>Lv {{ p.level }}</span>
-                      </button>
-                    }
-                  </div>
-                }
-
-                <span class="merge-label muted">Feed in:</span>
+                <span class="merge-label muted">Feed in any pets (tap ★ to make one the keeper):</span>
                 <div class="merge-fodder">
-                  @for (f of group.fodder; track f.id) {
-                    <button type="button" class="merge-chip" [class.picked]="mergePicks().has(f.id)"
-                            [attr.data-rarity]="petRarity(f)" (click)="toggleMergePick(f.id)">
-                      <img class="pet-sprite" [src]="petSpriteUrl(f.species)" [alt]="group.name" />
-                      <span>Lv {{ f.level }}</span>
-                    </button>
+                  @for (f of st.fodder; track f.id) {
+                    <div class="merge-chip-wrap">
+                      <button type="button" class="merge-chip" [class.picked]="mergePicks().has(f.id)"
+                              [attr.data-rarity]="petRarity(f)" (click)="toggleMergePick(f.id)">
+                        <img class="pet-sprite" [src]="petSpriteUrl(f.species)" [alt]="petInfo(f.species).name" />
+                        <span>{{ petInfo(f.species).name }} · {{ tierRarity(f.tier).label }}</span>
+                      </button>
+                      @if (!petAtMaxTier(f)) {
+                        <button type="button" class="merge-star" title="Make keeper" (click)="chooseKeeper(f.id)">★</button>
+                      }
+                    </div>
                   }
                 </div>
 
                 <div class="merge-progress">
                   <div class="merge-progress-bar">
-                    <div class="merge-progress-fill" [style.width.%]="mergeProgressPct(group)"></div>
+                    <div class="merge-progress-fill" [style.width.%]="mergeProgressPct()"></div>
                   </div>
-                  <span class="merge-progress-num">{{ group.points }} / {{ group.need }}</span>
+                  <span class="merge-progress-num">{{ st.points }} / {{ st.need }}</span>
                 </div>
 
-                <button class="uc-btn merge-go" [disabled]="busy() || !group.ready" (click)="mergeGroup(group)">
-                  {{ group.ready ? 'Merge' : 'Pick more duplicates' }}
-                </button>
+                @if (mergeConfirm()) {
+                  <p class="merge-warn muted">Feeding in a higher-rarity pet as fuel — are you sure?</p>
+                  <div class="merge-confirm-row">
+                    <button class="uc-btn" (click)="mergeConfirm.set(false)">Cancel</button>
+                    <button class="uc-btn merge-go" [disabled]="busy()" (click)="doMerge()">Confirm merge</button>
+                  </div>
+                } @else {
+                  <button class="uc-btn merge-go" [disabled]="busy() || !st.ready" (click)="doMerge()">
+                    {{ st.ready ? (st.highRarityFuel ? 'Merge…' : 'Merge') : 'Pick more pets' }}
+                  </button>
+                }
               </div>
-            } @empty {
-              <p class="muted bag-empty">No duplicates to merge.</p>
+            } @else {
+              <p class="muted bag-empty">No pets to rank up right now.</p>
             }
           </div>
         </div>
@@ -1307,68 +1289,64 @@
       </div>
     }
 
-    <!-- Bird scout: pick a bazaar to reveal its stock without travelling. -->
-    @if (birdScoutOpen()) {
-      <div class="item-sheet-backdrop" (click)="closeBirdScout()">
+    <!-- Scout courier: peek the biome bazaar (free) and haul back one tier-capped item. -->
+    @if (scoutOpen() && scoutView(); as sv) {
+      <div class="item-sheet-backdrop" (click)="closeScoutCourier()">
         <div class="item-sheet" (click)="$event.stopPropagation()">
-          <button class="item-sheet-close" (click)="closeBirdScout()" aria-label="Close">
+          <button class="item-sheet-close" (click)="closeScoutCourier()" aria-label="Close">
             <mat-icon class="mi">close</mat-icon>
           </button>
           <header class="item-sheet-head">
             <mat-icon class="mi slot-mi">visibility</mat-icon>
             <div class="item-sheet-title">
-              <span class="item-sheet-name">Send the Bird scouting</span>
-              <span class="item-sheet-sub">Reveal a bazaar's stock — puts the bird on cooldown</span>
-            </div>
-          </header>
-          <div class="bazaar-scout-list">
-            @for (node of bazaarNodes(); track node; let i = $index) {
-              <button type="button" class="bazaar-scout-row" [disabled]="busy()" (click)="scoutBazaar(node)">
-                <mat-icon class="mi bazaar-scout-ico">storefront</mat-icon>
-                <span class="bazaar-scout-name">Bazaar {{ i + 1 }}
-                  <span class="bazaar-scout-sub">{{ bazaarGearCount(node) }} gear in stock</span>
-                </span>
-                <span class="bazaar-scout-eggs">
-                  @for (e of bazaarEggs(node); track e.tier) {
-                    <img class="pet-sprite egg-mini" [src]="eggSpriteUrl(e.tier)"
-                         [attr.title]="tierRarity(e.tier).label + ' egg'" alt="Egg" />
-                  } @empty {
-                    <span class="muted">no eggs</span>
-                  }
-                </span>
-              </button>
-            } @empty {
-              <p class="muted bag-empty">No bazaars on the map right now.</p>
-            }
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- Bird scout result: the revealed bazaar stock. -->
-    @if (birdScoutResult(); as scout) {
-      <div class="item-sheet-backdrop" (click)="birdScoutResult.set(null)">
-        <div class="item-sheet" (click)="$event.stopPropagation()">
-          <button class="item-sheet-close" (click)="birdScoutResult.set(null)" aria-label="Close">
-            <mat-icon class="mi">close</mat-icon>
-          </button>
-          <header class="item-sheet-head">
-            <mat-icon class="mi slot-mi">storefront</mat-icon>
-            <div class="item-sheet-title">
-              <span class="item-sheet-name">Scouted bazaar</span>
-              <span class="item-sheet-sub">Your bird reports the stock</span>
+              <span class="item-sheet-name">Scout Courier</span>
+              <span class="item-sheet-sub">
+                Delivers up to {{ tierRarity(sv.tierCap).label }}
+                @if (scoutOnCooldown()) { · resting }
+              </span>
             </div>
           </header>
           <div class="item-sheet-effects">
-            @for (g of scout.stock.gear; track g.item) {
-              @if (gearMapRef[g.item]; as gi) {
-                <p class="effect-line"><strong class="effect-label">{{ gi.name }}</strong>
-                  <span>{{ tierRarity(gi.tier).label }} · ×{{ g.qty }}</span></p>
+            @for (g of sv.stock.gear; track g.item) {
+              @if (g.qty > 0 && gearMapRef[g.item]; as gi) {
+                <p class="effect-line" [class.locked]="scoutGearLocked(g.item)">
+                  <strong class="effect-label">{{ gi.name }}</strong>
+                  <span>{{ tierRarity(gi.tier).label }} · {{ gi.cost }} Spores</span>
+                  @if (scoutGearLocked(g.item)) {
+                    <span class="muted">Merge to reach {{ tierRarity(gi.tier).label }}</span>
+                  } @else {
+                    <button type="button" class="pet-btn"
+                            [disabled]="busy() || scoutOnCooldown() || !canAfford(gi.cost)"
+                            (click)="scoutBuy({ itemId: g.item })">Deliver</button>
+                  }
+                </p>
               }
             }
-            @for (e of scout.stock.eggs ?? []; track e.tier) {
-              <p class="effect-line"><strong class="effect-label">{{ tierRarity(e.tier).label }} Egg</strong>
-                <span>{{ e.cost }} Spores · ×{{ e.qty }}</span></p>
+            @for (e of sv.stock.eggs ?? []; track e.tier) {
+              @if (e.qty > 0) {
+                <p class="effect-line" [class.locked]="scoutEggLocked(e.tier)">
+                  <strong class="effect-label">{{ tierRarity(e.tier).label }} Egg</strong>
+                  <span>{{ e.cost }} Spores</span>
+                  @if (scoutEggLocked(e.tier)) {
+                    <span class="muted">Merge to reach {{ tierRarity(e.tier).label }}</span>
+                  } @else {
+                    <button type="button" class="pet-btn"
+                            [disabled]="busy() || scoutOnCooldown() || !canAfford(e.cost)"
+                            (click)="scoutBuy({ kind: 'egg', tier: e.tier })">Deliver</button>
+                  }
+                </p>
+              }
+            }
+            @for (c of sv.stock.consumables; track c.item) {
+              @if (c.qty > 0 && consumableMap[c.item]; as ci) {
+                <p class="effect-line">
+                  <strong class="effect-label">{{ ci.name }}</strong>
+                  <span>{{ ci.cost }} Spores</span>
+                  <button type="button" class="pet-btn"
+                          [disabled]="busy() || scoutOnCooldown() || !canAfford(ci.cost)"
+                          (click)="scoutBuy({ itemId: c.item })">Deliver</button>
+                </p>
+              }
             }
           </div>
         </div>

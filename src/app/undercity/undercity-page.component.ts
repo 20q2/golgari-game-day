@@ -13,6 +13,7 @@ import { UserService } from '../services/user.service';
 import { UndercityStateService } from './services/undercity-state.service';
 import { preloadAll, getRecoloredWithHatDataUrl } from './engine/sprite-engine';
 import { BoardMap } from './engine/board-canvas';
+import { decideMapSync, MapSyncState } from './engine/map-sync';
 import { UndercityApiService } from './services/undercity-api.service';
 import { formSprite } from './data/species';
 import { xpToNext, formName } from './data/forms';
@@ -217,6 +218,11 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   private sporeDeltaTimer: ReturnType<typeof setTimeout> | null = null;
   private sporePulseTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** Board-map staleness tracking (see engine/map-sync). `undefined` season =
+   *  never fetched, so the first effect run does the initial load. */
+  private mapSync: MapSyncState = { loadedSeason: undefined, posHealAttempted: false };
+  private mapFetching = false;
+
   constructor() {
     // Central level-up watcher: `you.level` can rise from battles, board
     // spaces, or any other action, so we watch the one shared signal here in
@@ -292,6 +298,37 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
         this.sporeBig.set(false);
       }, big ? 600 : 450);
     });
+
+    // Board-map loader + self-healer. The night's board (surface + this season's
+    // procedural depths) is fetched here rather than once in ngOnInit so it can
+    // re-fetch when it goes stale: on the initial load, when a fresh night rolls
+    // over (seasonId changes), and — the critical fix — when the player's node
+    // is missing from the loaded map. That last case is the dungeon desync bug:
+    // a stale map lacks the server's current depths node, layerIndex silently
+    // files it under `overworld`, and the dungeon renders fully lit and
+    // unwalkable. decideMapSync guards against re-fetch loops.
+    effect(() => {
+      const season = this.store.season()?.seasonId ?? null;
+      const position = this.store.you()?.position;
+      const map = this.map();
+      if (this.mapFetching) return;
+      const mapNodeIds = map ? new Set(map.nodes.map((n) => n.id)) : null;
+      const decision = decideMapSync(this.mapSync, { season, position, mapNodeIds });
+      if (!decision.refetch) return;
+      this.mapFetching = true;
+      this.api
+        .getMap()
+        .then((m) => {
+          this.mapSync = decision.next;
+          this.map.set(m);
+        })
+        .catch(() => {
+          // Leave the current map in place; a later season/state tick retries.
+        })
+        .finally(() => {
+          this.mapFetching = false;
+        });
+    });
   }
 
   async ngOnInit(): Promise<void> {
@@ -300,7 +337,8 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     // that otherwise leaves scrollable dead space below the app on mobile.
     document.body.classList.add('undercity-page');
     void preloadAll().then(() => this.assetsReady.set(true));
-    void this.api.getMap().then((m) => this.map.set(m));
+    // The board map is loaded (and kept fresh) by the map-sync effect in the
+    // constructor — see decideMapSync — not fetched once here.
     if (this.userService.isSignedIn()) {
       this.store.startPolling();
     }

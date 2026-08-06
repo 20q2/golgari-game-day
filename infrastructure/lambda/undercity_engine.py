@@ -89,14 +89,14 @@ def flee_attempt(fleer: Combatant, enemy: Combatant, rng) -> dict:
     """
     One flee action (replaces the old flee stance). Uses the existing
     SPD-based flee_chance + home-biome bonus; a smoke spore auto-succeeds a
-    failed roll. On failure the fleer is caught off guard (-1 DEF).
+    failed roll. A failed flee carries no stat penalty — it simply rolls into a
+    clean scramble round (see flee_scramble).
     """
     chance = min(95, flee_chance(fleer.spd, enemy.spd) + fleer.flee_bonus)
     if rng.random() * 100 < chance:
         return {'escaped': True, 'smokeSporeUsed': False}
     if fleer.has_smoke_spore:
         return {'escaped': True, 'smokeSporeUsed': True}
-    fleer.dfn = max(0, fleer.dfn - 1)
     return {'escaped': False, 'smokeSporeUsed': False}
 
 
@@ -501,20 +501,17 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
     return entries
 
 
-# The stance that BEATS a given one (aggress>feint>guard>aggress).
-_NEUTRALIZE = {'aggress': 'guard', 'guard': 'feint', 'feint': 'aggress'}
-
-
-def flee_punish(fleer, enemy, enemy_stance, rnd, rng, frenzy_from=None) -> list:
-    """A FAILED flee: the fleer is caught off guard and the enemy lands its
-    telegraphed action for free. Resolve one normal round with the enemy forced
-    to win the exchange, handing the fleer the stance that WOULD have beaten the
-    enemy — so the engine treats it as a clean loss with no punish-back, i.e. a
-    defenceless runner who simply eats the blow. The enemy's real stance still
-    drives the hit (a guarding foe still counters; an aggressor still swings big).
+def flee_scramble(fleer, enemy, enemy_stance, rnd, rng, frenzy_from=None) -> list:
+    """A FAILED flee: caught mid-turn, the fleer can't set a stance — it scrambles
+    into a RANDOM one and the round resolves normally against the enemy's
+    telegraphed action. A lucky draw ties or even wins the exchange (a real chance
+    to survive, and to counter), instead of the old guaranteed loss; an unlucky one
+    still eats the blow. It is a fully clean round — no caught-off-guard penalty.
     Mutates both combatants; returns the round's log entries."""
-    return resolve_round(fleer, enemy, _NEUTRALIZE[enemy_stance], enemy_stance,
-                         rnd, rng, force_winner='defender', frenzy_from=frenzy_from)
+    fleer_stance = data.STANCES[min(int(rng.random() * len(data.STANCES)),
+                                    len(data.STANCES) - 1)]
+    return resolve_round(fleer, enemy, fleer_stance, enemy_stance,
+                         rnd, rng, frenzy_from=frenzy_from)
 
 
 def resolve_battle_rounds(attacker, defender, rng, pick_a, pick_d,
@@ -746,7 +743,7 @@ def apply_level_ups(player: dict) -> int:
         player['maxHp'] += data.HP_PER_LEVEL
         player['hp'] += data.HP_PER_LEVEL
         rate = (data.GORGON_STAT_POINTS_PER_LEVEL
-                if 'stonewright' in (player.get('passives') or [])
+                if 'gift_of_fair_folk' in (player.get('passives') or [])
                 else data.STAT_POINTS_PER_LEVEL)
         player['statPoints'] = player.get('statPoints', 0) + rate
         player['spentThisLevel'] = {'atk': 0, 'def': 0, 'spd': 0}
@@ -924,11 +921,18 @@ def regen_hp(player: dict, now_iso: str) -> None:
     player['hpUpdatedAt'] = advanced.strftime(_ISO)
 
 
-def regen_rolls(player: dict, now_iso: str) -> None:
+def regen_rolls(player: dict, now_iso: str, bank_rested: bool = True) -> None:
     """Bank ROLLS_PER_REGEN rolls per full ROLL_REGEN_MINUTES since rollRegenAt,
-    lazily, capped at ROLL_CAP. The timestamp advances by whole intervals only,
-    so partial progress toward the next tick is never lost — and it advances
-    even at cap, so a full bank doesn't stockpile hidden progress."""
+    lazily, capped at ROLL_CAP. Overflow past the cap banks into `rested` (up to
+    RESTED_CAP); when the bank has room and rested is available, a tick pays out
+    DOUBLE and draws the extra from rested — so being away is net-neutral in total
+    rolls until rested hits its ceiling. The timestamp advances by whole intervals
+    only, so partial progress toward the next tick is never lost, and it advances
+    even when fully maxed so a full bank doesn't stockpile hidden progress.
+
+    bank_rested=False restores the legacy cap-and-discard behaviour — used when
+    seeding a first-time joiner's bank from the night start, so latecomers get a
+    full bank but no rested stockpile."""
     last = player.get('rollRegenAt')
     if not last:
         player['rollRegenAt'] = now_iso
@@ -937,8 +941,29 @@ def regen_rolls(player: dict, now_iso: str) -> None:
     intervals = int(minutes // data.ROLL_REGEN_MINUTES)
     if intervals <= 0:
         return
-    player['rolls'] = min(data.ROLL_CAP,
-                          player.get('rolls', 0) + intervals * data.ROLLS_PER_REGEN)
+    rolls = player.get('rolls', 0)
+    rested = player.get('rested', 0)
+    per, cap, rcap = data.ROLLS_PER_REGEN, data.ROLL_CAP, data.RESTED_CAP
+    for _ in range(intervals):
+        if rolls >= cap:
+            if not bank_rested or rested >= rcap:
+                break            # maxed (or legacy mode) — remaining ticks are no-ops
+            rested = min(rcap, rested + per)
+        else:
+            gain = per
+            if bank_rested and rested > 0:
+                bonus = min(rested, per)   # the "double": up to 2x this tick
+                gain += bonus
+                rested -= bonus
+            new_rolls = rolls + gain
+            if new_rolls > cap:
+                if bank_rested:
+                    rested = min(rcap, rested + (new_rolls - cap))
+                rolls = cap        # legacy mode discards the overshoot
+            else:
+                rolls = new_rolls
+    player['rolls'] = rolls
+    player['rested'] = rested
     advanced = _parse_iso(last) + timedelta(minutes=intervals * data.ROLL_REGEN_MINUTES)
     player['rollRegenAt'] = advanced.strftime(_ISO)
 

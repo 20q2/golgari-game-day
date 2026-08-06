@@ -304,7 +304,6 @@
               @if (spriteUrl(form, v.id); as vurl) {
                 <img class="variant-thumb" [src]="vurl" [alt]="v.name" />
               }
-              <span class="variant-label">{{ v.name }}</span>
             </button>
           }
         </div>
@@ -344,12 +343,14 @@
         }
       </div>
 
-      <div class="ability-card">
-        <span class="ability-head">
-          <mat-icon class="mi">auto_awesome</mat-icon> {{ form.passiveName }}
-        </span>
-        <span class="ability-desc">{{ passiveBlurbs[form.passive] }}</span>
-      </div>
+      @for (ability of formAbilities(form); track ability.name) {
+        <div class="ability-card">
+          <span class="ability-head">
+            <mat-icon class="mi">auto_awesome</mat-icon> {{ ability.name }}
+          </span>
+          <span class="ability-desc">{{ ability.blurb }}</span>
+        </div>
+      }
 
       <p class="showcase-evo">Evolves toward: {{ evolutionPreview(form) }}</p>
 

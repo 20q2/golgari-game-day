@@ -141,6 +141,11 @@
               {{ r.gearName }}{{ r.gearStashed ? '' : ' — stash full → materials' }}
             </span>
           }
+          @if (r.eggTier) {
+            <span class="reward-chip item">
+              <mat-icon class="mi">egg</mat-icon> Tier-{{ r.eggTier }} egg
+            </span>
+          }
           @if (r.levels) {
             <span class="reward-chip levelup">
               <mat-icon class="mi">arrow_upward</mat-icon>

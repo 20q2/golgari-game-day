@@ -80,6 +80,12 @@
     @if (nextRollLabel(); as nrl) {
       <div class="band-status">new rolls in {{ nrl }}</div>
     }
+    @if (restedRolls() > 0) {
+      <div class="band-status band-status-rested"
+           title="Rested rolls — your next timed rolls come in twice as fast until spent.">
+        <mat-icon class="mi">bedtime</mat-icon> {{ restedRolls() }} rested
+      </div>
+    }
     <!-- PvP: someone shares your space — Battle stays available alongside Roll -->
     @if (occupantsHere().length && !store.you()?.pendingMove) {
       <div class="band-morph pvp-strip">
@@ -540,6 +546,13 @@
                 }
               </span>
             }
+            @if (ev.egg) {
+              <span class="chip item">
+                <mat-icon class="mi">egg</mat-icon>
+                Egg
+                <span class="rarity-badge {{ tierRarity(ev.egg.tier).key }}">{{ tierRarity(ev.egg.tier).label }}</span>
+              </span>
+            }
             @if (ev.materials?.moltings; as m) {
               <span class="chip gain"><mat-icon class="mi">grass</mat-icon> +{{ m }}</span>
             }
@@ -595,7 +608,17 @@
         </span>
         <img class="modal-art" [src]="bazaarKeeper().art" alt="" />
         <h3><mat-icon class="mi">storefront</mat-icon> {{ bazaarTitle() }}</h3>
-        <p class="shop-quote">“{{ bazaarKeeper().quote }}”</p>
+        @if (welcomeGift(); as gift) {
+          <div class="shop-welcome">
+            <p class="shop-welcome-line">“{{ gift.line }}”</p>
+            <span class="shop-welcome-item">
+              <mat-icon class="mi">{{ welcomeGiftIcon() }}</mat-icon>
+              <strong>{{ gift.name }}</strong>@if (gift.kind === 'material') { <span>×{{ gift.amount ?? 1 }}</span> }
+            </span>
+          </div>
+        } @else {
+          <p class="shop-quote">“{{ bazaarKeeper().quote }}”</p>
+        }
 
         <div class="shop-tabs" role="tablist">
           <button class="shop-tab" [class.active]="shopTab() === 'gear'" (click)="setShopTab('gear')">
@@ -1083,50 +1106,65 @@
     </div>
   }
 
-  <!-- Bird scout picker: choose a bazaar to reveal (fires the scout ability). -->
-  @if (birdScoutOpen()) {
-    <div class="uc-modal-backdrop" (click)="closeBirdScout()">
+  <!-- Scout courier: peek the biome bazaar (free) and haul back one tier-capped item. -->
+  @if (scoutOpen() && scoutView(); as sv) {
+    <div class="uc-modal-backdrop" (click)="closeScoutCourier()">
       <div class="uc-modal" (click)="$event.stopPropagation()">
-        <h3><mat-icon class="mi">visibility</mat-icon> Send the Bird scouting</h3>
-        <p class="scroll-note">Reveal a bazaar's stock before you arrive — puts the bird on cooldown.</p>
-        @for (node of bazaarNodes(); track node; let i = $index) {
-          <div class="shop-row">
-            <span class="shop-name">
-              <mat-icon class="mi">storefront</mat-icon> Bazaar {{ i + 1 }}
-              <em>{{ bazaarGearCount(node) }} gear in stock</em>
-            </span>
-            <button class="uc-btn shop-buy" [disabled]="busy()" (click)="scoutBazaar(node)">Scout</button>
-          </div>
-        } @empty {
-          <p class="scroll-note">No bazaars on the map right now.</p>
-        }
-        <button class="uc-btn close-btn" (click)="closeBirdScout()">Never mind</button>
-      </div>
-    </div>
-  }
+        <h3><mat-icon class="mi">visibility</mat-icon> Scout Courier</h3>
+        <p class="scroll-note">
+          Your scout hauls back one item from your biome's bazaar — up to
+          <strong>{{ tierRarity(sv.tierCap).label }}</strong>.
+          @if (scoutOnCooldown()) { <em>Resting — one delivery per cooldown.</em> }
+        </p>
 
-  <!-- Bird scout result: the revealed bazaar stock. -->
-  @if (birdScoutResult(); as scout) {
-    <div class="uc-modal-backdrop" (click)="birdScoutResult.set(null)">
-      <div class="uc-modal" (click)="$event.stopPropagation()">
-        <h3><mat-icon class="mi">storefront</mat-icon> Scouted bazaar</h3>
-        @for (g of scout.stock.gear; track g.item) {
-          @if (gearMapRef[g.item]; as gi) {
-            <div class="shop-row">
+        @for (g of sv.stock.gear; track g.item) {
+          @if (g.qty > 0 && gearMapRef[g.item]; as gi) {
+            <div class="shop-row" [class.locked]="scoutGearLocked(g.item)">
               <span class="shop-name">{{ gi.name }}
-                <em>{{ tierRarity(gi.tier).label }} · ×{{ g.qty }}</em>
+                <em>{{ tierRarity(gi.tier).label }} · {{ gi.cost }} Spores</em>
               </span>
+              @if (scoutGearLocked(g.item)) {
+                <span class="scroll-note">Merge your scout to reach {{ tierRarity(gi.tier).label }}</span>
+              } @else {
+                <button class="uc-btn shop-buy"
+                        [disabled]="busy() || scoutOnCooldown() || !canAfford(gi.cost)"
+                        (click)="scoutBuy({ itemId: g.item })">Deliver</button>
+              }
             </div>
           }
         }
-        @for (e of scout.stock.eggs ?? []; track e.tier) {
-          <div class="shop-row">
-            <span class="shop-name">{{ tierRarity(e.tier).label }} Egg
-              <em>{{ e.cost }} Spores · ×{{ e.qty }}</em>
-            </span>
-          </div>
+
+        @for (e of sv.stock.eggs ?? []; track e.tier) {
+          @if (e.qty > 0) {
+            <div class="shop-row" [class.locked]="scoutEggLocked(e.tier)">
+              <span class="shop-name">{{ tierRarity(e.tier).label }} Egg
+                <em>{{ e.cost }} Spores</em>
+              </span>
+              @if (scoutEggLocked(e.tier)) {
+                <span class="scroll-note">Merge your scout to reach {{ tierRarity(e.tier).label }}</span>
+              } @else {
+                <button class="uc-btn shop-buy"
+                        [disabled]="busy() || scoutOnCooldown() || !canAfford(e.cost)"
+                        (click)="scoutBuy({ kind: 'egg', tier: e.tier })">Deliver</button>
+              }
+            </div>
+          }
         }
-        <button class="uc-btn close-btn" (click)="birdScoutResult.set(null)">Done</button>
+
+        @for (c of sv.stock.consumables; track c.item) {
+          @if (c.qty > 0 && consumableMap[c.item]; as ci) {
+            <div class="shop-row">
+              <span class="shop-name">{{ ci.name }}
+                <em>{{ ci.cost }} Spores</em>
+              </span>
+              <button class="uc-btn shop-buy"
+                      [disabled]="busy() || scoutOnCooldown() || !canAfford(ci.cost)"
+                      (click)="scoutBuy({ itemId: c.item })">Deliver</button>
+            </div>
+          }
+        }
+
+        <button class="uc-btn close-btn" (click)="closeScoutCourier()">Done</button>
       </div>
     </div>
   }

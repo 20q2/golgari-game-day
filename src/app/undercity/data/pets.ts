@@ -38,7 +38,7 @@ export const PET_ROLES: Record<PetRole, PetRoleInfo> = {
   attack: { kind: 'combat-passive', blurb: 'Chance to strike a follow-up hit in battle.', icon: 'pets' },
   defend: { kind: 'combat-passive', blurb: 'Chance to deflect a few points of damage.', icon: 'shield' },
   forage: { kind: 'activated', blurb: 'Scavenges a small cache of loot.', icon: 'savings' },
-  scout: { kind: 'activated', blurb: "Scouts a bazaar's stock before you arrive.", icon: 'visibility' },
+  scout: { kind: 'activated', blurb: 'Delivers gear from your local bazaar without a visit.', icon: 'visibility' },
   economy: { kind: 'economy', blurb: 'Scavenges Spores from loot spaces you pass — tap to collect.', icon: 'grass' },
 };
 
@@ -85,6 +85,52 @@ export function petSpriteUrl(species: PetSpecies): string {
   return `undercity/pets/${petRole(species)}/${species}.png`;
 }
 
+// ── Temperament (CLIENT-ONLY cosmetic) ───────────────────────────────────────
+// Personality that drives how the board follower pet idles, wanders, and hops
+// (see engine/board-canvas.ts `updateAndDrawPet`). Fixed per ROLE — two species
+// share a role and therefore a temperament. This has NO server counterpart; it
+// only reshapes animation feel, never behaviour or balance.
+
+/** Animation feel of the board follower pet. All times in ms, distances in px. */
+export interface TemperamentProfile {
+  /** Display label (Zippy / Restless / Busy / Steady / Laid-back). */
+  name: string;
+  /** Rest interval before it may wander off (min..max). */
+  exploreMin: number;
+  exploreMax: number;
+  /** How far it roams from the owner while wandering. */
+  exploreRadius: number;
+  /** How long one wander lasts before it settles back. */
+  exploreDwell: number;
+  /** ms per hop — lower is snappier. */
+  hopDur: number;
+  /** Vertical lift at a hop's peak. */
+  hopHeight: number;
+  /** Max px one hop advances toward the target (far targets chain hops). */
+  hopStep: number;
+  /** Idle-breath amplitude while at rest. */
+  breathAmp: number;
+}
+
+/** Role → temperament. Mirror of the design doc's table (client-only). */
+export const PET_TEMPERAMENTS: Record<PetRole, TemperamentProfile> = {
+  // Hyper: wanders often, wide roam, snappy bouncy hops.
+  scout: { name: 'Zippy', exploreMin: 1800, exploreMax: 3800, exploreRadius: 40, exploreDwell: 2600, hopDur: 120, hopHeight: 9, hopStep: 34, breathAmp: 1.0 },
+  // Twitchy darter: frequent short sharp hops, very quick, mid-range roam.
+  attack: { name: 'Restless', exploreMin: 2200, exploreMax: 4500, exploreRadius: 30, exploreDwell: 1500, hopDur: 105, hopHeight: 8, hopStep: 28, breathAmp: 1.1 },
+  // Head-down digger: wanders often but in a tight radius with little steps.
+  forage: { name: 'Busy', exploreMin: 2000, exploreMax: 4200, exploreRadius: 20, exploreDwell: 2600, hopDur: 140, hopHeight: 6, hopStep: 24, breathAmp: 0.8 },
+  // Calm sentinel: rarely leaves the owner's side, slow deliberate hops.
+  defend: { name: 'Steady', exploreMin: 6000, exploreMax: 11000, exploreRadius: 16, exploreDwell: 2000, hopDur: 185, hopHeight: 6, hopStep: 34, breathAmp: 0.5 },
+  // Lazy grazer: very rarely wanders, low slow hops, slow breathing.
+  economy: { name: 'Laid-back', exploreMin: 7000, exploreMax: 13000, exploreRadius: 22, exploreDwell: 3000, hopDur: 200, hopHeight: 5, hopStep: 34, breathAmp: 0.4 },
+};
+
+/** Temperament profile for a species (via its role; defaults to Restless). */
+export function petTemperament(species: PetSpecies): TemperamentProfile {
+  return PET_TEMPERAMENTS[petRole(species)];
+}
+
 // Egg art files are named for the gear rarity scale, so tier maps 1:1 to a file.
 const EGG_SPRITE_BY_TIER: Record<number, string> = {
   1: 'common_egg',
@@ -127,6 +173,16 @@ export const PET_ABILITY_COOLDOWN_MIN: Partial<Record<PetRole, number>> = {
 };
 export const PET_ABILITY_COOLDOWN_PER_LVL = 2;
 export const PET_ABILITY_COOLDOWN_FLOOR = 5;
+
+/** Mirror of undercity_config.PET_SCOUT_TIER_BY_LEVEL: the max ITEM tier a scout
+ *  can haul back from its biome bazaar, indexed by level - 1 (clamped). */
+export const PET_SCOUT_TIER_BY_LEVEL = [1, 1, 2, 2, 3, 3, 4, 4, 4];
+
+/** Max item tier a scout of this level can deliver. */
+export function scoutTierCap(level: number): number {
+  const i = Math.max(0, Math.min(level, PET_SCOUT_TIER_BY_LEVEL.length) - 1);
+  return PET_SCOUT_TIER_BY_LEVEL[i];
+}
 
 // Economy companion (mirror undercity_config PET_SPORE_*). An active economy pet
 // scavenges Spores as you MOVE: each loot space you pass OVER banks a few onto
@@ -227,7 +283,10 @@ export function petAbilityStats(pet: Pet): { label: string; value: string }[] {
         { label: 'Cooldown', value: `${abilityCooldownMin('forage', lvl)} min` },
       ];
     case 'scout':
-      return [{ label: 'Cooldown', value: `${abilityCooldownMin('scout', lvl)} min` }];
+      return [
+        { label: 'Delivers up to', value: `${tierRarity(scoutTierCap(lvl)).label} gear` },
+        { label: 'Cooldown', value: `${abilityCooldownMin('scout', lvl)} min` },
+      ];
     case 'economy':
       return [
         { label: 'Spores per loot space', value: `${economyPerLoot(lvl)}` },

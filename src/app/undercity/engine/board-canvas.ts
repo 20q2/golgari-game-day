@@ -11,6 +11,7 @@
  */
 import { getRecolored, getRawImage, hatPlacement, drawCreatureEffect } from './sprite-engine';
 import { formSprite } from '../data/species';
+import type { TemperamentProfile } from '../data/pets';
 import {
   BARRIER_GUARDIANS,
   LAIR_GUARDIANS,
@@ -343,6 +344,18 @@ const PET_EXPLORE_MIN = 2600; // ms at rest before it may wander
 const PET_EXPLORE_MAX = 6000;
 const PET_EXPLORE_RADIUS = 30; // px it wanders around the space
 const PET_EXPLORE_DWELL = 2200; // ms it pokes around before settling back
+// Fallback feel when a pet has no temperament (matches the historical profile).
+const DEFAULT_PET_PROFILE: TemperamentProfile = {
+  name: 'Default',
+  exploreMin: PET_EXPLORE_MIN,
+  exploreMax: PET_EXPLORE_MAX,
+  exploreRadius: PET_EXPLORE_RADIUS,
+  exploreDwell: PET_EXPLORE_DWELL,
+  hopDur: PET_HOP_DUR,
+  hopHeight: PET_HOP_HEIGHT,
+  hopStep: PET_HOP_STEP,
+  breathAmp: 0.6,
+};
 
 // A barrier guardian stands its ground and hops "ever so slightly" to read as
 // actively blocking the way — a shallow, slow bob with a touch of side sway.
@@ -783,6 +796,8 @@ export class BoardCanvas {
   // ── Active companion follower ──────────────────────────────────────────────
   private activePetSprite: string | null = null;
   private petImg: HTMLImageElement | null = null;
+  /** Temperament driving the follower's idle/wander/hop feel; null → defaults. */
+  private petProfile: TemperamentProfile | null = null;
   private pet: {
     x: number;
     y: number;
@@ -798,8 +813,10 @@ export class BoardCanvas {
   } | null = null;
 
   /** Set (or clear) the sprite of the owner's active companion, drawn trailing
-   *  the own token on the board. Pass null to hide it. */
-  setActivePet(spriteUrl: string | null): void {
+   *  the own token on the board. Pass null to hide it. `temperament` reshapes
+   *  its idle/wander/hop feel (null falls back to the default lively profile). */
+  setActivePet(spriteUrl: string | null, temperament: TemperamentProfile | null = null): void {
+    this.petProfile = temperament;
     if (spriteUrl === this.activePetSprite) return;
     this.activePetSprite = spriteUrl;
     this.pet = null; // re-seed beside the owner on the next frame
@@ -2972,6 +2989,8 @@ export class BoardCanvas {
     const ownT = placed.find((t) => t.p.userId === this.ownUserId);
     if (!ownT) return; // own token not on this layer / not visible
 
+    const prof = this.petProfile ?? DEFAULT_PET_PROFILE;
+
     const ownSpr = formSprite(ownT.p.form, ownT.p.spriteVariant);
     const ownH = this.tokenHeight(true, ownT.p.tier) * ownSpr.scale;
     const ownFootY = ownT.y + ownH * 0.48;
@@ -2986,7 +3005,7 @@ export class BoardCanvas {
     const nodeTopY = node ? node.y - DISC_RY : ownFootY;
 
     const rollNext = () =>
-      ts + PET_EXPLORE_MIN + Math.random() * (PET_EXPLORE_MAX - PET_EXPLORE_MIN);
+      ts + prof.exploreMin + Math.random() * (prof.exploreMax - prof.exploreMin);
 
     let s = this.pet;
     if (!s) {
@@ -3019,7 +3038,7 @@ export class BoardCanvas {
     // Advance an in-flight hop; when landed, decide the next move.
     let hopY = 0;
     if (s.hopping) {
-      const pr = (ts - s.hopStart) / PET_HOP_DUR;
+      const pr = (ts - s.hopStart) / prof.hopDur;
       if (pr >= 1) {
         s.x = s.hopTo.x;
         s.y = s.hopTo.y;
@@ -3029,7 +3048,7 @@ export class BoardCanvas {
         const e = easeInOut(pr);
         s.x = s.hopFrom.x + (s.hopTo.x - s.hopFrom.x) * e;
         s.y = s.hopFrom.y + (s.hopTo.y - s.hopFrom.y) * e;
-        hopY = -Math.sin(pr * Math.PI) * PET_HOP_HEIGHT;
+        hopY = -Math.sin(pr * Math.PI) * prof.hopHeight;
       }
     }
     if (!s.hopping) {
@@ -3037,7 +3056,7 @@ export class BoardCanvas {
       const dy = ty - s.y;
       const dist = Math.hypot(dx, dy);
       if (dist > PET_REST_DIST) {
-        const step = Math.min(dist, PET_HOP_STEP);
+        const step = Math.min(dist, prof.hopStep);
         s.hopFrom = { x: s.x, y: s.y };
         s.hopTo = { x: s.x + (dx / dist) * step, y: s.y + (dy / dist) * step };
         s.hopStart = ts;
@@ -3047,20 +3066,20 @@ export class BoardCanvas {
         // Resting by its owner → occasionally wander, hopping spot to spot.
         if (!s.exploring && ts >= s.nextExplore) {
           s.exploring = true;
-          s.exploreUntil = ts + PET_EXPLORE_DWELL;
+          s.exploreUntil = ts + prof.exploreDwell;
           s.nextExplore = rollNext();
         }
         if (s.exploring) {
           s.explore = {
-            x: nodeCx + (Math.random() - 0.5) * 2 * PET_EXPLORE_RADIUS,
-            y: nodeTopY + (Math.random() - 0.5) * PET_EXPLORE_RADIUS,
+            x: nodeCx + (Math.random() - 0.5) * 2 * prof.exploreRadius,
+            y: nodeTopY + (Math.random() - 0.5) * prof.exploreRadius,
           };
         }
       }
     }
 
     // Subtle idle breath so a resting pet isn't frozen.
-    if (!s.hopping) hopY += Math.sin(elapsed * BREATH_SPEED * 0.8) * 0.6;
+    if (!s.hopping) hopY += Math.sin(elapsed * BREATH_SPEED * 0.8) * prof.breathAmp;
 
     const drawH = PET_DRAW_H;
     const drawW = img.naturalWidth * (drawH / img.naturalHeight);
@@ -3068,7 +3087,7 @@ export class BoardCanvas {
     const ctx = this.ctx;
 
     // Ground shadow (shrinks a touch at a hop's peak to sell the height).
-    const shadowShrink = 1 - Math.min(0.3, -hopY / PET_HOP_HEIGHT / 3);
+    const shadowShrink = 1 - Math.min(0.3, -hopY / prof.hopHeight / 3);
     ctx.save();
     ctx.beginPath();
     ctx.ellipse(s.x, s.y, drawH * 0.34 * shadowShrink, drawH * 0.14 * shadowShrink, 0, 0, Math.PI * 2);

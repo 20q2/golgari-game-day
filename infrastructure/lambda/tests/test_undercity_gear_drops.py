@@ -222,6 +222,32 @@ def test_mythic_gear_is_craft_only(table):
     assert 4 not in data.ISLAND_BAZAAR_GEAR_TIERS       # never in the island bazaar
 
 
+def test_plus_gear_is_craft_only():
+    """No Gear+ ("+") piece is reachable by any find path — it's minted only by
+    the Gorgon Stonewright at the Blacksmith. WORLD_GEAR (the pool every
+    drop/bazaar/loot/starter pick iterates) excludes it."""
+    plus = {gid for gid, g in data.GEAR.items() if g.get('plus')}
+    assert plus                                          # sanity: Gear+ exists
+    assert all(gid.endswith(data.PLUS_SUFFIX) for gid in plus)
+    assert not (plus & set(data.WORLD_GEAR))             # never in the spawnable pool
+
+
+def test_gear_drops_never_find_a_plus_piece(monkeypatch):
+    """Every gear a player can *find* comes from WORLD_GEAR, so no "+" piece can
+    drop — even when the picker lands on the pool's tail, where minted "+" ids
+    would sit if they ever leaked back into the spawn pool."""
+    monkeypatch.setattr(db._rng, 'choices', lambda seq, weights=None, k=1: [seq[0]])
+    for slot in data.GEAR_SLOTS:
+        # Force this slot on the slot pick, else return the tail of whatever pool.
+        monkeypatch.setattr(db._rng, 'choice',
+                            lambda seq, _slot=slot: _slot if _slot in seq else seq[-1])
+        for tier in (1, 2, 3):
+            res = db._roll_gear_drop(_doc(), {tier: 1.0})
+            assert res is not None
+            assert not res['id'].endswith(data.PLUS_SUFFIX)
+            assert not data.GEAR[res['id']].get('plus')
+
+
 def test_mythic_readbonus_scales_seer_glint(table):
     # Mythic seer/glint carry a readBonus above their Legendary rung.
     seer = data.GEAR[data.GEAR_FAMILY['seer'][4]]['readBonus']

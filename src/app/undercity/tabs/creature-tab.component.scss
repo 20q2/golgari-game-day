@@ -285,19 +285,243 @@
   margin-left: auto;
 }
 
-.stats-body {
-  display: flex;
-  align-items: stretch;
-  gap: 12px;
+// ── Attribute cards ───────────────────────────────────────────────────────────
+// Three per-stat cards: header (effective stat + base/gear breakdown) over a
+// vertical perk chain. Replaces the old stat-tiles row + perk-tracks grid.
+.perk-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
 
-  @media (max-width: 520px) {
-    flex-direction: column;
+.pcard {
+  display: flex;
+  flex-direction: column;
+  border-radius: 13px;
+  background: linear-gradient(180deg, rgba(74, 124, 89, 0.14), rgba(0, 0, 0, 0.18));
+  border: 1px solid rgba(74, 124, 89, 0.3);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &.active {
+    border-color: #9ac79a;
+    background: linear-gradient(180deg, rgba(74, 124, 89, 0.28), rgba(0, 0, 0, 0.18));
+  }
+
+  // Spending a point pops the whole card and rolls the number.
+  &.celebrate {
+    animation: uc-stat-celebrate 0.6s ease;
+  }
+}
+
+// Header = the interactive tile.
+.pcard-head {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 10px 6px 9px;
+  border: 0;
+  border-bottom: 1px solid rgba(74, 124, 89, 0.3);
+  background: rgba(0, 0, 0, 0.18);
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.28);
+  }
+
+  .mi {
+    color: #9ac79a;
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .pcard-val {
+    font-weight: 800;
+    font-size: 1.4rem;
+    color: #eafff0;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+
+    // Count-up: old digit slides up and out, new gold digit rises in behind it.
+    &.rolling {
+      position: relative;
+      display: inline-grid;
+      overflow: hidden;
+
+      .roll-out,
+      .roll-in {
+        grid-area: 1 / 1;
+      }
+      .roll-out {
+        animation: uc-roll-out 0.45s ease forwards;
+      }
+      .roll-in {
+        animation: uc-roll-in 0.45s ease 0.05s both;
+      }
+    }
+  }
+
+  .pcard-name {
+    font-size: 0.58rem;
+    letter-spacing: 0.11em;
+    color: #8a978a;
+    margin-top: 2px;
+  }
+
+  // Corners: base (original) value top-left, gear bonus top-right — the big
+  // number between them is the effective total.
+  .pcard-corner {
+    position: absolute;
+    top: 6px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .pcard-corner-base {
+    left: 7px;
+    color: #8a978a;
+  }
+  .pcard-corner-gear {
+    right: 7px;
+    color: #d8f5c8;
+    background: rgba(74, 124, 89, 0.35);
+    border: 1px solid rgba(154, 199, 154, 0.5);
+    border-radius: 8px;
+    padding: 1px 5px;
+  }
+
+  // The little "+1" that floats off the header as the number lands.
+  .stat-pop {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #fbbf24;
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.75);
+    pointer-events: none;
+    animation: uc-stat-pop 0.7s ease forwards;
+  }
+
+  .plus-btn {
+    margin-top: 6px;
+    padding: 2px 12px;
+    font-size: 0.82rem;
+    border-color: rgba(167, 139, 250, 0.6);
+    background: rgba(167, 139, 250, 0.18);
+    color: #d8ccfa;
+
+    &.disabled {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+  }
+}
+
+// The perk chain under the header. flex:1 so the chain fills the (grid-
+// stretched, equal-height) card; each node takes an equal share, so every
+// perk box ends up the same height across all three cards.
+.perk-chain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 8px 6px 9px;
+}
+
+.perk-node {
+  // grow to fill the equal-height card, but never below the text height
+  // (basis auto) — so boxes even out without the blurbs overlapping.
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 8px;
+  padding: 6px 7px 7px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.22);
+  // locked: dim + desaturated until the threshold is crossed.
+  opacity: 0.4;
+  filter: grayscale(0.55);
+  transition: opacity 0.15s ease;
+
+  &.lit {
+    opacity: 1;
+    filter: none;
+    background: rgba(154, 194, 110, 0.14);
+    border: 1px solid rgba(154, 194, 110, 0.45);
+  }
+
+  // The threshold dot: stat icon + number (e.g. sword 6 / 12 / 18).
+  // align-self keeps the pill from stretching to full card width.
+  .perk-node-thr {
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    color: #c9b458;
+    background: rgba(201, 180, 88, 0.14);
+    border: 1px solid rgba(201, 180, 88, 0.32);
+    border-radius: 999px;
+    padding: 1px 7px 1px 5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .perk-node-icon {
+    color: inherit;
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+    line-height: 13px;
+  }
+
+  &.lit .perk-node-thr {
+    color: #14201a;
+    background: #c9b458;
+    border-color: #c9b458;
+  }
+
+  .perk-node-name {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #dfe7df;
+    line-height: 1.15;
+  }
+  .perk-node-blurb {
+    display: block;
+    font-size: 0.6rem;
+    color: #a7b5a7;
+    line-height: 1.24;
+  }
+}
+
+// Short connector line joining consecutive perks in the chain. Lights green
+// when the perk above it is unlocked.
+.perk-link {
+  width: 2px;
+  height: 9px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 2px;
+
+  &.lit {
+    background: rgba(154, 194, 110, 0.75);
   }
 }
 
 .stat-desc {
-  flex-shrink: 0;
-  width: 240px;
+  margin-top: 12px;
   padding: 12px;
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.28);
@@ -323,36 +547,12 @@
     line-height: 1.45;
     color: #c3d3c3;
   }
-
-  // Base + gear = total, shown only when equipped gear touches this stat.
-  .stat-breakdown {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 6px;
-    margin-top: 8px;
-    font-weight: 700;
-
-    .base {
-      color: #c3d3c3;
-    }
-    .plus {
-      color: #9ac79a;
-    }
-    .total {
-      color: #eafff0;
-    }
-  }
-
-  @media (max-width: 520px) {
-    width: auto;
-  }
 }
 
 @keyframes uc-desc-in {
   from {
     opacity: 0;
-    transform: translateX(6px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -378,121 +578,6 @@
   }
   50% {
     box-shadow: 0 0 10px rgba(167, 139, 250, 0.55);
-  }
-}
-
-.stat-tiles {
-  flex: 1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.stat-tile {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 10px 4px 8px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(74, 124, 89, 0.25);
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
-
-  &:hover:not(.active) {
-    background: rgba(255, 255, 255, 0.07);
-  }
-
-  &.active {
-    border-color: #9ac79a;
-    background: rgba(74, 124, 89, 0.2);
-  }
-
-  // Spending a point is a celebrated moment: pop the tile, roll the number.
-  &.celebrate {
-    animation: uc-stat-celebrate 0.6s ease;
-  }
-
-  .plus-btn.disabled {
-    opacity: 0.45;
-    pointer-events: none;
-  }
-
-  .mi {
-    color: #9ac79a;
-    font-size: 1.15rem;
-    width: 1.15rem;
-    height: 1.15rem;
-  }
-
-  .stat-tile-val {
-    font-weight: 800;
-    font-size: 1.4rem;
-    color: #eafff0;
-    line-height: 1.1;
-
-    // Count-up: old digit slides up and out, new gold digit rises in behind it.
-    &.rolling {
-      position: relative;
-      display: inline-grid;
-      overflow: hidden;
-
-      .roll-out,
-      .roll-in {
-        grid-area: 1 / 1;
-      }
-      .roll-out {
-        animation: uc-roll-out 0.45s ease forwards;
-      }
-      .roll-in {
-        animation: uc-roll-in 0.45s ease 0.05s both;
-      }
-    }
-  }
-
-  // The little "+1" that floats off the tile as the number lands.
-  .stat-pop {
-    position: absolute;
-    top: 4px;
-    left: 50%;
-    font-size: 0.95rem;
-    font-weight: 800;
-    color: #fbbf24;
-    text-shadow: 0 0 8px rgba(251, 191, 36, 0.75);
-    pointer-events: none;
-    animation: uc-stat-pop 0.7s ease forwards;
-  }
-
-  .stat-tile-name {
-    font-size: 0.68rem;
-    letter-spacing: 0.08em;
-    color: #8a978a;
-  }
-
-  // Green "+N" chip showing what equipped gear adds on top of the base stat.
-  .stat-tile-mod {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    padding: 0 5px;
-    border-radius: 8px;
-    font-size: 0.72rem;
-    font-weight: 800;
-    color: #d8f5c8;
-    background: rgba(74, 124, 89, 0.35);
-    border: 1px solid rgba(154, 199, 154, 0.5);
-  }
-
-  .plus-btn {
-    margin-top: 6px;
-    padding: 2px 12px;
-    font-size: 0.82rem;
-    border-color: rgba(167, 139, 250, 0.6);
-    background: rgba(167, 139, 250, 0.18);
-    color: #d8ccfa;
   }
 }
 
@@ -588,107 +673,13 @@
   }
 }
 
-// ── Attribute perk tracks ────────────────────────────────────────────────────
-
-.perk-tracks {
-  margin-top: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-
-  .perk-tracks-title {
-    margin: 0;
-    font-size: 0.7rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #8a9a8a;
-  }
-
-  .perk-track-head {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 4px;
-
-    .perk-track-name {
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      color: var(--accent-color, #9ac26e);
-    }
-    .perk-track-val {
-      font-size: 0.72rem;
-      color: #8a9a8a;
-      font-variant-numeric: tabular-nums;
-    }
-  }
-
-  // Three perks per track, laid out as a 3-up card row to save vertical space.
-  .perk-nodes {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-  }
-
-  .perk-node {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 4px;
-    padding: 8px 7px;
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.18);
-    // locked: dim and desaturated until the threshold is crossed.
-    opacity: 0.42;
-    filter: grayscale(0.5);
-    transition: opacity 0.15s ease;
-
-    &.lit {
-      opacity: 1;
-      filter: none;
-      background: rgba(154, 194, 110, 0.12);
-      border: 1px solid rgba(154, 194, 110, 0.5);
-    }
-
-    .perk-node-thr {
-      flex: 0 0 auto;
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      min-width: 22px;
-      text-align: center;
-      font-size: 0.68rem;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      color: #c9b458;
-      padding: 1px 7px 1px 5px;
-      border-radius: 999px;
-      background: rgba(201, 180, 88, 0.14);
-    }
-
-    .perk-node-icon {
-      font-size: 15px;
-      width: 15px;
-      height: 15px;
-      line-height: 15px;
-    }
-    .perk-node-body {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .perk-node-name {
-      font-size: 0.76rem;
-      font-weight: 600;
-      color: #dfe7df;
-    }
-    .perk-node-blurb {
-      font-size: 0.68rem;
-      color: #a7b5a7;
-      line-height: 1.25;
-    }
-  }
+// Section label under the attribute cards (Traits heading).
+.perk-tracks-title {
+  margin: 14px 0 6px;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a9a8a;
 }
 
 // ── Equipment ────────────────────────────────────────────────────────────────
@@ -1882,6 +1873,22 @@ $grim-lock: #c96a5a;
     font-size: 17px;
     width: 17px;
     height: 17px;
+  }
+
+  // Each currency reads in its own colour — moltings green, gemstones purple —
+  // matching the tiny inline icons used elsewhere, so the pills stop looking
+  // like two identical grey chips.
+  &.mtl {
+    color: #cdeccf;
+    background: rgba(159, 214, 166, 0.12);
+    border-color: rgba(159, 214, 166, 0.4);
+    .mi { color: #9fd6a6; }
+  }
+  &.ich {
+    color: #e4d3fb;
+    background: rgba(185, 140, 240, 0.13);
+    border-color: rgba(185, 140, 240, 0.42);
+    .mi { color: #b98cf0; }
   }
 }
 

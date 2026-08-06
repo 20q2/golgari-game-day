@@ -136,7 +136,7 @@ def _gen_shop_stock(node, window):
     # biome bazaars stock T1/T2 (BAZAAR_GEAR_TIERS) with a rare black-market T3;
     # island bazaars pick by weight (ISLAND_BAZAAR_GEAR_TIERS: mostly T2/some T3).
     by_slot = {}
-    for gid, g in data.GEAR.items():
+    for gid, g in data.WORLD_GEAR.items():
         by_slot.setdefault(g['slot'], []).append(gid)
     slots = list(by_slot)
     rng.shuffle(slots)
@@ -357,12 +357,26 @@ _PASSIVE_RENAMES = {
     'deathtouch_stomp': 'colossus', # 2026-08-04: Deathtouch Stomp -> Colossus
 }
 
+# One-to-two passive splits: a stored key that still exists but was split so a
+# sibling ability now carries part of its old kit. On load, the sibling is added
+# if missing so live saves keep the full behavior. Maps KEPT key -> sibling key.
+_PASSIVE_SPLITS = {
+    # 2026-08-05: Stonewright split into Natural Enchanter (id kept: 'stonewright'
+    # — Gear+/pet) and Gift of the Fair Folk (the 5-start / 1-per-level economy).
+    'stonewright': 'gift_of_fair_folk',
+}
+
 
 def _migrate_passives(passives):
-    """Remap renamed passive keys on a loaded creature's passives list."""
+    """Remap renamed passive keys and expand one-to-two splits on a loaded
+    creature's passives list."""
     if not passives:
         return passives
-    return [_PASSIVE_RENAMES.get(p, p) for p in passives]
+    out = [_PASSIVE_RENAMES.get(p, p) for p in passives]
+    for kept, sibling in _PASSIVE_SPLITS.items():
+        if kept in out and sibling not in out:
+            out.append(sibling)
+    return out
 
 
 def _get_player(table, sid, user_id):
@@ -899,6 +913,7 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
                     'spd': npc_snap['spd'],
                     'level': data.enemy_level(npc_snap['atk'], npc_snap['dfn'],
                                               npc_snap['spd'], npc_snap['maxHp']),
+                    'personality': npc_snap['personality'],
                     'tier': npc_tier},
             'telegraph': shown, 'round': 1,
             'frenzyFrom': _frenzy_from(kind),
@@ -1067,6 +1082,10 @@ def _hatch_egg(table, sid, doc, payload):
         wait = data.PET_INCUBATE_MINUTES - int(elapsed.total_seconds() // 60)
         return _err(f'The egg needs {max(wait, 1)} more min.', 429)
     tier = int(inc.get('tier', 1))
+    # Natural Enchanter (elf 'stonewright'): companions hatch one rarity above
+    # the egg, capped at the top pet tier.
+    if 'stonewright' in _passives(doc):
+        tier = min(tier + 1, max(data.PET_HATCH))
     species = _pick_weighted(_rng, data.PET_HATCH.get(tier, data.PET_HATCH[1]))
     pet = {'id': _new_id('pet-'), 'species': species, 'tier': tier,
            'level': 1, 'mergeProgress': 0}
@@ -1123,10 +1142,9 @@ def _merge_pet(table, sid, doc, payload):
         p = _find_pet(doc, fid)
         if not p or p['id'] == target['id']:
             return _err('Bad merge selection.', 409)
-        if p['species'] != target['species']:
-            return _err('Only the same species can be merged.', 409)
         fodder.append(p)
-    # Award merge points, then advance tiers while affordable (cap tier 4).
+    # Award merge points (flat by fodder tier, ANY species), then advance tiers
+    # while affordable (cap tier 4), banking the remainder.
     gained = sum(data.PET_MERGE_POINTS[p['tier']] for p in fodder)
     target['mergeProgress'] = target.get('mergeProgress', 0) + gained
     while target['tier'] < 4:
@@ -1135,9 +1153,11 @@ def _merge_pet(table, sid, doc, payload):
             break
         target['mergeProgress'] -= cost
         target['tier'] += 1
-    # Consume fodder.
+    # Consume fodder; clear the active pointer if the active pet was fed in.
     consumed = {p['id'] for p in fodder}
     doc['pets'] = [p for p in doc['pets'] if p['id'] not in consumed]
+    if doc.get('activePetId') in consumed:
+        doc['activePetId'] = None
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
@@ -1194,6 +1214,31 @@ def _pet_ability_cooldown_min(role, level):
     return max(data.PET_ABILITY_COOLDOWN_FLOOR, mins)
 
 
+def _pet_scout_tier_cap(level):
+    """Max item tier a scout of this level can haul back from its biome bazaar.
+    Table (data.PET_SCOUT_TIER_BY_LEVEL) comes from undercity_config via the
+    `import *` in undercity_data."""
+    table = data.PET_SCOUT_TIER_BY_LEVEL
+    idx = max(0, min(int(level), len(table)) - 1)
+    return table[idx]
+
+
+def _biome_bazaar_node(table, sid, doc):
+    """The single bazaar node in the player's current biome, or None if that
+    biome has no shop (depths / ruin / wilderness). Server-authoritative: the
+    scout can only reach the shop co-located in the region it currently stands
+    in."""
+    nmap = _season_map(table, sid)
+    here = nmap.get(doc.get('position'))
+    if not here:
+        return None
+    region = here.get('region')
+    for nid, n in nmap.items():
+        if n.get('type') == 'shop' and n.get('region') == region:
+            return nid
+    return None
+
+
 def _pet_cd_ready(doc, role):
     """Cooldowns are keyed by ROLE so swapping between two same-role species can't
     reset the timer."""
@@ -1235,16 +1280,49 @@ def _pet_forage(doc, level):
     return out
 
 
-def _pet_scout(table, sid, doc, payload):
-    """Scout ability: reveal a bazaar's current-window stock without a visit.
-    Read-only — no state mutation beyond the shared cooldown."""
-    node = payload.get('targetNode')
-    n = _season_map(table, sid).get(node)
-    if not n or n.get('type') != 'shop':
-        return _err('Send your scout to a bazaar.', 409)
+def _active_scout(doc):
+    """Return (pet, level) if the player's active pet is a scout, else (None, 0)."""
+    pet = _find_pet(doc, doc.get('activePetId'))
+    if not pet or data.pet_role(pet.get('species')) != 'scout':
+        return None, 0
+    return pet, int(pet.get('level', 1))
+
+
+def _pet_scout_peek(table, sid, doc, payload):
+    """Read-only: reveal the current-window stock of the bazaar in the player's
+    biome plus the scout's tier ceiling. No cooldown, no mutation."""
+    pet, level = _active_scout(doc)
+    if not pet:
+        return _err('You have no active scout companion.', 409)
+    node = _biome_bazaar_node(table, sid, doc)
+    if not node:
+        return _err('No bazaar in this biome for your scout to reach.', 409)
     stock = _shop_stock(table, sid, node)
-    return {'kind': 'scout', 'node': node, 'stock': _clean(stock),
-            'text': 'Your scout ranges ahead and reports the bazaar stock.'}
+    result = {'kind': 'scout-peek', 'node': node,
+              'tierCap': _pet_scout_tier_cap(level), 'stock': _clean(stock),
+              'text': 'Your scout ranges ahead and reports the local bazaar stock.'}
+    return _ok(doc, text=result['text'], petAbility=result)
+
+
+def _pet_scout_buy(table, sid, doc, payload):
+    """Haul one item back from the biome bazaar at full price, gated by the
+    scout's tier ceiling. Arms the shared scout cooldown ONLY on success."""
+    pet, level = _active_scout(doc)
+    if not pet:
+        return _err('You have no active scout companion.', 409)
+    if not _pet_cd_ready(doc, 'scout'):
+        return _err('Your scout is still resting.', 429)
+    node = _biome_bazaar_node(table, sid, doc)
+    if not node:
+        return _err('No bazaar in this biome for your scout to reach.', 409)
+    cap = _pet_scout_tier_cap(level)
+    ability = {'kind': 'scout-buy', 'node': node, 'tierCap': cap}
+    # Arm the cooldown only on a successful haul (on_commit runs just before the
+    # save; a rejected buy leaves the doc — and the cooldown — untouched).
+    return _apply_purchase(
+        table, sid, doc, node, payload, tier_cap=cap,
+        ok_extra={'petAbility': ability},
+        on_commit=lambda d: _start_pet_cooldown(d, 'scout', level))
 
 
 def _use_pet_ability(table, sid, doc, payload):
@@ -1277,10 +1355,9 @@ def _use_pet_ability(table, sid, doc, payload):
         return _err('Your companion is still resting.', 429)
     if role == 'forage':
         result = _pet_forage(doc, level)
-    elif role == 'scout':
-        result = _pet_scout(table, sid, doc, payload)
     else:
-        return _err('That companion has no ability to activate.', 409)
+        # Scouts use the dedicated pet-scout-peek / pet-scout-buy actions.
+        return _err('That companion has no ability to activate here.', 409)
     if isinstance(result, tuple):       # a sub-handler returned an (status, err)
         return result
     _start_pet_cooldown(doc, role, level)
@@ -1449,7 +1526,7 @@ def _roll_gear_drop(doc, tier_weights):
     slot = _rng.choice(data.GEAR_SLOTS)
     tiers = list(tier_weights)
     tier = _rng.choices(tiers, weights=[tier_weights[t] for t in tiers])[0]
-    pool = [gid for gid, g in data.GEAR.items()
+    pool = [gid for gid, g in data.WORLD_GEAR.items()
             if g['slot'] == slot and g['tier'] == tier]
     if not pool:
         return None
@@ -1467,7 +1544,7 @@ def _roll_umori_box(window, rank, under_reserve):
     spec = _pick_weighted(rng, table)
     kind = spec[0]
     if kind == 'gear':
-        pool = sorted(gid for gid, g in data.GEAR.items() if g['tier'] == spec[1])
+        pool = sorted(gid for gid, g in data.WORLD_GEAR.items() if g['tier'] == spec[1])
         return {'kind': 'gear', 'item': rng.choice(pool)}
     if kind == 'grimoire':
         pool = sorted(gid for gid, g in data.GRIMOIRES.items() if g['tier'] == spec[1])
@@ -2524,6 +2601,7 @@ def handle_action(table, body):
         'level-pet': _level_pet, 'salvage-pet': _salvage_pet,
         'name-pet': _name_pet,
         'use-pet-ability': _use_pet_ability,
+        'pet-scout-peek': _pet_scout_peek, 'pet-scout-buy': _pet_scout_buy,
     }
     handler = handlers.get(atype)
     if not handler:
@@ -2573,9 +2651,13 @@ def _normalize_chat(raw):
 
 def _roll_meta(doc):
     """Debug flag + next regen tick, injected into every `you` view so the
-    client can gate its dev tools and show a next-roll countdown."""
+    client can gate its dev tools and show a next-roll countdown. The countdown
+    keeps running while the bank is full but `rested` is still filling — that
+    tick banks a rested stack rather than a roll."""
     meta = {'debug': data.DEBUG}
-    if doc.get('rolls', 0) < data.ROLL_CAP and doc.get('rollRegenAt'):
+    still_accruing = (doc.get('rolls', 0) < data.ROLL_CAP
+                      or doc.get('rested', 0) < data.RESTED_CAP)
+    if still_accruing and doc.get('rollRegenAt'):
         nxt = engine._parse_iso(doc['rollRegenAt']) + timedelta(minutes=data.ROLL_REGEN_MINUTES)
         meta['nextRollAt'] = nxt.strftime('%Y-%m-%dT%H:%M:%S')
     return meta
@@ -3064,7 +3146,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'userId': user_id, 'username': username or user_id,
         'species': starter, 'form': starter, 'tier': 1,
         'creatureName': creature_name or s['name'],
-        'passives': [s['passive']],
+        'passives': list(s.get('passives') or [s['passive']]),
         'level': 1, 'xp': 0, 'statPoints': 0,
         'spentThisLevel': {'atk': 0, 'def': 0, 'spd': 0},
         'hp': s['hp'], 'maxHp': s['hp'],
@@ -3075,7 +3157,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'homeBiome': home,
         'rolls': data.JOIN_ROLLS,
         'spores': 0,
-        'bag': [], 'gear': {}, 'gearStash': [], 'materials': {'moltings': 0, 'ichor': 0},
+        'bag': list(data.STARTER_BAG), 'gear': {}, 'gearStash': [], 'materials': {'moltings': 0, 'ichor': 0},
         'stance': 'fight',
         'pendingMove': None, 'buffs': [],
         'grimoires': [], 'equippedGrimoire': None,
@@ -3092,8 +3174,8 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         # (same doc). Client draws a gold sparkle over shiny sprites.
         'shiny': _rng.random() < data.SHINY_HATCH_CHANCE,
     }
-    # Gorgon (Stonewright): born strong — spawn with banked points to spend now.
-    if 'stonewright' in doc.get('passives', []):
+    # Gift of the Fair Folk: born strong — spawn with banked points to spend now.
+    if 'gift_of_fair_folk' in doc.get('passives', []):
         doc['statPoints'] = data.GORGON_START_POINTS
     # ── Home-biome hatch perks ──────────────────────────────────────────────
     if home == 'bone':
@@ -3105,7 +3187,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         # its empty slot. Seeded on the player id so the pick is stable (varies
         # per player, but deterministic — no test flakiness, no re-roll on
         # recompute).
-        t1 = sorted(gid for gid, g in data.GEAR.items() if g.get('tier') == 1)
+        t1 = sorted(gid for gid, g in data.WORLD_GEAR.items() if g.get('tier') == 1)
         if t1:
             gid = random.Random(zlib.crc32(f'cityrat:{user_id}'.encode())).choice(t1)
             _gain_gear(doc, gid)
@@ -3128,7 +3210,10 @@ def _seed_night_rolls(table, sid, doc):
     started = config.get('startedAt')
     if started:
         doc['rollRegenAt'] = started
-        engine.regen_rolls(doc, _now())
+        # bank_rested=False: a latecomer gets a full bank but no rested stockpile —
+        # rested is earned by overflow while you're already playing, not handed out
+        # for the hours before you joined.
+        engine.regen_rolls(doc, _now(), bank_rested=False)
 
 
 def _apply_shop_purchases(perm, doc, payload):
@@ -3828,6 +3913,48 @@ def _ashen_fog(table, sid, doc, node, region, nodes, prev):
     return result
 
 
+def _cheapest_stock_cost(stock):
+    """Lowest price of anything currently buyable at this bazaar stock, across
+    every category. Grimoires never deplete and are always stocked, so the
+    result is effectively never None for a real bazaar."""
+    costs = []
+    for line in stock.get('gear', []):
+        if line.get('qty', 0) > 0 and line['item'] in data.GEAR:
+            costs.append(data.GEAR[line['item']]['cost'])
+    for line in stock.get('consumables', []):
+        if line.get('qty', 0) > 0 and line['item'] in data.CONSUMABLES:
+            costs.append(data.CONSUMABLES[line['item']]['cost'])
+    for gid in stock.get('grimoires', []):
+        if gid in data.GRIMOIRES:
+            costs.append(data.GRIMOIRES[gid]['cost'])
+    for line in stock.get('eggs', []):
+        if line.get('qty', 0) > 0 and 'cost' in line:
+            costs.append(int(line['cost']))
+    return min(costs) if costs else None
+
+
+def _maybe_bazaar_welcome(doc, stock):
+    """First-visit-in-a-run pity gift: a broke newcomer who can't afford the
+    cheapest thing on the shelf gets one handout on the house. Once per run — the
+    `bazaarWelcomeGift` flag is absent on each fresh night's doc, so it self-resets.
+    A random consumable if the bag has room, otherwise a single Molting so the
+    player always leaves with something. Mutates doc; returns the welcomeGift
+    payload to fold into the shop event, or None when nothing is granted."""
+    if doc.get('bazaarWelcomeGift'):
+        return None
+    cheapest = _cheapest_stock_cost(stock)
+    if cheapest is None or doc.get('spores', 0) >= cheapest:
+        return None
+    doc['bazaarWelcomeGift'] = True
+    if len(doc.get('bag', [])) < data.BAG_SIZE:
+        item = _rng.choice(list(data.CONSUMABLES.keys()))
+        doc.setdefault('bag', []).append(item)
+        return {'kind': 'consumable', 'item': item,
+                'name': data.CONSUMABLES[item]['name']}
+    _mine_materials(doc, moltings=1)
+    return {'kind': 'material', 'name': 'Molting', 'amount': 1}
+
+
 def _resolve_space(table, sid, doc, node, prev):
     """Apply the landing event for `node`, mutating doc. Returns event dict."""
     nodes = _season_map(table, sid)
@@ -3942,6 +4069,17 @@ def _resolve_space(table, sid, doc, node, prev):
         return _boss(table, sid, doc, node, prev)
 
     if ntype == 'shop':
+        gift = _maybe_bazaar_welcome(doc, _shop_stock(table, sid, node))
+        if gift:
+            if gift['kind'] == 'material':
+                text = ("New face — and not a spore to your name? The Rot-Farm "
+                        "doesn't send anyone off empty-handed. Your satchel's "
+                        "stuffed, so take a fresh Molting from the scrap bin instead.")
+            else:
+                text = ("New face — and not a spore to your name? The Rot-Farm "
+                        f"doesn't send anyone off empty-handed. Here, a {gift['name']}, "
+                        "on the house. Come back when your purse rattles.")
+            return {'type': 'shop', 'text': text, 'welcomeGift': gift}
         return {'type': 'shop', 'text': 'The Rot-Farm Bazaar creaks open.'}
 
     if ntype == 'excavation':
@@ -4559,14 +4697,19 @@ def _respawn_lair(table, sid, doc, node):
 
 
 def _lair_scavenge(doc, node, entry):
-    """Scrounge an abandoned ruin lair once per abandonment: a few Spores + a
-    small item chance. Mutates doc (persisted by the move-action wrapper, like
-    the ossuary/vault landing handlers). Repeat visits report it picked clean."""
+    """Scrounge a downed Monster Nest. The egg clutch yields a lesser egg on
+    EVERY visit (the pet-farm loop, ungated). The Spores + consumable are a
+    one-time grab per abandonment (the `scavenged` flag). Mutates doc (persisted
+    by the move-action wrapper, like the ossuary/vault landing handlers)."""
     b = data.LAIR_BOSSES[node]
-    dialogue = data.LAIR_ABANDONED_DIALOGUE.get(node, f"The {b['name']}'s lair lies abandoned.")
+    dialogue = data.LAIR_ABANDONED_DIALOGUE.get(node, f"The {b['name']}'s nest lies unguarded.")
     out = {'type': 'lairAbandoned', 'node': node, 'text': dialogue}
+    # The egg clutch refills for every visitor — ungated by `scavenged`.
+    egg = _maybe_drop_egg(doc, 'ruin_scavenge')
+    if egg:
+        out['egg'] = {'tier': egg['tier']}
     if entry.get('scavenged'):
-        out['text'] = dialogue + ' You already picked it clean — nothing left to take.'
+        out['text'] = dialogue + " You've picked it clean of loot, but lift another egg from the clutch."
         return out
     spores = _rng.randint(*data.LAIR_SCAVENGE_SPORES)
     doc['spores'] = doc.get('spores', 0) + spores
@@ -4577,9 +4720,9 @@ def _lair_scavenge(doc, node, entry):
             out['item'] = item
     entry['scavenged'] = True
     doc.setdefault('ruinLairs', {})[node] = entry
-    tail = f' You scrounge up {spores} Spores'
+    tail = f' You scrounge up {spores} Spores and an egg from the clutch'
     if out.get('item'):
-        tail += f" and a {data.CONSUMABLES[out['item']]['name']}."
+        tail += f", plus a {data.CONSUMABLES[out['item']]['name']}."
     else:
         tail += '.'
     out['text'] = dialogue + tail
@@ -4763,12 +4906,13 @@ def _combat_flee(table, sid, doc, payload):
             return conflict
         return _ok(doc, combat={'fled': True, 'smokeSporeUsed': r['smokeSporeUsed'],
                                 'scrounged': salvage or None})
-    # Failed flee: caught off guard (-1 DEF from flee_attempt), and the enemy
-    # takes its telegraphed action for free — resolving as a round the fleer
-    # loses. It can be lethal, ending the fight in defeat.
+    # Failed flee: the fleer scrambles into a random stance and the round resolves
+    # as a fully clean exchange against the enemy's telegraphed action — a lucky
+    # draw can win it, an unlucky one eats the blow (which can still be lethal,
+    # ending the fight in defeat).
     frenzy_from = _frenzy_from(rec['kind'])
-    entries = engine.flee_punish(player_c, npc_c, rec['npcActual'], rec['round'],
-                                 _rng, frenzy_from=frenzy_from)
+    entries = engine.flee_scramble(player_c, npc_c, rec['npcActual'], rec['round'],
+                                   _rng, frenzy_from=frenzy_from)
     return _conclude_round(table, sid, doc, rec, player_c, npc_c, entries,
                            frenzy_from, extra={'fled': False})
 
@@ -5126,11 +5270,15 @@ def _award_respawn_lair_kill(table, sid, doc, node, out):
         drop = _roll_gear_drop(doc, tiers)
         if drop:
             out['gear'] = drop
+    egg = _maybe_drop_egg(doc, 'ruin_lair')     # guaranteed prize egg from the clutch
+    if egg:
+        out['egg'] = {'tier': egg['tier']}
     until = (datetime.utcnow() + timedelta(minutes=data.LAIR_RESPAWN_MINUTES)) \
         .isoformat(timespec='seconds')
     ruin[node] = {'respawnAt': until, 'scavenged': False}
-    out['text'] = (f"The {b['name']} falls! +{reward['spores']} Spores. Its lair "
-                   'falls silent — it will stir again within the hour.')
+    out['text'] = (f"You break the {b['name']}'s guard and raid the nest! "
+                   f"+{reward['spores']} Spores and a prize egg from the clutch. "
+                   'The nest falls quiet — the guardian returns within the hour.')
     _append_scroll(doc, out, 'lair')
 
 
@@ -5637,6 +5785,10 @@ def _cache(table, sid, doc, node):
         text = f"Picked-over spoils remain — +{spores} Spores."
     out = {'type': 'cache', 'spores': spores, 'text': text}
     _append_treasure_gear(doc, out, mult)
+    egg = _maybe_drop_egg(doc, 'cache')         # eggs trickle from caches like other loot
+    if egg:
+        out['egg'] = {'tier': egg['tier']}
+        out['text'] = out['text'] + ' A companion egg is tucked in the hoard!'
     _append_scroll(doc, out, 'cache')
     return out
 
@@ -6601,6 +6753,20 @@ def _buy(table, sid, doc, payload):
     node = doc.get('position')
     if nodes.get(node, {}).get('type') != 'shop':
         return _err('You are not at a shop.', 409)
+    return _apply_purchase(table, sid, doc, node, payload)
+
+
+def _apply_purchase(table, sid, doc, node, payload, tier_cap=None, ok_extra=None,
+                    on_commit=None):
+    """Shared purchase core for both the at-shop buy and the scout courier.
+
+    `node` is an already-resolved shop node. `tier_cap`, when set, blocks buying
+    gear/eggs whose tier exceeds it (consumables/grimoires are never tier-gated).
+    `ok_extra` is merged into the success response (e.g. the courier's petAbility
+    slice). `on_commit(doc)`, when given, runs on the success path only, just
+    before the save — so a rejected buy never mutates the doc (used to arm the
+    scout cooldown only when an item is actually hauled back). Mutates `doc`;
+    persists player-then-stock exactly as the at-shop buy."""
     item_id = payload.get('itemId')
     stock = _shop_stock(table, sid, node)
     deplete = None  # the stock line to decrement on a successful gear/consumable buy
@@ -6610,6 +6776,8 @@ def _buy(table, sid, doc, payload):
             tier = int(payload.get('tier'))
         except (TypeError, ValueError):
             return _err('Pick an egg.')
+        if tier_cap is not None and tier > tier_cap:
+            return _err('Your scout can only carry a lower-tier egg — merge it to reach this one.', 409)
         line = next((e for e in stock.get('eggs', []) if e['tier'] == tier), None)
         if not line:
             return _err("The bazaar isn't stocking that egg right now.", 409)
@@ -6629,6 +6797,8 @@ def _buy(table, sid, doc, payload):
         if line['qty'] <= 0:
             return _err('Sold out — check back after the restock.', 409)
         g = data.GEAR[item_id]
+        if tier_cap is not None and g['tier'] > tier_cap:
+            return _err('Your scout can only haul lower-tier gear — merge it to reach this one.', 409)
         cost = g['cost']
         if doc.get('spores', 0) < cost:
             return _err('Not enough Spores.', 409)
@@ -6673,6 +6843,8 @@ def _buy(table, sid, doc, payload):
     else:
         return _err('Unknown item.')
 
+    if on_commit is not None:                 # success path only (e.g. arm cooldown)
+        on_commit(doc)
     conflict = _save_or_conflict(table, doc)  # guard the player write first
     if conflict:
         return conflict
@@ -6683,7 +6855,7 @@ def _buy(table, sid, doc, payload):
             'window': stock['window'], 'gear': stock['gear'],
             'consumables': stock['consumables'], 'grimoires': stock['grimoires'],
             'eggs': stock.get('eggs', [])})
-    return _ok(doc, text=text)
+    return _ok(doc, text=text, **(ok_extra or {}))
 
 
 # ── Trading post ─────────────────────────────────────────────────────────────
@@ -7042,10 +7214,11 @@ def _vein_strike_once(table, sid, doc):
     if _rng.random() < level * data.VEIN_CAVE_IN_PCT_PER_LEVEL:
         dmg = level * data.VEIN_CAVE_IN_DMG_PER_LEVEL
         doc['hp'] = max(1, doc['hp'] - dmg)
-        doc['veinStrikesLeft'] = 0
-        # The shaft HOLDS: a cave-in batters the digger and ends their visit, but
-        # no longer wipes the shared depth — so the vein ratchets up to the
-        # Heartstone over many visits instead of resetting to 0 every cave-in.
+        # The shaft HOLDS: a cave-in batters the digger but no longer wipes the
+        # shared depth — so the vein ratchets up to the Heartstone over many
+        # visits instead of resetting to 0 every cave-in. It also only costs the
+        # one swing that triggered it (decremented above): the digger keeps their
+        # remaining swings and can keep picking at the shaft.
         held = level - 1                                   # unchanged shared depth
         _event(table, sid, 'vein',
                f"{doc['username']} triggered a cave-in at level {level} of the "

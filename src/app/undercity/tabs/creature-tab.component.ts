@@ -46,7 +46,6 @@ import { PERKS, PERK_TRACKS, PerkTrack } from '../data/perks';
 import {
   PET_SPECIES,
   Pet,
-  PetSpecies,
   petInfo,
   petName,
   petAbilityStats,
@@ -101,24 +100,22 @@ type GearSection = 'home' | 'equip' | 'magic' | 'bag' | 'companion';
 
 type ItemSource = 'equipped' | 'stash' | 'bag';
 
-/** One species' merge card in the roster-wide Merge popup: the keeper to raise,
- *  the same-species dupes available as fodder, and the derived progress. */
-interface MergeGroup {
-  species: PetSpecies;
-  name: string;
+/** The single-keeper merge model: the pet being raised, every OTHER owned pet as
+ *  candidate fuel (any species), the ticked subset, and derived progress. */
+interface MergeState {
   keeper: Pet;
-  /** All other same-species pets (candidates to feed in). */
   fodder: Pet[];
-  /** Fodder currently ticked (subset of `fodder`). */
   selected: Pet[];
   /** keeper.mergeProgress + points from `selected`. */
   points: number;
-  /** Points needed to reach the next tier. */
+  /** Points needed to reach the keeper's next tier. */
   need: number;
   /** Whether `selected` would advance the keeper at least one tier. */
   ready: boolean;
   currentRarity: string;
   nextRarity: string;
+  /** True if any ticked fodder outranks the keeper (arms the confirm). */
+  highRarityFuel: boolean;
 }
 
 /** A chip rendered in the item-detail popup. Stat chips have no blurb;
@@ -286,14 +283,14 @@ export class CreatureTabComponent {
   /** Two-tap guard for destructive Salvage/Grind: holds the armed target's key
    *  ('pet:<id>' or 'gear:<index>'), or null. First tap arms, second fires. */
   protected readonly salvageArmed = signal<string | null>(null);
-  /** Fodder pet ids ticked for a merge into the selected keeper. */
+  /** Fodder pet ids ticked for a merge into the keeper. */
   protected readonly mergePicks = signal<Set<string>>(new Set());
   /** Whether the roster-wide Merge popup is open. */
   protected readonly mergeOpen = signal(false);
-  /** Per-species keeper override (species → pet id). Empty = use auto-pick. */
-  protected readonly mergeKeepers = signal<Record<string, string>>({});
-  /** Species whose inline keeper picker is currently expanded (null = none). */
-  protected readonly mergeKeeperPicker = signal<PetSpecies | null>(null);
+  /** Explicit keeper id; null = auto-pick the best non-max-tier pet. */
+  protected readonly mergeKeeperId = signal<string | null>(null);
+  /** Armed high-rarity-fuel confirm (a second tap actually commits the merge). */
+  protected readonly mergeConfirm = signal(false);
 
   protected readonly activePet = computed<Pet | null>(() => {
     const you = this.store.you();
@@ -308,52 +305,36 @@ export class CreatureTabComponent {
     return (you?.pets ?? []).filter((p) => p.id !== id);
   });
 
-  /** Roster grouped into per-species merge cards: every species owned 2+ times
-   *  whose keeper isn't already max tier. Best rarity first, then most dupes. */
-  protected readonly mergeGroups = computed<MergeGroup[]>(() => {
+  /** The single-keeper merge model, or null when nothing can be ranked up. */
+  protected readonly mergeState = computed<MergeState | null>(() => {
     const pets = this.store.you()?.pets ?? [];
-    const overrides = this.mergeKeepers();
-    const picks = this.mergePicks();
-
-    const bySpecies = new Map<PetSpecies, Pet[]>();
-    for (const p of pets) {
-      const arr = bySpecies.get(p.species) ?? [];
-      arr.push(p);
-      bySpecies.set(p.species, arr);
-    }
-
-    const groups: MergeGroup[] = [];
-    for (const [species, members] of bySpecies) {
-      if (members.length < 2) continue;
-      // Auto keeper: highest tier, then level, then banked merge progress.
-      const sorted = [...members].sort(
-        (a, b) => b.tier - a.tier || b.level - a.level || b.mergeProgress - a.mergeProgress,
-      );
-      const overrideId = overrides[species];
-      const keeper = members.find((p) => p.id === overrideId) ?? sorted[0];
-      if (atMaxTier(keeper)) continue;
-      const fodder = members.filter((p) => p.id !== keeper.id);
-      const selected = fodder.filter((p) => picks.has(p.id));
-      groups.push({
-        species,
-        name: petInfo(species).name,
-        keeper,
-        fodder,
-        selected,
-        points: keeper.mergeProgress + mergePointsFor(selected),
-        need: PET_MERGE_COST[keeper.tier + 1] ?? Infinity,
-        ready: mergeWouldRankUp(keeper, selected),
-        currentRarity: tierRarity(keeper.tier).label,
-        nextRarity: tierRarity(keeper.tier + 1).label,
-      });
-    }
-    return groups.sort(
-      (a, b) => b.keeper.tier - a.keeper.tier || b.fodder.length - a.fodder.length,
+    if (pets.length < 2) return null;
+    const eligible = pets.filter((p) => !atMaxTier(p));
+    if (!eligible.length) return null;
+    // Auto keeper: best non-max-tier pet (tier → level → banked progress).
+    const sorted = [...eligible].sort(
+      (a, b) => b.tier - a.tier || b.level - a.level || b.mergeProgress - a.mergeProgress,
     );
+    const overrideId = this.mergeKeeperId();
+    const keeper = eligible.find((p) => p.id === overrideId) ?? sorted[0];
+    const fodder = pets.filter((p) => p.id !== keeper.id);
+    const picks = this.mergePicks();
+    const selected = fodder.filter((p) => picks.has(p.id));
+    return {
+      keeper,
+      fodder,
+      selected,
+      points: keeper.mergeProgress + mergePointsFor(selected),
+      need: PET_MERGE_COST[keeper.tier + 1] ?? Infinity,
+      ready: mergeWouldRankUp(keeper, selected),
+      currentRarity: tierRarity(keeper.tier).label,
+      nextRarity: tierRarity(keeper.tier + 1).label,
+      highRarityFuel: selected.some((f) => f.tier > keeper.tier),
+    };
   });
 
   /** Is there anything to merge right now? Drives the top-bar button. */
-  protected readonly mergeableSpeciesExist = computed<boolean>(() => this.mergeGroups().length > 0);
+  protected readonly canMerge = computed<boolean>(() => this.mergeState() !== null);
 
   protected readonly eggsList = computed(() => this.store.you()?.eggs ?? []);
   protected readonly incubator = computed(() => this.store.you()?.incubator ?? null);
@@ -424,61 +405,62 @@ export class CreatureTabComponent {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+    this.mergeConfirm.set(false); // selection changed — re-evaluate high-rarity confirm
   }
 
   protected openMerge(): void {
     this.mergePicks.set(new Set());
-    this.mergeKeepers.set({});
-    this.mergeKeeperPicker.set(null);
+    this.mergeKeeperId.set(null);
+    this.mergeConfirm.set(false);
     this.mergeOpen.set(true);
   }
 
   protected closeMerge(): void {
     this.mergeOpen.set(false);
-    this.mergeKeeperPicker.set(null);
+    this.mergeConfirm.set(false);
   }
 
-  /** All pets of one species (keeper + candidates) — for the keeper picker. */
-  protected speciesPets(species: PetSpecies): Pet[] {
-    return (this.store.you()?.pets ?? []).filter((p) => p.species === species);
+  /** Make a pet the keeper; it can't also be fodder, so drop it from picks and
+   *  disarm any pending confirm. */
+  protected chooseKeeper(petId: string): void {
+    this.mergeKeeperId.set(petId);
+    this.mergePicks.update((s) => {
+      const next = new Set(s);
+      next.delete(petId);
+      return next;
+    });
+    this.mergeConfirm.set(false);
   }
 
-  protected toggleKeeperPicker(species: PetSpecies): void {
-    this.mergeKeeperPicker.update((cur) => (cur === species ? null : species));
+  protected mergeProgressPct(): number {
+    const st = this.mergeState();
+    if (!st || !st.need || st.need === Infinity) return 0;
+    return Math.min(100, Math.round((st.points / st.need) * 100));
   }
 
-  /** Reassign a species' keeper; clears that species' fodder ticks so the
-   *  selection resets around the new keeper, and closes the picker. */
-  protected chooseKeeper(species: PetSpecies, petId: string): void {
-    this.mergeKeepers.update((m) => ({ ...m, [species]: petId }));
-    const ids = new Set(this.speciesPets(species).map((p) => p.id));
-    this.mergePicks.update((s) => new Set([...s].filter((id) => !ids.has(id))));
-    this.mergeKeeperPicker.set(null);
-  }
-
-  protected mergeProgressPct(group: MergeGroup): number {
-    if (!group.need || group.need === Infinity) return 0;
-    return Math.min(100, Math.round((group.points / group.need) * 100));
-  }
-
-  /** Merge a group's ticked fodder into its keeper, then keep the popup open and
-   *  let mergeGroups() recompute from fresh state; close only if nothing remains. */
-  async mergeGroup(group: MergeGroup): Promise<void> {
-    const fodderPetIds = group.selected.map((p) => p.id);
+  /** Merge the ticked fodder into the keeper. Higher-rarity fuel arms a confirm
+   *  on the first tap; the second tap (mergeConfirm true) commits. Keeps the
+   *  popup open and lets mergeState() recompute; closes only if nothing remains. */
+  async doMerge(): Promise<void> {
+    const st = this.mergeState();
+    if (!st || !st.ready) return;
+    const fodderPetIds = st.selected.map((p) => p.id);
     if (!fodderPetIds.length) return;
+    if (st.highRarityFuel && !this.mergeConfirm()) {
+      this.mergeConfirm.set(true);
+      return;
+    }
     await this.run(async () => {
       const resp = await this.store.action('merge-pet', {
-        targetPetId: group.keeper.id,
+        targetPetId: st.keeper.id,
         fodderPetIds,
       });
       this.showToast(resp.text ?? 'Merged.');
     });
-    this.mergePicks.update((s) => {
-      const next = new Set(s);
-      for (const id of fodderPetIds) next.delete(id);
-      return next;
-    });
-    if (!this.mergeGroups().length) this.closeMerge();
+    this.mergePicks.set(new Set());
+    this.mergeKeeperId.set(null);
+    this.mergeConfirm.set(false);
+    if (!this.mergeState()) this.closeMerge();
   }
 
   async incubateEgg(eggId: string): Promise<void> {
@@ -673,42 +655,60 @@ export class CreatureTabComponent {
     this.closeEgg();
   }
 
-  // ── Bird scout: pick a bazaar to reveal, off the board ────────────────────
-  protected readonly birdScoutOpen = signal(false);
-  protected readonly birdScoutResult = signal<{ node: string; stock: BazaarView } | null>(null);
+  // ── Scout courier: peek the biome bazaar (free), haul back one tier-capped item
+  protected readonly scoutOpen = signal(false);
+  protected readonly scoutView = signal<{ node: string; tierCap: number; stock: BazaarView } | null>(null);
   protected readonly gearMapRef = GEAR_MAP;
 
-  /** Bazaar node ids the Bird can scout (every bazaar in the current state). */
-  protected bazaarNodes(): string[] {
-    return Object.keys(this.store.bazaars());
+  /** Can the player cover a spore price? Mirrors board-tab.canAfford. */
+  protected canAfford(cost: number): boolean {
+    return (this.store.you()?.spores ?? 0) >= cost;
   }
 
-  /** In-stock egg tiers at a bazaar (for the scout picker preview). */
-  protected bazaarEggs(node: string): { tier: number; qty: number }[] {
-    return (this.store.bazaars()[node]?.eggs ?? []).filter((e) => e.qty > 0);
+  /** True while the active scout's shared cooldown has NOT elapsed (buy-gated). */
+  protected scoutOnCooldown(): boolean {
+    const pet = this.activePet();
+    return !!pet && this.petRoleOf(pet) === 'scout' && !this.petAbilityReady(pet);
   }
 
-  /** Number of gear lines still in stock at a bazaar (picker preview). */
-  protected bazaarGearCount(node: string): number {
-    return (this.store.bazaars()[node]?.gear ?? []).filter((g) => g.qty > 0).length;
-  }
-
-  protected openBirdScout(): void {
-    this.birdScoutResult.set(null);
-    this.birdScoutOpen.set(true);
-  }
-  protected closeBirdScout(): void {
-    this.birdScoutOpen.set(false);
-  }
-
-  async scoutBazaar(node: string): Promise<void> {
+  async openScoutCourier(): Promise<void> {
+    this.scoutView.set(null);
     await this.run(async () => {
-      const resp = await this.store.action('use-pet-ability', { targetNode: node });
-      const pa = (resp as { petAbility?: { node: string; stock: BazaarView } }).petAbility;
-      if (pa) this.birdScoutResult.set(pa);
-      this.showToast(resp.text ?? 'Your bird scouts ahead.');
+      const resp = await this.store.action('pet-scout-peek', {});
+      const pa = (resp as { petAbility?: { node: string; tierCap: number; stock: BazaarView } }).petAbility;
+      if (pa) {
+        this.scoutView.set(pa);
+        this.scoutOpen.set(true);
+      } else {
+        this.showToast(resp.text ?? 'Your scout finds no bazaar nearby.');
+      }
     });
-    this.birdScoutOpen.set(false);
+  }
+
+  protected closeScoutCourier(): void {
+    this.scoutOpen.set(false);
+  }
+
+  /** Gear locked because its tier exceeds the scout's ceiling. */
+  protected scoutGearLocked(item: string): boolean {
+    const cap = this.scoutView()?.tierCap ?? 0;
+    return (GEAR_MAP[item]?.tier ?? 99) > cap;
+  }
+  protected scoutEggLocked(tier: number): boolean {
+    return tier > (this.scoutView()?.tierCap ?? 0);
+  }
+
+  /** Haul one item back (payload mirrors the shop buy contract). Re-peeks so the
+   *  depleted stock + the armed cooldown show. */
+  async scoutBuy(payload: Record<string, unknown>): Promise<void> {
+    if (this.scoutOnCooldown()) return;
+    await this.run(async () => {
+      const resp = await this.store.action('pet-scout-buy', payload);
+      this.showToast(resp.text ?? 'Your scout hauls it back.');
+    });
+    const resp = await this.store.action('pet-scout-peek', {}).catch(() => null);
+    const pa = (resp as { petAbility?: { node: string; tierCap: number; stock: BazaarView } } | null)?.petAbility;
+    if (pa) this.scoutView.set(pa);
   }
 
   /** Flat stat bonus contributed by currently-equipped gear, per stat.

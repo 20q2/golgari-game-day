@@ -14,13 +14,17 @@ events, NPC pools) stay in undercity_data.py — this file is scalars only.
 DEBUG = False
 
 # ── Roll economy ─────────────────────────────────────────────────────────────
-ROLL_CAP = 15
+ROLL_CAP = 10                # active roll bank ceiling (~1.7h of tempo before overflow)
 JOIN_ROLLS = 3
 BRAVERY_BONUS_ROLLS = 1      # extra starting rolls for hatching a random creature
 SHINY_HATCH_CHANCE = 0.05    # chance a hatched creature is shiny — purely cosmetic
                              # (a gold sparkle over its sprite + a hatch-log call-out)
 ROLL_REGEN_MINUTES = 30      # regen tick length in minutes, up to ROLL_CAP
 ROLLS_PER_REGEN = 3          # rolls banked each tick (3 rolls every 30 minutes)
+RESTED_CAP = 15              # overflow protection, in rolls (~5 "stacks" of 3). At cap,
+                             # a tick banks ROLLS_PER_REGEN here; below cap a tick pays
+                             # DOUBLE and draws the extra from rested — net-neutral until
+                             # this ceiling. Client shows it; payout is automatic.
 ROLL_NUDGE_THRESHOLD = 3     # push "rolls ready" when idle rolls regen up to this
 ROLL_NUDGE_IDLE_MIN = 10     # ...but not if the player acted within this many minutes
 CLAIM_FINISHED_ROLLS = 2
@@ -354,6 +358,12 @@ PET_ABILITY_COOLDOWN_MIN = {'scout': 30, 'forage': 20}
 PET_ABILITY_COOLDOWN_PER_LVL = 2      # minutes shaved per level above 1
 PET_ABILITY_COOLDOWN_FLOOR = 5        # never faster than this
 
+# Scout courier: the max ITEM tier a scout can haul back from its biome bazaar,
+# indexed by the pet's level - 1 (clamped). Merging up a scout (raising its level
+# cap via tier) is what unlocks the rare T3 black-market gear and T3/T4 eggs.
+# Levels 1-2 -> T1, 3-4 -> T2, 5-6 -> T3, 7-9 -> T4.
+PET_SCOUT_TIER_BY_LEVEL = [1, 1, 2, 2, 3, 3, 4, 4, 4]
+
 # Mouse scavenge yield (scalars; level-scaled in the handler): a small spore
 # cache plus a level-scaled chance to also dig up a consumable.
 PET_MOUSE_SPORES_BASE = 8
@@ -397,9 +407,11 @@ LAIR_RESPAWN_MINUTES = 60
 LAIR_SCAVENGE_SPORES = (5, 10)
 LAIR_SCAVENGE_ITEM_CHANCE = 0.18
 
-# ── Gorgon ("Stonewright") species ───────────────────────────────────────────
-GORGON_START_POINTS = 5           # banked stat points a Gorgon spawns with
+# ── Elf innate abilities (split 2026-08-05; constant names kept for stability) ─
+# Gift of the Fair Folk (id 'gift_of_fair_folk'):
+GORGON_START_POINTS = 5           # banked stat points the Elf spawns with
 GORGON_STAT_POINTS_PER_LEVEL = 1  # she banks 1/level instead of the usual 2
+# Natural Enchanter (id 'stonewright'):
 GORGON_PET_LEVEL_BONUS = 1        # her active pet fights as if this many levels higher
 GEAR_PLUS_BUMP = 1                # Gear+ adds this to a piece's primary stat…
 GEAR_PLUS_MYTHIC_BUMP = 2         # …or this at Mythic (tier 4)

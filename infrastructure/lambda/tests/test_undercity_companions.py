@@ -116,14 +116,40 @@ def test_merge_same_species_ranks_up(table):
     assert [p['id'] for p in doc['pets']] == [keeper['id']]
 
 
-def test_merge_rejects_cross_species(table):
+def test_merge_cross_species_ranks_up(table):
     sid, doc = _player_at(table, 'n1')
-    keeper = _give_pet(doc, 'baby_leyline_prowler')
-    fodder = _give_pet(doc, 'decimator_beetle')
+    keeper = _give_pet(doc, 'baby_leyline_prowler', tier=1)   # attack role
+    f1 = _give_pet(doc, 'decimator_beetle', tier=1)           # defend — different species
+    f2 = _give_pet(doc, 'rat', tier=1)                        # forage — different species
+    status, _ = db._merge_pet(table, sid, doc, {
+        'targetPetId': keeper['id'], 'fodderPetIds': [f1['id'], f2['id']]})
+    assert status == 200
+    assert keeper['tier'] == 2                               # 1+1 pts >= cost-to-T2 (2)
+    assert keeper['species'] == 'baby_leyline_prowler'       # identity unchanged
+    assert [p['id'] for p in doc['pets']] == [keeper['id']]
+
+
+def test_merge_consuming_active_pet_clears_pointer(table):
+    sid, doc = _player_at(table, 'n1')
+    keeper = _give_pet(doc, 'baby_leyline_prowler', tier=1)
+    fodder = _give_pet(doc, 'slime', tier=1)
+    doc['activePetId'] = fodder['id']
     status, _ = db._merge_pet(table, sid, doc, {
         'targetPetId': keeper['id'], 'fodderPetIds': [fodder['id']]})
-    assert status == 409
-    assert len(doc['pets']) == 2
+    assert status == 200
+    assert doc['activePetId'] is None
+    assert [p['id'] for p in doc['pets']] == [keeper['id']]
+
+
+def test_merge_keeper_survives_as_active(table):
+    sid, doc = _player_at(table, 'n1')
+    keeper = _give_pet(doc, 'baby_leyline_prowler', tier=1)
+    fodder = _give_pet(doc, 'slime', tier=1)
+    doc['activePetId'] = keeper['id']
+    status, _ = db._merge_pet(table, sid, doc, {
+        'targetPetId': keeper['id'], 'fodderPetIds': [fodder['id']]})
+    assert status == 200
+    assert doc['activePetId'] == keeper['id']
 
 
 def test_merge_partial_progress_carries(table):
@@ -419,20 +445,22 @@ def test_forage_gives_spores_and_sets_cooldown(table):
     assert status == 429
 
 
-def test_scout_returns_bazaar_stock(table):
+def test_scout_peek_returns_biome_bazaar_stock(table):
     sid, doc = _persist_active_pet(table, 'baby_gloomshrieker', level=1)   # scout role
-    nodes = db._season_map(table, sid)  # live map (may differ from MAP_NODES)
-    shop_node = next(n for n, v in nodes.items() if v.get('type') == 'shop')
-    status, body = db._use_pet_ability(table, sid, doc, {'targetNode': shop_node})
+    doc['position'] = 'cavern_r0'  # cavern biome has a bazaar
+    status, body = db._pet_scout_peek(table, sid, doc, {})
     assert status == 200
-    assert body['petAbility']['kind'] == 'scout'
-    assert body['petAbility']['node'] == shop_node
+    assert body['petAbility']['kind'] == 'scout-peek'
+    assert body['petAbility']['tierCap'] == 1
+    assert body['petAbility']['node'] == db._biome_bazaar_node(table, sid, doc)
     assert 'stock' in body['petAbility']
 
 
-def test_scout_rejects_non_bazaar_target(table):
+def test_scout_rejects_when_no_bazaar_in_biome(table):
     sid, doc = _persist_active_pet(table, 'baby_gloomshrieker')
-    status, _ = db._use_pet_ability(table, sid, doc, {'targetNode': 'n1'})
+    nmap = db._season_map(table, sid)
+    doc['position'] = next(nid for nid, n in nmap.items() if n.get('region') == 'depths')
+    status, _ = db._pet_scout_peek(table, sid, doc, {})
     assert status == 409
 
 

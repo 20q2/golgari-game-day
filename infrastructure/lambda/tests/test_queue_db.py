@@ -330,7 +330,7 @@ def test_close_no_winner_grants_participation_and_deletes(monkeypatch):
     assert state['entries'] == []
     for uid in ('user-alex', 'user-sam'):
         d = ucdb._get_player(t, _sid(t), uid)
-        assert d['bag'] == []
+        assert d['bag'] == ['healing_moss']            # starter moss only — no game item
 
 
 def test_close_single_winner_gives_item(monkeypatch):
@@ -347,8 +347,8 @@ def test_close_single_winner_gives_item(monkeypatch):
                                         'payload': {'gameId': 'catan', 'hadWinner': True,
                                                     'winnerType': 'single', 'winnerId': 'user-sam'}})
     assert status == 200
-    assert len(ucdb._get_player(t, _sid(t), 'user-sam')['bag']) == 1     # winner
-    assert ucdb._get_player(t, _sid(t), 'user-alex')['bag'] == []        # not the winner
+    assert len(ucdb._get_player(t, _sid(t), 'user-sam')['bag']) == 2     # starter moss + winner item
+    assert ucdb._get_player(t, _sid(t), 'user-alex')['bag'] == ['healing_moss']  # not the winner — starter only
 
 
 def test_close_group_victory_gives_everyone_item(monkeypatch):
@@ -364,7 +364,7 @@ def test_close_group_victory_gives_everyone_item(monkeypatch):
     q.handle_action(t, {'type': 'close', 'userId': 'user-alex', 'username': 'Alex',
                          'payload': {'gameId': 'catan', 'hadWinner': True, 'winnerType': 'group'}})
     for uid in ('user-alex', 'user-sam'):
-        assert len(ucdb._get_player(t, _sid(t), uid)['bag']) == 1
+        assert len(ucdb._get_player(t, _sid(t), uid)['bag']) == 2   # starter moss + group item
 
 
 def test_close_banks_for_non_undercity_participant(monkeypatch):

@@ -20,6 +20,7 @@ import {
   VEIN_ITEM_CONSUMABLE_BAND,
   VEIN_ITEM_RARE_BAND,
   VEIN_MAX_DEPTH,
+  VEIN_STRIKES_PER_VISIT,
 } from '../data/vein-vault';
 
 /** The result of the swing the parent just resolved, so the modal can pop the
@@ -32,17 +33,6 @@ export interface VeinStrikeFx {
   moltings?: number;
   /** An item dropped into the bag this swing. */
   found?: boolean;
-}
-
-/** One row of the next-strike odds table — a small gacha pull where the cave-in
- *  is just another possible result alongside the rewards. */
-interface Outcome {
-  icon?: string;
-  svgIcon?: string;
-  label: string;
-  value: string;
-  tone: 'gem' | 'item' | 'molt' | 'risk';
-  muted?: boolean;
 }
 
 /** A floating "damage-number" style popup that rises out of the tap spot. */
@@ -87,73 +77,98 @@ interface Rock {
         @if (damaging()) {
           <div class="dmg-flash"></div>
         }
-        <h3><mat-icon class="mi title-i">diamond</mat-icon> Crystal Vein</h3>
-        <p class="vein-sub">
-          Shaft depth <strong>{{ depth }}</strong> / {{ MAX }} ·
-          <strong>{{ strikesLeft }}</strong> strike{{ strikesLeft === 1 ? '' : 's' }} left · Gemstones
-          this visit:
-          <strong #earnedEl class="earned">{{ earnedThisVisit }}</strong>
-          <mat-icon class="mi tiny ich">diamond</mat-icon>
-        </p>
 
-        <!-- The shaft IS the strike button: tap the vein to swing your pick. -->
-        <div
-          #shaftEl
-          class="vein-stage"
-          [class.tappable]="canStrike"
-          [class.heart]="isHeartstoneNext"
-          role="button"
-          [attr.aria-label]="canStrike ? 'Strike the crystal vein' : null"
-          [attr.aria-disabled]="!canStrike"
-          [attr.tabindex]="canStrike ? 0 : -1"
-          (click)="onStrike($event)"
-          (keydown.enter)="onStrike()"
-          (keydown.space)="onStrike(); $event.preventDefault()"
-        >
-          <div class="shaft">
-            @for (lv of levels; track lv) {
-              <div
-                class="rung"
-                [class.dug]="lv <= depth"
-                [class.next]="lv === depth + 1"
-                [class.heart]="lv === MAX"
-              ></div>
+        <header class="vc-head">
+          <div class="vc-title">
+            <mat-icon class="mi title-i">diamond</mat-icon>
+            <div>
+              <span class="eyebrow">Shared shaft</span>
+              <h3>Crystal Vein</h3>
+            </div>
+          </div>
+          <div class="gem-tally" title="Gemstones banked this visit">
+            <mat-icon class="mi">diamond</mat-icon>
+            <b #earnedEl class="earned">{{ earnedThisVisit }}</b>
+          </div>
+        </header>
+
+        <div class="shaft-region">
+          <!-- The shaft is the tappable delighter; the button below is the accessible
+               primary. Depth reads off the lit strata + the Heartstone at the bottom. -->
+          <div
+            #shaftEl
+            class="shaft-stage"
+            [class.tappable]="canStrike"
+            [class.heart]="isHeartstoneNext"
+            (click)="onStrike($event)"
+          >
+            <div class="shaft">
+              @for (lv of levels; track lv) {
+                <div
+                  class="band"
+                  [class.lit]="lv <= depth"
+                  [class.next]="lv === depth + 1"
+                  [class.heart]="lv === MAX"
+                >
+                  @if (lv === MAX) {
+                    <mat-icon class="mi heart-gem">diamond</mat-icon>
+                  }
+                </div>
+              }
+            </div>
+
+            <!-- Tap-spot popups + cave-in rubble (absolutely placed within the stage) -->
+            @for (f of floaters(); track f.id) {
+              <span class="floater {{ f.cls }}" [style.left.px]="f.x" [style.top.px]="f.y">
+                @if (f.svgIcon) {
+                  <mat-icon class="fi" [svgIcon]="f.svgIcon"></mat-icon>
+                } @else if (f.icon) {
+                  <mat-icon class="fi">{{ f.icon }}</mat-icon>
+                }
+                {{ f.text }}
+              </span>
+            }
+            @for (r of rocks(); track r.id) {
+              <span
+                class="rock"
+                [style.left.px]="r.x"
+                [style.width.px]="r.size"
+                [style.height.px]="r.size"
+                [style.animation-duration.ms]="r.dur"
+                [style.animation-delay.ms]="r.delay"
+                [style.--fall.px]="r.fall"
+                [style.--rot.deg]="r.rot"
+              ></span>
             }
           </div>
+
+          <!-- Cave-in tension meter: one rising ember bar instead of an odds table. -->
           @if (strikesLeft > 0) {
-            <div class="strike-cue">
-              {{
-                busy
-                  ? 'Striking…'
-                  : isHeartstoneNext
-                    ? 'Tap to pry the Heartstone'
-                    : 'Tap the vein to strike'
-              }}
+            <div class="risk" [class.high]="riskPct >= 24">
+              <div class="risk-cap">
+                <mat-icon class="mi">warning</mat-icon>
+                <span class="pct">{{ riskPct }}%</span>
+              </div>
+              <div class="risk-track">
+                <span class="tick" style="top: 33%"></span>
+                <span class="tick" style="top: 66%"></span>
+                <div class="risk-fill" [style.height.%]="riskPct"></div>
+              </div>
+              <div class="risk-label">Cave-in<br />{{ caveDmg }} dmg</div>
             </div>
           }
+        </div>
 
-          <!-- Tap-spot popups + cave-in rubble (absolutely placed within the stage) -->
-          @for (f of floaters(); track f.id) {
-            <span class="floater {{ f.cls }}" [style.left.px]="f.x" [style.top.px]="f.y">
-              @if (f.svgIcon) {
-                <mat-icon class="fi" [svgIcon]="f.svgIcon"></mat-icon>
-              } @else if (f.icon) {
-                <mat-icon class="fi">{{ f.icon }}</mat-icon>
+        <div class="shaft-foot">
+          <span>Depth <b>{{ depth }}</b><em>/{{ MAX }}</em></span>
+          @if (strikesLeft > 0) {
+            <span class="to-heart">
+              @if (isHeartstoneNext) {
+                Heartstone next
+              } @else {
+                {{ MAX - depth }} to the Heartstone
               }
-              {{ f.text }}
             </span>
-          }
-          @for (r of rocks(); track r.id) {
-            <span
-              class="rock"
-              [style.left.px]="r.x"
-              [style.width.px]="r.size"
-              [style.height.px]="r.size"
-              [style.animation-duration.ms]="r.dur"
-              [style.animation-delay.ms]="r.delay"
-              [style.--fall.px]="r.fall"
-              [style.--rot.deg]="r.rot"
-            ></span>
           }
         </div>
 
@@ -162,43 +177,60 @@ interface Rock {
         }
 
         @if (strikesLeft > 0) {
-          <div class="forecast" [class.heart]="isHeartstoneNext">
-            <p class="forecast-title">
-              Next strike · Level {{ level }}
+          <!-- What this swing can turn up — a glance, not a spreadsheet. -->
+          <div class="loot">
+            <div class="chip gem">
+              <mat-icon class="mi">diamond</mat-icon>
+              <span class="amt">{{ isHeartstoneNext ? '+' + HEART_ICHOR : gemPct + '%' }}</span>
+              <span class="cap">Gemstone{{ isHeartstoneNext ? 's' : '' }}</span>
+            </div>
+            <div class="chip rare" [class.muted]="!isHeartstoneNext && !itemChance">
+              <mat-icon class="mi" svgIcon="uc-pouch"></mat-icon>
               @if (isHeartstoneNext) {
-                <span class="heart-tag"
-                  ><mat-icon class="mi tiny">auto_awesome</mat-icon> The Heartstone</span
-                >
+                <span class="amt">Rare</span>
+                <span class="cap">Guaranteed</span>
+              } @else if (itemChance) {
+                <span class="amt">{{ itemChance.pct }}%</span>
+                <span class="cap">{{ itemChance.label }}</span>
+              } @else {
+                <span class="amt">—</span>
+                <span class="cap">Finds at L{{ CONSUMABLE_MIN }}</span>
               }
-            </p>
-            <ul class="odds-list">
-              @for (o of outcomes; track o.label) {
-                <li class="odds-row" [class.risk]="o.tone === 'risk'" [class.muted]="o.muted">
-                  @if (o.svgIcon) {
-                    <mat-icon class="mi odds-icon" [svgIcon]="o.svgIcon"></mat-icon>
-                  } @else {
-                    <mat-icon class="mi odds-icon ic-{{ o.tone }}">{{ o.icon }}</mat-icon>
-                  }
-                  <span class="odds-label">{{ o.label }}</span>
-                  <span class="odds-val">{{ o.value }}</span>
-                </li>
-              }
-            </ul>
+            </div>
+            <div class="chip molt">
+              <mat-icon class="mi">grass</mat-icon>
+              <span class="amt">+1</span>
+              <span class="cap">Molting</span>
+            </div>
           </div>
 
-          @if (!isHeartstoneNext) {
-            <p class="vein-hint goal">
-              → Reach level {{ MAX }} for the <strong>Heartstone</strong>: +{{ HEART_ICHOR }}
-              <mat-icon class="mi tiny ich">diamond</mat-icon> · a rare find
-            </p>
-          }
-          <p class="vein-hint shared">
-            Everyone digs the same shaft — your depth carries over for the next digger.
+          <!-- Swings as depleting pips + the one juicy primary action. -->
+          <div class="pips">
+            <span class="lab">Swings</span>
+            @for (p of pips; track $index) {
+              <span class="pip" [class.spent]="!p"></span>
+            }
+          </div>
+          <button
+            class="strike-btn"
+            [class.heart]="isHeartstoneNext"
+            [disabled]="busy"
+            (click)="onStrike()"
+          >
+            @if (isHeartstoneNext) {
+              <mat-icon class="mi">auto_awesome</mat-icon>
+            }
+            {{ busy ? 'Striking…' : isHeartstoneNext ? 'Pry the Heartstone' : 'Strike the vein' }}
+          </button>
+
+          <p class="vc-foot">
+            <mat-icon class="mi">groups</mat-icon>
+            Depth carries over — everyone digs the same shaft
           </p>
         } @else {
           <p class="vein-hint out">Out of strikes — come back next time you land here.</p>
         }
-        <button class="uc-btn close-btn" (click)="closed.emit()">Leave</button>
+        <button class="uc-btn close-btn ghost" (click)="closed.emit()">Leave</button>
       </div>
     </div>
   `,
@@ -226,6 +258,9 @@ interface Rock {
         gap: 10px;
         text-align: center;
         overflow: hidden;
+      }
+      .vein-card {
+        text-align: left;
       }
       .vein-card.damaging {
         animation: cardBump 0.42s ease-out;
@@ -269,100 +304,161 @@ interface Rock {
           opacity: 0;
         }
       }
+      /* ── Header: title + gems-this-visit HUD chip ─────────────────────────── */
+      .vc-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .vc-title {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      .vc-title .title-i {
+        color: #8fd0dd;
+        filter: drop-shadow(0 0 6px rgba(143, 208, 221, 0.55));
+      }
+      .vc-title .eyebrow {
+        display: block;
+        font-size: 0.58rem;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #6d827d;
+        margin-bottom: 2px;
+      }
       h3 {
         margin: 0;
-        color: #8fd0dd;
+        color: #d7ecef;
+        font-size: 1.2rem;
+        font-weight: 800;
+        line-height: 1;
+      }
+      .gem-tally {
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 6px;
+        gap: 5px;
+        padding: 5px 10px 5px 8px;
+        background: rgba(143, 208, 221, 0.1);
+        border: 1px solid rgba(90, 150, 165, 0.55);
+        border-radius: 999px;
+        font-variant-numeric: tabular-nums;
       }
-      .title-i {
-        color: #8fd0dd;
-      }
-      .vein-sub {
-        margin: 0;
-        font-size: 0.85rem;
-        color: #9aa79a;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        align-items: center;
-        justify-content: center;
-      }
-      .vein-sub strong {
+      .gem-tally .mi {
         color: #8fd0dd;
       }
       .earned {
         color: #b6ffbf;
-        display: inline-block;
+        font-size: 1rem;
+        font-weight: 800;
       }
-      .mi.tiny {
-        font-size: 15px;
-        width: 15px;
-        height: 15px;
-        vertical-align: middle;
-      }
-      .mi.ich {
-        color: #b7e2ff;
-      }
-      .mi.mtl {
-        color: #a9d38a;
-      }
-      /* The tappable shaft — the vein you strike. */
-      .vein-stage {
-        position: relative;
-        overflow: hidden;
+      /* ── Shaft region: hero shaft + cave-in meter ─────────────────────────── */
+      .shaft-region {
         display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-        padding: 14px 12px;
+        gap: 12px;
+      }
+      .shaft-stage {
+        position: relative;
+        flex: 1;
+        overflow: hidden;
+        padding: 7px;
         border: 1px solid rgba(90, 150, 165, 0.28);
         border-radius: 12px;
-        background: radial-gradient(120% 90% at 50% 0%, rgba(40, 62, 68, 0.55), rgba(16, 22, 24, 0.55));
+        background:
+          radial-gradient(90% 120% at 50% 120%, rgba(143, 208, 221, 0.14), transparent 60%),
+          linear-gradient(180deg, #0c1211 0%, #0a0f0e 100%);
+        box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.7);
         user-select: none;
         transition:
           transform 0.08s ease,
           border-color 0.15s ease,
           box-shadow 0.15s ease;
       }
-      .vein-stage.tappable {
+      .shaft-stage.tappable {
         cursor: pointer;
-        border-color: rgba(143, 208, 221, 0.55);
+        border-color: rgba(143, 208, 221, 0.5);
       }
-      .vein-stage.tappable:hover {
-        box-shadow: 0 0 0 1px rgba(143, 208, 221, 0.35);
+      .shaft-stage.tappable:hover {
+        box-shadow:
+          inset 0 2px 14px rgba(0, 0, 0, 0.7),
+          0 0 0 1px rgba(143, 208, 221, 0.4);
       }
-      .vein-stage.tappable:active {
-        transform: scale(0.98);
+      .shaft-stage.tappable:active {
+        transform: scale(0.99);
       }
-      .vein-stage.heart.tappable {
+      .shaft-stage.heart.tappable {
         border-color: rgba(224, 192, 136, 0.7);
-        box-shadow: 0 0 14px rgba(224, 192, 136, 0.25);
+        box-shadow:
+          inset 0 2px 14px rgba(0, 0, 0, 0.7),
+          0 0 16px rgba(224, 192, 136, 0.22);
       }
       .shaft {
         display: flex;
-        flex-direction: column-reverse;
+        flex-direction: column;
         gap: 3px;
-        width: 132px;
+        height: 262px;
       }
-      .rung {
-        height: 12px;
+      /* an excavated / cleared crystal stratum */
+      .band {
+        flex: 1;
         border-radius: 3px;
-        background: #23282a;
-        box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.6);
+        position: relative;
+        background: linear-gradient(180deg, #202a28 0%, #171f1d 100%);
+        border: 1px solid rgba(0, 0, 0, 0.35);
       }
-      .rung.dug {
-        background: linear-gradient(90deg, #2f6f7d 0%, #52a8ba 100%);
-        box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25);
+      .band.lit {
+        background: linear-gradient(180deg, rgba(82, 168, 186, 0.55) 0%, rgba(47, 111, 125, 0.4) 100%);
+        border-color: rgba(143, 208, 221, 0.3);
+        box-shadow: inset 0 0 8px rgba(143, 208, 221, 0.22);
       }
-      .rung.next {
+      .band.lit::after {
+        content: '';
+        position: absolute;
+        left: 6px;
+        right: 6px;
+        top: 50%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(190, 245, 255, 0.5), transparent);
+      }
+      .band.next {
         outline: 1px dashed rgba(143, 208, 221, 0.85);
+        outline-offset: -1px;
         animation: nextPulse 1.4s ease-in-out infinite;
+        z-index: 2;
       }
-      .rung.heart {
-        border: 1px solid rgba(224, 192, 136, 0.85);
+      /* the Heartstone stratum at the very bottom */
+      .band.heart {
+        flex: 1.9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(
+          70% 130% at 50% 50%,
+          rgba(224, 192, 136, 0.3),
+          rgba(184, 134, 42, 0.1) 70%,
+          transparent
+        );
+        border: 1px solid rgba(224, 192, 136, 0.5);
+        box-shadow: inset 0 0 18px rgba(224, 192, 136, 0.28);
+        animation: heartGlow 2.6s ease-in-out infinite;
+      }
+      .heart-gem {
+        color: #f0c24b;
+        width: 30px;
+        height: 30px;
+        font-size: 30px;
+        filter: drop-shadow(0 0 10px rgba(240, 194, 75, 0.8));
+      }
+      @keyframes heartGlow {
+        0%,
+        100% {
+          box-shadow: inset 0 0 14px rgba(224, 192, 136, 0.2);
+        }
+        50% {
+          box-shadow: inset 0 0 26px rgba(224, 192, 136, 0.5);
+        }
       }
       @keyframes nextPulse {
         0%,
@@ -373,13 +469,103 @@ interface Rock {
           outline-color: rgba(143, 208, 221, 1);
         }
       }
-      .strike-cue {
-        font-size: 0.82rem;
-        font-weight: 600;
-        color: #b9e6ef;
+      /* ── Cave-in tension meter ────────────────────────────────────────────── */
+      .risk {
+        width: 52px;
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
       }
-      .vein-stage.heart .strike-cue {
-        color: #e7cf9c;
+      .risk-cap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1px;
+        margin-bottom: 5px;
+      }
+      .risk-cap .mi {
+        color: #ef5f3a;
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+      }
+      .risk-cap .pct {
+        font-size: 0.88rem;
+        font-weight: 800;
+        color: #ef5f3a;
+        font-variant-numeric: tabular-nums;
+      }
+      .risk-track {
+        position: relative;
+        flex: 1;
+        width: 16px;
+        border-radius: 10px;
+        background: linear-gradient(180deg, #1a2220, #101615);
+        border: 1px solid rgba(90, 150, 165, 0.28);
+        overflow: hidden;
+        box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+      }
+      .risk-track .tick {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .risk-fill {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(180deg, #ffb079 0%, #ef5f3a 45%, #7a2c1c 100%);
+        box-shadow: 0 0 12px rgba(239, 95, 58, 0.7);
+        transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .risk.high .risk-fill {
+        animation: riskPulse 1.4s ease-in-out infinite;
+      }
+      @keyframes riskPulse {
+        0%,
+        100% {
+          filter: brightness(1);
+        }
+        50% {
+          filter: brightness(1.3);
+        }
+      }
+      .risk-label {
+        margin-top: 6px;
+        font-size: 0.5rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #6d827d;
+        line-height: 1.25;
+      }
+      /* depth read-out under the shaft */
+      .shaft-foot {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        gap: 8px;
+        font-size: 0.66rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #6d827d;
+      }
+      .shaft-foot b {
+        color: #8fd0dd;
+        font-size: 0.9rem;
+        letter-spacing: 0;
+        font-variant-numeric: tabular-nums;
+      }
+      .shaft-foot em {
+        font-style: normal;
+      }
+      .shaft-foot .to-heart {
+        color: #e0c088;
       }
       /* Tap-spot floaters — rise + fade like a damage number. */
       .floater {
@@ -485,106 +671,210 @@ interface Rock {
         font-size: 0.82rem;
         color: #cbd5ce;
       }
-      .forecast {
-        border: 1px solid rgba(90, 150, 165, 0.35);
-        border-radius: 10px;
-        padding: 10px 8px;
-        background: rgba(20, 30, 32, 0.5);
+      /* icon sizing (Material font renders at 24px by default) */
+      .title-i {
+        width: 22px;
+        height: 22px;
+        font-size: 22px;
       }
-      .forecast.heart {
-        border-color: rgba(224, 192, 136, 0.6);
-        background: rgba(38, 30, 16, 0.5);
+      .gem-tally .mi {
+        width: 15px;
+        height: 15px;
+        font-size: 15px;
       }
-      .forecast-title {
-        margin: 0 0 8px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #8fd0dd;
+      /* ── Loot preview chips ───────────────────────────────────────────────── */
+      .loot {
+        display: flex;
+        gap: 7px;
       }
-      .heart-tag {
-        color: #e0c088;
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
-      }
-      /* Single gacha-style odds table: each swing's possible results, cave-in included. */
-      .odds-list {
-        list-style: none;
-        margin: 0;
-        padding: 0;
+      .chip {
+        flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 4px;
-      }
-      .odds-row {
-        display: grid;
-        grid-template-columns: 1.3rem 1fr auto;
         align-items: center;
-        gap: 8px;
-        padding: 4px 6px;
-        border-radius: 6px;
-        background: rgba(255, 255, 255, 0.03);
+        gap: 3px;
+        padding: 8px 4px 7px;
+        border-radius: 11px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(90, 150, 165, 0.28);
+        text-align: center;
+      }
+      .chip .mi {
+        width: 20px;
+        height: 20px;
+        font-size: 20px;
+      }
+      .chip .amt {
         font-size: 0.82rem;
-        color: #d3ddd6;
-        text-align: left;
-      }
-      .odds-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
-      }
-      .odds-icon.ic-gem {
-        color: #b7e2ff;
-      }
-      .odds-icon.ic-molt {
-        color: #a9d38a;
-      }
-      .odds-icon.ic-risk {
-        color: #e6926f;
-      }
-      .odds-val {
-        font-weight: 700;
-        color: #b6ffbf;
+        font-weight: 800;
         font-variant-numeric: tabular-nums;
       }
-      .odds-row.risk {
-        background: rgba(120, 46, 30, 0.22);
-        color: #f0c3b2;
+      .chip .cap {
+        font-size: 0.5rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #6d827d;
       }
-      .odds-row.risk .odds-val {
-        color: #ef8f6d;
+      .chip.gem {
+        border-color: rgba(143, 208, 221, 0.4);
+        box-shadow: 0 0 14px -6px rgba(143, 208, 221, 0.5);
       }
-      .odds-row.muted {
+      .chip.gem .mi,
+      .chip.gem .amt {
+        color: #b7e2ff;
+      }
+      .chip.rare {
+        border-color: rgba(224, 192, 136, 0.5);
+        box-shadow: 0 0 16px -6px rgba(224, 192, 136, 0.5);
+      }
+      .chip.rare .mi,
+      .chip.rare .amt {
+        color: #e0c088;
+      }
+      .chip.molt .mi,
+      .chip.molt .amt {
+        color: #a9d38a;
+      }
+      .chip.muted {
+        opacity: 0.55;
+        box-shadow: none;
+        border-color: rgba(90, 150, 165, 0.2);
+      }
+      .chip.muted .mi,
+      .chip.muted .amt {
         color: #6f7d72;
-        font-style: italic;
       }
-      .odds-row.muted .odds-val {
-        color: #6f7d72;
+      /* ── Swing pips + the one primary action ──────────────────────────────── */
+      .pips {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .pips .lab {
+        font-size: 0.56rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #6d827d;
+        margin-right: 2px;
+      }
+      .pip {
+        width: 15px;
+        height: 15px;
+        transform: rotate(45deg);
+        border-radius: 3px;
+        background: linear-gradient(135deg, #6fd0e0, #2f6f7d);
+        box-shadow: 0 0 8px rgba(143, 208, 221, 0.5);
+        transition: all 0.3s ease;
+      }
+      .pip.spent {
+        background: #23282a;
+        box-shadow: none;
+        opacity: 0.5;
+      }
+      .strike-btn {
+        width: 100%;
+        padding: 14px;
+        border: none;
+        border-radius: 12px;
+        font: inherit;
+        font-size: 0.98rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        cursor: pointer;
+        color: #04211f;
+        background: linear-gradient(180deg, #8fe6f2 0%, #4bb6c8 55%, #2c7f8e 100%);
+        box-shadow:
+          0 5px 0 -1px #235e69,
+          0 10px 22px -8px rgba(75, 182, 200, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition:
+          transform 0.08s ease,
+          box-shadow 0.08s ease;
+      }
+      .strike-btn .mi {
+        width: 19px;
+        height: 19px;
+        font-size: 19px;
+      }
+      .strike-btn.heart {
+        color: #2a1e05;
+        background: linear-gradient(180deg, #ffdd7a 0%, #f0c24b 55%, #b8862a 100%);
+        box-shadow:
+          0 5px 0 -1px #8a6420,
+          0 10px 22px -8px rgba(240, 194, 75, 0.7);
+        animation: breathe 2.4s ease-in-out infinite;
+      }
+      .strike-btn:active {
+        transform: translateY(4px);
+        box-shadow: 0 1px 0 -1px #235e69;
+      }
+      .strike-btn.heart:active {
+        box-shadow: 0 1px 0 -1px #8a6420;
+      }
+      .strike-btn:disabled {
+        filter: grayscale(0.5) brightness(0.8);
+        cursor: default;
+        animation: none;
+      }
+      @keyframes breathe {
+        0%,
+        100% {
+          box-shadow:
+            0 5px 0 -1px #8a6420,
+            0 10px 22px -8px rgba(240, 194, 75, 0.55);
+        }
+        50% {
+          box-shadow:
+            0 5px 0 -1px #8a6420,
+            0 12px 30px -6px rgba(240, 194, 75, 0.95);
+        }
+      }
+      .vc-foot {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 0.62rem;
+        color: #7f8c84;
+      }
+      .vc-foot .mi {
+        width: 13px;
+        height: 13px;
+        font-size: 13px;
       }
       .vein-hint {
         margin: 0;
         font-size: 0.78rem;
         color: #8a978a;
-        display: inline-flex;
+        display: flex;
         gap: 3px;
         align-items: center;
         justify-content: center;
-      }
-      .vein-hint.goal {
-        color: #c9b07a;
-      }
-      .vein-hint.goal strong {
-        color: #e0c088;
-      }
-      .vein-hint.shared {
-        color: #7f8c84;
-        font-size: 0.72rem;
       }
       .vein-hint.out {
         color: #d08a6f;
       }
       .close-btn {
-        margin-top: 4px;
+        margin-top: 2px;
+      }
+      .close-btn.ghost {
+        background: none;
+        border: none;
+        color: #8a978a;
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+        padding: 6px;
+      }
+      .close-btn.ghost:hover {
+        color: #d7ecef;
       }
     `,
   ],
@@ -610,6 +900,7 @@ export class CrystalVeinModalComponent implements OnChanges {
   protected readonly levels = Array.from({ length: VEIN_MAX_DEPTH }, (_, i) => i + 1);
   protected readonly HEART_ICHOR = VEIN_HEARTSTONE_ICHOR;
   protected readonly CONSUMABLE_MIN = VEIN_ITEM_CONSUMABLE_BAND.min;
+  protected readonly STRIKES_TOTAL = VEIN_STRIKES_PER_VISIT;
 
   protected readonly floaters = signal<Floater[]>([]);
   protected readonly rocks = signal<Rock[]>([]);
@@ -637,20 +928,20 @@ export class CrystalVeinModalComponent implements OnChanges {
     return this.strikesLeft > 0 && !this.busy;
   }
 
-  private get gemPct(): number {
+  protected get gemPct(): number {
     return Math.round(Math.min(1, VEIN_ICHOR_BASE + this.level * VEIN_ICHOR_PER_LEVEL) * 100);
   }
 
-  private get riskPct(): number {
+  protected get riskPct(): number {
     return Math.round(this.level * VEIN_CAVE_IN_PCT_PER_LEVEL * 100);
   }
 
-  private get caveDmg(): number {
+  protected get caveDmg(): number {
     return this.level * VEIN_CAVE_IN_DMG_PER_LEVEL;
   }
 
   /** Bonus-item odds for this level, or null in the shallow band (no items). */
-  private get itemChance(): { pct: number; label: string } | null {
+  protected get itemChance(): { pct: number; label: string } | null {
     const l = this.level;
     if (l >= VEIN_ITEM_RARE_BAND.min) {
       return { pct: Math.round(VEIN_ITEM_RARE_BAND.chance * 100), label: 'Rare find' };
@@ -661,37 +952,9 @@ export class CrystalVeinModalComponent implements OnChanges {
     return null;
   }
 
-  /** The next swing's full result table — every possible pull, cave-in last as
-   *  the "bad roll". Rewards read as a Heartstone jackpot at max depth. */
-  protected get outcomes(): Outcome[] {
-    const rows: Outcome[] = [];
-    if (this.isHeartstoneNext) {
-      rows.push({ icon: 'diamond', label: 'Gemstones', value: `+${this.HEART_ICHOR}`, tone: 'gem' });
-      rows.push({ svgIcon: 'uc-pouch', label: 'Rare find', value: 'guaranteed', tone: 'item' });
-      rows.push({ icon: 'grass', label: 'Molting', value: '+1', tone: 'molt' });
-    } else {
-      rows.push({ icon: 'diamond', label: 'Gemstone', value: `${this.gemPct}%`, tone: 'gem' });
-      const item = this.itemChance;
-      if (item) {
-        rows.push({ svgIcon: 'uc-pouch', label: item.label, value: `${item.pct}%`, tone: 'item' });
-      } else {
-        rows.push({
-          svgIcon: 'uc-pouch',
-          label: `Finds start at L${this.CONSUMABLE_MIN}`,
-          value: '—',
-          tone: 'item',
-          muted: true,
-        });
-      }
-      rows.push({ icon: 'grass', label: 'Molting', value: '+1', tone: 'molt' });
-    }
-    rows.push({
-      icon: 'warning',
-      label: `Cave-in · ${this.caveDmg} dmg, visit ends`,
-      value: `${this.riskPct}%`,
-      tone: 'risk',
-    });
-    return rows;
+  /** Swings this visit as fill/spent flags for the pip row — filled = remaining. */
+  protected get pips(): boolean[] {
+    return Array.from({ length: this.STRIKES_TOTAL }, (_, i) => i < this.strikesLeft);
   }
 
   /** Tap-the-vein handler: record the tap spot, pop a hit word + pick-shake,
