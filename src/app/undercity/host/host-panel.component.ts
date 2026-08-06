@@ -30,12 +30,30 @@ export class HostPanelComponent {
 
   protected readonly seasonActive = computed(() => this.store.season()?.status === 'active');
   protected readonly bossAwake = computed(() => this.store.season()?.bossPhase === true);
+  protected readonly inLobby = computed(() => this.store.season()?.status === 'lobby');
+  /** Bound to the <input type="datetime-local"> — a local wall-clock string. */
+  protected launchLocal = '';
 
   async startNight(): Promise<void> {
     await this.run(async () => {
       localStorage.setItem(HOST_KEY_STORAGE, this.hostKey);
       await this.store.action('season-start', { hostKey: this.hostKey });
       this.message.set('A new night begins. Send everyone the link!');
+    });
+  }
+
+  /** Open (or re-time) the pre-game lobby with a countdown to a target clock time. */
+  async openLobby(): Promise<void> {
+    if (!this.launchLocal) {
+      this.message.set('Pick a start time first.');
+      return;
+    }
+    // datetime-local has no timezone; interpret it as local, send UTC ISO.
+    const launchAt = new Date(this.launchLocal).toISOString();
+    await this.run(async () => {
+      localStorage.setItem(HOST_KEY_STORAGE, this.hostKey);
+      await this.store.action('season-lobby', { hostKey: this.hostKey, launchAt });
+      this.message.set('Lobby open — players see the countdown. Press New Night to begin.');
     });
   }
 

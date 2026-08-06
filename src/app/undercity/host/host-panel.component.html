@@ -14,12 +14,29 @@
       />
       <div class="host-actions">
         @if (!seasonActive()) {
+          <div class="lobby-row">
+            <input
+              class="host-input"
+              type="datetime-local"
+              [(ngModel)]="launchLocal"
+              aria-label="Launch time"
+            />
+            <button
+              class="uc-btn"
+              [disabled]="busy() || !hostKey.trim()"
+              (click)="openLobby()"
+            >
+              <mat-icon class="mi">hourglass_top</mat-icon>
+              {{ inLobby() ? 'Update start time' : 'Waiting to launch' }}
+            </button>
+          </div>
           <button
             class="uc-btn uc-btn-primary"
             [disabled]="busy() || !hostKey.trim()"
             (click)="startNight()"
           >
-            <mat-icon class="mi">dark_mode</mat-icon> New Night
+            <mat-icon class="mi">dark_mode</mat-icon>
+            {{ inLobby() ? 'Start the night now' : 'New Night' }}
           </button>
         } @else {
           @if (!bossAwake()) {

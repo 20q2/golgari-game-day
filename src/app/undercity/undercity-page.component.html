@@ -48,6 +48,26 @@
         <app-undercity-host-panel />
       </div>
     }
+    @case ('lobby') {
+      <div
+        class="gate-screen bg-vista"
+        style="background-image: linear-gradient(rgba(12, 14, 11, 0.72), rgba(12, 14, 11, 0.85)), url('undercity/undercity_background.webp')"
+      >
+        <mat-icon class="gate-icon pulse">hourglass_top</mat-icon>
+        <h1>Waiting to launch</h1>
+        @if (launchCountdown(); as cd) {
+          @if (cd === 'ready') {
+            <p>The night is about to begin…</p>
+          } @else {
+            <p>The night begins in</p>
+            <p class="lobby-countdown">{{ cd }}</p>
+          }
+        } @else {
+          <p>The swarm stirs. Sit tight — the night begins soon.</p>
+        }
+        <app-undercity-host-panel />
+      </div>
+    }
     @case ('ended') {
       <div class="ended-screen">
         <app-undercity-ceremony [result]="store.result()" [hallOfFame]="store.hallOfFame()" />

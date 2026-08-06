@@ -72,3 +72,20 @@
   font-size: 0.72rem;
   text-align: center;
 }
+
+.lobby-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+
+  .host-input {
+    flex: 1;
+    min-width: 150px;
+  }
+
+  button {
+    flex: 1;
+    min-width: 150px;
+  }
+}

@@ -64,18 +64,39 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     return Object.keys(DUNGEONS).filter((b) => claims.includes(`${b}_lair`)).length;
   });
 
-  protected readonly phase = computed<'signin' | 'loading' | 'idle' | 'hatch' | 'play' | 'ended'>(
-    () => {
-      if (!this.userService.isSignedIn()) return 'signin';
-      const state = this.store.state();
-      if (!state || !this.assetsReady() || !this.map()) return 'loading';
-      const season = state.season;
-      if (!season) return 'idle';
-      if (season.status === 'ended') return 'ended';
-      if (season.status !== 'active') return 'idle';
-      return state.you ? 'play' : 'hatch';
-    },
-  );
+  protected readonly phase = computed<
+    'signin' | 'loading' | 'idle' | 'lobby' | 'hatch' | 'play' | 'ended'
+  >(() => {
+    if (!this.userService.isSignedIn()) return 'signin';
+    const state = this.store.state();
+    if (!state || !this.assetsReady() || !this.map()) return 'loading';
+    const season = state.season;
+    if (!season) return 'idle';
+    if (season.status === 'lobby') return 'lobby';
+    if (season.status === 'ended') return 'ended';
+    if (season.status !== 'active') return 'idle';
+    return state.you ? 'play' : 'hatch';
+  });
+
+  /** Wall-clock tick (ms) driving the lobby countdown; updated every second. */
+  protected readonly nowMs = signal(Date.now());
+  private lobbyTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** Human countdown to the lobby launch time, or a ready/idle string. */
+  protected readonly launchCountdown = computed(() => {
+    const iso = this.store.season()?.launchAt;
+    if (!iso) return null;
+    const target = new Date(iso).getTime();
+    if (Number.isNaN(target)) return null;
+    let secs = Math.floor((target - this.nowMs()) / 1000);
+    if (secs <= 0) return 'ready';
+    const h = Math.floor(secs / 3600);
+    secs -= h * 3600;
+    const m = Math.floor(secs / 60);
+    const s = secs - m * 60;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+  });
 
   protected readonly hpPct = computed(() => {
     const you = this.store.you();
@@ -342,6 +363,7 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     if (this.userService.isSignedIn()) {
       this.store.startPolling();
     }
+    this.lobbyTimer = setInterval(() => this.nowMs.set(Date.now()), 1000);
   }
 
   ngOnDestroy(): void {
@@ -349,6 +371,7 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     this.store.stopPolling();
     if (this.sporeDeltaTimer) clearTimeout(this.sporeDeltaTimer);
     if (this.sporePulseTimer) clearTimeout(this.sporePulseTimer);
+    if (this.lobbyTimer) clearInterval(this.lobbyTimer);
   }
 
   async signIn(): Promise<void> {

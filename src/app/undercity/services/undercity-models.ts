@@ -3,8 +3,10 @@ import { Pet, Egg } from '../data/pets';
 
 export interface Season {
   seasonId: string;
-  status: 'active' | 'ended';
+  status: 'lobby' | 'active' | 'ended';
   startedAt?: string;
+  /** Countdown target (ISO-8601) while status is 'lobby'. */
+  launchAt?: string;
   bossPhase: boolean;
 }
 
