@@ -50,6 +50,7 @@ def test_peek_returns_biome_stock_without_cooldown(table):
     assert pa['kind'] == 'scout-peek'
     assert pa['tierCap'] == 1
     assert 'gear' in pa['stock'] and 'eggs' in pa['stock']
+    assert pa['stock'].get('refreshesAt')  # courier header restock clock
     # Peeking never arms the cooldown.
     assert doc.get('petCooldowns', {}).get('scout') is None
     # Peeking again is fine (still free).

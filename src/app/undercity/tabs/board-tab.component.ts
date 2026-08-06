@@ -156,6 +156,15 @@ interface StepState {
   left: number;
 }
 
+/** One staged courier purchase (at most one at a time). `key` uniquely identifies
+ *  the row for the "In cart" highlight; `payload` is the pet-scout-buy body. */
+interface CartItem {
+  key: string;
+  name: string;
+  cost: number;
+  payload: Record<string, unknown>;
+}
+
 function stepPos(step: StepState): string {
   return step.path[step.path.length - 1];
 }
@@ -308,7 +317,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const pet = this.activeUsablePet();
     if (!pet || this.busy()) return;
     if (petRole(pet.species) === 'scout') {
-      await this.openScoutCourier();
+      await this.openShopCourier();
       return;
     }
     if (!this.petBoxReady(pet)) return;
@@ -318,10 +327,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  // ── Scout courier: peek the biome bazaar (free), haul back one tier-capped item
-  protected readonly scoutOpen = signal(false);
+  // ── Scout courier: the board shop modal runs in a 'courier' mode driven by a
+  //    free peek of the biome bazaar; one staged item checks out per cooldown.
   protected readonly scoutView = signal<{ node: string; tierCap: number; stock: BazaarView } | null>(null);
-  protected readonly gearMapRef = GEAR_MAP;
+  protected readonly shopMode = signal<'shop' | 'courier'>('shop');
+  protected readonly cartItem = signal<CartItem | null>(null);
 
   /** True while the active scout's shared cooldown has NOT elapsed (buy-gated). */
   protected scoutOnCooldown(): boolean {
@@ -329,44 +339,67 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return !!pet && petRole(pet.species) === 'scout' && !this.petAbilityReady(pet);
   }
 
-  async openScoutCourier(): Promise<void> {
+  /** Open the real shop modal in courier mode: free peek → stock/tierCap, then
+   *  reuse the bazaar UI. Toasts (and stays closed) when there's no reachable
+   *  bazaar or no active scout. */
+  async openShopCourier(): Promise<void> {
     this.scoutView.set(null);
+    this.cartItem.set(null);
     await this.run(async () => {
       const resp = await this.store.action('pet-scout-peek', {});
       const pa = (resp as { petAbility?: { node: string; tierCap: number; stock: BazaarView } }).petAbility;
       if (pa) {
         this.scoutView.set(pa);
-        this.scoutOpen.set(true);
+        this.shopMode.set('courier');
+        this.shopTab.set('gear');
+        this.showShop.set(true);
       } else {
         this.showToast(resp.text ?? 'Your scout finds no bazaar nearby.');
       }
     });
   }
 
-  protected closeScoutCourier(): void {
-    this.scoutOpen.set(false);
+  /** Display name of the active pet for the courier header line. */
+  protected courierPetName(): string {
+    const pet = this.activeUsablePet();
+    return pet ? petInfo(pet.species).name : 'scout';
   }
 
-  /** Gear locked because its tier exceeds the scout's ceiling. */
-  protected scoutGearLocked(item: string): boolean {
-    const cap = this.scoutView()?.tierCap ?? 0;
-    return (GEAR_MAP[item]?.tier ?? 99) > cap;
-  }
-  protected scoutEggLocked(tier: number): boolean {
-    return tier > (this.scoutView()?.tierCap ?? 0);
+  /** In courier mode, is this item tier above the scout's ceiling? (gear/eggs only) */
+  protected courierTierLocked(tier: number): boolean {
+    return this.shopMode() === 'courier' && tier > (this.scoutView()?.tierCap ?? 0);
   }
 
-  /** Haul one item back. `payload` mirrors the shop buy contract (itemId, or
-   *  {kind:'egg', tier}). Re-peeks so depleted stock + the armed cooldown show. */
-  async scoutBuy(payload: Record<string, unknown>): Promise<void> {
+  /** Stage (or un-stage) a single item for courier checkout. No-op while resting. */
+  protected stage(item: CartItem): void {
     if (this.scoutOnCooldown()) return;
+    this.cartItem.update((cur) => (cur?.key === item.key ? null : item));
+  }
+  protected isStaged(key: string): boolean {
+    return this.cartItem()?.key === key;
+  }
+  protected stageGear(info: GearInfo): void {
+    this.stage({ key: `gear:${info.id}`, name: info.name, cost: info.cost, payload: { itemId: info.id } });
+  }
+  protected stageConsumable(info: ConsumableInfo): void {
+    this.stage({ key: `consumable:${info.id}`, name: info.name, cost: info.cost, payload: { itemId: info.id } });
+  }
+  protected stageGrimoire(g: GrimoireInfo): void {
+    this.stage({ key: `grimoire:${g.id}`, name: g.name, cost: g.cost, payload: { itemId: g.id } });
+  }
+  protected stageEgg(e: { tier: number; cost: number }): void {
+    this.stage({ key: `egg:${e.tier}`, name: `${tierRarity(e.tier).label} Egg`, cost: e.cost, payload: { kind: 'egg', tier: e.tier } });
+  }
+
+  /** Commit the staged item via pet-scout-buy (arms the cooldown), then close. */
+  async checkoutCourier(): Promise<void> {
+    const item = this.cartItem();
+    if (!item || this.scoutOnCooldown()) return;
     await this.run(async () => {
-      const resp = await this.store.action('pet-scout-buy', payload);
+      const resp = await this.store.action('pet-scout-buy', item.payload);
       this.showToast(resp.text ?? 'Your scout hauls it back.');
     });
-    const resp = await this.store.action('pet-scout-peek', {}).catch(() => null);
-    const pa = (resp as { petAbility?: { node: string; tierCap: number; stock: BazaarView } } | null)?.petAbility;
-    if (pa) this.scoutView.set(pa);
+    this.closeFacilities();
   }
   protected readonly spaceModal = signal<SpaceEvent | null>(null);
   protected readonly occupants = signal<Occupant[]>([]);
@@ -998,6 +1031,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return pos ? (this.store.bazaars()[pos] ?? null) : null;
   });
 
+  /** The bazaar the shop modal renders: the peeked biome stock in courier mode,
+   *  else the shop at the player's position. */
+  protected readonly activeBazaar = computed<BazaarView | null>(() =>
+    this.shopMode() === 'courier' ? (this.scoutView()?.stock ?? null) : this.currentBazaar(),
+  );
+
   protected islandBazaar(): boolean {
     const pos = this.store.you()?.position;
     return !!pos && this.ISLAND_BAZAAR_NODES.has(pos);
@@ -1068,7 +1107,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   protected shopGearRows(): { info: GearInfo; qty: number; blackMarket: boolean }[] {
-    return (this.currentBazaar()?.gear ?? [])
+    return (this.activeBazaar()?.gear ?? [])
       .map((s) => ({ info: GEAR_MAP[s.item], qty: s.qty, blackMarket: !!s.blackMarket }))
       .filter((r) => !!r.info);
   }
@@ -1110,20 +1149,20 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   protected shopConsumableRows(): { info: ConsumableInfo; qty: number }[] {
-    return (this.currentBazaar()?.consumables ?? [])
+    return (this.activeBazaar()?.consumables ?? [])
       .map((s) => ({ info: CONSUMABLE_MAP[s.item], qty: s.qty }))
       .filter((r) => !!r.info);
   }
 
   protected shopGrimoireRows(): GrimoireInfo[] {
-    return (this.currentBazaar()?.grimoires ?? [])
+    return (this.activeBazaar()?.grimoires ?? [])
       .map((id) => GRIMOIRE_MAP[id])
       .filter((g): g is GrimoireInfo => !!g);
   }
 
   /** In-stock companion eggs for the bazaar's Eggs tab. */
   protected shopEggRows(): { tier: number; qty: number; cost: number }[] {
-    return (this.currentBazaar()?.eggs ?? []).filter((e) => e.qty > 0);
+    return (this.activeBazaar()?.eggs ?? []).filter((e) => e.qty > 0);
   }
 
   /** Short egg blurb — the row name ("Legendary Egg") already shows rarity, so
@@ -1141,7 +1180,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   protected bazaarRestockLabel(): string {
-    const at = this.currentBazaar()?.refreshesAt;
+    const at = this.activeBazaar()?.refreshesAt;
     if (!at) return '—';
     const ms = new Date(at + 'Z').getTime() - Date.now();
     const min = Math.max(0, Math.ceil(ms / 60_000));
@@ -1184,7 +1223,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   protected bazaarKeeper(): { art: string; quote: string } {
     if (this.islandBazaar()) return this.islandKeeper;
-    const at = this.currentBazaar()?.refreshesAt;
+    const at = this.activeBazaar()?.refreshesAt;
     const windowEndMs = at ? new Date(at + 'Z').getTime() : Date.now();
     const windowIdx = Math.round(windowEndMs / (30 * 60_000));
     return this.BAZAAR_KEEPERS[windowIdx % this.BAZAAR_KEEPERS.length];
@@ -1365,6 +1404,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Crystal-vein strikes remaining this visit. */
   protected readonly veinStrikesLeft = computed(() => this.store.you()?.veinStrikesLeft ?? 0);
+
+  /** Current crafting-material totals — the vein modal's corner HUD (Gemstones = ichor). */
+  protected readonly veinGemstones = computed(() => this.store.you()?.materials?.ichor ?? 0);
+  protected readonly veinMoltings = computed(() => this.store.you()?.materials?.moltings ?? 0);
 
   /** Guildvault picks remaining this visit. */
   protected readonly vaultPicksLeft = computed(() => this.store.you()?.vaultPicksLeft ?? 0);
@@ -1707,6 +1750,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Rested rolls banked past the cap (server-owned; display only). */
   protected readonly restedRolls = computed(() => this.store.you()?.rested ?? 0);
+
+  /** True when the next timed tick pays a rested bonus (server-computed: below the
+   * roll cap with rested banked). Drives the "bonus rolls this cycle" hint. */
+  protected readonly nextRollBoosted = computed(() => this.store.you()?.nextRollBoosted ?? false);
 
   /** True when the roll button should be disabled (out of rolls). Debug builds
    *  roll freely. No user-facing text — the disabled button + the next-roll
@@ -3127,6 +3174,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   closeFacilities(): void {
     this.showShop.set(false);
+    this.shopMode.set('shop');
+    this.cartItem.set(null);
+    this.scoutView.set(null);
     this.welcomeGift.set(null);
     this.showShrine.set(false);
     this.showWarp.set(null);

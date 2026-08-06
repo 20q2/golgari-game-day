@@ -272,18 +272,46 @@
 // flow) so it never adds a row — keeping the board band the same height as the
 // creature/plaza sub-nav bands. The action row is centred, leaving the left
 // gutter clear for this label; pointer-events off so it never blocks a tap.
-.band-status {
+// Status lines (roll countdown, rested bonus, rested balance) share one absolutely
+// positioned column so they stack instead of overlapping at the same corner.
+.band-status-stack {
   position: absolute;
   top: 4px;
   left: 10px;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  pointer-events: none;
+}
+
+.band-status {
+  display: flex;
+  align-items: center;
+  gap: 3px;
   margin: 0;
   font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   color: #b7e4c7;
   opacity: 0.85;
-  pointer-events: none;
+
+  .mi {
+    font-size: 0.85rem;
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+}
+
+// The next tick pays a rested bonus — gold reads as "good news incoming".
+.band-status-boost {
+  color: #ffd166;
+  opacity: 1;
+}
+
+// The banked rested balance — a cooler, quieter tone than the bonus hint.
+.band-status-rested {
+  color: #a9d6e5;
 }
 
 // The current-space action is a round button so it reads as distinct from the

@@ -1297,9 +1297,10 @@ def _pet_scout_peek(table, sid, doc, payload):
     node = _biome_bazaar_node(table, sid, doc)
     if not node:
         return _err('No bazaar in this biome for your scout to reach.', 409)
-    stock = _shop_stock(table, sid, node)
+    stock = _clean(_shop_stock(table, sid, node))
+    stock['refreshesAt'] = _shop_window_end(_shop_window())  # courier header restock clock
     result = {'kind': 'scout-peek', 'node': node,
-              'tierCap': _pet_scout_tier_cap(level), 'stock': _clean(stock),
+              'tierCap': _pet_scout_tier_cap(level), 'stock': stock,
               'text': 'Your scout ranges ahead and reports the local bazaar stock.'}
     return _ok(doc, text=result['text'], petAbility=result)
 
@@ -2659,11 +2660,15 @@ def _roll_meta(doc):
     keeps running while the bank is full but `rested` is still filling — that
     tick banks a rested stack rather than a roll."""
     meta = {'debug': data.DEBUG}
-    still_accruing = (doc.get('rolls', 0) < data.ROLL_CAP
-                      or doc.get('rested', 0) < data.RESTED_CAP)
+    rolls, rested = doc.get('rolls', 0), doc.get('rested', 0)
+    still_accruing = rolls < data.ROLL_CAP or rested < data.RESTED_CAP
     if still_accruing and doc.get('rollRegenAt'):
         nxt = engine._parse_iso(doc['rollRegenAt']) + timedelta(minutes=data.ROLL_REGEN_MINUTES)
         meta['nextRollAt'] = nxt.strftime('%Y-%m-%dT%H:%M:%S')
+    # The upcoming tick pays a rested bonus (double) only while the bank still has
+    # room to receive it — flagged so the client can hint "bonus rolls this cycle".
+    if rolls < data.ROLL_CAP and rested > 0:
+        meta['nextRollBoosted'] = True
     return meta
 
 

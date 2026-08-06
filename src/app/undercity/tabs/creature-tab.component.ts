@@ -70,7 +70,7 @@ import {
 } from '../data/pets';
 import { formSprite } from '../data/species';
 import { getRecoloredDataUrl, getRecoloredWithHatEffectDataUrl } from '../engine/sprite-engine';
-import { isShielded, BazaarView } from '../services/undercity-models';
+import { isShielded } from '../services/undercity-models';
 import { DUNGEONS, SIGILS_REQUIRED } from '../data/dungeons';
 import { regionInfo } from '../data/regions';
 import { UcActionBandComponent } from './action-band.component';
@@ -653,62 +653,6 @@ export class CreatureTabComponent {
       this.showToast(resp.text ?? 'Listed on the market.');
     });
     this.closeEgg();
-  }
-
-  // ── Scout courier: peek the biome bazaar (free), haul back one tier-capped item
-  protected readonly scoutOpen = signal(false);
-  protected readonly scoutView = signal<{ node: string; tierCap: number; stock: BazaarView } | null>(null);
-  protected readonly gearMapRef = GEAR_MAP;
-
-  /** Can the player cover a spore price? Mirrors board-tab.canAfford. */
-  protected canAfford(cost: number): boolean {
-    return (this.store.you()?.spores ?? 0) >= cost;
-  }
-
-  /** True while the active scout's shared cooldown has NOT elapsed (buy-gated). */
-  protected scoutOnCooldown(): boolean {
-    const pet = this.activePet();
-    return !!pet && this.petRoleOf(pet) === 'scout' && !this.petAbilityReady(pet);
-  }
-
-  async openScoutCourier(): Promise<void> {
-    this.scoutView.set(null);
-    await this.run(async () => {
-      const resp = await this.store.action('pet-scout-peek', {});
-      const pa = (resp as { petAbility?: { node: string; tierCap: number; stock: BazaarView } }).petAbility;
-      if (pa) {
-        this.scoutView.set(pa);
-        this.scoutOpen.set(true);
-      } else {
-        this.showToast(resp.text ?? 'Your scout finds no bazaar nearby.');
-      }
-    });
-  }
-
-  protected closeScoutCourier(): void {
-    this.scoutOpen.set(false);
-  }
-
-  /** Gear locked because its tier exceeds the scout's ceiling. */
-  protected scoutGearLocked(item: string): boolean {
-    const cap = this.scoutView()?.tierCap ?? 0;
-    return (GEAR_MAP[item]?.tier ?? 99) > cap;
-  }
-  protected scoutEggLocked(tier: number): boolean {
-    return tier > (this.scoutView()?.tierCap ?? 0);
-  }
-
-  /** Haul one item back (payload mirrors the shop buy contract). Re-peeks so the
-   *  depleted stock + the armed cooldown show. */
-  async scoutBuy(payload: Record<string, unknown>): Promise<void> {
-    if (this.scoutOnCooldown()) return;
-    await this.run(async () => {
-      const resp = await this.store.action('pet-scout-buy', payload);
-      this.showToast(resp.text ?? 'Your scout hauls it back.');
-    });
-    const resp = await this.store.action('pet-scout-peek', {}).catch(() => null);
-    const pa = (resp as { petAbility?: { node: string; tierCap: number; stock: BazaarView } } | null)?.petAbility;
-    if (pa) this.scoutView.set(pa);
   }
 
   /** Flat stat bonus contributed by currently-equipped gear, per stat.

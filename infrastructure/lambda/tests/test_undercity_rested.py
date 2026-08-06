@@ -111,3 +111,16 @@ def test_roll_meta_shows_countdown_while_rested_still_filling():
     doc2 = {'rolls': data.ROLL_CAP, 'rested': data.RESTED_CAP,
             'rollRegenAt': '2020-01-01T00:00:00'}
     assert 'nextRollAt' not in db._roll_meta(doc2)
+
+
+def test_roll_meta_flags_boost_only_below_cap_with_rested():
+    base = '2020-01-01T00:00:00'
+    # Below cap with rested banked → next tick doubles → boost flag set.
+    below = {'rolls': 0, 'rested': data.ROLLS_PER_REGEN, 'rollRegenAt': base}
+    assert db._roll_meta(below).get('nextRollBoosted') is True
+    # At cap: the tick banks rested rather than doubling rolls → no boost.
+    at_cap = {'rolls': data.ROLL_CAP, 'rested': data.ROLLS_PER_REGEN, 'rollRegenAt': base}
+    assert 'nextRollBoosted' not in db._roll_meta(at_cap)
+    # No rested → ordinary tick → no boost.
+    plain = {'rolls': 0, 'rested': 0, 'rollRegenAt': base}
+    assert 'nextRollBoosted' not in db._roll_meta(plain)

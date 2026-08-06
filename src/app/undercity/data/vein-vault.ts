@@ -17,6 +17,12 @@ export const VEIN_HEARTSTONE_ICHOR = 2;
 // rare find in the deep band. [minLevel, maxLevel, chance, label].
 export const VEIN_ITEM_CONSUMABLE_BAND = { min: 5, max: 8, chance: 0.15 };
 export const VEIN_ITEM_RARE_BAND = { min: 9, chance: 0.2 };
+// The guaranteed rare the Heartstone drops is one of these (server VEIN_RARE_ITEMS).
+// Display mirror — keep names/icons in sync with data/items.ts.
+export const VEIN_RARE_ITEM_PREVIEW: { name: string; icon: string }[] = [
+  { name: 'Loaded Die', icon: 'casino' },
+  { name: 'Smoke Spore', icon: 'air' },
+];
 export const VAULT_SLOTS = 3;
 export const VAULT_PICKS_PER_VISIT = 3;
 export const VAULT_POT_SEED = 30;

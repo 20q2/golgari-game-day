@@ -7,7 +7,9 @@ import {
   ElementRef,
   OnChanges,
   SimpleChanges,
+  SimpleChange,
   signal,
+  WritableSignal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,6 +23,7 @@ import {
   VEIN_ITEM_RARE_BAND,
   VEIN_MAX_DEPTH,
   VEIN_STRIKES_PER_VISIT,
+  VEIN_RARE_ITEM_PREVIEW,
 } from '../data/vein-vault';
 
 /** The result of the swing the parent just resolved, so the modal can pop the
@@ -81,27 +84,53 @@ interface Rock {
         <header class="vc-head">
           <div class="vc-title">
             <mat-icon class="mi title-i">diamond</mat-icon>
-            <div>
-              <span class="eyebrow">Shared shaft</span>
-              <h3>Crystal Vein</h3>
-            </div>
+            <h3>Crystal Vein</h3>
           </div>
-          <div class="gem-tally" title="Gemstones banked this visit">
-            <mat-icon class="mi">diamond</mat-icon>
-            <b #earnedEl class="earned">{{ earnedThisVisit }}</b>
+          <div class="hud">
+            <div #gemTally class="tally gem" title="Gemstones you hold">
+              <mat-icon class="mi">diamond</mat-icon>
+              <b>{{ gemstones }}</b>
+              @if (gemPop()) {
+                <span class="tally-pop">{{ gemPop() }}</span>
+              }
+            </div>
+            <div #moltTally class="tally molt" title="Moltings you hold">
+              <mat-icon class="mi">grass</mat-icon>
+              <b>{{ moltings }}</b>
+              @if (moltPop()) {
+                <span class="tally-pop">{{ moltPop() }}</span>
+              }
+            </div>
           </div>
         </header>
 
         <div class="shaft-region">
-          <!-- The shaft is the tappable delighter; the button below is the accessible
-               primary. Depth reads off the lit strata + the Heartstone at the bottom. -->
+          <!-- The shaft IS the strike control: tap the vein to swing your pick.
+               Depth reads off the lit strata + the Heartstone at the bottom. -->
           <div
             #shaftEl
             class="shaft-stage"
             [class.tappable]="canStrike"
             [class.heart]="isHeartstoneNext"
+            role="button"
+            [attr.aria-label]="canStrike ? 'Strike the crystal vein' : null"
+            [attr.aria-disabled]="!canStrike"
+            [attr.tabindex]="canStrike ? 0 : -1"
             (click)="onStrike($event)"
+            (keydown.enter)="onStrike()"
+            (keydown.space)="onStrike(); $event.preventDefault()"
           >
+            @if (canStrike || busy) {
+              <div class="tap-cue">
+                {{
+                  busy
+                    ? 'Striking…'
+                    : isHeartstoneNext
+                      ? 'Tap to pry the Heartstone'
+                      : 'Tap the vein to strike'
+                }}
+              </div>
+            }
             <div class="shaft">
               @for (lv of levels; track lv) {
                 <div
@@ -142,42 +171,31 @@ interface Rock {
             }
           </div>
 
-          <!-- Cave-in tension meter: one rising ember bar instead of an odds table. -->
-          @if (strikesLeft > 0) {
-            <div class="risk" [class.high]="riskPct >= 24">
-              <div class="risk-cap">
-                <mat-icon class="mi">warning</mat-icon>
-                <span class="pct">{{ riskPct }}%</span>
-              </div>
-              <div class="risk-track">
-                <span class="tick" style="top: 33%"></span>
-                <span class="tick" style="top: 66%"></span>
-                <div class="risk-fill" [style.height.%]="riskPct"></div>
-              </div>
-              <div class="risk-label">Cave-in<br />{{ caveDmg }} dmg</div>
+          <!-- Cave-in tension meter: one rising ember bar instead of an odds table.
+               Stays visible even out of swings so the shaft's danger is always legible. -->
+          <div class="risk" [class.high]="riskPct >= 24">
+            <div class="risk-cap">
+              <mat-icon class="mi">warning</mat-icon>
+              <span class="pct">{{ riskPct }}%</span>
             </div>
-          }
+            <div class="risk-track">
+              <span class="tick" style="top: 33%"></span>
+              <span class="tick" style="top: 66%"></span>
+              <div class="risk-fill" [style.height.%]="riskPct"></div>
+            </div>
+            <div class="risk-label">Cave-in<br />{{ caveDmg }} dmg</div>
+          </div>
         </div>
 
         <div class="shaft-foot">
           <span>Depth <b>{{ depth }}</b><em>/{{ MAX }}</em></span>
-          @if (strikesLeft > 0) {
-            <span class="to-heart">
-              @if (isHeartstoneNext) {
-                Heartstone next
-              } @else {
-                {{ MAX - depth }} to the Heartstone
-              }
-            </span>
-          }
         </div>
 
-        @if (log) {
-          <p class="vein-log">{{ log }}</p>
-        }
-
         @if (strikesLeft > 0) {
-          <!-- What this swing can turn up — a glance, not a spreadsheet. -->
+          <!-- Odds while digging; at the Heartstone these become guaranteed rewards. -->
+          <div class="odds-divider">
+            <span>{{ isHeartstoneNext ? 'Heartstone reward' : 'Odds of finding' }}</span>
+          </div>
           <div class="loot">
             <div class="chip gem">
               <mat-icon class="mi">diamond</mat-icon>
@@ -204,31 +222,43 @@ interface Rock {
             </div>
           </div>
 
-          <!-- Swings as depleting pips + the one juicy primary action. -->
+          @if (isHeartstoneNext) {
+            <!-- Name the guaranteed rare prize so the finish isn't a mystery. -->
+            <div class="prize">
+              <span class="prize-lab">Plus a guaranteed rare — one of</span>
+              <div class="prize-items">
+                @for (p of RARE_PRIZES; track p.name) {
+                  <span class="prize-item">
+                    <mat-icon class="mi">{{ p.icon }}</mat-icon>
+                    {{ p.name }}
+                  </span>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Swings remaining as depleting pips. -->
           <div class="pips">
             <span class="lab">Swings</span>
             @for (p of pips; track $index) {
               <span class="pip" [class.spent]="!p"></span>
             }
           </div>
-          <button
-            class="strike-btn"
-            [class.heart]="isHeartstoneNext"
-            [disabled]="busy"
-            (click)="onStrike()"
-          >
-            @if (isHeartstoneNext) {
-              <mat-icon class="mi">auto_awesome</mat-icon>
-            }
-            {{ busy ? 'Striking…' : isHeartstoneNext ? 'Pry the Heartstone' : 'Strike the vein' }}
-          </button>
+
+          <!-- Flavor / last-result note, in the space the strike button used to hold. -->
+          @if (log) {
+            <p class="vein-note">{{ log }}</p>
+          }
 
           <p class="vc-foot">
             <mat-icon class="mi">groups</mat-icon>
             Depth carries over — everyone digs the same shaft
           </p>
         } @else {
-          <p class="vein-hint out">Out of strikes — come back next time you land here.</p>
+          @if (log) {
+            <p class="vein-note">{{ log }}</p>
+          }
+          <p class="vein-hint out">A hard day of work - come back next time you land here.</p>
         }
         <button class="uc-btn close-btn ghost" (click)="closed.emit()">Leave</button>
       </div>
@@ -249,18 +279,29 @@ interface Rock {
       .vein-card {
         position: relative;
         width: min(360px, 100%);
-        background: #151a1c;
-        border: 1px solid rgba(90, 150, 165, 0.55);
-        border-radius: 14px;
+        background: #17191a;
+        border: 1px solid rgba(74, 124, 89, 0.4);
+        border-radius: 16px;
         padding: 18px;
         display: flex;
         flex-direction: column;
         gap: 10px;
-        text-align: center;
-        overflow: hidden;
-      }
-      .vein-card {
         text-align: left;
+        overflow: hidden;
+        box-shadow:
+          0 24px 60px rgba(0, 0, 0, 0.6),
+          inset 0 1px 0 rgba(183, 228, 199, 0.07);
+        animation: veinIn 0.26s cubic-bezier(0.2, 1.2, 0.4, 1);
+      }
+      @keyframes veinIn {
+        from {
+          opacity: 0;
+          transform: translateY(12px) scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
       }
       .vein-card.damaging {
         animation: cardBump 0.42s ease-out;
@@ -288,7 +329,7 @@ interface Rock {
         inset: 0;
         z-index: 5;
         pointer-events: none;
-        border-radius: 14px;
+        border-radius: 16px;
         background: radial-gradient(120% 120% at 50% 50%, rgba(210, 40, 30, 0.45), rgba(210, 40, 30, 0.12));
         box-shadow: inset 0 0 0 2px rgba(230, 70, 55, 0.75);
         animation: redBump 0.5s ease-out forwards;
@@ -318,16 +359,6 @@ interface Rock {
       }
       .vc-title .title-i {
         color: #8fd0dd;
-        filter: drop-shadow(0 0 6px rgba(143, 208, 221, 0.55));
-      }
-      .vc-title .eyebrow {
-        display: block;
-        font-size: 0.58rem;
-        font-weight: 700;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: #6d827d;
-        margin-bottom: 2px;
       }
       h3 {
         margin: 0;
@@ -336,23 +367,74 @@ interface Rock {
         font-weight: 800;
         line-height: 1;
       }
-      .gem-tally {
+      /* ── Corner HUD: current Gemstone + Molting totals ────────────────────── */
+      .hud {
+        display: flex;
+        gap: 6px;
+      }
+      .tally {
+        position: relative;
         display: flex;
         align-items: center;
-        gap: 5px;
-        padding: 5px 10px 5px 8px;
-        background: rgba(143, 208, 221, 0.1);
-        border: 1px solid rgba(90, 150, 165, 0.55);
+        gap: 4px;
+        padding: 4px 9px 4px 7px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(90, 150, 165, 0.35);
         border-radius: 999px;
         font-variant-numeric: tabular-nums;
       }
-      .gem-tally .mi {
-        color: #8fd0dd;
-      }
-      .earned {
-        color: #b6ffbf;
-        font-size: 1rem;
+      .tally b {
+        font-size: 0.95rem;
         font-weight: 800;
+      }
+      .tally .mi {
+        width: 15px;
+        height: 15px;
+        font-size: 15px;
+      }
+      .tally.gem {
+        border-color: rgba(143, 208, 221, 0.4);
+      }
+      .tally.gem .mi,
+      .tally.gem b {
+        color: #9fd2df;
+      }
+      .tally.molt {
+        border-color: rgba(169, 211, 138, 0.4);
+      }
+      .tally.molt .mi,
+      .tally.molt b {
+        color: #a9d38a;
+      }
+      /* the "+N" that floats up off a tally when its total climbs */
+      .tally-pop {
+        position: absolute;
+        top: -4px;
+        right: 4px;
+        font-size: 0.72rem;
+        font-weight: 800;
+        pointer-events: none;
+        animation: tallyPop 0.9s ease-out forwards;
+      }
+      .tally.gem .tally-pop {
+        color: #b7e2ff;
+      }
+      .tally.molt .tally-pop {
+        color: #bfe6a3;
+      }
+      @keyframes tallyPop {
+        0% {
+          opacity: 0;
+          transform: translateY(2px) scale(0.8);
+        }
+        25% {
+          opacity: 1;
+          transform: translateY(-4px) scale(1.05);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-18px) scale(1);
+        }
       }
       /* ── Shaft region: hero shaft + cave-in meter ─────────────────────────── */
       .shaft-region {
@@ -393,6 +475,27 @@ interface Rock {
         box-shadow:
           inset 0 2px 14px rgba(0, 0, 0, 0.7),
           0 0 16px rgba(224, 192, 136, 0.22);
+      }
+      /* subtle "you tap this" affordance now that the button is gone */
+      .tap-cue {
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 3;
+        padding: 3px 11px;
+        border-radius: 999px;
+        background: rgba(6, 10, 10, 0.62);
+        border: 1px solid rgba(143, 208, 221, 0.3);
+        font-size: 0.66rem;
+        font-weight: 600;
+        color: #b9e6ef;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+      .shaft-stage.heart .tap-cue {
+        color: #e7cf9c;
+        border-color: rgba(224, 192, 136, 0.4);
       }
       .shaft {
         display: flex;
@@ -440,25 +543,15 @@ interface Rock {
           rgba(184, 134, 42, 0.1) 70%,
           transparent
         );
-        border: 1px solid rgba(224, 192, 136, 0.5);
-        box-shadow: inset 0 0 18px rgba(224, 192, 136, 0.28);
-        animation: heartGlow 2.6s ease-in-out infinite;
+        border: 1px solid rgba(224, 192, 136, 0.45);
+        box-shadow: inset 0 0 14px rgba(224, 192, 136, 0.2);
       }
       .heart-gem {
-        color: #f0c24b;
-        width: 30px;
-        height: 30px;
-        font-size: 30px;
-        filter: drop-shadow(0 0 10px rgba(240, 194, 75, 0.8));
-      }
-      @keyframes heartGlow {
-        0%,
-        100% {
-          box-shadow: inset 0 0 14px rgba(224, 192, 136, 0.2);
-        }
-        50% {
-          box-shadow: inset 0 0 26px rgba(224, 192, 136, 0.5);
-        }
+        color: #e0c088;
+        width: 28px;
+        height: 28px;
+        font-size: 28px;
+        filter: drop-shadow(0 0 4px rgba(224, 192, 136, 0.5));
       }
       @keyframes nextPulse {
         0%,
@@ -486,7 +579,7 @@ interface Rock {
         margin-bottom: 5px;
       }
       .risk-cap .mi {
-        color: #ef5f3a;
+        color: #d08a6f;
         width: 16px;
         height: 16px;
         font-size: 16px;
@@ -494,7 +587,7 @@ interface Rock {
       .risk-cap .pct {
         font-size: 0.88rem;
         font-weight: 800;
-        color: #ef5f3a;
+        color: #d08a6f;
         font-variant-numeric: tabular-nums;
       }
       .risk-track {
@@ -519,21 +612,11 @@ interface Rock {
         left: 0;
         right: 0;
         bottom: 0;
-        background: linear-gradient(180deg, #ffb079 0%, #ef5f3a 45%, #7a2c1c 100%);
-        box-shadow: 0 0 12px rgba(239, 95, 58, 0.7);
+        background: linear-gradient(180deg, #d98a6a 0%, #b45a3c 55%, #6e3320 100%);
         transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
       }
       .risk.high .risk-fill {
-        animation: riskPulse 1.4s ease-in-out infinite;
-      }
-      @keyframes riskPulse {
-        0%,
-        100% {
-          filter: brightness(1);
-        }
-        50% {
-          filter: brightness(1.3);
-        }
+        background: linear-gradient(180deg, #e09068 0%, #c05633 55%, #6e3320 100%);
       }
       .risk-label {
         margin-top: 6px;
@@ -666,21 +749,84 @@ interface Rock {
           transform: translateY(var(--fall)) rotate(var(--rot));
         }
       }
-      .vein-log {
-        margin: 0;
-        font-size: 0.82rem;
-        color: #cbd5ce;
-      }
       /* icon sizing (Material font renders at 24px by default) */
       .title-i {
         width: 22px;
         height: 22px;
         font-size: 22px;
       }
-      .gem-tally .mi {
-        width: 15px;
-        height: 15px;
-        font-size: 15px;
+      /* ── Odds section ─────────────────────────────────────────────────────── */
+      .odds-divider {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 2px;
+        font-size: 0.56rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #6d827d;
+      }
+      .odds-divider::before,
+      .odds-divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: rgba(143, 208, 221, 0.16);
+      }
+      /* flavor / last-result note, sitting where the strike button used to be */
+      .vein-note {
+        margin: 0;
+        padding: 8px 12px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(90, 150, 165, 0.2);
+        font-size: 0.8rem;
+        font-style: italic;
+        color: #b7c7b7;
+        text-align: center;
+      }
+      /* ── Heartstone prize: name the guaranteed rare ───────────────────────── */
+      .prize {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 10px;
+        border-radius: 10px;
+        background: rgba(224, 192, 136, 0.07);
+        border: 1px solid rgba(224, 192, 136, 0.3);
+      }
+      .prize-lab {
+        font-size: 0.56rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #c9b07a;
+      }
+      .prize-items {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 7px;
+      }
+      .prize-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 10px;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(224, 192, 136, 0.35);
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #e7d3a4;
+      }
+      .prize-item .mi {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+        color: #e0c088;
       }
       /* ── Loot preview chips ───────────────────────────────────────────────── */
       .loot {
@@ -716,16 +862,14 @@ interface Rock {
         color: #6d827d;
       }
       .chip.gem {
-        border-color: rgba(143, 208, 221, 0.4);
-        box-shadow: 0 0 14px -6px rgba(143, 208, 221, 0.5);
+        border-color: rgba(143, 208, 221, 0.3);
       }
       .chip.gem .mi,
       .chip.gem .amt {
-        color: #b7e2ff;
+        color: #9fd2df;
       }
       .chip.rare {
-        border-color: rgba(224, 192, 136, 0.5);
-        box-shadow: 0 0 16px -6px rgba(224, 192, 136, 0.5);
+        border-color: rgba(224, 192, 136, 0.4);
       }
       .chip.rare .mi,
       .chip.rare .amt {
@@ -759,80 +903,18 @@ interface Rock {
         margin-right: 2px;
       }
       .pip {
-        width: 15px;
-        height: 15px;
+        width: 14px;
+        height: 14px;
         transform: rotate(45deg);
         border-radius: 3px;
-        background: linear-gradient(135deg, #6fd0e0, #2f6f7d);
-        box-shadow: 0 0 8px rgba(143, 208, 221, 0.5);
+        background: linear-gradient(135deg, #5aa2b0, #2f6f7d);
+        border: 1px solid rgba(143, 208, 221, 0.3);
         transition: all 0.3s ease;
       }
       .pip.spent {
         background: #23282a;
-        box-shadow: none;
+        border-color: rgba(255, 255, 255, 0.06);
         opacity: 0.5;
-      }
-      .strike-btn {
-        width: 100%;
-        padding: 14px;
-        border: none;
-        border-radius: 12px;
-        font: inherit;
-        font-size: 0.98rem;
-        font-weight: 800;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        cursor: pointer;
-        color: #04211f;
-        background: linear-gradient(180deg, #8fe6f2 0%, #4bb6c8 55%, #2c7f8e 100%);
-        box-shadow:
-          0 5px 0 -1px #235e69,
-          0 10px 22px -8px rgba(75, 182, 200, 0.7);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        transition:
-          transform 0.08s ease,
-          box-shadow 0.08s ease;
-      }
-      .strike-btn .mi {
-        width: 19px;
-        height: 19px;
-        font-size: 19px;
-      }
-      .strike-btn.heart {
-        color: #2a1e05;
-        background: linear-gradient(180deg, #ffdd7a 0%, #f0c24b 55%, #b8862a 100%);
-        box-shadow:
-          0 5px 0 -1px #8a6420,
-          0 10px 22px -8px rgba(240, 194, 75, 0.7);
-        animation: breathe 2.4s ease-in-out infinite;
-      }
-      .strike-btn:active {
-        transform: translateY(4px);
-        box-shadow: 0 1px 0 -1px #235e69;
-      }
-      .strike-btn.heart:active {
-        box-shadow: 0 1px 0 -1px #8a6420;
-      }
-      .strike-btn:disabled {
-        filter: grayscale(0.5) brightness(0.8);
-        cursor: default;
-        animation: none;
-      }
-      @keyframes breathe {
-        0%,
-        100% {
-          box-shadow:
-            0 5px 0 -1px #8a6420,
-            0 10px 22px -8px rgba(240, 194, 75, 0.55);
-        }
-        50% {
-          box-shadow:
-            0 5px 0 -1px #8a6420,
-            0 12px 30px -6px rgba(240, 194, 75, 0.95);
-        }
       }
       .vc-foot {
         margin: 0;
@@ -884,8 +966,10 @@ export class CrystalVeinModalComponent implements OnChanges {
   @Input() strikesLeft = 0;
   @Input() busy = false;
   @Input() log: string | null = null;
-  /** Gemstones banked from strikes so far this visit (parent-owned). */
-  @Input() earnedThisVisit = 0;
+  /** Gemstones (ichor) the player currently holds — the corner HUD total. */
+  @Input() gemstones = 0;
+  /** Moltings the player currently holds — the corner HUD total. */
+  @Input() moltings = 0;
   /** Region biome wash painted behind the card (from the board tab). */
   @Input() washBg: string | null = null;
   /** The swing the parent just resolved — drives the tap-spot popups. */
@@ -893,14 +977,21 @@ export class CrystalVeinModalComponent implements OnChanges {
   @Output() strike = new EventEmitter<void>();
   @Output() closed = new EventEmitter<void>();
 
-  @ViewChild('earnedEl') private earnedRef?: ElementRef<HTMLElement>;
+  @ViewChild('gemTally') private gemTallyRef?: ElementRef<HTMLElement>;
+  @ViewChild('moltTally') private moltTallyRef?: ElementRef<HTMLElement>;
   @ViewChild('shaftEl') private shaftRef?: ElementRef<HTMLElement>;
+
+  /** Transient "+N" that pops off a corner tally when its total climbs. */
+  protected readonly gemPop = signal<string | null>(null);
+  protected readonly moltPop = signal<string | null>(null);
 
   protected readonly MAX = VEIN_MAX_DEPTH;
   protected readonly levels = Array.from({ length: VEIN_MAX_DEPTH }, (_, i) => i + 1);
   protected readonly HEART_ICHOR = VEIN_HEARTSTONE_ICHOR;
   protected readonly CONSUMABLE_MIN = VEIN_ITEM_CONSUMABLE_BAND.min;
   protected readonly STRIKES_TOTAL = VEIN_STRIKES_PER_VISIT;
+  /** The Heartstone's guaranteed-rare pool, named so the prize isn't a mystery. */
+  protected readonly RARE_PRIZES = VEIN_RARE_ITEM_PREVIEW;
 
   protected readonly floaters = signal<Floater[]>([]);
   protected readonly rocks = signal<Rock[]>([]);
@@ -979,17 +1070,29 @@ export class CrystalVeinModalComponent implements OnChanges {
   }
 
   ngOnChanges(ch: SimpleChanges): void {
-    if (
-      ch['earnedThisVisit'] &&
-      !ch['earnedThisVisit'].firstChange &&
-      ch['earnedThisVisit'].currentValue > ch['earnedThisVisit'].previousValue
-    ) {
-      this.pulseEarned();
-    }
+    this.onTallyGain(ch['gemstones'], this.gemTallyRef, this.gemPop);
+    this.onTallyGain(ch['moltings'], this.moltTallyRef, this.moltPop);
     if (ch['fx'] && this.fx && this.fx.seq !== this.lastSeq) {
       this.lastSeq = this.fx.seq;
       this.playResult(this.fx);
     }
+  }
+
+  /** When a corner total climbs, bump the pill and float a "+N" off it. */
+  private onTallyGain(
+    change: SimpleChange | undefined,
+    ref: ElementRef<HTMLElement> | undefined,
+    pop: WritableSignal<string | null>,
+  ): void {
+    if (!change || change.firstChange) return;
+    const delta = change.currentValue - change.previousValue;
+    if (delta <= 0) return;
+    ref?.nativeElement.animate(
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }],
+      { duration: 420, easing: 'ease-out' },
+    );
+    pop.set(`+${delta}`);
+    setTimeout(() => pop.set(null), 900);
   }
 
   /** Pop the loot (or cave-in) out of the tap spot once the swing resolves. */
@@ -1061,18 +1164,5 @@ export class CrystalVeinModalComponent implements OnChanges {
     const y = this.tap.y - index * 16;
     this.floaters.update((fs) => [...fs, { ...f, id, x, y }]);
     setTimeout(() => this.floaters.update((fs) => fs.filter((it) => it.id !== id)), 1000);
-  }
-
-  /** Scale + colour flash on the tally each time it climbs — the "Gemstone
-   *  gained" cue. */
-  private pulseEarned(): void {
-    this.earnedRef?.nativeElement.animate(
-      [
-        { transform: 'scale(1)', color: '#b6ffbf' },
-        { transform: 'scale(1.55)', color: '#ffffff' },
-        { transform: 'scale(1)', color: '#b6ffbf' },
-      ],
-      { duration: 420, easing: 'ease-out' },
-    );
   }
 }

@@ -210,9 +210,7 @@
                           {{ petAbilityReady(pet) ? 'Send scavenging' : petAbilityLeftMin(pet) + ' min' }}
                         </button>
                       } @else if (petRoleOf(pet) === 'scout') {
-                        <button type="button" class="pet-btn" [disabled]="busy()" (click)="openScoutCourier()">
-                          {{ petAbilityReady(pet) ? 'Scout Courier' : 'Courier · ' + petAbilityLeftMin(pet) + ' min' }}
-                        </button>
+                        <span class="pet-btn ghost" title="Use your scout from the board map">Scout from the board</span>
                       }
                     } @else if (petInfo(pet.species).kind === 'economy') {
                       <button type="button" class="pet-btn" [disabled]="busy() || economyAccruedNow(pet) <= 0" (click)="usePetAbility(pet)">
@@ -1289,69 +1287,6 @@
       </div>
     }
 
-    <!-- Scout courier: peek the biome bazaar (free) and haul back one tier-capped item. -->
-    @if (scoutOpen() && scoutView(); as sv) {
-      <div class="item-sheet-backdrop" (click)="closeScoutCourier()">
-        <div class="item-sheet" (click)="$event.stopPropagation()">
-          <button class="item-sheet-close" (click)="closeScoutCourier()" aria-label="Close">
-            <mat-icon class="mi">close</mat-icon>
-          </button>
-          <header class="item-sheet-head">
-            <mat-icon class="mi slot-mi">visibility</mat-icon>
-            <div class="item-sheet-title">
-              <span class="item-sheet-name">Scout Courier</span>
-              <span class="item-sheet-sub">
-                Delivers up to {{ tierRarity(sv.tierCap).label }}
-                @if (scoutOnCooldown()) { · resting }
-              </span>
-            </div>
-          </header>
-          <div class="item-sheet-effects">
-            @for (g of sv.stock.gear; track g.item) {
-              @if (g.qty > 0 && gearMapRef[g.item]; as gi) {
-                <p class="effect-line" [class.locked]="scoutGearLocked(g.item)">
-                  <strong class="effect-label">{{ gi.name }}</strong>
-                  <span>{{ tierRarity(gi.tier).label }} · {{ gi.cost }} Spores</span>
-                  @if (scoutGearLocked(g.item)) {
-                    <span class="muted">Merge to reach {{ tierRarity(gi.tier).label }}</span>
-                  } @else {
-                    <button type="button" class="pet-btn"
-                            [disabled]="busy() || scoutOnCooldown() || !canAfford(gi.cost)"
-                            (click)="scoutBuy({ itemId: g.item })">Deliver</button>
-                  }
-                </p>
-              }
-            }
-            @for (e of sv.stock.eggs ?? []; track e.tier) {
-              @if (e.qty > 0) {
-                <p class="effect-line" [class.locked]="scoutEggLocked(e.tier)">
-                  <strong class="effect-label">{{ tierRarity(e.tier).label }} Egg</strong>
-                  <span>{{ e.cost }} Spores</span>
-                  @if (scoutEggLocked(e.tier)) {
-                    <span class="muted">Merge to reach {{ tierRarity(e.tier).label }}</span>
-                  } @else {
-                    <button type="button" class="pet-btn"
-                            [disabled]="busy() || scoutOnCooldown() || !canAfford(e.cost)"
-                            (click)="scoutBuy({ kind: 'egg', tier: e.tier })">Deliver</button>
-                  }
-                </p>
-              }
-            }
-            @for (c of sv.stock.consumables; track c.item) {
-              @if (c.qty > 0 && consumableMap[c.item]; as ci) {
-                <p class="effect-line">
-                  <strong class="effect-label">{{ ci.name }}</strong>
-                  <span>{{ ci.cost }} Spores</span>
-                  <button type="button" class="pet-btn"
-                          [disabled]="busy() || scoutOnCooldown() || !canAfford(ci.cost)"
-                          (click)="scoutBuy({ itemId: c.item })">Deliver</button>
-                </p>
-              }
-            }
-          </div>
-        </div>
-      </div>
-    }
 
     <!-- Hatch reveal: what came out of the egg. -->
     @if (hatchReveal(); as pet) {

@@ -76,16 +76,24 @@
   </div>
 
   <app-uc-action-band>
-    <!-- Roll-regen cooldown: its own small status line pinned to the band's top-left -->
-    @if (nextRollLabel(); as nrl) {
-      <div class="band-status">new rolls in {{ nrl }}</div>
-    }
-    @if (restedRolls() > 0) {
-      <div class="band-status band-status-rested"
-           title="Rested rolls — your next timed rolls come in twice as fast until spent.">
-        <mat-icon class="mi">bedtime</mat-icon> {{ restedRolls() }} rested
-      </div>
-    }
+    <!-- Roll-regen status lines, stacked at the band's top-left -->
+    <div class="band-status-stack">
+      @if (nextRollLabel(); as nrl) {
+        <div class="band-status">new rolls in {{ nrl }}</div>
+        @if (nextRollBoosted()) {
+          <div class="band-status band-status-boost"
+               title="You have rested rolls banked — this cycle pays double.">
+            <mat-icon class="mi">bedtime</mat-icon> bonus rolls this cycle
+          </div>
+        }
+      }
+      @if (restedRolls() > 0) {
+        <div class="band-status band-status-rested"
+             title="Rested rolls — your next timed rolls come in twice as fast until spent.">
+          <mat-icon class="mi">bedtime</mat-icon> {{ restedRolls() }} rested
+        </div>
+      }
+    </div>
     <!-- PvP: someone shares your space — Battle stays available alongside Roll -->
     @if (occupantsHere().length && !store.you()?.pendingMove) {
       <div class="band-morph pvp-strip">
@@ -608,16 +616,28 @@
         </span>
         <img class="modal-art" [src]="bazaarKeeper().art" alt="" />
         <h3><mat-icon class="mi">storefront</mat-icon> {{ bazaarTitle() }}</h3>
-        @if (welcomeGift(); as gift) {
-          <div class="shop-welcome">
-            <p class="shop-welcome-line">“{{ gift.line }}”</p>
-            <span class="shop-welcome-item">
-              <mat-icon class="mi">{{ welcomeGiftIcon() }}</mat-icon>
-              <strong>{{ gift.name }}</strong>@if (gift.kind === 'material') { <span>×{{ gift.amount ?? 1 }}</span> }
-            </span>
+        @if (shopMode() === 'courier') {
+          <div class="shop-welcome courier-welcome">
+            @if (activeUsablePet(); as pet) {
+              <img class="pet-sprite courier-pet" [src]="petSpriteUrl(pet.species)" alt="" />
+            }
+            <p class="shop-welcome-line">
+              Your {{ courierPetName() }} drops your coin-pouch on the counter — point it at
+              <strong>one</strong> thing and it’ll haul it back (up to {{ tierRarity(scoutView()?.tierCap ?? 1).label }}).
+            </p>
           </div>
         } @else {
-          <p class="shop-quote">“{{ bazaarKeeper().quote }}”</p>
+          @if (welcomeGift(); as gift) {
+            <div class="shop-welcome">
+              <p class="shop-welcome-line">“{{ gift.line }}”</p>
+              <span class="shop-welcome-item">
+                <mat-icon class="mi">{{ welcomeGiftIcon() }}</mat-icon>
+                <strong>{{ gift.name }}</strong>@if (gift.kind === 'material') { <span>×{{ gift.amount ?? 1 }}</span> }
+              </span>
+            </div>
+          } @else {
+            <p class="shop-quote">“{{ bazaarKeeper().quote }}”</p>
+          }
         }
 
         <div class="shop-tabs" role="tablist">
@@ -658,14 +678,28 @@
                   </span>
                 </span>
                 <span class="shop-desc">{{ r.info.desc }}</span>
-                <button
-                  class="uc-btn shop-buy"
-                  [disabled]="busy() || !canAfford(r.info.cost) || !!shopGearReason(r.info, r.qty)"
-                  (click)="buy(r.info)"
-                >
-                  {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-                </button>
-                @if (!busy() && shopGearReason(r.info, r.qty); as reason) { <span class="block-reason">{{ reason }}</span> }
+                @if (shopMode() === 'courier') {
+                  <button
+                    class="uc-btn shop-buy"
+                    [class.staged]="isStaged('gear:' + r.info.id)"
+                    [disabled]="busy() || scoutOnCooldown() || courierTierLocked(r.info.tier) || !!shopGearReason(r.info, r.qty)"
+                    (click)="stageGear(r.info)"
+                  >
+                    {{ isStaged('gear:' + r.info.id) ? 'In cart' : 'Deliver · ' + r.info.cost }}
+                  </button>
+                  @if (courierTierLocked(r.info.tier)) { <span class="block-reason">Merge your scout to reach {{ tierRarity(r.info.tier).label }}</span> }
+                  @else if (scoutOnCooldown()) { <span class="block-reason">Your scout is resting.</span> }
+                  @else { @if (shopGearReason(r.info, r.qty); as reason) { <span class="block-reason">{{ reason }}</span> } }
+                } @else {
+                  <button
+                    class="uc-btn shop-buy"
+                    [disabled]="busy() || !canAfford(r.info.cost) || !!shopGearReason(r.info, r.qty)"
+                    (click)="buy(r.info)"
+                  >
+                    {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+                  </button>
+                  @if (!busy() && shopGearReason(r.info, r.qty); as reason) { <span class="block-reason">{{ reason }}</span> }
+                }
               </div>
             } @empty {
               <div class="shop-empty">The gear racks are bare. Check back after the restock.</div>
@@ -681,10 +715,20 @@
                   </span>
                 </span>
                 <span class="shop-desc">{{ r.info.desc }}</span>
-                <button class="uc-btn shop-buy" [disabled]="busy() || !canAfford(r.info.cost) || !!shopConsumableReason(r.info, r.qty)" (click)="buy(r.info)">
-                  {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-                </button>
-                @if (!busy() && shopConsumableReason(r.info, r.qty); as reason) { <span class="block-reason">{{ reason }}</span> }
+                @if (shopMode() === 'courier') {
+                  <button class="uc-btn shop-buy" [class.staged]="isStaged('consumable:' + r.info.id)"
+                          [disabled]="busy() || scoutOnCooldown() || !!shopConsumableReason(r.info, r.qty)"
+                          (click)="stageConsumable(r.info)">
+                    {{ isStaged('consumable:' + r.info.id) ? 'In cart' : 'Deliver · ' + r.info.cost }}
+                  </button>
+                  @if (scoutOnCooldown()) { <span class="block-reason">Your scout is resting.</span> }
+                  @else { @if (shopConsumableReason(r.info, r.qty); as reason) { <span class="block-reason">{{ reason }}</span> } }
+                } @else {
+                  <button class="uc-btn shop-buy" [disabled]="busy() || !canAfford(r.info.cost) || !!shopConsumableReason(r.info, r.qty)" (click)="buy(r.info)">
+                    {{ r.info.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+                  </button>
+                  @if (!busy() && shopConsumableReason(r.info, r.qty); as reason) { <span class="block-reason">{{ reason }}</span> }
+                }
               </div>
             } @empty {
               <div class="shop-empty">No consumables in stock. Check back after the restock.</div>
@@ -700,9 +744,18 @@
                   </span>
                 </span>
                 <span class="shop-desc">{{ grimoireSpellList(g) }}</span>
-                <button class="uc-btn shop-buy" [disabled]="busy() || ownsGrimoire(g.id) || !canAfford(g.cost)" (click)="buy(g)">
-                  {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-                </button>
+                @if (shopMode() === 'courier') {
+                  <button class="uc-btn shop-buy" [class.staged]="isStaged('grimoire:' + g.id)"
+                          [disabled]="busy() || scoutOnCooldown() || ownsGrimoire(g.id)"
+                          (click)="stageGrimoire(g)">
+                    {{ isStaged('grimoire:' + g.id) ? 'In cart' : (ownsGrimoire(g.id) ? 'Owned' : 'Deliver · ' + g.cost) }}
+                  </button>
+                  @if (scoutOnCooldown() && !ownsGrimoire(g.id)) { <span class="block-reason">Your scout is resting.</span> }
+                } @else {
+                  <button class="uc-btn shop-buy" [disabled]="busy() || ownsGrimoire(g.id) || !canAfford(g.cost)" (click)="buy(g)">
+                    {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+                  </button>
+                }
               </div>
             } @empty {
               <div class="shop-empty">No tomes on the shelf right now.</div>
@@ -719,9 +772,19 @@
                   </span>
                 </span>
                 <span class="shop-desc">{{ eggBlurb(e.tier) }}</span>
-                <button class="uc-btn shop-buy" [disabled]="busy() || !canAfford(e.cost)" (click)="buyEgg(e.tier)">
-                  {{ e.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-                </button>
+                @if (shopMode() === 'courier') {
+                  <button class="uc-btn shop-buy" [class.staged]="isStaged('egg:' + e.tier)"
+                          [disabled]="busy() || scoutOnCooldown() || courierTierLocked(e.tier)"
+                          (click)="stageEgg(e)">
+                    {{ isStaged('egg:' + e.tier) ? 'In cart' : 'Deliver · ' + e.cost }}
+                  </button>
+                  @if (courierTierLocked(e.tier)) { <span class="block-reason">Merge your scout to reach {{ tierRarity(e.tier).label }}</span> }
+                  @else if (scoutOnCooldown()) { <span class="block-reason">Your scout is resting.</span> }
+                } @else {
+                  <button class="uc-btn shop-buy" [disabled]="busy() || !canAfford(e.cost)" (click)="buyEgg(e.tier)">
+                    {{ e.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+                  </button>
+                }
               </div>
             } @empty {
               <div class="shop-empty">No eggs in the nest right now. Check back after the restock.</div>
@@ -729,7 +792,13 @@
           }
         }
 
-        <button class="uc-btn close-btn" (click)="closeFacilities()">Leave</button>
+        @if (shopMode() === 'courier' && cartItem(); as ci) {
+          <button class="uc-btn close-btn purchase-btn" [disabled]="busy() || scoutOnCooldown()" (click)="checkoutCourier()">
+            Purchase for {{ ci.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+          </button>
+        } @else {
+          <button class="uc-btn close-btn" (click)="closeFacilities()">Leave</button>
+        }
       </div>
     </div>
   }
@@ -959,7 +1028,8 @@
       [strikesLeft]="veinStrikesLeft()"
       [busy]="busy()"
       [log]="veinLog()"
-      [earnedThisVisit]="veinEarned()"
+      [gemstones]="veinGemstones()"
+      [moltings]="veinMoltings()"
       [washBg]="regionWashBg()"
       [fx]="veinFx()"
       (strike)="strike()"
@@ -1106,68 +1176,6 @@
     </div>
   }
 
-  <!-- Scout courier: peek the biome bazaar (free) and haul back one tier-capped item. -->
-  @if (scoutOpen() && scoutView(); as sv) {
-    <div class="uc-modal-backdrop" (click)="closeScoutCourier()">
-      <div class="uc-modal" (click)="$event.stopPropagation()">
-        <h3><mat-icon class="mi">visibility</mat-icon> Scout Courier</h3>
-        <p class="scroll-note">
-          Your scout hauls back one item from your biome's bazaar — up to
-          <strong>{{ tierRarity(sv.tierCap).label }}</strong>.
-          @if (scoutOnCooldown()) { <em>Resting — one delivery per cooldown.</em> }
-        </p>
-
-        @for (g of sv.stock.gear; track g.item) {
-          @if (g.qty > 0 && gearMapRef[g.item]; as gi) {
-            <div class="shop-row" [class.locked]="scoutGearLocked(g.item)">
-              <span class="shop-name">{{ gi.name }}
-                <em>{{ tierRarity(gi.tier).label }} · {{ gi.cost }} Spores</em>
-              </span>
-              @if (scoutGearLocked(g.item)) {
-                <span class="scroll-note">Merge your scout to reach {{ tierRarity(gi.tier).label }}</span>
-              } @else {
-                <button class="uc-btn shop-buy"
-                        [disabled]="busy() || scoutOnCooldown() || !canAfford(gi.cost)"
-                        (click)="scoutBuy({ itemId: g.item })">Deliver</button>
-              }
-            </div>
-          }
-        }
-
-        @for (e of sv.stock.eggs ?? []; track e.tier) {
-          @if (e.qty > 0) {
-            <div class="shop-row" [class.locked]="scoutEggLocked(e.tier)">
-              <span class="shop-name">{{ tierRarity(e.tier).label }} Egg
-                <em>{{ e.cost }} Spores</em>
-              </span>
-              @if (scoutEggLocked(e.tier)) {
-                <span class="scroll-note">Merge your scout to reach {{ tierRarity(e.tier).label }}</span>
-              } @else {
-                <button class="uc-btn shop-buy"
-                        [disabled]="busy() || scoutOnCooldown() || !canAfford(e.cost)"
-                        (click)="scoutBuy({ kind: 'egg', tier: e.tier })">Deliver</button>
-              }
-            </div>
-          }
-        }
-
-        @for (c of sv.stock.consumables; track c.item) {
-          @if (c.qty > 0 && consumableMap[c.item]; as ci) {
-            <div class="shop-row">
-              <span class="shop-name">{{ ci.name }}
-                <em>{{ ci.cost }} Spores</em>
-              </span>
-              <button class="uc-btn shop-buy"
-                      [disabled]="busy() || scoutOnCooldown() || !canAfford(ci.cost)"
-                      (click)="scoutBuy({ itemId: c.item })">Deliver</button>
-            </div>
-          }
-        }
-
-        <button class="uc-btn close-btn" (click)="closeScoutCourier()">Done</button>
-      </div>
-    </div>
-  }
 
   <!-- Spell picker -->
   @if (showSpells()) {

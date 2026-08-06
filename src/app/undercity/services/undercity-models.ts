@@ -150,6 +150,9 @@ export interface YouDoc {
   debug?: boolean;
   /** ISO time the next timed roll banks; absent while at the roll cap. */
   nextRollAt?: string;
+  /** True when the next timed tick will pay a rested bonus (double rolls) —
+   * i.e. you're below the roll cap with rested banked. Client shows a hint. */
+  nextRollBoosted?: boolean;
   rollRegenAt?: string;
   /** Rested rolls (in rolls, not "stacks"): overflow banked past the roll cap.
    * While > 0 and the bank has room, each timed tick pays DOUBLE and draws this
