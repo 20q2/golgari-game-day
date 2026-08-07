@@ -148,6 +148,9 @@ export interface YouDoc {
   rolls: number;
   /** Server DEBUG flag — when true the client shows dev tools (pick-your-roll, ∞ rolls). */
   debug?: boolean;
+  /** In-game Admin role (host-granted). Unlocks the free Move action. Owner-only
+   * — never present on the public/spectator player view. */
+  isAdmin?: boolean;
   /** ISO time the next timed roll banks; absent while at the roll cap. */
   nextRollAt?: string;
   /** True when the next timed tick will pay a rested bonus (double rolls) —

@@ -2,9 +2,9 @@
  * Enemy-space difficulty tier (T1/T2/T3) for the board badges. Mirrors the
  * server's enemy-pool resolution (undercity_db._wild_battle → data.region_tier):
  * difficulty is WHERE you are, not how deep you dig — each region maps flatly to
- * a tier (design 2026-07-26-region-tier), and an `elite` space draws the tougher
- * members of that SAME tier (elites never jump a tier). So the badge is just the
- * region's tier for any wild/elite coin. Pure: map in, {nodeId -> tier} out.
+ * a tier (design 2026-08-07 per-biome pools), and each region has its own
+ * flavored wild/elite pool. So the badge is just the region's tier for any
+ * wild/elite coin. Pure: map in, {nodeId -> tier} out.
  * Keep REGION_TIER below in sync with undercity_data.REGION_TIER.
  */
 import type { BoardMap, BoardNode } from './board-canvas';
@@ -21,7 +21,7 @@ const REGION_TIER: Record<string, EnemyTier> = {
   bog: 1,
   ruin: 2,
   depths: 2,
-  wilderness: 3,
+  wilderness: 2,
   isle: 3,
 };
 

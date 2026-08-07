@@ -682,6 +682,31 @@ def validate_walk(nodes: dict, path, steps,
     return True
 
 
+def validate_free_walk(nodes: dict, path,
+                       closed: frozenset = frozenset(),
+                       blocked: frozenset = frozenset()) -> bool:
+    """True if `path` is a legal admin free walk: edge-adjacent steps of any
+    length, never stepping ONTO a `blocked` node, never crossing a `closed`
+    barrier (a closed node may only be the final landing — the bonk stop).
+    Backtracking is allowed and there is NO distance limit — the exact-hop-count
+    and no-immediate-backtrack rules of validate_walk are intentionally dropped.
+    The start node (path[0]) is never treated as blocked or closed, mirroring
+    validate_walk (you can always walk off a node you already stand on)."""
+    if not path or len(path) < 2:
+        return False
+    if any(n not in nodes for n in path):
+        return False
+    for i in range(1, len(path)):
+        cur, prev = path[i], path[i - 1]
+        if cur not in nodes[prev]['neighbors']:
+            return False                    # not adjacent
+        if cur in blocked:
+            return False                    # never step onto a blocked node
+        if cur in closed and i != len(path) - 1:
+            return False                    # never a corridor through a seal
+    return True
+
+
 def board_distance(nodes: dict, start: str, goal: str, max_steps: int,
                    closed: frozenset = frozenset(),
                    blocked: frozenset = frozenset()) -> int | None:
@@ -1091,8 +1116,9 @@ def npc_from_spec(spec: dict) -> dict:
 
 
 def pick_npc(rng, pool=None) -> dict:
-    """Random NPC from a tier pool (defaults to the overworld normal pool)."""
-    return npc_from_spec(rng.choice(pool if pool is not None else data.NPCS))
+    """Random NPC from a pool (defaults to the safe home / city wild pool)."""
+    return npc_from_spec(rng.choice(
+        pool if pool is not None else data.REGION_NPCS['city']['wild']))
 
 
 def validate_flow_solution(puzzle, path):

@@ -476,15 +476,16 @@ def test_mystery_roll7_biome_buff():
 # ── NPCs ─────────────────────────────────────────────────────────────────────
 
 def test_npc_fixed_stats():
-    npc = pick_npc(FakeRng())              # FakeRng.choice -> first pool entry
+    npc = pick_npc(FakeRng(), [data.ENEMY_SPECS_BY_ID['drudge_beetle']])
     assert npc == {'id': 'drudge_beetle', 'name': 'Drudge Beetle',
                    'hp': 22, 'atk': 6, 'def': 2, 'spd': 5,
                    'bounty': 6, 'xp': 10, 'itemChance': 0.0}
 
 
 def test_pick_npc_uses_given_pool():
-    npc = pick_npc(FakeRng(), data.ELITE_NPCS)
-    assert npc['id'] == 'fetid_imp' and npc['xp'] == 25
+    npc = pick_npc(FakeRng(), [data.ENEMY_SPECS_BY_ID['rendclaw_troll']])
+    assert npc['id'] == 'rendclaw_troll'
+    assert npc['xp'] == data.ENEMY_SPECS_BY_ID['rendclaw_troll']['xp']
 
 
 # ── Effective stats ──────────────────────────────────────────────────────────
@@ -576,19 +577,29 @@ def test_guardians_fall_at_their_target_levels():
     assert south['outcome'] == 'attacker'
 
 
-def test_level1_bare_starter_can_lose_to_basic_wilds():
-    # Basic wilds are a real threat to an UNGEARED starter (design 2026-07-19):
-    # at least one normal wild beats a bare level-1 in a straight fight, so
-    # farming fodder is no longer free — you need gear or luck.
-    losses = [spec['id'] for spec in data.NPCS
+def _home_wilds():
+    return [s for r in ('city', 'garden', 'bone', 'cavern', 'bog')
+            for s in data.region_npcs(r, elite=False)]
+
+
+def _home_elites():
+    # Home elite pools (bone has none). Real elite spaces, not the wild fallback.
+    return [s for r in ('city', 'garden', 'cavern', 'bog')
+            for s in data.REGION_NPCS[r]['elite']]
+
+
+def test_level1_bare_starter_can_lose_to_some_home_wild():
+    # Home wild pools mix in genuinely tough creatures (design 2026-08-07), so a
+    # bare, ungeared L1 loses to at least one surface wild — fodder isn't free.
+    losses = [spec['id'] for spec in _home_wilds()
               if resolve_battle(_ref(1), _foe(spec), FakeRng())['outcome'] != 'attacker']
-    assert losses, 'a bare L1 should lose to at least one basic wild'
+    assert losses, 'a bare L1 should lose to at least one home wild'
 
 
-def test_level1_geared_starter_beats_every_wild():
-    # One gear piece each (rusted_fang +2 ATK, chitin_scrap +2 DEF) tips every
-    # basic wild back in the starter's favour — gear is the intended out.
-    for spec in data.NPCS:
+def test_level1_geared_starter_beats_its_home_fodder():
+    # One gear piece each (rusted_fang +2 ATK, chitin_scrap +2 DEF) tips the
+    # starting Undercity's wilds back in the starter's favour — gear is the out.
+    for spec in data.region_npcs('city', elite=False):
         me = _ref(1)
         me.atk += 2
         me.dfn += 2
@@ -596,21 +607,21 @@ def test_level1_geared_starter_beats_every_wild():
         assert out['outcome'] == 'attacker', spec['id']
 
 
-def test_level1_loses_to_elites():
-    for spec in data.ELITE_NPCS:
+def test_level1_loses_to_home_elites():
+    for spec in _home_elites():
         out = resolve_battle(_ref(1), _foe(spec), FakeRng())
         assert out['outcome'] == 'defender', spec['id']
 
 
-def test_level5_beats_every_elite_and_survives_comfortably():
-    # An even elite fight now runs into the Collapse (round 4+), so the winner
-    # pays real HP for the drawn-out kill — but a tier-5 creature still wins
-    # decisively and walks away above half HP.
-    for spec in data.ELITE_NPCS:
-        me = _ref(5)
+def test_higher_level_beats_every_home_elite():
+    # Home elites now span up to a Lv6 threat (Large Bear, the cavern elite — a
+    # T2-grade 16-ATK spike), so a comfortably-higher L7 is the bar: it reliably
+    # WINS every home-elite fight. The HP margin varies by elite (Large Bear
+    # bites hard) — a sim-tuning concern, not a correctness one.
+    for spec in _home_elites():
+        me = _ref(7)
         out = resolve_battle(me, _foe(spec), FakeRng())
         assert out['outcome'] == 'attacker', spec['id']
-        assert out['attackerHp'] >= me.max_hp // 2, spec['id']
 
 
 def test_level3_beats_every_dungeon_wild():

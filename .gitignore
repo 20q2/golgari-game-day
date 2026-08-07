@@ -46,6 +46,12 @@ temp/
 *.bak
 *.swp
 
+# Retired sprite source art (kept locally, not shipped)
+public/undercity/player_sprites/old/
+
+# Retired ".old" snapshots kept locally, not shipped (e.g. foo.old.png, map.old.json)
+*.old.*
+
 # Optional: if you're using the Angular CLI with Git hooks or Husky
 .husky/
 

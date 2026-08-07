@@ -93,6 +93,11 @@
                 <button (click)="grant(p.userId)" [disabled]="busy()">Grant</button>
                 <button (click)="givePet(p.userId)" [disabled]="busy()">Give pet</button>
                 <button (click)="heal(p.userId)" [disabled]="busy()">Heal</button>
+                @if (!p.isBot) {
+                  <button (click)="toggleAdmin(p.userId)" [disabled]="busy()">
+                    {{ isAdminUser(p.userId) ? 'Revoke admin' : 'Make admin' }}
+                  </button>
+                }
                 <select #tp (change)="teleport(p.userId, tp.value); tp.value=''"
                         [disabled]="busy()">
                   <option value="">Teleport…</option>

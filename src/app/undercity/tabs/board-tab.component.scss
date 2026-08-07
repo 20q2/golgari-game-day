@@ -1204,6 +1204,49 @@
       height: 13px;
     }
   }
+
+  // Scout courier: the active pet hops back and forth across the top, "around"
+  // the shopkeeper portrait. Absolutely placed so it overlays the header art.
+  .courier-pet-hop {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    margin-left: -22px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    pointer-events: none;
+    z-index: 3;
+    filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6));
+    animation: courier-hop 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes courier-hop {
+  0%   { transform: translateX(-52px) translateY(0)   scaleX(1); }
+  12%  { transform: translateX(-52px) translateY(-14px) scaleX(1); }
+  24%  { transform: translateX(-26px) translateY(0)   scaleX(1); }
+  36%  { transform: translateX(0)     translateY(-14px) scaleX(1); }
+  48%  { transform: translateX(26px)  translateY(0)   scaleX(-1); }
+  60%  { transform: translateX(52px)  translateY(-14px) scaleX(-1); }
+  72%  { transform: translateX(26px)  translateY(0)   scaleX(-1); }
+  84%  { transform: translateX(0)     translateY(-14px) scaleX(-1); }
+  100% { transform: translateX(-52px) translateY(0)   scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-modal .courier-pet-hop { animation: none; transform: translateX(-52px); }
+}
+
+// Scout courier greeting — the keeper's in-character line, styled like the quote.
+.courier-line {
+  margin: -2px 0 4px;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: #c9b6d8;
+  line-height: 1.35;
+  text-align: center;
 }
 
 // Vendor flavor line — an in-character quote under the shopkeeper portrait.

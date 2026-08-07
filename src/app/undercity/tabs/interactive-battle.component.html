@@ -80,7 +80,7 @@
           >
             @if (guard().attacker) { <span class="barrier"></span> }
             @if (attacker.spriteUrl && !attackerSpriteFailed()) {
-              <img class="sprite" [src]="attacker.spriteUrl" [alt]="attacker.name" (error)="attackerSpriteFailed.set(true)" />
+              <img class="sprite" [src]="attacker.spriteUrl" [alt]="attacker.name" (load)="onSpriteLoad('attacker', $event)" (error)="attackerSpriteFailed.set(true)" />
             } @else {
               <mat-icon class="sprite-icon">{{ attacker.icon ?? 'pets' }}</mat-icon>
             }
@@ -156,7 +156,7 @@
           >
             @if (guard().defender) { <span class="barrier"></span> }
             @if (defender.spriteUrl && !defenderSpriteFailed()) {
-              <img class="sprite" [src]="defender.spriteUrl" [alt]="defender.name" (error)="defenderSpriteFailed.set(true)" />
+              <img class="sprite" [src]="defender.spriteUrl" [alt]="defender.name" (load)="onSpriteLoad('defender', $event)" (error)="defenderSpriteFailed.set(true)" />
             } @else {
               <mat-icon class="sprite-icon">{{ defender.icon ?? 'bug_report' }}</mat-icon>
             }

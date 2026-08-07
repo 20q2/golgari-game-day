@@ -24,23 +24,14 @@ from sim.bots import COUNTER
 # ── Enemy registry ───────────────────────────────────────────────────────────
 
 def enemy_registry():
+    # Per-biome pools (design 2026-08-07): every creature tagged by its region +
+    # wild/elite role. Shared specs (e.g. the Depths<->Ruin dwellers) land under
+    # whichever region is iterated last — the tag is descriptive only.
     reg = {}
-    for spec in data.NPCS:
-        reg[spec['id']] = ('wild', spec)
-    for spec in data.ELITE_NPCS:
-        reg[spec['id']] = ('elite', spec)
-    for spec in data.WILDERNESS_NPCS:
-        reg[spec['id']] = ('wild+', spec)
-    for spec in data.WILDERNESS_ELITE_NPCS:
-        reg[spec['id']] = ('elite+', spec)
-    for spec in data.DEPTHS_MID:
-        reg[spec['id']] = ('depths_mid', spec)
-    for spec in data.DEPTHS_DEEP:
-        reg[spec['id']] = ('depths_deep', spec)
-    for spec in data.DEPTHS_ABYSS:
-        reg[spec['id']] = ('depths_abyss', spec)
-    for spec in data.ISLE_APEX:
-        reg[spec['id']] = ('isle_apex', spec)
+    for region, pools in data.REGION_NPCS.items():
+        for kind in ('wild', 'elite'):
+            for spec in pools[kind]:
+                reg[spec['id']] = (f'{region}_{kind}', spec)
     reg['rot_sovereign'] = ('boss', data.ROT_SOVEREIGN)
     return reg
 

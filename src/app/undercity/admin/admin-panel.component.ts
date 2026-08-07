@@ -44,6 +44,10 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
   /** Two-tap guard for the destructive full reset. */
   protected readonly confirmReset = signal(false);
 
+  /** User ids granted Admin this session (local — the public roster omits the
+   *  flag, so we track what we've toggled to label the button). */
+  protected readonly adminIds = signal<Set<string>>(new Set());
+
   // Add-bot form state.
   protected readonly speciesList = ['random', 'pest', 'kraul', 'saproling', 'zombie'];
   protected readonly biomeList = ['random', 'city', 'cavern', 'bog', 'garden', 'bone'];
@@ -143,6 +147,21 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
 
   protected kick(userId: string): void {
     void this.admin('kick', { target: userId });
+  }
+
+  protected isAdminUser(userId: string): boolean {
+    return this.adminIds().has(userId);
+  }
+
+  protected toggleAdmin(userId: string): void {
+    const on = !this.isAdminUser(userId);
+    void this.admin('grant-admin', { target: userId, on }).then(() => {
+      if (this.message()) return; // command failed — leave local state untouched
+      const next = new Set(this.adminIds());
+      if (on) next.add(userId);
+      else next.delete(userId);
+      this.adminIds.set(next);
+    });
   }
 
   /** Take one bot's turn: a short random wander off its current node. */

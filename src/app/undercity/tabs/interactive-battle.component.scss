@@ -47,7 +47,11 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 8px;
-  padding: 36px 14px 28px;
+  // Bottom padding = the arena "foreground floor" below the fighters. The
+  // fighters are feet-seated on the stage's content bottom, so this one number
+  // is how high the shared floor line (feet + shadows) rides up the stage: more
+  // padding → fighters stand higher / more centered with floor in front of them.
+  padding: 30px 14px 78px;
   background-size: cover;
   background-position: center;
   border-bottom: 2px solid rgba(74, 124, 89, 0.5);
@@ -91,7 +95,13 @@
 
   .platform {
     position: absolute;
-    bottom: -14px;
+    // Anchor the ground pool by its CENTER (not its bottom edge): its height
+    // scales with --sprite-scale, so a bottom-anchored ellipse would drift the
+    // center upward for the bigger fighter and leave the two shadows at
+    // different heights. Subtracting half the scaled height (17px * scale) keeps
+    // every fighter's shadow centered on the same line — a few px above the
+    // seated feet so it reads as ground and sits raised off the bottom edge.
+    bottom: calc(4px - 17px * var(--sprite-scale, 1));
     left: 50%;
     transform: translateX(-50%);
     width: 104px;
@@ -103,8 +113,12 @@
 
   .sprite {
     // Size scales with the relative tier gap (see interactive-battle spriteScale).
+    // No max-width clamp: a tier-advantaged fighter renders at its true size and
+    // is allowed to loom past its half into the shared arena, rather than being
+    // shrunk to fit the (stat-pill-narrowed) side. Only the *bigger* fighter ever
+    // overflows — equal-tier fights are 1× and fit comfortably.
     width: calc(96px * var(--sprite-scale, 1));
-    max-width: 100%; // scale down with a shrinking side instead of overflowing
+    max-width: none;
     height: calc(96px * var(--sprite-scale, 1));
     object-fit: contain;
     image-rendering: pixelated;

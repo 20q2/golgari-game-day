@@ -42,61 +42,76 @@ const NEUTRAL_SEAT: SpriteSeat = { ground: 0, contentH: 1 };
 const seatCache = new Map<string, SpriteSeat>();
 
 /**
- * Find where a sprite's opaque pixels sit inside its square arena box so it can
- * be seated on a shared ground line. Draws the image to an offscreen canvas,
- * scans for the top/bottom opaque rows, then maps them through the same
- * `object-fit: contain` fit the CSS uses (fit to the square, center any
- * letterbox). Returns fractions of the box height. Falls back to a neutral seat
- * on any failure (missing/transparent/untainted-canvas image).
+ * Scan an already-decoded image for where its opaque pixels sit inside its
+ * square arena box, so it can be seated on a shared ground line. Draws the image
+ * to an offscreen canvas, scans for the top/bottom opaque rows, then maps them
+ * through the same `object-fit: contain` fit the CSS uses (fit to the square,
+ * center any letterbox). Returns fractions of the box height, cached by the
+ * image's resolved source. Falls back to a neutral seat on any failure
+ * (zero-size / transparent / tainted-canvas image).
+ *
+ * Prefer this over `measureSpriteSeat(url)`: it reads the exact element the
+ * template already rendered (recolored player data-URLs included), so it can't
+ * drift from a separately-loaded copy or miss a late/replaced src.
+ */
+export function scanSpriteSeat(img: HTMLImageElement): SpriteSeat {
+  const key = img.currentSrc || img.src;
+  const cached = key && seatCache.get(key);
+  if (cached) return cached;
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  if (!w || !h) return NEUTRAL_SEAT;
+  const cv = document.createElement('canvas');
+  cv.width = w;
+  cv.height = h;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return NEUTRAL_SEAT;
+  ctx.drawImage(img, 0, 0);
+  let data: Uint8ClampedArray;
+  try {
+    data = ctx.getImageData(0, 0, w, h).data;
+  } catch {
+    return NEUTRAL_SEAT; // tainted canvas — leave unseated
+  }
+  const ALPHA = 12; // ignore near-transparent antialiased fringe
+  let minY = h;
+  let maxY = -1;
+  for (let y = 0; y < h; y++) {
+    const row = y * w * 4;
+    for (let x = 0; x < w; x++) {
+      if (data[row + x * 4 + 3] > ALPHA) {
+        if (y < minY) minY = y;
+        maxY = y;
+        break; // one opaque pixel marks the row; no need to scan the rest
+      }
+    }
+  }
+  if (maxY < 0) return NEUTRAL_SEAT; // fully transparent
+
+  // `object-fit: contain` into a square box: portrait art fills the height
+  // (no vertical letterbox); landscape art fits the width and letterboxes
+  // top+bottom equally. Express everything as a fraction of box height.
+  const fittedH = w >= h ? h / w : 1;
+  const letterboxBottom = w >= h ? (1 - fittedH) / 2 : 0;
+  const seat: SpriteSeat = {
+    ground: letterboxBottom + (fittedH * (h - 1 - maxY)) / h,
+    contentH: (fittedH * (maxY - minY + 1)) / h,
+  };
+  if (key) seatCache.set(key, seat);
+  return seat;
+}
+
+/**
+ * Measure a sprite's seat by URL — loads the art into a detached image first,
+ * then scans it. Used as a fallback for the imperative `ngOnInit` pass; the live
+ * template seats off each rendered `<img>`'s own load event via `scanSpriteSeat`.
  */
 export function measureSpriteSeat(url: string): Promise<SpriteSeat> {
   const cached = seatCache.get(url);
   if (cached) return Promise.resolve(cached);
   return new Promise<SpriteSeat>((resolve) => {
     const img = new Image();
-    img.onload = () => {
-      const w = img.naturalWidth;
-      const h = img.naturalHeight;
-      if (!w || !h) return resolve(NEUTRAL_SEAT);
-      const cv = document.createElement('canvas');
-      cv.width = w;
-      cv.height = h;
-      const ctx = cv.getContext('2d', { willReadFrequently: true });
-      if (!ctx) return resolve(NEUTRAL_SEAT);
-      ctx.drawImage(img, 0, 0);
-      let data: Uint8ClampedArray;
-      try {
-        data = ctx.getImageData(0, 0, w, h).data;
-      } catch {
-        return resolve(NEUTRAL_SEAT); // tainted canvas — leave unseated
-      }
-      const ALPHA = 12; // ignore near-transparent antialiased fringe
-      let minY = h;
-      let maxY = -1;
-      for (let y = 0; y < h; y++) {
-        const row = y * w * 4;
-        for (let x = 0; x < w; x++) {
-          if (data[row + x * 4 + 3] > ALPHA) {
-            if (y < minY) minY = y;
-            maxY = y;
-            break; // one opaque pixel marks the row; no need to scan the rest
-          }
-        }
-      }
-      if (maxY < 0) return resolve(NEUTRAL_SEAT); // fully transparent
-
-      // `object-fit: contain` into a square box: portrait art fills the height
-      // (no vertical letterbox); landscape art fits the width and letterboxes
-      // top+bottom equally. Express everything as a fraction of box height.
-      const fittedH = w >= h ? h / w : 1;
-      const letterboxBottom = w >= h ? (1 - fittedH) / 2 : 0;
-      const seat: SpriteSeat = {
-        ground: letterboxBottom + (fittedH * (h - 1 - maxY)) / h,
-        contentH: (fittedH * (maxY - minY + 1)) / h,
-      };
-      seatCache.set(url, seat);
-      resolve(seat);
-    };
+    img.onload = () => resolve(scanSpriteSeat(img));
     img.onerror = () => resolve(NEUTRAL_SEAT);
     img.src = url;
   });
@@ -122,13 +137,13 @@ const ACTION_WORD: Record<Stance, string> = {
 };
 
 /** Relative arena sprite scale for a fighter given its tier and its foe's tier.
- *  Symmetric: +25% per tier of advantage, clamped so a 2-tier gap lands at
- *  ±50% (e.g. a T1 pest vs a T3 apex → 0.5 vs 1.5). Missing either tier → 1
- *  (no scaling), so any tier-less path renders unchanged. */
+ *  Symmetric: +35% per tier of advantage, clamped so a T1 pest vs a T3 apex
+ *  lands at 0.5 vs 1.7 — the higher-tier fighter looms clearly larger. Missing
+ *  either tier → 1 (no scaling), so any tier-less path renders unchanged. */
 export function spriteScale(mine?: number, theirs?: number): number {
   if (!mine || !theirs) return 1;
-  const s = 1 + 0.25 * (mine - theirs);
-  return Math.min(1.5, Math.max(0.5, s));
+  const s = 1 + 0.35 * (mine - theirs);
+  return Math.min(1.7, Math.max(0.5, s));
 }
 
 /**
@@ -299,6 +314,15 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   private loadSeat(url: string | null | undefined, target: typeof this.attackerSeat): void {
     if (!url) return;
     measureSpriteSeat(url).then((seat) => target.set(seat));
+  }
+
+  /** Seat a fighter the instant its rendered sprite finishes decoding. Reading
+   *  the live `<img>` (recolored player data-URLs included) is more reliable than
+   *  the `ngOnInit` re-load, which can miss a late/replaced src and strand the
+   *  creature floating above the shared floor line. */
+  protected onSpriteLoad(side: Side, ev: Event): void {
+    const img = ev.target as HTMLImageElement;
+    (side === 'attacker' ? this.attackerSeat : this.defenderSeat).set(scanSpriteSeat(img));
   }
 
   protected tellText(): string {

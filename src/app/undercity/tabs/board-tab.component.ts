@@ -523,6 +523,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   private pendingGambleText: string | null = null;
   private pendingGambleWon: boolean | null = null;
   protected readonly stepping = signal<StepState | null>(null);
+
+  /** Admin free-move: a local walk with no roll cost, committed by "Move here". */
+  protected readonly moveMode = signal(false);
   /** Node id of the wilderness step held pending the danger notice, or null. */
   protected readonly wildsPrompt = signal<string | null>(null);
   /** Node id of a bridge (tunnel) mouth whose tollkeeper dialog is open, or
@@ -1190,14 +1193,26 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   /** Biome bazaar vendors, in rotation order. Which one is "on shift" alternates
    * with the shared restock window (mirrors data.SHOP_REFRESH_MIN = 30
    * server-side) so every player sees the same vendor until the next restock. */
-  private readonly BAZAAR_KEEPERS: { art: string; quote: string }[] = [
+  private readonly BAZAAR_KEEPERS: { art: string; quote: string; courier?: Record<string, string> }[] = [
     {
       art: 'undercity/map_events/shopkeeper1.png',
       quote: 'Spare a few spores, friend? Good honest wares — I swear it on me turnips.',
+      courier: {
+        baby_gloomshrieker:
+          'Oh, a little gloomshrieker! I do love the noisy ones. Brought your own spores too, clever thing — but you’ve only the one set of claws, so it’s one item, and one only. Pick it and pay up, eh?',
+        baby_winding_constrictor:
+          'A constrictor, is it? Keep it off me turnips! Still, it’s carrying coin, so I’ll allow it — one item’s all it can haul. Choose, and pay up.',
+      },
     },
     {
       art: 'undercity/map_events/shopkeeper2.png',
       quote: 'I hawked turnips at this very stall, once. One little bargain later… the stock improved, and so did the terms.',
+      courier: {
+        baby_gloomshrieker:
+          'Sent the little shrieker to haggle for you? Ha. It carries exactly one thing back — and the terms don’t bend: spores first, then the goods. What’ll it be?',
+        baby_winding_constrictor:
+          'A serpent doing your shopping — sensible. One coil, one item, that’s the limit. Lay down the spores and it’s yours.',
+      },
     },
   ];
 
@@ -1221,12 +1236,22 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       'A scroll is a borrowed whisper, dearie — cast it once and it is gone. But bleed a few Spores on my ink and Baba will copy its spell into your grimoire, yours to chant forever.',
   };
 
-  protected bazaarKeeper(): { art: string; quote: string } {
+  protected bazaarKeeper(): { art: string; quote: string; courier?: Record<string, string> } {
     if (this.islandBazaar()) return this.islandKeeper;
     const at = this.activeBazaar()?.refreshesAt;
     const windowEndMs = at ? new Date(at + 'Z').getTime() : Date.now();
     const windowIdx = Math.round(windowEndMs / (30 * 60_000));
     return this.BAZAAR_KEEPERS[windowIdx % this.BAZAAR_KEEPERS.length];
+  }
+
+  /** The current keeper's courier line for the active scout species, or a generic
+   *  fallback (covers keepers/pets without a bespoke line). */
+  protected courierGreeting(): string {
+    const species = this.activeUsablePet()?.species ?? '';
+    return (
+      this.bazaarKeeper().courier?.[species] ??
+      `Sent your ${this.courierPetName()} ahead, I see — and coin with it. It can only carry the one thing, so choose well and pay up.`
+    );
   }
 
   protected spaceIcon(type: string): string {
@@ -1889,6 +1914,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       void this.castSpell(tele.spell, { target: nodeId });
       return;
     }
+    if (this.moveMode()) { this.moveModeTap(nodeId); return; }
     if (!nodeId) {
       // Tapped empty tunnel — dismiss the space popover.
       this.hideInfo();
@@ -2308,7 +2334,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.board.setWorldEvent(this.store.worldEvent());
     this.board.setEnraged(this.store.enraged());
     const here = step ? stepPos(step) : null;
-    const choices = step ? this.stepChoices(step) : [];
+    const choices = step
+      ? (this.moveMode() ? this.freeStepChoices(step) : this.stepChoices(step))
+      : [];
     const tele = this.castTeleport();
     this.board.setChoices(step ? choices : (tele?.nodes ?? null));
     this.board.setBackChoice(step ? stepPrev(step) : null);
@@ -2333,6 +2361,81 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.board.setFirsts(this.store.firsts());
     this.board.setFogReveals(this.store.fogReveals());
     this.board.setProgress(this.store.excavations(), this.store.veins());
+  }
+
+  protected readonly isAdmin = computed(() => this.store.you()?.isAdmin ?? false);
+
+  protected toggleMoveMode(): void {
+    if (this.moveMode()) {
+      this.exitMoveMode();
+      return;
+    }
+    const pos = this.store.you()?.position;
+    if (!pos) return;
+    this.hideInfo();
+    this.moveMode.set(true);
+    // Seed the walk at the current node; `left` is unused in free mode.
+    this.stepping.set({ path: [pos], left: Number.MAX_SAFE_INTEGER });
+    this.board?.centerOn(pos);
+  }
+
+  protected exitMoveMode(): void {
+    this.moveMode.set(false);
+    this.stepping.set(null);
+  }
+
+  /** Legal next nodes in free mode: every neighbour of the current node. A closed
+   *  barrier may be stepped ONTO (a bonk landing) but never corridored through —
+   *  so once you stand on one, only retrace is offered. Blocked/toll edges are
+   *  enforced server-side; the walk here is deliberately permissive. */
+  private freeStepChoices(step: StepState): string[] {
+    const here = stepPos(step);
+    const node = this.map.nodes.find((n) => n.id === here);
+    if (!node) return [];
+    const closed = new Set(this.stepClosedIds());
+    if (closed.has(here) && here !== step.path[0]) return []; // bonked — dead stop
+    return node.neighbors;
+  }
+
+  /** Handle a board tap while in move mode: retrace on the previous node, else
+   *  step onto a legal neighbour. No auto-commit — "Move here" finalises. */
+  private moveModeTap(nodeId: string | null): void {
+    const step = this.stepping();
+    if (!nodeId || !step || this.busy()) return;
+    if (nodeId === stepPrev(step)) {
+      this.stepping.set({ path: step.path.slice(0, -1), left: step.left });
+      this.board?.centerOn(nodeId);
+      return;
+    }
+    if (this.freeStepChoices(step).includes(nodeId)) {
+      this.stepping.set({ path: [...step.path, nodeId], left: step.left });
+      this.board?.centerOn(nodeId);
+    }
+  }
+
+  protected async commitFreeMove(): Promise<void> {
+    const step = this.stepping();
+    if (!step || step.path.length < 2) {
+      this.exitMoveMode();
+      return;
+    }
+    const to = step.path[step.path.length - 1];
+    const path = step.path;
+    await this.freeMove(to, path);
+    this.exitMoveMode();
+  }
+
+  private async freeMove(to: string, path: string[]): Promise<void> {
+    const preHp = this.store.you()?.hp ?? 0;
+    await this.run(async () => {
+      const resp = await this.store.action('freemove', { to, path });
+      if (resp.you) this.board?.centerOn(resp.you.position);
+      const uid = this.store.ownUserId;
+      if (resp.heal && uid) this.board?.popHealNumber(uid, resp.heal.amount);
+      this.occupants.set(resp.occupants ?? []);
+      const ev = resp.spaceEvent;
+      if (ev) this.routeSpaceEvent(ev, preHp);
+    });
   }
 
   private async move(to: string): Promise<void> {

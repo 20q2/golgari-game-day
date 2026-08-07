@@ -2578,7 +2578,8 @@ def handle_action(table, body):
     doc['lastActionAt'] = _now()  # idle signal for the roll-refill nudge sweep
 
     handlers = {
-        'claim': _claim, 'roll': _roll, 'move': _move, 'ladder-cross': _ladder_cross,
+        'claim': _claim, 'roll': _roll, 'move': _move, 'freemove': _freemove,
+        'ladder-cross': _ladder_cross,
         'battle': _battle,
         'combat-round': _combat_round, 'combat-peek': _combat_peek,
         'combat-flee': _combat_flee,
@@ -3031,6 +3032,20 @@ def _admin_teleport(table, sid, payload):
     return 200, {'ok': True}
 
 
+def _admin_set_admin(table, sid, payload):
+    """Grant or revoke the in-game Admin role on a target player. `on` defaults
+    to True. The flag rides the target's `you` view (auto-spread in _ok) and
+    unlocks their free-move action; it is never added to _public_player."""
+    doc, err = _admin_target(table, sid, payload)
+    if err:
+        return err
+    doc['isAdmin'] = bool(payload.get('on', True))
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return 200, {'ok': True, 'isAdmin': doc['isAdmin']}
+
+
 def _admin_bot_step(table, sid, payload):
     """Take a bot's turn: a short random wander (1–4 hops by the real movement
     rules, respecting sealed barriers) with NO landing effects. Bots are
@@ -3134,6 +3149,7 @@ _ADMIN_CMDS = {
     'give-pet': _admin_give_pet,
     'heal': _admin_heal,
     'teleport': _admin_teleport,
+    'grant-admin': _admin_set_admin,
     'bot-step': _admin_bot_step,
     'kick': _admin_kick,
     'reset-all': _admin_reset_all,
@@ -3696,6 +3712,45 @@ def _move(table, sid, doc, payload):
     occupants = _occupants(table, sid, doc['position'], doc['userId'])
     return _ok(doc, spaceEvent=space_event, occupants=occupants, heal=heal,
                scavenge=scavenge)
+
+
+def _freemove(table, sid, doc, payload):
+    """Admin-only free walk: relocate along any legal adjacent path (barriers
+    respected, no roll cost) and resolve the destination as a real landing.
+    Gated hard on isAdmin — the capability is server-authoritative."""
+    if not doc.get('isAdmin'):
+        return _err('Admin move is not enabled for you.', 403)
+    nodes = _season_map(table, sid)
+    to = payload.get('to')
+    path = payload.get('path')
+    if to not in nodes:
+        return _err('Unknown node: ' + str(to), 409)
+    if not path or path[0] != doc['position'] or path[-1] != to:
+        return _err('That route is not a legal walk.', 409)
+    closed = _stop_nodes(table, sid, doc)
+    blocked = _blocked_nodes(doc)
+    if not engine.validate_free_walk(nodes, path, closed, blocked):
+        return _err('That route is not a legal walk.', 409)
+
+    prev = doc['position']
+    doc['pendingMove'] = None
+    doc['position'] = to
+    space_event = _resolve_space(table, sid, doc, to, prev)
+
+    # Landing on a gate full-heals inside _resolve_space; surface the amount so
+    # the client floats heal numbers, mirroring _move.
+    heal = None
+    if space_event.get('type') == 'gate':
+        healed = space_event.get('healed', 0)
+        heal = {'amount': healed, 'hp': doc['hp'], 'kind': 'gate_land'} if healed else None
+
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    # _resolve_space may relocate (tunnel/warp) — report occupants of where it
+    # actually ended up.
+    occupants = _occupants(table, sid, doc['position'], doc['userId'])
+    return _ok(doc, spaceEvent=space_event, occupants=occupants, heal=heal)
 
 
 def _ladder_cross(table, sid, doc, payload):
@@ -4500,10 +4555,10 @@ def _wild_battle(table, sid, doc, elite=False, region=None):
     node_region = region or (node.get('region') if node else None)
     if node_region is None and data.dungeon_biome(position):
         node_region = 'depths'
-    # Difficulty is region-gated: region -> tier -> (wild|elite) pool. Flat within
-    # a region — no depth scaling (design 2026-07-26-region-tier).
+    # Difficulty is region-gated: each region has its OWN flavored (wild|elite)
+    # pool. Flat within a region — no depth scaling (design 2026-08-07 per-biome).
     tier = data.region_tier(node_region)
-    pool = data.TIER_NPCS[tier]['elite' if elite else 'wild']
+    pool = data.region_npcs(node_region, elite)
     # Boss-area signature (design 2026-08-02): at a WILD space in a boss's turf,
     # SIGNATURE_SPAWN_CHANCE of encounters are its themed minion instead of a flat
     # pool roll. Area = the depths pocket's biome, or the ruin region.

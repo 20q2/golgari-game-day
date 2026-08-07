@@ -167,6 +167,24 @@
           }
         </div>
       </div>
+    } @else if (moveMode()) {
+      <div class="roll-strip">
+        <div class="band-morph move-mode-bar">
+          <div class="move-mode-msg">Tap spaces to walk, then land where you stop.</div>
+          <div class="move-mode-actions">
+            <button
+              class="uc-btn uc-btn-primary"
+              [disabled]="busy() || (stepping()?.path?.length ?? 0) < 2"
+              (click)="commitFreeMove()"
+            >
+              <mat-icon class="mi">flag</mat-icon> Move here
+            </button>
+            <button class="uc-btn" [disabled]="busy()" (click)="exitMoveMode()">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
     } @else {
       <!-- Routine turn actions -->
       <div class="roll-strip">
@@ -201,6 +219,16 @@
               (click)="showSpells.set(true)"
             >
               <mat-icon class="mi">auto_fix_high</mat-icon> Cast
+            </button>
+          }
+
+          @if (isAdmin() && !rolling() && !store.you()?.pendingMove) {
+            <button
+              class="uc-btn move-btn"
+              [disabled]="busy()"
+              (click)="toggleMoveMode()"
+            >
+              <mat-icon class="mi">open_with</mat-icon> Move
             </button>
           }
 
@@ -615,17 +643,12 @@
           <mat-icon class="mi">schedule</mat-icon> Restocks in {{ bazaarRestockLabel() }}
         </span>
         <img class="modal-art" [src]="bazaarKeeper().art" alt="" />
+        @if (shopMode() === 'courier' && activeUsablePet(); as pet) {
+          <img class="pet-sprite courier-pet-hop" [src]="petSpriteUrl(pet.species)" alt="" />
+        }
         <h3><mat-icon class="mi">storefront</mat-icon> {{ bazaarTitle() }}</h3>
         @if (shopMode() === 'courier') {
-          <div class="shop-welcome courier-welcome">
-            @if (activeUsablePet(); as pet) {
-              <img class="pet-sprite courier-pet" [src]="petSpriteUrl(pet.species)" alt="" />
-            }
-            <p class="shop-welcome-line">
-              Your {{ courierPetName() }} drops your coin-pouch on the counter — point it at
-              <strong>one</strong> thing and it’ll haul it back (up to {{ tierRarity(scoutView()?.tierCap ?? 1).label }}).
-            </p>
-          </div>
+          <p class="shop-welcome-line courier-line">{{ courierGreeting() }}</p>
         } @else {
           @if (welcomeGift(); as gift) {
             <div class="shop-welcome">

@@ -982,183 +982,192 @@ VAULT_POT_SEED = 30
 VAULT_POT_PER_FAIL = 2
 
 
-# ── Wild NPCs (fixed stats — the species IS the difficulty tier) ─────────────
+# ── Enemy stat blocks (one per creature; the species IS the difficulty) ──────
 # No level scaling anywhere: when you see a beetle you know exactly what a
-# beetle is. Tier feel (verified by the balance tests in
-# tests/test_undercity_engine.py against reference statlines):
-#   normal — a fresh level-1 starter wins in 4-5 rounds with chip damage
-#   elite  — easy meat at level 4-5, lethal to a level 1-2 (flee!)
-# XP rides on each spec (per-tier rewards); wild_loss/timeout stay flat.
-
-# `personality`/`bluff` drive the stance AI (spec §1). Overworld fodder is
-# readable (no bluff) so good play reliably wins; elites/bosses bluff more.
-# Basic wilds are a REAL threat to a bare level-1 starter (design 2026-07-19):
-# an ungeared creature can lose to the tougher two, and only reliably clears
-# the whole pool once it has a gear piece (rusted_fang / chitin_scrap) or gets
-# lucky with reads. See the level-1 balance tests. The weak-but-fast beetle is
-# the one a bare starter still beats.
-NPCS = [
-    {'id': 'drudge_beetle', 'name': 'Drudge Beetle',
-     'hp': 22, 'atk': 6, 'def': 2, 'spd': 5, 'bounty': 6, 'xp': 10,
-     'itemChance': 0.0, 'personality': 'brute', 'bluff': 0.0},
+# beetle is. Difficulty is WHERE you fight — REGION_NPCS (below) gives each
+# region its own flavored wild/elite pool, and a creature has ONE fixed stat
+# block everywhere it appears. `personality`/`bluff` drive the stance AI:
+# overworld fodder is readable (bluff 0) so good play reliably wins; elites and
+# bosses bluff more. Every id here MUST have art at
+# public/undercity/enemies/<id>.png (locked by test_every_placed_creature_has_art).
+# Blocks added 2026-08-07 (the real-MTG art wired in that day) carry PRE-SIM
+# starting numbers — the sim gate (sim/, tune-undercity-balance skill) may
+# retune them. Roster + rationale:
+# specs/2026-08-07-undercity-per-biome-spawn-pools-design.md
+_SPEC = {s['id']: s for s in [
+    # ── Undercity (city, T1) ─────────────────────────────────────────────────
+    {'id': 'acolyte_of_affliction', 'name': 'Acolyte of Affliction',
+     'hp': 26, 'atk': 8, 'def': 3, 'spd': 5, 'bounty': 8, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'trickster', 'bluff': 0.0},
     {'id': 'sewer_shambler', 'name': 'Sewer Shambler',
      'hp': 30, 'atk': 8, 'def': 4, 'spd': 4, 'bounty': 9, 'xp': 10,
      'itemChance': 0.0, 'personality': 'balanced', 'bluff': 0.0},
-    {'id': 'myconid', 'name': 'Myconid',
-     'hp': 34, 'atk': 7, 'def': 5, 'spd': 2, 'bounty': 9, 'xp': 10,
+    {'id': 'attendant_of_vraska', 'name': 'Attendant of Vraska',
+     'hp': 30, 'atk': 11, 'def': 5, 'spd': 8, 'bounty': 18, 'xp': 25,
+     'itemChance': 0.28, 'personality': 'trickster', 'bluff': 0.15},
+    {'id': 'obelisk_spider', 'name': 'Obelisk Spider',
+     'hp': 32, 'atk': 10, 'def': 6, 'spd': 6, 'bounty': 18, 'xp': 25,
+     'itemChance': 0.28, 'personality': 'balanced', 'bluff': 0.12},
+    # ── Rot-Gardens (garden, T1) ─────────────────────────────────────────────
+    {'id': 'thallid', 'name': 'Thallid',
+     'hp': 32, 'atk': 7, 'def': 4, 'spd': 3, 'bounty': 8, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'balanced', 'bluff': 0.0},
+    {'id': 'thallid_shell_dweller', 'name': 'Thallid Shell-Dweller',
+     'hp': 34, 'atk': 6, 'def': 6, 'spd': 2, 'bounty': 9, 'xp': 10,
      'itemChance': 0.0, 'personality': 'turtle', 'bluff': 0.0},
-    # Fast glass biter — fills the missing trickster slot. Readable (bluff 0)
-    # like the rest of the fodder, so a bare starter that reads the feint wins;
-    # low HP/DEF but stings, so a whiffed read hurts.
+    # Fast glass biter — readable (bluff 0), low HP/DEF but stings.
     {'id': 'ravenous_squirrel', 'name': 'Ravenous Squirrel',
      'hp': 24, 'atk': 7, 'def': 2, 'spd': 7, 'bounty': 8, 'xp': 10,
      'itemChance': 0.0, 'personality': 'trickster', 'bluff': 0.0},
-]
-
-# Elites live only at 'elite' board spaces — never a surprise on a wild space.
-ELITE_NPCS = [
-    {'id': 'fetid_imp', 'name': 'Fetid Imp',
-     'hp': 30, 'atk': 10, 'def': 5, 'spd': 8, 'bounty': 16, 'xp': 25,
-     'itemChance': 0.25, 'personality': 'trickster', 'bluff': 0.15},
-    {'id': 'rot_shambler', 'name': 'Rot Shambler',
-     'hp': 32, 'atk': 11, 'def': 5, 'spd': 4, 'bounty': 20, 'xp': 25,
-     'itemChance': 0.30, 'personality': 'brute', 'bluff': 0.10},
-    # A crafty, well-rounded elite — no glaring weakness, moderate bluff. The
-    # third elite so tier-1 elite spaces field all-round threats, not just the
-    # fast imp and the heavy shambler.
+    {'id': 'canker_abomination', 'name': 'Canker Abomination',
+     'hp': 34, 'atk': 8, 'def': 4, 'spd': 3, 'bounty': 9, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'brute', 'bluff': 0.0},
+    {'id': 'rotwood_elemental', 'name': 'Rotwood Elemental',
+     'hp': 32, 'atk': 10, 'def': 6, 'spd': 5, 'bounty': 18, 'xp': 25,
+     'itemChance': 0.28, 'personality': 'turtle', 'bluff': 0.10},
+    # ── Ossuary Fields (bone, T1 — no elite spaces on the map) ────────────────
+    {'id': 'boneyard_lurker', 'name': 'Boneyard Lurker',
+     'hp': 30, 'atk': 8, 'def': 4, 'spd': 4, 'bounty': 9, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'balanced', 'bluff': 0.0},
+    # Re-statted 2026-08-07 into the T1-wild band (was a T1-elite block): a
+    # non-elite home wild should read Lv1-2, not spike. Balanced shape kept.
     {'id': 'fiend_artisan', 'name': 'Fiend Artisan',
-     'hp': 31, 'atk': 10, 'def': 6, 'spd': 6, 'bounty': 18, 'xp': 25,
-     'itemChance': 0.28, 'personality': 'balanced', 'bluff': 0.12},
-]
-
-# Wilderness fauna — the T2+ frontier. Every wild AND elite space in the
-# 'wilderness' region draws from these (via _wild_battle region=), so evolved
-# units forced onto the travel layer always face tier-appropriate danger.
-# See specs/2026-07-20-undercity-wilderness-expansion-design.md.
-WILDERNESS_NPCS = [
-    # xp bumped 2026-08-04: as the tier-2 ELITE pool (TIER_NPCS[2]) these must
-    # out-reward the tier-2 wild (DEPTHS_MID, xp 42-45). Bounty left alone.
-    {'id': 'sluiceway_scorpion', 'name': 'Sluiceway Scorpion',
-     'hp': 48, 'atk': 14, 'def': 6, 'spd': 9, 'bounty': 22, 'xp': 46,
-     'itemChance': 0.15, 'personality': 'trickster', 'bluff': 0.15},
+     'hp': 30, 'atk': 8, 'def': 5, 'spd': 4, 'bounty': 9, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'balanced', 'bluff': 0.0},
+    # Re-statted from its old T2 block down to a T1 wild (balanced skeleton).
+    {'id': 'mosspit_skeleton', 'name': 'Mosspit Skeleton',
+     'hp': 34, 'atk': 8, 'def': 5, 'spd': 5, 'bounty': 9, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'balanced', 'bluff': 0.0},
+    # ── Mosslight Cavern (cavern, T1) ─────────────────────────────────────────
+    {'id': 'duskwood_watcher', 'name': 'Duskwood Watcher',
+     'hp': 28, 'atk': 7, 'def': 4, 'spd': 5, 'bounty': 8, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'balanced', 'bluff': 0.0},
+    # Re-statted from its old T2 block to a T1 wild; fast-glass shape kept.
+    {'id': 'leyline_prowler', 'name': 'Leyline Prowler',
+     'hp': 30, 'atk': 8, 'def': 3, 'spd': 7, 'bounty': 8, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'trickster', 'bluff': 0.0},
+    # Re-statted from its old T2 block to a T1 wild; tanky (high DEF, low SPD).
     {'id': 'loleth_troll', 'name': 'Lotleth Troll',
-     'hp': 58, 'atk': 13, 'def': 8, 'spd': 4, 'bounty': 24, 'xp': 48,
-     'itemChance': 0.15, 'personality': 'turtle', 'bluff': 0.10},
+     'hp': 36, 'atk': 7, 'def': 6, 'spd': 3, 'bounty': 9, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'turtle', 'bluff': 0.0},
     {'id': 'large_bear', 'name': 'Large Bear',
      'hp': 46, 'atk': 16, 'def': 5, 'spd': 10, 'bounty': 22, 'xp': 46,
      'itemChance': 0.15, 'personality': 'brute', 'bluff': 0.10},
-    {'id': 'mosspit_skeleton', 'name': 'Mosspit Skeleton',
-     'hp': 52, 'atk': 15, 'def': 6, 'spd': 7, 'bounty': 24, 'xp': 49,
-     'itemChance': 0.20, 'personality': 'balanced', 'bluff': 0.15},
-]
-
-WILDERNESS_ELITE_NPCS = [
-    {'id': 'embermaw_alpha', 'name': 'Embermaw Alpha',
-     'hp': 64, 'atk': 17, 'def': 8, 'spd': 10, 'bounty': 30, 'xp': 50,
-     'itemChance': 0.35, 'personality': 'brute', 'bluff': 0.15},
-    {'id': 'thornclad_revenant', 'name': 'Thornclad Revenant',
-     'hp': 70, 'atk': 16, 'def': 10, 'spd': 6, 'bounty': 34, 'xp': 50,
-     'itemChance': 0.35, 'personality': 'turtle', 'bluff': 0.15},
-    {'id': 'ashfiend_matriarch', 'name': 'Ashfiend Matriarch',
-     'hp': 60, 'atk': 18, 'def': 7, 'spd': 12, 'bounty': 34, 'xp': 52,
-     'itemChance': 0.40, 'personality': 'trickster', 'bluff': 0.25},
-]
-
-# ── Mid / deep / abyss enemy pools ───────────────────────────────────────────
-# These are the mid-and-up rosters. They now feed the REGION_TIER model (below):
-# MID is the tier-2 wild pool, DEEP joins tier-3 wild, ABYSS joins tier-3 elite.
-# Threat comes from HP + ATK, never DEF walls (which just cause 6-round timeouts).
-# Every pool fields ≥3 personalities. HP bands ascend so the tiers stay monotonic.
-# Roster origin + sim results: specs/2026-07-26-undercity-enemy-ladder-design.md;
-# region-tier selection: specs/2026-07-26-undercity-region-tier-enemies-design.md.
-DEPTHS_MID = [
+    # ── The Sedgemoor (bog, T1) ───────────────────────────────────────────────
+    {'id': 'bogwater_lumarent', 'name': 'Bogwater Lumarent',
+     'hp': 28, 'atk': 7, 'def': 3, 'spd': 6, 'bounty': 8, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'trickster', 'bluff': 0.0},
+    {'id': 'hag_hedgemage', 'name': 'Hag Hedgemage',
+     'hp': 30, 'atk': 8, 'def': 3, 'spd': 5, 'bounty': 9, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'trickster', 'bluff': 0.0},
+    {'id': 'drudge_beetle', 'name': 'Drudge Beetle',
+     'hp': 22, 'atk': 6, 'def': 2, 'spd': 5, 'bounty': 6, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'brute', 'bluff': 0.0},
     {'id': 'golgari_rotwurm', 'name': 'Golgari Rotwurm',
      'hp': 44, 'atk': 13, 'def': 4, 'spd': 6, 'bounty': 26, 'xp': 42,
      'itemChance': 0.20, 'personality': 'brute', 'bluff': 0.10},
-    {'id': 'leyline_prowler', 'name': 'Leyline Prowler',
-     'hp': 42, 'atk': 12, 'def': 3, 'spd': 9, 'bounty': 26, 'xp': 42,
-     'itemChance': 0.20, 'personality': 'trickster', 'bluff': 0.20},
+    # ── Deep dwellers — The Depths + The Ruinways (depths/ruin, T2) ───────────
+    # In the Depths, 75% of wild rolls are the biome's boss familiar
+    # (LAIR_SIGNATURE) so the Rendclaw Troll / Teacher's Pest fallback fills the rest.
+    # Proper T2 wilds (Lv3-4) — at least T1-elite grade, below the Depths elites
+    # (Moldering Karock Lv4 / Catacomb Shifter Lv6), with T2 rewards.
+    {'id': 'rendclaw_troll', 'name': 'Rendclaw Troll',
+     'hp': 46, 'atk': 13, 'def': 5, 'spd': 5, 'bounty': 24, 'xp': 42,
+     'itemChance': 0.20, 'personality': 'brute', 'bluff': 0.10},
+    {'id': 'teachers_pest', 'name': "Teacher's Pest",
+     'hp': 38, 'atk': 11, 'def': 4, 'spd': 8, 'bounty': 22, 'xp': 40,
+     'itemChance': 0.20, 'personality': 'trickster', 'bluff': 0.15},
     {'id': 'moldering_karock', 'name': 'Moldering Karock',
      'hp': 56, 'atk': 11, 'def': 6, 'spd': 3, 'bounty': 28, 'xp': 45,
      'itemChance': 0.25, 'personality': 'turtle', 'bluff': 0.10},
+    {'id': 'catacomb_shifter', 'name': 'Catacomb Shifter',
+     'hp': 54, 'atk': 15, 'def': 7, 'spd': 8, 'bounty': 28, 'xp': 48,
+     'itemChance': 0.25, 'personality': 'trickster', 'bluff': 0.18},
+    # ── The Wilderness (wilderness, T2) ───────────────────────────────────────
     {'id': 'infested_thrinax', 'name': 'Infested Thrinax',
      'hp': 48, 'atk': 13, 'def': 5, 'spd': 7, 'bounty': 28, 'xp': 45,
      'itemChance': 0.25, 'personality': 'balanced', 'bluff': 0.15},
-    # Glass-cannon sniper — top-of-band ATK and SPD, paper DEF/HP. Reads well
-    # and hits hard; punish its feints on Guard and it folds fast.
+    # Glass-cannon sniper — top-of-band ATK/SPD, paper DEF/HP; punish feints.
     {'id': 'poison_tip_archer', 'name': 'Poison-Tip Archer',
      'hp': 44, 'atk': 14, 'def': 4, 'spd': 10, 'bounty': 27, 'xp': 44,
      'itemChance': 0.22, 'personality': 'trickster', 'bluff': 0.18},
-]
-
-DEPTHS_DEEP = [
-    {'id': 'gravemaw_lurker', 'name': 'Gravemaw Lurker',
-     'hp': 66, 'atk': 17, 'def': 6, 'spd': 6, 'bounty': 36, 'xp': 54,
-     'itemChance': 0.30, 'personality': 'brute', 'bluff': 0.15},
-    {'id': 'hollow_warden', 'name': 'Hollow Warden',
-     'hp': 80, 'atk': 14, 'def': 9, 'spd': 3, 'bounty': 40, 'xp': 58,
-     'itemChance': 0.35, 'personality': 'turtle', 'bluff': 0.15},
-    {'id': 'shade_weaver', 'name': 'Shade Weaver',
-     'hp': 62, 'atk': 16, 'def': 6, 'spd': 10, 'bounty': 38, 'xp': 56,
-     'itemChance': 0.35, 'personality': 'trickster', 'bluff': 0.25},
-    {'id': 'carrion_behemoth', 'name': 'Carrion Behemoth',
-     'hp': 74, 'atk': 15, 'def': 7, 'spd': 5, 'bounty': 40, 'xp': 58,
-     'itemChance': 0.30, 'personality': 'balanced', 'bluff': 0.15},
-    # A menacing flyer — highest ATK and near-highest SPD in the pool but the
-    # thinnest hide. It races to open on Aggress; a Guard turns its own swing
-    # back on it. A real deep-wild threat that rewards tanky builds.
+    {'id': 'sluiceway_scorpion', 'name': 'Sluiceway Scorpion',
+     'hp': 48, 'atk': 14, 'def': 6, 'spd': 9, 'bounty': 22, 'xp': 46,
+     'itemChance': 0.15, 'personality': 'trickster', 'bluff': 0.15},
+    # A menacing flyer — races to open on Aggress; a Guard turns its swing back.
     {'id': 'vulturous_zombie', 'name': 'Vulturous Zombie',
      'hp': 68, 'atk': 18, 'def': 5, 'spd': 9, 'bounty': 38, 'xp': 56,
      'itemChance': 0.32, 'personality': 'brute', 'bluff': 0.18},
-]
-
-DEPTHS_ABYSS = [
-    {'id': 'abyssal_devourer', 'name': 'Abyssal Devourer',
-     'hp': 108, 'atk': 23, 'def': 7, 'spd': 7, 'bounty': 50, 'xp': 70,
-     'itemChance': 0.40, 'personality': 'brute', 'bluff': 0.20},
-    {'id': 'sunless_colossus', 'name': 'Sunless Colossus',
-     'hp': 116, 'atk': 19, 'def': 10, 'spd': 3, 'bounty': 55, 'xp': 75,
-     'itemChance': 0.45, 'personality': 'turtle', 'bluff': 0.15},
-    {'id': 'dread_mantis', 'name': 'Dread Mantis',
-     'hp': 104, 'atk': 22, 'def': 7, 'spd': 11, 'bounty': 52, 'xp': 72,
-     'itemChance': 0.45, 'personality': 'trickster', 'bluff': 0.30},
-]
-
-ISLE_APEX = [
-    {'id': 'rotborn_titan', 'name': 'Rotborn Titan',
-     'hp': 130, 'atk': 26, 'def': 9, 'spd': 6, 'bounty': 65, 'xp': 90,
-     'itemChance': 0.50, 'personality': 'brute', 'bluff': 0.25},
-    {'id': 'sigil_sentinel', 'name': 'Sigil Sentinel',
-     'hp': 150, 'atk': 22, 'def': 12, 'spd': 4, 'bounty': 75, 'xp': 100,
-     'itemChance': 0.50, 'personality': 'turtle', 'bluff': 0.20},
-    {'id': 'wraithqueen_herald', 'name': 'Wraithqueen Herald',
-     'hp': 120, 'atk': 25, 'def': 9, 'spd': 12, 'bounty': 70, 'xp': 95,
-     'itemChance': 0.55, 'personality': 'trickster', 'bluff': 0.35},
-]
+    # ── Sigil Isle (isle, T3 — endgame) ───────────────────────────────────────
+    {'id': 'putrid_leech', 'name': 'Putrid Leech',
+     'hp': 100, 'atk': 20, 'def': 6, 'spd': 7, 'bounty': 50, 'xp': 70,
+     'itemChance': 0.40, 'personality': 'brute', 'bluff': 0.15},
+    {'id': 'molderhulk', 'name': 'Molderhulk',
+     'hp': 120, 'atk': 22, 'def': 9, 'spd': 4, 'bounty': 60, 'xp': 85,
+     'itemChance': 0.45, 'personality': 'brute', 'bluff': 0.20},
+    {'id': 'deity_of_scars', 'name': 'Deity of Scars',
+     'hp': 140, 'atk': 25, 'def': 10, 'spd': 6, 'bounty': 70, 'xp': 95,
+     'itemChance': 0.50, 'personality': 'turtle', 'bluff': 0.25},
+]}
 
 
-# ── Region-gated enemy tiers (design 2026-07-26-region-tier) ─────────────────
-# Difficulty is WHERE you are, not how deep you dig. Region -> tier -> (wild,
-# elite) pool. Wild = the tier's baseline; elite = the tougher members of the
-# SAME tier (elites never jump a tier). Pools are composed from the existing
-# rosters by reference — nothing is deleted, so sim/ and roster tests are intact.
+# ── Region-gated flavored spawn pools (design 2026-08-07 per-biome) ──────────
+# Difficulty is WHERE you are. Each region draws its OWN flavored wild/elite
+# pool (not a shared tier pool). REGION_TIER keeps the difficulty ramp for XP /
+# renown calibration and client sprite scaling (mirror:
+# src/app/undercity/engine/board-enemy-tier.ts). The ramp:
+#   T1 surface homes → T2 depths/ruin/wilderness → T3 isle.
 REGION_TIER = {
     'city': 1, 'garden': 1, 'bone': 1, 'cavern': 1, 'bog': 1,
-    'ruin': 2, 'depths': 2,
-    'wilderness': 3, 'isle': 3,
+    'ruin': 2, 'depths': 2, 'wilderness': 2,
+    'isle': 3,
 }
 
-TIER_NPCS = {
-    1: {'wild': NPCS,       'elite': ELITE_NPCS},
-    2: {'wild': DEPTHS_MID, 'elite': WILDERNESS_NPCS},
-    3: {'wild': DEPTHS_DEEP + WILDERNESS_ELITE_NPCS,
-        'elite': DEPTHS_ABYSS + ISLE_APEX},
+# The Depths and the Ruinways share one T2 "deep dwellers" pool. In the Depths,
+# 75% of wild rolls are the biome's boss familiar (SIGNATURE_SPAWN_CHANCE), so
+# this fallback fills the remainder; the Ruinways lean on their moldering_karock
+# signature the same way.
+_DEEP_DWELLERS = {
+    'wild':  [_SPEC['rendclaw_troll'], _SPEC['teachers_pest']],
+    'elite': [_SPEC['moldering_karock'], _SPEC['catacomb_shifter']],
+}
+
+# Per-region pools. Map realities (map.json, 305 nodes) baked in: 'bone' has NO
+# elite spaces (wild-only); 'wilderness' wild encounters arrive via its Ashen-
+# Fog tiles. Molderhulk deliberately appears in both isle wild and elite (a
+# mini-boss presence in the small endgame roster).
+REGION_NPCS = {
+    'city':       {'wild':  [_SPEC['acolyte_of_affliction'], _SPEC['sewer_shambler']],
+                   'elite': [_SPEC['attendant_of_vraska'], _SPEC['obelisk_spider']]},
+    'garden':     {'wild':  [_SPEC['thallid'], _SPEC['thallid_shell_dweller'],
+                             _SPEC['ravenous_squirrel'], _SPEC['canker_abomination']],
+                   'elite': [_SPEC['rotwood_elemental']]},
+    'bone':       {'wild':  [_SPEC['boneyard_lurker'], _SPEC['fiend_artisan'], _SPEC['mosspit_skeleton']],
+                   'elite': []},   # no elite spaces on the map
+    'cavern':     {'wild':  [_SPEC['duskwood_watcher'], _SPEC['leyline_prowler'], _SPEC['loleth_troll']],
+                   'elite': [_SPEC['large_bear']]},
+    'bog':        {'wild':  [_SPEC['bogwater_lumarent'], _SPEC['hag_hedgemage'], _SPEC['drudge_beetle']],
+                   'elite': [_SPEC['golgari_rotwurm']]},
+    'depths':     _DEEP_DWELLERS,
+    'ruin':       _DEEP_DWELLERS,
+    'wilderness': {'wild':  [_SPEC['infested_thrinax'], _SPEC['poison_tip_archer'], _SPEC['sluiceway_scorpion']],
+                   'elite': [_SPEC['vulturous_zombie']]},
+    'isle':       {'wild':  [_SPEC['molderhulk'], _SPEC['putrid_leech']],
+                   'elite': [_SPEC['deity_of_scars'], _SPEC['molderhulk']]},
 }
 
 
 def region_tier(region):
     """Difficulty tier (1-3) for a board region; unknown/None -> 1 (safe)."""
     return REGION_TIER.get(region or '', 1)
+
+
+def region_npcs(region, elite=False):
+    """Flavored spawn pool for a region. Unknown/None region -> city (safe
+    home). An empty elite pool (only 'bone') falls back to the wild pool so a
+    caller never draws from an empty list."""
+    pools = REGION_NPCS.get(region or '', REGION_NPCS['city'])
+    return (pools['elite'] if elite else pools['wild']) or pools['wild']
 
 
 # ── Boss familiars (design 2026-08-04) ───────────────────────────────────────
@@ -1216,14 +1225,9 @@ LAIR_SIGNATURE = {
 # Trait passives surfaced as inspectable battle chips (client STATUS_INFO mirror).
 TRAIT_PASSIVES = ('grave_growth', 'doom_counters', 'dredge', 'swarm', 'web_venom')
 
-# Every wild/elite enemy spec, indexed by id, so a signature can be pulled from
-# whichever pool it lives in.
-ENEMY_SPECS_BY_ID = {
-    s['id']: s
-    for pool in (NPCS, ELITE_NPCS, DEPTHS_MID, WILDERNESS_NPCS,
-                 DEPTHS_DEEP, WILDERNESS_ELITE_NPCS, DEPTHS_ABYSS, ISLE_APEX)
-    for s in pool
-}
+# Every wild/elite enemy spec, indexed by id, so a signature (LAIR_SIGNATURE)
+# can be pulled from whichever region pool it lives in.
+ENEMY_SPECS_BY_ID = dict(_SPEC)
 
 
 # ── Derived opponent level (battle UI) ───────────────────────────────────────

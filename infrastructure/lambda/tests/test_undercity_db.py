@@ -213,7 +213,7 @@ def test_elite_battle_pulls_from_elite_pool(table, monkeypatch):
     doc = db._get_player(table, sid, 'user-alex')
     ev = db._wild_battle(table, sid, doc, elite=True)
     assert ev['type'] == 'battle_start'
-    assert ev['npc']['id'] in {n['id'] for n in data.ELITE_NPCS}
+    assert ev['npc']['id'] in {n['id'] for n in data.region_npcs('city', elite=True)}
     se = _finish_started_battle(table, monkeypatch, doc, 'attacker')
     assert se['type'] == 'elite'
     assert se['xp'] == 25
@@ -226,7 +226,7 @@ def test_elite_space_resolves_to_elite_battle(table, monkeypatch):
     assert data.MAP_NODES['city_i1']['type'] == 'elite'
     ev = db._resolve_space(table, sid, doc, 'city_i1', None)
     assert ev['type'] == 'battle_start'
-    assert ev['npc']['id'] in {n['id'] for n in data.ELITE_NPCS}
+    assert ev['npc']['id'] in {n['id'] for n in data.region_npcs('city', elite=True)}
 
 
 def test_non_wilderness_battle_still_uses_base_pools(table):
@@ -235,7 +235,7 @@ def test_non_wilderness_battle_still_uses_base_pools(table):
     doc = db._get_player(table, sid, 'user-alex')
     doc['position'] = 'cavern_r2'  # a surface, non-dungeon, non-wilderness node
     ev = db._wild_battle(table, sid, doc, elite=False, region='cavern')
-    assert ev['npc']['id'] in {n['id'] for n in data.NPCS}
+    assert ev['npc']['id'] in {n['id'] for n in data.region_npcs('cavern', elite=False)}
 
 
 def test_boss_area_signature_spawns_themed_minion(table, monkeypatch):
@@ -275,7 +275,7 @@ def test_boss_area_signature_missed_roll_uses_flat_pool(table, monkeypatch):
     doc['position'] = 'bone_d0'
     monkeypatch.setattr(db._rng, 'random', lambda: 0.99)  # over the chance -> flat pool
     ev = db._wild_battle(table, sid, doc, elite=False, region='depths')
-    assert ev['npc']['id'] in {n['id'] for n in data.DEPTHS_MID}
+    assert ev['npc']['id'] in {n['id'] for n in data.region_npcs('depths', elite=False)}
 
 
 def test_boss_area_signature_never_on_elite_spaces(table, monkeypatch):
@@ -286,29 +286,26 @@ def test_boss_area_signature_never_on_elite_spaces(table, monkeypatch):
     doc['position'] = 'bone_d0'
     monkeypatch.setattr(db._rng, 'random', lambda: 0.0)
     ev = db._wild_battle(table, sid, doc, elite=True, region='depths')
-    assert ev['npc']['id'] in {n['id'] for n in data.WILDERNESS_NPCS}
+    assert ev['npc']['id'] in {n['id'] for n in data.region_npcs('depths', elite=True)}
 
 
-def test_wilderness_monsters_are_tougher_than_base_elites(table):
-    base_max_hp = max(n['hp'] for n in data.ELITE_NPCS)
-    assert min(n['hp'] for n in data.WILDERNESS_NPCS) > max(n['hp'] for n in data.NPCS)
-    assert min(n['hp'] for n in data.WILDERNESS_ELITE_NPCS) >= base_max_hp
+def test_wilderness_monsters_are_tougher_than_home_wilds(table):
+    assert min(n['hp'] for n in data.region_npcs('wilderness', elite=False)) \
+        > max(n['hp'] for n in data.region_npcs('city', elite=False))
 
 
-# ── Depths difficulty ladder (design 2026-07-26) ─────────────────────────────
+# ── Cross-region difficulty ramp (design 2026-08-07 per-biome) ───────────────
 
-def test_depths_ladder_hp_is_monotonic():
-    """Each rung of the ladder is strictly tougher than the last — no cliffs, no
-    inversions (the malformed roster this change fixes)."""
-    rungs = [max(n['hp'] for n in data.DUNGEON_NPCS.values()),
-             min(n['hp'] for n in data.DEPTHS_MID),
-             min(n['hp'] for n in data.DEPTHS_DEEP),
-             min(n['hp'] for n in data.DEPTHS_ABYSS),
-             min(n['hp'] for n in data.ISLE_APEX)]
-    assert rungs == sorted(rungs) and len(set(rungs)) == len(rungs), rungs
-    # every rung fields all four AI personalities' worth of variety (≥3 distinct)
-    for pool in (data.DEPTHS_MID, data.DEPTHS_DEEP):
-        assert len({n['personality'] for n in pool}) >= 3
+def test_region_hp_ramp_is_monotonic():
+    """Difficulty ramps by region: the toughest surface-home wild sits below the
+    Wilderness (T2) ceiling, which sits below the Sigil Isle (T3) floor."""
+    homes = ('city', 'garden', 'bone', 'cavern', 'bog')
+    home_wild_max = max(n['hp'] for r in homes for n in data.region_npcs(r, elite=False))
+    wild_ceiling = max(n['hp'] for n in data.region_npcs('wilderness', elite=False)
+                       + data.region_npcs('wilderness', elite=True))
+    isle_floor = min(n['hp'] for n in data.region_npcs('isle', elite=False)
+                     + data.region_npcs('isle', elite=True))
+    assert home_wild_max < wild_ceiling < isle_floor, (home_wild_max, wild_ceiling, isle_floor)
 
 
 def test_node_depth_zero_at_mouth_and_grows_inward(table):
@@ -1586,9 +1583,9 @@ def test_depths_wild_is_tier2(table, monkeypatch):
     monkeypatch.setattr(db._rng, 'random', lambda: 0.99)
     ev = db._wild_battle(table, sid, doc)
     assert ev['type'] == 'battle_start'
-    assert ev['npc']['id'] in {n['id'] for n in data.DEPTHS_MID}
+    assert ev['npc']['id'] in {n['id'] for n in data.region_npcs('depths', elite=False)}
     se = _finish_started_battle(table, monkeypatch, doc, 'attacker')
-    assert se['spores'] >= min(n['bounty'] for n in data.DEPTHS_MID)
+    assert se['spores'] >= min(n['bounty'] for n in data.region_npcs('depths', elite=False))
 
 
 def test_battle_payload_carries_spawn_zone_tier(table):
@@ -2598,10 +2595,8 @@ def test_combat_consumable_auto_win(table, monkeypatch):
 
 
 def test_all_battle_specs_have_valid_personality():
-    specs = list(data.NPCS) + list(data.ELITE_NPCS) + list(data.DUNGEON_NPCS.values()) \
-        + list(data.WILDERNESS_NPCS) + list(data.WILDERNESS_ELITE_NPCS) \
-        + list(data.DEPTHS_MID) + list(data.DEPTHS_DEEP) + list(data.DEPTHS_ABYSS) \
-        + list(data.ISLE_APEX) \
+    specs = list(data.ENEMY_SPECS_BY_ID.values()) + list(data.DUNGEON_NPCS.values()) \
+        + list(data.LAIR_FAMILIAR.values()) \
         + list(data.BARRIER_GUARDIANS.values()) + list(data.LAIR_BOSSES.values()) \
         + [data.ROT_SOVEREIGN]
     for s in specs:
@@ -2614,7 +2609,7 @@ def test_balance_good_play_beats_fodder(monkeypatch):
     """Perfect reads (counter every non-bluffing tell) should reliably compost
     tier-appropriate fodder — the floor that guards balance tuning."""
     import random
-    fodder = data.NPCS[0]            # Drudge Beetle, brute, bluff 0
+    fodder = data.ENEMY_SPECS_BY_ID['drudge_beetle']   # brute, bluff 0
     wins = 0
     for seed in range(20):
         t = FakeTable()
@@ -3896,51 +3891,88 @@ def test_region_tier_mapping():
     assert data.region_tier('city') == 1
     assert data.region_tier('garden') == 1 and data.region_tier('bog') == 1
     assert data.region_tier('ruin') == 2 and data.region_tier('depths') == 2
-    assert data.region_tier('wilderness') == 3 and data.region_tier('isle') == 3
+    assert data.region_tier('wilderness') == 2 and data.region_tier('isle') == 3
     assert data.region_tier('anything_else') == 1   # safe default
     assert data.region_tier(None) == 1
 
 
-def test_tier_pools_compose_existing_rosters():
-    t = data.TIER_NPCS
-    assert t[1]['wild'] is data.NPCS and t[1]['elite'] is data.ELITE_NPCS
-    assert t[2]['wild'] is data.DEPTHS_MID and t[2]['elite'] is data.WILDERNESS_NPCS
-    assert {n['id'] for n in t[3]['wild']} == (
-        {n['id'] for n in data.DEPTHS_DEEP} | {n['id'] for n in data.WILDERNESS_ELITE_NPCS})
-    assert {n['id'] for n in t[3]['elite']} == (
-        {n['id'] for n in data.DEPTHS_ABYSS} | {n['id'] for n in data.ISLE_APEX})
+def test_every_region_has_a_wild_pool():
+    # Each of the nine regions fields a non-empty wild pool. Only 'bone' may have
+    # an empty elite pool (no elite spaces on the map) — and it falls back to wild.
+    for region in data.REGION_NPCS:
+        assert data.region_npcs(region, elite=False), region
+        assert data.region_npcs(region, elite=True), region   # fallback, never empty
+    assert data.REGION_NPCS['bone']['elite'] == []
 
 
-def test_tier_wild_hp_ceilings_ascend():
-    hp = lambda pool: max(n['hp'] for n in pool)
-    assert hp(data.TIER_NPCS[1]['wild']) < hp(data.TIER_NPCS[2]['wild']) < hp(data.TIER_NPCS[3]['wild'])
+def test_every_placed_creature_has_art():
+    """The invariant that started this change: every creature the game can spawn
+    must have sprite art. A no-art enemy can never re-appear."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[3] / 'public' / 'undercity'
+    placed = {s['id'] for pools in data.REGION_NPCS.values()
+              for key in ('wild', 'elite') for s in pools[key]}
+    # Signatures resolve to a boss familiar's sprite(s) or, for a borrowed pool
+    # enemy (e.g. ruin's moldering_karock), the spec id itself.
+    for sig in data.LAIR_SIGNATURE.values():
+        fam = data.LAIR_FAMILIAR.get(sig)
+        placed.update(fam.get('sprites', [fam['id']]) if fam else [sig])
+    for spec in data.LAIR_FAMILIAR.values():          # boss familiars use boss_spawns/
+        placed.update(spec.get('sprites', [spec['id']]))
+    for cid in placed:
+        art = (root / 'enemies' / f'{cid}.png').exists() \
+            or (root / 'boss_spawns' / f'{cid}.png').exists()
+        assert art, f'no sprite art for spawnable enemy: {cid}'
 
 
-def test_city_wild_and_elite_use_tier1(table):
+def test_region_pools_are_flavor_distinct():
+    # Per-biome flavor: no creature spans two DIFFERENT biomes' pools, except the
+    # deliberately-shared Depths<->Ruin deep dwellers.
+    biome_ids = {}
+    for region, pools in data.REGION_NPCS.items():
+        if region == 'ruin':
+            continue   # ruin shares the depths object by design
+        biome_ids[region] = {s['id'] for key in ('wild', 'elite') for s in pools[key]}
+    seen = {}
+    for region, ids in biome_ids.items():
+        for cid in ids:
+            assert cid not in seen or seen[cid] == region, (cid, seen.get(cid), region)
+            seen[cid] = region
+
+
+def test_region_wild_hp_ceilings_ascend():
+    hp = lambda region: max(n['hp'] for n in data.region_npcs(region, elite=False))
+    assert hp('city') < hp('wilderness') < hp('isle')
+
+
+def test_city_wild_and_elite_use_city_pool(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
     wild = db._wild_battle(table, sid, doc, region='city')
-    assert wild['npc']['id'] in {n['id'] for n in data.NPCS}
+    assert wild['npc']['id'] in {n['id'] for n in data.region_npcs('city', elite=False)}
     elite = db._wild_battle(table, sid, doc, region='city', elite=True)
-    assert elite['npc']['id'] in {n['id'] for n in data.ELITE_NPCS}
+    assert elite['npc']['id'] in {n['id'] for n in data.region_npcs('city', elite=True)}
 
 
-def test_ruin_is_tier2_not_tier1(table):
-    """The bug this fixes: the Ruinways used to fall through to tier-1 NPCS."""
+def test_ruin_uses_its_own_pool_not_city(table):
+    """The Ruinways draw the T2 deep-dweller pool (+ their moldering_karock
+    signature), never the tier-1 city creatures."""
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
+    allowed = {n['id'] for n in data.region_npcs('ruin', elite=False)} \
+        | {data.LAIR_SIGNATURE['ruin']}
     ev = db._wild_battle(table, sid, doc, region='ruin')
-    assert ev['npc']['id'] in {n['id'] for n in data.DEPTHS_MID}
-    assert ev['npc']['id'] not in {n['id'] for n in data.NPCS}
+    assert ev['npc']['id'] in allowed
+    assert ev['npc']['id'] not in {n['id'] for n in data.region_npcs('city', elite=False)}
 
 
-def test_depths_is_flat_tier2_regardless_of_depth(table):
-    """No more depth ladder: a shallow AND a deep depths node both pull tier 2 —
-    the flat DEPTHS_MID pool plus that biome's signature minion (design 2026-08-02)."""
+def test_depths_is_flat_regardless_of_depth(table):
+    """No depth ladder: a shallow AND a deep depths node both pull the flat
+    deep-dweller pool plus that biome's signature minion (design 2026-08-02)."""
     sid = _sid(table)
-    mid_ids = {n['id'] for n in data.DEPTHS_MID}
+    mid_ids = {n['id'] for n in data.region_npcs('depths', elite=False)}
     for node in ('city_lb', 'city_d1'):           # both region='depths', biome 'city'
         sig = data.LAIR_SIGNATURE.get(data.dungeon_biome(node) or node.split('_')[0])
         allowed = mid_ids | ({sig} if sig else set())
@@ -3949,17 +3981,17 @@ def test_depths_is_flat_tier2_regardless_of_depth(table):
         assert ids and ids <= allowed, (node, ids)
 
 
-def test_wilderness_and_isle_use_tier3(table):
+def test_wilderness_and_isle_use_their_own_pools(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-alex')
-    t3_wild = {n['id'] for n in data.DEPTHS_DEEP} | {n['id'] for n in data.WILDERNESS_ELITE_NPCS}
-    t3_elite = {n['id'] for n in data.DEPTHS_ABYSS} | {n['id'] for n in data.ISLE_APEX}
     for region in ('wilderness', 'isle'):
+        wild_ids = {n['id'] for n in data.region_npcs(region, elite=False)}
+        elite_ids = {n['id'] for n in data.region_npcs(region, elite=True)}
         w = {db._wild_battle(table, sid, doc, region=region)['npc']['id'] for _ in range(30)}
-        assert w and w <= t3_wild, (region, w)
+        assert w and w <= wild_ids, (region, w)
         e = {db._wild_battle(table, sid, doc, region=region, elite=True)['npc']['id'] for _ in range(30)}
-        assert e and e <= t3_elite, (region, e)
+        assert e and e <= elite_ids, (region, e)
 
 
 # ── Ashen Fog (fog-of-war tile) ──────────────────────────────────────────────
