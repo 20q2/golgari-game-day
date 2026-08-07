@@ -904,6 +904,24 @@ export function getRecoloredWithHatEffectDataUrl(
   return getRecoloredWithHatEffect(sprite, colors, regions, hatId, effect)?.toDataURL() ?? null;
 }
 
+/**
+ * Drop every cached *canvas* the engine hands out as a blit source — the
+ * recolored sprites, hat composites, effect portraits, silhouette masks and the
+ * shared effect scratch. Called when the board detects the browser has discarded
+ * canvas backing stores under memory pressure (Android Chrome does this, leaving
+ * the canvas element alive but blitting fully transparent). Each cache rebuilds
+ * lazily on the next getRecolored/effect call, so this just forces a regenerate
+ * from the still-decoded source <img>s. Data-only caches (region maps, hat
+ * guides, anchors) are kept — they hold no evictable pixels.
+ */
+export function clearSpriteCanvasCaches(): void {
+  recolorCache.clear();
+  recolorHatCache.clear();
+  recolorHatEffectCache.clear();
+  silhouetteCache.clear();
+  effectScratch = null;
+}
+
 /** Head anchor: mask white-blob centroid, else the sprite's pure-red marker, else default. */
 export function getHatAnchor(sprite: string): { x: number; y: number } {
   if (sprite in anchorCache) return anchorCache[sprite] ?? { x: 16, y: 6 };

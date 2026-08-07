@@ -9,7 +9,13 @@
  * "disturbed ground" tells, pulsing move-choice highlights, and y-sorted
  * player tokens (recolored mini sprites) with ground shadows.
  */
-import { getRecolored, getRawImage, hatPlacement, drawCreatureEffect } from './sprite-engine';
+import {
+  getRecolored,
+  getRawImage,
+  hatPlacement,
+  drawCreatureEffect,
+  clearSpriteCanvasCaches,
+} from './sprite-engine';
 import { formSprite } from '../data/species';
 import type { TemperamentProfile } from '../data/pets';
 import {
@@ -468,6 +474,8 @@ export class BoardCanvas {
   private effectClock = 0; // ms, monotonic; drives special-paint overlays
   private pendingHealPops: { userId: string; amount: number }[] = [];
   private lastTs = performance.now();
+  /** Timestamp of the last terrain backing-store integrity probe (see draw). */
+  private lastIntegrityTs = 0;
   private rafId: number | null = null;
   private startTime = performance.now();
   private layerSpecs: LayerSpec[];
@@ -611,6 +619,54 @@ export class BoardCanvas {
       this.rebuildTimer = null;
       this.rebuildLayers();
     }, 150);
+  }
+
+  /**
+   * Detect (and heal) a lost canvas backing store. Android Chrome — and iOS
+   * WebKit — can discard the backing store of large, idle offscreen canvases
+   * under memory pressure: the canvas element stays alive but blits as fully
+   * transparent, so the baked terrain and the recolored player sprites silently
+   * vanish while the vector-drawn discs (which are re-issued every frame) stay
+   * put, and nothing ever repaints them because they're baked exactly once — the
+   * board sits blank until a reload. We can't prevent the eviction, but we can
+   * notice it: renderTerrain fills the whole canvas edge-to-edge with an opaque
+   * wall colour, so a single transparent pixel means the store was dropped.
+   * Probed at most every ~2s; one 1×1 readback is cheap.
+   */
+  private checkTerrainIntact(ts: number): void {
+    if (ts - this.lastIntegrityTs < 2000) return;
+    this.lastIntegrityTs = ts;
+    const cv = this.active.terrain.canvas;
+    let lost = cv.width === 0 || cv.height === 0;
+    if (!lost) {
+      try {
+        // Intact terrain is opaque everywhere (the #141110 base fill), so alpha 0
+        // at (0,0) means the backing store was reclaimed out from under us.
+        lost = cv.getContext('2d')!.getImageData(0, 0, 1, 1).data[3] === 0;
+      } catch {
+        lost = true; // a context/readback failure is itself a lost store
+      }
+    }
+    if (lost) this.recoverLostCanvases();
+  }
+
+  /**
+   * Re-bake every live terrain layer and drop the sprite-engine's canvas caches
+   * after a detected eviction, so the board and tokens repaint on the next frame
+   * instead of staying blank until reload. Backing stores are usually reclaimed
+   * as a group under memory pressure, so we rebuild all baked layers, not just
+   * the visible one.
+   */
+  private recoverLostCanvases(): void {
+    console.warn('[undercity] canvas backing store evicted — rebuilding board terrain');
+    for (const [id, layer] of [...this.layers]) {
+      const spec = this.specById.get(id);
+      if (!spec) continue;
+      this.layers.set(id, this.bakeLayer(spec));
+      layer.terrain.canvas.width = 0;
+      layer.terrain.canvas.height = 0;
+    }
+    clearSpriteCanvasCaches();
   }
 
   /** Season-global first-conqueror plates + plundered-treasure state. */
@@ -1419,6 +1475,7 @@ export class BoardCanvas {
     const elapsed = (ts - this.startTime) / 1000;
     const dt = Math.min(0.05, (ts - this.lastTs) / 1000);
     this.lastTs = ts;
+    this.checkTerrainIntact(ts);
     this.updateDust(dt);
     this.updateHealFx(dt);
 
