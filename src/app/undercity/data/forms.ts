@@ -135,13 +135,13 @@ export const TIER2: FormInfo[] = [
 ];
 
 export const APEX: (FormInfo & { from: string[] })[] = [
-  { id: 'grave_titan', name: 'Grave Titan', tier: 3, passive: 'colossus', passiveName: 'Colossus', bonus: { maxHp: 12, def: 4 }, blurb: 'Hulking tank.', from: ['brackish_trudge', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'] },
-  { id: 'golgari_lich_lord', name: 'Golgari Lich Lord', tier: 3, passive: 'drain_life', passiveName: 'Drain Life', bonus: { atk: 2, maxHp: 6 }, blurb: 'ATK/HP sovereign of rot.', from: ['brackish_trudge', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'] },
-  { id: 'swamp_dragon', name: 'Swarm Lord', tier: 3, passive: 'onslaught', passiveName: 'Onslaught', bonus: { atk: 2, spd: 2 }, blurb: 'The swarm descends all at once — its round-1 strike hits for double.', from: ['kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior', 'gorgon'] },
-  { id: 'izoni', name: 'Primeval Warden', tier: 3, passive: 'swarm', passiveName: 'Swarm', bonus: { spd: 4 }, blurb: 'SPD incarnate — strikes from the shadows, faster than the eye can track.', from: ['vexing_pest', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage'] },
+  { id: 'grave_titan', name: 'Grave Titan', tier: 3, passive: 'colossus', passiveName: 'Colossus', bonus: { maxHp: 12, def: 4 }, blurb: 'Hulking tank.', from: ['shambling_shell', 'underrealm_lich', 'deathrite_shaman', 'brackish_trudge', 'woodwraith_strangler', 'gorgon'] },
+  { id: 'golgari_lich_lord', name: 'Golgari Lich Lord', tier: 3, passive: 'drain_life', passiveName: 'Drain Life', bonus: { atk: 2, maxHp: 6 }, blurb: 'ATK/HP sovereign of rot.', from: ['underrealm_lich', 'deathrite_shaman', 'corpsejack_menace', 'squirrel_mage'] },
+  { id: 'swamp_dragon', name: 'Swarm Lord', tier: 3, passive: 'onslaught', passiveName: 'Onslaught', bonus: { atk: 2, spd: 2 }, blurb: 'The swarm descends all at once — its round-1 strike hits for double.', from: ['kraul_warrior', 'golgari_longlegs', 'slitherhead'] },
+  { id: 'izoni', name: 'Primeval Warden', tier: 3, passive: 'swarm', passiveName: 'Swarm', bonus: { spd: 4 }, blurb: 'SPD incarnate — strikes from the shadows, faster than the eye can track.', from: ['slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'vexing_pest', 'golgari_longlegs', 'wood_lurker'] },
   { id: 'daemogoth', name: 'Daemogoth Titan', tier: 3, passive: 'arsenal', passiveName: 'Arsenal', bonus: { atk: 2, def: 2 }, blurb: 'A demon of shadow and moss whose spare arms wield a fourth piece of gear — one no other creature can bear.', from: ['wood_lurker', 'gorgon'] },
-  { id: 'calamity_beast', name: 'Calamity Beast', tier: 3, passive: 'wish', passiveName: 'Wish', bonus: { maxHp: 6, spd: 2 }, blurb: 'Learns Wish — cast ANY spell in the world.', from: ['squirrel_warrior', 'squirrel_mage', 'vexing_pest', 'corpsejack_menace'] },
-  { id: 'grave_reaver', name: 'Colossal Grave-Reaver', tier: 3, passive: 'treasure_sense', passiveName: 'Treasure Sense', bonus: { maxHp: 6, atk: 2, def: 2 }, blurb: 'A hoarder\'s eye — gear turns up far more often, and one rarity tier richer.', from: ['brackish_trudge', 'vexing_pest', 'deathrite_shaman'] },
+  { id: 'calamity_beast', name: 'Calamity Beast', tier: 3, passive: 'wish', passiveName: 'Wish', bonus: { maxHp: 6, spd: 2 }, blurb: 'Learns Wish — cast ANY spell in the world.', from: ['squirrel_warrior', 'squirrel_mage'] },
+  { id: 'grave_reaver', name: 'Colossal Grave-Reaver', tier: 3, passive: 'treasure_sense', passiveName: 'Treasure Sense', bonus: { maxHp: 6, atk: 2, def: 2 }, blurb: 'A hoarder\'s eye — gear turns up far more often, and one rarity tier richer.', from: ['brackish_trudge', 'vexing_pest', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman', 'squirrel_warrior'] },
 ];
 
 export const ALL_FORMS: Record<string, FormInfo> = Object.fromEntries(
