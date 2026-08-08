@@ -20,11 +20,10 @@ def test_gorgon_starter_defined():
 
 def test_gorgon_evolution_line():
     assert set(data.tier2_options('elf')) == {'gorgon', 'wood_lurker'}
-    # Each elf tier-2 form has two apex options grafted onto existing apexes.
-    assert 'grave_titan' in data.apex_options('wood_lurker')
-    assert 'golgari_lich_lord' in data.apex_options('wood_lurker')
-    assert 'swamp_dragon' in data.apex_options('gorgon')
-    assert 'daemogoth' in data.apex_options('gorgon')
+    # Elf signature is Daemogoth (both reach it); siblings differ on their 2nd
+    # option (Wood Lurker -> Primeval Warden nature; Gorgon -> stone colossus). 2026-08-07.
+    assert set(data.apex_options('wood_lurker')) == {'daemogoth', 'izoni'}
+    assert set(data.apex_options('gorgon')) == {'daemogoth', 'grave_titan'}
 
 
 def test_gorgon_starts_with_five_banked_points(table):

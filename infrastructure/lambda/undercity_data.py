@@ -187,35 +187,49 @@ TIER2 = {
 }
 
 # Apex forms (level 10).
+#
+# Evolution design (2026-08-07): every starter LINE has a *signature* apex that
+# ALL of its tier-2 forms can reach, and each tier-2 form's SECOND option is
+# distinct from its siblings' so no two siblings share the same choice set.
+#   pest      -> Colossal Grave-Reaver   kraul    -> Swarm Lord
+#   saproling -> Primeval Warden (izoni)  zombie   -> Grave Titan
+#   squirrel  -> Calamity Beast           elf      -> Daemogoth Titan
+# Golgari Lich Lord is the one non-signature apex — the shared "undead lifesteal"
+# pick. LINE_SIGNATURE (below) encodes the rule; a test enforces it.
 APEX = {
     'grave_titan': {
         'name': 'Grave Titan', 'bonus': {'maxHp': 12, 'def': 4},
         'passive': 'colossus',
-        'from': ['brackish_trudge', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'],
+        # zombie signature (+ Brackish bog-brute, Sporeback fungal wall, Gorgon petrify->stone).
+        'from': ['shambling_shell', 'underrealm_lich', 'deathrite_shaman', 'brackish_trudge', 'woodwraith_strangler', 'gorgon'],
         'blurb': 'Colossus: a hulking wall — shrugs off 15% of every blow and outlasts anything.',
     },
     'golgari_lich_lord': {
         'name': 'Golgari Lich Lord', 'bonus': {'atk': 2, 'maxHp': 6},
         'passive': 'drain_life',
-        'from': ['brackish_trudge', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'],
+        # non-signature shared apex: undead casters (lich, ritualist, corpsejack, squirrel mage).
+        'from': ['underrealm_lich', 'deathrite_shaman', 'corpsejack_menace', 'squirrel_mage'],
         'blurb': 'Drain Life: heal for 50% of damage you deal.',
     },
     # id kept as 'swamp_dragon' for save-compat; displays as the Swarm Lord.
     'swamp_dragon': {
         'name': 'Swarm Lord', 'bonus': {'atk': 2, 'spd': 2},
         'passive': 'onslaught',
-        'from': ['kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior', 'gorgon'],
+        # kraul signature (+ Slitherhead saproling burst).
+        'from': ['kraul_warrior', 'golgari_longlegs', 'slitherhead'],
         'blurb': 'Onslaught: the swarm descends all at once — its round-1 strike hits for double.',
     },
     'izoni': {
         'name': 'Primeval Warden', 'bonus': {'spd': 4},
         'passive': 'swarm',
-        'from': ['vexing_pest', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_mage'],
+        # saproling signature (+ Vexing vermin, Longlegs brood, Wood Lurker forest).
+        'from': ['slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'vexing_pest', 'golgari_longlegs', 'wood_lurker'],
         'blurb': 'Swarm: one extra strike every battle round.',
     },
     'daemogoth': {
         'name': 'Daemogoth Titan', 'bonus': {'atk': 2, 'def': 2},
         'passive': 'arsenal',
+        # elf signature.
         'from': ['wood_lurker', 'gorgon'],
         'blurb': 'Arsenal: a fourth equipment slot — a demon of shadow and moss '
                  'wields an extra piece of gear in its spare arms that no other '
@@ -224,15 +238,28 @@ APEX = {
     'calamity_beast': {
         'name': 'Calamity Beast', 'bonus': {'maxHp': 6, 'spd': 2},
         'passive': 'wish',
-        'from': ['squirrel_warrior', 'squirrel_mage', 'vexing_pest', 'corpsejack_menace'],
+        # squirrel signature (caster-only, mirrors Daemogoth being elf-only).
+        'from': ['squirrel_warrior', 'squirrel_mage'],
         'blurb': 'Wish: learn the Wish spell — once ready, cast ANY spell in the world, from any list.',
     },
     'grave_reaver': {
         'name': 'Colossal Grave-Reaver', 'bonus': {'maxHp': 6, 'atk': 2, 'def': 2},
         'passive': 'treasure_sense',
-        'from': ['brackish_trudge', 'vexing_pest', 'deathrite_shaman'],
+        # pest signature (+ Grave Scarab, Shambling shell-hoard, Deathrite graverob, Vinereap 'reaver').
+        'from': ['brackish_trudge', 'vexing_pest', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman', 'squirrel_warrior'],
         'blurb': 'Treasure Sense: a hoarder\'s eye — gear turns up far more often, and one rarity tier richer.',
     },
+}
+
+# Each starter line's signature apex — reachable by ALL of the line's tier-2
+# forms (see the APEX design note). Enforced by test_undercity_signatures.py.
+LINE_SIGNATURE = {
+    'pest': 'grave_reaver',
+    'kraul': 'swamp_dragon',
+    'saproling': 'izoni',
+    'zombie': 'grave_titan',
+    'squirrel': 'calamity_beast',
+    'elf': 'daemogoth',
 }
 
 

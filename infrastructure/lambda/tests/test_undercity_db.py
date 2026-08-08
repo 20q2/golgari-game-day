@@ -3726,11 +3726,12 @@ def test_squirrel_line_and_calamity_beast_wired():
     import undercity_data as data
     assert data.STARTERS['squirrel']['passive'] == 'spell_haste'
     assert set(data.tier2_options('squirrel')) == {'squirrel_warrior', 'squirrel_mage'}
-    # Calamity Beast reachable from both squirrel T2s AND several other lines.
+    # Calamity Beast is the squirrel signature — caster-only (2026-08-07), reachable
+    # from both squirrel T2s and no other line (mirrors Daemogoth being elf-only).
     assert 'calamity_beast' in data.apex_options('squirrel_warrior')
     assert 'calamity_beast' in data.apex_options('squirrel_mage')
-    assert 'calamity_beast' in data.apex_options('vexing_pest')
-    # deathrite_shaman now routes to the Grave-Reaver instead of Calamity (2026-08-07).
+    assert set(data.APEX['calamity_beast']['from']) == {'squirrel_warrior', 'squirrel_mage'}
+    # deathrite_shaman routes to the Grave-Reaver, not Calamity.
     assert 'grave_reaver' in data.apex_options('deathrite_shaman')
     assert 'calamity_beast' not in data.apex_options('deathrite_shaman')
     assert data.APEX['calamity_beast']['passive'] == 'wish'

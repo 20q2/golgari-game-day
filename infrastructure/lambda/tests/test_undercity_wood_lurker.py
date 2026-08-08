@@ -73,6 +73,7 @@ def test_tier2_forms_renamed():
     assert wl['passive'] == 'mimicry'
     assert wl['name'] == 'Wood Lurker'
     assert wl['bonus'] == {'maxHp': 6}
-    # apex routing preserved under the new ids
-    assert 'swamp_dragon' in data.apex_options('gorgon')
-    assert 'grave_titan' in data.apex_options('wood_lurker')
+    # apex routing under the line-signature design (2026-08-07): elf signature
+    # is Daemogoth; Gorgon's 2nd is the stone colossus, Wood Lurker's is nature.
+    assert set(data.apex_options('gorgon')) == {'daemogoth', 'grave_titan'}
+    assert set(data.apex_options('wood_lurker')) == {'daemogoth', 'izoni'}
