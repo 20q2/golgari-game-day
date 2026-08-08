@@ -202,7 +202,7 @@ APEX = {
     },
     'swamp_dragon': {
         'name': 'Swamp Dragon', 'bonus': {'atk': 2, 'spd': 2},
-        'passive': 'rot_breath',
+        'passive': 'onslaught',
         'from': ['vexing_pest', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior', 'gorgon'],
         'blurb': 'Rot Breath: round-1 strike hits for double.',
     },
@@ -539,7 +539,7 @@ SPIKESHELL_RETALIATE = 2  # spikeshell: damage dealt back when you LOSE an excha
 DEATHTOUCH_PIERCE  = 3  # RETIRED 2026-08-04 (Grave Titan is now Colossus); kept defined for save/backcompat only
 FLYBY_DODGE        = 0.25  # skitter (fungus line): chance to dodge the punish when you LOSE an exchange
 VENOM_BARB_BONUS   = 3   # RETIRED 2026-08-07 (Venom Barb now injects rot on each decisive win); kept defined for save/backcompat only
-FIRST_WIN_ROT_BREATH_MULT = 2  # rot_breath: first winning exchange * this
+ONSLAUGHT_MULT = 2  # onslaught (ex rot_breath): first winning exchange * this
 
 MAX_ROUNDS_COMBAT = 6  # reference span the escalation ramp is tuned around (see FRENZY_*)
 COMBAT_HARD_CAP   = 24  # safety terminator: no fight can exceed this many rounds. The

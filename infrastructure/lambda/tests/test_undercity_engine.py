@@ -830,11 +830,11 @@ def test_venom_barb_applies_rot_on_each_win():
     assert d.rot_stacks == 0
 
 
-def test_rot_breath_first_win_doubles():
-    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'rot_breath'}))
+def test_onslaught_first_win_doubles():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'onslaught'}))
     d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
     resolve_round(a, d, 'feint', 'guard', 1, FakeRng(uniform=1.0))  # feint>guard win
-    # feint base 0.5*10+1.0*5=10, -def4=6; *WIN1.5*rot_breath2 => 18
+    # feint base 0.5*10+1.0*5=10, -def4=6; *WIN1.5*onslaught2 => 18
     assert d.hp == 60 - 18
 
 

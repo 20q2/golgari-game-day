@@ -309,8 +309,8 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                     and losr.max_hp and losr.hp / losr.max_hp < 0.30):
                 mult += winr.mag('gutcleaver', 0.0)   # execute a low-HP foe
             if not winr.first_win_used:
-                if winr.has('rot_breath'):
-                    mult *= data.FIRST_WIN_ROT_BREATH_MULT
+                if winr.has('onslaught'):
+                    mult *= data.ONSLAUGHT_MULT
                 winr.first_win_used = True
             dmg = max(0, round(raw * mult))
             if losr.has('colossus'):

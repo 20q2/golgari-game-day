@@ -355,6 +355,7 @@ _PASSIVE_RENAMES = {
     'vexing': 'improvise',          # 2026-08-04: Vexing -> Improvise
     'undying': 'bog_forager',       # 2026-08-04: Undying -> Bog Forager
     'deathtouch_stomp': 'colossus', # 2026-08-04: Deathtouch Stomp -> Colossus
+    'rot_breath': 'onslaught',      # 2026-08-07: Rot Breath -> Onslaught (Swarm Lord)
 }
 
 # One-to-two passive splits: a stored key that still exists but was split so a
