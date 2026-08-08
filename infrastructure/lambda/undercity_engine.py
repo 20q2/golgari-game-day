@@ -44,7 +44,7 @@ class Combatant:
     feint_won: bool = field(default=False, repr=False)  # cutpurse: landed a winning Feint
     # active companion combat contribution (Fox follow-up / Turtle deflect)
     pet_followup_chance: float = field(default=0.0, repr=False)
-    pet_followup_mult: float = field(default=0.0, repr=False)
+    pet_followup_flat: int = field(default=0, repr=False)
     pet_deflect_chance: float = field(default=0.0, repr=False)
     pet_deflect_flat: int = field(default=0, repr=False)
 
@@ -308,14 +308,11 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             if (win_stance == 'aggress'
                     and losr.max_hp and losr.hp / losr.max_hp < 0.30):
                 mult += winr.mag('gutcleaver', 0.0)   # execute a low-HP foe
-            bonus = 0
             if not winr.first_win_used:
                 if winr.has('rot_breath'):
                     mult *= data.FIRST_WIN_ROT_BREATH_MULT
-                if winr.has('venom_barb'):
-                    bonus += data.VENOM_BARB_BONUS
                 winr.first_win_used = True
-            dmg = max(0, round(raw * mult) + bonus)
+            dmg = max(0, round(raw * mult))
             if losr.has('colossus'):
                 dmg = round(dmg * (1 - data.COLOSSUS_DR))
             if double_win_for == win_side:
@@ -342,15 +339,16 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                 _bramble(losr, winr, lose_side, rnd, entries)
                 # Attack companion: an occasional follow-up nip on the decisive hit.
                 if winr.pet_followup_chance and losr.hp > 0 and rng.random() < winr.pet_followup_chance:
-                    extra = max(1, round(dmg * winr.pet_followup_mult))
+                    extra = max(1, winr.pet_followup_flat)
                     losr.hp -= extra
                     entries.append({'round': rnd, 'by': win_side, 'dmg': extra,
                                     'pet': 'attack', 'winner': win_side})
             # Rabid: each Aggress win ramps future Aggress hits (applies next win).
             if win_stance == 'aggress' and winr.has_rider('rabid'):
                 winr.aggress_ramp += winr.mag('rabid', 0)
-            # Web Venom (Ishkanah): any decisive win injects a rot stack.
-            if winr.has('web_venom') and losr.hp > 0:
+            # Web Venom (Ishkanah) / Venom Barb (Grave Scarab): any decisive win
+            # injects a rot stack — a poison DoT that snowballs over the fight.
+            if (winr.has('web_venom') or winr.has('venom_barb')) and losr.hp > 0:
                 losr.rot_stacks += 1
                 entries.append({'round': rnd, 'by': win_side, 'rotApplied': 1})
             # A winning Feint: serrated debuffs enemy next round; glint reveals;
@@ -897,11 +895,12 @@ def attribute_perks(player: dict) -> frozenset:
 
 
 def pet_combat(pet: dict, level_bonus: int = 0) -> dict:
-    """Derive an active pet's combat contribution by ROLE: an 'attack' pet adds a
-    follow-up hit, a 'defend' pet deflects, both scaled by level. `level_bonus`
-    (a Gorgon owner's Stonewright edge) makes the pet fight as if that many levels
-    higher. Non-combat role / None -> all zeros."""
-    out = {'followup_chance': 0.0, 'followup_mult': 0.0,
+    """Derive an active pet's combat contribution by ROLE. Attack and defend are
+    symmetric: a scaling % chance to apply a scaling flat magnitude — attack deals
+    it as bonus damage on a decisive win, defend blocks it on a decisive loss.
+    `level_bonus` (a Gorgon owner's Stonewright edge) makes the pet fight as if
+    that many levels higher. Non-combat role / None -> all zeros."""
+    out = {'followup_chance': 0.0, 'followup_flat': 0,
            'deflect_chance': 0.0, 'deflect_flat': 0}
     if not pet:
         return out
@@ -910,12 +909,14 @@ def pet_combat(pet: dict, level_bonus: int = 0) -> dict:
     if not cfg:
         return out
     lvl = int(pet.get('level', 1)) + level_bonus
+    chance = cfg['chance_base'] + cfg['chance_per_lvl'] * (lvl - 1)
+    flat = int(cfg['flat_base'] + cfg['flat_per_lvl'] * (lvl - 1))
     if role == 'attack':
-        out['followup_chance'] = cfg['followup_chance_base'] + cfg['followup_chance_per_lvl'] * (lvl - 1)
-        out['followup_mult'] = cfg['followup_mult']
+        out['followup_chance'] = chance
+        out['followup_flat'] = flat
     elif role == 'defend':
-        out['deflect_chance'] = cfg['deflect_chance_base'] + cfg['deflect_chance_per_lvl'] * (lvl - 1)
-        out['deflect_flat'] = int(cfg['deflect_flat_base'] + cfg['deflect_flat_per_lvl'] * (lvl - 1))
+        out['deflect_chance'] = chance
+        out['deflect_flat'] = flat
     return out
 
 

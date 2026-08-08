@@ -353,10 +353,18 @@ SCROLL_DROP_CHANCE = {
 PET_INCUBATE_MINUTES = 5
 
 # Activated-ability real-time cooldowns (minutes), keyed by ROLE; leveling the
-# pet shortens the wait down to a floor. Mirrors the spell-cooldown idiom.
+# pet shortens the wait down to a floor. Mirrors the spell-cooldown idiom. Only
+# SCOUT still uses this clock — forage recharges by distance (see below).
 PET_ABILITY_COOLDOWN_MIN = {'scout': 30, 'forage': 20}
 PET_ABILITY_COOLDOWN_PER_LVL = 2      # minutes shaved per level above 1
 PET_ABILITY_COOLDOWN_FLOOR = 5        # never faster than this
+
+# Forage recharges by DISTANCE, not time: using it primes a countdown of this
+# many board spaces; every space walked ticks it down, ready again at 0. Flat
+# (does not scale with level — leveling still raises the Spore payout instead).
+# This rewards movement/speed instead of forcing players back on a clock. Mirror
+# in src/app/undercity/data/pets.ts.
+PET_FORAGE_RECHARGE_SPACES = 6
 
 # Scout courier: the max ITEM tier a scout can haul back from its biome bazaar,
 # indexed by the pet's level - 1 (clamped). Merging up a scout (raising its level

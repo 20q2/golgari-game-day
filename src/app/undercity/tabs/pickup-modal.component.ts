@@ -8,6 +8,7 @@ import {
   CONSUMABLE_MAP,
   MarketKind,
   marketBand,
+  pricePresets,
   SALVAGE_YIELD,
   tierRarity,
   Rarity,
@@ -176,6 +177,19 @@ type SellTarget = 'new' | number | null;
               Cancel
             </button>
           </div>
+          <div class="pu-sell-presets">
+            @for (preset of pricePresets(kind, id); track preset) {
+              <button
+                type="button"
+                class="pu-preset"
+                [class.active]="price() === preset"
+                [disabled]="busy()"
+                (click)="price.set(preset)"
+              >
+                {{ preset }}
+              </button>
+            }
+          </div>
           <small>{{ bandFor(kind, id).lo }}–{{ bandFor(kind, id).hi }} Spores</small>
         </div>
       </ng-template>
@@ -245,6 +259,13 @@ export class PickupModalComponent {
 
   protected bandFor(kind: MarketKind, itemId: string): { lo: number; hi: number } {
     return marketBand(kind, itemId);
+  }
+
+  /** Quick-fill price buttons for an item's band (endpoints + evenly spaced
+   *  steps between), shown under the price input. */
+  protected pricePresets(kind: MarketKind, itemId: string): number[] {
+    const { lo, hi } = marketBand(kind, itemId);
+    return pricePresets(lo, hi);
   }
 
   protected sourceLine(p: PendingPickup): string {

@@ -64,6 +64,13 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     return Object.keys(DUNGEONS).filter((b) => claims.includes(`${b}_lair`)).length;
   });
 
+  /** Free incubator + eggs sitting uncooked — a nudge to go incubate one. Mirrors
+   *  creature-tab's eggsWaiting so the Gear tab icon can flag it with an egg. */
+  protected readonly eggsWaiting = computed<boolean>(() => {
+    const you = this.store.you();
+    return !!you && !you.incubator && (you.eggs?.length ?? 0) > 0;
+  });
+
   protected readonly phase = computed<
     'signin' | 'loading' | 'idle' | 'lobby' | 'hatch' | 'play' | 'ended'
   >(() => {

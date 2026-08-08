@@ -95,7 +95,7 @@ their existing (sim-balanced) block.
 
 | Region (tier) | Wild pool | Elite pool |
 |---|---|---|
-| **Undercity** / city (T1) | **Acolyte of Affliction**, Sewer Shambler | **Attendant of Vraska**, **Obelisk Spider** |
+| **Undercity** / city (T1) | **Acolyte of Affliction**, Sewer Shambler, **Attendant of Vraska** | **Obelisk Spider** |
 | **Rot-Gardens** / garden (T1) | **Thallid**, **Thallid Shell-Dweller**, Ravenous Squirrel, **Canker Abomination** | **Rotwood Elemental** |
 | **Ossuary Fields** / bone (T1) | **Boneyard Lurker**, Fiend Artisan, Mosspit Skeleton | *(none — no elite spaces)* |
 | **Mosslight Cavern** / cavern (T1) | **Duskwood Watcher**, Leyline Prowler, Lotleth Troll | Large Bear |
@@ -132,7 +132,7 @@ and adjust before deploy.
 | id | region / role | hp | atk | def | spd | bounty | xp | itemChance | personality | bluff |
 |---|---|---|---|---|---|---|---|---|---|---|
 | acolyte_of_affliction | city / wild (T1) | 26 | 8 | 3 | 5 | 8 | 10 | 0.0 | trickster | 0.0 |
-| attendant_of_vraska | city / elite (T1) | 30 | 11 | 5 | 8 | 18 | 25 | 0.28 | trickster | 0.15 |
+| attendant_of_vraska | city / wild (T1) | 28 | 8 | 4 | 7 | 8 | 10 | 0.0 | trickster | 0.0 |
 | obelisk_spider | city / elite (T1) | 32 | 10 | 6 | 6 | 18 | 25 | 0.28 | balanced | 0.12 |
 | canker_abomination | garden / wild (T1) | 34 | 8 | 4 | 3 | 9 | 10 | 0.0 | brute | 0.0 |
 | thallid | garden / wild (T1) | 32 | 7 | 4 | 3 | 8 | 10 | 0.0 | balanced | 0.0 |
@@ -146,8 +146,8 @@ and adjust before deploy.
 | teachers_pest | depths+ruin / wild (T2) | 38 | 11 | 4 | 8 | 22 | 40 | 0.20 | trickster | 0.15 |
 | catacomb_shifter | depths+ruin / elite (T2) | 54 | 15 | 7 | 8 | 28 | 48 | 0.25 | trickster | 0.18 |
 | putrid_leech | isle / wild (T3) | 100 | 20 | 6 | 7 | 50 | 70 | 0.40 | brute | 0.15 |
-| molderhulk | isle / wild+elite (T3) | 120 | 22 | 9 | 4 | 60 | 85 | 0.45 | brute | 0.20 |
-| deity_of_scars | isle / elite (T3) | 140 | 25 | 10 | 6 | 70 | 95 | 0.50 | turtle | 0.25 |
+| molderhulk | isle / wild+elite (T3) | 108 | 20 | 8 | 5 | 60 | 85 | 0.45 | brute | 0.20 |
+| deity_of_scars | isle / elite (T3) | 140 | 27 | 10 | 8 | 72 | 98 | 0.50 | brute | 0.25 |
 
 Every `personality` must be in `STANCE_PERSONALITIES`; `bluff` in `[0,1]`
 (enforced by `test_all_battle_specs_have_valid_personality`).

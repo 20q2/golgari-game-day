@@ -212,7 +212,13 @@
             <span class="tab-label">Creature</span>
           </button>
           <button [class.active]="tab() === 'gear'" [disabled]="inBattle()" (click)="setTab('gear')">
-            <mat-icon class="tab-icon" svgIcon="uc-chest"></mat-icon><span class="tab-label">Gear</span>
+            <span class="tab-icon-wrap">
+              <mat-icon class="tab-icon" svgIcon="uc-chest"></mat-icon>
+              @if (eggsWaiting()) {
+                <mat-icon class="tab-egg-badge" title="Eggs ready to incubate">egg</mat-icon>
+              }
+            </span>
+            <span class="tab-label">Gear</span>
           </button>
           <button [class.active]="tab() === 'plaza'" [disabled]="inBattle()" (click)="setTab('plaza')">
             <mat-icon class="tab-icon">park</mat-icon><span class="tab-label">Plaza</span>

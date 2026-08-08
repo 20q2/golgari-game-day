@@ -120,7 +120,9 @@ TIER2 = {
     'kraul_warrior': {
         'name': 'Grave Scarab', 'line': 'kraul', 'bonus': {'atk': 4},
         'passive': 'venom_barb',
-        'blurb': 'Striker. Venom Barb: your first strike each battle deals +3.',
+        'blurb': 'Venomous striker. Venom Barb: every decisive strike injects a '
+                 'poison stack that gnaws at the foe each round — the longer the '
+                 'fight, the more the venom bites.',
     },
     'golgari_longlegs': {
         'name': 'Golgari Longlegs', 'line': 'kraul', 'bonus': {'spd': 4},
@@ -536,7 +538,7 @@ FLURRY_CHANCE   = 0.25 # flurry: per-round chance for a bonus strike (weaker swa
 SPIKESHELL_RETALIATE = 2  # spikeshell: damage dealt back when you LOSE an exchange
 DEATHTOUCH_PIERCE  = 3  # RETIRED 2026-08-04 (Grave Titan is now Colossus); kept defined for save/backcompat only
 FLYBY_DODGE        = 0.25  # skitter (fungus line): chance to dodge the punish when you LOSE an exchange
-VENOM_BARB_BONUS   = 3   # first winning exchange +this
+VENOM_BARB_BONUS   = 3   # RETIRED 2026-08-07 (Venom Barb now injects rot on each decisive win); kept defined for save/backcompat only
 FIRST_WIN_ROT_BREATH_MULT = 2  # rot_breath: first winning exchange * this
 
 MAX_ROUNDS_COMBAT = 6  # reference span the escalation ramp is tuned around (see FRENZY_*)
@@ -1002,9 +1004,10 @@ _SPEC = {s['id']: s for s in [
     {'id': 'sewer_shambler', 'name': 'Sewer Shambler',
      'hp': 30, 'atk': 8, 'def': 4, 'spd': 4, 'bounty': 9, 'xp': 10,
      'itemChance': 0.0, 'personality': 'balanced', 'bluff': 0.0},
+    # A city WILD (not elite) — T1-wild band, readable fast assassin.
     {'id': 'attendant_of_vraska', 'name': 'Attendant of Vraska',
-     'hp': 30, 'atk': 11, 'def': 5, 'spd': 8, 'bounty': 18, 'xp': 25,
-     'itemChance': 0.28, 'personality': 'trickster', 'bluff': 0.15},
+     'hp': 28, 'atk': 8, 'def': 4, 'spd': 7, 'bounty': 8, 'xp': 10,
+     'itemChance': 0.0, 'personality': 'trickster', 'bluff': 0.0},
     {'id': 'obelisk_spider', 'name': 'Obelisk Spider',
      'hp': 32, 'atk': 10, 'def': 6, 'spd': 6, 'bounty': 18, 'xp': 25,
      'itemChance': 0.28, 'personality': 'balanced', 'bluff': 0.12},
@@ -1050,8 +1053,9 @@ _SPEC = {s['id']: s for s in [
     {'id': 'loleth_troll', 'name': 'Lotleth Troll',
      'hp': 36, 'atk': 7, 'def': 6, 'spd': 3, 'bounty': 9, 'xp': 10,
      'itemChance': 0.0, 'personality': 'turtle', 'bluff': 0.0},
+    # Cavern elite, dialled from a Lv6 spike down to a fair Lv4 (ATK 16->13).
     {'id': 'large_bear', 'name': 'Large Bear',
-     'hp': 46, 'atk': 16, 'def': 5, 'spd': 10, 'bounty': 22, 'xp': 46,
+     'hp': 44, 'atk': 13, 'def': 5, 'spd': 7, 'bounty': 22, 'xp': 42,
      'itemChance': 0.15, 'personality': 'brute', 'bluff': 0.10},
     # ── The Sedgemoor (bog, T1) ───────────────────────────────────────────────
     {'id': 'bogwater_lumarent', 'name': 'Bogwater Lumarent',
@@ -1102,12 +1106,17 @@ _SPEC = {s['id']: s for s in [
     {'id': 'putrid_leech', 'name': 'Putrid Leech',
      'hp': 100, 'atk': 20, 'def': 6, 'spd': 7, 'bounty': 50, 'xp': 70,
      'itemChance': 0.40, 'personality': 'brute', 'bluff': 0.15},
+    # Sim-tuned 2026-08-07: softened from 120/22/9/4 so the isle WILD is a fair-
+    # hard fight, not harder than the elite (it was 24% at-level; a wild shouldn't
+    # out-threaten the apex). Still a tanky mini-boss presence.
     {'id': 'molderhulk', 'name': 'Molderhulk',
-     'hp': 120, 'atk': 22, 'def': 9, 'spd': 4, 'bounty': 60, 'xp': 85,
+     'hp': 108, 'atk': 20, 'def': 8, 'spd': 5, 'bounty': 60, 'xp': 85,
      'itemChance': 0.45, 'personality': 'brute', 'bluff': 0.20},
+    # Sim-tuned 2026-08-07: faster + harder-hitting so it reads as the true isle
+    # APEX (a slow turtle got out-tempoed to 87% winnable — too easy for Lv10).
     {'id': 'deity_of_scars', 'name': 'Deity of Scars',
-     'hp': 140, 'atk': 25, 'def': 10, 'spd': 6, 'bounty': 70, 'xp': 95,
-     'itemChance': 0.50, 'personality': 'turtle', 'bluff': 0.25},
+     'hp': 140, 'atk': 27, 'def': 10, 'spd': 8, 'bounty': 72, 'xp': 98,
+     'itemChance': 0.50, 'personality': 'brute', 'bluff': 0.25},
 ]}
 
 
@@ -1137,8 +1146,9 @@ _DEEP_DWELLERS = {
 # Fog tiles. Molderhulk deliberately appears in both isle wild and elite (a
 # mini-boss presence in the small endgame roster).
 REGION_NPCS = {
-    'city':       {'wild':  [_SPEC['acolyte_of_affliction'], _SPEC['sewer_shambler']],
-                   'elite': [_SPEC['attendant_of_vraska'], _SPEC['obelisk_spider']]},
+    'city':       {'wild':  [_SPEC['acolyte_of_affliction'], _SPEC['sewer_shambler'],
+                             _SPEC['attendant_of_vraska']],
+                   'elite': [_SPEC['obelisk_spider']]},
     'garden':     {'wild':  [_SPEC['thallid'], _SPEC['thallid_shell_dweller'],
                              _SPEC['ravenous_squirrel'], _SPEC['canker_abomination']],
                    'elite': [_SPEC['rotwood_elemental']]},
@@ -1223,7 +1233,7 @@ LAIR_SIGNATURE = {
 }
 
 # Trait passives surfaced as inspectable battle chips (client STATUS_INFO mirror).
-TRAIT_PASSIVES = ('grave_growth', 'doom_counters', 'dredge', 'swarm', 'web_venom')
+TRAIT_PASSIVES = ('grave_growth', 'doom_counters', 'dredge', 'swarm', 'web_venom', 'venom_barb')
 
 # Every wild/elite enemy spec, indexed by id, so a signature (LAIR_SIGNATURE)
 # can be pulled from whichever region pool it lives in.
@@ -1796,7 +1806,7 @@ def flow_puzzle(pid):
 PET_ROLES = {
     'attack':  {'kind': 'combat-passive', 'blurb': 'Chance to strike a follow-up hit in battle.'},
     'defend':  {'kind': 'combat-passive', 'blurb': 'Chance to deflect a few points of damage.'},
-    'forage':  {'kind': 'activated',      'blurb': 'Scavenges a small cache of loot.'},
+    'forage':  {'kind': 'activated',      'blurb': 'Scavenges a small cache of loot; recharges as you move.'},
     'scout':   {'kind': 'activated',      'blurb': 'Delivers gear from your local bazaar without a visit.'},
     'economy': {'kind': 'economy',        'blurb': 'Scavenges Spores from loot spaces you pass — tap to collect.'},
 }
@@ -1843,10 +1853,10 @@ PET_HATCH = {
 # Combat-pet magnitudes, keyed by ROLE (both attack species share one profile,
 # both defend species another). Small and level-scaled.
 PET_COMBAT = {
-    'attack': {'followup_chance_base': 0.10, 'followup_chance_per_lvl': 0.03,
-               'followup_mult': 0.30},
-    'defend': {'deflect_chance_base': 0.12, 'deflect_chance_per_lvl': 0.03,
-               'deflect_flat_base': 2, 'deflect_flat_per_lvl': 0.34},
+    'attack': {'chance_base': 0.10, 'chance_per_lvl': 0.07,
+               'flat_base': 2, 'flat_per_lvl': 0.75},
+    'defend': {'chance_base': 0.10, 'chance_per_lvl': 0.07,
+               'flat_base': 2, 'flat_per_lvl': 0.75},
 }
 
 

@@ -276,7 +276,7 @@ button.mat-chip {
   &[data-rarity='common'] { border-left-color: #9aa7a0; }
   &[data-rarity='rare'] { border-left-color: #5fd18a; }
   &[data-rarity='legendary'] { border-left-color: #fbbf24; }
-  &[data-rarity='mythic'] { border-left-color: #c084fc; }
+  &[data-rarity='mythic'] { border-left-color: #f04350; }
 
   .slot-mi {
     color: #9aa79a;
@@ -366,7 +366,7 @@ button.mat-chip {
     &.common { color: #e5efe5; }
     &.rare { color: #5fd18a; }
     &.legendary { color: #fbbf24; }
-    &.mythic { color: #c084fc; }
+    &.mythic { color: #f04350; }
   }
 
   // The upgraded (new) diff text takes the colour of the rarity being climbed
@@ -374,7 +374,7 @@ button.mat-chip {
   &[data-rarity='common'] .diff-new { color: #e5efe5; }
   &[data-rarity='rare'] .diff-new { color: #5fd18a; }
   &[data-rarity='legendary'] .diff-new { color: #fbbf24; }
-  &[data-rarity='mythic'] .diff-new { color: #c084fc; }
+  &[data-rarity='mythic'] .diff-new { color: #f04350; }
 }
 
 .rarity-badge {
@@ -392,7 +392,7 @@ button.mat-chip {
   &.common { color: #9aa7a0; }
   &.rare { color: #5fd18a; }
   &.legendary { color: #fbbf24; }
-  &.mythic { color: #c084fc; }
+  &.mythic { color: #f04350; }
 }
 
 // Seller credit, pulled up beside the item name as a compact chip.

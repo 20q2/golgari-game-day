@@ -345,6 +345,21 @@ export function marketBand(kind: MarketKind, id: string): { lo: number; hi: numb
   return { lo, hi };
 }
 
+/** Quick-fill price buttons for a `[lo, hi]` band: the two endpoints plus evenly
+ *  spaced steps between them (5 stops by default), rounded to whole Spores and
+ *  de-duplicated so a narrow band collapses to fewer buttons. Powers the preset
+ *  row under every "Sell price" input. */
+export function pricePresets(lo: number, hi: number, stops = 5): number[] {
+  if (hi <= lo) return [lo];
+  const span = hi - lo;
+  const out: number[] = [];
+  for (let i = 0; i < stops; i++) {
+    const v = Math.round(lo + (span * i) / (stops - 1));
+    if (out[out.length - 1] !== v) out.push(v);
+  }
+  return out;
+}
+
 /** Pre-spawn Renown shop starter kit (mirrors RENOWN_SHOP_ITEMS in
  * undercity_data.py). One-night items granted into the fresh player at spawn. */
 export interface RenownShopItem {

@@ -442,8 +442,10 @@
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 2px;
+  // Badge pinned to a fixed top row so it aligns across every card; the
+  // name + blurb share the row beneath it.
+  justify-content: flex-start;
+  gap: 5px;
   border-radius: 8px;
   padding: 6px 7px 7px;
   text-align: center;
@@ -489,6 +491,16 @@
     color: #14201a;
     background: #c9b458;
     border-color: #c9b458;
+  }
+
+  // Second row: name + blurb fill the space below the badge and center
+  // themselves within it, so every card's text block lines up.
+  .perk-node-text {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
   }
 
   .perk-node-name {
@@ -694,6 +706,7 @@
 }
 
 .gear-preview-stat {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -723,9 +736,14 @@
   }
 
   // Shows the "N base +M gear" split only when gear is contributing.
+  // Pinned to the top-right corner so it doesn't push the total/name apart.
   .gear-preview-mod {
+    position: absolute;
+    top: 3px;
+    right: 4px;
     font-size: 0.6rem;
     font-weight: 700;
+    line-height: 1;
     color: #9ac79a;
   }
 
@@ -766,7 +784,7 @@
   &[data-rarity='common'] { border-top-color: #9aa7a0; }
   &[data-rarity='rare'] { border-top-color: #5fd18a; }
   &[data-rarity='legendary'] { border-top-color: #fbbf24; }
-  &[data-rarity='mythic'] { border-top-color: #c084fc; }
+  &[data-rarity='mythic'] { border-top-color: #f04350; }
 
   &.empty {
     opacity: 0.6;
@@ -821,7 +839,7 @@
     &.common { color: #9aa7a0; }
     &.rare { color: #5fd18a; }
     &.legendary { color: #fbbf24; }
-    &.mythic { color: #c084fc; }
+    &.mythic { color: #f04350; }
   }
 
   .gear-tile-chips {
@@ -1821,20 +1839,77 @@ $grim-lock: #c96a5a;
   }
 }
 
-.item-sheet-actions {
+// Row 2 of every item drawer: the description gets the majority of the width
+// (~65%) so text can breathe, with the action buttons stacked in a narrower
+// column (~35%) on the right. On the market-listing view the body is swapped
+// out for the full-width price editor, so this only lays out the resting state.
+.item-sheet-body {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: 0.75rem;
   margin: 0.5rem 0;
+}
 
-  &:empty { margin: 0; }
+// Left column — stat chips + effect/flavor lines. flex-grows into whatever the
+// action column leaves, and min-width:0 lets long words wrap instead of pushing
+// the layout wide.
+.item-sheet-desc {
+  flex: 1 1 auto;
+  min-width: 0;
+
+  // Trailing effects block shouldn't add space at the bottom of the column.
+  > :last-child { margin-bottom: 0; }
+}
+
+// Right column — a vertical stack of full-width buttons. Capped so it never eats
+// the description on a wide sheet, floored so labels stay legible on a phone
+// (~35% of a 358px content area ≈ 125px). When there's no description to sit
+// beside (e.g. a bare egg), it spans the full width instead.
+.item-sheet-actions {
+  flex: 0 0 auto;
+  width: 35%;
+  min-width: 122px;
+  max-width: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+
+  .uc-btn {
+    width: 100%;
+    // Shared height so single-line (Activate, Send to market) and two-line
+    // (Level Up, Salvage with cost chips) buttons line up as an even stack.
+    min-height: 46px;
+    padding: 8px 10px;
+    font-size: 0.82rem;
+    line-height: 1.2;
+    white-space: normal;
+    text-align: center;
+  }
+}
+
+// Actions alone in the body (no description column) reclaim the full width.
+.item-sheet-body > .item-sheet-actions:only-child {
+  width: 100%;
+  max-width: none;
 }
 
 .item-sheet-hint { font-size: 0.85rem; }
 
-// Activate is the primary call to action in the companion sheet — filled and
-// full-width so it stands above the ghost secondary actions below it.
-.pet-cta { flex: 1 1 100%; }
+// Activate (pet) / Equip / Use are the primary calls to action in their sheets —
+// filled and sitting at the top of the stacked action column. In the column they
+// already stretch full-width, so no special flex sizing is needed.
+.pet-cta,
+.item-cta { flex: 0 0 auto; }
+
+// Small inline rot coin sitting after a bare Spore amount (e.g. "Sell +10"),
+// matching the currency icon language used across the game (rot.png = Spores).
+.spore-i {
+  width: 14px;
+  height: 14px;
+  margin-left: 3px;
+  vertical-align: -2px;
+}
 
 // Inline material glyphs inside the salvage "Grind +N" buttons.
 // Gear top bar: Back (when in a sub-menu) on the left, resource chips right.
@@ -1912,6 +1987,40 @@ $grim-lock: #c96a5a;
   label { font-size: 0.8rem; opacity: 0.8; }
   .price-input { width: 5rem; }
   .band-note { font-size: 0.8rem; }
+}
+
+// Quick-fill price chips: cheapest → priciest, evenly spaced. Wraps onto its own
+// row below the price input; tapping one fills the input and lights up.
+.price-presets {
+  flex-basis: 100%;
+  display: flex;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+
+  .price-preset {
+    flex: 1;
+    min-width: 2.75rem;
+    padding: 0.375rem 0.25rem;
+    border-radius: 8px;
+    border: 1px solid rgba(224, 192, 120, 0.3);
+    background: rgba(255, 255, 255, 0.04);
+    color: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+
+    &.active {
+      color: #17140f;
+      background: linear-gradient(180deg, #e6c078, #cba75c);
+      border-color: rgba(224, 192, 120, 0.7);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
 }
 
 // Rows are now tap targets into the popup.
@@ -2006,6 +2115,37 @@ $grim-lock: #c96a5a;
 @keyframes hub-notice-pulse {
   0%, 100% { box-shadow: 0 0 4px rgba(255, 210, 74, 0.4); }
   50% { box-shadow: 0 0 12px rgba(255, 210, 74, 0.85); }
+}
+
+/* Eggs-waiting nudge: calmer than "Ready to hatch" — green, no pulse. */
+.gear-hub-notice--eggs {
+  color: #101a0b;
+  background: #b6d98a;
+  border-color: #cdeaa6;
+  animation: none;
+  box-shadow: none;
+}
+
+/* Bag fill counter — a quiet corner pill that turns amber when full (3/3). */
+.gear-hub-count {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 20px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #d8c7a0;
+  background: rgba(26, 20, 8, 0.72);
+  border: 1px solid #4a3c20;
+}
+.gear-hub-count--full {
+  color: #1a1408;
+  background: #e0b064;
+  border-color: #ffe08a;
 }
 
 .gear-hub-tile.magic {
@@ -2247,7 +2387,7 @@ $grim-lock: #c96a5a;
   &[data-rarity='common'] { border-left-color: #9aa7a0; }
   &[data-rarity='rare'] { border-left-color: #5fd18a; }
   &[data-rarity='legendary'] { border-left-color: #fbbf24; }
-  &[data-rarity='mythic'] { border-left-color: #c084fc; }
+  &[data-rarity='mythic'] { border-left-color: #f04350; }
 }
 
 .gear-hub-tile.companion {
@@ -2283,7 +2423,7 @@ $grim-lock: #c96a5a;
   --egg-glow: #8fd06a;
   .incubator[data-rarity='rare'] & { --egg-glow: #5fd18a; }
   .incubator[data-rarity='legendary'] & { --egg-glow: #fbbf24; }
-  .incubator[data-rarity='mythic'] & { --egg-glow: #c084fc; }
+  .incubator[data-rarity='mythic'] & { --egg-glow: #f04350; }
   position: relative;
   display: grid;
   place-items: center;
@@ -2429,7 +2569,7 @@ $grim-lock: #c96a5a;
   }
   &[data-rarity='rare'] .active-pet-portrait { border-color: #5fd18a; }
   &[data-rarity='legendary'] .active-pet-portrait { border-color: #fbbf24; }
-  &[data-rarity='mythic'] .active-pet-portrait { border-color: #c084fc; }
+  &[data-rarity='mythic'] .active-pet-portrait { border-color: #f04350; }
 }
 
 // Armed (first tap) state of a two-tap destructive Salvage/Grind button.
@@ -2463,25 +2603,198 @@ $grim-lock: #c96a5a;
   }
 }
 
-// Rename row in the pet detail sheet.
-.pet-rename {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin: 0 0 10px;
+// ── Pet detail sheet ─────────────────────────────────────────────────────────
 
-  .pet-name-input {
-    flex: 1;
-    min-width: 0;
-    padding: 7px 10px;
-    border-radius: 9px;
-    border: 1px solid rgba(183, 228, 199, 0.25);
-    background: rgba(0, 0, 0, 0.35);
-    color: #eafff0;
-    font-size: 14px;
-    &::placeholder { color: #7f8f7f; }
-    &:focus { outline: none; border-color: #5fd18a; }
+// Identity header: a rarity-framed portrait sells the pet's rarity at a glance
+// (a Legendary should never look like a Common), with the name + tags beside it.
+.pet-head {
+  align-items: center;
+}
+
+.pet-portrait {
+  flex: 0 0 auto;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 2px solid #9aa7a0;
+  background: rgba(0, 0, 0, 0.3);
+
+  img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    image-rendering: pixelated;
   }
+
+  &[data-rarity='rare'] { border-color: #5fd18a; box-shadow: 0 0 10px rgba(95, 209, 138, 0.35); }
+  &[data-rarity='legendary'] { border-color: #fbbf24; box-shadow: 0 0 12px rgba(251, 191, 36, 0.4); }
+  &[data-rarity='mythic'] { border-color: #f04350; box-shadow: 0 0 12px rgba(240, 67, 80, 0.42); }
+}
+
+// Name line with a small inline rename pencil (rename is no longer a big field).
+.pet-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.05rem;
+}
+.pet-rename-btn {
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.5;
+  cursor: pointer;
+  padding: 1px;
+  .mi { font-size: 15px; width: 15px; height: 15px; }
+  &:hover { opacity: 1; }
+}
+
+// Inline nickname editor (swaps in when the pencil is tapped).
+.pet-name-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  .pet-name-input { width: 100%; min-width: 0; }
+}
+
+// Rarity badge + species·role + active tag, wrapping under the name.
+.pet-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+
+  .rarity-badge {
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-radius: 6px;
+    padding: 2px 7px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid currentColor;
+    &.common { color: #b6c1ba; }
+    &.rare { color: #5fd18a; }
+    &.legendary { color: #fbbf24; }
+    &.mythic { color: #f04350; }
+  }
+
+  .pet-role { font-size: 0.78rem; opacity: 0.72; }
+
+  .pet-active-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #b7e4c7;
+    background: rgba(74, 124, 89, 0.3);
+    border: 1px solid rgba(90, 140, 105, 0.6);
+    border-radius: 999px;
+    padding: 1px 8px 1px 6px;
+    .mi { font-size: 13px; width: 13px; height: 13px; }
+  }
+}
+
+// Ability card: blurb + level-scaled numbers grouped into one framed unit.
+.pet-ability {
+  border: 1px solid rgba(183, 228, 199, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.6rem 0.7rem;
+  margin-bottom: 0.6rem;
+
+  .pet-ability-blurb {
+    margin: 0 0 0.5rem;
+    display: flex;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    line-height: 1.35;
+    color: #d8f3dc;
+  }
+  .pet-ability-icon {
+    flex: 0 0 auto;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #9fd6a6;
+  }
+  .pet-stat-list { margin-top: 0; }
+}
+
+// Level track: progress-to-cap made visible, tinted by rarity.
+.pet-level {
+  .pet-level-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .pet-level-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.7;
+  }
+  .pet-level-num { font-size: 0.9rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pet-level-bar {
+    height: 7px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+  }
+  .pet-level-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: #b6c1ba;
+    transition: width 0.3s ease;
+  }
+  .pet-level-hint { display: block; font-size: 0.72rem; margin-top: 5px; }
+
+  &[data-rarity='rare'] .pet-level-fill { background: #5fd18a; }
+  &[data-rarity='legendary'] .pet-level-fill { background: #fbbf24; }
+  &[data-rarity='mythic'] .pet-level-fill { background: #f04350; }
+}
+
+// Cost buttons in the pet action column stack a title over a row of cost chips,
+// so prices read as clean pills instead of cramped inline glyphs.
+.pet-cost-btn {
+  flex-direction: column;
+  gap: 3px;
+
+  .pet-btn-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    .mi { font-size: 16px; width: 16px; height: 16px; }
+  }
+  .cost-chips {
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+  }
+  .cost-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.28);
+  }
+}
+
+// Salvage is destructive — tint it away from the primary Activate action.
+.pet-salvage {
+  border-color: rgba(200, 80, 80, 0.35);
+  color: #e7b7b7;
+  &:hover:not(:disabled) { background: rgba(150, 50, 50, 0.22); }
 }
 
 .active-pet-name {
@@ -2507,12 +2820,30 @@ $grim-lock: #c96a5a;
 }
 
 .egg-strip,
-.pet-grid,
 .merge-fodder {
   display: flex;
   flex-wrap: wrap;
   gap: 9px;
   margin-top: 9px;
+}
+
+/* Roster: a uniform grid so every companion box is the same size regardless of
+   how long its name is. Cells stretch to their column and share a min-height. */
+.pet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(102px, 1fr));
+  gap: 9px;
+  margin-top: 9px;
+}
+.pet-grid .pet-cell {
+  position: relative;
+  width: 100%;
+  min-height: 116px;
+  justify-content: center;
+}
+.pet-grid .pet-cell-name {
+  text-align: center;
+  line-height: 1.15;
 }
 
 .egg-chip,
@@ -2537,6 +2868,49 @@ $grim-lock: #c96a5a;
 
 .pet-cell-name { font-size: 12px; font-weight: 700; }
 .pet-cell-lvl { font-size: 11px; color: #8a9a8a; }
+
+// Rarity stars, top-left corner of each roster cell: tier 1..4 = 1..4 filled
+// stars, tinted by rarity (role icon lives in the opposite corner).
+.pet-cell-stars {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  display: inline-flex;
+  gap: 1px;
+  .mi {
+    font-size: 11px;
+    width: 11px;
+    height: 11px;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.9));
+  }
+  &.common .mi { color: #b6c1ba; }
+  &.rare .mi { color: #5fd18a; }
+  &.legendary .mi { color: #fbbf24; }
+  &.mythic .mi { color: #f04350; }
+}
+
+/* Role marker, top-right of each roster cell (attack/defend/forage/scout/economy). */
+.pet-cell-role {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  // No border and no backing (both read as a green rarity ring) — just the bare
+  // white glyph marks the role, with a soft shadow so it stays legible over the
+  // sprite's lighter pixels.
+  background: none;
+  border: none;
+  .mi {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  }
+}
 
 .merge-chip.picked {
   border-color: #b6d98a;
@@ -2920,7 +3294,7 @@ $grim-lock: #c96a5a;
   &.common { --rar: #b3c0b8; }
   &.rare { --rar: #5fd18a; }
   &.legendary { --rar: #fbbf24; }
-  &.mythic { --rar: #c084fc; }
+  &.mythic { --rar: #f04350; }
 }
 @keyframes rarity-chip-in {
   0% { transform: scale(0.6); opacity: 0; }
@@ -2940,4 +3314,4 @@ $grim-lock: #c96a5a;
 // Rarity ring around the revealed sprite.
 .hatch-reveal[data-rarity='rare'] .hatch-reveal-burst { background: radial-gradient(circle, rgba(95, 209, 138, 0.28) 0%, transparent 68%); }
 .hatch-reveal[data-rarity='legendary'] .hatch-reveal-burst { background: radial-gradient(circle, rgba(251, 191, 36, 0.3) 0%, transparent 68%); }
-.hatch-reveal[data-rarity='mythic'] .hatch-reveal-burst { background: radial-gradient(circle, rgba(192, 132, 252, 0.34) 0%, transparent 66%); }
+.hatch-reveal[data-rarity='mythic'] .hatch-reveal-burst { background: radial-gradient(circle, rgba(240, 67, 80, 0.34) 0%, transparent 66%); }

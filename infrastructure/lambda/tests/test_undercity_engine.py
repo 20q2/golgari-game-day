@@ -814,16 +814,20 @@ def test_rot_stacks_tick_end_of_round():
     assert d.hp == 30 - 1 - 2 * data.ROT_PER_STACK  # 30 - 1 - 4 = 25
 
 
-def test_venom_barb_first_win_bonus_once():
-    a = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'venom_barb'}))
-    d = fighter(atk=10, dfn=4, hp=60, max_hp=60)
-    rng = FakeRng(uniform=1.0)
-    resolve_round(a, d, 'aggress', 'feint', 1, rng)   # win: (15-4)=11*1.5=16 +3 =19
-    assert d.hp == 60 - (16 + data.VENOM_BARB_BONUS)
-    assert a.first_win_used
-    hp_after_first = d.hp
-    resolve_round(a, d, 'aggress', 'feint', 2, rng)   # no bonus second time: 16
-    assert d.hp == hp_after_first - 16
+def test_venom_barb_applies_rot_on_each_win():
+    # Grave Scarab's Venom Barb: every decisive win injects +1 rot (poison DoT),
+    # so it snowballs over the fight instead of a one-time flat bonus.
+    a = fighter(name='S', hp=999, max_hp=999, atk=12, dfn=4, spd=8,
+                passives=frozenset({'venom_barb'}))
+    d = fighter(name='D', hp=999, max_hp=999, atk=6, dfn=4, spd=6)
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))  # win -> +1 rot
+    assert d.rot_stacks == 1
+    resolve_round(a, d, 'aggress', 'feint', 2, FakeRng(uniform=1.0))  # win again -> +1 more
+    assert d.rot_stacks == 2
+    # A loss applies no venom (holder aggress into foe guard -> holder loses).
+    d.rot_stacks = 0
+    resolve_round(a, d, 'aggress', 'guard', 3, FakeRng(uniform=1.0))
+    assert d.rot_stacks == 0
 
 
 def test_rot_breath_first_win_doubles():
@@ -1727,6 +1731,17 @@ def test_pet_combat_attack_scales_with_level():
     assert lo['deflect_chance'] == 0 and lo['deflect_flat'] == 0
 
 
+def test_pet_combat_symmetric_scaling():
+    from undercity_engine import pet_combat
+    a1 = pet_combat({'species': 'baby_leyline_prowler', 'tier': 1, 'level': 1})  # attack
+    a9 = pet_combat({'species': 'baby_leyline_prowler', 'tier': 4, 'level': 9})
+    assert abs(a1['followup_chance'] - 0.10) < 1e-9 and a1['followup_flat'] == 2
+    assert abs(a9['followup_chance'] - 0.66) < 1e-9 and a9['followup_flat'] == 8
+    assert 'followup_mult' not in a9                     # multiplier is gone
+    d9 = pet_combat({'species': 'decimator_beetle', 'tier': 4, 'level': 9})  # defend
+    assert abs(d9['deflect_chance'] - 0.66) < 1e-9 and d9['deflect_flat'] == 8
+
+
 def test_pet_combat_defend_and_noncombat():
     from undercity_engine import pet_combat
     t = pet_combat({'species': 'decimator_beetle', 'tier': 1, 'level': 2})
@@ -1739,16 +1754,16 @@ def test_pet_combat_defend_and_noncombat():
 
 def test_attack_followup_adds_extra_hit_on_trigger():
     # Attacker wins aggress vs feint. Pet trigger roll (random()) forced low.
-    a = fighter(atk=15, pet_followup_chance=1.0, pet_followup_mult=0.5)
+    a = fighter(atk=15, pet_followup_chance=1.0, pet_followup_flat=5)
     d = fighter(hp=100, max_hp=100, dfn=4)
     rng = FakeRng(randoms=[0.0], uniform=1.0)   # 0.0 < 1.0 -> follow-up fires
     entries = resolve_round(a, d, 'aggress', 'feint', 1, rng)
     pet_hits = [e for e in entries if e.get('pet') == 'attack']
-    assert len(pet_hits) == 1 and pet_hits[0]['dmg'] >= 1
+    assert len(pet_hits) == 1 and pet_hits[0]['dmg'] == 5
 
 
 def test_attack_followup_skipped_when_roll_high():
-    a = fighter(atk=15, pet_followup_chance=0.2, pet_followup_mult=0.5)
+    a = fighter(atk=15, pet_followup_chance=0.2, pet_followup_flat=5)
     d = fighter(hp=100, max_hp=100, dfn=4)
     rng = FakeRng(randoms=[0.99], uniform=1.0)   # 0.99 >= 0.2 -> no follow-up
     entries = resolve_round(a, d, 'aggress', 'feint', 1, rng)

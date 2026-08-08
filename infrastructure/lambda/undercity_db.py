@@ -631,7 +631,7 @@ def _combatant(doc):
         has_smoke_spore='smoke_spore' in (doc.get('bag') or []),
         flee_bonus=(15 if any(b.get('kind') == 'glowveil'
                               for b in (doc.get('buffs') or [])) else 0),
-        pet_followup_chance=pc['followup_chance'], pet_followup_mult=pc['followup_mult'],
+        pet_followup_chance=pc['followup_chance'], pet_followup_flat=pc['followup_flat'],
         pet_deflect_chance=pc['deflect_chance'], pet_deflect_flat=pc['deflect_flat'])
 
 
@@ -664,7 +664,7 @@ def _bt_snapshot(c):
         'growth_stacks': int(c.growth_stacks), 'doom_stacks': int(c.doom_stacks),
         'petrify': int(c.petrify),
         'pet_followup_chance': float(c.pet_followup_chance),
-        'pet_followup_mult': float(c.pet_followup_mult),
+        'pet_followup_flat': int(c.pet_followup_flat),
         'pet_deflect_chance': float(c.pet_deflect_chance),
         'pet_deflect_flat': int(c.pet_deflect_flat),
     }
@@ -682,7 +682,7 @@ def _bt_to_combatant(s):
         flee_bonus=int(s.get('flee_bonus', 0)),
         has_smoke_spore=bool(s.get('has_smoke_spore', False)),
         pet_followup_chance=float(s.get('pet_followup_chance', 0.0)),
-        pet_followup_mult=float(s.get('pet_followup_mult', 0.0)),
+        pet_followup_flat=int(s.get('pet_followup_flat', 0)),
         pet_deflect_chance=float(s.get('pet_deflect_chance', 0.0)),
         pet_deflect_flat=int(s.get('pet_deflect_flat', 0)))
     c.rot_stacks = int(s.get('rot_stacks', 0))
@@ -958,11 +958,24 @@ def _prune_cooldowns(doc):
 
 
 def _add_rolls(doc, n):
-    """Add rolls up to the cap; returns (granted, lost)."""
+    """Credit n rolls, filling the active bank to ROLL_CAP first and banking any
+    overflow into the same net-neutral `rested` pool time-regen uses (up to
+    RESTED_CAP), so poke/claim rewards at the cap are preserved instead of
+    discarded. Returns (credited, lost): `credited` counts rolls added to EITHER
+    pool (so "+N roll" messaging stays truthful); `lost` is only nonzero once both
+    the active bank and rested are full."""
     before = doc.get('rolls', 0)
     after = min(data.ROLL_CAP, before + n)
     doc['rolls'] = after
-    return after - before, n - (after - before)
+    active_added = after - before
+    overflow = n - active_added
+    banked = 0
+    if overflow > 0:
+        r_before = doc.get('rested', 0)
+        r_after = min(data.RESTED_CAP, r_before + overflow)
+        doc['rested'] = r_after
+        banked = r_after - r_before
+    return active_added + banked, overflow - banked
 
 
 def _grant_xp(table, sid, doc, amount):
@@ -1143,9 +1156,14 @@ def _merge_pet(table, sid, doc, payload):
         if not p or p['id'] == target['id']:
             return _err('Bad merge selection.', 409)
         fodder.append(p)
-    # Award merge points (flat by fodder tier, ANY species), then advance tiers
-    # while affordable (cap tier 4), banking the remainder.
-    gained = sum(data.PET_MERGE_POINTS[p['tier']] for p in fodder)
+    # Award merge points: flat by fodder tier for any species, +50% (ceil) when the
+    # fodder matches the keeper's species. Then advance tiers while affordable.
+    def _fodder_points(f):
+        pts = data.PET_MERGE_POINTS[f['tier']]
+        if f['species'] == target['species']:      # same-species duplicate bonus (+50%, ceil)
+            pts = (pts * 3 + 1) // 2
+        return pts
+    gained = sum(_fodder_points(f) for f in fodder)
     target['mergeProgress'] = target.get('mergeProgress', 0) + gained
     while target['tier'] < 4:
         cost = data.PET_MERGE_COST[target['tier'] + 1]
@@ -1352,16 +1370,17 @@ def _use_pet_ability(table, sid, doc, payload):
 
     if kind != 'activated':
         return _err('That companion has no ability to activate.', 409)
-    if not _pet_cd_ready(doc, role):
-        return _err('Your companion is still resting.', 429)
-    if role == 'forage':
-        result = _pet_forage(doc, level)
-    else:
+    if role != 'forage':
         # Scouts use the dedicated pet-scout-peek / pet-scout-buy actions.
         return _err('That companion has no ability to activate here.', 409)
+    # Forage recharges by DISTANCE: the countdown must have reached 0 (walked
+    # PET_FORAGE_RECHARGE_SPACES since its last use). Not a real-time clock.
+    if int(doc.get('forageRecharge', 0)) > 0:
+        return _err('Your companion is still scavenging — keep moving.', 429)
+    result = _pet_forage(doc, level)
     if isinstance(result, tuple):       # a sub-handler returned an (status, err)
         return result
-    _start_pet_cooldown(doc, role, level)
+    doc['forageRecharge'] = data.PET_FORAGE_RECHARGE_SPACES
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
@@ -3702,6 +3721,13 @@ def _move(table, sid, doc, payload):
                 doc['petSporeBank'] = bank + gain
                 scavenge = {'spores': gain, 'bank': doc['petSporeBank'],
                             'nodes': loot_nodes}
+
+    # Forage recharges by distance: every board space walked ticks its countdown
+    # down toward 0 (ready). Only touches docs that have actually used forage
+    # (>0), so it never spawns the field on players without a forage pet. Needs
+    # the walked `path`; a stale client that omits it just doesn't tick.
+    if path and int(doc.get('forageRecharge', 0)) > 0:
+        doc['forageRecharge'] = max(0, int(doc['forageRecharge']) - (len(path) - 1))
 
     conflict = _save_or_conflict(table, doc)
     if conflict:

@@ -56,7 +56,7 @@ export const PASSIVE_BLURBS: Record<string, string> = {
   drift: '+15% flee chance; bad mystery events reroll once.',
   bog_forager: 'Scrounge a bigger share of the bounty even from fights you lose or flee, and bad mystery events reroll once.',
   improvise: 'At the start of each battle, its lowest of ATK/DEF/SPD gains +3 for that fight — never lopsided.',
-  venom_barb: 'Your first strike each battle deals +3.',
+  venom_barb: 'Every decisive strike injects a poison stack that gnaws at the foe each round — the longer the fight, the more the venom bites.',
   reach: "Round 1: the enemy's decisive blow misses — you strike from out of range.",
   spikeshell: 'Retaliate for 2 damage whenever a foe’s blow lands.',
   skitter: '25% chance enemy strikes miss.',
@@ -118,7 +118,7 @@ export const STARTERS: FormInfo[] = [
 export const TIER2: FormInfo[] = [
   { id: 'brackish_trudge', name: 'Brackish Trudge', tier: 2, line: 'pest', passive: 'bog_forager', passiveName: 'Bog Forager', bonus: { maxHp: 6, atk: 2 }, blurb: 'Scavenger (+HP/+ATK).' },
   { id: 'vexing_pest', name: 'Vexing Pest', tier: 2, line: 'pest', passive: 'improvise', passiveName: 'Improvise', bonus: { maxHp: 6, atk: 1, def: 1, spd: 1 }, blurb: 'All-rounder (+a bit of everything).' },
-  { id: 'kraul_warrior', name: 'Grave Scarab', tier: 2, line: 'kraul', passive: 'venom_barb', passiveName: 'Venom Barb', bonus: { atk: 4 }, blurb: 'Striker (+ATK).' },
+  { id: 'kraul_warrior', name: 'Grave Scarab', tier: 2, line: 'kraul', passive: 'venom_barb', passiveName: 'Venom Barb', bonus: { atk: 4 }, blurb: 'Venomous striker (+ATK).' },
   { id: 'golgari_longlegs', name: 'Golgari Longlegs', tier: 2, line: 'kraul', passive: 'reach', passiveName: 'Reach', bonus: { spd: 4 }, blurb: 'Skirmisher (+SPD).' },
   { id: 'slitherhead', name: 'Slitherhead', tier: 2, line: 'saproling', passive: 'skitter', passiveName: 'Skitter', bonus: { spd: 4 }, blurb: 'Darter (+SPD).' },
   { id: 'woodwraith_strangler', name: 'Sporeback Skirmisher', tier: 2, line: 'saproling', passive: 'outpace', passiveName: 'Outpace', bonus: { spd: 2, maxHp: 4 }, blurb: 'Skirmisher (+SPD/+HP).' },

@@ -37,7 +37,7 @@ export interface PetRoleInfo {
 export const PET_ROLES: Record<PetRole, PetRoleInfo> = {
   attack: { kind: 'combat-passive', blurb: 'Chance to strike a follow-up hit in battle.', icon: 'pets' },
   defend: { kind: 'combat-passive', blurb: 'Chance to deflect a few points of damage.', icon: 'shield' },
-  forage: { kind: 'activated', blurb: 'Scavenges a small cache of loot.', icon: 'savings' },
+  forage: { kind: 'activated', blurb: 'Scavenges a small cache of loot; recharges as you move.', icon: 'savings' },
   scout: { kind: 'activated', blurb: 'Delivers gear from your local bazaar without a visit.', icon: 'visibility' },
   economy: { kind: 'economy', blurb: 'Scavenges Spores from loot spaces you pass — tap to collect.', icon: 'grass' },
 };
@@ -174,6 +174,11 @@ export const PET_ABILITY_COOLDOWN_MIN: Partial<Record<PetRole, number>> = {
 export const PET_ABILITY_COOLDOWN_PER_LVL = 2;
 export const PET_ABILITY_COOLDOWN_FLOOR = 5;
 
+/** Forage recharges by DISTANCE, not time: using it primes a countdown of this
+ *  many board spaces, ticked down as you move, ready again at 0. Flat (leveling
+ *  raises the Spore payout instead). Mirror of undercity_config. */
+export const PET_FORAGE_RECHARGE_SPACES = 6;
+
 /** Mirror of undercity_config.PET_SCOUT_TIER_BY_LEVEL: the max ITEM tier a scout
  *  can haul back from its biome bazaar, indexed by level - 1 (clamped). */
 export const PET_SCOUT_TIER_BY_LEVEL = [1, 1, 2, 2, 3, 3, 4, 4, 4];
@@ -204,8 +209,8 @@ export function economySporeCap(level: number): number {
 
 // ── Combat magnitudes (mirror undercity_data.PET_COMBAT) ─────────────────────
 export const PET_COMBAT = {
-  attack: { followupChanceBase: 0.1, followupChancePerLvl: 0.03, followupMult: 0.3 },
-  defend: { deflectChanceBase: 0.12, deflectChancePerLvl: 0.03, deflectFlatBase: 2, deflectFlatPerLvl: 0.34 },
+  attack: { chanceBase: 0.1, chancePerLvl: 0.07, flatBase: 2, flatPerLvl: 0.75 },
+  defend: { chanceBase: 0.1, chancePerLvl: 0.07, flatBase: 2, flatPerLvl: 0.75 },
 } as const;
 
 // Forage (Mouse) yields (mirror undercity_config PET_MOUSE_*).
@@ -265,22 +270,22 @@ export function petAbilityStats(pet: Pet): { label: string; value: string }[] {
     case 'attack': {
       const c = PET_COMBAT.attack;
       return [
-        { label: 'Follow-up chance', value: pct(c.followupChanceBase + c.followupChancePerLvl * (lvl - 1)) },
-        { label: 'Follow-up damage', value: `${pct(c.followupMult)} of the hit` },
+        { label: 'Strike chance', value: pct(c.chanceBase + c.chancePerLvl * (lvl - 1)) },
+        { label: 'Bonus damage', value: `${Math.floor(c.flatBase + c.flatPerLvl * (lvl - 1))}` },
       ];
     }
     case 'defend': {
       const c = PET_COMBAT.defend;
       return [
-        { label: 'Deflect chance', value: pct(c.deflectChanceBase + c.deflectChancePerLvl * (lvl - 1)) },
-        { label: 'Damage blocked', value: `${Math.floor(c.deflectFlatBase + c.deflectFlatPerLvl * (lvl - 1))}` },
+        { label: 'Deflect chance', value: pct(c.chanceBase + c.chancePerLvl * (lvl - 1)) },
+        { label: 'Damage blocked', value: `${Math.floor(c.flatBase + c.flatPerLvl * (lvl - 1))}` },
       ];
     }
     case 'forage':
       return [
         { label: 'Spores scavenged', value: `${PET_MOUSE_SPORES_BASE + PET_MOUSE_SPORES_PER_LVL * (lvl - 1)}` },
         { label: 'Bonus item chance', value: pct(PET_MOUSE_ITEM_CHANCE_BASE + PET_MOUSE_ITEM_CHANCE_PER_LVL * (lvl - 1)) },
-        { label: 'Cooldown', value: `${abilityCooldownMin('forage', lvl)} min` },
+        { label: 'Recharge', value: `${PET_FORAGE_RECHARGE_SPACES} spaces` },
       ];
     case 'scout':
       return [
@@ -343,15 +348,19 @@ export function salvageYield(pet: Pet): { moltings: number; ichor: number } {
 }
 
 /** Merge fuel currently sitting in the target, plus the target's own carry. */
-export function mergePointsFor(fodder: Pet[]): number {
-  return fodder.reduce((sum, f) => sum + (PET_MERGE_POINTS[f.tier] ?? 0), 0);
+export function mergePointsFor(fodder: Pet[], keeperSpecies?: PetSpecies): number {
+  return fodder.reduce((sum, f) => {
+    let pts = PET_MERGE_POINTS[f.tier] ?? 0;
+    if (keeperSpecies && f.species === keeperSpecies) pts = Math.ceil(pts * 1.5);
+    return sum + pts;
+  }, 0);
 }
 
 /** Would feeding `fodder` into `target` complete the next tier? */
 export function mergeWouldRankUp(target: Pet, fodder: Pet[]): boolean {
   if (atMaxTier(target)) return false;
   const need = PET_MERGE_COST[target.tier + 1] ?? Infinity;
-  return target.mergeProgress + mergePointsFor(fodder) >= need;
+  return target.mergeProgress + mergePointsFor(fodder, target.species) >= need;
 }
 
 /** Real-time ability cooldown (minutes) for a role at a level. */

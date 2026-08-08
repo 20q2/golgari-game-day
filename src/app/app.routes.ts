@@ -17,10 +17,13 @@ export const routes: Routes = [
       import('./undercity/undercity-page.component').then((m) => m.UndercityPageComponent),
   },
   {
-    path: 'undercity/color-test',
+    // Undercity Lab: sprite-recolor sandbox + mystery-event FX previewer.
+    path: 'undercity/test',
     loadComponent: () =>
-      import('./undercity/color-test/color-test.component').then((m) => m.ColorTestComponent),
+      import('./undercity/lab/undercity-lab.component').then((m) => m.UndercityLabComponent),
   },
+  // Legacy path — the sprite sandbox now lives as a tab inside the Lab.
+  { path: 'undercity/color-test', redirectTo: 'undercity/test', pathMatch: 'full' },
   {
     path: 'undercity/map-editor',
     loadComponent: () =>

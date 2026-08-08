@@ -1030,17 +1030,39 @@ def test_target_timer_blocks_every_poker(table):
     assert 'min left' in resp['error']
 
 
-def test_poke_still_capped_at_roll_cap(table):
+def test_poke_at_cap_banks_into_rested(table):
+    # A poke at the active cap is NOT wasted: the overflow banks into the same
+    # net-neutral `rested` pool time-regen uses, so the roll is preserved.
     act(table, 'join', starter='pest')  # user-alex
     act(table, 'join', user='user-sam', name='Sam', starter='zombie')
     sid = _sid(table)
     doc = db._get_player(table, sid, 'user-sam')
     doc['rolls'] = data.ROLL_CAP  # already full
+    doc['rested'] = 0
     db._put_player(table, doc)
     status, resp = act(table, 'poke', targetUserId='user-sam')
     assert status == 200
+    assert resp['granted'] == 1           # credited (to rested), not lost
     sam = db._get_player(table, sid, 'user-sam')
-    assert sam['rolls'] == data.ROLL_CAP  # a poke can't push past the cap
+    assert sam['rolls'] == data.ROLL_CAP  # active bank stays capped
+    assert sam['rested'] == 1             # ...the overflow landed in rested
+
+
+def test_poke_lost_only_when_both_pools_full(table):
+    # Only once BOTH the active bank and rested are maxed does a poke roll vanish.
+    act(table, 'join', starter='pest')  # user-alex
+    act(table, 'join', user='user-sam', name='Sam', starter='zombie')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-sam')
+    doc['rolls'] = data.ROLL_CAP
+    doc['rested'] = data.RESTED_CAP  # both pools full
+    db._put_player(table, doc)
+    status, resp = act(table, 'poke', targetUserId='user-sam')
+    assert status == 200
+    assert resp['granted'] == 0
+    sam = db._get_player(table, sid, 'user-sam')
+    assert sam['rolls'] == data.ROLL_CAP
+    assert sam['rested'] == data.RESTED_CAP
 
 
 def test_public_player_exposes_poke_timer(table):

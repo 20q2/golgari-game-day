@@ -214,6 +214,9 @@ export interface YouDoc {
   /** Spores an active economy pet has scavenged from loot spaces passed over,
    *  waiting to be collected from its board box. Server-authoritative. */
   petSporeBank?: number;
+  /** Board spaces still to walk before forage recharges (0/absent = ready).
+   *  Forage recharges by DISTANCE, not a clock — see PET_FORAGE_RECHARGE_SPACES. */
+  forageRecharge?: number;
   /** @deprecated Legacy real-time accrual clock — economy pets now bank on move. */
   petSporeSince?: string | null;
   awayEvents?: AwayEvent[];

@@ -216,7 +216,7 @@
       --rarity: #fbbf24;
     }
     &[data-rarity='mythic'] {
-      --rarity: #c084fc;
+      --rarity: #f04350;
     }
     &[data-rarity='neutral'] {
       --rarity: #6cae75;
@@ -276,6 +276,39 @@
     background: #12100b;
     color: #f4ecda;
     font-size: 14px;
+  }
+}
+
+// Quick-fill price chips: cheapest → priciest, evenly spaced. Tapping one
+// stamps its value into the input above; the matching chip lights up.
+.pu-sell-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+
+  .pu-preset {
+    flex: 1;
+    min-width: 44px;
+    padding: 6px 4px;
+    border-radius: 8px;
+    border: 1px solid rgba(224, 192, 120, 0.3);
+    background: rgba(255, 255, 255, 0.04);
+    color: #f4ecda;
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+
+    &.active {
+      color: #17140f;
+      background: linear-gradient(180deg, #e6c078, #cba75c);
+      border-color: rgba(224, 192, 120, 0.7);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
   }
 }
 

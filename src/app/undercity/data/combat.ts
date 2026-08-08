@@ -171,6 +171,8 @@ export const STATUS_INFO: Record<string, StatusInfo> = {
     blurb: 'The brood piles on: an extra chip hit every round.' },
   web_venom: { label: 'Venom', icon: 'coronavirus', tone: 'debuff',
     blurb: 'Its winning strikes leave rot behind.' },
+  venom_barb: { label: 'Venom Barb', icon: 'coronavirus', tone: 'buff',
+    blurb: 'Every decisive strike injects a poison stack that gnaws each round — venom snowballs the longer the fight runs.' },
   // Gorgon abilities (design 2026-08-04).
   petrify: { label: 'Petrify', icon: 'hourglass_bottom', tone: 'debuff',
     blurb: 'Turning to stone: −SPD per stack; at 4 it freezes for a round, then resets.' },

@@ -4,6 +4,16 @@
 **Status:** approved, ready for implementation
 **Scope:** client-only (Angular). No server / pytest impact.
 
+> **Revision (2026-08-07, after v1 review):** the abstract icon-burst animations
+> (`MysteryFxComponent`) landed and read well, but the desired feel is
+> **character-driven skits**: the player's *actual* creature on stage while a
+> cast actor plays out the outcome's flavor (an imp swoops in, pickpockets
+> spores, the creature does a surprised take, the imp flees). This revision adds
+> a `MysterySkitComponent` that stars the real recolored creature +
+> outcome-specific actor sprites. All 13 outcomes get a bespoke skit. The
+> abstract `MysteryFxComponent` is retained as a graceful fallback (creature art
+> not yet loaded / reduced-motion). See "Skit redesign" below.
+
 ## Problem
 
 Landing on a **mystery** space spins the slot-reel (`mystery-reel.component.ts`),
@@ -94,6 +104,57 @@ In `board-tab.component.html`, the `event-banner` block gains a branch:
 Import `MysteryFxComponent` into `board-tab.component.ts`. Nothing else in the
 card changes — text/chips/OK button already render below the banner. The card
 only opens after the reel settles, so timing is automatic.
+
+## Skit redesign
+
+### Casting (all art already in `public/undercity/`)
+| outcome | creature does | actor | prop |
+|---------|---------------|-------|------|
+| `theft`    | idle → startled hop, turns around, `!` | `enemies/fetid_imp` swoops in, grabs coin, flees up | `icons/rot.png` coin yanked away |
+| `hurt`     | flinch shake + red flash, `!` | `enemies/dreg_mangler` darts in, swipes, retreats | — |
+| `curse`    | recoils, sickly hue-shift, `sick` | `enemies/acolyte_of_affliction` casts, cackles, leaves | violet hex ring |
+| `item`     | happy bob | `map_events/shopkeeper1` enters, hands over, leaves | `backpack` icon pops out |
+| `grimoire` | reads, bob | `enemies/hag_hedgemage` offers a book, leaves | `menu_book` + arcane motes |
+| `heal`     | perks up, `favorite` pulse | `enemies/myconid` sprinkles spores | green bloom + rising motes |
+| `jackpot`  | joyful jump, `sentiment_very_satisfied` | — | `rot.png` coin rain |
+| `spores`   | happy bob | — | `rot.png` motes gather up |
+| `xp`       | stands tall / glow, `trending_up` | — | `auto_awesome` sparkles spiral |
+| `gear`     | equip flash | — | `shield` icon descends + glint |
+| `buff`     | flex / scale-pulse, `bolt` | — | energy bolts converge |
+| `warp`     | blinks out and back, `question_mark` | — | cyclone swirl |
+| `mystery`  | head-tilt, `question_mark` | — | floating `?` orb |
+
+Emotes are Material icons (never emoji, per the game's symbol rule). Static
+sprites convey emotion via **motion + an emote glyph** (startle hop, flinch
+shake, turn-around flip, happy jump).
+
+### MysterySkitComponent
+`src/app/undercity/tabs/mystery-skit.component.ts`
+- `@Input() outcome: string`, `@Input() creatureUrl: string | null` (the
+  recolored player-creature data URL from `getRecoloredWithHatDataUrl`).
+- A ~260×132 stage: creature `<img>` (pixelated) with a gentle infinite idle
+  bob; an optional actor `<img>` cast from the table; prop/particle layers; an
+  emote bubble. A per-outcome `[attr.data-fx]` drives all the CSS choreography
+  (shared enter/exit/startle/flinch keyframes + per-skit specifics). ~4.5s
+  one-shot for the event beats; creature keeps breathing after (non-blocking).
+- Reduced-motion: freeze to a static staged frame.
+
+### Event-card wiring (revised)
+```html
+@if (ev.type === 'mystery') {
+  @if (youSpriteUrl(); as cu) {
+    <app-undercity-mystery-skit [outcome]="ev.outcome ?? 'mystery'" [creatureUrl]="cu" />
+  } @else {
+    <app-undercity-mystery-fx [outcome]="ev.outcome ?? 'mystery'" />   <!-- fallback -->
+  }
+}
+```
+
+### Lab (revised)
+The Mystery FX tab gains a **creature controls** row (form dropdown + 3 paint
+hue sliders, using `getRecoloredWithHatDataUrl` after `preloadAll()`), then
+renders all 13 **skits** in mock card frames starring that creature. Replay
+per-cell + "Replay all" as before. The abstract-FX grid stays available too.
 
 ## Undercity Lab page
 

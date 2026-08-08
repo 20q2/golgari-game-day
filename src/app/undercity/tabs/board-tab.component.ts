@@ -97,6 +97,8 @@ import { FlowPuzzleModalComponent } from './flow-puzzle.component';
 import { CrystalVeinModalComponent, VeinStrikeFx } from './crystal-vein.component';
 import { GuildvaultModalComponent } from './guildvault.component';
 import { MysteryReelComponent } from './mystery-reel.component';
+import { MysteryFxComponent } from './mystery-fx.component';
+import { MysterySkitComponent } from './mystery-skit.component';
 import { HazardWheelComponent, HazardWheelTarget } from './hazard-wheel.component';
 import { BoardEventFeedComponent } from './board-event-feed.component';
 import { UcActionBandComponent } from './action-band.component';
@@ -220,6 +222,8 @@ const FX_TINT: Record<string, [string, string]> = {
     CrystalVeinModalComponent,
     GuildvaultModalComponent,
     MysteryReelComponent,
+    MysteryFxComponent,
+    MysterySkitComponent,
     HazardWheelComponent,
     BoardEventFeedComponent,
     UcActionBandComponent,
@@ -1115,6 +1119,25 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       .filter((r) => !!r.info);
   }
 
+  /** Stat chips (+2 DEF, +1 SPD…) for a gear item — shown on shop rows so the
+   *  bonuses read the same way they do on the equipped/stash tiles. */
+  protected gearStatChips(info: GearInfo): string[] {
+    const chips: string[] = [];
+    if (info.atk) chips.push(`+${info.atk} ATK`);
+    if (info.def) chips.push(`+${info.def} DEF`);
+    if (info.spd) chips.push(`+${info.spd} SPD`);
+    if (info.maxHp) chips.push(`+${info.maxHp} max HP`);
+    return chips;
+  }
+
+  /** A gear's description with its leading "+N STAT" summary stripped — those
+   *  are shown as chips now. Empty for a pure stat stick with no ability text. */
+  protected gearAbilityText(info: GearInfo): string {
+    const parts = (info.desc ?? '').split(' · ');
+    while (parts.length && /^[+-]?\d/.test(parts[0].trim())) parts.shift();
+    return parts.join(' · ');
+  }
+
   protected readonly tierRarity = tierRarity;
   protected readonly eggSpriteUrl = eggSpriteUrl;
 
@@ -1775,10 +1798,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Rested rolls banked past the cap (server-owned; display only). */
   protected readonly restedRolls = computed(() => this.store.you()?.rested ?? 0);
-
-  /** True when the next timed tick pays a rested bonus (server-computed: below the
-   * roll cap with rested banked). Drives the "bonus rolls this cycle" hint. */
-  protected readonly nextRollBoosted = computed(() => this.store.you()?.nextRollBoosted ?? false);
 
   /** True when the roll button should be disabled (out of rolls). Debug builds
    *  roll freely. No user-facing text — the disabled button + the next-roll

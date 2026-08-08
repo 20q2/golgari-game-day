@@ -16,6 +16,7 @@ import {
   CONSUMABLE_MAP,
   tierRarity,
   marketBand,
+  pricePresets,
   MarketKind,
   SALVAGE_YIELD,
 } from '../data/items';
@@ -280,6 +281,9 @@ export class CreatureTabComponent {
 
   /** The pet whose detail popup is open (null = none). */
   protected readonly selectedPet = signal<Pet | null>(null);
+  /** Inline pet-nickname editor open? Rename is demoted from a full-width field
+   *  to a pencil on the name that swaps into this editor when tapped. */
+  protected readonly editingPetName = signal(false);
   /** Two-tap guard for destructive Salvage/Grind: holds the armed target's key
    *  ('pet:<id>' or 'gear:<index>'), or null. First tap arms, second fires. */
   protected readonly salvageArmed = signal<string | null>(null);
@@ -324,7 +328,7 @@ export class CreatureTabComponent {
       keeper,
       fodder,
       selected,
-      points: keeper.mergeProgress + mergePointsFor(selected),
+      points: keeper.mergeProgress + mergePointsFor(selected, keeper.species),
       need: PET_MERGE_COST[keeper.tier + 1] ?? Infinity,
       ready: mergeWouldRankUp(keeper, selected),
       currentRarity: tierRarity(keeper.tier).label,
@@ -347,6 +351,12 @@ export class CreatureTabComponent {
     return Date.now() >= done;
   });
 
+  /** True when the incubator slot is free but eggs are sitting uncooked — a nudge
+   *  to go start one. Mutually exclusive with incubatorReady (which needs a slotted egg). */
+  protected readonly eggsWaiting = computed<boolean>(
+    () => !this.incubator() && this.eggsList().length > 0,
+  );
+
   /** Whole minutes left before the incubating egg can hatch (0 when ready). */
   protected incubatorLeftMin(): number {
     const inc = this.incubator();
@@ -356,14 +366,22 @@ export class CreatureTabComponent {
     return ms <= 0 ? 0 : Math.ceil(ms / 60000);
   }
 
-  /** Can this activated pet fire right now (activated role + off its role cooldown)? */
+  /** Can this activated pet fire right now? Forage recharges by DISTANCE (its
+   *  space countdown must hit 0); scout still runs on a real-time role cooldown. */
   protected petAbilityReady(pet: Pet): boolean {
     if (petInfo(pet.species).kind !== 'activated') return false;
-    return abilityReady(this.store.you()?.petCooldowns, petRole(pet.species));
+    const role = petRole(pet.species);
+    if (role === 'forage') return this.forageSpacesLeft() <= 0;
+    return abilityReady(this.store.you()?.petCooldowns, role);
   }
 
   protected petAbilityLeftMin(pet: Pet): number {
     return abilityCooldownLeftMin(this.store.you()?.petCooldowns, petRole(pet.species));
+  }
+
+  /** Board spaces still to walk before forage recharges (0 = ready). */
+  protected forageSpacesLeft(): number {
+    return this.store.you()?.forageRecharge ?? 0;
   }
 
   /** Role of a pet's species, for template dispatch (forage/scout/…). */
@@ -397,6 +415,39 @@ export class CreatureTabComponent {
     this.mergePicks.set(new Set());
     this.petListOpen.set(false);
     this.salvageArmed.set(null);
+    this.editingPetName.set(false);
+  }
+
+  protected beginEditPetName(): void {
+    this.editingPetName.set(true);
+  }
+
+  protected cancelEditPetName(): void {
+    this.editingPetName.set(false);
+  }
+
+  /** Friendly role noun for the pet subtitle (Attacker / Defender / …). */
+  protected petRoleLabel(pet: Pet): string {
+    const labels: Record<string, string> = {
+      attack: 'Attacker',
+      defend: 'Defender',
+      forage: 'Forager',
+      scout: 'Scout',
+      economy: 'Prospector',
+    };
+    return labels[petInfo(pet.species).role] ?? 'Companion';
+  }
+
+  /** One entry per rarity star to render in a roster cell (tier 1..4 = 1..4
+   *  stars, colored by rarity via the cell's rarity class). */
+  protected petStars(pet: Pet): number[] {
+    return Array.from({ length: pet.tier }, (_, i) => i);
+  }
+
+  /** How full the level track is (0..100) for the pet-sheet progress bar. */
+  protected petLevelPct(pet: Pet): number {
+    const cap = levelCap(pet.tier);
+    return cap <= 0 ? 0 : Math.round((pet.level / cap) * 100);
   }
 
   protected toggleMergePick(id: string): void {
@@ -548,6 +599,7 @@ export class CreatureTabComponent {
       const resp = await this.store.action('name-pet', { petId: pet.id, name: name.trim() });
       this.showToast(resp.text ?? 'Companion renamed.');
     });
+    this.editingPetName.set(false);
     this.selectedPet.set((this.store.you()?.pets ?? []).find((p) => p.id === pet.id) ?? null);
   }
 
@@ -736,6 +788,9 @@ export class CreatureTabComponent {
 
   // ── Item-detail popup ─────────────────────────────────────────────────────
   protected readonly marketBand = marketBand;
+  /** Quick-fill price buttons for a `[lo, hi]` band — see the preset rows under
+   *  each market-price input. */
+  protected readonly pricePresets = pricePresets;
 
   /** Open the item-detail popup for an inventory item. */
   protected selectItem(source: ItemSource, id: string, index: number, slotLabel: string): void {

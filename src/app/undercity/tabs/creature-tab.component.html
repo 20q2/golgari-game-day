@@ -145,8 +145,10 @@
                             <mat-icon class="mi perk-node-icon" [svgIcon]="statInfo[node.perk.track].icon"></mat-icon>
                             {{ node.threshold }}
                           </span>
-                          <span class="perk-node-name">{{ node.perk.name }}</span>
-                          <span class="perk-node-blurb">{{ node.perk.blurb }}</span>
+                          <span class="perk-node-text">
+                            <span class="perk-node-name">{{ node.perk.name }}</span>
+                            <span class="perk-node-blurb">{{ node.perk.blurb }}</span>
+                          </span>
                         </div>
                         @if (!last) {
                           <div class="perk-link" [class.lit]="node.lit"></div>
@@ -207,7 +209,11 @@
                     @if (petInfo(pet.species).kind === 'activated') {
                       @if (petRoleOf(pet) === 'forage') {
                         <button type="button" class="pet-btn" [disabled]="busy() || !petAbilityReady(pet)" (click)="usePetAbility(pet)">
-                          {{ petAbilityReady(pet) ? 'Send scavenging' : petAbilityLeftMin(pet) + ' min' }}
+                          {{
+                            petAbilityReady(pet)
+                              ? 'Send scavenging'
+                              : forageSpacesLeft() + (forageSpacesLeft() === 1 ? ' space' : ' spaces')
+                          }}
                         </button>
                       } @else if (petRoleOf(pet) === 'scout') {
                         <span class="pet-btn ghost" title="Use your scout from the board map">Scout from the board</span>
@@ -255,6 +261,9 @@
                     </button>
 
                     <button type="button" class="gear-hub-tile bag" (click)="selectGear('bag')">
+                      <span class="gear-hub-count" [class.gear-hub-count--full]="you.bag.length >= 3">
+                        {{ you.bag.length }}/3
+                      </span>
                       <span class="gear-hub-ico"><mat-icon class="mi" svgIcon="uc-pouch"></mat-icon></span>
                       <span class="gear-hub-title">Bag</span>
                     </button>
@@ -263,6 +272,10 @@
                       @if (incubatorReady()) {
                         <span class="gear-hub-notice">
                           <mat-icon class="mi">egg</mat-icon> Ready to hatch
+                        </span>
+                      } @else if (eggsWaiting()) {
+                        <span class="gear-hub-notice gear-hub-notice--eggs">
+                          <mat-icon class="mi">egg</mat-icon> {{ eggsList().length }}
                         </span>
                       }
                       <span class="gear-hub-ico">
@@ -421,7 +434,16 @@
                       <span class="gear-tile-name">{{ row.info.name }}
                         <span class="rarity-badge {{ tierRarity(row.info.tier).key }}">{{ tierRarity(row.info.tier).label }}</span>
                       </span>
-                      <span class="gear-tile-desc">{{ row.info.desc }}</span>
+                      @if (gearStatChips(row.info.id).length) {
+                        <div class="gear-tile-chips">
+                          @for (c of gearStatChips(row.info.id); track c.label) {
+                            <span class="chip chip--stat">{{ c.label }}</span>
+                          }
+                        </div>
+                      }
+                      @if (gearAbilityText(row.info.id); as ab) {
+                        <span class="gear-tile-desc">{{ ab }}</span>
+                      }
                     </div>
                     <mat-icon class="mi gear-chevron">chevron_right</mat-icon>
                   </div>
@@ -763,6 +785,15 @@
                       <div class="pet-grid">
                         @for (pet of rosterPets(); track pet.id) {
                           <button type="button" class="pet-cell" [attr.data-rarity]="petRarity(pet)" (click)="openPet(pet)">
+                            <span class="pet-cell-stars {{ petRarity(pet) }}"
+                                  [title]="tierRarity(pet.tier).label">
+                              @for (s of petStars(pet); track s) {
+                                <mat-icon class="mi">star</mat-icon>
+                              }
+                            </span>
+                            <span class="pet-cell-role" [title]="petInfo(pet.species).role + ' role'">
+                              <mat-icon class="mi">{{ petInfo(pet.species).icon }}</mat-icon>
+                            </span>
                             <img class="pet-sprite" [src]="petSpriteUrl(pet.species)" [alt]="petName(pet)" />
                             <span class="pet-cell-name">{{ petName(pet) }}</span>
                             <span class="pet-cell-lvl">Lv {{ pet.level }}</span>
@@ -1012,25 +1043,9 @@
             }
           </header>
 
-          @if (statChips(item).length) {
-            <div class="chip-row">
-              @for (chip of statChips(item); track chip.label) {
-                <span class="chip chip--stat">{{ chip.label }}</span>
-              }
-            </div>
-          }
-
-          @if (abilityChips(item).length) {
-            <div class="item-sheet-effects">
-              @for (chip of abilityChips(item); track $index) {
-                <p class="effect-line">
-                  @if (chip.label) { <strong class="effect-label">{{ chip.label }}</strong> }
-                  <span>{{ chip.blurb }}</span>
-                </p>
-              }
-            </div>
-          }
-
+          <!-- Row 2: description (left, ~65%) beside a stacked action column
+               (right, ~35%). Listing on the market swaps the whole body for the
+               full-width price editor. -->
           @if (listOpen()) {
             <div class="market-price">
               <label>Price (Spores)</label>
@@ -1039,6 +1054,7 @@
                 type="number"
                 class="price-input"
                 [value]="listPrice()"
+                (input)="listPrice.set(mp.valueAsNumber)"
                 [min]="marketBand(item.kind, item.id).lo"
                 [max]="marketBand(item.kind, item.id).hi"
               />
@@ -1046,46 +1062,86 @@
                 {{ marketBand(item.kind, item.id).lo }}–{{ marketBand(item.kind, item.id).hi }}
               </span>
               <button class="uc-btn" [disabled]="busy()" (click)="sendToMarket(item, mp.valueAsNumber)">List</button>
+              <div class="price-presets">
+                @for (
+                  preset of pricePresets(marketBand(item.kind, item.id).lo, marketBand(item.kind, item.id).hi);
+                  track preset
+                ) {
+                  <button
+                    type="button"
+                    class="price-preset"
+                    [class.active]="listPrice() === preset"
+                    [disabled]="busy()"
+                    (click)="listPrice.set(preset)"
+                  >
+                    {{ preset }}
+                  </button>
+                }
+              </div>
             </div>
           } @else {
-            <div class="item-sheet-actions">
-              @switch (item.source) {
-                @case ('stash') {
-                  <button class="uc-btn" [disabled]="busy()" (click)="equipFromPopup(item)">Equip</button>
-                  @if (hasWildcardSlot()) {
-                    <button class="uc-btn" [disabled]="busy()" (click)="equipToWildcard(item)">+ Wildcard</button>
+            <div class="item-sheet-body">
+              @if (statChips(item).length || abilityChips(item).length) {
+                <div class="item-sheet-desc">
+                  @if (statChips(item).length) {
+                    <div class="chip-row">
+                      @for (chip of statChips(item); track chip.label) {
+                        <span class="chip chip--stat">{{ chip.label }}</span>
+                      }
+                    </div>
+                  }
+                  @if (abilityChips(item).length) {
+                    <div class="item-sheet-effects">
+                      @for (chip of abilityChips(item); track $index) {
+                        <p class="effect-line">
+                          @if (chip.label) { <strong class="effect-label">{{ chip.label }}</strong> }
+                          <span>{{ chip.blurb }}</span>
+                        </p>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              <div class="item-sheet-actions">
+                @switch (item.source) {
+                  @case ('stash') {
+                    <button class="uc-btn uc-btn-primary item-cta" [disabled]="busy()" (click)="equipFromPopup(item)">Equip</button>
+                    @if (hasWildcardSlot()) {
+                      <button class="uc-btn" [disabled]="busy()" (click)="equipToWildcard(item)">+ Wildcard</button>
+                    }
+                  }
+                  @case ('bag') {
+                    @if (itemAction(item.id) === 'plant') {
+                      <button class="uc-btn uc-btn-primary item-cta" [disabled]="busy()" (click)="useFromPopup(item)">Plant here</button>
+                    } @else if (itemAction(item.id) === 'use') {
+                      <button class="uc-btn uc-btn-primary item-cta" [disabled]="busy()" (click)="useFromPopup(item)">Use</button>
+                    }
+                  }
+                  @case ('equipped') {
+                    <span class="item-sheet-hint muted">Equipped. To sell it, equip another piece first.</span>
                   }
                 }
-                @case ('bag') {
-                  @if (itemAction(item.id) === 'plant') {
-                    <button class="uc-btn" [disabled]="busy()" (click)="useFromPopup(item)">Plant here</button>
-                  } @else if (itemAction(item.id) === 'use') {
-                    <button class="uc-btn" [disabled]="busy()" (click)="useFromPopup(item)">Use</button>
-                  }
+                @if (item.source !== 'equipped') {
+                  <button class="uc-btn ghost" [disabled]="busy()" (click)="beginList(item)">
+                    <mat-icon class="mi">storefront</mat-icon> Send to market
+                  </button>
                 }
-                @case ('equipped') {
-                  <span class="item-sheet-hint muted">Equipped. To sell it, equip another piece first.</span>
+                <!-- Salvage without a trip to the Plaza Salvage Yard — grind into
+                     materials or sell back for Spores, previewing the yield. -->
+                @if (item.source === 'stash') {
+                  <button class="uc-btn ghost" [class.armed]="salvageArmedFor('gear:' + item.index)" [disabled]="busy()" (click)="confirmSalvageGear(item)">
+                    @if (salvageArmedFor('gear:' + item.index)) {
+                      <mat-icon class="mi">warning</mat-icon> Tap again to grind
+                    } @else {
+                      <mat-icon class="mi">recycling</mat-icon> Grind +{{ salvageYield(gearMap[item.id].tier).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (salvageYield(gearMap[item.id].tier).ichor) {&nbsp;+{{ salvageYield(gearMap[item.id].tier).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
+                    }
+                  </button>
+                  <button class="uc-btn ghost" [disabled]="busy()" (click)="salvageFromPopup(item, 'sell')">
+                    Sell +{{ sellSpores(item.id) }}<img class="spore-i" src="undercity/icons/rot.png" alt="Spores" />
+                  </button>
                 }
-              }
-              @if (item.source !== 'equipped') {
-                <button class="uc-btn ghost" [disabled]="busy()" (click)="beginList(item)">
-                  <mat-icon class="mi">storefront</mat-icon> Send to market
-                </button>
-              }
-              <!-- Salvage without a trip to the Plaza Salvage Yard — grind into
-                   materials or sell back for Spores, previewing the yield. -->
-              @if (item.source === 'stash') {
-                <button class="uc-btn ghost" [class.armed]="salvageArmedFor('gear:' + item.index)" [disabled]="busy()" (click)="confirmSalvageGear(item)">
-                  @if (salvageArmedFor('gear:' + item.index)) {
-                    <mat-icon class="mi">warning</mat-icon> Tap again to grind
-                  } @else {
-                    <mat-icon class="mi">recycling</mat-icon> Grind +{{ salvageYield(gearMap[item.id].tier).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (salvageYield(gearMap[item.id].tier).ichor) {&nbsp;+{{ salvageYield(gearMap[item.id].tier).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
-                  }
-                </button>
-                <button class="uc-btn ghost" [disabled]="busy()" (click)="salvageFromPopup(item, 'sell')">
-                  Sell +{{ sellSpores(item.id) }}
-                </button>
-              }
+              </div>
             </div>
           }
         </div>
@@ -1100,70 +1156,139 @@
             <mat-icon class="mi">close</mat-icon>
           </button>
 
-          <header class="item-sheet-head">
-            <img class="pet-sprite slot-mi" [src]="petSpriteUrl(pet.species)" [alt]="petName(pet)" />
+          <!-- Identity: rarity-framed portrait + name with an inline-edit pencil
+               (rename is demoted from a full-width field), rarity badge, and a
+               species · role subtitle. The active companion wears an Active tag. -->
+          <header class="item-sheet-head pet-head" [attr.data-rarity]="petRarity(pet)">
+            <div class="pet-portrait" [attr.data-rarity]="petRarity(pet)">
+              <img [src]="petSpriteUrl(pet.species)" [alt]="petName(pet)" />
+            </div>
             <div class="item-sheet-title">
-              <span class="item-sheet-name">{{ petName(pet) }}
+              @if (editingPetName()) {
+                <div class="pet-name-edit">
+                  <input #nm class="status-input pet-name-input" type="text" maxlength="16"
+                         [value]="pet.name ?? ''" [placeholder]="petInfo(pet.species).name"
+                         (keyup.enter)="renamePet(pet, nm.value)" />
+                  <button class="status-btn" [disabled]="busy()" (click)="renamePet(pet, nm.value)" title="Save">
+                    <mat-icon class="mi">check</mat-icon>
+                  </button>
+                  <button class="status-btn" (click)="cancelEditPetName()" title="Cancel">
+                    <mat-icon class="mi">close</mat-icon>
+                  </button>
+                </div>
+              } @else {
+                <span class="item-sheet-name pet-name">
+                  {{ petName(pet) }}
+                  <button class="pet-rename-btn" (click)="beginEditPetName()" title="Rename" aria-label="Rename">
+                    <mat-icon class="mi">edit</mat-icon>
+                  </button>
+                </span>
+              }
+              <div class="pet-tags">
                 <span class="rarity-badge {{ petRarity(pet) }}">{{ tierRarity(pet.tier).label }}</span>
-              </span>
-              <span class="item-sheet-sub">{{ petInfo(pet.species).name }} · Lv {{ pet.level }} / {{ petLevelCap(pet.tier) }}</span>
+                <span class="pet-role">@if (pet.name?.trim()) {{{ petInfo(pet.species).name }} · }{{ petRoleLabel(pet) }}</span>
+                @if (activePet()?.id === pet.id) {
+                  <span class="pet-active-tag"><mat-icon class="mi">pets</mat-icon> Active</span>
+                }
+              </div>
             </div>
           </header>
 
-          <div class="pet-rename">
-            <input #nm class="pet-name-input" type="text" maxlength="16" [value]="pet.name ?? ''"
-                   [placeholder]="petInfo(pet.species).name" (keyup.enter)="renamePet(pet, nm.value)" />
-            <button class="uc-btn ghost" [disabled]="busy()" (click)="renamePet(pet, nm.value)">
-              <mat-icon class="mi">edit</mat-icon> Name
-            </button>
-          </div>
-
-          <div class="item-sheet-effects">
-            <p class="effect-line"><span>{{ petInfo(pet.species).blurb }}</span></p>
-            <ul class="pet-stat-list">
-              @for (s of petAbilityStats(pet); track s.label) {
-                <li><span class="pet-stat-label">{{ s.label }}</span><span class="pet-stat-value">{{ s.value }}</span></li>
-              }
-            </ul>
-          </div>
-
-          <div class="item-sheet-actions">
-            @if (activePet()?.id !== pet.id) {
-              <button class="uc-btn uc-btn-primary pet-cta" [disabled]="busy()" (click)="activatePet(pet)">
-                <mat-icon class="mi">pets</mat-icon> Activate
-              </button>
-            }
-
-            @if (!petAtLevelCap(pet)) {
-              <button class="uc-btn ghost" [disabled]="busy() || !canLevelPet(pet)" (click)="levelPet(pet)">
-                Level +1 · {{ petLevelCost(pet).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (petLevelCost(pet).ichor) {&nbsp;{{ petLevelCost(pet).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
-              </button>
-            } @else {
-              <span class="item-sheet-hint muted">At level cap{{ petAtMaxTier(pet) ? '' : ' — merge to raise its rarity' }}.</span>
-            }
-
-            <button class="uc-btn ghost" [class.armed]="salvageArmedFor('pet:' + pet.id)" [disabled]="busy()" (click)="confirmSalvagePet(pet)">
-              @if (salvageArmedFor('pet:' + pet.id)) {
-                <mat-icon class="mi">warning</mat-icon> Tap again to salvage
-              } @else {
-                <mat-icon class="mi">recycling</mat-icon> Salvage +{{ petSalvageYield(pet).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (petSalvageYield(pet).ichor) {&nbsp;+{{ petSalvageYield(pet).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
-              }
-            </button>
-
-            @if (petListOpen()) {
-              <div class="market-price">
-                <label>Price (Spores)</label>
-                <input #pp type="number" class="price-input" [value]="petListPrice()"
-                       [min]="petMarketBand(pet).lo" [max]="petMarketBand(pet).hi" />
-                <span class="band-note muted">{{ petMarketBand(pet).lo }}–{{ petMarketBand(pet).hi }}</span>
-                <button class="uc-btn" [disabled]="busy()" (click)="listPetOnMarket(pet, pp.valueAsNumber)">List</button>
+          <!-- Row 2: ability card + level track (left) beside the stacked action
+               column (right). Listing swaps the body for the full-width editor. -->
+          @if (petListOpen()) {
+            <div class="market-price">
+              <label>Price (Spores)</label>
+              <input #pp type="number" class="price-input" [value]="petListPrice()"
+                     (input)="petListPrice.set(pp.valueAsNumber)"
+                     [min]="petMarketBand(pet).lo" [max]="petMarketBand(pet).hi" />
+              <span class="band-note muted">{{ petMarketBand(pet).lo }}–{{ petMarketBand(pet).hi }}</span>
+              <button class="uc-btn" [disabled]="busy()" (click)="listPetOnMarket(pet, pp.valueAsNumber)">List</button>
+              <div class="price-presets">
+                @for (preset of pricePresets(petMarketBand(pet).lo, petMarketBand(pet).hi); track preset) {
+                  <button
+                    type="button"
+                    class="price-preset"
+                    [class.active]="petListPrice() === preset"
+                    [disabled]="busy()"
+                    (click)="petListPrice.set(preset)"
+                  >
+                    {{ preset }}
+                  </button>
+                }
               </div>
-            } @else {
-              <button class="uc-btn ghost" [disabled]="busy()" (click)="beginPetList(pet)">
-                <mat-icon class="mi">storefront</mat-icon> Send to market
-              </button>
-            }
-          </div>
+            </div>
+          } @else {
+            <div class="item-sheet-body">
+              <div class="item-sheet-desc">
+                <!-- Ability card: the blurb and its level-scaled numbers read as
+                     one unit instead of a floating sentence + orphan rows. -->
+                <div class="pet-ability">
+                  <p class="pet-ability-blurb">
+                    <mat-icon class="mi pet-ability-icon">{{ petInfo(pet.species).icon }}</mat-icon>
+                    <span>{{ petInfo(pet.species).blurb }}</span>
+                  </p>
+                  <ul class="pet-stat-list">
+                    @for (s of petAbilityStats(pet); track s.label) {
+                      <li><span class="pet-stat-label">{{ s.label }}</span><span class="pet-stat-value">{{ s.value }}</span></li>
+                    }
+                  </ul>
+                </div>
+
+                <!-- Level track: progress-to-cap made visible. -->
+                <div class="pet-level" [attr.data-rarity]="petRarity(pet)">
+                  <div class="pet-level-top">
+                    <span class="pet-level-label">Level</span>
+                    <span class="pet-level-num">{{ pet.level }} <span class="muted">/ {{ petLevelCap(pet.tier) }}</span></span>
+                  </div>
+                  <div class="pet-level-bar">
+                    <div class="pet-level-fill" [style.width.%]="petLevelPct(pet)"></div>
+                  </div>
+                  @if (petAtLevelCap(pet)) {
+                    <span class="pet-level-hint muted">{{ petAtMaxTier(pet) ? 'Fully maxed.' : 'At cap — merge dupes to raise its rarity.' }}</span>
+                  }
+                </div>
+              </div>
+
+              <div class="item-sheet-actions">
+                @if (activePet()?.id !== pet.id) {
+                  <button class="uc-btn uc-btn-primary pet-cta" [disabled]="busy()" (click)="activatePet(pet)">
+                    <mat-icon class="mi">pets</mat-icon> Activate
+                  </button>
+                }
+
+                @if (!petAtLevelCap(pet)) {
+                  <button class="uc-btn pet-cost-btn" [disabled]="busy() || !canLevelPet(pet)" (click)="levelPet(pet)">
+                    <span class="pet-btn-title"><mat-icon class="mi">arrow_upward</mat-icon> Level Up</span>
+                    <span class="cost-chips">
+                      <span class="cost-chip">{{ petLevelCost(pet).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon></span>
+                      @if (petLevelCost(pet).ichor) {
+                        <span class="cost-chip">{{ petLevelCost(pet).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon></span>
+                      }
+                    </span>
+                  </button>
+                }
+
+                <button class="uc-btn ghost" [disabled]="busy()" (click)="beginPetList(pet)">
+                  <mat-icon class="mi">storefront</mat-icon> Send to market
+                </button>
+
+                <button class="uc-btn ghost pet-salvage pet-cost-btn" [class.armed]="salvageArmedFor('pet:' + pet.id)" [disabled]="busy()" (click)="confirmSalvagePet(pet)">
+                  @if (salvageArmedFor('pet:' + pet.id)) {
+                    <span class="pet-btn-title"><mat-icon class="mi">warning</mat-icon> Tap again</span>
+                  } @else {
+                    <span class="pet-btn-title"><mat-icon class="mi">recycling</mat-icon> Salvage</span>
+                    <span class="cost-chips">
+                      <span class="cost-chip">+{{ petSalvageYield(pet).moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon></span>
+                      @if (petSalvageYield(pet).ichor) {
+                        <span class="cost-chip">+{{ petSalvageYield(pet).ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon></span>
+                      }
+                    </span>
+                  }
+                </button>
+              </div>
+            </div>
+          }
 
         </div>
       </div>
@@ -1260,29 +1385,52 @@
             </div>
           </header>
 
-          <div class="item-sheet-actions">
-            @if (incubator()) {
-              <span class="item-sheet-hint muted">The incubator is busy — hatch that egg first.</span>
-            } @else {
-              <button class="uc-btn" [disabled]="busy()" (click)="incubateEggFromPopup(egg)">
-                Incubate ({{ PET_INCUBATE_MINUTES }} min)
-              </button>
-            }
-
-            @if (eggListOpen()) {
-              <div class="market-price">
-                <label>Price (Spores)</label>
-                <input #ep type="number" class="price-input" [value]="eggListPrice()"
-                       [min]="eggMarketBand(egg.tier).lo" [max]="eggMarketBand(egg.tier).hi" />
-                <span class="band-note muted">{{ eggMarketBand(egg.tier).lo }}–{{ eggMarketBand(egg.tier).hi }}</span>
-                <button class="uc-btn" [disabled]="busy()" (click)="listEggOnMarket(egg, ep.valueAsNumber)">List</button>
+          <!-- Row 2: what the egg does (left) beside the action column (right).
+               Listing swaps the body for the full-width price editor. -->
+          @if (eggListOpen()) {
+            <div class="market-price">
+              <label>Price (Spores)</label>
+              <input #ep type="number" class="price-input" [value]="eggListPrice()"
+                     (input)="eggListPrice.set(ep.valueAsNumber)"
+                     [min]="eggMarketBand(egg.tier).lo" [max]="eggMarketBand(egg.tier).hi" />
+              <span class="band-note muted">{{ eggMarketBand(egg.tier).lo }}–{{ eggMarketBand(egg.tier).hi }}</span>
+              <button class="uc-btn" [disabled]="busy()" (click)="listEggOnMarket(egg, ep.valueAsNumber)">List</button>
+              <div class="price-presets">
+                @for (preset of pricePresets(eggMarketBand(egg.tier).lo, eggMarketBand(egg.tier).hi); track preset) {
+                  <button
+                    type="button"
+                    class="price-preset"
+                    [class.active]="eggListPrice() === preset"
+                    [disabled]="busy()"
+                    (click)="eggListPrice.set(preset)"
+                  >
+                    {{ preset }}
+                  </button>
+                }
               </div>
-            } @else {
-              <button class="uc-btn ghost" [disabled]="busy()" (click)="beginEggList(egg)">
-                <mat-icon class="mi">storefront</mat-icon> Send to market
-              </button>
-            }
-          </div>
+            </div>
+          } @else {
+            <div class="item-sheet-body">
+              <div class="item-sheet-desc">
+                <div class="item-sheet-effects">
+                  <p class="effect-line"><span>Incubate to hatch a random companion after {{ PET_INCUBATE_MINUTES }} minutes.</span></p>
+                </div>
+              </div>
+
+              <div class="item-sheet-actions">
+                @if (incubator()) {
+                  <span class="item-sheet-hint muted">The incubator is busy — hatch that egg first.</span>
+                } @else {
+                  <button class="uc-btn uc-btn-primary item-cta" [disabled]="busy()" (click)="incubateEggFromPopup(egg)">
+                    Incubate ({{ PET_INCUBATE_MINUTES }} min)
+                  </button>
+                }
+                <button class="uc-btn ghost" [disabled]="busy()" (click)="beginEggList(egg)">
+                  <mat-icon class="mi">storefront</mat-icon> Send to market
+                </button>
+              </div>
+            </div>
+          }
         </div>
       </div>
     }

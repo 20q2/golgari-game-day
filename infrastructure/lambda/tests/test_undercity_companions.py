@@ -112,7 +112,7 @@ def test_merge_same_species_ranks_up(table):
         'targetPetId': keeper['id'], 'fodderPetIds': [f1['id'], f2['id']]})
     assert status == 200
     assert keeper['tier'] == 2
-    assert keeper['mergeProgress'] == 0
+    assert keeper['mergeProgress'] == 2          # 2 same-species Commons = 4 pts − 2 (into Rare); T3 costs 3
     assert [p['id'] for p in doc['pets']] == [keeper['id']]
 
 
@@ -155,11 +155,30 @@ def test_merge_keeper_survives_as_active(table):
 def test_merge_partial_progress_carries(table):
     sid, doc = _player_at(table, 'n1')
     keeper = _give_pet(doc, 'baby_leyline_prowler', tier=1)
-    f1 = _give_pet(doc, 'baby_leyline_prowler', tier=1)
+    f1 = _give_pet(doc, 'decimator_beetle', tier=1)   # off-species = 1 flat pt (no bonus)
     status, _ = db._merge_pet(table, sid, doc, {
         'targetPetId': keeper['id'], 'fodderPetIds': [f1['id']]})
     assert status == 200
     assert keeper['tier'] == 1 and keeper['mergeProgress'] == 1
+
+
+def test_merge_same_species_bonus_points(table):
+    # Same-species Common fodder = ceil(1*1.5) = 2 pts -> ranks a Common keeper
+    # straight into Rare (cost to T2 is 2).
+    sid, doc = _player_at(table, 'n1')
+    k = _give_pet(doc, 'baby_leyline_prowler', tier=1)
+    f = _give_pet(doc, 'baby_leyline_prowler', tier=1)
+    status, _ = db._merge_pet(table, sid, doc, {'targetPetId': k['id'], 'fodderPetIds': [f['id']]})
+    assert status == 200 and k['tier'] == 2 and k['mergeProgress'] == 0
+
+
+def test_merge_offspecies_no_bonus(table):
+    # Different-species Common fodder = 1 pt -> not enough to reach Rare (cost 2).
+    sid, doc = _player_at(table, 'n1')
+    k = _give_pet(doc, 'baby_leyline_prowler', tier=1)
+    f = _give_pet(doc, 'decimator_beetle', tier=1)
+    status, _ = db._merge_pet(table, sid, doc, {'targetPetId': k['id'], 'fodderPetIds': [f['id']]})
+    assert status == 200 and k['tier'] == 1 and k['mergeProgress'] == 1
 
 
 def test_level_pet_spends_materials(table):
@@ -317,13 +336,14 @@ def _persist_active_pet(table, species, level=1):
 
 
 def test_pet_ability_cooldown_shortens_with_level():
-    # Cooldowns are keyed by ROLE (e.g. 'forage'), not species.
-    lo = db._pet_ability_cooldown_min('forage', 1)
-    hi = db._pet_ability_cooldown_min('forage', 4)
-    assert lo == config.PET_ABILITY_COOLDOWN_MIN['forage']
+    # Scout still uses the real-time cooldown (forage now recharges by distance).
+    # Cooldowns are keyed by ROLE, not species.
+    lo = db._pet_ability_cooldown_min('scout', 1)
+    hi = db._pet_ability_cooldown_min('scout', 4)
+    assert lo == config.PET_ABILITY_COOLDOWN_MIN['scout']
     assert hi < lo
     # Never faster than the floor.
-    assert db._pet_ability_cooldown_min('forage', 99) == config.PET_ABILITY_COOLDOWN_FLOOR
+    assert db._pet_ability_cooldown_min('scout', 99) == config.PET_ABILITY_COOLDOWN_FLOOR
 
 
 def test_economy_per_loot_scales_and_cap_climbs():
@@ -366,7 +386,10 @@ def test_non_economy_pet_does_not_bank(table):
     status, resp = act(table, 'move', to=end, path=list(_LOOT_PASS))
     assert status == 200, resp
     assert resp['scavenge'] is None
-    assert 'petSporeBank' not in db._get_player(table, sid, 'user-alex')
+    doc = db._get_player(table, sid, 'user-alex')
+    assert 'petSporeBank' not in doc
+    # Moving without ever having used forage doesn't spawn a recharge counter.
+    assert 'forageRecharge' not in doc
 
 
 def test_use_pet_ability_rejects_combat_pet(table):
@@ -432,17 +455,58 @@ def test_name_pet_rejects_unknown_pet(table):
     assert status == 409
 
 
-def test_forage_gives_spores_and_sets_cooldown(table):
+def test_forage_gives_spores_and_primes_recharge(table):
     sid, doc = _persist_active_pet(table, 'rat', level=2)   # forage role
     before = doc.get('spores', 0)
     status, body = act(table, 'use-pet-ability')
     assert status == 200
     doc = db._get_player(table, sid, 'user-alex')
     assert doc['spores'] > before
-    assert doc['petCooldowns'].get('forage')         # cooldown stamped by role
-    # Still resting -> rejected.
+    # Forage recharges by DISTANCE now — using it primes a space countdown, not a
+    # real-time clock. The recharge is flat (level 2 still primes the base count).
+    assert doc['forageRecharge'] == config.PET_FORAGE_RECHARGE_SPACES
+    assert 'forage' not in doc.get('petCooldowns', {})
+    # Still recharging -> rejected.
     status, _ = act(table, 'use-pet-ability')
     assert status == 429
+
+
+def test_forage_recharge_ticks_down_as_you_walk(table):
+    # One clean walk (len - 1 spaces) counts the primed countdown down by that
+    # much. No follow-up action: a real landing can start a wild fight that would
+    # block the next gated call, so we only read the counter here.
+    sid, _ = _persist_active_pet(table, 'rat', level=1)   # forage role
+    act(table, 'use-pet-ability')                          # forageRecharge = 6
+    _prime_walk(table, sid, _LOOT_PASS[0])
+    status, resp = act(table, 'move', to=_LOOT_PASS[-1], path=list(_LOOT_PASS))
+    assert status == 200, resp
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['forageRecharge'] == config.PET_FORAGE_RECHARGE_SPACES - (len(_LOOT_PASS) - 1)
+
+
+def test_forage_recharge_clamps_at_zero_when_walk_overshoots(table):
+    # A walk longer than the counter's remainder zeroes it, never goes negative.
+    sid, doc = _persist_active_pet(table, 'rat', level=1)
+    doc['forageRecharge'] = 1                              # one space shy of ready
+    db._save_or_conflict(table, doc)
+    _prime_walk(table, sid, _LOOT_PASS[0])                 # a 2-space walk
+    status, resp = act(table, 'move', to=_LOOT_PASS[-1], path=list(_LOOT_PASS))
+    assert status == 200, resp
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['forageRecharge'] == 0
+
+
+def test_forage_gate_opens_only_at_zero_recharge(table):
+    # The readiness gate itself, driven deterministically (no movement, so no
+    # wild-fight RNG): >0 rejects, 0 fires.
+    sid, doc = _persist_active_pet(table, 'rat', level=1)   # forage role
+    doc['forageRecharge'] = 2
+    db._save_or_conflict(table, doc)
+    assert act(table, 'use-pet-ability')[0] == 429          # still recharging
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['forageRecharge'] = 0
+    db._save_or_conflict(table, doc)
+    assert act(table, 'use-pet-ability')[0] == 200          # recharged -> fires
 
 
 def test_scout_peek_returns_biome_bazaar_stock(table):

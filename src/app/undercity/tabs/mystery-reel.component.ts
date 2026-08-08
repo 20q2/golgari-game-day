@@ -9,29 +9,11 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-
-interface Symbol {
-  icon: string;
-  color: string;
-}
+import { MYSTERY_SYMBOLS, MYSTERY_OUTCOMES } from '../data/mystery-symbols';
 
 /** Reel faces — the outcome the server rolled maps to one of these keys. */
-const SYMBOLS: Record<string, Symbol> = {
-  spores: { icon: 'grain', color: '#e0c069' },
-  xp: { icon: 'auto_awesome', color: '#8fd0ff' },
-  item: { icon: 'backpack', color: '#b79bff' },
-  gear: { icon: 'shield', color: '#9ec6ff' },
-  grimoire: { icon: 'menu_book', color: '#c9a0ff' },
-  heal: { icon: 'favorite', color: '#7fce8f' },
-  buff: { icon: 'bolt', color: '#ffd24a' },
-  theft: { icon: 'money_off', color: '#e0a24a' },
-  hurt: { icon: 'heart_broken', color: '#e07a7a' },
-  warp: { icon: 'cyclone', color: '#4fc4bc' },
-  curse: { icon: 'dangerous', color: '#d47ad0' },
-  jackpot: { icon: 'casino', color: '#ffe08a' },
-  mystery: { icon: 'help', color: '#c4a5ff' },
-};
-const KEYS = Object.keys(SYMBOLS);
+const SYMBOLS = MYSTERY_SYMBOLS;
+const KEYS = MYSTERY_OUTCOMES;
 
 interface Reel {
   strip: string[];

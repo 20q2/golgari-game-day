@@ -80,12 +80,6 @@
     <div class="band-status-stack">
       @if (nextRollLabel(); as nrl) {
         <div class="band-status">new rolls in {{ nrl }}</div>
-        @if (nextRollBoosted()) {
-          <div class="band-status band-status-boost"
-               title="You have rested rolls banked — this cycle pays double.">
-            <mat-icon class="mi">bedtime</mat-icon> bonus rolls this cycle
-          </div>
-        }
       }
       @if (restedRolls() > 0) {
         <div class="band-status band-status-rested"
@@ -542,6 +536,14 @@
                 }
               </span>
             </div>
+          } @else if (ev.type === 'mystery') {
+            <!-- The rolled outcome plays out as a short skit starring your
+                 creature; falls back to the abstract FX if art isn't loaded. -->
+            @if (youSpriteUrl(); as cu) {
+              <app-undercity-mystery-skit [outcome]="ev.outcome ?? 'mystery'" [creatureUrl]="cu" />
+            } @else {
+              <app-undercity-mystery-fx [outcome]="ev.outcome ?? 'mystery'" />
+            }
           } @else if (ev.type === 'gate') {
             <img class="event-art" src="undercity/icons/temple.png" alt="" />
           } @else if (ev.type === 'boss_sealed') {
@@ -637,7 +639,7 @@
       <div
         class="uc-modal shop-modal"
         (click)="$event.stopPropagation()"
-        style="background-image: linear-gradient(rgba(16, 14, 11, 0.82), rgba(16, 14, 11, 0.9)), url('undercity/pub_background.webp')"
+        style="background-image: linear-gradient(to right, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0) 55%), linear-gradient(rgba(16, 14, 11, 0.82), rgba(16, 14, 11, 0.9)), url('undercity/pub_background.webp')"
       >
         <span class="shop-restock">
           <mat-icon class="mi">schedule</mat-icon> Restocks in {{ bazaarRestockLabel() }}
@@ -695,12 +697,15 @@
                   </span>
                   <span class="shop-badges">
                     <span class="rarity-badge {{ tierRarity(r.info.tier).key }}">{{ tierRarity(r.info.tier).label }}</span>
+                    @for (c of gearStatChips(r.info); track c) {
+                      <span class="chip chip--stat">{{ c }}</span>
+                    }
                     @if (r.blackMarket) {
                       <span class="black-market-tag">Black Market</span>
                     }
                   </span>
                 </span>
-                <span class="shop-desc">{{ r.info.desc }}</span>
+                <span class="shop-desc">{{ gearAbilityText(r.info) }}</span>
                 @if (shopMode() === 'courier') {
                   <button
                     class="uc-btn shop-buy"
@@ -708,9 +713,10 @@
                     [disabled]="busy() || scoutOnCooldown() || courierTierLocked(r.info.tier) || !!shopGearReason(r.info, r.qty)"
                     (click)="stageGear(r.info)"
                   >
-                    {{ isStaged('gear:' + r.info.id) ? 'In cart' : 'Deliver · ' + r.info.cost }}
+                    @if (isStaged('gear:' + r.info.id)) { In cart }
+                    @else { Deliver <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ r.info.cost }} }
                   </button>
-                  @if (courierTierLocked(r.info.tier)) { <span class="block-reason">Merge your scout to reach {{ tierRarity(r.info.tier).label }}</span> }
+                  @if (courierTierLocked(r.info.tier)) { <span class="block-reason">Rarity too high for current pet level</span> }
                   @else if (scoutOnCooldown()) { <span class="block-reason">Your scout is resting.</span> }
                   @else { @if (shopGearReason(r.info, r.qty); as reason) { <span class="block-reason">{{ reason }}</span> } }
                 } @else {
@@ -742,7 +748,8 @@
                   <button class="uc-btn shop-buy" [class.staged]="isStaged('consumable:' + r.info.id)"
                           [disabled]="busy() || scoutOnCooldown() || !!shopConsumableReason(r.info, r.qty)"
                           (click)="stageConsumable(r.info)">
-                    {{ isStaged('consumable:' + r.info.id) ? 'In cart' : 'Deliver · ' + r.info.cost }}
+                    @if (isStaged('consumable:' + r.info.id)) { In cart }
+                    @else { Deliver <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ r.info.cost }} }
                   </button>
                   @if (scoutOnCooldown()) { <span class="block-reason">Your scout is resting.</span> }
                   @else { @if (shopConsumableReason(r.info, r.qty); as reason) { <span class="block-reason">{{ reason }}</span> } }
@@ -771,7 +778,9 @@
                   <button class="uc-btn shop-buy" [class.staged]="isStaged('grimoire:' + g.id)"
                           [disabled]="busy() || scoutOnCooldown() || ownsGrimoire(g.id)"
                           (click)="stageGrimoire(g)">
-                    {{ isStaged('grimoire:' + g.id) ? 'In cart' : (ownsGrimoire(g.id) ? 'Owned' : 'Deliver · ' + g.cost) }}
+                    @if (isStaged('grimoire:' + g.id)) { In cart }
+                    @else if (ownsGrimoire(g.id)) { Owned }
+                    @else { Deliver <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ g.cost }} }
                   </button>
                   @if (scoutOnCooldown() && !ownsGrimoire(g.id)) { <span class="block-reason">Your scout is resting.</span> }
                 } @else {
@@ -799,9 +808,10 @@
                   <button class="uc-btn shop-buy" [class.staged]="isStaged('egg:' + e.tier)"
                           [disabled]="busy() || scoutOnCooldown() || courierTierLocked(e.tier)"
                           (click)="stageEgg(e)">
-                    {{ isStaged('egg:' + e.tier) ? 'In cart' : 'Deliver · ' + e.cost }}
+                    @if (isStaged('egg:' + e.tier)) { In cart }
+                    @else { Deliver <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ e.cost }} }
                   </button>
-                  @if (courierTierLocked(e.tier)) { <span class="block-reason">Merge your scout to reach {{ tierRarity(e.tier).label }}</span> }
+                  @if (courierTierLocked(e.tier)) { <span class="block-reason">Rarity too high for current pet level</span> }
                   @else if (scoutOnCooldown()) { <span class="block-reason">Your scout is resting.</span> }
                 } @else {
                   <button class="uc-btn shop-buy" [disabled]="busy() || !canAfford(e.cost)" (click)="buyEgg(e.tier)">

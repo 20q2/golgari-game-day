@@ -55,7 +55,8 @@ const MASK_RGB: Record<number, [number, number, number]> = {
 };
 
 /**
- * Dev-only sprite recolor sandbox (route: /undercity/color-test).
+ * Dev-only sprite recolor sandbox (the "Sprite Recolor" tab of the Undercity
+ * Lab at /undercity/test; /undercity/color-test redirects there).
  *
  * Lists every sprite in public/undercity/player_sprites/ (discovered from the
  * manifest, so new art appears automatically — no hardcoded list). Each sprite

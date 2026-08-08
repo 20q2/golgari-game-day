@@ -633,6 +633,19 @@
       box-shadow: 0 0 6px rgba(167, 139, 250, 0.7);
     }
 
+    // Little egg tucked on the Gear chest when the incubator is free and eggs
+    // are waiting — a nudge to go incubate one.
+    .tab-egg-badge {
+      position: absolute;
+      top: -6px;
+      right: -8px;
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+      color: #fbbf24;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
+    }
+
     .tab-label {
       font-size: 0.7rem;
       font-weight: 600;

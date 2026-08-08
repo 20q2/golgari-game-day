@@ -303,13 +303,7 @@
   }
 }
 
-// The next tick pays a rested bonus — gold reads as "good news incoming".
-.band-status-boost {
-  color: #ffd166;
-  opacity: 1;
-}
-
-// The banked rested balance — a cooler, quieter tone than the bonus hint.
+// The banked rested balance — a cooler, quieter tone.
 .band-status-rested {
   color: #a9d6e5;
 }
@@ -1205,11 +1199,14 @@
     }
   }
 
-  // Scout courier: the active pet hops back and forth across the top, "around"
-  // the shopkeeper portrait. Absolutely placed so it overlays the header art.
+  // Scout courier: the active pet wanders around the shopkeeper's FEET (lower
+  // portrait) the way the plaza dinos move — by HOPPING from spot to spot. Each
+  // hop is a |sin| arc up (9px, matching the Zippy temperament) that also steps
+  // ~20px sideways, with a brief rest on landing; it ping-pongs across a small
+  // range and loops seamlessly. No direction-flip.
   .courier-pet-hop {
     position: absolute;
-    top: 6px;
+    top: 62px;
     left: 50%;
     width: 44px;
     height: 44px;
@@ -1219,24 +1216,37 @@
     pointer-events: none;
     z-index: 3;
     filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6));
-    animation: courier-hop 2.4s ease-in-out infinite;
+    animation: courier-hop 3s linear infinite;
   }
 }
 
+// Six hops out-and-back: each hop arcs up mid-air while advancing ~20px, lands,
+// then rests briefly before the next. Start and end both sit at X -30 / ground so
+// the loop is seamless.
 @keyframes courier-hop {
-  0%   { transform: translateX(-52px) translateY(0)   scaleX(1); }
-  12%  { transform: translateX(-52px) translateY(-14px) scaleX(1); }
-  24%  { transform: translateX(-26px) translateY(0)   scaleX(1); }
-  36%  { transform: translateX(0)     translateY(-14px) scaleX(1); }
-  48%  { transform: translateX(26px)  translateY(0)   scaleX(-1); }
-  60%  { transform: translateX(52px)  translateY(-14px) scaleX(-1); }
-  72%  { transform: translateX(26px)  translateY(0)   scaleX(-1); }
-  84%  { transform: translateX(0)     translateY(-14px) scaleX(-1); }
-  100% { transform: translateX(-52px) translateY(0)   scaleX(1); }
+  0%    { transform: translateX(-30px) translateY(0); }
+  5.5%  { transform: translateX(-20px) translateY(-9px); }
+  11%   { transform: translateX(-10px) translateY(0); }
+  16.6% { transform: translateX(-10px) translateY(0); }
+  22%   { transform: translateX(0)     translateY(-9px); }
+  27.6% { transform: translateX(10px)  translateY(0); }
+  33.3% { transform: translateX(10px)  translateY(0); }
+  39%   { transform: translateX(20px)  translateY(-9px); }
+  44.6% { transform: translateX(30px)  translateY(0); }
+  50%   { transform: translateX(30px)  translateY(0); }
+  55.5% { transform: translateX(20px)  translateY(-9px); }
+  61%   { transform: translateX(10px)  translateY(0); }
+  66.6% { transform: translateX(10px)  translateY(0); }
+  72%   { transform: translateX(0)     translateY(-9px); }
+  77.6% { transform: translateX(-10px) translateY(0); }
+  83.3% { transform: translateX(-10px) translateY(0); }
+  89%   { transform: translateX(-20px) translateY(-9px); }
+  94.6% { transform: translateX(-30px) translateY(0); }
+  100%  { transform: translateX(-30px) translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shop-modal .courier-pet-hop { animation: none; transform: translateX(-52px); }
+  .shop-modal .courier-pet-hop { animation: none; }
 }
 
 // Scout courier greeting — the keeper's in-character line, styled like the quote.
@@ -1348,6 +1358,13 @@
   margin-top: 4px;
   font-size: 0.75rem;
   color: var(--text-secondary, #9a8fa6);
+}
+
+// The shop modal renders on a dark backdrop, where the light-theme
+// --text-secondary (black @54%) is invisible. Force a legible "notice" tone for
+// every block-reason line here (courier tier-lock, "Out of stock", "Stash full").
+.shop-modal .block-reason {
+  color: #d9b877;
 }
 
 .shop-empty {
@@ -1481,12 +1498,26 @@
   .shop-badges {
     display: inline-flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 4px;
 
     // Chips sit flush under the name now, not inline with margins around them.
     .rarity-badge,
     .black-market-tag {
       margin: 0;
+    }
+
+    // Stat chips ride alongside the rarity badge.
+    .chip--stat {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 7px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      line-height: 1.3;
+      color: #d8f3dc;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(183, 228, 199, 0.3);
     }
   }
 

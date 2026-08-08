@@ -24,6 +24,7 @@ import {
   DEFAULT_GUARDIAN,
   GUARDIAN_PLACEHOLDER_SPRITE,
   DEFAULT_GUARDIAN_SPRITE,
+  SPACE_ICONS,
 } from '../data/items';
 import { drawSpaceDisc, drawSkull, NODE_R, DISC_RY } from './board-space';
 import { BoardAmbient } from './board-ambient';
@@ -336,6 +337,14 @@ const HIGH_FIVE_MS = 1000; // full ready→jump→clap→settle high-five
 const BREATH_SPEED = 2.2; // idle breathing rate
 const BREATH_AMT = 0.04; // idle vertical scale wobble (±4%)
 
+// Roaming enraged monster idle: it skitters side-to-side rather than bobbing in
+// place. A slow drift sets which way it's leaning (and which way it faces); a
+// small vertical bob at twice that rate sells the busy footwork. Both derive
+// from elapsed time each frame — no particles, no per-frame allocation.
+const SCUTTLE_SPEED = 1.6; // side-to-side drift cadence
+const SCUTTLE_AMT = 9; // px it skitters left/right of its tile centre
+const SCUTTLE_BOB = 4; // px it lifts at the busiest part of a scuttle
+
 // Active-companion follower: hops after its owner between spaces (arriving a
 // beat late), then pokes around the space when idle.
 const PET_DRAW_H = 30; // on-board display height (px); sprites scaled to this
@@ -600,9 +609,33 @@ export class BoardCanvas {
       if (onlyLayerIds && !onlyLayerIds.has(spec.id)) continue;
       const old = this.layers.get(spec.id);
       if (!old) continue; // not baked yet — leave it lazy
-      this.layers.set(spec.id, this.bakeLayer(spec));
+      // Free the old backing store BEFORE allocating the replacement: baking
+      // into a second ~29 MB canvas while the old one is still resident doubles
+      // peak terrain memory for the duration of the bake, and that transient
+      // spike is exactly what tips a memory-constrained tab into eviction. The
+      // rebuild is synchronous (no frame draws between these lines), and the
+      // integrity probe re-bakes if a bake ever left the layer blank.
       old.terrain.canvas.width = 0;
       old.terrain.canvas.height = 0;
+      this.layers.set(spec.id, this.bakeLayer(spec));
+    }
+  }
+
+  /**
+   * Free the backing store of any baked dungeon-pocket terrain that isn't the
+   * layer currently on screen. Called whenever the visible layer changes: the
+   * overworld hub is kept resident (re-baking its ~29 MB canvas on every dungeon
+   * exit would stutter), but pockets are small and re-bake lazily on re-entry,
+   * so dropping the ones you've left bounds resident terrain to hub + current
+   * pocket — otherwise a session of dungeon-diving piles up a canvas per pocket
+   * visited, and that accumulation is a prime eviction trigger.
+   */
+  private freeOffscreenLayers(): void {
+    for (const [id, layer] of [...this.layers]) {
+      if (id === OVERWORLD || id === this.activeLayerId) continue;
+      layer.terrain.canvas.width = 0;
+      layer.terrain.canvas.height = 0;
+      this.layers.delete(id); // dropped from the cache → layerFor re-bakes on re-entry
     }
   }
 
@@ -909,6 +942,7 @@ export class BoardCanvas {
     if (target !== this.ownLayer) {
       this.ownLayer = target;
       this.activeLayerId = target;
+      this.freeOffscreenLayers(); // drop the pocket we just left
       this.clampCamera();
       if (this.ownPosition) this.centerOn(this.ownPosition, false);
       const b = this.active.spec.bounds;
@@ -1203,6 +1237,7 @@ export class BoardCanvas {
     const target = this.layerOf.get(nodeId) ?? OVERWORLD;
     if (target === this.activeLayerId) return;
     this.activeLayerId = target;
+    this.freeOffscreenLayers(); // drop the pocket the spectator left
     this.clampCamera();
     const b = this.active.spec.bounds;
     this.ambient.setContext(target === OVERWORLD ? 'overworld' : nodeId.split('_')[0], {
@@ -1863,12 +1898,16 @@ export class BoardCanvas {
     // A roaming enraged monster squatting here stamps a paw print over the tile
     // (its live sprite + HP bar draw above it in drawEnraged).
     const monsterHere = this.enraged?.node === n.id;
+    // Umori the wandering post overlays whatever tile it squats on with the
+    // trading-post glyph (its live sprite draws above it in drawUmori). A live
+    // raid boss or roaming monster on the same tile wins its own emblem.
+    const umoriHere = !bossHere && !monsterHere && this.umori?.node === n.id;
     drawSpaceDisc(ctx, discNode, {
       sealed,
       locked: this.lockedIds.has(n.id),
       corrupted: bossHere,
       hideGlyph: dungeonHazard,
-      glyph: monsterHere ? MONSTER_SPACE.icon : undefined,
+      glyph: monsterHere ? MONSTER_SPACE.icon : umoriHere ? SPACE_ICONS['trading_post'] : undefined,
     });
 
     // A sealed barrier is held by the area's guardian creature, standing across
@@ -2321,7 +2360,7 @@ export class BoardCanvas {
 
     const img = this.umoriSprite();
     if (img) {
-      const h = 42;
+      const h = 52;
       const w = img.width * (h / img.height);
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(img, cx - w / 2, footAnchor - h - hop, w, h);
@@ -2334,7 +2373,7 @@ export class BoardCanvas {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     const tw = ctx.measureText(label).width;
-    const ty = footAnchor - 54 - hop;
+    const ty = footAnchor - 64 - hop;
     ctx.fillStyle = 'rgba(20,14,28,0.82)';
     ctx.beginPath();
     ctx.roundRect(cx - tw / 2 - 6, ty - 11, tw + 12, 16, 6);
@@ -2362,11 +2401,16 @@ export class BoardCanvas {
     if (!n || !this.inActive(n.id)) return;
     const ctx = this.ctx;
     const elapsed = (ts - this.startTime) / 1000;
-    const hop = Math.abs(Math.sin(elapsed * 3)) * HOP_HEIGHT;
-    const cx = n.x;
-    const footAnchor = n.y - 6;
+    // Skitter: horizontal drift, a bob at twice the rate, and a facing flip that
+    // turns at each end (velocity ~0 there, so the turn reads naturally).
+    const scuttle = Math.sin(elapsed * SCUTTLE_SPEED);
+    const cx = n.x + scuttle * SCUTTLE_AMT;
+    const hop = Math.abs(Math.sin(elapsed * SCUTTLE_SPEED * 2)) * SCUTTLE_BOB;
+    const facing = Math.cos(elapsed * SCUTTLE_SPEED) >= 0 ? 1 : -1;
+    const cy = n.y - 6;
 
-    // Warning pulse ring so it reads as "deal with me" on the overworld.
+    // Warning pulse ring so it reads as "deal with me" on the overworld. Stays
+    // pinned to the tile centre while the sprite skitters over it.
     const pulse = 0.3 + 0.2 * Math.sin(elapsed * 2.4);
     ctx.save();
     ctx.beginPath();
@@ -2378,14 +2422,23 @@ export class BoardCanvas {
 
     const art = this.enemyArt(er.spriteId ?? '');
     if (art) {
-      const h = 46;
+      const h = 58;
       const w = art.width * (h / art.height);
-      ctx.drawImage(art, cx - w / 2, footAnchor - h - hop, w, h);
+      ctx.save();
+      ctx.translate(cx, cy - hop);
+      ctx.scale(facing, 1); // face the way it's scuttling
+      // Slight red outline so the roaming threat stays legible over any terrain.
+      // A zero-offset red shadow is a cheap silhouette halo — no offscreen canvas.
+      ctx.shadowColor = 'rgba(224, 66, 52, 0.95)';
+      ctx.shadowBlur = 5;
+      ctx.drawImage(art, -w / 2, -h, w, h);
+      ctx.restore();
     }
 
-    // HP bar (same palette as the interactive battle / guardians).
+    // HP bar (same palette as the interactive battle / guardians). Pinned to the
+    // tile centre so it stays steady while the sprite skitters beneath it.
     if (typeof er.hp === 'number' && typeof er.maxHp === 'number') {
-      this.drawGuardianHp(cx, footAnchor - 46 - hop - 4, er.hp, er.maxHp, 44);
+      this.drawGuardianHp(n.x, cy - 58 - SCUTTLE_BOB - 4, er.hp, er.maxHp, 44);
     }
 
     // Relocate-countdown label above its head.
@@ -2395,13 +2448,13 @@ export class BoardCanvas {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     const tw = ctx.measureText(label).width;
-    const ty = footAnchor - 62 - hop;
+    const ty = cy - 74 - SCUTTLE_BOB;
     ctx.fillStyle = 'rgba(28,12,12,0.82)';
     ctx.beginPath();
-    ctx.roundRect(cx - tw / 2 - 6, ty - 11, tw + 12, 16, 6);
+    ctx.roundRect(n.x - tw / 2 - 6, ty - 11, tw + 12, 16, 6);
     ctx.fill();
     ctx.fillStyle = '#ffd9c2';
-    ctx.fillText(label, cx, ty + 1);
+    ctx.fillText(label, n.x, ty + 1);
     ctx.restore();
   }
 
