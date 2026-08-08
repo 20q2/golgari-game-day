@@ -69,6 +69,20 @@ Forager, `vexing_pest` = the pest all-rounder) plus one sensible cross-line rout
 nudged slightly above the ~2-stat apex curve to offset a **non-combat** passive — this is
 an explicit balance lever (see tune-undercity-balance) and may be trimmed after play.
 
+**Option-cap reconciliation.** `tests/test_map.py` enforces that every tier-2 form has
+**2–3** apex options. `vexing_pest` and `deathrite_shaman` already sit at 3, so the
+Grave-Reaver is added by *swapping*, not appending — freeing one slot on each by dropping
+an off-theme option:
+
+- **Swarm Lord (`swamp_dragon`) `from` loses `vexing_pest`** — a pest evolving into the
+  *insect* finale was always off-theme; it now routes to its own Grave-Reaver instead.
+- **Calamity Beast (`calamity_beast`) `from` loses `deathrite_shaman`.**
+
+Resulting counts (all exactly 3): `brackish_trudge` → Grave Titan / Lich Lord /
+Grave-Reaver; `vexing_pest` → Izoni / Calamity / Grave-Reaver; `deathrite_shaman` →
+Grave Titan / Lich Lord / Grave-Reaver. Every other tier-2 form stays in the 2–3 range
+(verified: the Swarm Lord still has 7 sources, Calamity still 4).
+
 ### 3. `treasure_sense` mechanic
 
 A collector of treasure: gear drops fire far more often and roll one rarity tier higher.
@@ -99,8 +113,9 @@ no migration needed.
 - `undercity_config.py` — rename `FIRST_WIN_ROT_BREATH_MULT` → `ONSLAUGHT_MULT`; add
   `TREASURE_SENSE_DROP_MULT`, `TREASURE_SENSE_RARITY_BUMP`.
 - `undercity_data.py` — `APEX['swamp_dragon']`: name → Swarm Lord, passive → `onslaught`,
-  blurb; add `APEX['grave_reaver']`; ensure `treasure_sense` is described where passives
-  are catalogued.
+  blurb, **remove `vexing_pest` from its `from`**; `APEX['calamity_beast']`: **remove
+  `deathrite_shaman` from its `from`**; add `APEX['grave_reaver']`; ensure
+  `treasure_sense` is described where passives are catalogued.
 - `undercity_engine.py` — `winr.has('rot_breath')` → `has('onslaught')`; constant ref
   → `data.ONSLAUGHT_MULT`.
 - `undercity_db.py` — add `'rot_breath': 'onslaught'` to `_PASSIVE_RENAMES`; tier-bump in
