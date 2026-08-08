@@ -74,17 +74,17 @@
           class="shop-card swatch-card"
           [class.owned]="ownsPaint(paint.id)"
           [class.carted]="cartPaints().includes(paint.id)"
-          [class.worn]="equipPaint() === paint.id"
-          (click)="ownsPaint(paint.id) ? wearPaint(paint.id) : togglePaint(paint.id)"
+          [disabled]="ownsPaint(paint.id)"
+          (click)="togglePaint(paint.id)"
         >
           <span class="swatch" [style.background]="swatchCss(paint.hue)"></span>
           <span class="shop-name">{{ paint.name }}</span>
           @if (ownsPaint(paint.id)) {
-            <span class="shop-tag">{{ equipPaint() === paint.id ? 'wearing' : 'wear' }}</span>
+            <span class="shop-tag owned-tag">Owned</span>
           } @else if (cartPaints().includes(paint.id)) {
             <span class="shop-tag in-cart">In cart · tap to remove</span>
           } @else {
-            <span class="shop-cost">{{ paintPrice }}</span>
+            <span class="shop-cost">{{ paintPriceFor(paint.id) }}</span>
           }
         </button>
       }
@@ -95,13 +95,13 @@
           class="shop-card"
           [class.owned]="ownsHat(hat.id)"
           [class.carted]="cartHats().includes(hat.id)"
-          [class.worn]="equipHat() === hat.id"
-          (click)="ownsHat(hat.id) ? wearHat(hat.id) : toggleHat(hat.id)"
+          [disabled]="ownsHat(hat.id)"
+          (click)="toggleHat(hat.id)"
         >
           <img class="shop-hat-sprite" [src]="'undercity/hats/' + hat.file" [alt]="hat.name" />
           <span class="shop-name">{{ hat.name }}</span>
           @if (ownsHat(hat.id)) {
-            <span class="shop-tag">{{ equipHat() === hat.id ? 'wearing' : 'wear' }}</span>
+            <span class="shop-tag owned-tag">Owned</span>
           } @else if (cartHats().includes(hat.id)) {
             <span class="shop-tag in-cart">In cart · tap to remove</span>
           } @else {
@@ -118,13 +118,13 @@
           class="shop-card swatch-card"
           [class.owned]="ownsEffect(sp.id)"
           [class.carted]="cartEffects().includes(sp.id)"
-          [class.worn]="equipEffect() === sp.id"
-          (click)="ownsEffect(sp.id) ? wearEffect(sp.id) : toggleEffect(sp.id)"
+          [disabled]="ownsEffect(sp.id)"
+          (click)="toggleEffect(sp.id)"
         >
           <span class="swatch" [style.background]="specialPaintSwatch[sp.id]"></span>
           <span class="shop-name">{{ sp.name }}</span>
           @if (ownsEffect(sp.id)) {
-            <span class="shop-tag">{{ equipEffect() === sp.id ? 'wearing' : 'wear' }}</span>
+            <span class="shop-tag owned-tag">Owned</span>
           } @else if (cartEffects().includes(sp.id)) {
             <span class="shop-tag in-cart">In cart · tap to remove</span>
           } @else {

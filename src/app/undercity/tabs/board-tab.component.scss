@@ -2342,3 +2342,29 @@
     .swap-in { color: #b6ffbf; }
   }
 }
+
+// Umori's sealed-auction gift boxes: gold (#1), silver (#2), bronze (#3).
+.umori-reserves li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .box-art {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    flex: 0 0 auto;
+  }
+}
+
+// The pulled gift box, celebrated above the reveal reward line.
+.umori-reveal .reveal-box-art {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 4px auto 8px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+}

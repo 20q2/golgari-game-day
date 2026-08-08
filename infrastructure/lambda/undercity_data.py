@@ -1347,7 +1347,16 @@ HUE_TO_PAINT = {p['hue']: p['id'] for p in PAINTS}
 
 # ── Renown shop (pre-spawn) prices ───────────────────────────────────────────
 HAT_PRICES = {'common': 50, 'uncommon': 120, 'legendary': 300}
-PAINT_PRICE = 40  # any non-default color
+PAINT_PRICE = 40  # any non-default hue color
+# Achromatic colors are a premium tier — the crisp white/grey/black looks read as
+# high-end, so they cost more than an ordinary hue.
+PAINT_PRICE_PREMIUM = 100
+PREMIUM_PAINT_IDS = {'white', 'grey', 'black'}
+
+
+def paint_price(pid):
+    """Renown cost of a single color id (premium tier for achromatic paints)."""
+    return PAINT_PRICE_PREMIUM if pid in PREMIUM_PAINT_IDS else PAINT_PRICE
 
 # ── Special paints (animated whole-creature effects; Dino Party port) ─────────
 # Distinct from hue paints: a special paint sets a creature's `effect`, an

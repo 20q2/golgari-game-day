@@ -99,6 +99,14 @@ export const HAT_PRICES: Record<HatInfo['rarity'], number> = {
   legendary: 300,
 };
 export const PAINT_PRICE = 40;
+/** Achromatic colors are a premium tier (mirror PAINT_PRICE_PREMIUM / PREMIUM_PAINT_IDS). */
+export const PAINT_PRICE_PREMIUM = 100;
+export const PREMIUM_PAINT_IDS = new Set(['white', 'grey', 'black']);
+
+/** Renown cost of a single color id (premium tier for achromatic paints). */
+export function paintPriceFor(id: string): number {
+  return PREMIUM_PAINT_IDS.has(id) ? PAINT_PRICE_PREMIUM : PAINT_PRICE;
+}
 
 export interface SpecialPaintInfo {
   id: string;

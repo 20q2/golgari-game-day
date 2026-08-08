@@ -17,6 +17,7 @@ import { decideMapSync, MapSyncState } from './engine/map-sync';
 import { UndercityApiService } from './services/undercity-api.service';
 import { formSprite } from './data/species';
 import { xpToNext, formName } from './data/forms';
+import { PET_INCUBATE_MINUTES } from './data/pets';
 import { STATUS_INFO, StatusInfo } from './data/combat';
 import { DUNGEONS, SIGILS_REQUIRED } from './data/dungeons';
 import { HatchFlowComponent } from './hatch/hatch-flow.component';
@@ -64,11 +65,19 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
     return Object.keys(DUNGEONS).filter((b) => claims.includes(`${b}_lair`)).length;
   });
 
-  /** Free incubator + eggs sitting uncooked — a nudge to go incubate one. Mirrors
-   *  creature-tab's eggsWaiting so the Gear tab icon can flag it with an egg. */
+  /** Something needs the player's attention at the incubator, so the Gear tab
+   *  icon flags it with an egg. Two cases, mirroring creature-tab:
+   *   1. Free incubator + eggs sitting uncooked — a nudge to go incubate one.
+   *   2. An egg is slotted and has finished cooking — tap it to hatch.
+   *  Reads nowMs() so the "cooked" state lights up on its own as time passes. */
   protected readonly eggsWaiting = computed<boolean>(() => {
     const you = this.store.you();
-    return !!you && !you.incubator && (you.eggs?.length ?? 0) > 0;
+    if (!you) return false;
+    const inc = you.incubator;
+    if (!inc) return (you.eggs?.length ?? 0) > 0;
+    if (!inc.startedAt) return false;
+    const done = new Date(inc.startedAt + 'Z').getTime() + PET_INCUBATE_MINUTES * 60000;
+    return this.nowMs() >= done;
   });
 
   protected readonly phase = computed<

@@ -952,7 +952,9 @@
     background: rgba(120, 90, 40, 0.35);
   }
   &.owned {
-    opacity: 0.9;
+    opacity: 0.45;
+    filter: grayscale(0.6);
+    cursor: default;
   }
   &.worn {
     border-color: var(--primary-color);
@@ -963,6 +965,12 @@
   .shop-desc { font-size: 0.68rem; opacity: 0.75; text-align: center; }
   .shop-cost { font-size: 0.78rem; font-weight: 700; color: var(--accent-color); }
   .shop-tag { font-size: 0.7rem; opacity: 0.8; }
+  .shop-tag.owned-tag {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    opacity: 1;
+  }
   .shop-tag.in-cart {
     color: var(--accent-color, #e0b445);
     font-weight: 700;

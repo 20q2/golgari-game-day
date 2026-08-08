@@ -11,7 +11,7 @@ import {
   HATS,
   HAT_MAP,
   HAT_PRICES,
-  PAINT_PRICE,
+  paintPriceFor,
   SPECIAL_PAINTS,
   SPECIAL_PAINT_PRICE,
   SPECIAL_PAINT_SWATCH,
@@ -175,7 +175,7 @@ export class HatchFlowComponent {
 
   protected readonly allHats = HATS;
   protected readonly hatPrices = HAT_PRICES;
-  protected readonly paintPrice = PAINT_PRICE;
+  protected readonly paintPriceFor = paintPriceFor;
   protected readonly allSpecialPaints = SPECIAL_PAINTS;
   protected readonly specialPaintPrice = SPECIAL_PAINT_PRICE;
   protected readonly specialPaintSwatch = SPECIAL_PAINT_SWATCH;
@@ -199,7 +199,7 @@ export class HatchFlowComponent {
   protected readonly cartCost = computed(() => {
     let sum = 0;
     for (const h of this.cartHats()) sum += this.hatPrice(h);
-    sum += this.cartPaints().length * this.paintPrice;
+    for (const p of this.cartPaints()) sum += paintPriceFor(p);
     sum += this.cartEffects().length * this.specialPaintPrice;
     return sum;
   });
@@ -460,7 +460,7 @@ export class HatchFlowComponent {
       if (this.equipPaint() === id && !this.store.wardrobe()?.paints?.includes(id)) {
         this.equipPaint.set(null);
       }
-    } else if (!this.ownsPaint(id) && this.canAfford(this.paintPrice)) {
+    } else if (!this.ownsPaint(id) && this.canAfford(paintPriceFor(id))) {
       this.cartPaints.set([...cart, id]);
       this.equipPaint.set(id); // auto-wear a freshly bought color on spawn
     }
@@ -487,16 +487,6 @@ export class HatchFlowComponent {
     this.equipHat.set(null);
     this.equipPaint.set(null);
     this.equipEffect.set(null);
-  }
-
-  wearHat(id: string | null): void {
-    this.equipHat.set(this.equipHat() === id ? null : id);
-  }
-  wearPaint(id: string | null): void {
-    this.equipPaint.set(this.equipPaint() === id ? null : id);
-  }
-  wearEffect(id: string | null): void {
-    this.equipEffect.set(this.equipEffect() === id ? null : id);
   }
 
   /** Step 3: name the creature and hatch for real. */

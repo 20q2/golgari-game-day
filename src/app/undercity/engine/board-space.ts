@@ -97,6 +97,52 @@ export function drawSkull(ctx: CanvasRenderingContext2D, cx: number, cy: number)
   ctx.restore();
 }
 
+/**
+ * Speckled egg glyph for monster nests (`lair` tiles) — reads as the clutch a
+ * nest guardian broods over (and the companion egg it drops when beaten), and
+ * distinguishes a nest from the boss/raid skull at a glance. Hand-drawn like the
+ * skull because 'Material Icons' has no egg ligature.
+ */
+export function drawEgg(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(1.2, 1.2);
+  // Egg body: narrow at top, rounder at the bottom.
+  ctx.beginPath();
+  ctx.moveTo(0, -11);
+  ctx.bezierCurveTo(7, -11, 9, -3, 9, 2);
+  ctx.bezierCurveTo(9, 8, 5, 12, 0, 12);
+  ctx.bezierCurveTo(-5, 12, -9, 8, -9, 2);
+  ctx.bezierCurveTo(-9, -3, -7, -11, 0, -11);
+  ctx.closePath();
+  // Vertical shell shading for a little roundness.
+  const shell = ctx.createLinearGradient(-9, 0, 9, 0);
+  shell.addColorStop(0, '#d9cfb8');
+  shell.addColorStop(0.4, '#ece3d0');
+  shell.addColorStop(1, '#c7bda4');
+  ctx.fillStyle = shell;
+  ctx.fill();
+  // Speckles so it reads as a wild clutch, not a plain oval.
+  ctx.fillStyle = 'rgba(90, 58, 42, 0.55)';
+  for (const [sx, sy, sr] of [
+    [-3, -3, 1.6],
+    [2.5, 1, 1.9],
+    [-1, 5, 1.3],
+    [4, -5, 1.1],
+    [-4.5, 3, 1.1],
+  ] as const) {
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, sr, sr * 1.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Soft top-left highlight.
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(-3, -5, 2.2, 3.4, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 export const TYPE_SIDE_COLORS: Record<string, string> = Object.fromEntries(
   Object.entries(TYPE_COLORS).map(([k, c]) => [k, scaleHex(c, 0.55)]),
 );
@@ -199,7 +245,9 @@ export function drawSpaceDisc(
     ctx.textBaseline = 'middle';
     ctx.fillStyle = isLightHex(topColor) ? 'rgba(24, 28, 22, 0.92)' : 'rgba(250, 255, 250, 1)';
     ctx.fillText(opts.glyph, n.x, n.y);
-  } else if (n.type === 'boss' || n.type === 'lair' || opts.corrupted) {
+  } else if (n.type === 'lair') {
+    drawEgg(ctx, n.x, n.y);
+  } else if (n.type === 'boss' || opts.corrupted) {
     drawSkull(ctx, n.x, n.y);
   } else if (!opts.hideGlyph) {
     const glyph =

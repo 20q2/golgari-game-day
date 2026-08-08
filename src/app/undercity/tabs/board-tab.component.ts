@@ -970,11 +970,22 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     charm: 'auto_awesome',
   };
 
+  /** Gift-box art for an auction rank: #1 gold, #2 silver, #3 bronze. */
+  protected boxImage(rank: number | null): string {
+    const files: Record<number, string> = { 1: 'gold_gift', 2: 'silver_gift', 3: 'bronze_gift' };
+    return `undercity/other/${files[rank ?? 3] ?? 'bronze_gift'}.png`;
+  }
+
   /** Reserve rows for the modal, rank 1→3 with their unlock thresholds. */
-  protected reserveRows(): { rank: number; name: string; reserve: number }[] {
+  protected reserveRows(): { rank: number; name: string; reserve: number; img: string }[] {
     const res = this.umoriAuction()?.reserves ?? {};
     const names: Record<number, string> = { 1: 'Gilded Coffer', 2: 'Curio Box', 3: 'Trinket Pouch' };
-    return [1, 2, 3].map((r) => ({ rank: r, name: names[r], reserve: Number(res[r] ?? 0) }));
+    return [1, 2, 3].map((r) => ({
+      rank: r,
+      name: names[r],
+      reserve: Number(res[r] ?? 0),
+      img: this.boxImage(r),
+    }));
   }
   /** Why the bid button is blocked (mirrors the server guards), or null when live. */
   protected bidReason(): string | null {

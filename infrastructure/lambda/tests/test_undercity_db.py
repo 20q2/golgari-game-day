@@ -3250,6 +3250,10 @@ def test_renown_shop_price_tables_are_sane():
     assert data.SHOP_START_RENOWN == 100
     assert data.HAT_PRICES == {'common': 50, 'uncommon': 120, 'legendary': 300}
     assert data.PAINT_PRICE == 40
+    # Achromatic colors are a premium tier; ordinary hues stay at the base price.
+    assert data.paint_price('crimson') == data.PAINT_PRICE
+    assert data.paint_price('black') == data.PAINT_PRICE_PREMIUM == 100
+    assert data.paint_price('white') == 100 and data.paint_price('grey') == 100
     # Every hat/paint id resolves through the new maps.
     assert data.HAT_MAP['party_hat']['rarity'] == 'common'
     assert data.PAINT_MAP['crimson']['hue'] == 0

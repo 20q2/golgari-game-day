@@ -625,6 +625,7 @@
         @if (rev.placed === null) {
           <p>You were outbid. <strong>{{ rev.refund }}</strong> Spores refunded.</p>
         } @else {
+          <img class="reveal-box-art" [src]="boxImage(rev.placed)" alt="" />
           <p>You placed <strong>#{{ rev.placed }}</strong> — {{ rev.boxName }}!</p>
           <p class="reveal-reward">Inside: {{ revealRewardText(rev) }}</p>
         }
@@ -994,8 +995,11 @@
         </p>
         <ul class="umori-reserves">
           @for (row of reserveRows(); track row.rank) {
-            <li><span class="rank">#{{ row.rank }}</span> {{ row.name }}
-              <span class="reserve">unlocks at {{ row.reserve }}</span></li>
+            <li>
+              <img class="box-art" [src]="row.img" alt="" />
+              <span class="rank">#{{ row.rank }}</span> {{ row.name }}
+              <span class="reserve">unlocks at {{ row.reserve }}</span>
+            </li>
           }
         </ul>
         @if (yourBid() > 0) {

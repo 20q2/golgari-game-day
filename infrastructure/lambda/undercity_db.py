@@ -3352,7 +3352,7 @@ def _apply_shop_purchases(perm, doc, payload):
             return _err(f'Unknown color: {pid}')
         if pid in perm['paints']:
             return _err('You already own that color.')
-        total += data.PAINT_PRICE
+        total += data.paint_price(pid)
     for eid in buy_effects:
         if eid not in data.SPECIAL_PAINT_MAP:
             return _err(f'Unknown special paint: {eid}')
