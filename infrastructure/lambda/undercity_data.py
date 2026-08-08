@@ -224,8 +224,14 @@ APEX = {
     'calamity_beast': {
         'name': 'Calamity Beast', 'bonus': {'maxHp': 6, 'spd': 2},
         'passive': 'wish',
-        'from': ['squirrel_warrior', 'squirrel_mage', 'deathrite_shaman', 'vexing_pest', 'corpsejack_menace'],
+        'from': ['squirrel_warrior', 'squirrel_mage', 'vexing_pest', 'corpsejack_menace'],
         'blurb': 'Wish: learn the Wish spell — once ready, cast ANY spell in the world, from any list.',
+    },
+    'grave_reaver': {
+        'name': 'Colossal Grave-Reaver', 'bonus': {'maxHp': 6, 'atk': 2, 'def': 2},
+        'passive': 'treasure_sense',
+        'from': ['brackish_trudge', 'vexing_pest', 'deathrite_shaman'],
+        'blurb': 'Treasure Sense: a hoarder\'s eye — gear turns up far more often, and one rarity tier richer.',
     },
 }
 
