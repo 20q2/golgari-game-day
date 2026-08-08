@@ -431,3 +431,10 @@ PETRIFY_FREEZE_AT = 4     # Petrify stacks that trigger a one-round freeze (then
 # ── Wood Lurker (Mimicry) ────────────────────────────────────────────────────
 MIMIC_MIRROR = 3     # +stat matching the foe's fighting style (brute/turtle/trickster)
 MIMIC_BALANCED = 1   # +ATK/+DEF/+SPD vs a balanced foe
+
+# ── Colossal Grave-Reaver: Treasure Sense (design 2026-08-07) ────────────────
+# The economy apex finds gear far more often and one rarity tier higher.
+TREASURE_SENSE_DROP_MULT   = 2.0  # gear-drop chance multiplier for the passive
+TREASURE_SENSE_CHANCE_CAP  = 0.95 # cap so a boosted drop never becomes guaranteed
+TREASURE_SENSE_RARITY_BUMP = 1    # rolled gear tier is bumped by this
+TREASURE_SENSE_MAX_TIER    = 3    # ceiling — never bumps into craft-only tier-4 mythics
