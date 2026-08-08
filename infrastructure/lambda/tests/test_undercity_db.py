@@ -3729,8 +3729,10 @@ def test_squirrel_line_and_calamity_beast_wired():
     # Calamity Beast reachable from both squirrel T2s AND several other lines.
     assert 'calamity_beast' in data.apex_options('squirrel_warrior')
     assert 'calamity_beast' in data.apex_options('squirrel_mage')
-    assert 'calamity_beast' in data.apex_options('deathrite_shaman')
     assert 'calamity_beast' in data.apex_options('vexing_pest')
+    # deathrite_shaman now routes to the Grave-Reaver instead of Calamity (2026-08-07).
+    assert 'grave_reaver' in data.apex_options('deathrite_shaman')
+    assert 'calamity_beast' not in data.apex_options('deathrite_shaman')
     assert data.APEX['calamity_beast']['passive'] == 'wish'
     assert data.SPELLS['wish']['effect'] == 'wish'
 

@@ -1558,6 +1558,16 @@ def _roll_gear_drop(doc, tier_weights):
     return _gain_gear(doc, _rng.choice(pool))
 
 
+def _gear_drop_fires(doc, source, chance_mult=1.0):
+    """True if a gear drop should roll from GEAR_DROP[`source`]. Applies the
+    Colossal Grave-Reaver's Treasure Sense chance boost (capped below a
+    guaranteed drop). `chance_mult` thins the roll for already-plundered tiles."""
+    chance = data.GEAR_DROP[source][0] * chance_mult
+    if 'treasure_sense' in _passives(doc):
+        chance = min(chance * data.TREASURE_SENSE_DROP_MULT, data.TREASURE_SENSE_CHANCE_CAP)
+    return _rng.random() < chance
+
+
 def _roll_umori_box(window, rank, under_reserve):
     """Deterministic single-reward roll for an auction box, seeded by
     (window, rank) so every request computes the identical contents with no
@@ -3985,7 +3995,7 @@ def _loot_puzzle(table, sid, doc, node):
     pid = _rng.choice([p['id'] for p in data.FLOW_PUZZLES if p['rocks']])
     puzzle = data.flow_puzzle(pid)
     kinds = ['item', 'molting']
-    if _rng.random() < data.GEAR_DROP['loot'][0]:
+    if _gear_drop_fires(doc, 'loot'):
         kinds.append('gear')
     rewards = _place_loot_rewards(puzzle, kinds, _rng)
     view = _flow_puzzle_view(pid)
@@ -4392,8 +4402,8 @@ def _mystery(table, sid, doc):
         res['to'] = dest
     out = {'type': 'mystery', 'roll': res['roll'], 'text': res['text']}
     if res['item']:
-        chance, tiers = data.GEAR_DROP['mystery']
-        drop = _roll_gear_drop(doc, tiers) if _rng.random() < chance else None
+        tiers = data.GEAR_DROP['mystery'][1]
+        drop = _roll_gear_drop(doc, tiers) if _gear_drop_fires(doc, 'mystery') else None
         if drop:
             out['gear'] = drop
             out['text'] += f" It's a piece of gear — {_drop_phrase(drop)}!"
@@ -5252,8 +5262,8 @@ def _finish_wild(table, sid, doc, rec, result):
         if levels:
             out['levels'] = levels
         source = 'elite' if elite else 'wild'
-        chance, tiers = data.GEAR_DROP[source]
-        if _rng.random() < chance:
+        tiers = data.GEAR_DROP[source][1]
+        if _gear_drop_fires(doc, source):
             drop = _roll_gear_drop(doc, tiers)
             if drop:
                 out['gear'] = drop
@@ -5351,8 +5361,8 @@ def _award_lair_kill(table, sid, doc, node, slain, out):
     out['xp'] = reward['xp']
     if levels:
         out['levels'] = levels
-    chance, tiers = data.GEAR_DROP['lair']
-    if _rng.random() < chance:
+    tiers = data.GEAR_DROP['lair'][1]
+    if _gear_drop_fires(doc, 'lair'):
         drop = _roll_gear_drop(doc, tiers)
         if drop:
             out['gear'] = drop
@@ -5411,8 +5421,8 @@ def _award_respawn_lair_kill(table, sid, doc, node, out):
     out['xp'] = reward['xp']
     if levels:
         out['levels'] = levels
-    chance, tiers = data.GEAR_DROP['lair']
-    if _rng.random() < chance:
+    tiers = data.GEAR_DROP['lair'][1]
+    if _gear_drop_fires(doc, 'lair'):
         drop = _roll_gear_drop(doc, tiers)
         if drop:
             out['gear'] = drop
@@ -5554,8 +5564,8 @@ def _award_enraged_kill(table, sid, doc, monster_id, out):
     out['xp'] = data.ENRAGED_KILL_XP
     if levels:
         out['levels'] = levels
-    chance, tiers = data.GEAR_DROP['enraged']
-    if _rng.random() < chance:
+    tiers = data.GEAR_DROP['enraged'][1]
+    if _gear_drop_fires(doc, 'enraged'):
         drop = _roll_gear_drop(doc, tiers)
         if drop:
             out['gear'] = drop
@@ -5756,8 +5766,8 @@ def _award_boss_kill(table, sid, doc, node, out):
     out['xp'] = reward['xp']
     if levels:
         out['levels'] = levels
-    chance, tiers = data.GEAR_DROP['boss']
-    if _rng.random() < chance:
+    tiers = data.GEAR_DROP['boss'][1]
+    if _gear_drop_fires(doc, 'boss'):
         drop = _roll_gear_drop(doc, tiers)
         if drop:
             out['gear'] = drop
@@ -5952,8 +5962,8 @@ def _append_scroll(doc, out, source):
 def _append_treasure_gear(doc, out, chance_mult=1.0):
     """Big-ticket treasure spaces roll for a high-tier gear drop.
     `chance_mult` thins the roll for already-plundered tiles."""
-    chance, tiers = data.GEAR_DROP['treasure']
-    if _rng.random() < chance * chance_mult:
+    tiers = data.GEAR_DROP['treasure'][1]
+    if _gear_drop_fires(doc, 'treasure', chance_mult):
         drop = _roll_gear_drop(doc, tiers)
         if drop:
             out['gear'] = drop
