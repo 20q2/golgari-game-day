@@ -89,7 +89,7 @@ export const RIDER_AUGMENTS: Record<string, Omit<StanceAugment, 'source'>> = {
  *  are deliberately omitted so the buttons stay honest. */
 export const PASSIVE_AUGMENTS: Record<string, Omit<StanceAugment, 'source'>> = {
   venom_barb: { stance: 'aggress', label: 'Venom Barb', blurb: 'Your first strike each battle deals +3.' },
-  rot_breath: { stance: 'aggress', label: 'Rot Breath', blurb: 'Your round-1 strike hits for double.' },
+  onslaught: { stance: 'aggress', label: 'Onslaught', blurb: 'Your round-1 strike hits for double.' },
 };
 
 /** Build the stance-augment list from the player's equipped gear + passives. */
