@@ -617,6 +617,12 @@ def _shielded(doc):
     return bool(su) and su > _now()
 
 
+def _shield_expiry():
+    """Timestamp a fresh Compost Shield expires at (now + COMPOST_SHIELD_MIN)."""
+    return (datetime.utcnow()
+            + timedelta(minutes=data.COMPOST_SHIELD_MIN)).isoformat(timespec='seconds')
+
+
 def _combatant(doc):
     eff = engine.effective_stats(doc)
     pc = engine.pet_combat(
@@ -2253,7 +2259,6 @@ def _apply_hp_loss(doc, amount, floor=1):
 
 def _compost(table, sid, doc, cause_text):
     """Handle death: respawn at the gate with a shield."""
-    now = datetime.utcnow()
     _metric(doc, 'deaths')
     died_at = doc.get('position')
     died_biome = data.dungeon_biome(died_at)
@@ -2261,7 +2266,7 @@ def _compost(table, sid, doc, cause_text):
     home_gate = data.HOME_GATES.get(home_biome, data.GATE_NODE)
     doc['position'] = home_gate  # provisional; a respawn choice may relocate
     doc['hp'] = max(1, round(engine.effective_stats(doc)['maxHp'] * data.COMPOST_RESPAWN_PCT))
-    doc['shieldUntil'] = (now + timedelta(minutes=data.COMPOST_SHIELD_MIN)).isoformat(timespec='seconds')
+    doc['shieldUntil'] = _shield_expiry()
     doc['composts'] = doc.get('composts', 0) + 1
     doc['pendingMove'] = None
 
@@ -5195,6 +5200,11 @@ def _finish_pvp(table, sid, doc, rec, result):
            'battle': result}
     outcome = result['outcome']
     away = {'kind': 'pvp', 'from': doc.get('username', '?'), 'at': _now()}
+
+    # Anti-spam: any resolved fight (win/loss/timeout — not a reward-less flee)
+    # shields the victim so they can't be re-attacked for repeat XP + steal.
+    if target and outcome != 'fled':
+        target['shieldUntil'] = _shield_expiry()
 
     if outcome == 'attacker':
         # Attacker beat the clone. Steal from the target's LIVE pile.

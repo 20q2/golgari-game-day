@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { UserService } from '../services/user.service';
+import { APP_VERSION } from '../version';
 
 @Component({
   selector: 'app-navbar',
@@ -23,6 +24,9 @@ import { UserService } from '../services/user.service';
 })
 export class NavbarComponent {
   protected readonly userService = inject(UserService);
+
+  // Shown in the toolbar so players can confirm which client build they're on.
+  protected readonly appVersion = APP_VERSION;
 
   // True under `ng serve` / `npm start`, false in production builds. Gates
   // the rename / sign-out menu so it never ships to the live site.

@@ -792,7 +792,7 @@ def test_pvp_duel_win_steals_but_leaves_target_alive(table, monkeypatch):
     assert sam['spores'] == 75                # lost the stolen spores
     assert sam['hp'] == sam_hp_before         # HP untouched
     assert sam['position'] == 'city_r2'       # NOT composted to the gate
-    assert not sam.get('shieldUntil')         # no compost shield — was never killed
+    assert db._shielded(sam)                  # post-fight anti-spam Compost Shield
 
 
 def test_pvp_cannot_start_a_second_fight_while_in_one(table):
@@ -4264,6 +4264,59 @@ def test_pvp_loss_composts_attacker_and_leaves_target_intact(table, monkeypatch)
     assert alex['position'] == 'cavern_r0'              # composted to the home gate
     assert sam['spores'] == 100 and sam['hp'] == sam_hp  # target fully intact
     assert sam['awayEvents'][-1]['outcome'] == 'defended'
+
+
+# ── PvP post-fight target shield (anti-spam) ─────────────────────────────────
+
+def test_pvp_win_shields_the_target_from_respam(table, monkeypatch):
+    # After a duel the victim gets a Compost Shield so the attacker can't
+    # immediately re-attack them for repeat XP + spore steal.
+    sid, _, _ = _seed_pvp_pair(table,
+                               atk_fields={'level': 3, 'atk': 50, 'spores': 0},
+                               tgt_fields={'level': 3, 'spores': 100})
+    act(table, 'battle', targetUserId='user-sam')
+    alex = db._get_player(table, sid, 'user-alex')
+    _finish_started_battle(table, monkeypatch, alex, 'attacker')
+
+    sam = db._get_player(table, sid, 'user-sam')
+    assert db._shielded(sam)                           # post-fight Compost Shield
+
+    # A follow-up attack on the same node is refused while the shield holds.
+    status, resp = act(table, 'battle', targetUserId='user-sam')
+    assert status == 409
+    assert 'Compost Shield' in resp['error']
+
+
+def test_pvp_loss_shields_the_target(table, monkeypatch):
+    # Even when the attacker loses (and gets composted), the victim is shielded —
+    # losing still grants the attacker pvp_loss XP, so it's still a spam vector.
+    sid, _, _ = _seed_pvp_pair(table,
+                               atk_fields={'level': 3, 'spores': 50},
+                               tgt_fields={'level': 3, 'spores': 100})
+    act(table, 'battle', targetUserId='user-sam')
+    alex = db._get_player(table, sid, 'user-alex')
+    _finish_started_battle(table, monkeypatch, alex, 'defender', defender_hp=99)
+    sam = db._get_player(table, sid, 'user-sam')
+    assert db._shielded(sam)
+
+
+def test_pvp_timeout_shields_the_target(table):
+    sid, alex, _ = _seed_pvp_pair(table, tgt_fields={'spores': 100})
+    rec = {'ctx': {'targetId': 'user-sam', 'targetLevel': 1},
+           'npcMeta': {'name': 'Sam-clone', 'id': 'x'}}
+    db._finish_pvp(table, sid, alex, rec, {'outcome': 'timeout'})
+    sam = db._get_player(table, sid, 'user-sam')
+    assert db._shielded(sam)
+
+
+def test_pvp_flee_does_not_shield_the_target(table):
+    # Fleeing yields the attacker no reward, so it must not shield the victim.
+    sid, alex, _ = _seed_pvp_pair(table, tgt_fields={'spores': 100})
+    rec = {'ctx': {'targetId': 'user-sam', 'targetLevel': 1},
+           'npcMeta': {'name': 'Sam-clone', 'id': 'x'}}
+    db._finish_pvp(table, sid, alex, rec, {'outcome': 'fled'})
+    sam = db._get_player(table, sid, 'user-sam')
+    assert not db._shielded(sam)
 
 
 # ── Respawning ruin lairs (design 2026-08-02) ────────────────────────────────
