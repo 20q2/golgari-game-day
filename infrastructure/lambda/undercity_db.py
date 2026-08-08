@@ -1542,11 +1542,15 @@ def _roll_gear_drop(doc, tier_weights):
     """Roll a gear piece per the tier profile and route it via _gain_gear: found
     gear auto-equips into an empty slot, else stashes, else parks for the pickup
     modal so the find is never lost.
+    The Grave-Reaver's Treasure Sense bumps the rolled tier one step (capped at
+    TREASURE_SENSE_MAX_TIER — never tier-4 mythics).
     Returns {'id','slot','tier','outcome'} or None. outcome is 'equipped',
     'stashed', or 'pending' (parked when the stash is full)."""
     slot = _rng.choice(data.GEAR_SLOTS)
     tiers = list(tier_weights)
     tier = _rng.choices(tiers, weights=[tier_weights[t] for t in tiers])[0]
+    if 'treasure_sense' in _passives(doc):
+        tier = min(tier + data.TREASURE_SENSE_RARITY_BUMP, data.TREASURE_SENSE_MAX_TIER)
     pool = [gid for gid, g in data.WORLD_GEAR.items()
             if g['slot'] == slot and g['tier'] == tier]
     if not pool:
