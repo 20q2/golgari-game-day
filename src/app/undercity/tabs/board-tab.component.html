@@ -995,10 +995,14 @@
         </p>
         <ul class="umori-reserves">
           @for (row of reserveRows(); track row.rank) {
-            <li>
+            <li [class.unlocked]="row.unlocked">
               <img class="box-art" [src]="row.img" alt="" />
               <span class="rank">#{{ row.rank }}</span> {{ row.name }}
-              <span class="reserve">unlocks at {{ row.reserve }}</span>
+              @if (row.unlocked) {
+                <span class="reserve unlocked"><mat-icon class="mi">lock_open</mat-icon> unlocked</span>
+              } @else {
+                <span class="reserve">unlocks at {{ row.reserve }}</span>
+              }
             </li>
           }
         </ul>

@@ -2348,6 +2348,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: border-color 0.18s ease, background 0.18s ease;
 
   .box-art {
     width: 32px;
@@ -2355,6 +2359,43 @@
     object-fit: contain;
     image-rendering: pixelated;
     flex: 0 0 auto;
+    // Unlocked boxes read a touch dimmer until you clear the reserve.
+    filter: grayscale(0.55) brightness(0.8);
+    transition: filter 0.18s ease;
+  }
+
+  .reserve {
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  // Your bid clears this rank's reserve: the rich reward table is in reach.
+  &.unlocked {
+    border-color: rgba(224, 192, 120, 0.55);
+    background: rgba(224, 192, 120, 0.1);
+    box-shadow: inset 0 0 12px rgba(224, 192, 120, 0.12);
+
+    .box-art {
+      // Full colour + a warm halo so the qualifying box pops against the row.
+      filter: drop-shadow(0 0 5px rgba(224, 192, 120, 0.6));
+    }
+
+    .reserve.unlocked {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      color: #e0c088;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 0.72rem;
+
+      .mi {
+        font-size: 15px;
+        width: 15px;
+        height: 15px;
+      }
+    }
   }
 }
 

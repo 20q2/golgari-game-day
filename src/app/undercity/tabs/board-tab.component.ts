@@ -976,16 +976,29 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return `undercity/other/${files[rank ?? 3] ?? 'bronze_gift'}.png`;
   }
 
-  /** Reserve rows for the modal, rank 1→3 with their unlock thresholds. */
-  protected reserveRows(): { rank: number; name: string; reserve: number; img: string }[] {
+  /** Reserve rows for the modal, rank 1→3 with their unlock thresholds. `unlocked`
+   *  is true once your sealed bid clears that rank's reserve — landing in that rank
+   *  would then roll its rich table rather than the under-reserve consolation. */
+  protected reserveRows(): {
+    rank: number;
+    name: string;
+    reserve: number;
+    img: string;
+    unlocked: boolean;
+  }[] {
     const res = this.umoriAuction()?.reserves ?? {};
+    const bid = this.yourBid();
     const names: Record<number, string> = { 1: 'Gilded Coffer', 2: 'Curio Box', 3: 'Trinket Pouch' };
-    return [1, 2, 3].map((r) => ({
-      rank: r,
-      name: names[r],
-      reserve: Number(res[r] ?? 0),
-      img: this.boxImage(r),
-    }));
+    return [1, 2, 3].map((r) => {
+      const reserve = Number(res[r] ?? 0);
+      return {
+        rank: r,
+        name: names[r],
+        reserve,
+        img: this.boxImage(r),
+        unlocked: bid > 0 && bid >= reserve,
+      };
+    });
   }
   /** Why the bid button is blocked (mirrors the server guards), or null when live. */
   protected bidReason(): string | null {
