@@ -200,11 +200,12 @@ APEX = {
         'from': ['brackish_trudge', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman', 'underrealm_lich', 'wood_lurker'],
         'blurb': 'Drain Life: heal for 50% of damage you deal.',
     },
+    # id kept as 'swamp_dragon' for save-compat; displays as the Swarm Lord.
     'swamp_dragon': {
-        'name': 'Swamp Dragon', 'bonus': {'atk': 2, 'spd': 2},
+        'name': 'Swarm Lord', 'bonus': {'atk': 2, 'spd': 2},
         'passive': 'onslaught',
-        'from': ['vexing_pest', 'kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior', 'gorgon'],
-        'blurb': 'Rot Breath: round-1 strike hits for double.',
+        'from': ['kraul_warrior', 'golgari_longlegs', 'slitherhead', 'woodwraith_strangler', 'corpsejack_menace', 'squirrel_warrior', 'gorgon'],
+        'blurb': 'Onslaught: the swarm descends all at once — its round-1 strike hits for double.',
     },
     'izoni': {
         'name': 'Primeval Warden', 'bonus': {'spd': 4},
