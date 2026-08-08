@@ -48,7 +48,10 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   // Apexes
   grave_titan: { sprite: 'grave_titan', regions: MASK_REGIONS, scale: 1.25 },
   golgari_lich_lord: { sprite: 'golgari_lich_lord', regions: MASK_REGIONS, scale: 1.3 },
-  swamp_dragon: { sprite: 'swamp_dragon', regions: MASK_REGIONS, scale: 1.3 },
+  // id 'swamp_dragon' displays as the Swarm Lord (insect finale); art = swarm_lord.
+  swamp_dragon: { sprite: 'swarm_lord', regions: MASK_REGIONS, scale: 1.3 },
+  // Colossal Grave-Reaver inherits the vacated dragon art.
+  grave_reaver: { sprite: 'swamp_dragon', regions: MASK_REGIONS, scale: 1.3 },
   izoni: { sprite: 'primeval_warden', regions: MASK_REGIONS, scale: 1.3 },
   daemogoth: { sprite: 'daemogoth', regions: MASK_REGIONS, scale: 1.3 },
   // Squirrel T2/T3
