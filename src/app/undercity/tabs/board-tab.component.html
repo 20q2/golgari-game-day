@@ -21,6 +21,8 @@
           </span>
         } @else if (petBoxReady(pet)) {
           <span class="pet-quickuse-tag">{{ petRoleOf(pet) === 'scout' ? 'Scout' : 'Forage' }}</span>
+        } @else if (petRoleOf(pet) === 'forage') {
+          <span class="pet-quickuse-tag cooldown">{{ forageSpacesLeft() }}{{ forageSpacesLeft() === 1 ? ' space' : ' spaces' }}</span>
         } @else {
           <span class="pet-quickuse-tag cooldown">{{ petAbilityLeftMin(pet) }}m</span>
         }

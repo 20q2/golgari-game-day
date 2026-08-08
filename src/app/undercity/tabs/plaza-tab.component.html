@@ -262,7 +262,17 @@
                 <em>{{ l.view!.desc }}</em>
               </span>
               @if (l.own) {
-                <button class="uc-btn" [disabled]="busy()" (click)="marketCancel(l.id)">Cancel</button>
+                @if (editingListing() === l.id) {
+                  <input #ep type="number" class="price-input" [value]="l.price"
+                         [min]="l.kind === 'pet' || l.kind === 'egg' ? null : marketBand(l.kind, l.itemId).lo"
+                         [max]="l.kind === 'pet' || l.kind === 'egg' ? null : marketBand(l.kind, l.itemId).hi" />
+                  <button class="uc-btn forge-upgrade" [disabled]="busy()" (click)="marketEdit(l.id, +ep.value)">Save</button>
+                  <button class="uc-btn" [disabled]="busy()" (click)="cancelEdit()">Back</button>
+                } @else {
+                  <span class="listed-price">{{ l.price }}<img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /></span>
+                  <button class="uc-btn" [disabled]="busy()" (click)="startEdit(l.id)">Edit</button>
+                  <button class="uc-btn" [disabled]="busy()" (click)="marketCancel(l.id)">Cancel</button>
+                }
               } @else {
                 <button class="uc-btn forge-upgrade" [disabled]="busy() || !!buyReason(l)" (click)="marketBuy(l.id)">
                   {{ l.price }}<img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />

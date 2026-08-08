@@ -269,10 +269,17 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return petRole(pet.species);
   }
   protected petAbilityReady(pet: Pet): boolean {
+    // Forage recharges by DISTANCE (its space countdown must hit 0); scout still
+    // runs on a real-time role cooldown.
+    if (petRole(pet.species) === 'forage') return this.forageSpacesLeft() <= 0;
     return abilityReady(this.store.you()?.petCooldowns, petRole(pet.species));
   }
   protected petAbilityLeftMin(pet: Pet): number {
     return abilityCooldownLeftMin(this.store.you()?.petCooldowns, petRole(pet.species));
+  }
+  /** Board spaces still to walk before forage recharges (0 = ready). */
+  protected forageSpacesLeft(): number {
+    return this.store.you()?.forageRecharge ?? 0;
   }
   protected petIsEconomy(pet: Pet): boolean {
     return petInfo(pet.species).kind === 'economy';

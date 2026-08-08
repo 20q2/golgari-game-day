@@ -271,3 +271,54 @@ def test_market_pet_price_band_rejects_out_of_band(table):
     pet = _give_pet_to(seller, tier=2, level=3)
     assert db._market_list(table, sid, seller, {'kind': 'pet', 'petId': pet['id'], 'price': 1})[0] == 409
     assert db._market_list(table, sid, seller, {'kind': 'pet', 'petId': pet['id'], 'price': 99999})[0] == 409
+
+
+# ── Re-pricing an existing listing in place (market-edit) ─────────────────────
+
+def _listing_price(table, sid, lid):
+    return int(db._get(table, db._season_pk(sid), f'MARKET#{lid}')['price'])
+
+
+def test_market_edit_changes_price(table):
+    sid, seller = _player_at(table, 'city_r0')
+    seller['gearStash'] = ['bark_hide']                    # band 22..90
+    _, body = db._market_list(table, sid, seller, {'index': 0, 'price': 45})
+    lid = body['listingId']
+    seller = db._get_player(table, sid, 'user-alex')       # fresh optimistic-lock version
+    status, _ = db._market_edit(table, sid, seller, {'listingId': lid, 'price': 80})
+    assert status == 200
+    assert _listing_price(table, sid, lid) == 80
+    assert not _listing_gone(table, sid, lid)              # still listed, not reclaimed
+
+
+def test_market_edit_rejects_out_of_band(table):
+    sid, seller = _player_at(table, 'city_r0')
+    seller['gearStash'] = ['bark_hide']
+    _, body = db._market_list(table, sid, seller, {'index': 0, 'price': 45})
+    lid = body['listingId']
+    seller = db._get_player(table, sid, 'user-alex')
+    assert db._market_edit(table, sid, seller, {'listingId': lid, 'price': 5})[0] == 409
+    assert db._market_edit(table, sid, seller, {'listingId': lid, 'price': 999})[0] == 409
+    assert _listing_price(table, sid, lid) == 45           # unchanged on reject
+
+
+def test_market_edit_rejects_not_owner(table):
+    sid, seller, buyer = _two_players(table)
+    seller['gearStash'] = ['bark_hide']
+    _, body = db._market_list(table, sid, seller, {'index': 0, 'price': 45})
+    lid = body['listingId']
+    assert db._market_edit(table, sid, buyer, {'listingId': lid, 'price': 80})[0] == 409
+    assert _listing_price(table, sid, lid) == 45
+
+
+def test_market_edit_pet_in_band(table):
+    sid, seller, _buyer = _two_players(table)
+    pet = _give_pet_to(seller, tier=2, level=3)
+    lo, hi = db._instance_price_band('pet', pet)
+    _, body = db._market_list(table, sid, seller, {'kind': 'pet', 'petId': pet['id'], 'price': lo})
+    lid = body['listingId']
+    seller = db._get_player(table, sid, 'user-alex')
+    status, _ = db._market_edit(table, sid, seller, {'listingId': lid, 'price': hi})
+    assert status == 200
+    assert _listing_price(table, sid, lid) == hi
+    assert db._market_edit(table, sid, seller, {'listingId': lid, 'price': 99999})[0] == 409

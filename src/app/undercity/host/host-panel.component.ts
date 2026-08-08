@@ -26,6 +26,7 @@ export class HostPanelComponent {
   protected readonly message = signal<string | null>(null);
   protected readonly confirmEnd = signal(false);
   protected readonly confirmAwaken = signal(false);
+  protected readonly confirmBackdate = signal(false);
   protected hostKey = localStorage.getItem(HOST_KEY_STORAGE) ?? '';
 
   protected readonly seasonActive = computed(() => this.store.season()?.status === 'active');
@@ -33,6 +34,18 @@ export class HostPanelComponent {
   protected readonly inLobby = computed(() => this.store.season()?.status === 'lobby');
   /** Bound to the <input type="datetime-local"> — a local wall-clock string. */
   protected launchLocal = '';
+  /** Backdated New Night start — prefilled to two hours ago for bug recovery. */
+  protected backdateLocal = HostPanelComponent.toLocalInput(new Date(Date.now() - 2 * 3600_000));
+
+  /** Format a Date as the `YYYY-MM-DDTHH:mm` local-wall-clock string a
+   * <input type="datetime-local"> expects (no timezone suffix). */
+  private static toLocalInput(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return (
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+      `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    );
+  }
 
   async startNight(): Promise<void> {
     await this.run(async () => {
@@ -54,6 +67,30 @@ export class HostPanelComponent {
       localStorage.setItem(HOST_KEY_STORAGE, this.hostKey);
       await this.store.action('season-lobby', { hostKey: this.hostKey, launchAt });
       this.message.set('Lobby open — players see the countdown. Press New Night to begin.');
+    });
+  }
+
+  /**
+   * Bug-recovery restart: archive the running night and open a fresh one stamped
+   * with a chosen *past* start time, so every new character seeds its roll bank
+   * as if the night had begun then. Two-tap confirm — it archives the live night.
+   */
+  async startBackdatedNight(): Promise<void> {
+    if (!this.backdateLocal) {
+      this.message.set('Pick a start time first.');
+      return;
+    }
+    if (!this.confirmBackdate()) {
+      this.confirmBackdate.set(true);
+      return;
+    }
+    // datetime-local has no timezone; interpret it as local, send UTC ISO.
+    const startedAt = new Date(this.backdateLocal).toISOString();
+    await this.run(async () => {
+      localStorage.setItem(HOST_KEY_STORAGE, this.hostKey);
+      await this.store.action('season-start', { hostKey: this.hostKey, startedAt });
+      this.message.set('Fresh night started — new characters spawn with their accrued rolls.');
+      this.confirmBackdate.set(false);
     });
   }
 

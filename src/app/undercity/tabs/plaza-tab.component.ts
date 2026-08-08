@@ -331,6 +331,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
         const itemId = l.itemId ?? l.gearId ?? '';
         return {
           id: l.id,
+          itemId,
           price: l.price,
           sellerName: l.sellerName,
           kind,
@@ -365,6 +366,17 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
   protected readonly marketSort = signal<'price-asc' | 'price-desc' | 'rarity'>('price-asc');
   protected readonly marketAffordable = signal(false);
   protected readonly maxListings = MARKET_MAX_LISTINGS;
+
+  // Id of the own-listing whose price is being edited inline, or null. Only one
+  // row edits at a time; opening another closes the first.
+  protected readonly editingListing = signal<string | null>(null);
+
+  protected startEdit(id: string): void {
+    this.editingListing.set(id);
+  }
+  protected cancelEdit(): void {
+    this.editingListing.set(null);
+  }
 
   /** Chip descriptors: All + each non-empty kind group + Mine, with live counts. */
   protected readonly marketChips = computed(() => {
@@ -477,6 +489,20 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
       this.showToast(resp.text ?? 'Listed.');
     } catch (e) {
       this.showToast(e instanceof Error ? e.message : 'Listing failed');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  async marketEdit(listingId: string, price: number): Promise<void> {
+    if (this.busy() || !Number.isFinite(price)) return;
+    this.busy.set(true);
+    try {
+      const resp = await this.store.action('market-edit', { listingId, price: Math.round(price) });
+      this.editingListing.set(null);
+      this.showToast(resp.text ?? 'Re-priced.');
+    } catch (e) {
+      this.showToast(e instanceof Error ? e.message : 'Re-pricing failed');
     } finally {
       this.busy.set(false);
     }

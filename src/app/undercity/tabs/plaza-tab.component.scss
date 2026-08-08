@@ -556,6 +556,16 @@ button.mat-chip {
   text-align: right;
 }
 
+// Your own listing's current ask, shown where the Buy price sits on other rows.
+.listed-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #eafff0;
+}
+
 .status-editor {
   display: flex;
   flex-direction: column;

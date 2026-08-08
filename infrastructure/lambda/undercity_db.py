@@ -2210,6 +2210,45 @@ def _market_cancel(table, sid, doc, payload):
     return _ok(doc, text=f"Reclaimed {spec['name'](item_id)}.")
 
 
+def _market_edit(table, sid, doc, payload):
+    """Re-price your own active listing in place, so you don't have to cancel and
+    re-list to change the ask. Same price-band rules as listing; the item stays on
+    the market throughout (a conditional put guards against it selling mid-edit)."""
+    listing_id = payload.get('listingId')
+    pk = _season_pk(sid)
+    listing = _get(table, pk, f'MARKET#{listing_id}')
+    if not listing:
+        return _err('That listing is gone.', 409)
+    if listing['sellerId'] != doc['userId']:
+        return _err('That is not your listing.', 409)
+    try:
+        price = int(payload.get('price'))
+    except (TypeError, ValueError):
+        return _err('Pick a price.')
+    kind, item_id = _market_kind(listing)
+    if kind in _INSTANCE_MARKET:
+        obj = listing.get('payload')
+        if not obj:
+            return _err('That listing is gone.', 409)
+        lo, hi = _instance_price_band(kind, obj)
+    else:
+        if kind not in _MARKET_KINDS:
+            return _err('That listing is gone.', 409)
+        lo, hi = _market_price_band(kind, item_id)
+    if price < lo or price > hi:
+        return _err(f'Price must be {lo}–{hi} Spores for that item.', 409)
+    if price == int(listing['price']):
+        return _ok(doc, text='Price unchanged.')
+    listing['price'] = price
+    try:
+        table.put_item(Item=listing, ConditionExpression='attribute_exists(sk)')
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            return _err('That listing just sold.', 409)
+        raise
+    return _ok(doc, text=f'Re-priced to {price} Spores.')
+
+
 def cutpurse_bonus(doc, feint_won, won):
     """Flat Spores a Cutpurse charm pays after a won fight in which the player
     landed a winning Feint. Static per fight (does not stack with the number of
@@ -2639,7 +2678,7 @@ def handle_action(table, body):
         'equip-gear': _equip_gear,
         'salvage-gear': _salvage_gear, 'upgrade-gear': _upgrade_gear,
         'market-list': _market_list, 'market-buy': _market_buy,
-        'market-cancel': _market_cancel,
+        'market-cancel': _market_cancel, 'market-edit': _market_edit,
         'pickup-resolve': _pickup_resolve,
         'incubate-egg': _incubate_egg, 'hatch-egg': _hatch_egg,
         'activate-pet': _activate_pet, 'merge-pet': _merge_pet,
@@ -2823,10 +2862,35 @@ def post_event(table, sid, etype, text):
 
 # ── Season lifecycle ─────────────────────────────────────────────────────────
 
+def _resolve_started_at(raw):
+    """Normalize an optional backdated night-start override into the naive-UTC
+    seconds form `_now()` uses. Returns (stamp, None) on success, or (None, err)
+    for a non-parseable or future timestamp. `None`/empty → (now, None)."""
+    if not raw:
+        return _now(), None
+    try:
+        # Strip any trailing 'Z'/offset (the client sends toISOString()) so the
+        # stored stamp compares cleanly against naive _now() in regen math.
+        parsed = datetime.fromisoformat(str(raw).split('+')[0].split('Z')[0])
+    except ValueError:
+        return None, _err('startedAt must be an ISO-8601 timestamp')
+    if parsed > datetime.utcnow():
+        return None, _err('startedAt cannot be in the future')
+    return parsed.isoformat(timespec='seconds'), None
+
+
 def _season_start(table, payload):
     host_key = (payload.get('hostKey') or '').strip()
     if not host_key:
         return _err('hostKey required')
+
+    # Optional host recovery tool: backdate the night's start so a fresh
+    # character seeds its roll bank as if the night had begun then (see
+    # _seed_night_rolls). Omitted → the night starts now (unchanged behavior).
+    started_at, err = _resolve_started_at(payload.get('startedAt'))
+    if err:
+        return err
+
     sid_old, config_old = _active_season(table)
     if config_old and config_old.get('hostKey') != host_key:
         return _err('Wrong host passphrase.', 403)
@@ -2834,7 +2898,7 @@ def _season_start(table, payload):
     # Promote a waiting "lobby" season into the live night in place: keep the
     # same id and its pre-generated maps, just flip status and stamp startedAt.
     if config_old and config_old.get('status') == 'lobby':
-        table.put_item(Item=dict(config_old, status='active', startedAt=_now()))
+        table.put_item(Item=dict(config_old, status='active', startedAt=started_at))
         _event(table, sid_old, 'season',
                'A new night falls on the Undercity. The swarm stirs…')
         return 200, {'ok': True, 'seasonId': sid_old}
@@ -2846,7 +2910,7 @@ def _season_start(table, payload):
     sid = datetime.utcnow().strftime('%Y%m%d-%H%M%S')
     table.put_item(Item={'pk': _season_pk(sid), 'sk': 'CONFIG',
                          'status': 'active', 'hostKey': host_key,
-                         'startedAt': _now(), 'bossPhase': False})
+                         'startedAt': started_at, 'bossPhase': False})
     table.put_item(Item={'pk': META_PK, 'sk': 'CURRENT', 'seasonId': sid})
     if data.PROCEDURAL_DUNGEONS:
         # Fresh mazes for the night; _season_map reads this record all night.
