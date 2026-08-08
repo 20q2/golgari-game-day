@@ -1148,8 +1148,9 @@ _SPEC = {s['id']: s for s in [
      'itemChance': 0.45, 'personality': 'brute', 'bluff': 0.20},
     # Sim-tuned 2026-08-07: faster + harder-hitting so it reads as the true isle
     # APEX (a slow turtle got out-tempoed to 87% winnable — too easy for Lv10).
+    # ATK 25 sits just under the Savra finale (26) so the boss stays top dog.
     {'id': 'deity_of_scars', 'name': 'Deity of Scars',
-     'hp': 140, 'atk': 27, 'def': 10, 'spd': 8, 'bounty': 72, 'xp': 98,
+     'hp': 140, 'atk': 25, 'def': 10, 'spd': 8, 'bounty': 72, 'xp': 98,
      'itemChance': 0.50, 'personality': 'brute', 'bluff': 0.25},
 ]}
 
@@ -1777,11 +1778,14 @@ LADDER_NODES = frozenset(n for n, nd in MAP_NODES.items() if nd['type'] == 'ladd
 # the Sovereign reforms at full strength for the next challenger.
 ROT_SOVEREIGN = {
     'id': 'rot_sovereign', 'name': 'Savra, Queen of the Golgari',
-    # Tuned as a tough-but-doable finale for a T3 apex creature with T3 gear
-    # (was 240/9 — a lvl-8 glass cannon melted it in one attempt). It's a
-    # SHARED persistent pool, so a full table brings her down faster; a lone
-    # challenger needs ~2 strong attempts plus chip.
-    'hp': 400, 'atk': 14, 'def': 11, 'spd': 6,
+    # Sim-tuned 2026-08-07 (was 400/14/11 — a bare Lv10-12 player one-skirmished
+    # her 96-98% and she barely fought back). Now a real finale: vs a BARE max
+    # player she wins ~68% but dies ~31%; an under-levelled challenger is a
+    # coinflip. The killing power (ATK 26, > the isle apex Deity's 25) comes from
+    # HP + ATK, never a DEF wall. She's a SHARED persistent pool, so a full table
+    # or a lone challenger who pre-chips (Spore Bolts) tips a close solo win.
+    # Bigger pool (400->560) keeps her hard as season-2 builds power-creep up.
+    'hp': 560, 'atk': 26, 'def': 12, 'spd': 6,
     'personality': 'trickster', 'bluff': 0.30,
     'first': {'spores': 120, 'xp': 60},
     'repeat': {'spores': 40, 'xp': 20},

@@ -72,8 +72,9 @@ def test_tier3_isle_outrewards_wilderness_by_xp():
 
 
 def test_shared_pool_boss_hp_is_capped():
-    # Savra's 400-HP SHARED persistent pool must not inflate her per-fight level;
+    # Savra's huge SHARED persistent pool must not inflate her per-fight level;
     # capped, her stat block reads as a strong single-digit finale, not Lv 25+.
-    savra = data.enemy_level(14, 11, 6, 400)
-    assert savra == data.enemy_level(14, 11, 6, data.ENEMY_LEVEL_HP_CAP)
+    s = data.ROT_SOVEREIGN
+    savra = data.enemy_level(s['atk'], s['def'], s['spd'], s['hp'])
+    assert savra == data.enemy_level(s['atk'], s['def'], s['spd'], data.ENEMY_LEVEL_HP_CAP)
     assert savra <= 10

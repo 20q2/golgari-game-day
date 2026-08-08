@@ -87,7 +87,7 @@ export function petSpriteUrl(species: PetSpecies): string {
 
 // ── Temperament (CLIENT-ONLY cosmetic) ───────────────────────────────────────
 // Personality that drives how the board follower pet idles, wanders, and hops
-// (see engine/board-canvas.ts `updateAndDrawPet`). Fixed per ROLE — two species
+// (see engine/board-canvas.ts `updatePet`). Fixed per ROLE — two species
 // share a role and therefore a temperament. This has NO server counterpart; it
 // only reshapes animation feel, never behaviour or balance.
 

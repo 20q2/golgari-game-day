@@ -348,6 +348,10 @@ const SCUTTLE_BOB = 4; // px it lifts at the busiest part of a scuttle
 // Active-companion follower: hops after its owner between spaces (arriving a
 // beat late), then pokes around the space when idle.
 const PET_DRAW_H = 30; // on-board display height (px); sprites scaled to this
+// Sprites sit ~15px up from the bottom of their 128px frame, so the visible feet
+// (the contact point used for depth sorting) are inset from the drawn image's
+// bottom edge by this fraction of the draw height.
+const SPRITE_FOOT_INSET = 15 / 128;
 const PET_HOP_DUR = 150; // ms per follower hop (2× follow speed)
 const PET_HOP_HEIGHT = 7; // px lift at a hop's peak
 const PET_HOP_STEP = 34; // max px one hop advances toward the target (far = chain hops)
@@ -1697,10 +1701,22 @@ export class BoardCanvas {
     // Painter's algorithm: lower tokens draw over higher ones; labels last so
     // no sprite occludes a name.
     placed.sort((a, b) => a.y - b.y);
-    // Active companion trails its owner (drawn under the tokens so it peeks out
-    // from beside/behind the creatures).
-    this.updateAndDrawPet(ts, elapsed, placed);
-    for (const t of placed) this.drawToken(t.p, t.x, t.y, t.hopY, t.breath);
+    // Active companion trails its owner. Fold it into the painter's order by its
+    // foot (bottom-pixel) y so it draws behind tokens whose feet are lower on the
+    // board and in front of those whose feet are higher — matching the depth cue
+    // the tokens use among themselves.
+    const petDraw = this.updatePet(ts, elapsed, placed);
+    const drawables: { footY: number; draw: () => void }[] = placed.map((t) => {
+      // t.y is the token's anchor; its planted feet sit targetH/2 below that,
+      // less the frame's bottom inset — this is the true contact point.
+      const spr = formSprite(t.p.form, t.p.spriteVariant);
+      const targetH = this.tokenHeight(t.p.userId === this.ownUserId, t.p.tier) * spr.scale;
+      const footY = t.y + targetH / 2 - SPRITE_FOOT_INSET * targetH;
+      return { footY, draw: () => this.drawToken(t.p, t.x, t.y, t.hopY, t.breath) };
+    });
+    if (petDraw) drawables.push(petDraw);
+    drawables.sort((a, b) => a.footY - b.footY);
+    for (const d of drawables) d.draw();
     for (const t of placed) this.drawLabel(t.p, t.x, t.y);
     // Pop any queued heal numbers at their token's current position.
     if (this.pendingHealPops.length) {
@@ -3089,15 +3105,15 @@ export class BoardCanvas {
 
   /** Update + draw the owner's active companion: it hops after the own token
    *  between spaces (arriving a beat late) and pokes around the space when idle. */
-  private updateAndDrawPet(
+  private updatePet(
     ts: number,
     elapsed: number,
     placed: { p: BoardPlayer; x: number; y: number; hopY: number; breath: number }[],
-  ): void {
+  ): { footY: number; draw: () => void } | null {
     const img = this.petImg;
-    if (!this.activePetSprite || !img || !img.complete || !img.naturalWidth) return;
+    if (!this.activePetSprite || !img || !img.complete || !img.naturalWidth) return null;
     const ownT = placed.find((t) => t.p.userId === this.ownUserId);
-    if (!ownT) return; // own token not on this layer / not visible
+    if (!ownT) return null; // own token not on this layer / not visible
 
     const prof = this.petProfile ?? DEFAULT_PET_PROFILE;
 
@@ -3196,25 +3212,34 @@ export class BoardCanvas {
     const top = s.y - drawH + hopY;
     const ctx = this.ctx;
 
-    // Ground shadow (shrinks a touch at a hop's peak to sell the height).
+    // Snapshot the resolved position; the closure draws later, once the pet has
+    // been sorted into the token painter's order by its foot y. s.y is the image
+    // bottom; inset it to the visible feet so it matches the token contact point.
+    const px = s.x;
+    const footY = s.y - SPRITE_FOOT_INSET * drawH;
+    const facing = s.facing;
     const shadowShrink = 1 - Math.min(0.3, -hopY / prof.hopHeight / 3);
-    ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(s.x, s.y, drawH * 0.34 * shadowShrink, drawH * 0.14 * shadowShrink, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fill();
-    ctx.restore();
+    const draw = () => {
+      // Ground shadow (shrinks a touch at a hop's peak to sell the height).
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(px, footY, drawH * 0.34 * shadowShrink, drawH * 0.14 * shadowShrink, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fill();
+      ctx.restore();
 
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    if (s.facing < 0) {
-      ctx.translate(s.x, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(img, -drawW / 2, top, drawW, drawH);
-    } else {
-      ctx.drawImage(img, s.x - drawW / 2, top, drawW, drawH);
-    }
-    ctx.restore();
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      if (facing < 0) {
+        ctx.translate(px, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img, -drawW / 2, top, drawW, drawH);
+      } else {
+        ctx.drawImage(img, px - drawW / 2, top, drawW, drawH);
+      }
+      ctx.restore();
+    };
+    return { footY, draw };
   }
 
   private drawToken(

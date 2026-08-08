@@ -147,7 +147,7 @@ and adjust before deploy.
 | catacomb_shifter | depths+ruin / elite (T2) | 54 | 15 | 7 | 8 | 28 | 48 | 0.25 | trickster | 0.18 |
 | putrid_leech | isle / wild (T3) | 100 | 20 | 6 | 7 | 50 | 70 | 0.40 | brute | 0.15 |
 | molderhulk | isle / wild+elite (T3) | 108 | 20 | 8 | 5 | 60 | 85 | 0.45 | brute | 0.20 |
-| deity_of_scars | isle / elite (T3) | 140 | 27 | 10 | 8 | 72 | 98 | 0.50 | brute | 0.25 |
+| deity_of_scars | isle / elite (T3) | 140 | 25 | 10 | 8 | 72 | 98 | 0.50 | brute | 0.25 |
 
 Every `personality` must be in `STANCE_PERSONALITIES`; `bluff` in `[0,1]`
 (enforced by `test_all_battle_specs_have_valid_personality`).
