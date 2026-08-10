@@ -16,12 +16,17 @@ import { QueueEntry } from '../../services/queue-models';
 
 export type SceneKind =
   | 'attract'
+  | 'lobby'
   | 'flyover'
   | 'hero'
   | 'leaderboard'
   | 'hotspot'
   | 'boss'
-  | 'queue';
+  | 'queue'
+  | 'plaza';
+
+/** What the after-hours plaza shows over the (always-visible) creatures. */
+export type PlazaOverlay = 'champion' | 'standings' | 'none';
 
 export interface Scene {
   kind: SceneKind;
@@ -33,8 +38,31 @@ export interface Scene {
   glideMs?: number;
   /** The featured player, for hero / hotspot beats. */
   player?: PublicPlayer;
+  /** Which card sits over the plaza; only set on `plaza` scenes. */
+  plazaOverlay?: PlazaOverlay;
   /** How long to hold this scene before advancing, in ms. */
   holdMs: number;
+}
+
+/**
+ * Which show the TV is putting on. Derived from the season alone, so the
+ * director and the component can never disagree about what should be on screen.
+ *
+ * - `live`   — a night is running with creatures in it: the full board rotation.
+ * - `lobby`  — a night is scheduled but hasn't launched: countdown + join QR.
+ * - `ended`  — the night is over: the after-hours plaza with final standings.
+ * - `attract`— nothing to show (no season, or a season with an empty roster).
+ */
+export type BroadcastMode = 'live' | 'lobby' | 'ended' | 'attract';
+
+export function broadcastMode(season: Season | null, players: PublicPlayer[]): BroadcastMode {
+  const status = season?.status;
+  if (!status) return 'attract';
+  if (status === 'lobby') return 'lobby';
+  // Both `active` and `ended` need somebody to look at; an empty roster falls
+  // back to the attract screen rather than an empty board or a silent plaza.
+  if (!players.length) return 'attract';
+  return status === 'ended' ? 'ended' : status === 'active' ? 'live' : 'attract';
 }
 
 export interface SpectatorMapInfo {
@@ -55,12 +83,19 @@ export interface SpectatorState {
 // Scene hold durations (ms) and camera zooms — tuned for a glanceable TV loop.
 export const HOLD = {
   attract: 12_000,
+  lobby: 12_000,
   flyover: 15_000,
   hero: 10_000,
   leaderboard: 12_000,
   hotspot: 10_000,
   boss: 10_000,
   queue: 13_000,
+  /** After-hours plaza beats, by overlay. The `none` beat is deliberately the
+   *  longest — it's the "just watch them bounce" stretch the whole screen is
+   *  for, and nothing is covering the creatures during it. */
+  plazaChampion: 13_000,
+  plazaStandings: 15_000,
+  plazaWatch: 18_000,
 } as const;
 
 export const ZOOM = {
@@ -92,6 +127,13 @@ const BASE_ROTATION: SceneKind[] = [
   'boss',
 ];
 
+/**
+ * The after-hours loop. The plaza itself never cuts away — only this overlay
+ * does, so the creatures stay on screen the whole time. Champion first (it's
+ * the payoff), then alternate the full table with clear stretches.
+ */
+const PLAZA_ROTATION: PlazaOverlay[] = ['champion', 'none', 'standings', 'none'];
+
 /** Event types worth interrupting the rotation to celebrate. */
 const HIGHLIGHT_EVENTS = new Set([
   'evolve',
@@ -110,6 +152,7 @@ export class SpectatorDirector {
   private queue: QueueEntry[] = [];
 
   private slot = -1; // index into BASE_ROTATION
+  private plazaSlot = -1; // index into PLAZA_ROTATION (after-hours loop)
   private heroIdx = 0; // round-robin over players for hero beats
   private flyIdx = 0; // round-robin over flyover anchors
   private lastEventKey: string | null = null;
@@ -137,8 +180,9 @@ export class SpectatorDirector {
     return this.scene;
   }
 
-  private get isLive(): boolean {
-    return this.season?.status === 'active' && this.players.length > 0;
+  /** Which show is on right now — same helper the component uses. */
+  mode(): BroadcastMode {
+    return broadcastMode(this.season, this.players);
   }
 
   private detectNewHighlight(): void {
@@ -164,10 +208,17 @@ export class SpectatorDirector {
   }
 
   private computeNext(): Scene {
-    if (!this.isLive) {
+    const mode = this.mode();
+    if (mode !== 'live') {
+      // Reset the board rotation so a night that starts (or restarts) opens on
+      // its first slot rather than wherever the last show left off.
       this.slot = -1;
+      if (mode === 'lobby') return { kind: 'lobby', holdMs: HOLD.lobby };
+      if (mode === 'ended') return this.plazaScene();
+      this.plazaSlot = -1;
       return { kind: 'attract', holdMs: HOLD.attract };
     }
+    this.plazaSlot = -1;
 
     // A fresh highlight interrupts the rotation with that player's hero card.
     if (this.pendingActor) {
@@ -222,6 +273,20 @@ export class SpectatorDirector {
       default:
         return this.flyoverScene();
     }
+  }
+
+  /** Next beat of the after-hours plaza loop. No focusNodeId: the board camera
+   *  is not what's on screen, so nothing should glide underneath. */
+  private plazaScene(): Scene {
+    this.plazaSlot = (this.plazaSlot + 1) % PLAZA_ROTATION.length;
+    const overlay = PLAZA_ROTATION[this.plazaSlot];
+    const holdMs =
+      overlay === 'champion'
+        ? HOLD.plazaChampion
+        : overlay === 'standings'
+          ? HOLD.plazaStandings
+          : HOLD.plazaWatch;
+    return { kind: 'plaza', plazaOverlay: overlay, holdMs };
   }
 
   private flyoverScene(): Scene {

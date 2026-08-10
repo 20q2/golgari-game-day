@@ -22,9 +22,17 @@ OUT.mkdir(exist_ok=True)
 
 REG = enemy_registry()
 # A representative enemy ladder, weakest -> strongest, for arena tables.
-LADDER = ['drudge_beetle', 'myconid', 'fetid_imp', 'rot_shambler',
-          'large_bear', 'loleth_troll', 'embermaw_alpha', 'thornclad_revenant',
-          'rot_sovereign']
+# Refreshed 2026-08-09: the pre-2026-08-07 ids (myconid, fetid_imp,
+# rot_shambler, embermaw_alpha, thornclad_revenant) no longer exist since spawns
+# moved to per-biome REGION_NPCS pools, and their absence crashed the sweep.
+# Now walks the regions in difficulty order: city -> garden -> wilderness ->
+# isle -> boss. Kept as a hand-picked list so the table stays comparable run to
+# run; assert-checked below so a future rename fails loudly instead of at index.
+LADDER = ['sewer_shambler', 'thallid', 'ravenous_squirrel', 'canker_abomination',
+          'large_bear', 'loleth_troll', 'infested_thrinax', 'sluiceway_scorpion',
+          'molderhulk', 'putrid_leech', 'rot_sovereign']
+_missing = [e for e in LADDER if e not in REG]
+assert not _missing, f'sim LADDER references unknown enemy ids: {_missing}'
 
 
 def custom_policy(pref_stance='guard', stat_priority=('atk', 'def', 'spd'),

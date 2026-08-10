@@ -15,7 +15,7 @@ def test_gorgon_scalars_defined():
 def test_gorgon_starter_defined():
     g = data.STARTERS['elf']
     assert g['passive'] == 'stonewright'
-    assert (g['hp'], g['atk'], g['def'], g['spd']) == (25, 6, 6, 4)
+    assert (g['hp'], g['atk'], g['def'], g['spd']) == (30, 6, 6, 4)
 
 
 def test_gorgon_evolution_line():

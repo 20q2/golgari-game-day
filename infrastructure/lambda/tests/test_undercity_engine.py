@@ -92,14 +92,20 @@ def test_compute_renown_uses_win_renown_with_grandfather_fallback():
 # ── Leveling ─────────────────────────────────────────────────────────────────
 
 def test_xp_curve():
-    # Progressive curve (design 2026-08-04): flat-ish early, ramps after L5.
-    # Calibrated to a ~48-roll night; total L1->12 = 677.
+    # Progressive curve (design 2026-08-08 retune): flat-ish early, ramps hard
+    # after L5. Calibrated to a measured ~6h45m / 55-roll night where the top
+    # two players earned 883 and 970 XP; total L1->12 = 950.
     assert data.xp_to_next(1) == 20      # anchor: 2 basic wild kills (10 XP each)
     assert data.xp_to_next(5) == 40
-    assert data.xp_to_next(6) == 47      # ramp begins
-    assert data.xp_to_next(9) == 92
-    assert data.xp_to_next(11) == 142
-    assert sum(data.xp_to_next(l) for l in range(1, 12)) == 677
+    assert data.xp_to_next(6) == 50      # ramp begins
+    assert data.xp_to_next(9) == 140
+    assert data.xp_to_next(11) == 250
+    assert sum(data.xp_to_next(l) for l in range(1, 12)) == 950
+    # The early onramp is deliberately untouched by the retune: levels 1-6 cost
+    # the same as the old curve, so a brand-new player's first hour is unchanged.
+    assert sum(data.xp_to_next(l) for l in range(1, 6)) == 150
+    # L10 is the "normal" end-of-night ceiling; L11/L12 are stretch goals.
+    assert sum(data.xp_to_next(l) for l in range(1, 10)) == 510
     # A single mid/high elite shouldn't reliably auto-level in the ramp band.
     assert data.xp_to_next(7) > 47       # a T2 elite (~47) no longer levels you
     assert data.xp_to_next(11) > 100     # nor the fattest T3 apex elite (~100)
@@ -154,11 +160,13 @@ def test_spend_stat_stacks_freely_until_out_of_points():
 # ── Movement ─────────────────────────────────────────────────────────────────
 
 def test_exact_count_no_backtrack_on_loop():
-    # From city_r0, two steps forward each way round the ring — plus wild_cit1,
-    # the Wilderness spoke hanging off city_r9 (a gate-adjacent node) since the
-    # tunnels+wilderness pass. See specs/2026-07-20-undercity-tunnels-wilderness-design.md.
+    # From city_r0, an exact-count-2 walk reaches two steps each way round the
+    # city ring, and the no-backtrack rule forbids returning to the start. (The
+    # gate also sprouts wilderness/fog spokes that shift with editor passes, so
+    # we assert the ring landings + the no-backtrack invariant, not an exact set.)
     dests = legal_destinations(data.MAP_NODES, 'city_r0', 2)
-    assert dests == {'city_r2', 'city_r8', 'wild_cit1'}
+    assert {'city_r2', 'city_r8'} <= dests
+    assert 'city_r0' not in dests
 
 
 def test_fork_gives_multiple_choices():
@@ -168,14 +176,12 @@ def test_fork_gives_multiple_choices():
 
 
 def test_boss_approach_loop_lands_on_multiple_rolls():
-    # Island chain: warp -> trade -> ossuary -> boss (3 steps to the boss).
-    # The boss now sits inside a guardian ring (isl_bg1/isl_bg2 flank it), so
-    # both a 3-roll and a 4-roll can land on the boss instead of only an exact
-    # count — the whole point of the approach loops. The causeway branch off
-    # isl_warp (cw5...) still contributes cw3 at 3 and cw2 at 4. See
-    # specs/2026-07-20-undercity-boss-approach-loops-design.md.
-    assert legal_destinations(data.MAP_NODES, 'isl_warp', 3) == {'boss', 'isl_bg1', 'isl_bg2', 'cw3'}
-    assert legal_destinations(data.MAP_NODES, 'isl_warp', 4) == {'boss', 'isl_bg1', 'isl_bg2', 'cw2'}
+    # The boss sits inside a guardian ring on the isle, so BOTH a 3-roll and a
+    # 4-roll from isl_warp can land ON it — not only a single exact count. That
+    # is the whole point of the approach loops. (The exact flanking/causeway node
+    # ids shift with editor passes, so assert the boss-reachability invariant.)
+    assert 'boss' in legal_destinations(data.MAP_NODES, 'isl_warp', 3)
+    assert 'boss' in legal_destinations(data.MAP_NODES, 'isl_warp', 4)
 
 
 def test_can_circle_back_to_start_on_a_loop():
@@ -251,12 +257,14 @@ def test_closed_barrier_is_a_valid_final_stop():
 
 
 def test_closed_barrier_blocks_passage_through():
-    # Two steps from s0 would pass THROUGH bar_s into the vault loop — sealed.
-    dests = legal_destinations(data.MAP_NODES, 's0', 2, closed=frozenset({'bar_s'}))
-    assert dests & {'s1', 's2', 's3', 'vault'} == set()
-    # Once open, the same roll walks through.
-    dests_open = legal_destinations(data.MAP_NODES, 's0', 2)
-    assert 's1' in dests_open
+    # bar_s guards a side pocket hanging off s0. The node on its far side must be
+    # unreachable while the barrier is sealed but walkable once it opens. Derive
+    # that far node from the graph so this survives pocket restructuring.
+    far = next(nb for nb in data.MAP_NODES['bar_s']['neighbors'] if nb != 's0')
+    # Sealed: a 2-step roll that would pass THROUGH bar_s cannot enter the pocket.
+    assert far not in legal_destinations(data.MAP_NODES, 's0', 2, closed=frozenset({'bar_s'}))
+    # Once open, the same roll walks through into the pocket.
+    assert far in legal_destinations(data.MAP_NODES, 's0', 2)
 
 
 def test_walk_toward_barrier_stops_at_the_wall():

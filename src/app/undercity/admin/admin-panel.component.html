@@ -142,6 +142,20 @@
   </section>
 
   <section class="admin-section">
+    <h2>Dev Night</h2>
+    <p class="hint">
+      Every player rolls for free — the roll bank stops being spent and the Roll
+      button shows ∞. Nothing else changes: combat, spore costs, cooldowns and
+      drops all behave exactly as in a real night. Reversible any time, and it
+      ends with the night.
+    </p>
+    <button (click)="toggleDevNight()" [disabled]="busy() || !hostKey.trim()">
+      <mat-icon class="mi">{{ devMode() ? 'stop_circle' : 'all_inclusive' }}</mat-icon>
+      {{ devMode() ? 'End Dev Night' : 'Start Dev Night' }}
+    </button>
+  </section>
+
+  <section class="admin-section">
     <h2>Danger zone</h2>
     <p class="hint">
       Archives the current night and opens a fresh one (new board, empty roster,

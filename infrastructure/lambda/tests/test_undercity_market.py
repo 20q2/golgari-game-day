@@ -173,7 +173,7 @@ def test_market_buy_rejects_full_bag(table):
     seller['bag'] = ['healing_moss']
     _, body = db._market_list(table, sid, seller, {'kind': 'consumable', 'index': 0, 'price': 12})
     buyer['spores'] = 50
-    buyer['bag'] = ['loaded_die', 'smoke_spore', 'snare']   # BAG_SIZE = 3, full
+    buyer['bag'] = ['healing_moss'] * db.data.BAG_SIZE             # full
     status, _ = db._market_buy(table, sid, buyer, {'listingId': body['listingId']})
     assert status == 409
 

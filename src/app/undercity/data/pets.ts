@@ -164,15 +164,17 @@ export const PET_SALVAGE_ICHOR_MIN_TIER = 3;
 
 // ── Timers / activated-ability cadence (mirror undercity_config) ─────────────
 
-export const PET_INCUBATE_MINUTES = 5;
+/** Board spaces an egg must be CARRIED before it hatches — a step timer, not a
+ *  clock (mirror of undercity_config.PET_INCUBATE_SPACES). Walking is the only
+ *  thing that advances it, so a short play burst can always finish an egg. */
+export const PET_INCUBATE_SPACES = 5;
 
-/** Activated-ability base cooldowns (minutes), keyed by ROLE, shortened as the
- *  pet levels. */
-export const PET_ABILITY_COOLDOWN_MIN: Partial<Record<PetRole, number>> = {
-  scout: 30, forage: 20,
-};
-export const PET_ABILITY_COOLDOWN_PER_LVL = 2;
-export const PET_ABILITY_COOLDOWN_FLOOR = 5;
+/** Scout recharges by DISTANCE like forage (mirror of undercity_config): base
+ *  board spaces, shaved as the pet levels, never below the floor. No activated
+ *  ability runs on a wall clock any more. */
+export const PET_SCOUT_RECHARGE_SPACES = 9;
+export const PET_SCOUT_RECHARGE_PER_LVL = 1;
+export const PET_SCOUT_RECHARGE_FLOOR = 4;
 
 /** Forage recharges by DISTANCE, not time: using it primes a countdown of this
  *  many board spaces, ticked down as you move, ready again at 0. Flat (leveling
@@ -193,14 +195,15 @@ export function scoutTierCap(level: number): number {
 // scavenges Spores as you MOVE: each loot space you pass OVER banks a few onto
 // the pet (server-authoritative, stored on `you.petSporeBank`), up to a
 // level-scaled cap, which the player taps to redeem via its board quick-use box.
-export const PET_SPORE_PER_LOOT_BASE = 2;
+export const PET_SPORE_PER_LOOT_BASE = 5;
 export const PET_SPORE_PER_LOOT_PER_LVL = 1;
+export const PET_SPORE_PER_LOOT_MAX = 8;
 export const PET_SPORE_CAP_BASE = 60;
 export const PET_SPORE_CAP_PER_LVL = 30;
 
 /** Spores banked per loot space passed over, by the pet's level (preview only). */
 export function economyPerLoot(level: number): number {
-  return PET_SPORE_PER_LOOT_BASE + PET_SPORE_PER_LOOT_PER_LVL * (level - 1);
+  return Math.min(PET_SPORE_PER_LOOT_MAX, PET_SPORE_PER_LOOT_BASE + PET_SPORE_PER_LOOT_PER_LVL * (level - 1));
 }
 /** The most Spores an economy pet can bank before you must collect. */
 export function economySporeCap(level: number): number {
@@ -290,7 +293,7 @@ export function petAbilityStats(pet: Pet): { label: string; value: string }[] {
     case 'scout':
       return [
         { label: 'Delivers up to', value: `${tierRarity(scoutTierCap(lvl)).label} gear` },
-        { label: 'Cooldown', value: `${abilityCooldownMin('scout', lvl)} min` },
+        { label: 'Recharges after', value: `${scoutRechargeSpaces(lvl)} spaces` },
       ];
     case 'economy':
       return [
@@ -363,26 +366,31 @@ export function mergeWouldRankUp(target: Pet, fodder: Pet[]): boolean {
   return target.mergeProgress + mergePointsFor(fodder, target.species) >= need;
 }
 
-/** Real-time ability cooldown (minutes) for a role at a level. */
-export function abilityCooldownMin(role: PetRole, level: number): number {
-  const base = PET_ABILITY_COOLDOWN_MIN[role] ?? 0;
-  return Math.max(PET_ABILITY_COOLDOWN_FLOOR, base - PET_ABILITY_COOLDOWN_PER_LVL * (level - 1));
+/** Board spaces a scout must walk to recharge at a given level (mirror of
+ *  undercity_db._pet_scout_recharge_spaces). */
+export function scoutRechargeSpaces(level: number): number {
+  return Math.max(
+    PET_SCOUT_RECHARGE_FLOOR,
+    PET_SCOUT_RECHARGE_SPACES - PET_SCOUT_RECHARGE_PER_LVL * (level - 1),
+  );
 }
 
-/** True if an activated pet's shared cooldown (keyed by ROLE) has elapsed
- *  (server clock, ISO without trailing Z — same convention as spellCooldowns). */
-export function abilityReady(petCooldowns: Record<string, string> | undefined, role: PetRole): boolean {
-  const readyAt = petCooldowns?.[role];
-  if (!readyAt) return true;
-  return new Date(readyAt + 'Z').getTime() <= Date.now();
+/** True if an activated pet's role countdown has been walked off. Every
+ *  activated ability recharges by DISTANCE now, so this is a step count, not a
+ *  clock — nothing a companion does is gated behind waiting. */
+export function abilityReady(
+  petRecharge: Record<string, number> | undefined,
+  role: PetRole,
+): boolean {
+  return (petRecharge?.[role] ?? 0) <= 0;
 }
 
-/** Minutes left on an activated pet's cooldown (0 when ready). */
-export function abilityCooldownLeftMin(petCooldowns: Record<string, string> | undefined, role: PetRole): number {
-  const readyAt = petCooldowns?.[role];
-  if (!readyAt) return 0;
-  const ms = new Date(readyAt + 'Z').getTime() - Date.now();
-  return ms <= 0 ? 0 : Math.ceil(ms / 60000);
+/** Board spaces left on an activated pet's recharge (0 when ready). */
+export function abilitySpacesLeft(
+  petRecharge: Record<string, number> | undefined,
+  role: PetRole,
+): number {
+  return Math.max(0, petRecharge?.[role] ?? 0);
 }
 
 /** Allowed Spore price band for selling a companion (scales with level). */

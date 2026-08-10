@@ -65,7 +65,7 @@ def _hatch_tier(table, egg_tier, passives):
     egg_id = doc['eggs'][0]['id']
     db._incubate_egg(table, sid, doc, {'eggId': egg_id})
     doc = db._get_player(table, sid, 'user-alex')
-    doc['incubator']['startedAt'] = _incubating_since(config.PET_INCUBATE_MINUTES + 1)
+    doc['incubator']['spacesLeft'] = 0        # carried far enough to hatch
     status, _ = db._hatch_egg(table, sid, doc, {})
     assert status == 200
     return doc['pets'][-1]['tier']

@@ -21,7 +21,7 @@ def test_pet_tables_wellformed():
     # Progression tables cover the four rarity tiers.
     assert set(data.PET_LEVEL_CAP) == {1, 2, 3, 4}
     assert data.PET_MERGE_COST.keys() == {2, 3, 4}       # cost to REACH tier 2/3/4
-    assert config.PET_INCUBATE_MINUTES == 5
+    assert config.PET_INCUBATE_SPACES == 5   # step timer, not a clock
 
 
 def test_new_player_has_empty_companion_state(table):
@@ -30,7 +30,7 @@ def test_new_player_has_empty_companion_state(table):
     assert doc['eggs'] == []
     assert doc['incubator'] is None
     assert doc['activePetId'] is None
-    assert doc['petCooldowns'] == {}
+    assert doc['petRecharge'] == {}
 
 
 def test_pet_helpers(table):
@@ -45,6 +45,33 @@ def test_pet_helpers(table):
 
 def _incubating_since(minutes_ago):
     return (datetime.utcnow() - timedelta(minutes=minutes_ago)).isoformat(timespec='seconds')
+
+
+def test_incubation_ticks_down_by_walking_not_waiting(table):
+    """Eggs warm by being CARRIED (design 2026-08-10). Time alone must never
+    hatch one, and walking must always be able to — a burst player has to be
+    able to finish what they start without waiting out a clock."""
+    sid, doc = _player_at(table, 'n1')
+    db._grant_egg(doc, 1)
+    db._incubate_egg(table, sid, doc, {'eggId': doc['eggs'][0]['id']})
+    assert doc['incubator']['spacesLeft'] == config.PET_INCUBATE_SPACES
+
+    # Backdating the clock does nothing — this is not a wall-clock timer.
+    doc['incubator']['startedAt'] = _incubating_since(24 * 60)
+    assert db._incubator_ready(doc['incubator']) is False
+
+    # Each space walked ticks it down; a `path` of N nodes covers N-1 spaces.
+    inc = doc['incubator']
+    inc['spacesLeft'] = max(0, inc['spacesLeft'] - (len(['a', 'b', 'c']) - 1))
+    assert inc['spacesLeft'] == config.PET_INCUBATE_SPACES - 2
+    assert db._incubator_ready(inc) is False
+
+    inc['spacesLeft'] = 0
+    assert db._incubator_ready(inc) is True
+
+    # Legacy docs written before the switch have no counter — treat them as
+    # ready rather than stranding an egg that can never tick down.
+    assert db._incubator_ready({'eggId': 'x', 'tier': 1}) is True
 
 
 def test_grant_incubate_hatch_flow(table):
@@ -64,7 +91,7 @@ def test_grant_incubate_hatch_flow(table):
     status, _ = db._hatch_egg(table, sid, doc, {})
     assert status == 429
 
-    doc['incubator']['startedAt'] = _incubating_since(config.PET_INCUBATE_MINUTES + 1)
+    doc['incubator']['spacesLeft'] = 0        # carried far enough to hatch
     status, body = db._hatch_egg(table, sid, doc, {})
     assert status == 200
     assert doc['incubator'] is None
@@ -335,15 +362,33 @@ def _persist_active_pet(table, species, level=1):
     return sid, db._get_player(table, sid, 'user-alex')
 
 
-def test_pet_ability_cooldown_shortens_with_level():
-    # Scout still uses the real-time cooldown (forage now recharges by distance).
-    # Cooldowns are keyed by ROLE, not species.
-    lo = db._pet_ability_cooldown_min('scout', 1)
-    hi = db._pet_ability_cooldown_min('scout', 4)
-    assert lo == config.PET_ABILITY_COOLDOWN_MIN['scout']
+def test_scout_recharge_shortens_with_level():
+    # Every activated ability now recharges by DISTANCE (design 2026-08-10) —
+    # forage led, scout followed. Countdowns are keyed by ROLE, not species.
+    lo = db._pet_scout_recharge_spaces(1)
+    hi = db._pet_scout_recharge_spaces(4)
+    assert lo == config.PET_SCOUT_RECHARGE_SPACES
     assert hi < lo
-    # Never faster than the floor.
-    assert db._pet_ability_cooldown_min('scout', 99) == config.PET_ABILITY_COOLDOWN_FLOOR
+    # Never fewer than the floor.
+    assert db._pet_scout_recharge_spaces(99) == config.PET_SCOUT_RECHARGE_FLOOR
+
+
+def test_step_timers_tick_together_on_movement():
+    """One walk advances every distance countdown a companion owns."""
+    doc = {'forageRecharge': 6, 'petRecharge': {'scout': 9},
+           'incubator': {'spacesLeft': 5}}
+    db._tick_step_timers(doc, 2)
+    assert doc['forageRecharge'] == 4
+    assert doc['petRecharge']['scout'] == 7
+    assert doc['incubator']['spacesLeft'] == 3
+    db._tick_step_timers(doc, 99)                  # clamps at ready, never negative
+    assert doc['forageRecharge'] == 0
+    assert doc['petRecharge']['scout'] == 0
+    assert doc['incubator']['spacesLeft'] == 0
+    # A doc with none of these fields is left alone entirely.
+    bare = {}
+    db._tick_step_timers(bare, 3)
+    assert bare == {}
 
 
 def test_economy_per_loot_scales_and_cap_climbs():
@@ -465,7 +510,7 @@ def test_forage_gives_spores_and_primes_recharge(table):
     # Forage recharges by DISTANCE now — using it primes a space countdown, not a
     # real-time clock. The recharge is flat (level 2 still primes the base count).
     assert doc['forageRecharge'] == config.PET_FORAGE_RECHARGE_SPACES
-    assert 'forage' not in doc.get('petCooldowns', {})
+    assert 'forage' not in doc.get('petRecharge', {})
     # Still recharging -> rejected.
     status, _ = act(table, 'use-pet-ability')
     assert status == 429

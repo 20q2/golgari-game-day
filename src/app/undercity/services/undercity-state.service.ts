@@ -83,7 +83,6 @@ export class UndercityStateService {
   readonly players = computed(() => this._state()?.players ?? []);
   readonly pendingBattle = computed(() => this._state()?.battle ?? null);
   readonly events = computed(() => this._state()?.events ?? []);
-  readonly snares = computed(() => this._state()?.snares ?? []);
   readonly tradingPosts = computed(() => this._state()?.tradingPosts ?? {});
   readonly umori = computed(() => this._state()?.umori ?? null);
   readonly bazaars = computed(() => this._state()?.bazaars ?? {});

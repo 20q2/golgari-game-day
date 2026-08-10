@@ -20,7 +20,7 @@ import {
   MarketKind,
   SALVAGE_YIELD,
 } from '../data/items';
-import { RIDER_AUGMENTS } from '../data/combat';
+import { gearProperty } from '../data/combat';
 import {
   innateSpellIds,
   GRIMOIRE_MAP,
@@ -60,14 +60,14 @@ import {
   mergePointsFor,
   PET_MERGE_COST,
   abilityReady,
-  abilityCooldownLeftMin,
+  abilitySpacesLeft,
   petMarketBand,
   eggMarketBand,
   petRole,
   petSpriteUrl,
   eggSpriteUrl,
   Egg,
-  PET_INCUBATE_MINUTES,
+  PET_INCUBATE_SPACES,
 } from '../data/pets';
 import { formSprite } from '../data/species';
 import { getRecoloredDataUrl, getRecoloredWithHatEffectDataUrl } from '../engine/sprite-engine';
@@ -277,7 +277,7 @@ export class CreatureTabComponent {
   protected readonly petSalvageYield = salvageYield;
   protected readonly petSpriteUrl = petSpriteUrl;
   protected readonly eggSpriteUrl = eggSpriteUrl;
-  protected readonly PET_INCUBATE_MINUTES = PET_INCUBATE_MINUTES;
+  protected readonly PET_INCUBATE_SPACES = PET_INCUBATE_SPACES;
 
   /** The pet whose detail popup is open (null = none). */
   protected readonly selectedPet = signal<Pet | null>(null);
@@ -343,12 +343,12 @@ export class CreatureTabComponent {
   protected readonly eggsList = computed(() => this.store.you()?.eggs ?? []);
   protected readonly incubator = computed(() => this.store.you()?.incubator ?? null);
 
-  /** True once the incubating egg has sat long enough to hatch. */
+  /** True once the egg has been CARRIED far enough to hatch. Step timer, not a
+   *  clock — legacy docs with no counter read as ready. */
   protected readonly incubatorReady = computed<boolean>(() => {
     const inc = this.incubator();
-    if (!inc?.startedAt) return false;
-    const done = new Date(inc.startedAt + 'Z').getTime() + PET_INCUBATE_MINUTES * 60000;
-    return Date.now() >= done;
+    if (!inc) return false;
+    return (inc.spacesLeft ?? 0) <= 0;
   });
 
   /** True when the incubator slot is free but eggs are sitting uncooked — a nudge
@@ -357,26 +357,25 @@ export class CreatureTabComponent {
     () => !this.incubator() && this.eggsList().length > 0,
   );
 
-  /** Whole minutes left before the incubating egg can hatch (0 when ready). */
-  protected incubatorLeftMin(): number {
-    const inc = this.incubator();
-    if (!inc?.startedAt) return 0;
-    const done = new Date(inc.startedAt + 'Z').getTime() + PET_INCUBATE_MINUTES * 60000;
-    const ms = done - Date.now();
-    return ms <= 0 ? 0 : Math.ceil(ms / 60000);
+  /** Board spaces still to walk before the egg hatches (0 when ready). */
+  protected incubatorSpacesLeft(): number {
+    return Math.max(0, this.incubator()?.spacesLeft ?? 0);
   }
 
-  /** Can this activated pet fire right now? Forage recharges by DISTANCE (its
-   *  space countdown must hit 0); scout still runs on a real-time role cooldown. */
+  /** Can this activated pet fire right now? Every activated ability recharges by
+   *  DISTANCE — its space countdown must have reached 0. */
   protected petAbilityReady(pet: Pet): boolean {
     if (petInfo(pet.species).kind !== 'activated') return false;
     const role = petRole(pet.species);
     if (role === 'forage') return this.forageSpacesLeft() <= 0;
-    return abilityReady(this.store.you()?.petCooldowns, role);
+    return abilityReady(this.store.you()?.petRecharge, role);
   }
 
-  protected petAbilityLeftMin(pet: Pet): number {
-    return abilityCooldownLeftMin(this.store.you()?.petCooldowns, petRole(pet.species));
+  /** Board spaces still to walk before this pet's ability is ready (0 = ready). */
+  protected petAbilitySpacesLeft(pet: Pet): number {
+    const role = petRole(pet.species);
+    if (role === 'forage') return this.forageSpacesLeft();
+    return abilitySpacesLeft(this.store.you()?.petRecharge, role);
   }
 
   /** Board spaces still to walk before forage recharges (0 = ready). */
@@ -851,15 +850,11 @@ export class CreatureTabComponent {
     }
     const g = GEAR_MAP[item.id];
     if (!g) return [];
-    const chips: ItemChip[] = [];
-    if (g.rider) {
-      const aug = RIDER_AUGMENTS[g.rider];
-      if (aug) chips.push({ label: aug.label, blurb: aug.blurb });
-    }
-    if (g.light === 'full') {
-      chips.push({ label: 'Illuminating', blurb: 'Reveals the whole dungeon while equipped.' });
-    }
-    return chips;
+    // Every piece has exactly one named property — a stance rider, or an
+    // off-ladder family like Vital or Hybrid — so the card always chips
+    // whatever makes this piece special.
+    const prop = gearProperty(g);
+    return prop ? [{ label: prop.label, blurb: prop.blurb }] : [];
   }
 
   /** Reveal the price control, seeding the cheapest allowed price. */
@@ -1340,10 +1335,9 @@ export class CreatureTabComponent {
     });
   }
 
-  /** How a bag item is actioned: usable now, planted here, a passive hold, or a
-   *  battle-only consumable (so we never offer a "Use" that the server rejects). */
+  /** How a bag item is actioned: usable now, a passive hold, or a battle-only
+   *  consumable (so we never offer a "Use" that the server rejects). */
   protected itemAction(item: string): 'use' | 'plant' | 'passive' | 'battle' {
-    if (item === 'snare') return 'plant';
     if (item === 'smoke_spore') return 'passive';
     if (CONSUMABLE_MAP[item]?.inBattle) return 'battle';
     return 'use';

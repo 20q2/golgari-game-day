@@ -26,14 +26,31 @@ $panel-line: rgba(216, 194, 102, 0.35);
     sans-serif;
 }
 
-.board-stage {
+// Both stages are always laid out at full size and cross-fade between shows.
+// Never collapse them (display:none / zero-size): each canvas engine sizes its
+// backing store from its parent's client box when it mounts.
+.board-stage,
+.plaza-stage {
   position: absolute;
   inset: 0;
+  transition: opacity 0.7s ease;
 
   canvas {
     display: block;
     width: 100%;
     height: 100%;
+  }
+}
+
+.board-stage.hidden {
+  opacity: 0;
+}
+
+.plaza-stage {
+  opacity: 0;
+
+  &.show {
+    opacity: 1;
   }
 }
 
@@ -69,6 +86,10 @@ $panel-line: rgba(216, 194, 102, 0.35);
       background: $green;
       box-shadow: 0 0 0 0 rgba(111, 220, 140, 0.6);
       animation: pulse 2s infinite;
+    }
+
+    &.final {
+      background: $gold;
     }
   }
 
@@ -838,6 +859,119 @@ $panel-line: rgba(216, 194, 102, 0.35);
   }
 }
 
+// ── After-hours plaza: champion card ─────────────────────────────────────────
+// Deliberately compact and centered so the creatures stay visible all around it
+// — the plaza is the point, this is the caption.
+.champ-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(620px, 78vw);
+  padding: 24px 30px;
+  background: $panel;
+  border: 1px solid rgba(216, 194, 102, 0.6);
+  border-radius: 22px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  animation: rise-center 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  text-align: center;
+
+  .champ-kicker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: $gold;
+
+    mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+    }
+  }
+
+  .champ-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    margin-top: 16px;
+    text-align: left;
+  }
+
+  .champ-portrait img {
+    width: 120px;
+    height: 120px;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 18px rgba(216, 194, 102, 0.45));
+  }
+
+  .champ-name {
+    font-size: 40px;
+    font-weight: 900;
+    line-height: 1.05;
+  }
+
+  .champ-creature {
+    font-size: 20px;
+    color: #a9c0af;
+    margin-top: 2px;
+  }
+
+  .champ-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 11px;
+      font-size: 16px;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+
+      &.renown {
+        color: $green;
+        border-color: rgba(111, 220, 140, 0.4);
+      }
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+  }
+
+  .champ-discard {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 15px;
+    color: #d8a9a9;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
 // ── Attract screen ────────────────────────────────────────────────────────────
 .attract {
   position: absolute;
@@ -907,5 +1041,31 @@ $panel-line: rgba(216, 194, 102, 0.35);
       text-transform: uppercase;
       color: #23301f;
     }
+  }
+}
+
+// ── Lobby screen (pre-launch countdown) ──────────────────────────────────────
+// Same full-bleed shell as the attract screen, with the clock as the hero and
+// the join QR still front and centre.
+.lobby-screen {
+  .attract-copy {
+    margin-bottom: 8px;
+
+    &.big {
+      font-size: 30px;
+      color: $ink;
+      margin-bottom: 30px;
+    }
+  }
+
+  .lobby-clock {
+    font-size: 104px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    color: $gold;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 40px rgba(216, 194, 102, 0.35);
+    margin-bottom: 26px;
   }
 }

@@ -40,18 +40,28 @@ GRIMOIRE_SWAP_COOLDOWN_MIN = 30  # opening a different grimoire is gated for N m
                              # (stowing your open book is always free) — client
                              # mirror in src/app/undercity/data/spells.ts
 
-# ── XP curve (design 2026-08-04 progression pacing) ──────────────────────────
+# ── XP curve (design 2026-08-08 retune; supersedes 2026-08-04 pacing) ────────
 # Progressive per-level cost so leveling paces a whole game night instead of
-# capping in ~4h. Flat-ish early (casuals unaffected), ramps after RAMP_FROM so
-# a single T2/T3 elite rarely auto-levels. Total L1->12 = 677 (was 550). Cap
-# stays 12 — this changes PACE, not the power ceiling. Calibrated to a real
-# ~8-9h night ≈ 48 rolls (16 x 3/30min + pokes): a dedicated aggressive player
-# reaches L12 near turn ~40-45 (sim-confirmed), leaving rolls for the boss
-# questline + Savra. Client mirror in src/app/undercity/data/forms.ts::xpToNext;
-# sim harness in infrastructure/lambda/sim/.
+# capping early. Flat-ish early (casuals unaffected), ramps after RAMP_FROM so
+# a single T2/T3 elite rarely auto-levels. Cap stays 12 — this changes PACE,
+# not the power ceiling.
+#
+# Retuned from session 20260808-182231, where BOTH engaged players hit the L12
+# cap with time to spare (Rumtin 00:22, 45min early; Andrew 01:01) and then
+# burned 499 XP into a level that doesn't exist. Design target is now:
+#   • L10 = the normal ceiling for a solidly engaged night ("most but not all")
+#   • L11/L12 = genuine stretch goals ("12 should be REALLY good")
+# Calibrated to that night's MEASURED income over 6h45m / ~55-57 rolls: the
+# top two players earned 883 and 970 XP. Totals L1->12 = 950 (was 677), L1->10
+# = 510 (was 420) — so 970 scrapes L12 by 20 XP and 883 ends at L11. Levels
+# 1-6 are UNCHANGED (cumulative 150) on purpose: the fast early climb is the
+# new-player onramp and every player that night died within 5 minutes of
+# hatching, so the first hour must not get slower.
+# Client mirror in src/app/undercity/data/forms.ts::xpToNext; sim harness in
+# infrastructure/lambda/sim/.
 XP_CURVE_BASE = 15
 XP_CURVE_LINEAR = 5
-XP_CURVE_RAMP = 2          # the "C" coefficient (quadratic ramp magnitude)
+XP_CURVE_RAMP = 5          # the "C" coefficient (quadratic ramp magnitude)
 XP_CURVE_RAMP_FROM = 5     # ramp only bites for levels above this
 # Flat XP granted the first time a player claims a biome Guild Sigil (on top of
 # the lair boss's own XP). Five biome sigils => up to 250 bonus XP over a night,
@@ -109,6 +119,22 @@ BOG_FORAGER_LOSS_FRACTION = 0.5  # Brackish Trudge "Bog Forager": a deeper scave
                           # than base Scrounger on a lost/fled/stalemated wild or
                           # elite fight. Layers on the pest's inherited scrounger.
 
+# ── Consumable buffs (design 2026-08-10) ────────────────────────────────────
+# Tonic buffs last several BATTLES, not one. Spells are effectively unlimited —
+# you re-cast them off a cooldown — so a bought, consumed item that evaporated
+# after a single fight was strictly the worse deal. Three fights makes a tonic a
+# decision you make before a dungeon run rather than before one swing.
+CONSUMABLE_BUFF_BATTLES = 3
+# The Sovereign's Draught runs its own buff kinds (sovereign_*) so it LAYERS on
+# top of the individual tonics instead of overlapping them. Slightly under the
+# tonic values each, because you get all three at once plus a full heal.
+SOVEREIGN_ATK = 4
+SOVEREIGN_DEF = 2
+SOVEREIGN_SPD = 2
+# Mid-battle heal (Mending Salve): fraction of max HP restored, played with a
+# stance like any other combat item.
+COMBAT_HEAL_FRAC = 0.25
+
 # Gear rider knobs (combat riders in undercity_engine.resolve_round).
 CUTPURSE_SPORES = 6   # flat Spores after a won fight in which you landed a Feint
 BRAMBLE_REFLECT = 2   # flat damage a Bramble carapace reflects when struck
@@ -138,6 +164,11 @@ DEATHDRIVE_MULT = 0.5  # ATK-15: Aggress swing multiplier while below half HP
 # much extra damage. Replaces Rend — a flat damage amp that leads naturally into
 # Menace (ATK-12) making foes easier to read and out-hit.
 BRUTAL_STRIKES_MULT = 0.30
+# Foe HP fraction below which a gutcleaver fang's execute bonus applies. Raised
+# from 0.30 (2026-08-10): at 30% the window almost never mattered — by the time
+# a foe is that low the frenzy ramp has made ordinary hits lethal anyway, so the
+# rider read as dead text. At 50% it actually shapes the back half of a fight.
+GUTCLEAVER_EXECUTE_FRAC = 0.50
 
 # ── Boss-familiar / boss signature traits (design 2026-08-04) ────────────────
 # Grave Growth (Skullbriar): unconditional per-round ramp, ATK-leaning, capped.
@@ -210,7 +241,8 @@ RIDER_SCALE = {
     'bloodfang':     {1: 0.40, 2: 0.50, 3: 0.60, 4: 0.70},  # heal frac of Aggress-win dmg (T1 today=0.40)
     'deep_biter':    {1: 0.35, 2: 0.50, 3: 0.70, 4: 0.90},  # +win MULTIPLIER (T2 today=0.50; T3 buffed)
     'rabid':         {1: 1,    2: 2,    3: 3,    4: 4},      # +ATK ramp per Aggress win (T2 today=2; T3 buffed)
-    'gutcleaver':    {1: 0.35, 2: 0.50, 3: 0.70, 4: 0.90},  # +win multiplier vs <30% HP (T2 today=0.50)
+    'gutcleaver':    {1: 0.35, 2: 0.50, 3: 0.70, 4: 0.90},  # +win multiplier vs a foe under
+                                                             # GUTCLEAVER_EXECUTE_FRAC HP
     'thick':         {1: 0.15, 2: 0.20, 3: 0.25, 4: 0.30},  # stall chip-through mult (T1 today=0.15)
     'spiked':        {1: 1.3,  2: 1.5,  3: 1.8,  4: 2.0},    # guard-counter reflect mult (T2 today=1.5; T3 buffed)
     'bramble':       {1: 2,    2: 3,    3: 4,    4: 5},      # flat reflect when struck (T1 today=2)
@@ -264,7 +296,6 @@ UMORI_RESERVES = {1: 80, 2: 40, 3: 15}
 SHRINE_BLESSING_COST = 30
 OSSUARY_MAX_BET = 20
 OSSUARY_ROLLS_PER_VISIT = 3  # gambles allowed per landing; refills when you land again
-SNARE_SPILL_PCT = 0.20
 
 # ── Home-biome hatch perks ───────────────────────────────────────────────────
 MARROWBORN_MAXHP = 8   # Ossuary Fields (bone) home: flat +Max HP, applied at hatch
@@ -277,10 +308,38 @@ SHOP_START_RENOWN = 100      # seed for a brand-new player: e.g. two common hats
 # lair is cleared. Players chip a shared HP pool in bounded skirmishes; on death
 # every contributor is paid by damage bracket. Mirror in
 # src/app/undercity/data/world-event.ts when tuned.
-WORLD_EVENT_HP          = 200   # shared pool; sized so it takes many skirmishes
-WORLD_EVENT_ROUND_CAP   = 6     # a single skirmish auto-ends after this many rounds
-WORLD_EVENT_MAJOR_SHARE = 0.25  # damage-share threshold for the Major bracket
-WORLD_EVENT_MINOR_SHARE = 0.10  # damage-share threshold for the Minor bracket
+#
+# DAMAGE CHECK (design 2026-08-09). The beast has NO kill pool — it cannot be
+# felled. The hunt runs for a fixed window; everyone wades in and deals what
+# damage they can, and when the clock expires the beast withdraws and the spoils
+# are dealt out by damage bracket. Its skirmish stat block carries a nominal HP
+# that the ROUND_CAP always ends first, so a fight is always a damage check and
+# never a race to a killing blow.
+#
+# Fixes what session 20260808-182231 showed: the beast lived 4h19m, exactly one
+# player ever engaged it, and he took the whole prize for ~2 turns of work that
+# nobody else could dip into. With no kill, nobody can end the event early and
+# lock everyone else out; with a deadline, the payout lands while people are
+# still at the table.
+#
+# Wall-clock is correct here (cf. the step-timer rule): this is SHARED world
+# state, so step-timing it would desync players against each other.
+WORLD_EVENT_SKIRMISH_HP = 99999  # nominal per-skirmish HP. Never depleted — the
+                                 # round cap always ends the fight first.
+WORLD_EVENT_DURATION_MIN = 90    # minutes from spawn until the beast withdraws.
+                                 # It spawns on the first sigil clear (~1.5h into
+                                 # a night), so the payout lands mid-evening while
+                                 # everyone is still playing.
+WORLD_EVENT_ROUND_CAP   = 6      # a single skirmish auto-ends after this many rounds
+# Brackets are ABSOLUTE cumulative damage, not a share of a pool (there is no
+# pool) and not a share of the group's total. Your reward reflects what YOU did,
+# so a big turnout never dilutes anyone and a small one never inflates them —
+# consistent with "equal turns, wealth gaps are legitimate". The single top
+# dealer still takes the Vanquisher crown on top, so there's something to race
+# for. Calibrated to observed damage: an apex creature deals ~50-100 in one
+# 6-round skirmish, a fresh one ~20-40.
+WORLD_EVENT_MAJOR_DAMAGE = 150   # cumulative damage for the Major bracket
+WORLD_EVENT_MINOR_DAMAGE = 60    # cumulative damage for the Minor bracket
 
 # Per-bracket payout. Vanquisher = single top damage dealer. `tiers` is the gear
 # drop's tier-weight profile (keys are gear tiers, values relative weights) — one
@@ -349,15 +408,27 @@ SCROLL_DROP_CHANCE = {
 
 
 # ── Companions ────────────────────────────────────────────────────────────
-# Minutes an egg sits in the (single) incubator before it can hatch.
-PET_INCUBATE_MINUTES = 5
+# Board spaces an egg must be carried before it can hatch (design 2026-08-10).
+# Incubation is a STEP timer, not a clock — same philosophy as forage's
+# PET_FORAGE_RECHARGE_SPACES below. The game is meant to be played in short
+# bursts, so nothing you start should be finishable only by waiting: walk it out
+# and it hatches, every time, under your control. (The old 5-minute clock is why
+# a player in session 20260808-182231 started an incubator as their last act and
+# never saw it open.) Sized to sit comfortably inside one roll bank (ROLL_CAP 10)
+# so a burst player can always finish what they start.
+PET_INCUBATE_SPACES = 5
 
-# Activated-ability real-time cooldowns (minutes), keyed by ROLE; leveling the
-# pet shortens the wait down to a floor. Mirrors the spell-cooldown idiom. Only
-# SCOUT still uses this clock — forage recharges by distance (see below).
-PET_ABILITY_COOLDOWN_MIN = {'scout': 30, 'forage': 20}
-PET_ABILITY_COOLDOWN_PER_LVL = 2      # minutes shaved per level above 1
-PET_ABILITY_COOLDOWN_FLOOR = 5        # never faster than this
+# Activated abilities now ALL recharge by distance, not by clock (design
+# 2026-08-10) — forage led the way and scout followed, so nothing a companion
+# does can be gated behind waiting rather than playing.
+#
+# Scout: base spaces to recharge, shaved as the pet levels, never below a floor.
+# Sized against the old 30-minute clock the same way forage was: at the observed
+# pace (~9 board spaces/hour) the wall-clock cost lands a bit higher than the
+# timer it replaces, but it is now entirely under the player's control.
+PET_SCOUT_RECHARGE_SPACES = 9
+PET_SCOUT_RECHARGE_PER_LVL = 1        # spaces shaved per level above 1
+PET_SCOUT_RECHARGE_FLOOR = 4          # never fewer than this
 
 # Forage recharges by DISTANCE, not time: using it primes a countdown of this
 # many board spaces; every space walked ticks it down, ready again at 0. Flat
@@ -385,8 +456,9 @@ PET_MOUSE_ITEM_CHANCE_PER_LVL = 0.05
 # Per-loot yield + the bank cap scale with the pet's level; the cap keeps a bank
 # finite so it stays a "gather while you explore, then collect" loop. Mirror in
 # src/app/undercity/data/pets.ts.
-PET_SPORE_PER_LOOT_BASE = 2         # Spores banked per loot space passed, at level 1
-PET_SPORE_PER_LOOT_PER_LVL = 1      # added per level above 1 (a leveled pet works up toward ~6)
+PET_SPORE_PER_LOOT_BASE = 5         # Spores banked per loot space passed, at level 1
+PET_SPORE_PER_LOOT_PER_LVL = 1      # added per level above 1 (climbs toward the max)
+PET_SPORE_PER_LOOT_MAX = 8          # per-loot yield caps here no matter how high the level
 PET_SPORE_CAP_BASE = 60             # most that can bank before you must collect
 PET_SPORE_CAP_PER_LVL = 30          # added per level above 1
 
@@ -437,4 +509,39 @@ MIMIC_BALANCED = 1   # +ATK/+DEF/+SPD vs a balanced foe
 TREASURE_SENSE_DROP_MULT   = 2.0  # gear-drop chance multiplier for the passive
 TREASURE_SENSE_CHANCE_CAP  = 0.95 # cap so a boosted drop never becomes guaranteed
 TREASURE_SENSE_RARITY_BUMP = 1    # rolled gear tier is bumped by this
+# ── Gear rarity ceiling (design 2026-08-09 mid-game difficulty) ──────────────
+# Found gear can't exceed the rarity your CREATURE TIER has earned: tier 1 ->
+# Common, tier 2 -> Rare, tier 3 -> Legendary (Mythic stays craft-only). Before
+# this there was no gate at all, and treasure tiles (cache/trove/vault) FLOOR at
+# Rare with a 40% Legendary roll — so one early cache put a level-3 player in
+# Legendary gear. Measured: that build wins 100% of every biome band and 65% of
+# wilderness elites, i.e. it solves the board before the mid-game starts.
+# Evolving is now what unlocks better loot. Applied to the base roll; Treasure
+# Sense still bumps one step above (that passive is apex-only and already capped
+# by TREASURE_SENSE_MAX_TIER).
+GEAR_RARITY_CAP_BY_TIER = {1: 1, 2: 2, 3: 3}
+
+# ── Dungeon sigil scaling (design 2026-08-09) ────────────────────────────────
+# Dungeon interiors (region 'depths') and their lair guardians get tougher for
+# every Guild Sigil the player ALREADY holds, so the 4th dungeon pushes back
+# harder than the 1st and there's a reason to surface between runs and spend the
+# dungeon's rewards on gear.
+#
+# This is the ONE deliberate exception to _wild_battle's "never scaled to the
+# player" rule, and it keys off QUESTLINE PROGRESS rather than level or power:
+# everyone meets the same curve at the same point in the run, so being ahead
+# just means reaching the hard dungeons sooner — no catch-up, no rubberbanding.
+# Home biome rings stay flat and easy on purpose; they're the T1 starting areas.
+#
+# Enemy stat multiplier = 1 + DUNGEON_SIGIL_SCALING * sigils_held.
+# Tuned on the level/sigil diagonal actually observed in session 20260808-182231
+# (sigils landed at ~L7/0 held, L9/1, L10/2, L11/3, L12/4). At 0.40 the sim win
+# rate on dungeon wilds runs 100% -> 99% -> 98% -> 82% -> 68% across a five-
+# dungeon run, while lair guardians only fall 98% -> 89%. That's deliberate: the
+# CRAWL wears you down and sends you back up to re-gear, but the sigil objective
+# itself never becomes a wall. 0.12 was invisible past L8; 0.50 was a wall.
+DUNGEON_SIGIL_SCALING = 0.40
+# SPD is deliberately excluded — initiative and the stance triangle are tuned
+# per creature, and scaling them would change fight *shape*, not just pressure.
+DUNGEON_SIGIL_SCALED_STATS = ('hp', 'atk', 'def')
 TREASURE_SENSE_MAX_TIER    = 3    # ceiling — never bumps into craft-only tier-4 mythics

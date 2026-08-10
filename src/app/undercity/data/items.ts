@@ -11,6 +11,10 @@ export interface GearInfo {
   desc: string;
   /** Stance-rider tag (mirrors GEAR_RIDERS); undefined for plain stat gear. */
   rider?: string;
+  /** Named property for pieces that sit OFF the stance-rider ladder
+   *  (illuminating | vital | hybrid). Mirrors `prop` in undercity_data.py, and
+   *  guarantees every piece has something to chip on its item card. */
+  prop?: string;
   /** Illuminating gear: 'full' reveals the whole dungeon while equipped
    * (mirrors GEAR[*].light). The fog reveal is derived client-side. */
   light?: 'full';
@@ -25,7 +29,7 @@ export interface GearInfo {
 }
 
 export const GEAR: GearInfo[] = [
-  { id: 'rusted_fang', name: 'Rusted Fang', slot: 'fang', tier: 1, cost: 20, rider: 'barbed', atk: 2,
+  { id: 'rusted_fang', name: 'Envenomed Fang', slot: 'fang', tier: 1, cost: 20, rider: 'barbed', atk: 2,
     desc: '+2 ATK · Barbed: Aggress applies rot even on a loss.' },
   { id: 'bloodfang', name: 'Bloodfang', slot: 'fang', tier: 1, cost: 25, rider: 'bloodfang', atk: 2,
     desc: '+2 ATK · Bloodfang: heal 40% of your winning Aggress damage.' },
@@ -34,7 +38,7 @@ export const GEAR: GearInfo[] = [
   { id: 'rabid_fang', name: 'Rabid Fang', slot: 'fang', tier: 2, cost: 48, rider: 'rabid', atk: 3, spd: 1,
     desc: '+3 ATK, +1 SPD · Rabid: each Aggress win, your Aggress hits gain +2 for the fight.' },
   { id: 'gutcleaver', name: 'Gutcleaver', slot: 'fang', tier: 2, cost: 50, rider: 'gutcleaver', atk: 4,
-    desc: '+4 ATK · Gutcleaver: winning Aggress vs a foe below 30% HP deals +50%.' },
+    desc: '+4 ATK · Gutcleaver: winning Aggress vs a foe below half HP deals +50%.' },
   { id: 'wurm_tooth', name: 'Wurm Tooth', slot: 'fang', tier: 3, cost: 80, rider: 'deep_biter', atk: 6, spd: 1,
     desc: '+6 ATK, +1 SPD · Deep-biter: winning hits hit harder.' },
   { id: 'ravening_maw', name: 'Ravening Maw', slot: 'fang', tier: 3, cost: 85, rider: 'rabid', atk: 5, spd: 1,
@@ -45,7 +49,7 @@ export const GEAR: GearInfo[] = [
   { id: 'feral_nip', name: 'Feral Nip', slot: 'fang', tier: 1, cost: 23, rider: 'rabid', atk: 2,
     desc: '+2 ATK · Rabid: each Aggress win, your Aggress hits gain +1 for the fight.' },
   { id: 'notched_cleaver', name: 'Notched Cleaver', slot: 'fang', tier: 1, cost: 24, rider: 'gutcleaver', atk: 2,
-    desc: '+2 ATK · Gutcleaver: winning Aggress vs a foe below 30% HP deals +35%.' },
+    desc: '+2 ATK · Gutcleaver: winning Aggress vs a foe below half HP deals +35%.' },
   { id: 'serpent_fang', name: 'Serpent Fang', slot: 'fang', tier: 2, cost: 46, rider: 'barbed', atk: 4,
     desc: '+4 ATK · Barbed: Aggress applies rot even on a loss.' },
   { id: 'sanguine_fang', name: 'Sanguine Fang', slot: 'fang', tier: 2, cost: 47, rider: 'bloodfang', atk: 4,
@@ -55,7 +59,7 @@ export const GEAR: GearInfo[] = [
   { id: 'vampiric_maw', name: 'Vampiric Maw', slot: 'fang', tier: 3, cost: 83, rider: 'bloodfang', atk: 6, spd: 1,
     desc: '+6 ATK, +1 SPD · Bloodfang: heal 60% of your winning Aggress damage.' },
   { id: 'gravecleaver', name: 'Gravecleaver', slot: 'fang', tier: 3, cost: 84, rider: 'gutcleaver', atk: 6,
-    desc: '+6 ATK · Gutcleaver: winning Aggress vs a foe below 30% HP deals +70%.' },
+    desc: '+6 ATK · Gutcleaver: winning Aggress vs a foe below half HP deals +70%.' },
   { id: 'chitin_scrap', name: 'Chitin Scrap', slot: 'carapace', tier: 1, cost: 20, rider: 'thick', def: 2,
     desc: '+2 DEF · Thick: Guard chips in a stall, softer when wrong.' },
   { id: 'bramble_hide', name: 'Bramble Hide', slot: 'carapace', tier: 1, cost: 25, rider: 'bramble', def: 2,
@@ -64,7 +68,7 @@ export const GEAR: GearInfo[] = [
     desc: '+4 DEF · Spiked: Guard counter hits +50% harder.' },
   { id: 'bulwark_plate', name: 'Bulwark Plate', slot: 'carapace', tier: 2, cost: 48, rider: 'bulwark', def: 3, maxHp: 3,
     desc: '+3 DEF, +3 max HP · Bulwark: each round you Guard, +1 DEF for the fight.' },
-  { id: 'mossback', name: 'Mossback', slot: 'carapace', tier: 2, cost: 50, rider: 'mossback', def: 3,
+  { id: 'mossback', name: 'Sunleaf Carapace', slot: 'carapace', tier: 2, cost: 50, rider: 'mossback', def: 3,
     desc: '+3 DEF · Mossback: heal 3 each round you end in Guard.' },
   { id: 'troll_hide', name: 'Troll Hide', slot: 'carapace', tier: 3, cost: 80, rider: 'spiked', def: 5, maxHp: 6,
     desc: '+5 DEF, +6 max HP · Spiked: Guard counter hits +80% harder.' },
@@ -75,7 +79,7 @@ export const GEAR: GearInfo[] = [
     desc: '+2 DEF · Spiked: Guard counter hits +30% harder.' },
   { id: 'barricade_shell', name: 'Barricade Shell', slot: 'carapace', tier: 1, cost: 23, rider: 'bulwark', def: 2,
     desc: '+2 DEF · Bulwark: each round you Guard, +1 DEF for the fight.' },
-  { id: 'mossling_hide', name: 'Mossling Hide', slot: 'carapace', tier: 1, cost: 24, rider: 'mossback', def: 2,
+  { id: 'mossling_hide', name: 'Sunleaf Hide', slot: 'carapace', tier: 1, cost: 24, rider: 'mossback', def: 2,
     desc: '+2 DEF · Mossback: heal 2 each round you end in Guard.' },
   { id: 'ridged_carapace', name: 'Ridged Carapace', slot: 'carapace', tier: 2, cost: 46, rider: 'thick', def: 4,
     desc: '+4 DEF · Thick: Guard chips in a stall, softer when wrong.' },
@@ -87,18 +91,18 @@ export const GEAR: GearInfo[] = [
     desc: '+5 DEF, +6 max HP · Bramble: reflect 4 damage whenever you are struck.' },
   { id: 'overgrown_bulwark', name: 'Overgrown Bulwark', slot: 'carapace', tier: 3, cost: 84, rider: 'mossback', def: 5, maxHp: 6,
     desc: '+5 DEF, +6 max HP · Mossback: heal 4 each round you end in Guard.' },
-  { id: 'bloatsac_plate', name: 'Bloatsac Plate', slot: 'carapace', tier: 1, cost: 22, maxHp: 6,
+  { id: 'bloatsac_plate', name: 'Bloatsac Plate', prop: 'vital', slot: 'carapace', tier: 1, cost: 22, maxHp: 6,
     desc: '+6 max HP.' },
-  { id: 'engorged_carapace', name: 'Engorged Carapace', slot: 'carapace', tier: 2, cost: 46, maxHp: 12, def: 1,
+  { id: 'engorged_carapace', name: 'Engorged Carapace', prop: 'vital', slot: 'carapace', tier: 2, cost: 46, maxHp: 12, def: 1,
     desc: '+12 max HP, +1 DEF.' },
-  { id: 'leviathan_hide', name: 'Leviathan Hide', slot: 'carapace', tier: 3, cost: 82, maxHp: 20, def: 2,
+  { id: 'leviathan_hide', name: 'Leviathan Hide', prop: 'vital', slot: 'carapace', tier: 3, cost: 82, maxHp: 20, def: 2,
     desc: '+20 max HP, +2 DEF.' },
   // Hybrid line (tier 2): two-stat, no rider — mirrors undercity_data.py.
-  { id: 'duelist_fang', name: 'Duelist Fang', slot: 'fang', tier: 2, cost: 46, atk: 3, spd: 2,
+  { id: 'duelist_fang', name: 'Duelist Fang', prop: 'hybrid', slot: 'fang', tier: 2, cost: 46, atk: 3, spd: 2,
     desc: '+3 ATK, +2 SPD.' },
-  { id: 'warbrand_plate', name: 'Warbrand Plate', slot: 'carapace', tier: 2, cost: 46, def: 3, atk: 2,
+  { id: 'warbrand_plate', name: 'Warbrand Plate', prop: 'hybrid', slot: 'carapace', tier: 2, cost: 46, def: 3, atk: 2,
     desc: '+3 DEF, +2 ATK.' },
-  { id: 'wardens_charm', name: "Warden's Charm", slot: 'charm', tier: 2, cost: 46, spd: 2, def: 2,
+  { id: 'wardens_charm', name: "Warden's Charm", prop: 'hybrid', slot: 'charm', tier: 2, cost: 46, spd: 2, def: 2,
     desc: '+2 SPD, +2 DEF.' },
   { id: 'quartz_charm', name: 'Quartz Charm', slot: 'charm', tier: 1, cost: 20, rider: 'trickster', spd: 1,
     desc: '+1 SPD · Trickster: a lost Feint punishes 50% less.' },
@@ -139,9 +143,9 @@ export const GEAR: GearInfo[] = [
     desc: '+2 SPD · Cutpurse: land a winning Feint for +9 Spores after a win.' },
   // Illuminating gear — light OR power. Reveals the whole dungeon while equipped,
   // but carries almost no combat: a gear slot spent on total information.
-  { id: 'torchfang', name: 'Torchfang', slot: 'fang', tier: 1, cost: 30, atk: 1, light: 'full',
+  { id: 'torchfang', name: 'Torchfang', prop: 'illuminating', slot: 'fang', tier: 1, cost: 30, atk: 1, light: 'full',
     desc: '+1 ATK · Illuminated: reveals the entire dungeon while equipped.' },
-  { id: 'glowspore_charm', name: 'Glowspore Charm', slot: 'charm', tier: 1, cost: 30, light: 'full',
+  { id: 'glowspore_charm', name: 'Glowspore Charm', prop: 'illuminating', slot: 'charm', tier: 1, cost: 30, light: 'full',
     desc: 'Bioluminescent: reveals the entire dungeon while equipped.' },
   // Mythic (tier 4) — craft-only; forge a Legendary at the Blacksmith for 3 Gemstones.
   { id: 'wyrm_godtooth', name: 'Wyrm Godtooth', slot: 'fang', tier: 4, cost: 150, rider: 'barbed', atk: 8, spd: 1,
@@ -153,7 +157,7 @@ export const GEAR: GearInfo[] = [
   { id: 'apex_ravener', name: 'Apex Ravener', slot: 'fang', tier: 4, cost: 150, rider: 'rabid', atk: 7, spd: 2,
     desc: '+7 ATK, +2 SPD · Rabid: each Aggress win, your Aggress hits gain +4 for the fight.' },
   { id: 'worldcleaver', name: 'Worldcleaver', slot: 'fang', tier: 4, cost: 150, rider: 'gutcleaver', atk: 8,
-    desc: '+8 ATK · Gutcleaver: winning Aggress vs a foe below 30% HP deals +90%.' },
+    desc: '+8 ATK · Gutcleaver: winning Aggress vs a foe below half HP deals +90%.' },
   { id: 'titan_carapace', name: 'Titan Carapace', slot: 'carapace', tier: 4, cost: 150, rider: 'thick', def: 6, maxHp: 8,
     desc: '+6 DEF, +8 max HP · Thick: Guard chips in a stall, softer when wrong.' },
   { id: 'thornlord_aegis', name: 'Thornlord Aegis', slot: 'carapace', tier: 4, cost: 150, rider: 'bramble', def: 6, maxHp: 8,
@@ -251,6 +255,9 @@ export function marketPriceBand(gid: string): { lo: number; hi: number } {
 export interface ConsumableInfo {
   id: string;
   name: string;
+  /** Rarity on the same 1-4 ladder as gear and pets (Common..Mythic). Drives
+   *  the shop price via CONSUMABLE_COST_BY_TIER. */
+  tier: 1 | 2 | 3 | 4;
   cost: number;
   desc: string;
   /** Material Icons ligature name. */
@@ -261,22 +268,52 @@ export interface ConsumableInfo {
   effect?: string;
 }
 
+/** Rarity -> shop price (mirror of undercity_data.CONSUMABLE_COST_BY_TIER). */
+export const CONSUMABLE_COST_BY_TIER: Record<number, number> = {
+  1: 12,
+  2: 25,
+  3: 45,
+  4: 80,
+};
+
 export const CONSUMABLES: ConsumableInfo[] = [
-  { id: 'healing_moss', name: 'Healing Moss', cost: 12, desc: 'Restore 50% max HP.', icon: 'healing' },
-  { id: 'smoke_spore', name: 'Smoke Spore', cost: 15, desc: 'Held: your next failed flee auto-succeeds.', icon: 'air' },
-  { id: 'loaded_die', name: 'Loaded Die', cost: 25, desc: 'Choose your next roll’s value (1–6).', icon: 'casino' },
-  { id: 'snare', name: 'Snare', cost: 18, desc: 'Trap your current space: the next visitor spills 20% of their Spores and skips the space event.', icon: 'gps_fixed' },
+  // ── Tier 1 · Common ──
+  { id: 'mending_salve', name: 'Mending Salve', tier: 1, cost: 12, icon: 'healing',
+    effect: 'heal', inBattle: true,
+    desc: 'In battle: drink before the exchange to restore 25% max HP.' },
+  { id: 'healing_moss', name: 'Healing Moss', tier: 1, cost: 12, desc: 'Restore 50% max HP.', icon: 'healing' },
+  { id: 'smoke_spore', name: 'Smoke Spore', tier: 1, cost: 12, desc: 'Held: your next failed flee auto-succeeds.', icon: 'air' },
+  // Half-range rigged dice: less control than the Loaded Die, a rarity cheaper.
+  { id: 'high_roller', name: 'High Roller', tier: 1, cost: 12, icon: 'trending_up',
+    desc: 'Choose your next roll’s value — but only 4, 5 or 6.' },
+  { id: 'low_roller', name: 'Low Roller', tier: 1, cost: 12, icon: 'trending_down',
+    desc: 'Choose your next roll’s value — but only 1, 2 or 3.' },
   // Listed in the battle item tray, but `effect: 'reveal'` makes it act on tap
   // (fires the `combat-peek` action) instead of arming for the next stance like
-  // the three below — the battle component special-cases it.
-  { id: 'scrying_spore', name: 'Scrying Spore', cost: 20, icon: 'visibility',
+  // the others — the battle component special-cases it.
+  { id: 'scrying_spore', name: 'Scrying Spore', tier: 1, cost: 12, icon: 'visibility',
     effect: 'reveal', inBattle: true, desc: 'In battle: reveal the enemy’s true intent this round.' },
-  { id: 'rot_bomb', name: 'Rot Bomb', cost: 22, icon: 'coronavirus', inBattle: true,
+  // ── Tier 2 · Rare ──
+  { id: 'loaded_die', name: 'Loaded Die', tier: 2, cost: 25, icon: 'casino',
+    desc: 'Choose your next roll’s value (1–6).' },
+  { id: 'whetstone', name: 'Bone Whetstone', tier: 2, cost: 25, icon: 'hardware',
+    desc: 'Hone your edge: +ATK for your next 3 battles.' },
+  { id: 'carapace_wax', name: 'Carapace Wax', tier: 2, cost: 25, icon: 'shield',
+    desc: 'Lacquer your shell: +DEF for your next 3 battles.' },
+  { id: 'fleetfoot_tonic', name: 'Fleetfoot Tonic', tier: 2, cost: 25, icon: 'directions_run',
+    desc: 'Quicken your step: +SPD for your next 3 battles.' },
+  { id: 'rot_bomb', name: 'Rot Bomb', tier: 2, cost: 25, icon: 'coronavirus', inBattle: true,
     effect: 'double_punish', desc: 'In battle: double your damage if you win this round.' },
-  { id: 'chitin_ward', name: 'Chitin Ward', cost: 22, icon: 'security', inBattle: true,
+  { id: 'chitin_ward', name: 'Chitin Ward', tier: 2, cost: 25, icon: 'security', inBattle: true,
     effect: 'negate', desc: 'In battle: cancel the punish from one wrong guess.' },
-  { id: 'ambush_musk', name: 'Ambush Musk', cost: 25, icon: 'bolt', inBattle: true,
+  // ── Tier 3 · Legendary ──
+  { id: 'marrow_draught', name: 'Marrow Draught', tier: 3, cost: 45, icon: 'local_drink',
+    desc: 'Restore ALL of your max HP.' },
+  { id: 'ambush_musk', name: 'Ambush Musk', tier: 3, cost: 45, icon: 'bolt', inBattle: true,
     effect: 'auto_win', desc: 'In battle: win one exchange regardless of choices.' },
+  // ── Tier 4 · Mythic ── the late-night Spore sink; a pre-boss ritual.
+  { id: 'sovereigns_draught', name: "Sovereign's Draught", tier: 4, cost: 80, icon: 'auto_awesome',
+    desc: 'Drink deep: full HP, and +ATK, +DEF and +SPD — stacks with the lesser tonics.' },
 ];
 
 export const GEAR_MAP: Record<string, GearInfo> = Object.fromEntries(GEAR.map((g) => [g.id, g]));
@@ -376,7 +413,7 @@ export interface RenownShopItem {
 export const RENOWN_SHOP_ITEMS: RenownShopItem[] = [
   { id: 'healing_moss', kind: 'consumable', cost: 20, name: 'Healing Moss',
     desc: 'Spawn holding a heal (50% max HP).', icon: 'healing' },
-  { id: 'rusted_fang', kind: 'gear', cost: 25, name: 'Rusted Fang',
+  { id: 'rusted_fang', kind: 'gear', cost: 25, name: 'Envenomed Fang',
     desc: 'Spawn with a +2 ATK fang equipped.', icon: 'colorize' },
   { id: 'chitin_scrap', kind: 'gear', cost: 25, name: 'Chitin Scrap',
     desc: 'Spawn with a +2 DEF carapace equipped.', icon: 'shield' },
@@ -415,7 +452,6 @@ export const SPACE_ICONS: Record<string, string> = {
   // Event-only types (never drawn on the board)
   wild_warp: 'cyclone',
   boss_sealed: 'visibility_off',
-  snare: 'gps_fixed',
   pile: 'grain',
   barrier_open: 'lock_open',
 };
@@ -441,7 +477,6 @@ export const SPACE_TINTS: Record<string, string> = {
   ossuary: '#6b5b4a',
   wild_warp: '#7a3030',
   boss_sealed: '#2a1a30',
-  snare: '#6b4a2f',
   pile: '#3f6f3f',
   barrier: '#8a5040',
   barrier_open: '#8a5040',
@@ -575,7 +610,6 @@ export const SPACE_NAMES: Record<string, string> = {
   ossuary: 'The Casino',
   wild_warp: 'Wild Warp!',
   boss_sealed: 'The Sealed Lair',
-  snare: 'Snare!',
   pile: 'Spilled Spores',
   barrier: 'Sealed Barrier',
   barrier_open: 'Broken Barrier',

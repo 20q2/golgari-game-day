@@ -57,6 +57,12 @@
     flex: 1;
     min-width: 140px;
   }
+
+  // A note between action buttons gets its own full-width row rather than
+  // competing with them for space.
+  .host-note {
+    flex: 1 0 100%;
+  }
 }
 
 .host-msg {

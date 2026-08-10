@@ -8,6 +8,11 @@ export interface Season {
   /** Countdown target (ISO-8601) while status is 'lobby'. */
   launchAt?: string;
   bossPhase: boolean;
+  /** Host-toggled Dev Night: every player rolls for free. */
+  devMode?: boolean;
+  /** Sticky: this night ran with Dev Night at some point, so its results can
+   * never be banked — ending it always discards. */
+  devEverOn?: boolean;
 }
 
 export interface PublicPlayer {
@@ -208,9 +213,17 @@ export interface YouDoc {
   pets?: Pet[];
   activePetId?: string | null;
   eggs?: Egg[];
-  incubator?: { eggId: string; startedAt: string; tier: number } | null;
-  /** species -> ISO time its activated ability comes off cooldown (no trailing Z). */
-  petCooldowns?: Record<string, string>;
+  /** The single incubator slot. `spacesLeft` is the step countdown to hatching
+   *  (0 = ready); `startedAt` is retained for display only and gates nothing. */
+  incubator?: {
+    eggId: string;
+    startedAt: string;
+    tier: number;
+    spacesLeft?: number;
+  } | null;
+  /** role -> board spaces still to walk before that activated ability recharges
+   *  (0/absent = ready). Distance, not a clock — see PET_SCOUT_RECHARGE_SPACES. */
+  petRecharge?: Record<string, number>;
   /** Spores an active economy pet has scavenged from loot spaces passed over,
    *  waiting to be collected from its board box. Server-authoritative. */
   petSporeBank?: number;
@@ -282,6 +295,8 @@ export interface SeasonResult {
   standings: Standing[];
   champion: Standing | null;
   endedAt: string;
+  /** The night was thrown away: standings stand, but nothing was banked. */
+  discarded?: boolean;
 }
 
 export interface HallOfFameNight {
@@ -330,7 +345,6 @@ export interface GameState {
   season: Season | null;
   you: YouDoc | null;
   players: PublicPlayer[];
-  snares: string[];
   /** Trading post node id -> its 3 shared stock slots. */
   tradingPosts?: Record<string, TradeStockItem[]>;
   /** Umori the collector's sealed auction for the current wander window. `reserves`
@@ -384,11 +398,21 @@ export interface GameState {
 
 /** The wilderness World Event ("The Great Beast"): a season-shared co-op boss
  * squatting on 3 wilderness nodes, its sprite centered on `center`. */
+/** Grothoma, the wilderness world boss. A DAMAGE CHECK (design 2026-08-09): it
+ *  has no HP pool and cannot be felled. The hunt runs until `endsAt`, every blow
+ *  is banked against your name, and the spoils are dealt out by damage bracket
+ *  when the clock expires — so there is a countdown and a tally here, no HP bar. */
 export interface WorldEventState {
   nodes: string[];
   center: string;
-  hp: number;
-  maxHp: number;
+  /** ISO (UTC, no suffix) deadline; when it passes the hunt settles and pays out. */
+  endsAt: string;
+  /** Damage banked by everyone so far, and by the current leader. */
+  totalDamage: number;
+  topDamage: number;
+  /** Per-player tallies keyed by userId — the public leaderboard. Join against
+   *  `players` for names rather than expecting them here. */
+  dmg: Record<string, number>;
   name: string;
   spriteId: string;
   dead: boolean;

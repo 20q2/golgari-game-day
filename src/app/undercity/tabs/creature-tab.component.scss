@@ -1820,6 +1820,17 @@ $grim-lock: #c96a5a;
 
 .chip--stat { background: rgba(255, 255, 255, 0.06); }
 
+// The named gear property. Tinted with the accent green (not the neutral fill of
+// a stat chip) so the thing that makes a piece SPECIAL is the thing that catches
+// the eye first.
+.chip--prop {
+  background: rgba(95, 209, 138, 0.14);
+  border-color: rgba(95, 209, 138, 0.45);
+  color: #b7e4c7;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 // Effects shown directly (no dropdown): one line per rider/effect.
 .item-sheet-effects {
   margin: 0 0 0.75rem;
@@ -1830,13 +1841,13 @@ $grim-lock: #c96a5a;
 
 .effect-line {
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
   font-size: 0.85rem;
   opacity: 0.85;
 
-  .effect-label {
-    color: #b7e4c7;
-    margin-right: 0.35rem;
-  }
 }
 
 // Row 2 of every item drawer: the description gets the majority of the width
@@ -2126,7 +2137,7 @@ $grim-lock: #c96a5a;
   box-shadow: none;
 }
 
-/* Bag fill counter — a quiet corner pill that turns amber when full (3/3). */
+/* Bag fill counter — a quiet corner pill that turns amber when full (5/5). */
 .gear-hub-count {
   position: absolute;
   top: 8px;

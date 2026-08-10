@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -43,6 +43,8 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
   protected readonly nodes = signal<MapNode[]>([]);
   /** Two-tap guard for the destructive full reset. */
   protected readonly confirmReset = signal(false);
+  /** Server-reported Dev Night state for the running night. */
+  protected readonly devMode = computed(() => this.store.season()?.devMode === true);
 
   /** User ids granted Admin this session (local — the public roster omits the
    *  flag, so we track what we've toggled to label the button). */
@@ -199,6 +201,15 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
     void this.admin('reset-all', {}).then(() => {
       if (!this.message()) this.message.set('Reset done — a fresh night has begun.');
     });
+  }
+
+  /**
+   * Dev Night: unlimited rolls for every player on the running night. Reversible
+   * and destroys nothing, so — unlike resetAll — there's no two-tap arming. The
+   * label follows server state, which admin() refreshes on success.
+   */
+  protected toggleDevNight(): void {
+    void this.admin('dev-night', { on: !this.devMode() });
   }
 
   /**

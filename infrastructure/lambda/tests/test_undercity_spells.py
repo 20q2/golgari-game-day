@@ -348,7 +348,7 @@ def test_field_damage_hits_and_floors_at_1hp(table, monkeypatch):
     assert status == 200
     assert resp['cast']['dodged'] is False and resp['cast']['dmg'] == 8
     sam = db._get_player(table, _sid(table), 'user-sam')
-    assert sam['hp'] == 25 - 8
+    assert sam['hp'] == 30 - 8
     assert sam['awayEvents'][-1]['kind'] == 'spell_hit'
     assert sam['awayEvents'][-1]['dmg'] == 8
 
@@ -375,7 +375,7 @@ def test_field_spell_dodge_still_notifies_and_cools(table, monkeypatch):
     assert resp['cast']['dodged'] is True
     assert resp['you']['spellCooldowns']['scrap_toss'] > db._now()  # dodge still cools
     sam = db._get_player(table, _sid(table), 'user-sam')
-    assert sam['hp'] == 25
+    assert sam['hp'] == 30
     assert sam['awayEvents'][-1]['kind'] == 'spell_dodged'
 
 
@@ -443,7 +443,7 @@ def test_victim_write_conflict_retries_once(table, monkeypatch):
                        target='user-sam')
     assert status == 200
     sam = db._get_player(table, _sid(table), 'user-sam')
-    assert sam['hp'] == 25 - 8                                 # saproling took the bolt
+    assert sam['hp'] == 30 - 8                                 # saproling took the bolt
 
 
 # ── cast: traversal spells ───────────────────────────────────────────────────
@@ -879,7 +879,7 @@ def test_field_damage_scales_with_caster_level(table, monkeypatch):
     assert status == 200
     assert resp['cast']['dmg'] == 13
     sam = db._get_player(table, _sid(table), 'user-sam')
-    assert sam['hp'] == 25 - 13
+    assert sam['hp'] == 30 - 13
 
 
 # ── Squirrel caster passives (design 2026-07-23 squirrel-simple) ─────────────
@@ -996,11 +996,16 @@ def test_scroll_cast_consumes_and_ignores_cooldown(table):
     assert status != 200 and resp['code'] == 'not_castable'
 
 
+# The Sedgemoor Witch node id, derived from the map so these tests survive map
+# regeneration / node-id churn (it moved from bog_r7 to an auto-id).
+WITCH_NODE = next(n['id'] for n in data.MAP_NODES.values() if n['type'] == 'witch')
+
+
 def _at_witch(table):
-    """Join a player and stand them on the Sedgemoor Witch node (bog_r7)."""
+    """Join a player and stand them on the Sedgemoor Witch node."""
     act(table, 'join', starter='pest', home='bog')
     doc = db._get_player(table, _sid(table), 'user-alex')
-    doc['position'] = 'bog_r7'
+    doc['position'] = WITCH_NODE
     doc['spores'] = 100
     db._put_player(table, doc)
     return doc
@@ -1008,7 +1013,7 @@ def _at_witch(table):
 
 def test_witch_space_resolves(table):
     doc = _at_witch(table)
-    ev = db._resolve_space(table, _sid(table), doc, 'bog_r7', None)
+    ev = db._resolve_space(table, _sid(table), doc, WITCH_NODE, None)
     assert ev['type'] == 'witch'
 
 
@@ -1016,7 +1021,7 @@ def test_witch_inscribe_appends_when_room(table):
     _at_witch(table)
     give_book(table, 'user-alex', 'moldering_folio')     # tier-I cap 2, [spore_bolt]
     doc = db._get_player(table, _sid(table), 'user-alex')
-    doc['scrolls'] = ['mend_flesh']; doc['position'] = 'bog_r7'; doc['spores'] = 100
+    doc['scrolls'] = ['mend_flesh']; doc['position'] = WITCH_NODE; doc['spores'] = 100
     db._put_player(table, doc)
     status, resp = act(table, 'witch-inscribe', scrollSpellId='mend_flesh', grimoireId='moldering_folio')
     assert status == 200
@@ -1029,7 +1034,7 @@ def test_witch_inscribe_full_book_burns_overwrite(table):
     _at_witch(table)
     give_book(table, 'user-alex', 'gardeners_primer')    # tier-I cap 2 = FULL [mend_flesh, harden_shell]
     doc = db._get_player(table, _sid(table), 'user-alex')
-    doc['scrolls'] = ['scrap_toss']; doc['position'] = 'bog_r7'; doc['spores'] = 100
+    doc['scrolls'] = ['scrap_toss']; doc['position'] = WITCH_NODE; doc['spores'] = 100
     db._put_player(table, doc)
     # full + no overwrite target -> error
     status, _ = act(table, 'witch-inscribe', scrollSpellId='scrap_toss', grimoireId='gardeners_primer')

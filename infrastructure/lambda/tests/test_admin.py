@@ -69,7 +69,7 @@ def test_bot_add_creates_public_player(table):
     assert bot['isBot'] is True
     assert bot['species'] == 'saproling'
     assert bot['userId'].startswith('BOT#')
-    assert bot['hp'] == 25 and bot['position'] == 'cavern_r0'
+    assert bot['hp'] == 30 and bot['position'] == 'cavern_r0'
 
     # It appears in the season roster like any player.
     _, state = db.handle_state(table, {'userId': 'user-host'})
@@ -225,3 +225,104 @@ def test_bot_step_rejects_non_bot(table):
     status, resp = _admin(table, 'bot-step', target='user-alex')
     assert status == 400
     assert 'bot' in resp['error'].lower()
+
+
+# ── Dev Night (host-toggled unlimited rolls) ─────────────────────────────────
+
+def test_dev_night_requires_hostkey(table):
+    status, resp = _admin(table, 'dev-night', host='nope', on=True)
+    assert status == 403
+    _, state = db.handle_state(table, {'userId': 'user-host'})
+    assert state['season']['devMode'] is False
+
+
+def test_dev_night_toggles_state_flag(table):
+    status, resp = _admin(table, 'dev-night', on=True)
+    assert status == 200 and resp['devMode'] is True
+    _, state = db.handle_state(table, {'userId': 'user-host'})
+    assert state['season']['devMode'] is True
+
+    status, resp = _admin(table, 'dev-night', on=False)
+    assert status == 200 and resp['devMode'] is False
+    _, state = db.handle_state(table, {'userId': 'user-host'})
+    assert state['season']['devMode'] is False
+
+
+def test_dev_night_defaults_on(table):
+    status, resp = _admin(table, 'dev-night')
+    assert status == 200 and resp['devMode'] is True
+
+
+def test_dev_night_is_idempotent(table):
+    assert _admin(table, 'dev-night', on=True)[0] == 200
+    status, resp = _admin(table, 'dev-night', on=True)
+    assert status == 200 and resp['devMode'] is True
+
+
+def test_dev_night_announces_both_ways(table):
+    # Players must learn why rolls went free (toast while live, modal on return),
+    # so each flip writes a log line AND fans out an away-event.
+    _join_alex(table)
+    assert _admin(table, 'dev-night', on=True)[0] == 200
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert any('Dev Night engaged' in e['text'] for e in state['events'])
+    assert any(e['kind'] == 'host' and 'Dev Night engaged' in e['text']
+               for e in state['you']['awayEvents'])
+
+    assert _admin(table, 'dev-night', on=False)[0] == 200
+    _, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert any('Dev Night over' in e['text'] for e in state['events'])
+
+
+def _set_bank(table, rolls, user='user-alex'):
+    """Force a player's banked rolls and clear any pending move, so the next
+    `roll` action is decided purely by the roll economy."""
+    sid, _ = db._active_season(table)
+    doc = db._get_player(table, sid, user)
+    doc['rolls'] = rolls
+    doc['pendingMove'] = None
+    assert db._put_player(table, doc)
+
+
+def test_dev_night_makes_rolls_free(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', False)   # the deployed default
+    _join_alex(table)
+
+    _set_bank(table, 0)
+    status, resp = act(table, 'roll')
+    assert status == 409                        # regression: gated while off
+
+    assert _admin(table, 'dev-night', on=True)[0] == 200
+    _set_bank(table, 0)
+    status, resp = act(table, 'roll')
+    assert status == 200
+    assert resp['you']['rolls'] == 0            # nothing spent
+    assert resp['you']['debug'] is True         # client renders the ∞ button
+
+
+def test_dev_night_read_from_config_each_request(table, monkeypatch):
+    # The flag is a request-scoped global; prove every request re-reads it from
+    # CONFIG rather than relying on the one the admin cmd happened to leave set.
+    monkeypatch.setattr(data, 'DEBUG', False)
+    _join_alex(table)
+    assert _admin(table, 'dev-night', on=True)[0] == 200
+    for _ in range(3):
+        _set_bank(table, 0)
+        status, resp = act(table, 'roll')
+        assert status == 200 and resp['you']['rolls'] == 0
+
+
+def test_dev_night_off_restores_roll_cost(table, monkeypatch):
+    monkeypatch.setattr(data, 'DEBUG', False)
+    _join_alex(table)
+    assert _admin(table, 'dev-night', on=True)[0] == 200
+    assert _admin(table, 'dev-night', on=False)[0] == 200
+
+    _set_bank(table, 3)
+    status, resp = act(table, 'roll')
+    assert status == 200
+    assert resp['you']['rolls'] == 2            # spending is live again
+    assert resp['you']['debug'] is False
+
+    _set_bank(table, 0)
+    assert act(table, 'roll')[0] == 409

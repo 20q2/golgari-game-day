@@ -1,7 +1,17 @@
 <div class="broadcast" [attr.data-scene]="scene().kind" (mousemove)="onActivity()">
+  <!-- Both stages stay in the layout at full size and cross-fade; only the
+       mounted engine renders. They must never be display:none — each canvas
+       sizes its backing store from its parent's client box on construction, so
+       a collapsed parent would bake in a 0x0 canvas. -->
+
   <!-- The board camera (read-only, driven by the director) -->
-  <div class="board-stage">
+  <div class="board-stage" [class.hidden]="onPlaza()">
     <canvas #boardCanvas></canvas>
+  </div>
+
+  <!-- The after-hours plaza: tonight's creatures, still bouncing around -->
+  <div class="plaza-stage" [class.show]="onPlaza()">
+    <canvas #plazaCanvas></canvas>
   </div>
 
   <!-- Vignette so overlays stay legible over busy terrain -->
@@ -9,9 +19,9 @@
 
   <!-- Broadcast wordmark, top-left -->
   <div class="brandchip">
-    <span class="dot" [class.live]="store.season()?.status === 'active'"></span>
+    <span class="dot" [class.live]="mode() === 'live'" [class.final]="mode() === 'ended'"></span>
     <span class="title">The Undercity</span>
-    <span class="sub">{{ store.season()?.status === 'active' ? 'LIVE' : 'STANDBY' }}</span>
+    <span class="sub">{{ statusPill() }}</span>
   </div>
 
   <!-- Exit (operator affordance) — tucked under the wordmark, shown on mouse move -->
@@ -175,6 +185,80 @@
   <div class="ticker" *ngIf="store.events().length as n">
     <mat-icon>rss_feed</mat-icon>
     <span class="ticker-text">{{ store.events()[n - 1].text }}</span>
+  </div>
+
+  <!-- Champion card (after-hours plaza, champion beat) -->
+  <div class="champ-card" *ngIf="onPlaza() && plazaOverlay() === 'champion' && champion() as ch">
+    <div class="champ-kicker"><mat-icon>emoji_events</mat-icon> Champion of the Undercity</div>
+    <div class="champ-body">
+      <div class="champ-portrait">
+        <img *ngIf="portrait(ch) as src" [src]="src" alt="" />
+      </div>
+      <div class="champ-text">
+        <div class="champ-name">{{ ch.username }}</div>
+        <div class="champ-creature">{{ creatureTitle(ch) }}</div>
+        <div class="champ-meta">
+          <span class="chip renown">{{ ch.renown }} Renown</span>
+          <span class="chip">Lv {{ ch.level }}</span>
+          <span class="chip"><mat-icon>sports_kabaddi</mat-icon>{{ ch.pvpWins }}</span>
+          <span class="chip"><mat-icon>bug_report</mat-icon>{{ ch.wildWins }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="champ-discard" *ngIf="discarded()">
+      <mat-icon>delete_sweep</mat-icon>
+      Results discarded — nothing was saved to anyone's profile.
+    </div>
+  </div>
+
+  <!-- Final standings (after-hours plaza, standings beat) -->
+  <div class="spotlight final" *ngIf="onPlaza() && plazaOverlay() === 'standings'">
+    <div class="spot-head">Final Standings</div>
+    <table class="spot-table">
+      <tr>
+        <th>#</th>
+        <th></th>
+        <th>Creature</th>
+        <th><mat-icon>sports_kabaddi</mat-icon></th>
+        <th><mat-icon>bug_report</mat-icon></th>
+        <th>Renown</th>
+      </tr>
+      <tr *ngFor="let s of finalStandings().slice(0, 8); let i = index" [class.lead]="i === 0">
+        <td class="rk">{{ i + 1 }}</td>
+        <td class="pic">
+          <img *ngIf="portrait(s) as src" [src]="src" alt="" />
+        </td>
+        <td class="who">
+          <div class="nm">{{ s.username }}</div>
+          <div class="cr">{{ creatureTitle(s) }}</div>
+        </td>
+        <td class="num">{{ s.pvpWins }}</td>
+        <td class="num">{{ s.wildWins }}</td>
+        <td class="num rn">{{ s.renown }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Lobby screen — full-bleed countdown + join QR before the night launches -->
+  <div class="attract lobby-screen" [class.show]="scene().kind === 'lobby'">
+    <div class="attract-inner">
+      <div class="attract-kicker">Golgari Palace Game Day</div>
+      <h1 class="attract-title">Tonight in The Undercity</h1>
+      <ng-container *ngIf="launchCountdown() as cd">
+        <ng-container *ngIf="cd !== 'ready'">
+          <p class="attract-copy">The night begins in</p>
+          <div class="lobby-clock">{{ cd }}</div>
+        </ng-container>
+        <p class="attract-copy big" *ngIf="cd === 'ready'">The night begins any moment now…</p>
+      </ng-container>
+      <p class="attract-copy big" *ngIf="!launchCountdown()">
+        The swarm stirs. The night begins soon.
+      </p>
+      <div class="attract-qr">
+        <canvas #qrCanvasLobby></canvas>
+        <div class="attract-scan">Scan now — hatch the moment it opens</div>
+      </div>
+    </div>
   </div>
 
   <!-- Attract screen — full-bleed when nobody's playing -->

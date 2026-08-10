@@ -17,8 +17,12 @@ class _FixedRng:
         return 0.0
 
 
-def _doc(passives):
-    return {'passives': list(passives), 'gear': {}, 'stash': [], 'spores': 0}
+def _doc(passives, tier=3):
+    # Treasure Sense is an APEX passive, so these docs are tier 3 by default —
+    # which is also what lets them roll the top rarity under the
+    # GEAR_RARITY_CAP_BY_TIER ceiling.
+    return {'passives': list(passives), 'gear': {}, 'stash': [], 'spores': 0,
+            'tier': tier}
 
 
 def test_treasure_sense_bumps_rolled_tier(monkeypatch):
@@ -40,6 +44,19 @@ def test_bump_caps_at_max_tier(monkeypatch):
     # base tier 3 -> bump would be 4, but caps at TREASURE_SENSE_MAX_TIER (3).
     drop = db._roll_gear_drop(_doc({'treasure_sense'}), {3: 1.0})
     assert data.WORLD_GEAR[drop['id']]['tier'] == 3
+
+
+def test_rarity_is_capped_by_creature_tier(monkeypatch):
+    """Treasure tiles floor at Rare and can roll Legendary. Without a ceiling a
+    tier-1 creature came out of one early cache in gear that solves the board,
+    so the roll is clamped to GEAR_RARITY_CAP_BY_TIER[creature tier]."""
+    monkeypatch.setattr(db, '_rng', _FixedRng('fang'))
+    for creature_tier, expected in data.GEAR_RARITY_CAP_BY_TIER.items():
+        drop = db._roll_gear_drop(_doc(set(), tier=creature_tier), {3: 1.0})
+        assert data.WORLD_GEAR[drop['id']]['tier'] == expected, creature_tier
+    # An unevolved creature cracking a treasure tile still gets a piece — it's
+    # just Common. The reward is never voided by the cap.
+    assert db._roll_gear_drop(_doc(set(), tier=1), {2: 0.6, 3: 0.4}) is not None
 
 
 class _ProbeRng:

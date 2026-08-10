@@ -9,7 +9,7 @@
  *
  * Scope (design 2026-08-04): the five Guild-Sigil biome-lair bosses (intro +
  * vestige) and Savra (intro only — the one-time finale has no Vestige). The
- * two respawn/ruin lairs (Lord of Extinction, Doomgape), the Moor-Wyrm world
+ * two respawn/ruin lairs (Lord of Extinction, Doomgape), Grothoma the world
  * boss, and elites are intentionally excluded.
  *
  * No emojis, per project convention (Undercity uses its own symbol language).

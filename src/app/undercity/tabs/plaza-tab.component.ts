@@ -14,7 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { PlazaCanvas, PlazaCreature } from '../engine/plaza-canvas';
-import { PublicPlayer, evolveGlowActive, isShielded } from '../services/undercity-models';
+import { toPlazaCreature } from '../engine/plaza-roster';
 import {
   GEAR_MAP,
   CONSUMABLE_MAP,
@@ -353,7 +353,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
     if (l.kind === 'pet' || l.kind === 'egg') return affordReason(you.spores, l.price);
     const held =
       l.kind === 'consumable' ? you.bag : l.kind === 'scroll' ? you.scrolls : you.gearStash;
-    const cap = l.kind === 'consumable' ? 3 : 6; // BAG_SIZE=3; gearStash/scrolls=6
+    const cap = l.kind === 'consumable' ? 5 : 6; // BAG_SIZE=5; gearStash/scrolls=6
     const label =
       l.kind === 'consumable' ? 'Bag' : l.kind === 'scroll' ? 'Scroll satchel' : 'Stash';
     return (
@@ -559,7 +559,7 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
     effect(() => {
       const players = this.store.players();
       if (!this.plaza) return;
-      this.plaza.updatePartners(players.map((p) => this.toCreature(p)));
+      this.plaza.updatePartners(players.map(toPlazaCreature));
     });
     effect(() => {
       const diff = this.store.rosterDiff();
@@ -586,31 +586,10 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  private toCreature(p: PublicPlayer): PlazaCreature {
-    return {
-      userId: p.userId,
-      username: p.username,
-      form: p.form,
-      spriteVariant: p.spriteVariant,
-      formName: p.formName,
-      creatureName: p.creatureName,
-      level: p.level,
-      paint: p.paint ?? {},
-      hat: p.hat,
-      shiny: p.shiny,
-      effect: p.effect,
-      shielded: isShielded(p),
-      evolveGlow: evolveGlowActive(p as { evolvedAt?: string }),
-      status: p.status ?? '',
-      pokedRecently: p.pokedRecently ?? false,
-      pokeCooldownUntil: p.pokeCooldownUntil ?? null,
-    };
-  }
-
   ngAfterViewInit(): void {
     this.plaza = new PlazaCanvas(
       this.canvasRef.nativeElement,
-      this.store.players().map((p) => this.toCreature(p)),
+      this.store.players().map(toPlazaCreature),
       (creature) => {
         this.selected.set(creature);
         if (creature && creature.userId === this.store.ownUserId) {

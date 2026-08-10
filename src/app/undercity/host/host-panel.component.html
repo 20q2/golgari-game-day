@@ -49,14 +49,46 @@
               {{ confirmAwaken() ? 'Unseal her for everyone?' : 'Awaken the Queen' }}
             </button>
           }
-          <button
-            class="uc-btn uc-btn-danger"
-            [disabled]="busy() || !hostKey.trim()"
-            (click)="endNight()"
-          >
-            <mat-icon class="mi">{{ confirmEnd() ? 'warning' : 'sports_score' }}</mat-icon>
-            {{ confirmEnd() ? 'Really end the night?' : 'End Night' }}
-          </button>
+          @if (mustDiscard()) {
+            <p class="host-note">
+              This night ran with Dev Night, so its results can't be banked —
+              ending it discards them.
+            </p>
+            <button
+              class="uc-btn uc-btn-danger"
+              [disabled]="busy() || !hostKey.trim()"
+              (click)="endNight()"
+            >
+              <mat-icon class="mi">{{ confirmEnd() ? 'warning' : 'delete_sweep' }}</mat-icon>
+              {{ confirmEnd() ? 'End it and discard?' : 'End Night — results discarded' }}
+            </button>
+          } @else {
+            <button
+              class="uc-btn uc-btn-danger"
+              [disabled]="busy() || !hostKey.trim()"
+              (click)="endNight()"
+            >
+              <mat-icon class="mi">{{ confirmEnd() ? 'warning' : 'sports_score' }}</mat-icon>
+              {{ confirmEnd() ? 'Really end the night?' : 'End Night' }}
+            </button>
+            <button
+              class="uc-btn uc-btn-danger"
+              [disabled]="busy() || !hostKey.trim()"
+              (click)="discardNight()"
+            >
+              <mat-icon class="mi">{{ confirmDiscard() ? 'warning' : 'delete_sweep' }}</mat-icon>
+              {{
+                confirmDiscard()
+                  ? 'Throw the whole night away?'
+                  : 'Discard Night — save nothing'
+              }}
+            </button>
+            <p class="host-note">
+              Discard ends the night with no Renown banked, no Hall of Fame entry and
+              no lifetime stats, and hands back Renown paid out mid-night. Seals and
+              pre-spawn purchases still stand.
+            </p>
+          }
           <button
             class="uc-btn uc-btn-primary"
             [disabled]="busy() || !hostKey.trim()"

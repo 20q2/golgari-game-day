@@ -941,6 +941,13 @@
     font-weight: 700;
     opacity: 0.85;
     font-variant-numeric: tabular-nums;
+
+    // A certain escape reads as a positive, not just another percentage —
+    // it pairs with the Smoke Spore icon swap on the same button.
+    &.guaranteed {
+      color: #5fd18a;
+      opacity: 1;
+    }
   }
 }
 

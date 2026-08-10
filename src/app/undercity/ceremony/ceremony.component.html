@@ -1,4 +1,10 @@
 <div class="ceremony">
+  @if (discarded()) {
+    <p class="discard-badge">
+      <mat-icon class="mi">delete_sweep</mat-icon>
+      Results discarded — nothing was saved to anyone's profile.
+    </p>
+  }
   @if (champion(); as champ) {
     <div
       class="champ-stage"
@@ -30,6 +36,13 @@
         </div>
       }
     </div>
+
+    <!-- The night is over, so nothing here is playable — but everyone's creature
+         is still in the plaza on the big screen. -->
+    <a class="uc-btn uc-btn-primary plaza-cta" routerLink="/tv">
+      <mat-icon class="mi">park</mat-icon>
+      Watch the Plaza
+    </a>
 
     <table class="renown-table">
       <thead>

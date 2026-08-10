@@ -10,7 +10,6 @@ Item layout (existing single table, pk/sk strings):
   UNDERCITY#META            / CURRENT        active season pointer
   UNDERCITY#{sid}           / CONFIG         status, hostKey, bossPhase
   UNDERCITY#{sid}           / PLAYER#{uid}   season player doc
-  UNDERCITY#{sid}           / SPACE#{node}   snare / spore-pile state
   UNDERCITY#{sid}           / EVENT#{ts}#{x} Grapevine log entries
   UNDERCITY#{sid}           / CHAT#{ts}#{x}  plaza chat messages
   UNDERCITY#{sid}           / RESULT         final scoreboard
@@ -45,6 +44,12 @@ def _now():
 
 def _now_ms():
     return datetime.utcnow().isoformat(timespec='milliseconds')
+
+
+def _iso_in_minutes(minutes):
+    """An ISO deadline `minutes` from now, comparable to _now() as a string."""
+    return (datetime.utcnow()
+            + timedelta(minutes=minutes)).isoformat(timespec='seconds')
 
 
 _EPOCH = datetime(1970, 1, 1)
@@ -167,17 +172,35 @@ def _gen_shop_stock(node, window):
             gear.append({'item': gid, 'qty': data.SHOP_GEAR_QTY})
 
     # Consumables: guarantee >=1 in-battle ('combat') item, no duplicates.
-    combat = [cid for cid, c in data.CONSUMABLES.items() if c.get('combat')]
-    first = rng.choice(combat)
-    pool = [cid for cid in data.CONSUMABLES if cid != first]
+    ctiers = (data.ISLAND_BAZAAR_CONSUMABLE_TIERS if is_island
+              else data.BAZAAR_CONSUMABLE_TIERS)
+    stockable = sorted(cid for cid, c in data.CONSUMABLES.items()
+                       if c['tier'] in ctiers)
+    combat = [cid for cid in stockable if data.CONSUMABLES[cid].get('combat')]
+    first = rng.choice(combat or stockable)
+    pool = [cid for cid in stockable if cid != first]
     rng.shuffle(pool)
     picks = [first] + pool[:data.SHOP_CONSUMABLE_SLOTS - 1]
     consumables = [{'item': cid, 'qty': data.SHOP_CONSUMABLE_QTY} for cid in picks]
 
-    # Grimoires: distinct tier-1 tomes, no qty (never deplete).
-    tier1 = [gid for gid, g in data.GRIMOIRES.items() if g['tier'] == 1]
-    rng.shuffle(tier1)
-    grimoires = tier1[:data.SHOP_GRIMOIRE_SLOTS]
+    # Grimoires: distinct tomes, no qty (never deplete). Biome bazaars stock the
+    # tier-1 primers; the island bazaar deals in the higher books — same split as
+    # the gear tiers above. This used to be hardcoded to tier 1 everywhere, which
+    # left tier-2/3 grimoires unbuyable at any shop in the game.
+    gtiers = (data.ISLAND_BAZAAR_GRIMOIRE_TIERS if is_island
+              else {t: 1 for t in data.BAZAAR_GRIMOIRE_TIERS})
+    by_gtier = {}
+    for gid, g in sorted(data.GRIMOIRES.items()):
+        if g['tier'] in gtiers:
+            by_gtier.setdefault(g['tier'], []).append(gid)
+    for pool in by_gtier.values():
+        rng.shuffle(pool)
+    grimoires = []
+    while len(grimoires) < data.SHOP_GRIMOIRE_SLOTS:
+        weights = {t: w for t, w in gtiers.items() if by_gtier.get(t)}
+        if not weights:
+            break
+        grimoires.append(by_gtier[_weighted_tier(rng, weights)].pop())
 
     # Eggs (the Eggs tab): a couple of low-skewed companion eggs to gamble on;
     # collapse duplicate tiers into a single line with summed quantity.
@@ -345,6 +368,29 @@ def get_active_season(table):
     """Public lookup for other Lambda modules (e.g. queue_db) that need to
     key their own data off whichever Undercity night is currently running."""
     return _active_season(table)
+
+
+# ── Dev Night (host-toggled free rolls) ──────────────────────────────────────
+# Request-scoped mirror of the running season's `devMode`. Handlers are called as
+# (table, sid, doc, payload) and _roll_meta is reached from nearly every
+# response, so threading `config` through every one of them to deliver a single
+# boolean isn't worth it. Both entry points re-stamp this on every request
+# (including the no-season case), and Lambda serves one request at a time per
+# container, so a value can never leak between invocations. Read it only through
+# _free_rolls().
+_DEV_NIGHT = False
+
+
+def _set_dev_night(config):
+    """Stamp the request-scoped Dev Night flag from a season CONFIG doc (or None)."""
+    global _DEV_NIGHT
+    _DEV_NIGHT = bool((config or {}).get('devMode'))
+
+
+def _free_rolls():
+    """True when a roll costs nothing: the deployed DEBUG constant (local sim and
+    tests) or the host's per-night Dev Night toggle."""
+    return data.DEBUG or _DEV_NIGHT
 
 
 # Renamed creature passives — remapped on load so live saves pick up the reworked
@@ -537,6 +583,49 @@ def _get_perm(table, user_id):
         if p not in doc['paints']:
             doc['paints'].append(p)
     return doc
+
+
+def _perm_renown_sk(user_id):
+    return f'PERMRENOWN#{user_id}'
+
+
+def _bank_perm_renown(table, sid, user_id, amount):
+    """Bank Renown onto a player's permanent wallet AND tally it in this season's
+    ledger (UNDERCITY#{sid} / PERMRENOWN#{uid}), so a discarded night can hand back
+    exactly what it granted.
+
+    Every mid-night Renown payout goes through here. The ledger is season-scoped
+    rather than a counter on the player doc because the world-event payout credits
+    non-killers through _pay_world_reward_retry, which owns its own optimistic-lock
+    retry loop — a separate item can't lose a grant to a write conflict."""
+    amount = int(amount or 0)
+    if not amount:
+        return
+    perm = _get_perm(table, user_id)
+    perm['renown'] = perm.get('renown', 0) + amount
+    table.put_item(Item=perm)
+    sk = _perm_renown_sk(user_id)
+    rec = _get(table, _season_pk(sid), sk) or {'pk': _season_pk(sid), 'sk': sk,
+                                               'amount': 0}
+    rec['amount'] = int(rec.get('amount', 0)) + amount
+    table.put_item(Item=rec)
+
+
+def _refund_perm_renown(table, sid):
+    """Hand back every Renown this season banked onto permanent wallets mid-night.
+    Floors each wallet at 0 — a player who earned 10 then spent down to 5 lands on
+    0, never negative (a discard doesn't refund what they bought). Returns the
+    number of wallets touched."""
+    recs = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': _season_pk(sid), ':sk': 'PERMRENOWN#'})['Items']
+    for raw in recs:
+        rec = _clean(raw)
+        user_id = rec['sk'].split('#', 1)[1]
+        perm = _get_perm(table, user_id)
+        perm['renown'] = max(0, perm.get('renown', 0) - int(rec.get('amount', 0)))
+        table.put_item(Item=perm)
+    return len(recs)
 
 
 def _passives(doc):
@@ -878,7 +967,7 @@ def _apply_mimicry(doc, npc):
     doc['buffs'] = buffs
 
 
-def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
+def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None, region=None):
     """Snapshot combatants into doc['battle'], telegraph round 1, return the
     battle_start space event. Player buffs/stats freeze here; rewards resolve
     in _finish_battle when the fight ends."""
@@ -903,6 +992,7 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None):
     rec = {
         'kind': kind, 'node': node, 'round': 1,
         'npcTier': npc_tier,
+        'region': region,        # board region, for post-session metrics only
         'player': player_snap,
         'npc': npc_snap,
         'npcMeta': npc,          # full spec for reward resolution
@@ -942,12 +1032,24 @@ def _creature_label(doc):
 ONE_BATTLE_BUFFS = ('rot_surge', 'acorn_fury', 'bone_chill', 'grave_chill', 'glowveil',
                     'harden_shell', 'weaken_hex', 'savage_roar', 'iron_hide', 'fleetfoot',
                     'warding_dance', 'sap_vigor', 'rust_curse', 'high_five', 'trophy',
-                    'mimic', 'improvise')
+                    'mimic', 'improvise', 'sovereign_might', 'sovereign_ward',
+                    'sovereign_haste')
 
 
 def _consume_one_battle_buffs(doc):
-    doc['buffs'] = [b for b in (doc.get('buffs') or [])
-                    if b.get('kind') not in ONE_BATTLE_BUFFS]
+    """Tick every per-battle buff down by one fight. A buff carrying `battles`
+    survives until that many fights have resolved (bought tonics last several);
+    one without it is the classic single-fight buff and simply drops."""
+    kept = []
+    for b in doc.get('buffs') or []:
+        if b.get('kind') not in ONE_BATTLE_BUFFS:
+            kept.append(b)
+            continue
+        left = int(b.get('battles', 1)) - 1
+        if left > 0:
+            b['battles'] = left
+            kept.append(b)
+    doc['buffs'] = kept
 
 
 def _expire_buffs(doc):
@@ -1012,7 +1114,7 @@ def _give_consumable(doc, source='reward'):
     """Grant a random consumable through the shared pipeline: into the bag if it
     fits, otherwise parked for the pickup modal. Returns the consumable id
     (always — the item is never lost)."""
-    item = _rng.choice(list(data.CONSUMABLES.keys()))
+    item = data.roll_consumable(_rng)
     _acquire(doc, 'consumable', item, source)
     return item
 
@@ -1078,7 +1180,10 @@ def _incubate_egg(table, sid, doc, payload):
     if not egg:
         return _err('No such egg.', 409)
     eggs.remove(egg)
-    doc['incubator'] = {'eggId': egg['id'], 'startedAt': _now(), 'tier': egg['tier']}
+    # Step timer: carry the egg PET_INCUBATE_SPACES board spaces to hatch it.
+    # `startedAt` is kept for display/telemetry only — nothing gates on it.
+    doc['incubator'] = {'eggId': egg['id'], 'startedAt': _now(),
+                        'tier': egg['tier'], 'spacesLeft': data.PET_INCUBATE_SPACES}
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
@@ -1086,11 +1191,12 @@ def _incubate_egg(table, sid, doc, payload):
 
 
 def _incubator_ready(inc):
-    started = inc.get('startedAt')
-    if not started:
+    """An egg is ready once it has been carried PET_INCUBATE_SPACES spaces.
+    Docs from before the step-timer switch have no `spacesLeft`; treat those as
+    ready rather than stranding an egg that can never tick down."""
+    if not inc:
         return False
-    elapsed = datetime.utcnow() - datetime.fromisoformat(started)
-    return elapsed >= timedelta(minutes=data.PET_INCUBATE_MINUTES)
+    return int(inc.get('spacesLeft', 0)) <= 0
 
 
 def _hatch_egg(table, sid, doc, payload):
@@ -1098,9 +1204,9 @@ def _hatch_egg(table, sid, doc, payload):
     if not inc:
         return _err('Nothing is incubating.', 409)
     if not _incubator_ready(inc):
-        elapsed = datetime.utcnow() - datetime.fromisoformat(inc['startedAt'])
-        wait = data.PET_INCUBATE_MINUTES - int(elapsed.total_seconds() // 60)
-        return _err(f'The egg needs {max(wait, 1)} more min.', 429)
+        left = int(inc.get('spacesLeft', 0))
+        return _err(f'The egg needs carrying {left} more '
+                    f'{"space" if left == 1 else "spaces"}.', 429)
     tier = int(inc.get('tier', 1))
     # Natural Enchanter (elf 'stonewright'): companions hatch one rarity above
     # the egg, capped at the top pet tier.
@@ -1231,12 +1337,33 @@ def _salvage_pet(table, sid, doc, payload):
 
 # ── Companion activated / economy abilities (Plan 3) ─────────────────────────
 
-def _pet_ability_cooldown_min(role, level):
-    """Real-time cooldown (minutes) for an activated ability, keyed by role and
-    shortened as the pet levels but never below the floor."""
-    base = data.PET_ABILITY_COOLDOWN_MIN.get(role, 0)
-    mins = base - data.PET_ABILITY_COOLDOWN_PER_LVL * (int(level) - 1)
-    return max(data.PET_ABILITY_COOLDOWN_FLOOR, mins)
+def _pet_scout_recharge_spaces(level):
+    """Board spaces a scout must walk to recharge, shortened as it levels but
+    never below the floor. Distance, not a clock (design 2026-08-10) — see
+    PET_SCOUT_RECHARGE_SPACES."""
+    spaces = (data.PET_SCOUT_RECHARGE_SPACES
+              - data.PET_SCOUT_RECHARGE_PER_LVL * (int(level) - 1))
+    return max(data.PET_SCOUT_RECHARGE_FLOOR, spaces)
+
+
+def _tick_step_timers(doc, spaces):
+    """Advance every distance-based countdown by `spaces` walked: forage's
+    recharge, each activated role's recharge, and the incubating egg.
+
+    These replaced wall-clock timers (design 2026-08-10) so that nothing a
+    player starts can only be finished by waiting — walking always finishes it.
+    """
+    if spaces <= 0:
+        return
+    if int(doc.get('forageRecharge', 0)) > 0:
+        doc['forageRecharge'] = max(0, int(doc['forageRecharge']) - spaces)
+    rech = doc.get('petRecharge') or {}
+    for role, left in list(rech.items()):
+        if int(left) > 0:
+            rech[role] = max(0, int(left) - spaces)
+    inc = doc.get('incubator')
+    if inc and int(inc.get('spacesLeft', 0)) > 0:
+        inc['spacesLeft'] = max(0, int(inc['spacesLeft']) - spaces)
 
 
 def _pet_scout_tier_cap(level):
@@ -1265,22 +1392,22 @@ def _biome_bazaar_node(table, sid, doc):
 
 
 def _pet_cd_ready(doc, role):
-    """Cooldowns are keyed by ROLE so swapping between two same-role species can't
-    reset the timer."""
-    ready_at = (doc.get('petCooldowns') or {}).get(role)
-    return not ready_at or ready_at <= _now()
+    """Ready when the role's step countdown has reached 0. Keyed by ROLE so
+    swapping between two same-role species can't reset it."""
+    return int((doc.get('petRecharge') or {}).get(role, 0)) <= 0
 
 
 def _start_pet_cooldown(doc, role, level):
-    until = datetime.utcnow() + timedelta(minutes=_pet_ability_cooldown_min(role, level))
-    doc.setdefault('petCooldowns', {})[role] = until.isoformat(timespec='seconds')
+    """Arm the role's distance countdown; walking it off is the only way back."""
+    doc.setdefault('petRecharge', {})[role] = _pet_scout_recharge_spaces(level)
 
 
 def _economy_per_loot(level):
     """Spores an active economy companion banks per loot space it passes over,
-    scaled by the pet's level."""
-    return int(data.PET_SPORE_PER_LOOT_BASE
-               + data.PET_SPORE_PER_LOOT_PER_LVL * (int(level) - 1))
+    scaled by the pet's level and capped at PET_SPORE_PER_LOOT_MAX."""
+    return int(min(data.PET_SPORE_PER_LOOT_MAX,
+                   data.PET_SPORE_PER_LOOT_BASE
+                   + data.PET_SPORE_PER_LOOT_PER_LVL * (int(level) - 1)))
 
 
 def _economy_spore_cap(level):
@@ -1337,7 +1464,9 @@ def _pet_scout_buy(table, sid, doc, payload):
     if not pet:
         return _err('You have no active scout companion.', 409)
     if not _pet_cd_ready(doc, 'scout'):
-        return _err('Your scout is still resting.', 429)
+        left = int((doc.get('petRecharge') or {}).get('scout', 0))
+        return _err(f'Your scout is still ranging — {left} more '
+                    f'{"space" if left == 1 else "spaces"}.', 429)
     node = _biome_bazaar_node(table, sid, doc)
     if not node:
         return _err('No bazaar in this biome for your scout to reach.', 409)
@@ -1555,12 +1684,26 @@ def _roll_gear_drop(doc, tier_weights):
     slot = _rng.choice(data.GEAR_SLOTS)
     tiers = list(tier_weights)
     tier = _rng.choices(tiers, weights=[tier_weights[t] for t in tiers])[0]
+    # Rarity ceiling = the rarity your creature tier has earned, so an early
+    # treasure tile (which floors at Rare) can't hand a tier-1 creature gear that
+    # solves the board. Evolving is what unlocks the better loot.
+    rolled = tier
+    tier = min(tier, data.GEAR_RARITY_CAP_BY_TIER.get(doc.get('tier', 1), 1))
+    if tier < rolled:
+        # How often the ceiling actually bites, and by how much — the signal for
+        # whether GEAR_RARITY_CAP_BY_TIER is tuned right.
+        _metric(doc, f'gear.capped.t{rolled}to{tier}')
     if 'treasure_sense' in _passives(doc):
         tier = min(tier + data.TREASURE_SENSE_RARITY_BUMP, data.TREASURE_SENSE_MAX_TIER)
     pool = [gid for gid, g in data.WORLD_GEAR.items()
             if g['slot'] == slot and g['tier'] == tier]
+    while not pool and tier > 1:          # degrade if a slot lacks that rarity
+        tier -= 1
+        pool = [gid for gid, g in data.WORLD_GEAR.items()
+                if g['slot'] == slot and g['tier'] == tier]
     if not pool:
         return None
+    _metric(doc, f'gear.found.t{tier}')   # rarity mix actually reaching players
     return _gain_gear(doc, _rng.choice(pool))
 
 
@@ -1593,7 +1736,7 @@ def _roll_umori_box(window, rank, under_reserve):
     if kind == 'egg':
         return {'kind': 'egg', 'tier': int(spec[1])}
     if kind == 'consumable':
-        return {'kind': 'consumable', 'item': rng.choice(sorted(data.CONSUMABLES))}
+        return {'kind': 'consumable', 'item': data.roll_consumable(rng)}
     return {'kind': 'materials', 'ichor': int(spec[1]), 'moltings': int(spec[2])}
 
 
@@ -2374,9 +2517,10 @@ def handle_map(table, query_params):
 def handle_state(table, query_params):
     user_id = (query_params or {}).get('userId') or ''
     sid, config = _active_season(table)
+    _set_dev_night(config)
 
     if not sid or not config:
-        return 200, {'season': None, 'you': None, 'players': [], 'snares': [],
+        return 200, {'season': None, 'you': None, 'players': [],
                      'events': [], 'chat': [], 'result': None,
                      'hallOfFame': _hall_of_fame(table)}
 
@@ -2428,7 +2572,7 @@ def handle_state(table, query_params):
     fog_reveals = {i['sk'].replace('FOG#', ''): i.get('revealed')
                    for i in (_clean(x) for x in fg['Items']) if i.get('revealed')}
 
-    players, you, snares, result, posts, sites = [], None, [], None, {}, {}
+    players, you, result, posts, sites = [], None, None, {}, {}
     veins, vaults, shops = {}, {}, {}
     umori_reveal = None
     now = _now()
@@ -2450,8 +2594,6 @@ def handle_state(table, query_params):
                 # right after an action and yank the client's max HP down below
                 # current hp (hp is always clamped to the effective max).
                 you['maxHp'] = engine.effective_stats(item)['maxHp']
-        elif item['sk'].startswith('SPACE#'):
-            snares.append(item['sk'].replace('SPACE#', ''))
         elif item['sk'].startswith('POST#UMORI#'):
             pass  # auction bid records, not a rendered trading post
         elif item['sk'].startswith('POST#'):
@@ -2517,10 +2659,11 @@ def handle_state(table, query_params):
         'season': {'seasonId': sid, 'status': config.get('status'),
                    'startedAt': config.get('startedAt'),
                    'launchAt': config.get('launchAt'),
-                   'bossPhase': bool(config.get('bossPhase'))},
+                   'bossPhase': bool(config.get('bossPhase')),
+                   'devMode': bool(config.get('devMode')),
+                   'devEverOn': bool(config.get('devEverOn'))},
         'you': you,
         'players': players,
-        'snares': snares,
         'tradingPosts': posts,
         'umori': {'node': umori_node, 'movesAt': _umori_window_end(umori_win),
                   'minBid': data.UMORI_MIN_BID, 'reserves': data.UMORI_RESERVES,
@@ -2614,6 +2757,7 @@ def handle_action(table, body):
     payload = req.get('payload') or {}
     if not atype or not user_id:
         return _err('type and userId are required')
+    _set_dev_night(None)   # cleared until this night's CONFIG says otherwise
 
     if atype == 'season-start':
         return _season_start(table, payload)
@@ -2622,6 +2766,7 @@ def handle_action(table, body):
         return _season_lobby(table, payload)
 
     sid, config = _active_season(table)
+    _set_dev_night(config)
 
     # The read-only host export must still work after the night has ended —
     # reviewing the finished night's data is exactly when the host wants it. It
@@ -2738,7 +2883,7 @@ def _roll_meta(doc):
     client can gate its dev tools and show a next-roll countdown. The countdown
     keeps running while the bank is full but `rested` is still filling — that
     tick banks a rested stack rather than a roll."""
-    meta = {'debug': data.DEBUG}
+    meta = {'debug': _free_rolls()}
     rolls, rested = doc.get('rolls', 0), doc.get('rested', 0)
     still_accruing = rolls < data.ROLL_CAP or rested < data.RESTED_CAP
     if still_accruing and doc.get('rollRegenAt'):
@@ -2812,7 +2957,7 @@ def _bank_reward(table, sid, user_id, is_winner, game_name=None):
     rec['rolls'] = rec.get('rolls', 0) + data.CLAIM_FINISHED_ROLLS + (
         data.CLAIM_WON_BONUS_ROLLS if is_winner else 0)
     if is_winner:
-        rec.setdefault('items', []).append(_rng.choice(list(data.CONSUMABLES.keys())))
+        rec.setdefault('items', []).append(data.roll_consumable(_rng))
     if game_name:
         rec['game'] = game_name   # names the most recent game if several bank
     table.put_item(Item=rec)
@@ -2967,8 +3112,12 @@ def _season_end(table, sid, config, payload):
     host_key = (payload.get('hostKey') or '').strip()
     if config.get('hostKey') != host_key:
         return _err('Wrong host passphrase.', 403)
-    result = _archive_season(table, sid, config)
-    return 200, {'ok': True, 'result': result}
+    # `discard: true` throws the night away instead of banking it (host testing).
+    # A night that ever ran with Dev Night is discarded either way.
+    result = _archive_season(table, sid, config,
+                             discard=bool(payload.get('discard')))
+    return 200, {'ok': True, 'result': result,
+                 'discarded': result['discarded']}
 
 
 def _boss_awaken(table, sid, config, payload):
@@ -3149,6 +3298,30 @@ def _admin_set_admin(table, sid, payload):
     return 200, {'ok': True, 'isAdmin': doc['isAdmin']}
 
 
+def _admin_dev_night(table, sid, payload):
+    """Dev Night: flip free rolls for EVERY player on the running night. The flag
+    lives on the season CONFIG, so it needs no deploy and dies with the night;
+    each request reads it back through _free_rolls(). Reversible, so — unlike the
+    one-way boss-awaken — re-sending the same value is a no-op, not an error."""
+    on = bool(payload.get('on', True))
+    config = _get(table, _season_pk(sid), 'CONFIG')
+    if not config:
+        return _err('No active night to toggle.', 409)
+    # devEverOn is sticky: once a night has had free rolls its results can never
+    # be banked, and turning the toggle back off must not launder that (see
+    # _must_discard). Only ever set, never cleared.
+    patch = {'devMode': on}
+    if on:
+        patch['devEverOn'] = True
+    table.put_item(Item=dict(config, **patch))
+    _set_dev_night({'devMode': on})
+    text = ('Dev Night engaged — roll costs are off. Go wild.' if on
+            else 'Dev Night over — the roll bank is live again.')
+    _event(table, sid, 'host', text)
+    _broadcast_away(table, sid, {'kind': 'host', 'text': text, 'at': _now()})
+    return 200, {'ok': True, 'devMode': on}
+
+
 def _admin_bot_step(table, sid, payload):
     """Take a bot's turn: a short random wander (1–4 hops by the real movement
     rules, respecting sealed barriers) with NO landing effects. Bots are
@@ -3229,9 +3402,24 @@ def _admin_export(table, sid, payload):
     pk = _season_pk(sid)
 
     def _all(prefix):
-        return [_clean(i) for i in table.query(
-            KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
-            ExpressionAttributeValues={':pk': pk, ':sk': prefix})['Items']]
+        """Every row under `prefix`, following pagination. DynamoDB caps a query
+        page at 1MB; a busy night's EVENT# log passes that, and an unpaginated
+        read drops the tail SILENTLY — which makes the export lie about exactly
+        the long sessions we most want to analyse."""
+        out, start = [], None
+        while True:
+            kw = {'KeyConditionExpression': 'pk = :pk AND begins_with(sk, :sk)',
+                  'ExpressionAttributeValues': {':pk': pk, ':sk': prefix}}
+            if start:
+                kw['ExclusiveStartKey'] = start
+            page = table.query(**kw)
+            out.extend(_clean(i) for i in page['Items'])
+            start = page.get('LastEvaluatedKey')
+            if not start:
+                return out
+
+    def _one(key):
+        return _clean(_get(table, pk, key) or {}) or None
 
     return 200, {
         'ok': True,
@@ -3242,6 +3430,14 @@ def _admin_export(table, sid, payload):
         'chat': _all('CHAT#'),
         'firsts': _all('FIRST#'),
         'fogReveals': _all('FOG#'),
+        # Shared world state. Without these the export can't answer the questions
+        # the balance work actually asks: who bled the world boss and by how much
+        # (its per-player `dmg` map is the ONLY record of that), how far Savra's
+        # pool got, and which lair pools were left standing.
+        'worldEvent': _one('WORLDEVENT'),
+        'boss': _one('BOSS'),
+        'enraged': _one('ENRAGED'),
+        'lairs': _all('LAIR#'),
     }
 
 
@@ -3253,6 +3449,7 @@ _ADMIN_CMDS = {
     'heal': _admin_heal,
     'teleport': _admin_teleport,
     'grant-admin': _admin_set_admin,
+    'dev-night': _admin_dev_night,
     'bot-step': _admin_bot_step,
     'kick': _admin_kick,
     'reset-all': _admin_reset_all,
@@ -3260,7 +3457,20 @@ _ADMIN_CMDS = {
 }
 
 
-def _archive_season(table, sid, config):
+def _must_discard(config):
+    """A night that ever ran with Dev Night can never bank: nothing it earned is
+    legitimate. Sticky on purpose — the host turning Dev Night back off before
+    ending the night doesn't launder the results."""
+    return bool((config or {}).get('devEverOn'))
+
+
+def _archive_season(table, sid, config, discard=False):
+    """Close the night out. `discard=True` (or a night that ever had Dev Night on)
+    computes the standings exactly the same — so the ceremony and the host export
+    still work — but writes nothing permanent: no banked Renown, no lifetime
+    counters, no Hall of Fame entry, and every Renown this night granted mid-night
+    is handed back."""
+    discard = bool(discard or _must_discard(config))
     pk = _season_pk(sid)
     resp = table.query(
         KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
@@ -3279,6 +3489,8 @@ def _archive_season(table, sid, config):
             'hat': p.get('hat'), 'effect': p.get('effect'),
             'spriteVariant': p.get('spriteVariant'),
         })
+        if discard:
+            continue
         # Lifetime stats onto the permanent doc.
         perm = _get_perm(table, p['userId'])
         perm['lifetimePvpWins'] = perm.get('lifetimePvpWins', 0) + p.get('pvpWins', 0)
@@ -3288,13 +3500,22 @@ def _archive_season(table, sid, config):
         perm['renown'] = perm.get('renown', 0) + data.compute_renown(p)
         table.put_item(Item=perm)
     standings.sort(key=lambda s: -s['renown'])
+    if discard:
+        # Mid-night payouts (raid boss, world event) bank straight to the wallet,
+        # so skipping the loop above isn't enough — give those points back too.
+        _refund_perm_renown(table, sid)
 
     result = {'standings': standings, 'endedAt': _now(),
-              'champion': standings[0] if standings else None}
+              'champion': standings[0] if standings else None,
+              'discarded': discard}
     table.put_item(Item={'pk': pk, 'sk': 'RESULT', **result})
     table.put_item(Item={'pk': pk, 'sk': 'CONFIG', **config,
-                         'status': 'ended', 'endedAt': _now()})
-    if standings:
+                         'status': 'ended', 'endedAt': _now(),
+                         'discarded': discard})
+    if discard:
+        _event(table, sid, 'season',
+               'The night ends — results discarded. Nothing was banked.')
+    elif standings:
         table.put_item(Item={'pk': HOF_PK, 'sk': f'NIGHT#{sid}',
                              'seasonId': sid, 'endedAt': _now(),
                              'champion': standings[0],
@@ -3344,7 +3565,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'spellCooldowns': {}, 'highFiveCooldowns': {}, 'awayEvents': [],
         'pendingPickups': [],   # overflow items awaiting the pickup modal
         'pets': [], 'activePetId': None,
-        'eggs': [], 'incubator': None, 'petCooldowns': {},
+        'eggs': [], 'incubator': None, 'petRecharge': {},
         'lastFinishedClaim': None, 'taughtClaims': 0, 'pokesReceived': 0,
         'pvpWins': 0, 'wildWins': 0, 'composts': 0, 'bossDamage': 0,
         'paint': {'body': body_hue, 'belly': 50, 'stripes': body_hue},
@@ -3595,7 +3816,7 @@ def _roll(table, sid, doc, payload):
             and 'fleetfoot' in engine.attribute_perks(doc)):
         doc['pendingMove'] = None
         is_reroll = True
-    if not data.DEBUG and not is_reroll and doc.get('rolls', 0) < 1:
+    if not _free_rolls() and not is_reroll and doc.get('rolls', 0) < 1:
         return _err('No rolls banked. Finish a board game to earn more!', 409)
     if doc.get('pendingMove'):
         return _err('You already rolled — pick a destination.', 409)
@@ -3667,7 +3888,7 @@ def _roll(table, sid, doc, payload):
     if not dests:
         # Dead-end corner case: refund the roll, let them try again.
         return _err('The tunnels shift — no path fits that roll. Try again.', 409)
-    if not data.DEBUG and not is_reroll:
+    if not _free_rolls() and not is_reroll:
         doc['rolls'] -= 1
     # Advance the Blink cooldown: a blink arms it, an ordinary roll pays it down.
     # Rerolls are the same turn's die, so they don't count as an ordinary roll.
@@ -3806,12 +4027,12 @@ def _move(table, sid, doc, payload):
                 scavenge = {'spores': gain, 'bank': doc['petSporeBank'],
                             'nodes': loot_nodes}
 
-    # Forage recharges by distance: every board space walked ticks its countdown
-    # down toward 0 (ready). Only touches docs that have actually used forage
-    # (>0), so it never spawns the field on players without a forage pet. Needs
-    # the walked `path`; a stale client that omits it just doesn't tick.
-    if path and int(doc.get('forageRecharge', 0)) > 0:
-        doc['forageRecharge'] = max(0, int(doc['forageRecharge']) - (len(path) - 1))
+    # Every companion countdown runs on DISTANCE, not a clock: each board space
+    # walked ticks them toward ready. Needs the walked `path`; a stale client
+    # that omits it simply doesn't tick. Fields are only touched when already
+    # live (>0), so they never appear on players who don't use the feature.
+    if path:
+        _tick_step_timers(doc, len(path) - 1)
 
     conflict = _save_or_conflict(table, doc)
     if conflict:
@@ -4172,7 +4393,8 @@ def _maybe_bazaar_welcome(doc, stock):
         return None
     doc['bazaarWelcomeGift'] = True
     if len(doc.get('bag', [])) < data.BAG_SIZE:
-        item = _rng.choice(list(data.CONSUMABLES.keys()))
+        # A starter freebie for a brand-new player: Common only, never the sink.
+        item = data.roll_consumable(_rng, max_tier=1)
         doc.setdefault('bag', []).append(item)
         return {'kind': 'consumable', 'item': item,
                 'name': data.CONSUMABLES[item]['name']}
@@ -4198,32 +4420,25 @@ def _resolve_space(table, sid, doc, node, prev):
     if region != 'depths' and doc.get('restsUsed'):
         doc['restsUsed'] = []
 
-    # Snare check first — a triggered snare skips the space event.
-    space = _get(table, _season_pk(sid), f'SPACE#{node}')
-    if space and space.get('ownerId') and space['ownerId'] != doc['userId']:
-        return _trigger_snare(table, sid, doc, node, space)
-    if space and not space.get('ownerId') and space.get('pile', 0) > 0:
-        # Leftover spore pile from an earlier snare.
-        pile = space['pile']
-        doc['spores'] = doc.get('spores', 0) + pile
-        table.delete_item(Key={'pk': _season_pk(sid), 'sk': f'SPACE#{node}'})
-        return {'type': 'pile', 'text': f'You scoop up {pile} spilled Spores!', 'spores': pile}
-
     # World Event overlay: a live Great Beast squats on 3 wilderness nodes and
     # overrides their normal event — including Umori's wandering stall, since the
-    # beast physically occupies the tile. Runs after snare/pile (player traps
-    # still fire) but before Umori and the node's own type dispatch.
+    # beast physically occupies the tile, and overrides Umori and the node's
+    # own type dispatch.
     we = _world_event(table, sid)
+    if _world_event_expired(we):          # clock ran out — settle before dispatch
+        _resolve_world_event(table, sid, doc)
+        we = _world_event(table, sid)
     if we and we.get('spawned') and not we.get('dead') and node in we.get('nodes', []):
         return {'type': 'world_event', 'node': node, 'center': we['node'],
-                'nodes': we['nodes'], 'hp': we['hp'], 'maxHp': we['maxHp'],
+                'nodes': we['nodes'], 'endsAt': we.get('endsAt'),
+                'dmg': int((we.get('dmg') or {}).get(doc['userId'], 0)),
                 'name': data.WORLD_EVENT['name'], 'spriteId': data.WORLD_EVENT['spriteId'],
                 'text': f"The {data.WORLD_EVENT['name']} looms over the mire. "
                         'Wade in and strike — every blow is tallied.'}
 
     # Umori the wandering collector pacifies whatever wilderness space it sits on
     # this window and opens a sealed-bid auction (overrides the node's normal
-    # event). Runs after snare/pile so player traps still fire.
+    # event).
     _uwin = _umori_window()
     if node == _umori_node(_uwin):
         return {'type': 'trading_post', 'node': node, 'umori': True,
@@ -4408,33 +4623,6 @@ def _resolve_space(table, sid, doc, node, prev):
                         'the far side.'}
 
     return {'type': ntype, 'text': '…'}
-
-
-def _trigger_snare(table, sid, doc, node, space):
-    spill = int(doc.get('spores', 0) * data.SNARE_SPILL_PCT)
-    grab_back = spill // 2
-    pile = spill - grab_back
-    doc['spores'] = doc.get('spores', 0) - spill + grab_back
-
-    owner_id = space['ownerId']
-    if pile > 0:
-        table.put_item(Item={'pk': _season_pk(sid), 'sk': f'SPACE#{node}', 'pile': pile})
-    else:
-        table.delete_item(Key={'pk': _season_pk(sid), 'sk': f'SPACE#{node}'})
-
-    # Dredge: the planter gets the snare back in their bag.
-    owner = _get_player(table, sid, owner_id)
-    if owner:
-        if 'dredge' in _passives(owner) and len(owner.get('bag') or []) < data.BAG_SIZE:
-            owner.setdefault('bag', []).append('snare')
-        _put_player(table, owner)
-
-    _event(table, sid, 'snare',
-           f"{doc['username']} stumbled into {space.get('ownerName', 'someone')}'s snare! "
-           f'{spill} Spores go flying.', actor=doc['userId'])
-    return {'type': 'snare', 'text': f"A snare! You spill {spill} Spores and scramble to grab {grab_back} back. "
-                                     'The trap ate your turn here.',
-            'sporesLost': spill - grab_back}
 
 
 def _mystery(table, sid, doc):
@@ -4689,8 +4877,12 @@ def _wild_battle(table, sid, doc, elite=False, region=None):
     npc['personality'] = spec.get('personality', data.NPC_DEFAULT_PERSONALITY)
     npc['bluff'] = spec.get('bluff', data.NPC_DEFAULT_BLUFF)
     npc['tier'] = tier   # zone tier (honours the region= override) for sprite scaling
+    if node_region == 'depths':
+        # Dungeon interiors ramp with the sigils you already hold; the home
+        # biome rings stay flat (they're the T1 starting areas, by design).
+        _scale_for_sigils(npc, doc)
     return _start_battle(table, sid, doc, 'elite' if elite else 'wild', npc,
-                         node=doc.get('position'))
+                         node=doc.get('position'), region=node_region)
 
 
 def _barrier(table, sid, doc, node):
@@ -4784,8 +4976,15 @@ def _world_event_public(table, sid):
     we = _world_event(table, sid)
     if not we:
         return None
+    dmg = {u: int(v) for u, v in (we.get('dmg') or {}).items()}
     return {'nodes': we['nodes'], 'center': we['node'],
-            'hp': we['hp'], 'maxHp': we['maxHp'],
+            # Damage check: no HP bar. The client shows a countdown and the tally.
+            'endsAt': we.get('endsAt'), 'totalDamage': sum(dmg.values()),
+            'topDamage': max(dmg.values(), default=0),
+            # Per-player tallies, so everyone can see the standings. Keyed by
+            # userId; the client joins these against the `players` array it
+            # already has rather than us re-fetching docs on every poll.
+            'dmg': dmg,
             'name': data.WORLD_EVENT['name'], 'spriteId': data.WORLD_EVENT['spriteId'],
             'dead': bool(we.get('dead'))}
 
@@ -4866,7 +5065,8 @@ def _spawn_world_event(table, sid, actor_id=None):
     if not run:
         return
     rec = {'spawned': True, 'node': run[1], 'nodes': run,
-           'hp': data.WORLD_EVENT_HP, 'maxHp': data.WORLD_EVENT_HP,
+           # No kill pool: the beast is a damage check that ends on its clock.
+           'endsAt': _iso_in_minutes(data.WORLD_EVENT_DURATION_MIN),
            'dmg': {}, 'dead': False}
     _set_world_event(table, sid, rec)
     _event(table, sid, 'boss',
@@ -4900,6 +5100,11 @@ def _lair(table, sid, doc, node):
     display = f"Vestige of {b['name']}" if slain else b['name']
     npc = dict(b, hp=hp_pool, name=display, maxHp=(vest_max if slain else b['hp']),
                personality=b.get('personality', 'balanced'), bluff=b.get('bluff', 0.20))
+    # Guardians ramp with the sigils you already hold, so your last dungeon is
+    # the hardest. HP is excluded on purpose — the pool is SEASON-SHARED, so
+    # letting it vary per visitor would make the communal objective incoherent;
+    # only the per-fight pressure changes with who walked in.
+    _scale_for_sigils(npc, doc, stats=('atk', 'def'))
     _apply_guardian_debuffs(npc, buffs)
     if buffs:
         _set_lair_state(table, sid, node, hp_pool, slain, [])   # consumed on engagement
@@ -4967,6 +5172,27 @@ def _sigil_count(doc):
     return len([c for c in (doc.get('poiClaims') or []) if c in data.SIGIL_LAIRS])
 
 
+def _scale_for_sigils(npc, doc, stats=None):
+    """Ramp a dungeon enemy by the Guild Sigils `doc` ALREADY holds, so each
+    successive dungeon pushes back harder than the last (design 2026-08-09).
+
+    Keys off questline progress, not player power — everyone meets the same
+    curve at the same point in the run. Mutates and returns `npc`. Pass `stats`
+    to scale a subset (lair guardians skip 'hp': their pool is season-shared,
+    so only the per-fight stats may vary by who walked in)."""
+    held = _sigil_count(doc)
+    if held <= 0:
+        return npc
+    mult = 1 + data.DUNGEON_SIGIL_SCALING * held
+    for stat in (stats if stats is not None else data.DUNGEON_SIGIL_SCALED_STATS):
+        if npc.get(stat):
+            npc[stat] = int(round(npc[stat] * mult))
+    if npc.get('maxHp') and 'hp' in (stats if stats is not None
+                                     else data.DUNGEON_SIGIL_SCALED_STATS):
+        npc['maxHp'] = npc['hp']
+    return npc
+
+
 def _boss_hp(table, sid):
     item = _get(table, _season_pk(sid), 'BOSS')
     return int((item or {}).get('hp', data.ROT_SOVEREIGN['hp']))
@@ -4991,6 +5217,7 @@ def _set_boss_hp(table, sid, hp, buffs=None):
 # combat consumable id -> engine round-modifier kind
 _COMBAT_ITEM = {
     'ambush_musk': 'auto_win', 'rot_bomb': 'double_punish', 'chitin_ward': 'negate',
+    'mending_salve': 'heal',
 }
 
 
@@ -5019,7 +5246,7 @@ def _combat_round(table, sid, doc, payload):
     if stance not in data.STANCES:
         return _err('Pick a stance.', 400)
 
-    force_winner = double_win_for = negate_loss_for = None
+    force_winner = double_win_for = negate_loss_for = heal_frac = None
     item = (payload or {}).get('item')
     if item:
         effect = _COMBAT_ITEM.get(item)
@@ -5032,9 +5259,17 @@ def _combat_round(table, sid, doc, payload):
             double_win_for = 'attacker'
         elif effect == 'negate':
             negate_loss_for = 'attacker'
+        elif effect == 'heal':
+            heal_frac = data.COMBAT_HEAL_FRAC
 
     player_c = _bt_to_combatant(rec['player'])
     npc_c = _bt_to_combatant(rec['npc'])
+    # A salve is drunk BEFORE the exchange resolves, so it can pull you back from
+    # the brink of the very round that would otherwise have killed you.
+    if heal_frac:
+        healed = max(1, round(player_c.max_hp * heal_frac))
+        player_c.hp = min(player_c.max_hp, player_c.hp + healed)
+        rec['player']['hp'] = player_c.hp
     # Gorgon Petrify: a fully-petrified foe skips this round (the Gorgon strikes
     # free), then the freeze counter resets. The SPD slow already applied persists.
     if npc_c.petrify >= data.PETRIFY_FREEZE_AT:
@@ -5204,6 +5439,11 @@ def _finish_battle(table, sid, doc, rec, result):
     _bm_outcome = {'attacker': 'win', 'defender': 'loss'}.get(
         result.get('outcome'), result.get('outcome') or 'timeout')
     _metric(doc, f'battle.{kind}.{_bm_outcome}')
+    # Dungeon fights are additionally bucketed by the sigils held at the time,
+    # because that is the axis DUNGEON_SIGIL_SCALING ramps on — without this the
+    # export can't tell whether the ramp is doing anything.
+    if rec.get('region') == 'depths':
+        _metric(doc, f'depths.sig{_sigil_count(doc)}.{_bm_outcome}')
     _metric(doc, 'dmgDealt', sum(int(s.get('dmg') or 0)
             for s in (result.get('strikes') or []) if s.get('by') == 'attacker'))
     _metric(doc, 'dmgTaken', sum(int(s.get('dmg') or 0)
@@ -5443,6 +5683,9 @@ def _award_lair_kill(table, sid, doc, node, slain, out):
     sigil_biome = data.SIGIL_LAIRS.get(node)
     if personal_first and sigil_biome:
         have = len([c for c in claims if c in data.SIGIL_LAIRS])
+        # Clamp the DISPLAY only — there are five biome sigils but only
+        # SIGILS_REQUIRED are needed, so a 4th claim used to read "(4/3)".
+        shown = min(have, data.SIGILS_REQUIRED)
         biome_name = data.BIOMES[sigil_biome]['name']
         out['sigil'] = sigil_biome
         sigil_levels = _grant_xp(table, sid, doc, data.SIGIL_XP)
@@ -5451,10 +5694,10 @@ def _award_lair_kill(table, sid, doc, node, slain, out):
             out['levels'] = levels + sigil_levels
         out['text'] = (f"The {display} falls! +{reward['spores']} Spores — "
                        f"you claim the {biome_name} Guild Sigil! "
-                       f"({have}/{data.SIGILS_REQUIRED} unlocks the island)")
+                       f"({shown}/{data.SIGILS_REQUIRED} unlocks the island)")
         _event(table, sid, 'sigil',
                f"{doc['username']} cleared the {biome_name} dungeon and claimed "
-               f"its Guild Sigil ({have}/{data.SIGILS_REQUIRED})!",
+               f"its Guild Sigil ({shown}/{data.SIGILS_REQUIRED})!",
                actor=doc['userId'])
         _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
                                      'name': display, 'at': _now()}, doc['userId'])
@@ -5571,27 +5814,31 @@ def _finish_world(table, sid, doc, rec, result):
 
     we = _world_event(table, sid)
     if not we or we.get('dead'):
-        # Beast already fell (a concurrent killer). Damage is moot; no double pay.
-        out['text'] = f"You land your blows, but the {spec['name']} has already fallen."
+        # The hunt already settled. Damage is moot; no double pay.
+        out['text'] = (f"You land your blows, but the {spec['name']} is already "
+                       'gone from the mire.')
         return out
 
-    new_hp = max(0, int(we['hp']) - dealt)
-    we['hp'] = new_hp
+    # Damage check: nothing depletes and the beast is never felled — every blow
+    # is banked against your name until the clock runs out.
     we['dmg'][uid] = int(we['dmg'].get(uid, 0)) + dealt
     _set_world_event(table, sid, we)
+    mine_total = int(we['dmg'][uid])
+    out['dealtTotal'] = mine_total
 
     if result['outcome'] == 'defender':
         _compost(table, sid, doc,
-                 f"{doc['username']} was flung down by the {spec['name']} "
-                 f"(it lingers at {new_hp} HP).")
+                 f"{doc['username']} was flung down by the {spec['name']}.")
         out['text'] = (f"The {spec['name']} hurls you off — but your blows landed "
-                       f"({dealt} dmg). Back to the Gate…")
+                       f"({dealt} dmg, {mine_total} tallied). Back to the Gate…")
     else:
-        out['text'] = (f"You rake the {spec['name']} for {dealt} damage. "
-                       'It shrugs and settles back in.')
+        out['text'] = (f"You rake the {spec['name']} for {dealt} damage "
+                       f"({mine_total} tallied). It shrugs and settles back in.")
 
-    if new_hp <= 0:
-        results = _world_event_payout(table, sid, doc)
+    # The clock may have run out during this very skirmish — settle it now so the
+    # blows just landed are counted, and hand this player their bracket inline.
+    results = _resolve_world_event(table, sid, doc)
+    if results:
         out['worldKill'] = True
         mine = next((r for r in results if r['userId'] == uid), None)
         if mine:
@@ -5600,8 +5847,8 @@ def _finish_world(table, sid, doc, rec, result):
                              'gear': mine['gear'], 'leveledTo': mine['leveledTo']}
             out['raid'] = {'name': spec['name'], 'roster': mine['roster']}
             out['spores'] = mine['spores']   # display echo; credited in payout
-        out['text'] = (f"Your blow fells the {spec['name']}! It collapses into the mire — "
-                       'the spoils are shared out by who bled it most.')
+        out['text'] = (f"The hunt is called! The {spec['name']} withdraws into the "
+                       'mire — the spoils are dealt out by who bled it hardest.')
     return out
 
 
@@ -5628,9 +5875,7 @@ def _award_enraged_kill(table, sid, doc, monster_id, out):
     the monster dead for this window. Shared by the melee finisher and the lethal
     ranged strike. Mutates doc/out in place; the caller persists doc."""
     spec = data.ENRAGED_MONSTERS[monster_id]
-    perm = _get_perm(table, doc['userId'])
-    perm['renown'] = perm.get('renown', 0) + data.ENRAGED_KILL_RENOWN
-    table.put_item(Item=perm)
+    _bank_perm_renown(table, sid, doc['userId'], data.ENRAGED_KILL_RENOWN)
     _add_win_renown(doc, 'enraged')   # flat fallback — preserves prior +3 leaderboard
     doc['wildWins'] = doc.get('wildWins', 0) + 1
     levels = _grant_xp(table, sid, doc, data.ENRAGED_KILL_XP)
@@ -5720,28 +5965,59 @@ def _gear_award_summary(drop):
             'equipped': drop['outcome'] == 'equipped'}
 
 
-def _world_event_payout(table, sid, killer_doc):
-    """Deplete-triggered payout. Marks the event dead (idempotent guard), then
-    pays every contributor by damage bracket: spores + kill-bonus XP + one
-    guaranteed gear piece to their season doc, renown to their perm doc, and a
-    rich `world_kill` awayEvent (accolade, loot, and the full contributor roster)
-    so absent players see the raid result on return. The killer's season doc is
-    mutated in place (the caller persists it) to avoid an optimistic-lock clobber.
+def _world_event_expired(we):
+    """True once the hunt's clock has run out (and it hasn't paid out yet).
+    A record with no deadline is never expired — a malformed or pre-damage-check
+    row must not settle itself the instant anyone reads it."""
+    if not we or we.get('dead') or not we.get('endsAt'):
+        return False
+    return _now() >= we['endsAt']
+
+
+def _resolve_world_event(table, sid, actor_doc=None):
+    """Lazily settle the hunt if its clock has expired. There is no server tick,
+    so this is called from the paths that touch the event (state reads and the
+    engage gate) — the same wall-clock-window model Umori and the enraged
+    monster use.
+
+    `actor_doc` is the caller's OWN in-memory season doc when it holds one it
+    will persist; passing it lets the payout mutate that doc in place instead of
+    racing the caller's write. Pass None from read-only paths and every
+    contributor is paid through the re-fetching retry path instead."""
+    we = _world_event(table, sid)
+    if not _world_event_expired(we):
+        return []
+    return _world_event_payout(table, sid, actor_doc, timed_out=True)
+
+
+def _world_event_payout(table, sid, actor_doc=None, timed_out=False):
+    """Settle the hunt and pay every contributor by damage bracket: spores +
+    bonus XP + one guaranteed gear piece to their season doc, renown to their
+    perm doc, and a rich `world_kill` awayEvent (accolade, loot, and the full
+    contributor roster) so absent players see the raid result on return.
+
+    Marks the event resolved first as an idempotent guard, so a burst of
+    concurrent requests can only pay out once. `actor_doc`, when given, is
+    mutated in place and left for the caller to persist (avoiding an
+    optimistic-lock clobber); everyone else goes through the retry payer.
     Non-contributors get a plain `world_fallen` news line. Returns a list of
     {userId, bracket, spores, renown, xp, gear, leveledTo, roster}."""
     we = _world_event(table, sid)
     if not we or we.get('dead'):
         return []
     we['dead'] = True
-    we['hp'] = 0
     _set_world_event(table, sid, we)
 
-    max_hp = max(1, int(we['maxHp']))
     dmg = {u: int(v) for u, v in (we.get('dmg') or {}).items() if int(v) > 0}
-    killer_uid = killer_doc['userId']
+    killer_uid = actor_doc['userId'] if actor_doc else None
+    # Withdrawal copy differs from a felled boss: nobody kills this thing, the
+    # clock simply runs out and it slinks off with whatever wounds it took.
+    name = data.WORLD_EVENT['name']
+    headline = (f"The {name} withdraws into the mire, bloodied."
+                if timed_out else f"The {name} has fallen!")
     if not dmg:
-        _event(table, sid, 'boss', f"The {data.WORLD_EVENT['name']} has fallen!")
-        _push_broadcast(table, sid, f"The {data.WORLD_EVENT['name']} has fallen!",
+        _event(table, sid, 'boss', f'{headline} Nobody laid a blade on it.')
+        _push_broadcast(table, sid, f'{headline} Nobody laid a blade on it.',
                         exclude_user_id=killer_uid)
         return []
     top_uid = max(dmg, key=lambda u: (dmg[u], u))  # deterministic tiebreak
@@ -5750,8 +6026,8 @@ def _world_event_payout(table, sid, killer_doc):
     # build the shared roster (ranked by damage) for every notification.
     entries = []
     for uid, dealt in dmg.items():
-        bracket, reward = data.world_event_reward(dealt / max_hp, uid == top_uid)
-        pdoc = killer_doc if uid == killer_uid else _get_player(table, sid, uid)
+        bracket, reward = data.world_event_reward(dealt, uid == top_uid)
+        pdoc = actor_doc if uid == killer_uid else _get_player(table, sid, uid)
         if not pdoc:
             continue
         entries.append({'uid': uid, 'dealt': dealt, 'bracket': bracket,
@@ -5769,24 +6045,19 @@ def _world_event_payout(table, sid, killer_doc):
         else:
             gear, leveled_to = _pay_world_reward_retry(
                 table, sid, uid, reward, bracket, roster)
-        if reward['renown']:
-            perm = _get_perm(table, uid)
-            perm['renown'] = perm.get('renown', 0) + reward['renown']
-            table.put_item(Item=perm)
+        _bank_perm_renown(table, sid, uid, reward['renown'])
         results.append({'userId': uid, 'bracket': bracket,
                         'spores': reward['spores'], 'renown': reward['renown'],
                         'xp': reward['xp'], 'gear': gear, 'leveledTo': leveled_to,
                         'roster': roster})
 
-    _event(table, sid, 'boss',
-           f"The {data.WORLD_EVENT['name']} has fallen! The wilderness quiets.")
+    tally = f'{headline} The spoils are dealt out by who bled it hardest.'
+    _event(table, sid, 'boss', tally)
     # News only for players who didn't bleed it (contributors got a world_kill).
     _broadcast_away(table, sid, {'kind': 'world_fallen',
                                  'name': data.WORLD_EVENT['name'], 'at': _now()},
                     killer_uid, skip_user_ids=set(dmg))
-    _push_broadcast(table, sid,
-                    f"The {data.WORLD_EVENT['name']} has fallen! The wilderness quiets.",
-                    exclude_user_id=killer_uid)
+    _push_broadcast(table, sid, tally, exclude_user_id=killer_uid)
     return results
 
 
@@ -6050,6 +6321,10 @@ def _world_engage(table, sid, doc, payload):
     standing on one of its nodes. Loads the current shared pool as the NPC's HP;
     the 6-round cap + damage banking are handled in _conclude_round /
     _finish_battle (kind 'world')."""
+    if _world_event_expired(_world_event(table, sid)):
+        # actor_doc=None on purpose: this path can return 409 without persisting
+        # `doc`, so an in-place credit here would be silently thrown away.
+        _resolve_world_event(table, sid)
     we = _world_event(table, sid)
     if not we or not we.get('spawned') or we.get('dead'):
         return _err('There is no World Event to fight right now.', 409)
@@ -6058,9 +6333,13 @@ def _world_engage(table, sid, doc, payload):
     if doc.get('battle'):
         return _err('You are already in a fight.', 409)
     spec = data.WORLD_EVENT
-    npc = dict(spec, hp=we['hp'], maxHp=we['maxHp'], name=spec['name'])
+    # Damage check: the skirmish stat block carries a nominal HP the ROUND_CAP
+    # always ends first, so the beast can never actually be felled. `poolStart`
+    # is only the yardstick the finisher measures this skirmish's damage against.
+    pool = data.WORLD_EVENT_SKIRMISH_HP
+    npc = dict(spec, hp=pool, maxHp=pool, name=spec['name'])
     event = _start_battle(table, sid, doc, 'world', npc, node=doc['position'],
-                          ctx={'poolStart': we['hp']})
+                          ctx={'poolStart': pool})
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
@@ -7154,9 +7433,9 @@ def _roll_dig_loot(shape):
     if shape == '1x1':
         if _rng.random() < 0.55:
             return {'kind': 'spores', 'spores': _rng.randint(15, 25)}
-        return {'kind': 'item', 'item': _rng.choice(['healing_moss', 'snare', 'smoke_spore'])}
+        return {'kind': 'item', 'item': _rng.choice(['healing_moss', 'mending_salve', 'smoke_spore'])}
     if shape == '1x2':
-        return {'kind': 'item', 'item': _rng.choice(list(data.CONSUMABLES))}
+        return {'kind': 'item', 'item': data.roll_consumable(_rng)}
     # 2x2 marquee — always strong: a rare combat item or a big Spore cache.
     if _rng.random() < 0.55:
         return {'kind': 'item',
@@ -7416,7 +7695,7 @@ def _save_vein(table, sid, region, depth):
 def _vein_item(level):
     """Bonus item chance — consumables mid-vein, rarities in the deep band."""
     if 5 <= level <= 8 and _rng.random() < 0.15:
-        return _rng.choice(list(data.CONSUMABLES))
+        return data.roll_consumable(_rng)
     if level >= 9 and _rng.random() < 0.20:
         return _rng.choice(data.VEIN_RARE_ITEMS)
     return None
@@ -7608,34 +7887,41 @@ def _use_item(table, sid, doc, payload):
     bag = doc.get('bag') or []
     if item not in bag:
         return _err('Not in your bag.', 409)
-    if item == 'healing_moss':
-        eff = engine.effective_stats(doc)
-        heal = round(eff['maxHp'] * 0.5)
-        doc['hp'] = min(eff['maxHp'], doc['hp'] + heal)
+    spec = data.CONSUMABLES.get(item, {})
+    # Data-driven restoratives/tonics: any consumable carrying `heal` and/or
+    # `buffs` resolves here, so adding one is a table entry rather than a branch.
+    # `buffs` reuses the same one-battle buff kinds spells apply — no new engine
+    # plumbing, and they stack with anything already running.
+    if (spec.get('heal') or spec.get('buffs')) and not spec.get('combat'):
+        parts = []
+        if spec.get('heal'):
+            eff = engine.effective_stats(doc)
+            healed = min(eff['maxHp'] - doc['hp'], round(eff['maxHp'] * spec['heal']))
+            healed = max(0, healed)
+            doc['hp'] = min(eff['maxHp'], doc['hp'] + healed)
+            parts.append(f'+{healed} HP')
+        for kind in spec.get('buffs') or []:
+            # Re-drinking refreshes the duration rather than stacking duplicates.
+            doc.setdefault('buffs', [])
+            doc['buffs'] = [b for b in doc['buffs'] if b.get('kind') != kind]
+            doc['buffs'].append({'kind': kind, 'battles': data.CONSUMABLE_BUFF_BATTLES})
+        if spec.get('buffs'):
+            parts.append(f'braced for {data.CONSUMABLE_BUFF_BATTLES} fights')
         bag.remove(item)
-        text = f'The moss knits you back together (+{heal} HP).'
-    elif item == 'loaded_die':
+        text = f"{spec['name']}: {', '.join(parts)}."
+    elif spec.get('die'):
+        # One path for every rigged die. `die` is the (lo, hi) face range the
+        # item may set — the cheaper rollers only cover half the faces, which is
+        # what makes them Common while the Loaded Die stays Rare.
+        lo, hi = spec['die']
         value = payload.get('value')
-        if not isinstance(value, int) or not 1 <= value <= 6:
-            return _err('Pick a value 1–6.')
+        if not isinstance(value, int) or not lo <= value <= hi:
+            return _err(f'{spec["name"]} can only set {lo}–{hi}.')
         if doc.get('pendingMove'):
             return _err('Resolve your current move first.', 409)
         doc['pendingLoadedDie'] = value
         bag.remove(item)
-        text = f'You palm the loaded die. Your next roll will be a {value}.'
-    elif item == 'snare':
-        node = doc['position']
-        if nodes[node]['type'] in ('gate', 'boss'):
-            return _err('You cannot snare this hallowed ground.', 409)
-        existing = _get(table, _season_pk(sid), f'SPACE#{node}')
-        if existing and existing.get('ownerId'):
-            return _err('Disturbed ground — a snare is already set here.', 409)
-        pile = existing.get('pile', 0) if existing else 0
-        table.put_item(Item={'pk': _season_pk(sid), 'sk': f'SPACE#{node}',
-                             'ownerId': doc['userId'],
-                             'ownerName': doc.get('username'), 'pile': pile})
-        bag.remove(item)
-        text = 'You bury the snare beneath the mulch and cackle quietly.'
+        text = f'You palm the {spec["name"].lower()}. Your next roll will be a {value}.'
     elif item == 'smoke_spore':
         return _err('Smoke Spores trigger on their own when a flee fails.', 409)
     elif data.CONSUMABLES.get(item, {}).get('combat'):

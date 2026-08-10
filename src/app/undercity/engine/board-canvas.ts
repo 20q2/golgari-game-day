@@ -5,7 +5,7 @@
  * static art (cavern terrain, moss plateaus, river, path ribbons, landmark
  * buildings) is prerendered once by board-terrain.ts and blitted under the
  * camera transform; each frame this class adds the dynamic layer: pulsing
- * glow spots, elliptical "coin disc" spaces with icon glyphs, snare
+ * glow spots, elliptical "coin disc" spaces with icon glyphs,
  * "disturbed ground" tells, pulsing move-choice highlights, and y-sorted
  * player tokens (recolored mini sprites) with ground shadows.
  */
@@ -158,6 +158,17 @@ export interface NodeInfo {
   body: string;
   /** Optional Material Icons ligature drawn to the left of the title. */
   icon?: string;
+  /** Optional label/value rows drawn under the body as a small table — used for
+   *  the world boss's damage leaderboard. `you` highlights the viewer's row. */
+  rows?: NodeInfoRow[];
+  /** Optional heading drawn above `rows`. */
+  rowsTitle?: string;
+}
+
+export interface NodeInfoRow {
+  label: string;
+  value: string;
+  you?: boolean;
 }
 
 /** Floor paintings for map files that predate the editable regions{} section. */
@@ -404,6 +415,10 @@ const HAZARD_OMEN_ALPHA = 0.72; // dark, but the hazard disc colour still frames
 // The wilderness World Event beast — larger than a lair boss, since it straddles
 // a 3-tile footprint and is the biggest thing on the overworld.
 const WORLD_EVENT_H = 150;
+// Minutes left on the hunt at which its countdown chip turns amber. Long enough
+// that a player across the board can still realistically detour and get a swing
+// in before the spoils are dealt.
+const WORLD_EVENT_CLOCK_WARN_MIN = 15;
 // A body hump on each flank tile — shorter than the reared head+neck.
 const WORLD_EVENT_PIECE_H = 96;
 // Cap the body-line tilt (radians) so a near-vertical flank→center run never
@@ -420,7 +435,6 @@ export class BoardCanvas {
   private ctx: CanvasRenderingContext2D;
   private nodeMap = new Map<string, BoardNode>();
   private players: BoardPlayer[] = [];
-  private snares = new Set<string>();
   private barriersOpen = new Set<string>();
   private diceMarkers = new Set<string>();
   /** Barrier/lair node id -> its shared guardian HP pool, so the overworld can
@@ -504,6 +518,8 @@ export class BoardCanvas {
   private ownLayer: string = OVERWORLD;
   private explored = new Map<string, Set<string>>(); // layerId -> lit node ids
   private static readonly EXPLORED_KEY = 'undercity-explored-v1';
+  /** Season the persisted `explored` set belongs to; fog resets when it changes. */
+  private seasonId: string | null = null;
   private floorTex: FloorTextures = {};
   private landmarkTex: LandmarkTextures = {};
   private treasureTex: HTMLImageElement | null = null;
@@ -811,15 +827,9 @@ export class BoardCanvas {
         animatePaths: true,
       }),
     });
-    // Dungeon fog-of-war: nodes you've stood on stay lit across sessions.
-    try {
-      const raw = JSON.parse(localStorage.getItem(BoardCanvas.EXPLORED_KEY) ?? '{}');
-      for (const [layerId, ids] of Object.entries(raw)) {
-        this.explored.set(layerId, new Set(ids as string[]));
-      }
-    } catch {
-      /* corrupt state = start dark */
-    }
+    // Dungeon fog-of-war persists within a season but resets when a new night
+    // begins — loaded (and season-validated) in setSeason() once the current
+    // seasonId is known. Starts dark here; the first syncBoard lights it.
     this.ambient = new BoardAmbient(map);
     // Rebuild every layer's terrain once the per-biome floor paintings arrive —
     // they replace the flat black with ghosted scenery that cross-fades between
@@ -963,16 +973,42 @@ export class BoardCanvas {
     }
   }
 
-  /** Record own presence on a dungeon node; persists across sessions. */
+  /** Set the active season. Fog-of-war is scoped to a single night: when the
+   *  seasonId changes (a new night begins), last night's explored nodes are
+   *  dropped and the dungeon goes dark again. Persisted exploration is only
+   *  adopted if it was recorded under the current season. */
+  setSeason(seasonId: string | null): void {
+    if (seasonId === this.seasonId) return;
+    this.seasonId = seasonId;
+    this.explored.clear();
+    try {
+      const raw = JSON.parse(localStorage.getItem(BoardCanvas.EXPLORED_KEY) ?? '{}');
+      if (raw && raw.season === seasonId && raw.layers) {
+        for (const [layerId, ids] of Object.entries(raw.layers)) {
+          this.explored.set(layerId, new Set(ids as string[]));
+        }
+      } else {
+        // Stale (or absent) season — start dark and forget last night's crawl.
+        localStorage.removeItem(BoardCanvas.EXPLORED_KEY);
+      }
+    } catch {
+      /* corrupt state = start dark */
+    }
+  }
+
+  /** Record own presence on a dungeon node; persists within the current season. */
   private markExplored(layerId: string, nodeId: string): void {
     const set = this.explored.get(layerId) ?? new Set<string>();
     if (set.has(nodeId)) return;
     set.add(nodeId);
     this.explored.set(layerId, set);
     try {
-      const obj: Record<string, string[]> = {};
-      for (const [k, v] of this.explored) obj[k] = [...v];
-      localStorage.setItem(BoardCanvas.EXPLORED_KEY, JSON.stringify(obj));
+      const layers: Record<string, string[]> = {};
+      for (const [k, v] of this.explored) layers[k] = [...v];
+      localStorage.setItem(
+        BoardCanvas.EXPLORED_KEY,
+        JSON.stringify({ season: this.seasonId, layers }),
+      );
     } catch {
       /* storage full/blocked — stay session-only */
     }
@@ -1009,10 +1045,6 @@ export class BoardCanvas {
       frontier = next;
     }
     return false;
-  }
-
-  setSnares(nodeIds: string[]): void {
-    this.snares = new Set(nodeIds);
   }
 
   /**
@@ -1968,17 +2000,6 @@ export class BoardCanvas {
       this.drawVestigeBadge(n, elapsed);
     }
 
-    // Disturbed ground — the only tell that a snare lurks here.
-    if (this.snares.has(n.id)) {
-      ctx.beginPath();
-      ctx.setLineDash([3, 5]);
-      ctx.ellipse(n.x, n.y, NODE_R + 5, DISC_RY + 4, 0, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(160, 120, 70, 0.7)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
     // Enemy spaces wear a small T1/T2/T3 label grading how tough a foe spawns
     // here (mirrors the server enemy-pool ladder — see board-enemy-tier.ts).
     // Only once you've zoomed in past halfway (~50% of MAX_ZOOM) — zoomed out,
@@ -2264,8 +2285,60 @@ export class BoardCanvas {
       const w = art.width * (drawH / art.height);
       ctx.drawImage(art, n.x - w / 2, footAnchor - drawH, w, drawH);
     }
-    // Shared HP bar above the beast.
-    this.drawGuardianHp(n.x, footAnchor - WORLD_EVENT_H * breath - 4, we.hp, we.maxHp, 72);
+    // Deliberately NO health bar: the beast has no pool and cannot be killed,
+    // and a draining bar reads as "empty this to slay it" — the exact wrong
+    // mental model for a damage check. Instead a countdown chip carries the one
+    // thing that IS urgent: how long is left to bank damage. Full standings and
+    // your own tally live in the tap popover (board-tab.buildNodeInfo).
+    this.drawWorldEventClock(n.x, footAnchor - WORLD_EVENT_H * breath - 6, we, elapsed);
+    ctx.restore();
+  }
+
+  /**
+   * The hunt's countdown chip, floated above the beast. This is the one piece of
+   * world-event state that is genuinely time-critical — when the clock runs out
+   * the spoils are dealt and no further damage can be banked — so it earns a
+   * spot on the board itself rather than being buried behind a tap. It goes
+   * amber inside the last WORLD_EVENT_CLOCK_WARN_MIN minutes and pulses inside
+   * the last minute, so a glance at the board tells you whether to detour now.
+   */
+  private drawWorldEventClock(
+    cx: number,
+    baseY: number,
+    we: WorldEventState,
+    elapsed: number,
+  ): void {
+    if (!we.endsAt) return;
+    const ms = new Date(we.endsAt + 'Z').getTime() - Date.now();
+    const mins = Math.max(0, Math.ceil(ms / 60_000));
+    const label =
+      mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m LEFT`;
+
+    const urgent = mins <= WORLD_EVENT_CLOCK_WARN_MIN;
+    // Only the final minute pulses; a permanently blinking chip is just noise.
+    const pulse = mins <= 1 ? 0.72 + 0.28 * Math.sin(elapsed * 6) : 1;
+
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.font = 'bold 11px sans-serif';
+    const w = ctx.measureText(label).width + 16;
+    const h = 18;
+    const x = cx - w / 2;
+    const y = baseY - h;
+
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 9);
+    ctx.fillStyle = 'rgba(20, 18, 14, 0.92)';
+    ctx.fill();
+    ctx.strokeStyle = urgent ? 'rgba(224, 179, 78, 0.95)' : 'rgba(74, 124, 89, 0.75)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = urgent ? '#e0b34e' : '#b7e4c7';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, cx, y + h / 2 + 0.5);
     ctx.restore();
   }
 
@@ -2584,8 +2657,20 @@ export class BoardCanvas {
     let widest = titleW + iconW;
     for (const l of lines) widest = Math.max(widest, ctx.measureText(l).width);
 
+    // Optional label/value table (the world-boss leaderboard). Each row needs
+    // room for its label AND its right-aligned value, plus a gutter between.
+    const rows = info.rows ?? [];
+    const rowGap = 6;
+    const headH = info.rowsTitle ? lineH : 0;
+    for (const r of rows) {
+      widest = Math.max(widest, ctx.measureText(r.label).width
+                                + ctx.measureText(r.value).width + 18);
+    }
+    if (info.rowsTitle) widest = Math.max(widest, ctx.measureText(info.rowsTitle).width);
+
     const w = Math.min(maxTextW, widest) + pad * 2;
-    const h = pad * 2 + titleH + lines.length * lineH;
+    const h = pad * 2 + titleH + lines.length * lineH
+            + (rows.length ? rowGap + headH + rows.length * lineH : 0);
     const anchorY = n.y - NODE_R - 12;
     const x = n.x - w / 2;
     const y = anchorY - h;
@@ -2632,6 +2717,28 @@ export class BoardCanvas {
     ctx.fillStyle = '#b7c7b7';
     ctx.font = '11px sans-serif';
     lines.forEach((l, i) => ctx.fillText(l, x + pad, y + pad + titleH + i * lineH));
+
+    if (rows.length) {
+      let ry = y + pad + titleH + lines.length * lineH + rowGap;
+      if (info.rowsTitle) {
+        ctx.fillStyle = '#8fae8f';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(info.rowsTitle, x + pad, ry);
+        ry += headH;
+      }
+      ctx.font = '11px sans-serif';
+      for (const r of rows) {
+        // The viewer's own row is picked out in the accent green so you can find
+        // yourself at a glance without counting down the list.
+        ctx.fillStyle = r.you ? '#b7e4c7' : '#b7c7b7';
+        ctx.textAlign = 'left';
+        ctx.fillText(r.label, x + pad, ry);
+        ctx.textAlign = 'right';
+        ctx.fillText(r.value, x + w - pad, ry);
+        ctx.textAlign = 'left';
+        ry += lineH;
+      }
+    }
     ctx.restore();
   }
 

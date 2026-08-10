@@ -36,8 +36,10 @@ def _ddb_copy(obj, reject_float=False):
 class FakeTable:
     """Minimal in-memory stand-in for a boto3 Table (the subset db.py uses)."""
 
-    def __init__(self):
+    def __init__(self, page_size=0):
         self.items = {}
+        # >0 makes query() page like the real thing (see query()); 0 = one page.
+        self.page_size = page_size
 
     def _key(self, item_or_key):
         return (item_or_key['pk'], item_or_key['sk'])
@@ -66,7 +68,7 @@ class FakeTable:
         return {}
 
     def query(self, KeyConditionExpression, ExpressionAttributeValues,
-              ScanIndexForward=True, Limit=None):
+              ScanIndexForward=True, Limit=None, ExclusiveStartKey=None):
         pk = ExpressionAttributeValues[':pk']
         sk = ExpressionAttributeValues.get(':sk')
         out = []
@@ -81,6 +83,19 @@ class FakeTable:
         out.sort(key=lambda i: i['sk'], reverse=not ScanIndexForward)
         if Limit:
             out = out[:Limit]
+        # Optional paging, so callers that must follow LastEvaluatedKey can be
+        # tested. Real DynamoDB caps a page at 1MB; `page_size` stands in for
+        # that. Off by default (0) — one page, exactly as before.
+        if self.page_size:
+            if ExclusiveStartKey is not None:
+                after = ExclusiveStartKey['sk']
+                out = [i for i in out if (i['sk'] > after if ScanIndexForward
+                                          else i['sk'] < after)]
+            page, rest = out[:self.page_size], out[self.page_size:]
+            res = {'Items': _ddb_copy(page)}
+            if rest and page:
+                res['LastEvaluatedKey'] = {'pk': pk, 'sk': page[-1]['sk']}
+            return res
         return {'Items': _ddb_copy(out)}
 
     def scan(self, FilterExpression=None, ExpressionAttributeValues=None):
@@ -117,7 +132,7 @@ def test_full_join_roll_move_flow(table, monkeypatch):
     status, resp = act(table, 'join', starter='saproling', home='cavern')
     assert status == 200
     you = resp['you']
-    assert you['hp'] == 25 and you['position'] == 'cavern_r0' and you['rolls'] == 3
+    assert you['hp'] == 30 and you['position'] == 'cavern_r0' and you['rolls'] == 3
     assert you['homeBiome'] == 'cavern'
     assert you['passives'] == ['drift']
 
@@ -148,7 +163,7 @@ def test_marrowborn_home_grants_max_hp(table):
     status, resp = act(table, 'join', starter='pest', home='bone')
     assert status == 200
     you = resp['you']
-    assert you['maxHp'] == 25 + data.MARROWBORN_MAXHP
+    assert you['maxHp'] == 30 + data.MARROWBORN_MAXHP
     assert you['hp'] == you['maxHp']
 
 
@@ -990,7 +1005,7 @@ def test_evolution_gates_and_bonuses(table):
     status, resp = act(table, 'evolve', form='slitherhead')
     assert status == 200
     you = resp['you']
-    assert you['tier'] == 2 and you['maxHp'] == 25 and you['spd'] == 6 + 4
+    assert you['tier'] == 2 and you['maxHp'] == 30 and you['spd'] == 6 + 4
     assert you['hp'] == you['maxHp']
     assert 'skitter' in you['passives'] and 'drift' in you['passives']
 
@@ -1085,13 +1100,13 @@ def test_drop_item_removes_one(table):
     act(table, 'join', starter='pest')
     sid = _sid(table)
     alex = db._get_player(table, sid, 'user-alex')
-    alex['bag'] = ['healing_moss', 'healing_moss', 'rot_bomb']
+    alex['bag'] = ['healing_moss', 'smoke_spore', 'rot_bomb']
     db._put_player(table, alex)
     status, resp = act(table, 'drop-item', item='healing_moss')
     assert status == 200
-    assert resp['you']['bag'] == ['healing_moss', 'rot_bomb']  # only one removed
+    assert resp['you']['bag'] == ['smoke_spore', 'rot_bomb']  # only that one removed
     # Dropping something you don't hold is rejected.
-    status, _ = act(table, 'drop-item', item='snare')
+    status, _ = act(table, 'drop-item', item='healing_moss')
     assert status == 409
 
 
@@ -1107,27 +1122,6 @@ def test_use_combat_item_out_of_battle_is_rejected(table):
     assert 'Unknown item' not in resp['error']
     # And it stays in the bag.
     assert db._get_player(table, sid, 'user-alex')['bag'] == ['rot_bomb']
-
-
-def test_snare_plant_and_trigger(table):
-    act(table, 'join', starter='pest')
-    act(table, 'join', user='user-sam', name='Sam', starter='zombie')
-    sid = _sid(table)
-    alex = db._get_player(table, sid, 'user-alex')
-    alex['bag'] = ['snare']
-    alex['position'] = 'city_r1'  # loot space
-    db._put_player(table, alex)
-    status, resp = act(table, 'use-item', item='snare')
-    assert status == 200
-
-    sam = db._get_player(table, sid, 'user-sam')
-    sam['spores'] = 100
-    db._put_player(table, sam)
-    event = db._resolve_space(table, sid, sam, 'city_r1', 'city_r0')
-    assert event['type'] == 'snare'
-    assert sam['spores'] == 90  # spilled 20, grabbed 10 back
-    pile = db._get(table, db._season_pk(sid), 'SPACE#city_r1')
-    assert pile['pile'] == 10 and not pile.get('ownerId')
 
 
 def _stand_on_umori(table):
@@ -1196,7 +1190,7 @@ def test_excavation_full_bag_auto_lists_find(table):
     doc = db._get_player(table, sid, 'user-alex')
     doc['position'] = 'bone_i0'
     doc['excavationDigsLeft'] = data.EXCAVATION_DIGS_PER_VISIT
-    doc['bag'] = ['snare', 'snare', 'snare']          # BAG_SIZE = 3 → full
+    doc['bag'] = ['healing_moss'] * data.BAG_SIZE            # full
     db._put_player(table, doc)
     db._save_dig_site(table, sid, 'bone_i0', site)
 
@@ -1207,7 +1201,7 @@ def test_excavation_full_bag_auto_lists_find(table):
     assert resp['found']['kind'] == 'listed'
     assert resp['found']['item'] == 'healing_moss'
     assert resp['found']['price'] == data.CONSUMABLES['healing_moss']['cost']  # mid = base cost
-    assert resp['you']['bag'] == ['snare', 'snare', 'snare']  # bag untouched
+    assert resp['you']['bag'] == ['healing_moss'] * data.BAG_SIZE  # bag untouched
     assert db._market_listing_count(table, sid, 'user-alex') == 1
 
 
@@ -1221,11 +1215,11 @@ def test_excavation_full_bag_salvages_when_market_full(table):
     doc = db._get_player(table, sid, 'user-alex')
     doc['position'] = 'bone_i0'
     doc['excavationDigsLeft'] = data.EXCAVATION_DIGS_PER_VISIT
-    doc['bag'] = ['snare', 'snare', 'snare']
+    doc['bag'] = ['healing_moss'] * data.BAG_SIZE
     db._put_player(table, doc)
     db._save_dig_site(table, sid, 'bone_i0', site)
     for _ in range(data.MARKET_MAX_LISTINGS):          # no market room left
-        db._create_market_listing(table, sid, doc, 'consumable', 'snare', 5)
+        db._create_market_listing(table, sid, doc, 'consumable', 'healing_moss', 5)
 
     act(table, 'dig', r=0, c=0)
     status, resp = act(table, 'dig', r=0, c=1)
@@ -1254,17 +1248,19 @@ def test_death_offers_respawn_choice_and_respawn(table):
     doc['lastBiome'] = 'bog'  # last home biome you stood in before dying
     db._compost(table, sid, doc, 'test death')
     # Provisional wake at home; a choice is offered between home + last biome.
-    assert doc['position'] == 'cavern_r0'
+    # Gates are derived from HOME_GATES so this survives map node-id churn.
+    home_gate, bog_gate = data.HOME_GATES['cavern'], data.HOME_GATES['bog']
+    assert doc['position'] == home_gate
     gates = {o['gate'] for o in doc['pendingRespawn']['options']}
-    assert gates == {'cavern_r0', 'bog_r4'}
+    assert gates == {home_gate, bog_gate}
     db._put_player(table, doc)
 
-    status, resp = act(table, 'respawn', gate='bog_r4')
+    status, resp = act(table, 'respawn', gate=bog_gate)
     assert status == 200
-    assert resp['you']['position'] == 'bog_r4'
+    assert resp['you']['position'] == bog_gate
     assert 'pendingRespawn' not in resp['you']
 
-    status, _ = act(table, 'respawn', gate='bog_r4')
+    status, _ = act(table, 'respawn', gate=bog_gate)
     assert status == 409  # nothing pending anymore
 
 
@@ -1650,8 +1646,8 @@ def test_webbing_snares_two_rolls_and_bleeds(table):
     assert out['hazardId'] == 'webbing'
     vines = [b for b in doc['buffs'] if b.get('kind') == 'vines']
     assert vines and vines[0].get('turns') == 2      # a two-roll snare
-    assert doc['hp'] == 25 - 2                        # round(25*0.10) = 2 HP bleed
-    assert out['hp'] == -2
+    assert doc['hp'] == 30 - 3                        # round(30*0.10) = 3 HP bleed
+    assert out['hp'] == -3
 
 
 def test_spore_cloud_teleports_and_bleeds(table):
@@ -1661,7 +1657,7 @@ def test_spore_cloud_teleports_and_bleeds(table):
     assert doc['position'] != 'cavern_a1'
     assert data.MAP_NODES[doc['position']].get('region') == 'depths'
     assert doc['position'].startswith('cavern_')
-    assert doc['hp'] == 25 - 4                         # round(25*0.15) = 4 HP burst
+    assert doc['hp'] == 30 - 4                         # round(30*0.15) = 4 HP burst
     assert out['hp'] == -4
 
 
@@ -1711,14 +1707,14 @@ def test_sinkwater_takes_25_pct_spores_and_hp(table):
     out = db._hazard(table, sid, doc, 'bog_m1')
     assert out['hazardId'] == 'sinkwater'
     assert doc['spores'] == 75                            # ceil(100*0.25) = 25 lost
-    assert doc['hp'] == 25 - 3                            # round(25*0.12) = 3 HP
+    assert doc['hp'] == 30 - 4                            # round(30*0.12) = 4 HP
 
 
 def test_sinkwater_mirefoot_halved(table):
     sid, doc = _player_at(table, 'bog_m1', spores=100, homeBiome='bog')
     db._hazard(table, sid, doc, 'bog_m1')
     assert doc['spores'] == 88   # ceil(100*0.25)=25, Mirefoot halves -> 12 lost
-    assert doc['hp'] == 25 - 2   # round(25*0.06)=2 (Mirefoot halves the HP too)
+    assert doc['hp'] == 30 - 2   # round(30*0.06)=2 (Mirefoot halves the HP too)
 
 
 def test_bone_chill_applies_grave_chill(table):
@@ -1726,7 +1722,7 @@ def test_bone_chill_applies_grave_chill(table):
     out = db._hazard(table, sid, doc, 'bone_g11')
     assert out['hazardId'] == 'bone_chill'
     assert any(b.get('kind') == 'grave_chill' for b in doc['buffs'])
-    assert doc['hp'] == 25 - 8                            # 8 HP grave-cold
+    assert doc['hp'] == 30 - 8                            # 8 HP grave-cold
 
 
 def test_rot_bloom_trades_hp_for_spores(table):
@@ -1948,6 +1944,38 @@ def test_lair_hp_lingers_between_challengers(table, monkeypatch):
     _, out2 = _lair_fight(table, sid, 'user-bea', 'defender', 12, monkeypatch)
     assert out2['npc']['hp'] == 20
     assert out2['npc']['maxHp'] == boss_hp
+
+
+def test_sigil_scaling_ramps_dungeon_enemies_but_not_the_shared_lair_pool():
+    """Dungeons ramp with the sigils you ALREADY hold (design 2026-08-09), so
+    the last dungeon of a run pushes back hardest and there's a reason to
+    surface and gear up between them."""
+    base = {'hp': 50, 'maxHp': 50, 'atk': 10, 'def': 10, 'spd': 10}
+
+    def doc_with(n):
+        return {'poiClaims': sorted(data.SIGIL_LAIRS)[:n]}
+
+    # No sigils held -> untouched (your first dungeon is the baseline fight).
+    assert db._scale_for_sigils(dict(base), doc_with(0)) == base
+
+    # Each sigil adds DUNGEON_SIGIL_SCALING; hp/atk/def ramp, SPD never does
+    # (scaling it would change the stance triangle, not just the pressure).
+    scaled = db._scale_for_sigils(dict(base), doc_with(3))
+    mult = 1 + data.DUNGEON_SIGIL_SCALING * 3
+    for stat in ('hp', 'atk', 'def'):
+        assert scaled[stat] == round(base[stat] * mult), stat
+    assert scaled['spd'] == base['spd']
+    assert scaled['maxHp'] == scaled['hp']        # full-HP spawn stays coherent
+
+    # More sigils is strictly harder, and it is monotonic across the whole run.
+    atks = [db._scale_for_sigils(dict(base), doc_with(n))['atk'] for n in range(5)]
+    assert atks == sorted(atks) and atks[0] < atks[-1]
+
+    # Lair guardians scale per-fight stats ONLY: their HP pool is season-shared,
+    # so it must not vary with whichever player happens to walk in.
+    guard = db._scale_for_sigils(dict(base), doc_with(3), stats=('atk', 'def'))
+    assert guard['atk'] > base['atk'] and guard['def'] > base['def']
+    assert guard['hp'] == base['hp'] and guard['maxHp'] == base['maxHp']
 
 
 def test_global_first_kill_pays_major_then_vestige_pays_minor_with_sigil(table, monkeypatch):
@@ -2813,10 +2841,12 @@ def test_gen_shop_stock_shape_and_determinism():
     assert any(data.CONSUMABLES[cid].get('combat') for cid in cids)
     assert all(e['qty'] == data.SHOP_CONSUMABLE_QTY for e in stock['consumables'])
 
-    # Grimoires: SHOP_GRIMOIRE_SLOTS distinct tier-1 ids, no qty.
+    # Grimoires: SHOP_GRIMOIRE_SLOTS distinct ids, no qty. Biome bazaars carry
+    # the tier-1 primers (the island bazaar carries the higher books).
     assert len(stock['grimoires']) == data.SHOP_GRIMOIRE_SLOTS
     assert len(set(stock['grimoires'])) == len(stock['grimoires'])
-    assert all(data.GRIMOIRES[g]['tier'] == 1 for g in stock['grimoires'])
+    assert all(data.GRIMOIRES[g]['tier'] in data.BAZAAR_GRIMOIRE_TIERS
+               for g in stock['grimoires'])
 
     # Deterministic per (node, window); a different window always differs (window field).
     assert db._gen_shop_stock(node, 100) == stock
@@ -2835,6 +2865,48 @@ def test_island_bazaar_stocks_only_t2_t3():
     tiers = [data.GEAR[e['item']]['tier']
              for w in range(100, 300) for e in db._gen_shop_stock(node, w)['gear']]
     assert 2 in tiers and 3 in tiers
+
+
+def test_bazaars_split_consumables_by_rarity():
+    """Everyday kit on every corner; the Legendary/Mythic draughts are a trip to
+    the island — so the Mythic Spore sink stays a destination rather than
+    something a starter biome shop sells."""
+    biome = next(n for n, v in data.MAP_NODES.items()
+                 if v['type'] == 'shop' and n not in data.ISLAND_BAZAAR_NODES)
+    island = next(iter(data.ISLAND_BAZAAR_NODES))
+    for w in range(100, 160):
+        for e in db._gen_shop_stock(biome, w)['consumables']:
+            assert data.CONSUMABLES[e['item']]['tier'] in data.BAZAAR_CONSUMABLE_TIERS
+        for e in db._gen_shop_stock(island, w)['consumables']:
+            assert data.CONSUMABLES[e['item']]['tier'] in data.ISLAND_BAZAAR_CONSUMABLE_TIERS
+    # The Mythic sink does actually turn up on the island across many windows.
+    seen = {e['item'] for w in range(100, 400)
+            for e in db._gen_shop_stock(island, w)['consumables']}
+    assert any(data.CONSUMABLES[c]['tier'] == 4 for c in seen)
+
+
+def test_island_bazaar_stocks_higher_tier_grimoires():
+    """Regression: _gen_shop_stock used to hardcode tier-1 grimoires for EVERY
+    bazaar, so tier-2/3 books were unbuyable anywhere and a player who filled
+    their 2-slot tier-1 book had no way to grow. The island bazaar deals in the
+    higher tiers, mirroring the gear split."""
+    node = next(iter(data.ISLAND_BAZAAR_NODES))
+    for w in range(100, 160):
+        stock = db._gen_shop_stock(node, w)
+        assert len(stock['grimoires']) == data.SHOP_GRIMOIRE_SLOTS
+        assert len(set(stock['grimoires'])) == len(stock['grimoires'])
+        assert all(data.GRIMOIRES[g]['tier'] in data.ISLAND_BAZAAR_GRIMOIRE_TIERS
+                   for g in stock['grimoires'])
+    # Mostly T2, some T3 — both tiers show up across many windows.
+    tiers = [data.GRIMOIRES[g]['tier']
+             for w in range(100, 300) for g in db._gen_shop_stock(node, w)['grimoires']]
+    assert 2 in tiers and 3 in tiers
+    # ...and a biome bazaar still never carries them.
+    biome = next(n for n, v in data.MAP_NODES.items()
+                 if v['type'] == 'shop' and n not in data.ISLAND_BAZAAR_NODES)
+    assert all(data.GRIMOIRES[g]['tier'] == 1
+               for w in range(100, 160)
+               for g in db._gen_shop_stock(biome, w)['grimoires'])
 
 
 def test_biome_black_market_is_rare_and_deterministic():
@@ -3594,12 +3666,30 @@ def test_award_spores_credits_forage_amount(monkeypatch):
 
 
 def test_award_item_puts_consumable_in_bag(monkeypatch):
-    monkeypatch.setattr(db._rng, 'choice',
-                        lambda seq: list(data.CONSUMABLES.keys())[0])
+    # Random consumable grants go through data.roll_consumable (rarity-weighted),
+    # so pin THAT rather than the raw rng.
+    monkeypatch.setattr(db._rng, 'choices',
+                        lambda seq, weights=None, k=1: [seq[0]])
     doc = {'userId': 'u', 'spores': 0, 'bag': []}
     ev = db._award_item(doc)
-    assert ev['type'] == 'loot' and ev['item'] == list(data.CONSUMABLES.keys())[0]
+    assert ev['type'] == 'loot' and ev['item'] == sorted(data.CONSUMABLES)[0]
     assert doc['bag'] == [ev['item']]
+
+
+def test_random_consumable_grants_are_rarity_weighted():
+    """Mystery rewards, Umori boxes, cache pickups and vein bonuses all roll
+    through one weighted helper, so the Mythic Spore sink stays something you
+    BUY — not a 1-in-14 lottery from the cheapest box."""
+    import random
+    rng = random.Random(7)
+    rolls = [data.roll_consumable(rng) for _ in range(4000)]
+    tiers = [data.CONSUMABLES[c]['tier'] for c in rolls]
+    # Commons dominate; Mythic is a genuine rarity.
+    assert tiers.count(1) > tiers.count(2) > tiers.count(3) > tiers.count(4)
+    assert tiers.count(4) / len(tiers) < 0.05
+    # A capped roll never exceeds its ceiling (the new-player welcome gift).
+    capped = {data.roll_consumable(rng, max_tier=1) for _ in range(200)}
+    assert all(data.CONSUMABLES[c]['tier'] == 1 for c in capped)
 
 
 def test_award_gear_rolls_a_drop(monkeypatch):
@@ -3810,6 +3900,101 @@ def test_metrics_recorded_and_exported(table):
 
     # Wrong passphrase exports nothing.
     assert act(table, 'admin', hostKey='nope', cmd='export')[0] == 403
+
+
+class _FixedGearRng:
+    """Deterministic gear rolls: always the given slot, always tier index 0."""
+
+    def __init__(self, slot):
+        self._slot = slot
+
+    def choice(self, seq):
+        return self._slot if self._slot in seq else seq[0]
+
+    def choices(self, seq, weights=None, k=1):
+        return [seq[0]]
+
+    def random(self):
+        return 0.0
+
+
+def test_gear_metrics_record_rarity_and_cap_bites(monkeypatch):
+    """The rarity ceiling is only tunable if the export shows how often it fires
+    and what mix of rarities actually reaches players."""
+    monkeypatch.setattr(db, '_rng', _FixedGearRng('fang'))
+    doc = {'passives': [], 'gear': {}, 'gearStash': [], 'spores': 0, 'tier': 1}
+    db._roll_gear_drop(doc, {3: 1.0})            # Legendary roll, tier-1 creature
+    assert doc['metrics']['gear.capped.t3to1'] == 1
+    assert doc['metrics']['gear.found.t1'] == 1
+
+    doc3 = {'passives': [], 'gear': {}, 'gearStash': [], 'spores': 0, 'tier': 3}
+    db._roll_gear_drop(doc3, {3: 1.0})           # apex: same roll, no cap
+    assert 'gear.capped.t3to1' not in doc3.get('metrics', {})
+    assert doc3['metrics']['gear.found.t3'] == 1
+
+
+def test_depths_fights_are_bucketed_by_sigils_held():
+    """DUNGEON_SIGIL_SCALING ramps on sigils held, so outcomes must be recorded
+    against that axis — otherwise the export can't show whether it did anything."""
+    doc = {'poiClaims': sorted(data.SIGIL_LAIRS)[:2], 'metrics': {}}
+    assert db._sigil_count(doc) == 2
+    # The metric key the finish path writes for a depths win at 2 sigils.
+    db._metric(doc, f'depths.sig{db._sigil_count(doc)}.win')
+    assert doc['metrics']['depths.sig2.win'] == 1
+
+
+def test_export_follows_pagination_instead_of_truncating(table):
+    """Regression: the export read one query page. DynamoDB caps a page at 1MB,
+    so a busy night's event log silently lost its tail — the export under-
+    reported exactly the long sessions we most want to analyse."""
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = db._active_season(table)[0]
+    for i in range(25):
+        db._event(table, sid, 'test', f'line {i}')
+
+    table.page_size = 4          # force many pages
+    status, out = act(table, 'admin', hostKey='swampking', cmd='export')
+    assert status == 200
+    texts = [e['text'] for e in out['events']]
+    for i in range(25):
+        assert f'line {i}' in texts, f'line {i} dropped by pagination'
+    assert len(texts) == len(set(texts))          # no page double-counting
+    assert any(p['userId'] == 'user-alex' for p in out['players'])
+
+
+def test_export_carries_shared_world_state(table):
+    """The export must include the shared season records, not just per-player
+    docs: the world boss's per-player `dmg` map is the ONLY record of who bled
+    it and by how much, which is the whole point of the damage check."""
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = db._active_season(table)[0]
+    db._spawn_world_event(table, sid)
+    we = db._world_event(table, sid)
+    we['dmg'] = {'user-alex': 137}
+    db._set_world_event(table, sid, we)
+    db._set_lair_state(table, sid, 'city_lair', 12, False)
+
+    status, out = act(table, 'admin', hostKey='swampking', cmd='export')
+    assert status == 200
+    assert out['worldEvent']['dmg']['user-alex'] == 137
+    assert out['worldEvent']['endsAt'] == we['endsAt']
+    assert any(l['sk'] == 'LAIR#city_lair' and l['hp'] == 12 for l in out['lairs'])
+    assert 'boss' in out and 'enraged' in out       # present even when unspawned
+
+
+def test_export_captures_chat(table):
+    """Chat posts land in BOTH the CHAT# backlog and the EVENT# log, and the
+    export carries both. Guards the server half of the 'export showed no chat'
+    report from session 20260808-182231."""
+    act(table, 'join', starter='saproling', home='cavern')
+    status, _ = act(table, 'chat', text='rallying on the beast')
+    assert status == 200
+
+    _, out = act(table, 'admin', hostKey='swampking', cmd='export')
+    assert [m['text'] for m in out['chat']] == ['rallying on the beast']
+    assert out['chat'][0]['username'] == 'Alex'
+    assert any(e['type'] == 'chat' and 'rallying on the beast' in e['text']
+               for e in out['events'])
 
 
 def test_export_works_after_the_night_ends(table):
@@ -4826,3 +5011,151 @@ def test_state_settles_closed_auction_and_reveals(table, monkeypatch):
     # A second state read does not re-reveal.
     _, state2 = db.handle_state(table, {'userId': 'user-alex'})
     assert 'reveal' not in state2['umori']
+
+
+def test_consumables_carry_rarity_and_price_from_it():
+    """Consumables sit on the same 1-4 rarity ladder as gear and pets, and that
+    rarity sets the shop price (design 2026-08-10). The top of the ladder is the
+    late-night Spore sink — before this every consumable cost 12-25, so a maxed
+    player had nothing worth buying."""
+    for cid, spec in data.CONSUMABLES.items():
+        assert spec['tier'] in (1, 2, 3, 4), cid
+        assert spec['name'] and spec['blurb'], cid
+        assert spec['cost'] == data.consumable_cost(cid), cid
+
+    # Price rises strictly with rarity.
+    by_tier = {}
+    for cid, spec in data.CONSUMABLES.items():
+        by_tier.setdefault(spec['tier'], set()).add(spec['cost'])
+    costs = [min(by_tier[t]) for t in sorted(by_tier)]
+    assert costs == sorted(costs) and costs[0] < costs[-1]
+
+    # Every rarity is actually stocked, including a Mythic sink.
+    assert set(by_tier) == {1, 2, 3, 4}
+
+
+def test_restorative_and_tonic_consumables_apply(table):
+    """`heal` and `buffs` are data-driven, so a new consumable is a table entry
+    rather than another branch in _use_item."""
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = db._active_season(table)[0]
+    doc = db._get_player(table, sid, 'user-alex')
+    eff = db.engine.effective_stats(doc)
+    doc['hp'] = 1
+    doc['bag'] = ['sovereigns_draught']
+    db._put_player(table, doc)
+
+    doc = db._get_player(table, sid, 'user-alex')
+    status, _ = db._use_item(table, sid, doc, {'item': 'sovereigns_draught'})
+    assert status == 200
+    assert doc['hp'] == eff['maxHp']                 # Mythic draught is a full heal
+    kinds = {b['kind'] for b in doc['buffs']}
+    # The draught runs its OWN buff kinds so it layers on top of the tonics
+    # rather than overlapping them.
+    assert {'sovereign_might', 'sovereign_ward', 'sovereign_haste'} <= kinds
+    assert kinds.isdisjoint({'savage_roar', 'harden_shell', 'fleetfoot'})
+    # Bought buffs last several fights, unlike a one-shot spell buff.
+    assert all(b['battles'] == data.CONSUMABLE_BUFF_BATTLES
+               for b in doc['buffs'] if b['kind'].startswith('sovereign_'))
+    assert 'sovereigns_draught' not in doc['bag']    # consumed
+
+    # A heal never overshoots max HP.
+    doc['bag'] = ['marrow_draught']
+    db._put_player(table, doc)
+    doc = db._get_player(table, sid, 'user-alex')
+    db._use_item(table, sid, doc, {'item': 'marrow_draught'})
+    assert doc['hp'] == eff['maxHp']
+
+
+def test_tonic_buffs_last_several_battles():
+    """Bought tonics outlast a single fight. A spell buff is effectively free —
+    you re-cast it off a cooldown — so a consumed item that evaporated after one
+    exchange was strictly the worse deal."""
+    doc = {'buffs': [{'kind': 'savage_roar', 'battles': 3},   # tonic
+                     {'kind': 'harden_shell'},                # spell (one fight)
+                     {'kind': 'scrounger'}]}                  # not a battle buff
+    db._consume_one_battle_buffs(doc)
+    kinds = {b['kind']: b for b in doc['buffs']}
+    assert 'harden_shell' not in kinds          # single-fight buff drops
+    assert kinds['savage_roar']['battles'] == 2  # tonic ticks down
+    assert 'scrounger' in kinds                  # untouched
+
+    for expected in (1,):
+        db._consume_one_battle_buffs(doc)
+        assert {b['kind'] for b in doc['buffs'] if b['kind'] == 'savage_roar'}
+    db._consume_one_battle_buffs(doc)
+    assert all(b['kind'] != 'savage_roar' for b in doc['buffs'])
+
+
+def test_draught_buffs_stack_with_tonic_buffs(table):
+    """The Draught's sovereign_* kinds are distinct from the tonic kinds, so
+    drinking both layers the bonuses instead of overlapping them."""
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = db._active_season(table)[0]
+    doc = db._get_player(table, sid, 'user-alex')
+    plain = db.engine.effective_stats(doc)
+
+    doc['buffs'] = [{'kind': 'savage_roar'}]
+    tonic_only = db.engine.effective_stats(doc)
+    doc['buffs'] = [{'kind': 'savage_roar'}, {'kind': 'sovereign_might'}]
+    both = db.engine.effective_stats(doc)
+
+    assert tonic_only['atk'] > plain['atk']
+    assert both['atk'] > tonic_only['atk']        # they genuinely stack
+    assert both['atk'] - tonic_only['atk'] == data.SOVEREIGN_ATK
+
+
+def test_mending_salve_heals_mid_battle(table, monkeypatch):
+    """The salve is played with a stance and resolves BEFORE the exchange, so it
+    can pull you back from the round that would otherwise have killed you."""
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = db._active_season(table)[0]
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['bag'] = ['mending_salve']
+    db._put_player(table, doc)
+    doc = db._get_player(table, sid, 'user-alex')
+    npc = dict(data.DUNGEON_NPCS['city'], maxHp=data.DUNGEON_NPCS['city']['hp'])
+    db._start_battle(table, sid, doc, 'wild', npc, node=doc['position'])
+    doc['battle']['player']['hp'] = 3
+    db._put_player(table, doc)
+
+    def _stub(att, dfn, *a, **k):
+        return [{'round': 1, 'by': 'attacker', 'dmg': 0, 'winner': 'clash'}]
+    monkeypatch.setattr(db.engine, 'resolve_round', _stub)
+    doc = db._get_player(table, sid, 'user-alex')
+    status, _ = db._combat_round(table, sid, doc,
+                                 {'stance': 'guard', 'item': 'mending_salve'})
+    assert status == 200
+    assert doc['battle'] is None or doc['battle']['player']['hp'] > 3
+    assert 'mending_salve' not in doc['bag']      # consumed
+
+
+def test_roller_dice_only_set_their_half_of_the_faces():
+    """High/Low Rollers trade the Loaded Die's exact control for half the range —
+    which is what puts them a rarity below it."""
+    assert data.CONSUMABLES['high_roller']['die'] == (4, 6)
+    assert data.CONSUMABLES['low_roller']['die'] == (1, 3)
+    assert data.CONSUMABLES['high_roller']['tier'] == 1
+    assert data.CONSUMABLES['loaded_die']['tier'] == 2
+
+
+def test_every_gear_piece_has_a_named_property():
+    """Each piece is defined by one special feature, and that feature has a name
+    the UI can chip (design 2026-08-10). Pieces off the stance-rider ladder —
+    Illuminating, Vital, Hybrid — are named too, so nothing renders blank."""
+    for gid, g in data.WORLD_GEAR.items():
+        key, spec = data.gear_property(gid)
+        assert key, f'{gid} has no named property'
+        assert spec and spec['name'], f'{gid} property {key} has no name'
+        assert spec['blurb'], f'{gid} property {key} has no blurb'
+        # Stance riders name the stance they key off; off-ladder ones say None.
+        assert 'stance' in spec, key
+        if g.get('rider'):
+            assert spec['stance'] in ('aggress', 'guard', 'feint'), key
+
+    # The Gorgon "+" masterworks inherit their base piece's property.
+    assert data.gear_property('rusted_fang+')[0] == data.gear_property('rusted_fang')[0]
+
+    # The three off-ladder families cover exactly the riderless pieces.
+    off = {gid for gid, g in data.WORLD_GEAR.items() if not g.get('rider')}
+    assert off and all(data.gear_property(g)[0] in data.GEAR_PROPS_EXTRA for g in off)

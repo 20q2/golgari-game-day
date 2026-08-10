@@ -305,8 +305,8 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             # Brutal Strikes (ATK-6 perk): landing a decisive hit swings harder.
             if winr.has_perk('brutal_strikes'):
                 mult += data.BRUTAL_STRIKES_MULT
-            if (win_stance == 'aggress'
-                    and losr.max_hp and losr.hp / losr.max_hp < 0.30):
+            if (win_stance == 'aggress' and losr.max_hp
+                    and losr.hp / losr.max_hp < data.GUTCLEAVER_EXECUTE_FRAC):
                 mult += winr.mag('gutcleaver', 0.0)   # execute a low-HP foe
             if not winr.first_win_used:
                 if winr.has('onslaught'):
@@ -833,6 +833,15 @@ def effective_stats(player: dict) -> dict:
             eff['def'] += 4 * mult
         elif kind == 'fleetfoot':
             eff['spd'] += 3 * mult
+        # Sovereign's Draught grants its OWN kinds rather than reusing the tonic
+        # buffs, so drinking it on top of a Whetstone/Wax/Tonic stacks instead of
+        # silently overlapping — the pre-boss ritual is meant to be layered.
+        elif kind == 'sovereign_might':
+            eff['atk'] += data.SOVEREIGN_ATK * mult
+        elif kind == 'sovereign_ward':
+            eff['def'] += data.SOVEREIGN_DEF * mult
+        elif kind == 'sovereign_haste':
+            eff['spd'] += data.SOVEREIGN_SPD * mult
         elif kind == 'warding_dance':
             eff['def'] += 3 * mult
             eff['spd'] += 3 * mult

@@ -64,7 +64,6 @@ export const PASSIVE_BLURBS: Record<string, string> = {
   outpace: "Round 1: the enemy's decisive blow misses — you strike from out of range.",
   flurry: '25% chance for a bonus strike each round.',
   rootwall: 'Regrowth improves to 35%.',
-  dredge: 'Reclaim your snare after it triggers.',
   doubling_rot: 'Mystery-event Spore payouts doubled.',
   soul_trophy: 'After any won fight, choose a stat — gain +[foe level] to it for your next battle.',
   colossus: 'Shrugs off 15% of every blow, and its huge frame simply outlasts the enemy.',
@@ -87,33 +86,33 @@ export const STARTERS: FormInfo[] = [
   {
     id: 'pest', name: 'Pest', tier: 1, passive: 'scrounger', passiveName: 'Scrounger',
     blurb: 'A balanced sewer rat. Never hungry, never broke.',
-    stats: { hp: 25, atk: 5, def: 5, spd: 5 },
+    stats: { hp: 30, atk: 5, def: 5, spd: 5 },
   },
   {
     id: 'kraul', name: 'Kraul Grub', tier: 1, passive: 'first_bite', passiveName: 'First Bite',
     blurb: 'A glass-cannon insect. Bites first, asks never.',
-    stats: { hp: 25, atk: 6, def: 3, spd: 5 },
+    stats: { hp: 30, atk: 6, def: 3, spd: 5 },
   },
   {
     id: 'saproling', name: 'Saproling', tier: 1, passive: 'drift', passiveName: 'Endless Ranks',
     blurb: 'A quick, expendable plant token — the swarm made flesh.',
-    stats: { hp: 25, atk: 5, def: 5, spd: 6 },
+    stats: { hp: 30, atk: 5, def: 5, spd: 6 },
   },
   {
     id: 'zombie', name: 'Zombie', tier: 1, passive: 'regrowth', passiveName: 'Regrowth',
     blurb: "Was somebody once; dead now, and it doesn't stay down.",
-    stats: { hp: 25, atk: 5, def: 6, spd: 3 },
+    stats: { hp: 30, atk: 5, def: 6, spd: 3 },
   },
   {
     id: 'squirrel', name: 'Squirrel', tier: 1, passive: 'spell_haste', passiveName: 'Spell Haste',
     blurb: 'A twitchy little caster — spells recharge twice as fast.',
-    stats: { hp: 25, atk: 5, def: 4, spd: 7 },
+    stats: { hp: 30, atk: 5, def: 4, spd: 7 },
   },
   {
     id: 'elf', name: 'Elf', tier: 1, passive: 'stonewright', passiveName: 'Natural Enchanter',
     passives: ['stonewright', 'gift_of_fair_folk'],
     blurb: 'Ancient and long-lived; her power is in her works.',
-    stats: { hp: 25, atk: 6, def: 6, spd: 4 },
+    stats: { hp: 30, atk: 6, def: 6, spd: 4 },
   },
 ];
 
@@ -159,9 +158,11 @@ export function formName(form: string | undefined): string {
 }
 
 // Mirror of undercity_data.xp_to_next (undercity_config XP_CURVE_* scalars).
-// Progressive curve (design 2026-08-04): flat-ish early, ramps after level 5.
+// Progressive curve (design 2026-08-08 retune): flat-ish early, ramps hard
+// after level 5 so L10 is the normal end-of-night ceiling and L11/L12 are
+// stretch goals. Total L1->12 = 950; levels 1-6 match the old curve exactly.
 // Keep in sync with the server — the client only displays this for the XP bar.
 export function xpToNext(level: number): number {
   const ramp = Math.max(0, level - 5);
-  return 15 + 5 * level + 2 * ramp * ramp;
+  return 15 + 5 * level + 5 * ramp * ramp;
 }

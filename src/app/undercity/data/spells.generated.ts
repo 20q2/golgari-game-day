@@ -3,14 +3,14 @@
 import type { SpellInfo, GrimoireInfo } from './spells';
 
 export const SPELLS: SpellInfo[] = [
-  { id: "rot_surge", name: "Rot Surge", category: "buff", tier: 1, cooldownMin: 30, effect: "self_buff", desc: "+3 ATK in your next battle.", icon: "local_fire_department" },
+  { id: "rot_surge", name: "Rot Surge", category: "buff", tier: 1, cooldownMin: 30, effect: "self_buff", desc: "+3 ATK next battle, and your Aggress oozes rot into the foe.", icon: "local_fire_department" },
   { id: "bone_chill", name: "Bone Chill", category: "field", tier: 1, cooldownMin: 30, effect: "field_curse", range: 5, desc: "Curse a rival: −2 ATK in their next battle.", icon: "ac_unit" },
   { id: "bog_snare", name: "Bog Snare", category: "field", tier: 1, cooldownMin: 30, effect: "field_curse", range: 5, desc: "Curse a rival: their next roll is halved.", icon: "water_drop" },
-  { id: "glowveil", name: "Glowveil", category: "buff", tier: 1, cooldownMin: 30, effect: "self_buff", desc: "+2 SPD and +15% flee chance in your next battle.", icon: "flare" },
+  { id: "glowveil", name: "Glowveil", category: "buff", tier: 1, cooldownMin: 30, effect: "self_buff", desc: "+2 SPD and +15% flee next battle; a winning Feint reveals the foe's true intent.", icon: "flare" },
   { id: "scrap_toss", name: "Scrap Toss", category: "field", tier: 1, cooldownMin: 30, effect: "field_damage", range: 5, power: 8, desc: "Hurl city scrap at a rival. Cannot drop a target below 1 HP.", icon: "construction" },
   { id: "spore_bolt", name: "Spore Bolt", category: "field", tier: 1, cooldownMin: 20, effect: "field_damage", range: 6, power: 12, desc: "A puff of caustic spores at range. Cannot drop a target below 1 HP.", icon: "flash_on" },
   { id: "mend_flesh", name: "Mend Flesh", category: "buff", tier: 1, cooldownMin: 20, effect: "self_heal", power: 12, desc: "Knit your wounds.", icon: "healing" },
-  { id: "harden_shell", name: "Harden Shell", category: "buff", tier: 1, cooldownMin: 20, effect: "self_buff", desc: "+2 DEF in your next battle.", icon: "shield" },
+  { id: "harden_shell", name: "Harden Shell", category: "buff", tier: 1, cooldownMin: 20, effect: "self_buff", desc: "+2 DEF next battle, and you knit 3 HP each round you win in Guard.", icon: "shield" },
   { id: "skitter_step", name: "Skitter Step", category: "traversal", tier: 1, cooldownMin: 25, effect: "fate_die", maxValue: 3, desc: "Skitter ahead: choose your next roll (1–3).", icon: "directions_run" },
   { id: "sinkstep", name: "Sinkstep", category: "traversal", tier: 1, cooldownMin: 25, effect: "fate_die", maxValue: 1, desc: "Plant one sure step in the mire — your next roll is a guaranteed 1.", icon: "directions_walk" },
   { id: "rot_bolt", name: "Rot Bolt", category: "field", tier: 2, cooldownMin: 25, effect: "field_damage", range: 7, power: 20, desc: "A lance of concentrated rot at range. Cannot drop a target below 1 HP.", icon: "thunderstorm" },

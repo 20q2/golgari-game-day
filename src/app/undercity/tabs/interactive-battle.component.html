@@ -317,8 +317,13 @@
             [title]="hasActed() ? fleeTitle() : 'Make a move before you can flee'"
             (click)="doFlee()"
           >
-            <mat-icon class="mi">directions_run</mat-icon> Flee
-            @if (fleeChance != null) { <span class="flee-odds">{{ fleeChance }}%</span> }
+            <!-- A held Smoke Spore auto-succeeds a failed flee, so the button
+                 shows the spore instead of the runner: the icon is the tell that
+                 escaping is certain and will cost you the item. -->
+            <mat-icon class="mi">{{ fleeBySpore() ? 'air' : 'directions_run' }}</mat-icon> Flee
+            @if (fleeChance != null) {
+              <span class="flee-odds" [class.guaranteed]="fleeBySpore()">{{ fleeChance }}%</span>
+            }
           </button>
         }
       </div>

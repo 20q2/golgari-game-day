@@ -48,33 +48,33 @@ def xp_to_next(level: int) -> int:
 # Starter lines (tier 1). Stats are the level-1 base.
 STARTERS = {
     'pest': {
-        'name': 'Pest', 'hp': 25, 'atk': 5, 'def': 5, 'spd': 5,
+        'name': 'Pest', 'hp': 30, 'atk': 5, 'def': 5, 'spd': 5,
         'passive': 'scrounger',
         'blurb': 'Balanced sewer rat. Scrounger: +25% Spores from all loot & bounties, '
                  'and scrounge Spores even from fights you lose or flee.',
     },
     'kraul': {
-        'name': 'Kraul Grub', 'hp': 25, 'atk': 6, 'def': 3, 'spd': 5,
+        'name': 'Kraul Grub', 'hp': 30, 'atk': 6, 'def': 3, 'spd': 5,
         'passive': 'first_bite',
         'blurb': 'Glass-cannon insect. First Bite: always strikes first in round 1.',
     },
     'saproling': {
-        'name': 'Saproling', 'hp': 25, 'atk': 5, 'def': 5, 'spd': 6,
+        'name': 'Saproling', 'hp': 30, 'atk': 5, 'def': 5, 'spd': 6,
         'passive': 'drift',
         'blurb': 'Quick, expendable plant token — the swarm made flesh. Endless Ranks: +15% flee chance; bad mystery events reroll once.',
     },
     'zombie': {
-        'name': 'Zombie', 'hp': 25, 'atk': 5, 'def': 6, 'spd': 3,
+        'name': 'Zombie', 'hp': 30, 'atk': 5, 'def': 6, 'spd': 3,
         'passive': 'regrowth',
         'blurb': 'Was somebody once; dead now, and it doesn\'t stay down. Regrowth: heal 20% max HP after any battle.',
     },
     'squirrel': {
-        'name': 'Squirrel', 'hp': 25, 'atk': 5, 'def': 4, 'spd': 7,
+        'name': 'Squirrel', 'hp': 30, 'atk': 5, 'def': 4, 'spd': 7,
         'passive': 'spell_haste',
         'blurb': 'A twitchy little caster. Spell Haste: your spell cooldowns are halved — cast twice as often as anyone else.',
     },
     'elf': {
-        'name': 'Elf', 'hp': 25, 'atk': 6, 'def': 6, 'spd': 4,
+        'name': 'Elf', 'hp': 30, 'atk': 6, 'def': 6, 'spd': 4,
         'passive': 'stonewright',
         'passives': ['stonewright', 'gift_of_fair_folk'],
         'blurb': 'Ancient and long-lived; her power is in her works. Natural Enchanter: '
@@ -314,7 +314,7 @@ PERKS = {
 
 GEAR = {
     # Fang — Aggress riders
-    'rusted_fang':  {'name': 'Rusted Fang',  'slot': 'fang', 'tier': 1, 'cost': 20, 'atk': 2, 'rider': 'barbed'},
+    'rusted_fang':  {'name': 'Envenomed Fang',  'slot': 'fang', 'tier': 1, 'cost': 20, 'atk': 2, 'rider': 'barbed'},
     'bloodfang':    {'name': 'Bloodfang',    'slot': 'fang', 'tier': 1, 'cost': 25, 'atk': 2, 'rider': 'bloodfang'},
     'kraul_barb':   {'name': 'Kraul Barb',   'slot': 'fang', 'tier': 2, 'cost': 45, 'atk': 4, 'rider': 'deep_biter'},
     'rabid_fang':   {'name': 'Rabid Fang',   'slot': 'fang', 'tier': 2, 'cost': 48, 'atk': 3, 'spd': 1, 'rider': 'rabid'},
@@ -335,29 +335,29 @@ GEAR = {
     'bramble_hide': {'name': 'Bramble Hide', 'slot': 'carapace', 'tier': 1, 'cost': 25, 'def': 2, 'rider': 'bramble'},
     'bark_hide':    {'name': 'Bark Hide',    'slot': 'carapace', 'tier': 2, 'cost': 45, 'def': 4, 'rider': 'spiked'},
     'bulwark_plate': {'name': 'Bulwark Plate', 'slot': 'carapace', 'tier': 2, 'cost': 48, 'def': 3, 'maxHp': 3, 'rider': 'bulwark'},
-    'mossback':     {'name': 'Mossback',     'slot': 'carapace', 'tier': 2, 'cost': 50, 'def': 3, 'rider': 'mossback'},
+    'mossback':     {'name': 'Sunleaf Carapace',     'slot': 'carapace', 'tier': 2, 'cost': 50, 'def': 3, 'rider': 'mossback'},
     'troll_hide':   {'name': 'Troll Hide',   'slot': 'carapace', 'tier': 3, 'cost': 80, 'def': 5, 'maxHp': 6, 'rider': 'spiked'},
     'ironshell_bulwark': {'name': 'Ironshell Bulwark', 'slot': 'carapace', 'tier': 3, 'cost': 85, 'def': 5, 'maxHp': 6, 'rider': 'bulwark'},
     # Carapace — new rarity rungs (complete the thick/bramble/spiked/bulwark/mossback ladders)
     'thornscrap_hide':   {'name': 'Thornscrap Hide', 'slot': 'carapace', 'tier': 1, 'cost': 22, 'def': 2, 'rider': 'spiked'},
     'barricade_shell':   {'name': 'Barricade Shell', 'slot': 'carapace', 'tier': 1, 'cost': 23, 'def': 2, 'rider': 'bulwark'},
-    'mossling_hide':     {'name': 'Mossling Hide',   'slot': 'carapace', 'tier': 1, 'cost': 24, 'def': 2, 'rider': 'mossback'},
+    'mossling_hide':     {'name': 'Sunleaf Hide',   'slot': 'carapace', 'tier': 1, 'cost': 24, 'def': 2, 'rider': 'mossback'},
     'ridged_carapace':   {'name': 'Ridged Carapace', 'slot': 'carapace', 'tier': 2, 'cost': 46, 'def': 4, 'rider': 'thick'},
     'bramble_carapace':  {'name': 'Bramble Carapace', 'slot': 'carapace', 'tier': 2, 'cost': 47, 'def': 4, 'rider': 'bramble'},
     'colossus_shell':    {'name': 'Colossus Shell',  'slot': 'carapace', 'tier': 3, 'cost': 82, 'def': 5, 'maxHp': 6, 'rider': 'thick'},
     'bramble_aegis':     {'name': 'Bramble Aegis',   'slot': 'carapace', 'tier': 3, 'cost': 83, 'def': 5, 'maxHp': 6, 'rider': 'bramble'},
     'overgrown_bulwark': {'name': 'Overgrown Bulwark', 'slot': 'carapace', 'tier': 3, 'cost': 84, 'def': 5, 'maxHp': 6, 'rider': 'mossback'},
     # Carapace — Vital line (pure Max HP, no rider): trade DEF+rider for a big HP pool
-    'bloatsac_plate':    {'name': 'Bloatsac Plate',    'slot': 'carapace', 'tier': 1, 'cost': 22, 'maxHp': 6},
-    'engorged_carapace': {'name': 'Engorged Carapace', 'slot': 'carapace', 'tier': 2, 'cost': 46, 'maxHp': 12, 'def': 1},
-    'leviathan_hide':    {'name': 'Leviathan Hide',    'slot': 'carapace', 'tier': 3, 'cost': 82, 'maxHp': 20, 'def': 2},
+    'bloatsac_plate':    {'name': 'Bloatsac Plate',    'slot': 'carapace', 'tier': 1, 'cost': 22, 'maxHp': 6, 'prop': 'vital'},
+    'engorged_carapace': {'name': 'Engorged Carapace', 'slot': 'carapace', 'tier': 2, 'cost': 46, 'maxHp': 12, 'def': 1, 'prop': 'vital'},
+    'leviathan_hide':    {'name': 'Leviathan Hide',    'slot': 'carapace', 'tier': 3, 'cost': 82, 'maxHp': 20, 'def': 2, 'prop': 'vital'},
     # ── Hybrid line (tier 2) — two-stat, no rider. Off-ladder like Vital/
     # Illuminating: trade the rider for stats split across two PERK attributes
     # so one piece can bridge two perk nodes (perk_stat sums equipped gear).
     # Each sits on the slot matching its PRIMARY stat. Design 2026-07-23.
-    'duelist_fang':   {'name': 'Duelist Fang',   'slot': 'fang',     'tier': 2, 'cost': 46, 'atk': 3, 'spd': 2},
-    'warbrand_plate': {'name': 'Warbrand Plate', 'slot': 'carapace', 'tier': 2, 'cost': 46, 'def': 3, 'atk': 2},
-    'wardens_charm':  {'name': "Warden's Charm",  'slot': 'charm',    'tier': 2, 'cost': 46, 'spd': 2, 'def': 2},
+    'duelist_fang':   {'name': 'Duelist Fang',   'slot': 'fang',     'tier': 2, 'cost': 46, 'atk': 3, 'spd': 2, 'prop': 'hybrid'},
+    'warbrand_plate': {'name': 'Warbrand Plate', 'slot': 'carapace', 'tier': 2, 'cost': 46, 'def': 3, 'atk': 2, 'prop': 'hybrid'},
+    'wardens_charm':  {'name': "Warden's Charm",  'slot': 'charm',    'tier': 2, 'cost': 46, 'spd': 2, 'def': 2, 'prop': 'hybrid'},
     # Charm — Feint riders (new slot; light on raw stats, value is the rider)
     'quartz_charm':   {'name': 'Quartz Charm',   'slot': 'charm', 'tier': 1, 'cost': 20, 'spd': 1, 'rider': 'trickster'},
     'venom_charm':    {'name': 'Venom Charm',    'slot': 'charm', 'tier': 1, 'cost': 25, 'spd': 1, 'rider': 'venomtrick'},
@@ -381,8 +381,8 @@ GEAR = {
     # Illuminating gear — light OR power. `light: 'full'` reveals the whole
     # dungeon (client-side fog). Deliberately weak on combat: the cost is a gear
     # slot + near-zero stats, in exchange for total information.
-    'torchfang':       {'name': 'Torchfang',       'slot': 'fang',  'tier': 1, 'cost': 30, 'atk': 1, 'light': 'full'},
-    'glowspore_charm': {'name': 'Glowspore Charm', 'slot': 'charm', 'tier': 1, 'cost': 30, 'light': 'full'},
+    'torchfang':       {'name': 'Torchfang',       'slot': 'fang',  'tier': 1, 'cost': 30, 'atk': 1, 'light': 'full', 'prop': 'illuminating'},
+    'glowspore_charm': {'name': 'Glowspore Charm', 'slot': 'charm', 'tier': 1, 'cost': 30, 'light': 'full', 'prop': 'illuminating'},
     # ── Mythic (tier 4) — craft-only; forged from a Legendary at the Blacksmith
     # for 3 Chrysalis Ichor. Never dropped/sold/found (no tier-4 in GEAR_DROP,
     # the bazaar tier set, or the boss trove). One per rider family. New stat
@@ -464,43 +464,143 @@ WORLD_GEAR = {_gid: _g for _gid, _g in GEAR.items() if not _g.get('plus')}
 
 # Rider → the stance it modifies + a human blurb (client reads this in Plan 3).
 GEAR_RIDERS = {
-    'barbed':    {'stance': 'aggress', 'blurb': 'Your Aggress applies rot even on a clash or loss.'},
-    'deep_biter':{'stance': 'aggress', 'blurb': 'Winning exchanges hit harder; nothing on a loss.'},
-    'thick':     {'stance': 'guard',   'blurb': 'Your Guard chips in a stall and softens being wrong.'},
-    'spiked':    {'stance': 'guard',   'blurb': 'Your Guard counter reflects part of the blocked hit.'},
-    'trickster': {'stance': 'feint',   'blurb': 'A lost Feint is not fully punished.'},
-    'serrated':  {'stance': 'feint',   'blurb': 'Your Feint break lowers the enemy next-round damage.'},
-    'glint':     {'stance': 'feint',   'blurb': 'Winning a Feint reveals the enemy true next intent; +read rate.'},
-    'seer':      {'stance': 'feint',   'blurb': 'Sharply raises how often you read the enemy intent.'},
-    # Aggress (fang) — new
-    'bloodfang':  {'stance': 'aggress', 'blurb': 'Heal 40% of the damage your winning Aggress deals.'},
-    'rabid':      {'stance': 'aggress', 'blurb': 'Each Aggress you win, your Aggress hits gain +2 for the rest of the fight.'},
-    'gutcleaver': {'stance': 'aggress', 'blurb': 'A winning Aggress against a foe below 30% HP deals +50%.'},
+    'barbed': {'name': 'Barbed', 'stance': 'aggress', 'blurb': 'Your Aggress applies rot even on a clash or loss.'},
+    'deep_biter': {'name': 'Deep-biter', 'stance': 'aggress', 'blurb': 'Your winning exchanges hit harder.'},
+    'thick': {'name': 'Thick', 'stance': 'guard',   'blurb': 'Your Guard chips the foe even in a stall, and cuts the damage you take when you guess wrong.'},
+    'spiked': {'name': 'Spiked', 'stance': 'guard',   'blurb': 'Only when you Guard: your counter throws back a multiple of the blow you blocked.'},
+    'trickster': {'name': 'Trickster', 'stance': 'feint',   'blurb': 'A lost Feint is not fully punished.'},
+    'serrated': {'name': 'Serrated', 'stance': 'feint',   'blurb': 'Your Feint break lowers the enemy next-round damage.'},
+    'glint': {'name': 'Glint', 'stance': 'feint',   'blurb': 'Win a Feint and you SEE the foe next intent outright. Small passive read bonus alongside.'},
+    'seer': {'name': 'Seer', 'stance': 'feint',   'blurb': 'No trigger, no condition: a large standing boost to how often you read the foe.'},
+    # Aggress (fang) — new. Family blurbs stay number-free (magnitudes scale with
+    # rarity — the exact figure rides on each piece's own desc).
+    'bloodfang': {'name': 'Bloodfang', 'stance': 'aggress', 'blurb': 'Heal a share of the damage your winning Aggress deals.'},
+    'rabid': {'name': 'Rabid', 'stance': 'aggress', 'blurb': 'Each Aggress you win, your Aggress hits ramp up for the rest of the fight.'},
+    'gutcleaver': {'name': 'Gutcleaver', 'stance': 'aggress', 'blurb': 'A winning Aggress against a foe below 30% HP deals bonus damage.'},
     # Guard (carapace) — new
-    'bramble':    {'stance': 'guard',   'blurb': 'Reflect 2 damage whenever you are struck.'},
-    'bulwark':    {'stance': 'guard',   'blurb': 'Each round you end in Guard, gain +1 DEF for the rest of the fight.'},
-    'mossback':   {'stance': 'guard',   'blurb': 'Heal 3 each round you end in Guard.'},
+    'bramble': {'name': 'Bramble', 'stance': 'guard',   'blurb': 'Thorns: reflect flat damage whenever you are struck, in any stance.'},
+    'bulwark': {'name': 'Bulwark', 'stance': 'guard',   'blurb': 'Each round you end in Guard, gain DEF for the rest of the fight.'},
+    'mossback': {'name': 'Sunleaf', 'stance': 'guard',   'blurb': 'Heal each round you end in Guard.'},
     # Feint (charm) — new
-    'venomtrick': {'stance': 'feint',   'blurb': 'Winning a Feint applies 1 rot to the foe.'},
-    'cutpurse':   {'stance': 'feint',   'blurb': 'Land a winning Feint and pocket +6 Spores after a won fight.'},
+    'venomtrick': {'name': 'Venomtrick', 'stance': 'feint',   'blurb': 'Winning a Feint applies rot to the foe.'},
+    'cutpurse': {'name': 'Cutpurse', 'stance': 'feint',   'blurb': 'Land a winning Feint and pocket bonus Spores after a won fight.'},
 }
+
+# Off-ladder properties (design 2026-08-10). Some gear has no stance rider —
+# it is defined by a different kind of special feature — but every piece still
+# names what makes it special, so the UI can chip it like any other property.
+GEAR_PROPS_EXTRA = {
+    'illuminating': {'name': 'Illuminating', 'stance': None,
+                     'blurb': 'Lights the whole dungeon floor while equipped.'},
+    'vital':        {'name': 'Vital', 'stance': None,
+                     'blurb': 'Raw survivability — a deep pool of extra Max HP.'},
+    'hybrid':       {'name': 'Hybrid', 'stance': None,
+                     'blurb': 'Splits its budget across two attributes, so one piece can feed two perk tracks.'},
+}
+
+# Every named gear property, rider or not. Keyed the same way `prop` is on a
+# piece, so a lookup never has to care which kind it is.
+GEAR_PROPERTIES = {**GEAR_RIDERS, **GEAR_PROPS_EXTRA}
+
+
+def gear_property(gear_id):
+    """The named property of a gear piece: its stance rider, or the off-ladder
+    family that defines it. Returns (key, spec) or (None, None) for a piece with
+    no special feature at all."""
+    g = GEAR.get(gear_id) or {}
+    key = g.get('prop') or g.get('rider')
+    if not key:
+        return None, None
+    return key, GEAR_PROPERTIES.get(key)
+
+
+# ── Consumables ──────────────────────────────────────────────────────────────
+# Consumables carry a RARITY (`tier`) on the same 1-4 ladder as gear and pets —
+# Common / Rare / Legendary / Mythic — and that rarity sets the shop price
+# (design 2026-08-10). Before this they were a flat band of 12-25 Spores with no
+# rarity at all, which left a maxed-out player nothing worth buying: the top of
+# the ladder is deliberately expensive so late-night Spores have somewhere to go.
+#
+# Price comes from CONSUMABLE_COST_BY_TIER unless an entry sets `cost` itself.
+# `heal` restores that fraction of max HP; `buffs` grants those one-battle buff
+# kinds (the same kinds spells apply, so no new engine plumbing); `combat` items
+# are played inside a round and route through _COMBAT_ITEM in undercity_db.
+CONSUMABLE_COST_BY_TIER = {1: 12, 2: 25, 3: 45, 4: 80}
 
 CONSUMABLES = {
-    'healing_moss': {'name': 'Healing Moss', 'cost': 12, 'blurb': 'Restore 50% max HP.'},
-    'smoke_spore':  {'name': 'Smoke Spore',  'cost': 15, 'blurb': 'Held: your next failed flee auto-succeeds (consumed).'},
-    'loaded_die':   {'name': 'Loaded Die',   'cost': 25, 'blurb': 'Choose your next roll’s value (1–6).'},
-    'snare':        {'name': 'Snare',        'cost': 18, 'blurb': 'Trap your current space: next visitor spills 20% of their Spores and skips the space event.'},
-    'scrying_spore': {'name': 'Scrying Spore', 'cost': 20, 'combat': True,
-                      'effect': 'reveal', 'blurb': 'In battle: reveal the enemy true intent this round.'},
-    'rot_bomb':      {'name': 'Rot Bomb', 'cost': 22, 'combat': True,
-                      'effect': 'double_punish', 'blurb': 'In battle: double your damage if you win this round.'},
-    'chitin_ward':   {'name': 'Chitin Ward', 'cost': 22, 'combat': True,
-                      'effect': 'negate', 'blurb': 'In battle: cancel the punish from one wrong guess.'},
-    'ambush_musk':   {'name': 'Ambush Musk', 'cost': 25, 'combat': True,
-                      'effect': 'auto_win', 'blurb': 'In battle: win one exchange regardless of choices.'},
+    # ── Tier 1 · Common ──────────────────────────────────────────────────────
+    'mending_salve': {'name': 'Mending Salve', 'tier': 1, 'combat': True,
+                      'effect': 'heal',
+                      'blurb': 'In battle: drink before the exchange to restore 25% max HP.'},
+    'healing_moss': {'name': 'Healing Moss', 'tier': 1, 'heal': 0.5,
+                     'blurb': 'Restore 50% max HP.'},
+    'smoke_spore':  {'name': 'Smoke Spore', 'tier': 1,
+                     'blurb': 'Held: your next failed flee auto-succeeds (consumed).'},
+    'scrying_spore': {'name': 'Scrying Spore', 'tier': 1, 'combat': True,
+                      'effect': 'reveal',
+                      'blurb': 'In battle: reveal the enemy true intent this round.'},
+    # ── Tier 2 · Rare ────────────────────────────────────────────────────────
+    'loaded_die':   {'name': 'Loaded Die', 'tier': 2, 'die': (1, 6),
+                     'blurb': 'Choose your next roll’s value (1–6).'},
+    'high_roller':  {'name': 'High Roller', 'tier': 1, 'die': (4, 6),
+                     'blurb': 'Choose your next roll’s value — but only 4, 5 or 6.'},
+    'low_roller':   {'name': 'Low Roller', 'tier': 1, 'die': (1, 3),
+                     'blurb': 'Choose your next roll’s value — but only 1, 2 or 3.'},
+    'whetstone':    {'name': 'Bone Whetstone', 'tier': 2, 'buffs': ['savage_roar'],
+                     'blurb': 'Hone your edge: +ATK for your next 3 battles.'},
+    'carapace_wax': {'name': 'Carapace Wax', 'tier': 2, 'buffs': ['harden_shell'],
+                     'blurb': 'Lacquer your shell: +DEF for your next 3 battles.'},
+    'fleetfoot_tonic': {'name': 'Fleetfoot Tonic', 'tier': 2, 'buffs': ['fleetfoot'],
+                        'blurb': 'Quicken your step: +SPD for your next 3 battles.'},
+    'rot_bomb':      {'name': 'Rot Bomb', 'tier': 2, 'combat': True,
+                      'effect': 'double_punish',
+                      'blurb': 'In battle: double your damage if you win this round.'},
+    'chitin_ward':   {'name': 'Chitin Ward', 'tier': 2, 'combat': True,
+                      'effect': 'negate',
+                      'blurb': 'In battle: cancel the punish from one wrong guess.'},
+    # ── Tier 3 · Legendary ───────────────────────────────────────────────────
+    'marrow_draught': {'name': 'Marrow Draught', 'tier': 3, 'heal': 1.0,
+                       'blurb': 'Restore ALL of your max HP.'},
+    'ambush_musk':   {'name': 'Ambush Musk', 'tier': 3, 'combat': True,
+                      'effect': 'auto_win',
+                      'blurb': 'In battle: win one exchange regardless of choices.'},
+    # ── Tier 4 · Mythic ──────────────────────────────────────────────────────
+    # The deliberate late-night Spore sink: a pre-boss ritual worth hoarding for.
+    # Its own buff kinds, NOT the tonic ones — so a draught layers on top of a
+    # Whetstone/Wax/Tonic instead of overlapping it. Drink the lot before a boss.
+    'sovereigns_draught': {'name': "Sovereign's Draught", 'tier': 4, 'heal': 1.0,
+                           'buffs': ['sovereign_might', 'sovereign_ward', 'sovereign_haste'],
+                           'blurb': 'Drink deep: full HP, and +ATK, +DEF and +SPD — stacks with the lesser tonics.'},
 }
 
-BAG_SIZE = 3
+
+# Random consumable grants (mystery rewards, Umori boxes) weight by RARITY.
+# Without this every source picked uniformly, so the cheapest Trinket Pouch could
+# hand out the Mythic draught as readily as a Mending Salve — which would defeat
+# the point of the ladder and of the Spore sink at the top of it.
+CONSUMABLE_DROP_WEIGHTS = {1: 60, 2: 30, 3: 9, 4: 1}
+
+
+def roll_consumable(rng, max_tier=4):
+    """A random consumable id, weighted toward the common end and never above
+    `max_tier`. Sorted pool so a seeded rng gives reproducible results."""
+    pool = [c for c in sorted(CONSUMABLES) if CONSUMABLES[c]['tier'] <= max_tier]
+    weights = [CONSUMABLE_DROP_WEIGHTS[CONSUMABLES[c]['tier']] for c in pool]
+    return rng.choices(pool, weights=weights)[0]
+
+
+def consumable_cost(item_id):
+    """Shop price of a consumable: its own `cost` if set, else its rarity's."""
+    spec = CONSUMABLES[item_id]
+    return spec.get('cost', CONSUMABLE_COST_BY_TIER[spec['tier']])
+
+
+# Backfill `cost` so every existing reader (shop stock, market bands, salvage
+# maths) keeps working without knowing about the rarity ladder.
+for _cid, _spec in CONSUMABLES.items():
+    _spec.setdefault('cost', CONSUMABLE_COST_BY_TIER[_spec['tier']])
+
+BAG_SIZE = 5
 GEAR_SELL_BACK = 0.5  # replacing gear auto-sells old piece for 50% of cost
 
 GEAR_SLOTS = ('fang', 'carapace', 'charm')
@@ -642,8 +742,9 @@ SPELLS = {
     # Innate biome spells (one per home biome, always castable)
     'rot_surge':   {'name': 'Rot Surge', 'category': 'buff', 'tier': 1, 'cooldownMin': 30,
                     'effect': 'self_buff', 'buffKind': 'rot_surge',
-                    'icon': 'local_fire_department', 'desc': '+3 ATK in your next battle.',
-                    'blurb': '+3 ATK in your next battle.'},
+                    'icon': 'local_fire_department',
+                    'desc': '+3 ATK next battle, and your Aggress oozes rot into the foe.',
+                    'blurb': '+3 ATK next battle, and your Aggress oozes rot into the foe.'},
     'bone_chill':  {'name': 'Bone Chill', 'category': 'field', 'tier': 1, 'cooldownMin': 30,
                     'effect': 'field_curse', 'buffKind': 'bone_chill', 'range': 5,
                     'icon': 'ac_unit', 'desc': 'Curse a rival: −2 ATK in their next battle.',
@@ -654,8 +755,9 @@ SPELLS = {
                     'blurb': 'Curse a rival: their next roll is halved.'},
     'glowveil':    {'name': 'Glowveil', 'category': 'buff', 'tier': 1, 'cooldownMin': 30,
                     'effect': 'self_buff', 'buffKind': 'glowveil',
-                    'icon': 'flare', 'desc': '+2 SPD and +15% flee chance in your next battle.',
-                    'blurb': '+2 SPD and +15% flee chance in your next battle.'},
+                    'icon': 'flare',
+                    'desc': "+2 SPD and +15% flee next battle; a winning Feint reveals the foe's true intent.",
+                    'blurb': "+2 SPD and +15% flee next battle; a winning Feint reveals the foe's true intent."},
     'scrap_toss':  {'name': 'Scrap Toss', 'category': 'field', 'tier': 1, 'cooldownMin': 30,
                     'effect': 'field_damage', 'power': 8, 'range': 5,
                     'icon': 'construction',
@@ -673,8 +775,9 @@ SPELLS = {
                     'blurb': 'Knit your wounds: restore 12 HP.'},
     'harden_shell': {'name': 'Harden Shell', 'category': 'buff', 'tier': 1, 'cooldownMin': 20,
                      'effect': 'self_buff', 'buffKind': 'harden_shell',
-                     'icon': 'shield', 'desc': '+2 DEF in your next battle.',
-                     'blurb': '+2 DEF in your next battle.'},
+                     'icon': 'shield',
+                     'desc': '+2 DEF next battle, and you knit 3 HP each round you win in Guard.',
+                     'blurb': '+2 DEF next battle, and you knit 3 HP each round you win in Guard.'},
     'skitter_step': {'name': 'Skitter Step', 'category': 'traversal', 'tier': 1,
                      'cooldownMin': 25, 'effect': 'fate_die', 'maxValue': 3,
                      'icon': 'directions_run', 'desc': 'Skitter ahead: choose your next roll (1–3).',
@@ -916,6 +1019,21 @@ ISLAND_BAZAAR_GEAR_TIERS = {2: 7, 3: 3}
 
 # Bazaar nodes that use ISLAND_BAZAAR_GEAR_TIERS instead of the biome table.
 ISLAND_BAZAAR_NODES = {'isl_bg1'}
+
+# Grimoire stock tiers, mirroring the gear split above (design 2026-08-08).
+# Biome bazaars carry the tier-1 primers; the island bazaar deals in the higher
+# books. Before this, _gen_shop_stock hardcoded tier 1 for EVERY bazaar, so a
+# tier-2/3 grimoire could only ever come out of an Umori auction box — both
+# apex players in session 20260808-182231 sat at their 2-spell tier-1 cap all
+# night and every further scroll drop became dead loot.
+BAZAAR_GRIMOIRE_TIERS = {1}
+ISLAND_BAZAAR_GRIMOIRE_TIERS = {2: 7, 3: 3}
+
+# Consumable rarities each bazaar stocks, same split again: the everyday kit is
+# on every corner, the Legendary/Mythic draughts are a trip to the island. Keeps
+# the Mythic Spore sink a destination rather than something a starter shop sells.
+BAZAAR_CONSUMABLE_TIERS = {1, 2}
+ISLAND_BAZAAR_CONSUMABLE_TIERS = {2, 3, 4}
 
 # ── Umori's sealed auction — ranked mystery boxes (design 2026-08-05) ─────────
 # Each rank rolls ONE reward from its weighted table (a treat, never a guaranteed
@@ -1458,26 +1576,31 @@ LAIR_SCAVENGE_ITEMS = ['healing_moss', 'smoke_spore', 'scrying_spore']
 
 # The wilderness World Event boss. `spriteId` maps to public/undercity/sigil_boss/
 # art on the client. Stats are per-swing combat stats; the live shared pool comes
-# from WORLD_EVENT_HP (config, re-exported above) via the WORLDEVENT record.
+# beast has NO kill pool (damage check): its skirmish HP is the nominal
+# WORLD_EVENT_SKIRMISH_HP, which the round cap always ends before depletion.
 WORLD_EVENT = {
-    'id': 'moor_wyrm',
-    'name': 'The Moor-Wyrm',
-    'spriteId': 'moor_wyrm',
+    'id': 'grothoma',
+    'name': 'Grothoma',
+    'spriteId': 'Grothoma',
     'atk': 12, 'def': 6, 'spd': 5,
     'personality': 'brute', 'bluff': 0.30,
 }
 
 
-def world_event_reward(share, is_top):
-    """Map a contributor's damage `share` (dealt / maxHp, 0..1) and whether they
-    are the single top damage dealer to a bracket key + its reward dict.
-    Returns (bracket_key, {'spores': int, 'renown': int}). WORLD_EVENT_* scalars
-    come from undercity_config via the `import *` at the top of this module."""
+def world_event_reward(dealt, is_top):
+    """Map a contributor's CUMULATIVE damage `dealt` and whether they are the
+    single top damage dealer to a bracket key + its reward dict.
+
+    The beast has no kill pool (damage check, design 2026-08-09), so brackets are
+    absolute damage rather than a share of anything: what you earn depends only
+    on what you did, never on how many others turned up.
+    Returns (bracket_key, {'spores': int, 'renown': int, ...}). WORLD_EVENT_*
+    scalars come from undercity_config via the `import *` at the top."""
     if is_top:
         key = 'vanquisher'
-    elif share >= WORLD_EVENT_MAJOR_SHARE:
+    elif dealt >= WORLD_EVENT_MAJOR_DAMAGE:
         key = 'major'
-    elif share >= WORLD_EVENT_MINOR_SHARE:
+    elif dealt >= WORLD_EVENT_MINOR_DAMAGE:
         key = 'minor'
     else:
         key = 'participant'

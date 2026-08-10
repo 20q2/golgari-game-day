@@ -1,6 +1,7 @@
 import { Component, Input, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 import { HallOfFameNight, SeasonResult, Standing } from '../services/undercity-models';
 import { formSprite } from '../data/species';
 import { getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
@@ -9,7 +10,7 @@ import { getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
 @Component({
   selector: 'app-undercity-ceremony',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, RouterLink],
   templateUrl: './ceremony.component.html',
   styleUrls: ['./ceremony.component.scss'],
 })
@@ -23,6 +24,8 @@ export class CeremonyComponent {
   protected readonly standings = computed(() => this._result()?.standings ?? []);
   protected readonly champion = computed(() => this._result()?.champion ?? null);
   protected readonly podium = computed(() => this.standings().slice(0, 3));
+  /** Host threw this night away: standings stand, but nothing was banked. */
+  protected readonly discarded = computed(() => this._result()?.discarded === true);
 
   spriteUrl(s: Standing): string | null {
     const spr = formSprite(s.form, s.spriteVariant);

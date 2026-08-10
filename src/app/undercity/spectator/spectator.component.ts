@@ -21,22 +21,46 @@ import * as QRCode from 'qrcode';
 import { UndercityStateService } from '../services/undercity-state.service';
 import { QueueService } from '../../services/queue.service';
 import { QueueEntry } from '../../services/queue-models';
-import { PublicPlayer, isShielded } from '../services/undercity-models';
+import { PublicPlayer, Standing, isShielded } from '../services/undercity-models';
 import { BoardCanvas, BoardMap, BoardNode } from '../engine/board-canvas';
+import { PlazaCanvas } from '../engine/plaza-canvas';
+import { toPlazaCreature } from '../engine/plaza-roster';
 import { preloadAll, getRecoloredWithHatDataUrl } from '../engine/sprite-engine';
 import { formSprite } from '../data/species';
 import { GEAR_MAP } from '../data/items';
-import { Scene, SpectatorDirector, SpectatorMapInfo } from './spectator-director';
+import {
+  BroadcastMode,
+  Scene,
+  SpectatorDirector,
+  SpectatorMapInfo,
+  broadcastMode,
+} from './spectator-director';
+
+/** The fields any portrait/name helper needs — satisfied by both a live
+ *  PublicPlayer and a final-standings Standing. */
+type Portrayed = {
+  form: string;
+  spriteVariant?: string | null;
+  paint?: Record<string, number>;
+  hat: string | null;
+};
+type Named = { creatureName?: string; formName: string };
 
 /**
- * /tv — a self-running spectator broadcast of the live Undercity game.
+ * /tv — a self-running spectator broadcast of the Undercity.
  *
- * Read-only: it polls the public game state (no player identity) and drives
- * the board canvas like a sports cam — flyovers, player hero cards, the renown
- * leaderboard, action hotspots, and the boss check — while a QR code stays
- * pinned in the corner to pull new players in. All sequencing lives in the
- * framework-free SpectatorDirector; this component owns the timer, the canvas,
- * and the overlays.
+ * Read-only: it polls the public game state (no player identity) and puts on
+ * one of four shows, chosen by `broadcastMode`:
+ *
+ * - **live** — the board camera driven like a sports cam: flyovers, hero cards,
+ *   the renown leaderboard, action hotspots, the boss check.
+ * - **lobby** — the launch countdown behind a big join QR.
+ * - **ended** — the after-hours plaza: everyone's creature still bouncing
+ *   around while the champion card and final standings rotate over them.
+ * - **attract** — the standing invitation when there's nothing to show.
+ *
+ * All sequencing lives in the framework-free SpectatorDirector; this component
+ * owns the timers, the two canvas stages, and the overlays.
  */
 @Component({
   selector: 'app-undercity-spectator',
@@ -53,8 +77,10 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly zone = inject(NgZone);
 
   @ViewChild('boardCanvas', { static: true }) boardRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('plazaCanvas', { static: true }) plazaRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('qrCanvas', { static: true }) qrRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('qrCanvasBig', { static: true }) qrBigRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('qrCanvasLobby', { static: true }) qrLobbyRef!: ElementRef<HTMLCanvasElement>;
 
   private readonly map = signal<BoardMap | null>(null);
   private readonly assetsReady = signal(false);
@@ -67,9 +93,13 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
   private controlsTimer: ReturnType<typeof setTimeout> | null = null;
 
   private board: BoardCanvas | null = null;
+  private plaza: PlazaCanvas | null = null;
   private director: SpectatorDirector | null = null;
   private sceneTimer: ReturnType<typeof setTimeout> | null = null;
   private transitionTimer: ReturnType<typeof setTimeout> | null = null;
+  private countdownTimer: ReturnType<typeof setInterval> | null = null;
+  /** The show currently mounted; a change swaps stages and cuts immediately. */
+  private lastMode: BroadcastMode | null = null;
 
   /** QR points at the Undercity entrance so onlookers can scan and descend. */
   protected readonly joinUrl = window.location.origin + '/golgari-game-day/undercity';
@@ -79,11 +109,73 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     [...this.store.players()].sort((a, b) => b.renown - a.renown),
   );
 
+  /** Which show is on. Drives the stage swap and the brand chip's status pill. */
+  protected readonly mode = computed<BroadcastMode>(() =>
+    broadcastMode(this.store.season(), this.store.players()),
+  );
+
+  /** Wall-clock tick (ms) driving the lobby countdown; updated every second. */
+  private readonly nowMs = signal(Date.now());
+
+  /**
+   * Human countdown to the lobby launch time: `null` when the host set no time,
+   * `'ready'` once it's passed. Mirrors the player-side lobby countdown in
+   * undercity-page.component.ts.
+   */
+  protected readonly launchCountdown = computed<string | null>(() => {
+    const iso = this.store.season()?.launchAt;
+    if (!iso) return null;
+    const target = new Date(iso).getTime();
+    if (Number.isNaN(target)) return null;
+    let secs = Math.floor((target - this.nowMs()) / 1000);
+    if (secs <= 0) return 'ready';
+    const h = Math.floor(secs / 3600);
+    secs -= h * 3600;
+    const m = Math.floor(secs / 60);
+    const s = secs - m * 60;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+  });
+
+  /**
+   * The night's final table. Prefers the banked RESULT record (what the players
+   * see on their own ceremony screen), falling back to the live roster sorted by
+   * renown if the record is somehow missing, so the screen is never blank.
+   */
+  protected readonly finalStandings = computed<Standing[]>(() => {
+    const banked = this.store.result()?.standings;
+    if (banked?.length) return banked;
+    return this.leaderboard().map((p) => ({
+      userId: p.userId,
+      username: p.username,
+      renown: p.renown,
+      level: p.level,
+      form: p.form,
+      formName: p.formName,
+      creatureName: p.creatureName,
+      species: p.species,
+      pvpWins: p.pvpWins,
+      wildWins: p.wildWins,
+      spores: p.spores,
+      paint: p.paint ?? {},
+      hat: p.hat,
+      spriteVariant: p.spriteVariant,
+      effect: p.effect,
+    }));
+  });
+
+  protected readonly champion = computed<Standing | null>(
+    () => this.store.result()?.champion ?? this.finalStandings()[0] ?? null,
+  );
+
+  /** The host threw this night away — standings stand, nothing was banked. */
+  protected readonly discarded = computed(() => this.store.result()?.discarded === true);
+
   constructor() {
-    // Build the board + director the moment the canvas, map, and sprite atlas
-    // are all ready, then start the show.
+    // Build the director + first stage the moment the canvases, map, and sprite
+    // atlas are all ready, then start the show.
     effect(() => {
-      if (this.board || !this.viewReady() || !this.assetsReady()) return;
+      if (this.director || !this.viewReady() || !this.assetsReady()) return;
       const map = this.map();
       if (!map) return;
       this.initBroadcast(map);
@@ -94,6 +186,7 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     effect(() => {
       const state = this.store.state();
       const entries = this.queue.entries();
+      const mode = this.mode();
       if (!this.director || !state) return;
       this.director.update({
         players: this.store.players(),
@@ -101,23 +194,25 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
         season: this.store.season(),
         queue: entries,
       });
-      // If the game just went live (or just ended) while we're on the wrong
-      // kind of screen, cut over now instead of waiting out the current hold.
-      const live = this.store.season()?.status === 'active' && this.store.players().length > 0;
-      const onAttract = this.scene().kind === 'attract';
-      if (live === onAttract) this.restartLoop();
+      // The night just launched / just ended while we're on the wrong show:
+      // swap the stage and cut over now instead of waiting out the hold.
+      if (mode !== this.lastMode) {
+        this.lastMode = mode;
+        this.applyStage(mode);
+        this.restartLoop();
+      }
     });
 
-    // Keep the canvas roster in sync each poll. Read the signals FIRST so they
+    // Keep both canvas rosters in sync each poll. Read the signals FIRST so they
     // are always tracked as dependencies — otherwise an early `!this.board`
     // return (before the board exists) would deregister them and the effect
     // would never re-run once the board mounts, leaving the map empty of tokens.
     effect(() => {
       const players = this.store.players();
-      const snares = this.store.snares();
       const barriers = this.store.barriersOpen();
       const guardians = this.store.guardians();
-      this.syncRoster(players, snares, barriers, guardians);
+      this.syncRoster(players, barriers, guardians);
+      this.plaza?.updatePartners(players.map(toPlazaCreature));
     });
 
     // Badge the board tokens of anyone seated at an active board-game table.
@@ -142,7 +237,6 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private syncRoster(
     players: PublicPlayer[],
-    snares: string[],
     barriers: string[],
     guardians: Record<string, { hp: number; maxHp: number }>,
   ): void {
@@ -160,7 +254,6 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
         hat: p.hat,
       })),
     );
-    this.board.setSnares(snares);
     this.board.setBarriersOpen(barriers);
     this.board.setGuardianPools(guardians);
   }
@@ -172,10 +265,15 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     );
     this.store.startPolling();
     this.queue.startPolling();
+    this.countdownTimer = setInterval(() => this.nowMs.set(Date.now()), 1000);
   }
 
   ngAfterViewInit(): void {
-    for (const el of [this.qrRef.nativeElement, this.qrBigRef.nativeElement]) {
+    for (const el of [
+      this.qrRef.nativeElement,
+      this.qrBigRef.nativeElement,
+      this.qrLobbyRef.nativeElement,
+    ]) {
       QRCode.toCanvas(el, this.joinUrl, { width: 320, margin: 1 }).catch((err: unknown) =>
         console.error('QR render failed:', err),
       );
@@ -189,7 +287,9 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.sceneTimer) clearTimeout(this.sceneTimer);
     if (this.transitionTimer) clearTimeout(this.transitionTimer);
     if (this.controlsTimer) clearTimeout(this.controlsTimer);
+    if (this.countdownTimer) clearInterval(this.countdownTimer);
     this.board?.stop();
+    this.plaza?.stop();
   }
 
   /** Leave the broadcast (operator affordance — a TV usually just stays on). */
@@ -205,6 +305,41 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private initBroadcast(map: BoardMap): void {
+    this.director = new SpectatorDirector(this.toMapInfo(map));
+    this.director.update({
+      players: this.store.players(),
+      events: this.store.events(),
+      season: this.store.season(),
+      queue: this.queue.entries(),
+    });
+    this.lastMode = this.mode();
+    this.applyStage(this.lastMode);
+    this.runNextScene();
+  }
+
+  /**
+   * Mount the canvas the current show needs and tear down the other one. Only
+   * one engine ever runs, so the TV isn't paying for a hidden render loop.
+   * Rebuilding on a mode flip (rather than pausing) keeps it simple and always
+   * correct: `stop()` on both engines also detaches their listeners, so they
+   * aren't resumable anyway, and a night flips mode at most a couple of times.
+   */
+  private applyStage(mode: BroadcastMode): void {
+    if (mode === 'ended') {
+      this.board?.stop();
+      this.board = null;
+      this.mountPlaza();
+    } else {
+      this.plaza?.stop();
+      this.plaza = null;
+      this.mountBoard();
+    }
+  }
+
+  private mountBoard(): void {
+    if (this.board) return;
+    const map = this.map();
+    if (!map) return;
     this.board = new BoardCanvas(this.boardRef.nativeElement, map, () => {}, null, {
       interactive: false,
     });
@@ -217,19 +352,25 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     // the board went non-null (it isn't a signal), so seed it here.
     this.syncRoster(
       this.store.players(),
-      this.store.snares(),
       this.store.barriersOpen(),
       this.store.guardians(),
     );
     this.board.setDiceMarkers(this.activeGameUserIds());
-    this.director = new SpectatorDirector(this.toMapInfo(map));
-    this.director.update({
-      players: this.store.players(),
-      events: this.store.events(),
-      season: this.store.season(),
-      queue: this.queue.entries(),
-    });
-    this.runNextScene();
+  }
+
+  /** The after-hours plaza: everyone who played tonight, still bouncing around.
+   *  Non-interactive — nobody taps a TV, and a stray click must not pan the
+   *  camera into a corner and leave it there. */
+  private mountPlaza(): void {
+    if (this.plaza) return;
+    this.plaza = new PlazaCanvas(
+      this.plazaRef.nativeElement,
+      this.store.players().map(toPlazaCreature),
+      () => {},
+      null,
+      { interactive: false },
+    );
+    this.zone.runOutsideAngular(() => this.plaza!.start());
   }
 
   /** Cancel the pending scene and advance immediately (live/ended flips). */
@@ -247,9 +388,11 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     this.sceneTimer = setTimeout(() => this.runNextScene(), Math.max(2000, scene.holdMs));
   }
 
-  /** A scene cut: play the wipe/label, swap layer under it, start the glide. */
+  /** A scene cut: play the wipe/label, swap layer under it, start the glide.
+   *  The two standing screens (attract, lobby) hold indefinitely, so they get no
+   *  wipe — re-wiping the same static screen every hold would just flicker. */
   private cutTo(scene: Scene): void {
-    if (scene.kind !== 'attract') {
+    if (scene.kind !== 'attract' && scene.kind !== 'lobby') {
       // Recreate the transition element so its wipe animation replays each cut.
       this.transition.set(null);
       this.transitionTimer = setTimeout(() => {
@@ -275,6 +418,12 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
         return { label: 'Savra Stirs', icon: 'emoji_events' };
       case 'queue':
         return { label: 'Tonight at the Table', icon: 'casino' };
+      case 'plaza':
+        if (scene.plazaOverlay === 'champion')
+          return { label: 'Champion of the Undercity', icon: 'emoji_events' };
+        if (scene.plazaOverlay === 'standings')
+          return { label: 'Final Standings', icon: 'leaderboard' };
+        return { label: 'The Grave Plaza', icon: 'park' };
       case 'flyover':
       default:
         return { label: 'The Undercity', icon: 'travel_explore' };
@@ -324,6 +473,30 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.scene().kind === 'hotspot' || this.scene().kind === 'boss';
   }
 
+  /** The after-hours plaza owns the screen (its canvas is the backdrop). */
+  protected onPlaza(): boolean {
+    return this.scene().kind === 'plaza';
+  }
+
+  /** Which card is over the plaza right now ('none' during the watch beat). */
+  protected plazaOverlay(): string {
+    return this.scene().plazaOverlay ?? 'none';
+  }
+
+  /** The brand chip's status pill — what state the night is in. */
+  protected statusPill(): string {
+    switch (this.mode()) {
+      case 'live':
+        return 'LIVE';
+      case 'lobby':
+        return 'SOON';
+      case 'ended':
+        return 'FINAL';
+      default:
+        return 'STANDBY';
+    }
+  }
+
   /** True when the persistent lobby pin should occupy the top-right corner.
    *  Yields to the renown rail on hotspot/boss scenes (same anchor), and
    *  hides entirely when nothing is gathering players. */
@@ -350,7 +523,7 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
    *  the same form+paint on every change-detection pass. Key by form + paint. */
   private readonly portraitCache = new Map<string, string | null>();
 
-  protected portrait(p: PublicPlayer): string | null {
+  protected portrait(p: Portrayed): string | null {
     const key = `${p.form}|${p.spriteVariant ?? ''}|${JSON.stringify(p.paint ?? {})}|${p.hat ?? ''}`;
     const hit = this.portraitCache.get(key);
     if (hit !== undefined) return hit;
@@ -360,7 +533,7 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     return url;
   }
 
-  protected creatureTitle(p: PublicPlayer): string {
+  protected creatureTitle(p: Named): string {
     return p.creatureName && p.creatureName !== p.formName
       ? `${p.creatureName} the ${p.formName}`
       : p.formName;

@@ -21,10 +21,13 @@
           </span>
         } @else if (petBoxReady(pet)) {
           <span class="pet-quickuse-tag">{{ petRoleOf(pet) === 'scout' ? 'Scout' : 'Forage' }}</span>
-        } @else if (petRoleOf(pet) === 'forage') {
-          <span class="pet-quickuse-tag cooldown">{{ forageSpacesLeft() }}{{ forageSpacesLeft() === 1 ? ' space' : ' spaces' }}</span>
         } @else {
-          <span class="pet-quickuse-tag cooldown">{{ petAbilityLeftMin(pet) }}m</span>
+          <!-- Every activated ability recharges by distance now, so forage and
+               scout share one readout. -->
+          <span class="pet-quickuse-tag cooldown"
+            >{{ petAbilitySpacesLeft(pet)
+            }}{{ petAbilitySpacesLeft(pet) === 1 ? ' space' : ' spaces' }}</span
+          >
         }
       </button>
     }
@@ -738,7 +741,7 @@
             }
           }
           @case ('consumables') {
-            <div class="shop-hint">Bag {{ store.you()?.bag?.length ?? 0 }}/3.</div>
+            <div class="shop-hint">Bag {{ store.you()?.bag?.length ?? 0 }}/5.</div>
             @for (r of shopConsumableRows(); track r.info.id) {
               <div class="shop-row grid3">
                 <span class="shop-name">

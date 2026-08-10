@@ -25,6 +25,7 @@ export class HostPanelComponent {
   protected readonly busy = signal(false);
   protected readonly message = signal<string | null>(null);
   protected readonly confirmEnd = signal(false);
+  protected readonly confirmDiscard = signal(false);
   protected readonly confirmAwaken = signal(false);
   protected readonly confirmBackdate = signal(false);
   protected hostKey = localStorage.getItem(HOST_KEY_STORAGE) ?? '';
@@ -32,6 +33,9 @@ export class HostPanelComponent {
   protected readonly seasonActive = computed(() => this.store.season()?.status === 'active');
   protected readonly bossAwake = computed(() => this.store.season()?.bossPhase === true);
   protected readonly inLobby = computed(() => this.store.season()?.status === 'lobby');
+  /** This night ran with Dev Night, so the server discards it however it ends —
+   *  the panel drops the banking button rather than offering a lie. */
+  protected readonly mustDiscard = computed(() => this.store.season()?.devEverOn === true);
   /** Bound to the <input type="datetime-local"> — a local wall-clock string. */
   protected launchLocal = '';
   /** Backdated New Night start — prefilled to two hours ago for bug recovery. */
@@ -102,8 +106,31 @@ export class HostPanelComponent {
     await this.run(async () => {
       localStorage.setItem(HOST_KEY_STORAGE, this.hostKey);
       await this.store.action('season-end', { hostKey: this.hostKey });
-      this.message.set('The night has ended. Ceremony time.');
+      this.message.set(
+        this.mustDiscard()
+          ? 'The night has ended. Results discarded — this night had Dev Night on.'
+          : 'The night has ended. Ceremony time.',
+      );
       this.confirmEnd.set(false);
+    });
+  }
+
+  /**
+   * End the night and throw the results away: no Renown banked, no Hall of Fame
+   * entry, no lifetime counters, and every Renown the night paid out mid-run is
+   * handed back. Standings still show so the ceremony is reviewable. Two-tap like
+   * endNight — it's irreversible either way.
+   */
+  async discardNight(): Promise<void> {
+    if (!this.confirmDiscard()) {
+      this.confirmDiscard.set(true);
+      return;
+    }
+    await this.run(async () => {
+      localStorage.setItem(HOST_KEY_STORAGE, this.hostKey);
+      await this.store.action('season-end', { hostKey: this.hostKey, discard: true });
+      this.message.set('Night discarded — nothing was saved.');
+      this.confirmDiscard.set(false);
     });
   }
 

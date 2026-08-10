@@ -6,6 +6,31 @@
   padding: 28px 16px 8px;
 }
 
+// Shown when the host ended the night with Discard: the standings below are
+// real, but no Renown, Hall of Fame entry or lifetime stat was kept.
+.discard-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  align-self: stretch;
+  justify-content: center;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px dashed rgba(251, 191, 36, 0.5);
+  border-radius: 10px;
+  color: #fbbf24;
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  text-align: center;
+}
+
+// "Watch the Plaza" — the night is unplayable now, but everyone's creature is
+// still bouncing around on the big screen (/tv). An anchor, so it needs the
+// link chrome stripped back to the shared button look.
+.plaza-cta {
+  text-decoration: none;
+}
+
 .champ-stage {
   display: flex;
   flex-direction: column;

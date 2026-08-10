@@ -201,12 +201,16 @@ export class PlazaCanvas {
     private partners: PlazaCreature[],
     private onSelect: (p: PlazaCreature | null) => void,
     private ownUserId: string | null = null,
+    /** `interactive: false` (the /tv broadcast) binds no pointer/wheel handlers
+     *  at all, so a bumped mouse or a touchscreen TV can never pan the camera
+     *  off into a corner and leave it there. Mirrors BoardCanvas's option. */
+    opts: { interactive?: boolean } = {},
   ) {
     this.ctx = canvas.getContext('2d')!;
     this.dinos = partners.map((p) => this.buildDinoData(p, null));
     this.resize();
     this.centerCamera();
-    this.initInput();
+    if (opts.interactive !== false) this.initInput();
     window.addEventListener('resize', this.boundResize);
   }
 

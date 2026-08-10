@@ -169,6 +169,12 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   @Input() canFlee = true;
   /** SPD-based escape % shown on the flee button (100 with a held Smoke Spore). */
   @Input() fleeChance: number | null = null;
+
+  /** A guaranteed escape only ever comes from a held Smoke Spore (the server
+   *  caps every other route at 95%), so 100% is a reliable tell for it. */
+  protected fleeBySpore(): boolean {
+    return (this.fleeChance ?? 0) >= 100;
+  }
   @Input() items: BattleItem[] = [];
   @Input() hasScry = false;
   @Input() attackerStats: CombatStats | null = null;
@@ -445,7 +451,7 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
    *  the Smoke Spore guarantee at 100%. */
   protected fleeTitle(): string {
     if (this.fleeChance == null) return 'Flee the fight';
-    if (this.fleeChance >= 100) return 'Escape guaranteed (Smoke Spore)';
+    if (this.fleeChance >= 100) return 'Escape guaranteed — spends your Smoke Spore';
     return `Flee the fight — ${this.fleeChance}% chance to escape`;
   }
 

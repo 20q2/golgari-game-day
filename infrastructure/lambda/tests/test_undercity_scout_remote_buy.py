@@ -52,7 +52,7 @@ def test_peek_returns_biome_stock_without_cooldown(table):
     assert 'gear' in pa['stock'] and 'eggs' in pa['stock']
     assert pa['stock'].get('refreshesAt')  # courier header restock clock
     # Peeking never arms the cooldown.
-    assert doc.get('petCooldowns', {}).get('scout') is None
+    assert doc.get('petRecharge', {}).get('scout') is None
     # Peeking again is fine (still free).
     status2, _ = db._pet_scout_peek(table, sid, doc, {})
     assert status2 == 200
@@ -91,7 +91,7 @@ def test_remote_buy_gear_charges_and_depletes(table):
     status, body = db._pet_scout_buy(table, sid, doc, {'itemId': gid})
     assert status == 200
     assert doc['spores'] == before - data.GEAR[gid]['cost']         # full price
-    assert doc['petCooldowns']['scout']                             # cooldown armed on buy
+    assert doc['petRecharge']['scout']                             # cooldown armed on buy
     after = db._shop_stock(table, sid, node)
     got = next(g for g in after['gear'] if g['item'] == gid)
     assert got['qty'] == gear_line['qty'] - 1                       # depleted by one
@@ -114,7 +114,7 @@ def test_remote_buy_tier_gate_blocks_then_allows(table):
     doc['pets'] = [_scout(level=1, tier=1)]
     status, _ = db._pet_scout_buy(table, sid, doc, {'itemId': hi['item']})
     assert status == 409
-    assert doc.get('petCooldowns', {}).get('scout') is None  # blocked buy arms nothing
+    assert doc.get('petRecharge', {}).get('scout') is None  # blocked buy arms nothing
     # A scout leveled past the item's tier can buy it.
     lvl = {2: 3, 3: 5, 4: 7}[tier]
     doc['pets'] = [_scout(level=lvl, tier=4)]
@@ -150,4 +150,4 @@ def test_remote_buy_insufficient_spores(table):
     cid = stock['consumables'][0]['item']
     status, _ = db._pet_scout_buy(table, sid, doc, {'itemId': cid})
     assert status == 409
-    assert doc.get('petCooldowns', {}).get('scout') is None
+    assert doc.get('petRecharge', {}).get('scout') is None

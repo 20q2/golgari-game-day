@@ -69,15 +69,17 @@ def test_spawn_world_event_shape_and_idempotent():
     assert ev is not None
     assert ev['spawned'] is True and ev['dead'] is False
     assert ev['node'] in ev['nodes'] and len(ev['nodes']) == 3
-    assert ev['hp'] == ev['maxHp'] == data.WORLD_EVENT_HP
+    # Damage check: no kill pool at all, just a deadline to bleed it before.
+    assert 'hp' not in ev and 'maxHp' not in ev
+    assert ev['endsAt'] > db._now()
     assert ev['dmg'] == {}
 
     # Idempotent: a second spawn call does not reset or move it.
-    ev['hp'] = 50
+    ev['dmg'] = {'u': 50}
     db._set_world_event(table, sid, ev)
     db._spawn_world_event(table, sid)
     again = db._world_event(table, sid)
-    assert again['hp'] == 50 and again['nodes'] == ev['nodes']
+    assert again['dmg'] == {'u': 50} and again['nodes'] == ev['nodes']
 
 
 def test_finish_lair_first_kill_spawns_event():
@@ -106,7 +108,7 @@ def test_landing_on_event_node_returns_world_event_space():
     doc = db._get_player(table, sid, 'user-alex')
     ev = db._resolve_space(table, sid, doc, we['node'], prev=None)
     assert ev['type'] == 'world_event'
-    assert ev['hp'] == we['hp']
+    assert ev['endsAt'] == we['endsAt'] and ev['dmg'] == 0
     assert ev['name'] == data.WORLD_EVENT['name']
     assert ev['nodes'] == we['nodes']
 
@@ -133,7 +135,7 @@ def test_world_event_overrides_umori_on_shared_node():
     _join(table, 'user-alex', 'Alex')
     umori = db._umori_node(db._umori_window())
     rec = {'spawned': True, 'node': umori, 'nodes': [umori, umori, umori],
-           'hp': 200, 'maxHp': 200, 'dmg': {}, 'dead': False}
+           'endsAt': db._iso_in_minutes(60), 'dmg': {}, 'dead': False}
     db._set_world_event(table, sid, rec)
     doc = db._get_player(table, sid, 'user-alex')
     ev = db._resolve_space(table, sid, doc, umori, prev=None)
@@ -201,13 +203,13 @@ def test_skirmish_banks_damage_to_pool_and_dmg_map(monkeypatch):
     sid = _sid(table)
     _join(table, 'user-alex', 'Alex')
     we = _place_live_event(table, sid)
-    start = we['hp']
     doc = db._get_player(table, sid, 'user-alex')
     doc['position'] = we['nodes'][0]
     db._put_player(table, doc)
     act(table, 'world-engage', user='user-alex', name='Alex')
 
-    # Chip 3 HP per round; never kills the 200-HP pool -> ends at the round cap.
+    # Chip 3 per round. The beast is never felled — the round cap ends the
+    # skirmish and the damage is banked against Alex's name.
     def _stub(att, dfn, *a, **k):
         dfn.hp -= 3
         return [{'round': 1, 'by': 'attacker', 'dmg': 3, 'winner': 'attacker'}]
@@ -218,10 +220,8 @@ def test_skirmish_banks_damage_to_pool_and_dmg_map(monkeypatch):
             break
 
     we = db._world_event(table, sid)
-    dealt = start - we['hp']
-    assert dealt > 0
-    assert we['dmg'].get('user-alex') == dealt
-    assert we['dead'] is False
+    assert we['dmg'].get('user-alex') == 3 * data.WORLD_EVENT_ROUND_CAP
+    assert we['dead'] is False          # still hunting; only the clock ends it
 
 
 def test_pool_depletion_pays_contributors_by_bracket():
@@ -233,7 +233,10 @@ def test_pool_depletion_pays_contributors_by_bracket():
     minor_before = db._get_player(table, sid, 'u_minor')['spores']
 
     rec = {'spawned': True, 'node': 'x', 'nodes': ['a', 'x', 'b'],
-           'hp': 1, 'maxHp': 200, 'dmg': {'u_top': 150, 'u_minor': 25}, 'dead': False}
+           'endsAt': db._iso_in_minutes(60), 'dead': False,
+           # Brackets are ABSOLUTE damage now: 200 tops the board, 80 clears
+           # WORLD_EVENT_MINOR_DAMAGE (60) but not MAJOR (150).
+           'dmg': {'u_top': 200, 'u_minor': 80}}
     db._set_world_event(table, sid, rec)
 
     top = db._get_player(table, sid, 'u_top')  # the killer doc (mutated in place)
@@ -272,7 +275,10 @@ def test_payout_grants_xp_gear_and_roster_to_all():
     minor_owned0 = len(minor0.get('gear') or {}) + len(minor0.get('gearStash') or [])
 
     rec = {'spawned': True, 'node': 'x', 'nodes': ['a', 'x', 'b'],
-           'hp': 1, 'maxHp': 200, 'dmg': {'u_top': 150, 'u_minor': 25}, 'dead': False}
+           'endsAt': db._iso_in_minutes(60), 'dead': False,
+           # Brackets are ABSOLUTE damage now: 200 tops the board, 80 clears
+           # WORLD_EVENT_MINOR_DAMAGE (60) but not MAJOR (150).
+           'dmg': {'u_top': 200, 'u_minor': 80}}
     db._set_world_event(table, sid, rec)
 
     top = db._get_player(table, sid, 'u_top')  # killer doc, mutated in place
@@ -301,13 +307,13 @@ def test_payout_grants_xp_gear_and_roster_to_all():
     assert 'gear' in ev and len(ev['roster']) == 2
 
 
-def test_killing_blow_pays_killer_inline_and_marks_dead(monkeypatch):
+def test_expiry_settles_the_hunt_and_pays_inline(monkeypatch):
+    """The beast can't be killed — the clock ends the hunt. A skirmish that runs
+    past the deadline settles it and hands the striker their bracket inline."""
     table = _started_table()
     sid = _sid(table)
     _join(table, 'user-alex', 'Alex')
     we = _place_live_event(table, sid)
-    we['hp'] = 3
-    db._set_world_event(table, sid, we)
     doc = db._get_player(table, sid, 'user-alex')
     doc['position'] = we['nodes'][0]
     db._put_player(table, doc)
@@ -315,47 +321,73 @@ def test_killing_blow_pays_killer_inline_and_marks_dead(monkeypatch):
     act(table, 'world-engage', user='user-alex', name='Alex')
 
     def _stub(att, dfn, *a, **k):
-        dfn.hp = 0
+        dfn.hp -= 99
         return [{'round': 1, 'by': 'attacker', 'dmg': 99, 'winner': 'attacker'}]
     monkeypatch.setattr(db.engine, 'resolve_round', _stub)
-    status, resp = act(table, 'combat-round', user='user-alex', name='Alex', stance='aggress')
-    assert status == 200, resp
+    # The clock runs out mid-skirmish: the blows still land and still count.
+    we = db._world_event(table, sid)
+    we['endsAt'] = db._iso_in_minutes(-1)
+    db._set_world_event(table, sid, we)
+    # Nothing can fell the beast, so the fight ends on the round cap.
+    for _ in range(data.WORLD_EVENT_ROUND_CAP + 2):
+        status, resp = act(table, 'combat-round', user='user-alex', name='Alex',
+                           stance='aggress')
+        assert status == 200, resp
+        if 'spaceEvent' in resp:
+            break
 
     ev = resp['spaceEvent']
     assert ev['type'] == 'world_event'
     assert ev['worldKill'] is True
-    assert ev['reward']['bracket'] == 'vanquisher'
+    assert ev['reward']['bracket'] == 'vanquisher'   # sole striker tops the board
+    assert ev['reward']['xp'] > 0 and 'gear' in ev['reward']
+    assert ev['raid']['name'] == data.WORLD_EVENT['name']
+    assert any(r['name'] == 'Alex' for r in ev['raid']['roster'])
     assert db._world_event(table, sid)['dead'] is True
     after = db._get_player(table, sid, 'user-alex')['spores']
     assert after == before + ev['reward']['spores']
 
 
-def test_killing_blow_result_carries_loot_and_roster(monkeypatch):
+def test_expired_beast_cannot_be_engaged_and_settles_once():
+    """Walking up to a beast whose clock has run out settles the hunt rather than
+    starting a fight, and the payout guard makes that idempotent."""
     table = _started_table()
     sid = _sid(table)
-    _join(table, 'user-alex', 'Alex')
+    _join(table, 'u_top', 'Top')
+    _join(table, 'u_minor', 'Minor')
     we = _place_live_event(table, sid)
-    we['hp'] = 3
-    we['dmg'] = {'user-alex': 40}  # prior chip so Alex is a real contributor
+    we['endsAt'] = db._iso_in_minutes(-1)
+    we['dmg'] = {'u_top': 200, 'u_minor': 80}
     db._set_world_event(table, sid, we)
-    doc = db._get_player(table, sid, 'user-alex')
+    top_before = db._get_player(table, sid, 'u_top')['spores']
+
+    doc = db._get_player(table, sid, 'u_top')
     doc['position'] = we['nodes'][0]
     db._put_player(table, doc)
-    act(table, 'world-engage', user='user-alex', name='Alex')
+    status, resp = act(table, 'world-engage', user='u_top', name='Top')
+    assert status == 409                       # nothing left to fight
+    assert db._world_event(table, sid)['dead'] is True
+    # Both contributors were paid on the way through, by absolute damage bracket.
+    assert db._get_player(table, sid, 'u_top')['spores'] > top_before
+    minor = db._get_player(table, sid, 'u_minor')
+    ev = next(e for e in minor['awayEvents'] if e['kind'] == 'world_kill')
+    assert ev['bracket'] == 'minor'
+    # Settling again is a no-op — no double pay.
+    assert db._resolve_world_event(table, sid) == []
 
-    def _stub(att, dfn, *a, **k):
-        dfn.hp = 0
-        return [{'round': 1, 'by': 'attacker', 'dmg': 99, 'winner': 'attacker'}]
-    monkeypatch.setattr(db.engine, 'resolve_round', _stub)
-    status, resp = act(table, 'combat-round', user='user-alex', name='Alex', stance='aggress')
-    assert status == 200, resp
 
-    ev = resp['spaceEvent']
-    assert ev['worldKill'] is True
-    assert ev['reward']['xp'] > 0
-    assert 'gear' in ev['reward']  # may be a dict or None, but the key is present
-    assert ev['raid']['name'] == data.WORLD_EVENT['name']
-    assert any(r['name'] == 'Alex' for r in ev['raid']['roster'])
+def test_bracket_is_absolute_damage_not_a_share_of_the_group():
+    """Your bracket depends only on what YOU dealt, so a big turnout never
+    dilutes anyone (and a small one never inflates them)."""
+    major = data.WORLD_EVENT_MAJOR_DAMAGE
+    minor = data.WORLD_EVENT_MINOR_DAMAGE
+    assert data.world_event_reward(major, False)[0] == 'major'
+    assert data.world_event_reward(minor, False)[0] == 'minor'
+    assert data.world_event_reward(minor - 1, False)[0] == 'participant'
+    # Identical damage grades identically no matter what anyone else did.
+    assert data.world_event_reward(major, False)[0] ==            data.world_event_reward(major, False)[0]
+    # The single top dealer takes the crown regardless of how little they dealt.
+    assert data.world_event_reward(1, True)[0] == 'vanquisher'
 
 
 # ── Task 8: state payload ────────────────────────────────────────────────────
@@ -372,7 +404,10 @@ def test_state_exposes_world_event_block():
     assert block['center'] == we['node']
     assert block['dead'] is False
     assert block['spriteId'] == data.WORLD_EVENT['spriteId']
-    assert block['maxHp'] == data.WORLD_EVENT_HP
+    # Countdown + tally replace the HP bar.
+    assert block['endsAt'] == we['endsAt']
+    assert block['totalDamage'] == 0 and block['topDamage'] == 0
+    assert 'hp' not in block and 'maxHp' not in block
 
 
 def test_state_world_event_absent_before_spawn():

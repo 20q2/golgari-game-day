@@ -261,8 +261,8 @@
                     </button>
 
                     <button type="button" class="gear-hub-tile bag" (click)="selectGear('bag')">
-                      <span class="gear-hub-count" [class.gear-hub-count--full]="you.bag.length >= 3">
-                        {{ you.bag.length }}/3
+                      <span class="gear-hub-count" [class.gear-hub-count--full]="you.bag.length >= 5">
+                        {{ you.bag.length }}/5
                       </span>
                       <span class="gear-hub-ico"><mat-icon class="mi" svgIcon="uc-pouch"></mat-icon></span>
                       <span class="gear-hub-title">Bag</span>
@@ -458,7 +458,7 @@
                 <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
             <!-- Bag -->
             <section class="card">
-              <h3>Bag <span class="muted">({{ you.bag.length }}/3)</span></h3>
+              <h3>Bag <span class="muted">({{ you.bag.length }}/5)</span></h3>
               @if (!you.bag.length) {
                 <p class="muted bag-empty">Empty. The bazaars stock helpful rot.</p>
               }
@@ -739,12 +739,15 @@
                             <span class="incubator-note">Ready! Tap the egg to crack it open.</span>
                             <span class="hatch-progress">{{ hatchRemaining() }} tap{{ hatchRemaining() === 1 ? '' : 's' }} to go</span>
                           } @else {
-                            <span class="incubator-note">Warming — {{ incubatorLeftMin() }} min left</span>
+                            <span class="incubator-note"
+                              >Warming — carry it {{ incubatorSpacesLeft() }}
+                              {{ incubatorSpacesLeft() === 1 ? 'space' : 'spaces' }}</span
+                            >
                           }
                         </div>
                       </div>
                     } @else {
-                      <p class="muted bag-empty">The incubator is empty — tap an egg to warm it ({{ PET_INCUBATE_MINUTES }} min).</p>
+                      <p class="muted bag-empty">The incubator is empty — tap an egg to warm it ({{ PET_INCUBATE_SPACES }} spaces).</p>
                     }
 
                     @if (eggsList().length) {
@@ -1094,7 +1097,12 @@
                     <div class="item-sheet-effects">
                       @for (chip of abilityChips(item); track $index) {
                         <p class="effect-line">
-                          @if (chip.label) { <strong class="effect-label">{{ chip.label }}</strong> }
+                          <!-- The piece's named property (Barbed, Vital, Sunleaf…)
+                               reads as a chip so you can recognise a family at a
+                               glance, with the effect text beside it. -->
+                          @if (chip.label) {
+                            <span class="chip chip--prop">{{ chip.label }}</span>
+                          }
                           <span>{{ chip.blurb }}</span>
                         </p>
                       }
@@ -1413,7 +1421,7 @@
             <div class="item-sheet-body">
               <div class="item-sheet-desc">
                 <div class="item-sheet-effects">
-                  <p class="effect-line"><span>Incubate to hatch a random companion after {{ PET_INCUBATE_MINUTES }} minutes.</span></p>
+                  <p class="effect-line"><span>Incubate to hatch a random companion after carrying it {{ PET_INCUBATE_SPACES }} board spaces.</span></p>
                 </div>
               </div>
 
@@ -1422,7 +1430,7 @@
                   <span class="item-sheet-hint muted">The incubator is busy — hatch that egg first.</span>
                 } @else {
                   <button class="uc-btn uc-btn-primary item-cta" [disabled]="busy()" (click)="incubateEggFromPopup(egg)">
-                    Incubate ({{ PET_INCUBATE_MINUTES }} min)
+                    Incubate ({{ PET_INCUBATE_SPACES }} spaces)
                   </button>
                 }
                 <button class="uc-btn ghost" [disabled]="busy()" (click)="beginEggList(egg)">

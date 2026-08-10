@@ -1,0 +1,1565 @@
+{
+  "ok": true,
+  "season": "20260808-182231",
+  "exportedAt": "2026-08-09T01:35:53",
+  "players": [
+    {
+      "ver": 358,
+      "pendingPickups": [],
+      "spd": 15,
+      "rested": 0,
+      "pvpWins": 0,
+      "spentThisLevel": {
+        "atk": 1,
+        "spd": 0,
+        "def": 1
+      },
+      "userId": "user-andrew",
+      "petCooldowns": {
+        "scout": "2026-08-08T19:23:50"
+      },
+      "creatureName": "Olive Oil",
+      "rolls": 0,
+      "scrolls": [
+        "glowveil",
+        "rust_curse"
+      ],
+      "shiny": false,
+      "grimoireSpells": {
+        "gardeners_primer": [
+          "mend_flesh",
+          "harden_shell"
+        ]
+      },
+      "tier": 3,
+      "taughtClaims": 0,
+      "bossDamage": 0,
+      "materials": {
+        "ichor": 5,
+        "moltings": 15
+      },
+      "lastFinishedClaim": null,
+      "gear": {
+        "charm": "toxin_idol",
+        "fang": "wyrm_godtooth",
+        "carapace": "engorged_carapace"
+      },
+      "pokesReceived": 5,
+      "species": "pest",
+      "eggs": [],
+      "xp": 206,
+      "username": "Andrew",
+      "pk": "UNDERCITY#20260808-182231",
+      "activePetId": "pet-ffa0c50a",
+      "incubator": null,
+      "rollRegenAt": "2026-08-09T01:00:00",
+      "statPoints": 0,
+      "stance": "fight",
+      "hp": 101,
+      "maxHp": 70,
+      "homeBiome": "garden",
+      "highFiveCooldowns": {},
+      "buffs": [],
+      "wildWins": 18,
+      "spellCooldowns": {
+        "mend_flesh": "2026-08-09T01:22:22"
+      },
+      "equippedGrimoire": "gardeners_primer",
+      "effect": null,
+      "grimoires": [
+        "gardeners_primer"
+      ],
+      "joinedAt": "2026-08-08T18:24:24",
+      "def": 18,
+      "bag": [
+        "rot_bomb",
+        "rot_bomb"
+      ],
+      "passives": [
+        "scrounger",
+        "improvise",
+        "treasure_sense"
+      ],
+      "spores": 322,
+      "pendingMove": null,
+      "gearStash": [
+        "gravecleaver"
+      ],
+      "awayEvents": [],
+      "paint": {
+        "body": 130,
+        "stripes": -3,
+        "belly": -3
+      },
+      "level": 12,
+      "atk": 12,
+      "pets": [
+        {
+          "tier": 1,
+          "species": "baby_winding_constrictor",
+          "id": "pet-1456c618",
+          "mergeProgress": 0,
+          "level": 1
+        },
+        {
+          "species": "baby_broodspinner",
+          "id": "pet-ffa0c50a",
+          "mergeProgress": 0,
+          "tier": 3,
+          "level": 1
+        },
+        {
+          "mergeProgress": 0,
+          "species": "rat",
+          "id": "pet-50d19127",
+          "tier": 1,
+          "level": 1
+        }
+      ],
+      "composts": 2,
+      "hat": null,
+      "hpUpdatedAt": "2026-08-09T01:06:00",
+      "form": "grave_reaver",
+      "position": "bog_cache",
+      "lastActionAt": "2026-08-09T01:06:47",
+      "metrics": {
+        "space.elite": 5,
+        "dmgTaken": 422,
+        "xpGained": 883,
+        "space.mystery": 4,
+        "space.cache": 2,
+        "rolls": 57,
+        "space.fog": 2,
+        "space.trove": 2,
+        "spaces": 60,
+        "space.warp": 5,
+        "space.ossuary": 1,
+        "space.shrine": 2,
+        "battle.wild.win": 9,
+        "battle.elite.win": 5,
+        "space.hazard": 3,
+        "rerolls": 7,
+        "battles": 19,
+        "space.ladder": 6,
+        "space.loot": 6,
+        "space.crystal_vein": 3,
+        "battle.lair.loss": 1,
+        "battle.lair.win": 3,
+        "blinks": 5,
+        "space.wild": 10,
+        "battle.wild.loss": 1,
+        "space.shop": 2,
+        "space.lair": 4,
+        "dmgDealt": 900,
+        "space.gate": 2,
+        "deaths": 2,
+        "space.rest": 1
+      },
+      "lastBiome": "bog",
+      "winRenown": 79,
+      "shieldUntil": "2026-08-08T20:02:29",
+      "status": "Im a dragon!",
+      "pokeCooldownUntil": "2026-08-09T01:00:34",
+      "rollNudged": false,
+      "restsUsed": [],
+      "poiClaims": [
+        "cache:garden_cache",
+        "trove:garden_trove",
+        "garden_lair",
+        "bone_lair",
+        "trove:cavern_trove",
+        "cavern_lair",
+        "bog_lair",
+        "cache:bog_cache"
+      ],
+      "evolvedAt": "2026-08-08T23:58:23",
+      "ossuaryRollsLeft": 0,
+      "petSporeBank": 5,
+      "veinStrikesLeft": 0,
+      "blinkCooldown": 0,
+      "sk": "PLAYER#user-andrew"
+    },
+    {
+      "ver": 82,
+      "pendingPickups": [],
+      "spd": 5,
+      "rested": 0,
+      "spriteVariant": "pest_2",
+      "pvpWins": 0,
+      "spentThisLevel": {
+        "atk": 2,
+        "def": 0,
+        "spd": 0
+      },
+      "userId": "user-brandon",
+      "petCooldowns": {},
+      "creatureName": "Ratts",
+      "rolls": 10,
+      "scrolls": [],
+      "shiny": false,
+      "grimoireSpells": {},
+      "tier": 1,
+      "taughtClaims": 0,
+      "bossDamage": 0,
+      "materials": {
+        "moltings": 1,
+        "ichor": 0
+      },
+      "lastFinishedClaim": null,
+      "gear": {
+        "charm": "glowspore_charm"
+      },
+      "pokesReceived": 8,
+      "species": "pest",
+      "eggs": [],
+      "xp": 10,
+      "username": "Brandon",
+      "pk": "UNDERCITY#20260808-182231",
+      "activePetId": null,
+      "incubator": null,
+      "rollRegenAt": "2026-08-08T19:30:00",
+      "stance": "fight",
+      "statPoints": 0,
+      "maxHp": 31,
+      "hp": 15,
+      "highFiveCooldowns": {},
+      "homeBiome": "city",
+      "buffs": [],
+      "wildWins": 5,
+      "spellCooldowns": {},
+      "equippedGrimoire": null,
+      "effect": null,
+      "joinedAt": "2026-08-08T19:03:27",
+      "grimoires": [],
+      "def": 5,
+      "bag": [
+        "smoke_spore"
+      ],
+      "passives": [
+        "scrounger"
+      ],
+      "pendingMove": null,
+      "spores": 99,
+      "gearStash": [],
+      "awayEvents": [
+        {
+          "at": "2026-08-08T19:57:54",
+          "kind": "world_spawn",
+          "name": "The Moor-Wyrm"
+        },
+        {
+          "at": "2026-08-08T19:57:55",
+          "name": "Skullbriar, the Walking Grave",
+          "by": "Rumtin",
+          "kind": "boss"
+        },
+        {
+          "name": "Slimefoot, the Stowaway",
+          "at": "2026-08-08T21:00:14",
+          "by": "Andrew",
+          "kind": "boss"
+        },
+        {
+          "by": "Rumtin",
+          "name": "Sarulf, Realm Eater",
+          "kind": "boss",
+          "at": "2026-08-08T21:44:20"
+        },
+        {
+          "name": "Vestige of Skullbriar, the Walking Grave",
+          "at": "2026-08-08T23:57:55",
+          "kind": "boss",
+          "by": "Andrew"
+        },
+        {
+          "kind": "boss",
+          "by": "Andrew",
+          "name": "Vestige of Sarulf, Realm Eater",
+          "at": "2026-08-09T00:03:28"
+        },
+        {
+          "at": "2026-08-09T00:16:40",
+          "name": "The Moor-Wyrm",
+          "kind": "world_fallen"
+        },
+        {
+          "at": "2026-08-09T00:23:57",
+          "name": "The Gitrog Monster",
+          "kind": "boss",
+          "by": "Rumtin"
+        },
+        {
+          "kind": "boss",
+          "name": "Vestige of The Gitrog Monster",
+          "at": "2026-08-09T00:25:59",
+          "by": "Andrew"
+        },
+        {
+          "at": "2026-08-09T00:42:54",
+          "name": "Savra, Queen of the Golgari",
+          "by": "Rumtin",
+          "kind": "boss"
+        }
+      ],
+      "paint": {
+        "stripes": -3,
+        "belly": -3,
+        "body": 50
+      },
+      "level": 3,
+      "atk": 9,
+      "pets": [],
+      "composts": 1,
+      "hat": null,
+      "hpUpdatedAt": "2026-08-08T19:09:38",
+      "form": "pest",
+      "position": "city_r2",
+      "metrics": {
+        "xpGained": 55,
+        "space.loot": 1,
+        "battles": 6,
+        "rolls": 11,
+        "battle.wild.loss": 1,
+        "dmgDealt": 193,
+        "space.wild": 6,
+        "battle.wild.win": 5,
+        "space.vault_lock": 2,
+        "deaths": 1,
+        "space.gate": 1,
+        "dmgTaken": 68,
+        "space.mystery": 1,
+        "spaces": 11
+      },
+      "lastActionAt": "2026-08-08T19:09:38",
+      "lastBiome": "city",
+      "winRenown": 10,
+      "shieldUntil": "2026-08-08T19:19:30",
+      "pokeCooldownUntil": "2026-08-09T01:00:35",
+      "vaultPicksLeft": 2,
+      "rollNudged": true,
+      "sk": "PLAYER#user-brandon"
+    },
+    {
+      "ver": 78,
+      "spd": 7,
+      "pendingPickups": [],
+      "rested": 2,
+      "spriteVariant": "insect_2",
+      "pvpWins": 0,
+      "spentThisLevel": {
+        "def": 0,
+        "atk": 1,
+        "spd": 1
+      },
+      "userId": "user-refined-pigeon",
+      "petCooldowns": {},
+      "creatureName": "Jaycefromarcane",
+      "rolls": 10,
+      "scrolls": [],
+      "shiny": false,
+      "grimoireSpells": {},
+      "tier": 1,
+      "taughtClaims": 0,
+      "bossDamage": 0,
+      "materials": {
+        "ichor": 0,
+        "moltings": 0
+      },
+      "lastFinishedClaim": null,
+      "gear": {
+        "charm": "quartz_charm"
+      },
+      "pokesReceived": 4,
+      "species": "kraul",
+      "eggs": [],
+      "xp": 10,
+      "username": "Refined Pigeon",
+      "pk": "UNDERCITY#20260808-182231",
+      "activePetId": null,
+      "incubator": {
+        "startedAt": "2026-08-08T20:10:18",
+        "tier": 1,
+        "eggId": "egg-a3b114a1"
+      },
+      "rollRegenAt": "2026-08-08T21:30:00",
+      "stance": "fight",
+      "statPoints": 0,
+      "maxHp": 31,
+      "hp": 5,
+      "homeBiome": "city",
+      "highFiveCooldowns": {},
+      "buffs": [],
+      "wildWins": 5,
+      "spellCooldowns": {},
+      "equippedGrimoire": null,
+      "effect": null,
+      "joinedAt": "2026-08-08T20:00:13",
+      "grimoires": [],
+      "def": 4,
+      "bag": [
+        "smoke_spore",
+        "smoke_spore"
+      ],
+      "passives": [
+        "first_bite"
+      ],
+      "pendingMove": null,
+      "spores": 46,
+      "awayEvents": [
+        {
+          "at": "2026-08-08T23:57:55",
+          "by": "Andrew",
+          "kind": "boss",
+          "name": "Vestige of Skullbriar, the Walking Grave"
+        },
+        {
+          "at": "2026-08-09T00:03:28",
+          "by": "Andrew",
+          "name": "Vestige of Sarulf, Realm Eater",
+          "kind": "boss"
+        },
+        {
+          "at": "2026-08-09T00:16:40",
+          "kind": "world_fallen",
+          "name": "The Moor-Wyrm"
+        },
+        {
+          "by": "Rumtin",
+          "name": "The Gitrog Monster",
+          "kind": "boss",
+          "at": "2026-08-09T00:23:57"
+        },
+        {
+          "kind": "boss",
+          "at": "2026-08-09T00:25:59",
+          "by": "Andrew",
+          "name": "Vestige of The Gitrog Monster"
+        },
+        {
+          "kind": "boss",
+          "name": "Savra, Queen of the Golgari",
+          "by": "Rumtin",
+          "at": "2026-08-09T00:42:54"
+        }
+      ],
+      "gearStash": [
+        "jesters_charm"
+      ],
+      "paint": {
+        "belly": 50,
+        "stripes": 340,
+        "body": 340
+      },
+      "level": 3,
+      "atk": 7,
+      "pets": [],
+      "hat": null,
+      "composts": 1,
+      "hpUpdatedAt": "2026-08-08T21:50:00",
+      "form": "kraul",
+      "position": "city_r8",
+      "metrics": {
+        "battle.wild.loss": 1,
+        "xpGained": 55,
+        "space.shop": 1,
+        "space.vault_lock": 4,
+        "dmgTaken": 66,
+        "battles": 6,
+        "dmgDealt": 182,
+        "rolls": 11,
+        "deaths": 1,
+        "battle.wild.win": 5,
+        "space.wild": 6,
+        "spaces": 11
+      },
+      "lastActionAt": "2026-08-08T21:56:18",
+      "lastBiome": "city",
+      "winRenown": 10,
+      "vaultPicksLeft": 1,
+      "pokeCooldownUntil": "2026-08-09T00:14:43",
+      "shieldUntil": "2026-08-08T20:20:09",
+      "rollNudged": true,
+      "sk": "PLAYER#user-refined-pigeon"
+    },
+    {
+      "ver": 409,
+      "spd": 18,
+      "pendingPickups": [],
+      "rested": 0,
+      "pvpWins": 0,
+      "spentThisLevel": {
+        "spd": 0,
+        "atk": 0,
+        "def": 2
+      },
+      "userId": "user-rumtin",
+      "petCooldowns": {
+        "scout": "2026-08-09T00:44:07"
+      },
+      "creatureName": "Sexy Squirrel II",
+      "rolls": 0,
+      "scrolls": [
+        "harden_shell",
+        "scrap_toss",
+        "harden_shell",
+        "scrap_toss"
+      ],
+      "shiny": false,
+      "grimoireSpells": {
+        "skirmishers_notes": [
+          "ember_fleck",
+          "mend_flesh"
+        ]
+      },
+      "tier": 3,
+      "taughtClaims": 0,
+      "bossDamage": 560,
+      "materials": {
+        "moltings": 30,
+        "ichor": 1
+      },
+      "lastFinishedClaim": null,
+      "gear": {
+        "fang": "wyrm_godtooth",
+        "carapace": "adamant_bulwark",
+        "charm": "lacerating_idol"
+      },
+      "pokesReceived": 6,
+      "species": "squirrel",
+      "eggs": [],
+      "xp": 293,
+      "username": "Rumtin",
+      "pk": "UNDERCITY#20260808-182231",
+      "activePetId": "pet-4f6b7c29",
+      "incubator": null,
+      "rollRegenAt": "2026-08-09T01:00:00",
+      "statPoints": 0,
+      "stance": "fight",
+      "hp": 53,
+      "maxHp": 76,
+      "highFiveCooldowns": {},
+      "homeBiome": "bone",
+      "buffs": [
+        {
+          "kind": "acorn_fury"
+        }
+      ],
+      "wildWins": 21,
+      "spellCooldowns": {
+        "acorn_fury": "2026-08-09T01:08:33"
+      },
+      "equippedGrimoire": "skirmishers_notes",
+      "effect": null,
+      "joinedAt": "2026-08-08T18:52:57",
+      "grimoires": [
+        "skirmishers_notes"
+      ],
+      "def": 12,
+      "bag": [],
+      "passives": [
+        "spell_haste",
+        "spell_mage",
+        "wish"
+      ],
+      "pendingMove": null,
+      "spores": 37,
+      "gearStash": [],
+      "awayEvents": [],
+      "paint": {
+        "body": -1,
+        "stripes": -1,
+        "belly": -1
+      },
+      "level": 12,
+      "atk": 12,
+      "pets": [
+        {
+          "mergeProgress": 0,
+          "name": "Shopping Jockey",
+          "level": 5,
+          "species": "baby_winding_constrictor",
+          "id": "pet-4f6b7c29",
+          "tier": 2
+        },
+        {
+          "id": "pet-e2e8c38b",
+          "tier": 2,
+          "level": 1,
+          "mergeProgress": 0,
+          "species": "rat"
+        }
+      ],
+      "hat": "bow",
+      "composts": 1,
+      "hpUpdatedAt": "2026-08-09T00:52:54",
+      "form": "calamity_beast",
+      "position": "garden_g4_3",
+      "metrics": {
+        "space.fog": 7,
+        "rerolls": 6,
+        "space.elite": 1,
+        "battle.lair.win": 3,
+        "space.mystery": 1,
+        "deaths": 1,
+        "space.crystal_vein": 2,
+        "dmgDealt": 1414,
+        "space.boss": 1,
+        "space.hazard": 4,
+        "battle.elite.win": 1,
+        "space.trove": 2,
+        "space.cache": 3,
+        "battle.wild.win": 17,
+        "space.tunnel": 1,
+        "xpGained": 970,
+        "battles": 25,
+        "battle.boss.win": 1,
+        "spaces": 63,
+        "space.wild": 15,
+        "space.loot": 6,
+        "blinks": 13,
+        "rolls": 55,
+        "battle.world.timeout": 1,
+        "space.shop": 2,
+        "dmgTaken": 742,
+        "space.ladder": 7,
+        "space.witch": 1,
+        "battle.world.win": 1,
+        "battle.wild.loss": 1,
+        "space.lair": 3,
+        "space.gate": 1,
+        "space.warp": 2,
+        "space.excavation": 4
+      },
+      "lastActionAt": "2026-08-09T01:01:41",
+      "lastBiome": "garden",
+      "winRenown": 72,
+      "excavationDigsLeft": 0,
+      "shieldUntil": "2026-08-08T19:10:37",
+      "pokeCooldownUntil": "2026-08-09T00:13:47",
+      "rollNudged": false,
+      "poiClaims": [
+        "bone_lair",
+        "cache:bone_cache",
+        "trove:bone_trove",
+        "cache:cavern_cache",
+        "cavern_lair",
+        "trove:cavern_trove",
+        "cache:bog_cache",
+        "bog_lair",
+        "boss"
+      ],
+      "evolvedAt": "2026-08-08T22:00:52",
+      "restsUsed": [],
+      "veinStrikesLeft": 0,
+      "blinkCooldown": 1,
+      "sk": "PLAYER#user-rumtin"
+    }
+  ],
+  "events": [
+    {
+      "ts": "2026-08-08T18:22:32.355",
+      "text": "A new night falls on the Undercity. The swarm stirs…",
+      "pk": "UNDERCITY#20260808-182231",
+      "type": "season",
+      "sk": "EVENT#2026-08-08T18:22:32.355#b61588"
+    },
+    {
+      "ts": "2026-08-08T18:24:24.382",
+      "text": "Andrew's egg cracks open in The Rot-Gardens — a Pest named Olive Oil skitters out! (Composter: +2 Spores from every loot space.)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "hatch",
+      "sk": "EVENT#2026-08-08T18:24:24.382#65e66c"
+    },
+    {
+      "ts": "2026-08-08T18:25:49.186",
+      "text": "Andrew's Olive Oil reached level 2!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T18:25:49.186#ec0a7f"
+    },
+    {
+      "ts": "2026-08-08T18:27:23.628",
+      "text": "Andrew's Olive Oil was composted by a Canker Abomination.",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "compost",
+      "sk": "EVENT#2026-08-08T18:27:23.628#171e92"
+    },
+    {
+      "ts": "2026-08-08T18:52:57.769",
+      "text": "Rumtin's egg cracks open in Ossuary Fields — a Squirrel named Sexy Squirrel II skitters out! (Marrowborn: +8 Max HP.)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "hatch",
+      "sk": "EVENT#2026-08-08T18:52:57.769#4b54ec"
+    },
+    {
+      "ts": "2026-08-08T18:55:17.402",
+      "text": "Andrew's Olive Oil reached level 3!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T18:55:17.402#569990"
+    },
+    {
+      "ts": "2026-08-08T18:55:37.954",
+      "text": "Rumtin's Sexy Squirrel II was composted by a Fiend Artisan.",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "compost",
+      "sk": "EVENT#2026-08-08T18:55:37.954#e8a6ec"
+    },
+    {
+      "ts": "2026-08-08T18:56:15.700",
+      "text": "Rumtin poked Andrew's Olive Oil (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T18:56:15.700#d552cd"
+    },
+    {
+      "ts": "2026-08-08T18:56:26.706",
+      "text": "Andrew poked Rumtin's Sexy Squirrel II (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T18:56:26.706#3871dd"
+    },
+    {
+      "ts": "2026-08-08T18:57:33.668",
+      "text": "Rumtin's Sexy Squirrel II reached level 2!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T18:57:33.668#6e9233"
+    },
+    {
+      "ts": "2026-08-08T18:58:08.021",
+      "text": "Rumtin unearthed the last relic at a dig site (+25 Spores, +1 Gemstones, +2 Moltings)! Fresh finds lie buried anew.",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "excavation",
+      "sk": "EVENT#2026-08-08T18:58:08.021#d276c5"
+    },
+    {
+      "ts": "2026-08-08T18:59:47.863",
+      "text": "Rumtin's Sexy Squirrel II reached level 3!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T18:59:47.863#90fe99"
+    },
+    {
+      "ts": "2026-08-08T19:03:14.824",
+      "text": "Andrew's Olive Oil reached level 4!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T19:03:14.824#c11d2b"
+    },
+    {
+      "ts": "2026-08-08T19:03:27.482",
+      "text": "Brandon's egg cracks open in The Undercity — a Pest named Ratts skitters out! (City Rat: Hatch with a random Tier-1 item, equipped.) Bravery earns +1 roll!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-brandon",
+      "type": "hatch",
+      "sk": "EVENT#2026-08-08T19:03:27.482#cd4bba"
+    },
+    {
+      "ts": "2026-08-08T19:04:30.908",
+      "text": "Brandon's Ratts was composted by a Sewer Shambler.",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-brandon",
+      "type": "compost",
+      "sk": "EVENT#2026-08-08T19:04:30.908#7e58bd"
+    },
+    {
+      "ts": "2026-08-08T19:05:00.008",
+      "text": "Brandon's Ratts reached level 2!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-brandon",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T19:05:00.008#6f8bef"
+    },
+    {
+      "ts": "2026-08-08T19:05:22.606",
+      "text": "Rumtin poked Brandon's Ratts (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T19:05:22.606#25c781"
+    },
+    {
+      "ts": "2026-08-08T19:06:32.066",
+      "text": "Brandon cracked the Guildvault and made off with 36 Spores! Fresh tumblers, fresh pot.",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-brandon",
+      "type": "vault_lock",
+      "sk": "EVENT#2026-08-08T19:06:32.066#6b2375"
+    },
+    {
+      "ts": "2026-08-08T19:08:18.905",
+      "text": "Brandon's Ratts reached level 3!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-brandon",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T19:08:18.905#23c8ac"
+    },
+    {
+      "ts": "2026-08-08T19:15:18.565",
+      "text": "Andrew poked Rumtin's Sexy Squirrel II (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T19:15:18.565#adcc35"
+    },
+    {
+      "ts": "2026-08-08T19:27:11.808",
+      "text": "Andrew poked Brandon's Ratts (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T19:27:11.808#f990c6"
+    },
+    {
+      "ts": "2026-08-08T19:29:42.829",
+      "text": "Andrew's Olive Oil reached level 5!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T19:29:42.829#1f60e6"
+    },
+    {
+      "ts": "2026-08-08T19:29:42.849",
+      "text": "Andrew was first to plunder the treasure of The Rotcellar!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "cache",
+      "sk": "EVENT#2026-08-08T19:29:42.849#c681b5"
+    },
+    {
+      "ts": "2026-08-08T19:30:03.809",
+      "text": "Andrew's creature evolves into Vexing Pest!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "evolve",
+      "sk": "EVENT#2026-08-08T19:30:03.809#c55829"
+    },
+    {
+      "ts": "2026-08-08T19:42:14.596",
+      "text": "Rumtin's Sexy Squirrel II reached level 4!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T19:42:14.595#69f297"
+    },
+    {
+      "ts": "2026-08-08T19:44:56.111",
+      "text": "Rumtin poked Andrew's Olive Oil (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T19:44:56.111#fe8bce"
+    },
+    {
+      "ts": "2026-08-08T19:45:06.613",
+      "text": "Rumtin poked Brandon's Ratts (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T19:45:06.613#395ca9"
+    },
+    {
+      "ts": "2026-08-08T19:46:22.855",
+      "text": "Andrew poked Rumtin's Sexy Squirrel II (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T19:46:22.855#c5ff26"
+    },
+    {
+      "ts": "2026-08-08T19:47:29.752",
+      "text": "Andrew's Olive Oil reached level 6!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T19:47:29.752#4cf555"
+    },
+    {
+      "ts": "2026-08-08T19:47:29.772",
+      "text": "Andrew was devoured by the Slimefoot, the Stowaway (it lingers at 15 HP).",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "compost",
+      "sk": "EVENT#2026-08-08T19:47:29.772#c145bb"
+    },
+    {
+      "ts": "2026-08-08T19:51:28.191",
+      "text": "Andrew's Olive Oil reached level 7!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T19:51:28.191#d6ba81"
+    },
+    {
+      "ts": "2026-08-08T19:51:28.211",
+      "text": "Andrew was first to crack a hidden trove in the deep dark!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "trove",
+      "sk": "EVENT#2026-08-08T19:51:28.211#dc0b04"
+    },
+    {
+      "ts": "2026-08-08T19:57:20.715",
+      "text": "Rumtin's Ember Fleck wounds Skullbriar, the Walking Grave from afar (27/40 HP)!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-08-08T19:57:20.715#068d79"
+    },
+    {
+      "ts": "2026-08-08T19:57:23.475",
+      "text": "Rumtin cursed Skullbriar, the Walking Grave with Bone Chill!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-08-08T19:57:23.475#617414"
+    },
+    {
+      "ts": "2026-08-08T19:57:54.675",
+      "text": "A The Moor-Wyrm has emerged in the wilderness — rally and bring it down together!",
+      "pk": "UNDERCITY#20260808-182231",
+      "type": "boss",
+      "sk": "EVENT#2026-08-08T19:57:54.675#31186a"
+    },
+    {
+      "ts": "2026-08-08T19:57:55.095",
+      "text": "Rumtin's Sexy Squirrel II reached level 5!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T19:57:55.095#0052ee"
+    },
+    {
+      "ts": "2026-08-08T19:57:55.135",
+      "text": "Rumtin's Sexy Squirrel II reached level 6!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T19:57:55.135#10ab1a"
+    },
+    {
+      "ts": "2026-08-08T19:57:55.175",
+      "text": "Rumtin cleared the Ossuary Fields dungeon and claimed its Guild Sigil (1/3)!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "sigil",
+      "sk": "EVENT#2026-08-08T19:57:55.175#d7591d"
+    },
+    {
+      "ts": "2026-08-08T19:58:32.035",
+      "text": "Rumtin's creature evolves into Squirrel Mage!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "evolve",
+      "sk": "EVENT#2026-08-08T19:58:32.035#5b007c"
+    },
+    {
+      "ts": "2026-08-08T20:00:13.516",
+      "text": "Refined Pigeon's egg cracks open in The Undercity — a Kraul Grub named Jaycefromarcane skitters out! (City Rat: Hatch with a random Tier-1 item, equipped.) Bravery earns +1 roll!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-refined-pigeon",
+      "type": "hatch",
+      "sk": "EVENT#2026-08-08T20:00:13.516#48b238"
+    },
+    {
+      "ts": "2026-08-08T20:01:21.237",
+      "text": "Rumtin was first to plunder the treasure of The Marrow Pits!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "cache",
+      "sk": "EVENT#2026-08-08T20:01:21.237#68a8c3"
+    },
+    {
+      "ts": "2026-08-08T20:01:32.957",
+      "text": "Rumtin's Sexy Squirrel II reached level 7!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T20:01:32.957#0462ac"
+    },
+    {
+      "ts": "2026-08-08T20:01:32.997",
+      "text": "Rumtin was first to crack a hidden trove in the deep dark!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "trove",
+      "sk": "EVENT#2026-08-08T20:01:32.997#7fe569"
+    },
+    {
+      "ts": "2026-08-08T20:02:11.597",
+      "text": "Rumtin poked Andrew's Olive Oil (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T20:02:11.597#cfc43d"
+    },
+    {
+      "ts": "2026-08-08T20:02:13.401",
+      "text": "Rumtin poked Brandon's Ratts (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T20:02:13.401#7d44be"
+    },
+    {
+      "ts": "2026-08-08T20:02:15.577",
+      "text": "Rumtin poked Refined Pigeon's Jaycefromarcane (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T20:02:15.577#4f1d69"
+    },
+    {
+      "ts": "2026-08-08T20:03:33.319",
+      "text": "Refined Pigeon's Jaycefromarcane reached level 2!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-refined-pigeon",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T20:03:33.319#05a581"
+    },
+    {
+      "ts": "2026-08-08T20:04:18.632",
+      "text": "Refined Pigeon cracked the Guildvault and made off with 36 Spores! Fresh tumblers, fresh pot.",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-refined-pigeon",
+      "type": "vault_lock",
+      "sk": "EVENT#2026-08-08T20:04:18.632#84a165"
+    },
+    {
+      "ts": "2026-08-08T20:05:09.173",
+      "text": "Refined Pigeon's Jaycefromarcane was composted by a Attendant of Vraska.",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-refined-pigeon",
+      "type": "compost",
+      "sk": "EVENT#2026-08-08T20:05:09.173#375ba0"
+    },
+    {
+      "ts": "2026-08-08T20:06:53.761",
+      "text": "Refined Pigeon's Jaycefromarcane reached level 3!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-refined-pigeon",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T20:06:53.761#57322e"
+    },
+    {
+      "ts": "2026-08-08T20:07:41.172",
+      "text": "Refined Pigeon cracked the Guildvault and made off with 38 Spores! Fresh tumblers, fresh pot.",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-refined-pigeon",
+      "type": "vault_lock",
+      "sk": "EVENT#2026-08-08T20:07:41.172#155d9b"
+    },
+    {
+      "ts": "2026-08-08T20:59:00.860",
+      "text": "Andrew poked Refined Pigeon's Jaycefromarcane (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T20:59:00.860#2859ca"
+    },
+    {
+      "ts": "2026-08-08T20:59:02.886",
+      "text": "Andrew poked Brandon's Ratts (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T20:59:02.886#e7483e"
+    },
+    {
+      "ts": "2026-08-08T20:59:05.475",
+      "text": "Andrew poked Rumtin's Sexy Squirrel II (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T20:59:05.475#e534f7"
+    },
+    {
+      "ts": "2026-08-08T21:00:14.005",
+      "text": "Andrew's Olive Oil reached level 8!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T21:00:14.005#71416b"
+    },
+    {
+      "ts": "2026-08-08T21:00:14.045",
+      "text": "Andrew cleared the The Rot-Gardens dungeon and claimed its Guild Sigil (1/3)!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "sigil",
+      "sk": "EVENT#2026-08-08T21:00:14.045#6bd205"
+    },
+    {
+      "ts": "2026-08-08T21:08:13.467",
+      "text": "Rumtin's Sexy Squirrel II reached level 8!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T21:08:13.467#78137d"
+    },
+    {
+      "ts": "2026-08-08T21:40:25.158",
+      "text": "Rumtin was first to plunder the treasure of Gloomroot Hollow!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "cache",
+      "sk": "EVENT#2026-08-08T21:40:25.158#9f0d13"
+    },
+    {
+      "ts": "2026-08-08T21:43:57.358",
+      "text": "Rumtin cursed Sarulf, Realm Eater with Bone Chill!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-08-08T21:43:57.358#cf3750"
+    },
+    {
+      "ts": "2026-08-08T21:43:59.598",
+      "text": "Rumtin's Ember Fleck wounds Sarulf, Realm Eater from afar (18/44 HP)!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-08-08T21:43:59.598#919220"
+    },
+    {
+      "ts": "2026-08-08T21:44:20.118",
+      "text": "Rumtin's Sexy Squirrel II reached level 9!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T21:44:20.118#4fef08"
+    },
+    {
+      "ts": "2026-08-08T21:44:20.158",
+      "text": "Rumtin cleared the Mosslight Cavern dungeon and claimed its Guild Sigil (2/3)!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "sigil",
+      "sk": "EVENT#2026-08-08T21:44:20.158#cfe53b"
+    },
+    {
+      "ts": "2026-08-08T21:50:55.458",
+      "text": "Rumtin was first to crack a hidden trove in the deep dark!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "trove",
+      "sk": "EVENT#2026-08-08T21:50:55.458#028456"
+    },
+    {
+      "ts": "2026-08-08T22:00:33.720",
+      "text": "Rumtin's Sexy Squirrel II reached level 10!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T22:00:33.720#dd4720"
+    },
+    {
+      "ts": "2026-08-08T22:00:52.758",
+      "text": "Rumtin's creature evolves into Calamity Beast! An APEX rises!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "evolve",
+      "sk": "EVENT#2026-08-08T22:00:52.758#97d7a5"
+    },
+    {
+      "ts": "2026-08-08T22:17:36.563",
+      "text": "Rumtin poked Andrew's Olive Oil (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T22:17:36.563#0a895d"
+    },
+    {
+      "ts": "2026-08-08T22:21:06.378",
+      "text": "Andrew poked Refined Pigeon's Jaycefromarcane (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T22:21:06.378#8ba076"
+    },
+    {
+      "ts": "2026-08-08T22:21:07.707",
+      "text": "Andrew poked Brandon's Ratts (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T22:21:07.707#30c954"
+    },
+    {
+      "ts": "2026-08-08T22:21:08.478",
+      "text": "Andrew poked Rumtin's Sexy Squirrel II (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T22:21:08.478#2d0b5b"
+    },
+    {
+      "ts": "2026-08-08T23:56:26.061",
+      "text": "Andrew's Olive Oil reached level 9!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T23:56:26.061#c6f9ba"
+    },
+    {
+      "ts": "2026-08-08T23:57:55.339",
+      "text": "Andrew's Olive Oil reached level 10!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-08T23:57:55.339#95d748"
+    },
+    {
+      "ts": "2026-08-08T23:57:55.379",
+      "text": "Andrew cleared the Ossuary Fields dungeon and claimed its Guild Sigil (2/3)!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "sigil",
+      "sk": "EVENT#2026-08-08T23:57:55.379#7d1f32"
+    },
+    {
+      "ts": "2026-08-08T23:58:23.519",
+      "text": "Andrew's creature evolves into Colossal Grave-Reaver! An APEX rises!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "evolve",
+      "sk": "EVENT#2026-08-08T23:58:23.519#e28ad8"
+    },
+    {
+      "ts": "2026-08-08T23:58:47.830",
+      "text": "Andrew poked Rumtin's Sexy Squirrel II (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T23:58:47.830#e5b674"
+    },
+    {
+      "ts": "2026-08-08T23:59:41.310",
+      "text": "Andrew poked Brandon's Ratts (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T23:59:41.310#2e2058"
+    },
+    {
+      "ts": "2026-08-08T23:59:43.166",
+      "text": "Andrew poked Refined Pigeon's Jaycefromarcane (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-08-08T23:59:43.166#9ada1c"
+    },
+    {
+      "ts": "2026-08-09T00:03:28.899",
+      "text": "Andrew's Olive Oil reached level 11!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-09T00:03:28.899#ab3b9c"
+    },
+    {
+      "ts": "2026-08-09T00:03:28.939",
+      "text": "Andrew cleared the Mosslight Cavern dungeon and claimed its Guild Sigil (3/3)!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "sigil",
+      "sk": "EVENT#2026-08-09T00:03:28.939#638d38"
+    },
+    {
+      "ts": "2026-08-09T00:04:16.940",
+      "text": "Ouch! Andrew triggered a cave-in at level 8 of the crystal vein",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "vein",
+      "sk": "EVENT#2026-08-09T00:04:16.939#6fb3c5"
+    },
+    {
+      "ts": "2026-08-09T00:04:18.188",
+      "text": "Ouch! Andrew triggered a cave-in at level 8 of the crystal vein",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "vein",
+      "sk": "EVENT#2026-08-09T00:04:18.188#fa4c0c"
+    },
+    {
+      "ts": "2026-08-09T00:14:14.496",
+      "text": "Rumtin's Sexy Squirrel II reached level 11!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-08-09T00:14:14.496#822104"
+    },
+    {
+      "ts": "2026-08-09T00:16:40.220",
+      "text": "The The Moor-Wyrm has fallen! The wilderness quiets.",
+      "pk": "UNDERCITY#20260808-182231",
+      "type": "boss",
+      "sk": "EVENT#2026-08-09T00:16:40.220#9e750b"
+    },
+    {
+      "ts": "2026-08-09T00:22:03.855",
+      "text": "Rumtin's Sexy Squirrel II reached level 12!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-08-09T00:22:03.855#2d58ba"
+    },
+    {
+      "ts": "2026-08-09T00:22:26.352",
+      "text": "Rumtin was first to plunder the treasure of The Drownedway!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "cache",
+      "sk": "EVENT#2026-08-09T00:22:26.352#9dc6cb"
+    },
+    {
+      "ts": "2026-08-09T00:23:57.533",
+      "text": "Rumtin cleared the The Sedgemoor dungeon and claimed its Guild Sigil (3/3)!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "sigil",
+      "sk": "EVENT#2026-08-09T00:23:57.533#38b51c"
+    },
+    {
+      "ts": "2026-08-09T00:25:59.693",
+      "text": "Andrew cleared the The Sedgemoor dungeon and claimed its Guild Sigil (4/3)!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "sigil",
+      "sk": "EVENT#2026-08-09T00:25:59.693#cf213a"
+    },
+    {
+      "ts": "2026-08-09T00:26:00.193",
+      "text": "Andrew's Sear the Throne unmade the Vestige of The Gitrog Monster from afar!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "spell",
+      "sk": "EVENT#2026-08-09T00:26:00.193#fcaf6f"
+    },
+    {
+      "ts": "2026-08-09T00:42:54.754",
+      "text": "Rumtin struck down SAVRA, QUEEN OF THE GOLGARI! The island trembles as she reforms.",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "boss",
+      "sk": "EVENT#2026-08-09T00:42:54.754#794991"
+    },
+    {
+      "ts": "2026-08-09T00:45:34.858",
+      "text": "Rumtin poked Andrew's Olive Oil (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-08-09T00:45:34.858#c87c01"
+    },
+    {
+      "ts": "2026-08-09T00:45:35.830",
+      "text": "Rumtin poked Brandon's Ratts (+1 roll!)",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-08-09T00:45:35.830#64f26b"
+    },
+    {
+      "ts": "2026-08-09T00:59:36.474",
+      "text": "Ouch! Andrew triggered a cave-in at level 12 of the crystal vein",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "vein",
+      "sk": "EVENT#2026-08-09T00:59:36.474#cb0f43"
+    },
+    {
+      "ts": "2026-08-09T00:59:37.684",
+      "text": "Andrew pried the Heartstone from the crystal vein (+3 Gemstones)! The shaft refills.",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "vein",
+      "sk": "EVENT#2026-08-09T00:59:37.684#badb0e"
+    },
+    {
+      "ts": "2026-08-09T01:01:03.597",
+      "text": "Andrew's Olive Oil reached level 12!",
+      "pk": "UNDERCITY#20260808-182231",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-08-09T01:01:03.597#1ff273"
+    },
+    {
+      "ts": "2026-08-09T01:07:01.347",
+      "text": "The night ends. Rumtin is champion of the Undercity with 353 Renown!",
+      "pk": "UNDERCITY#20260808-182231",
+      "type": "season",
+      "sk": "EVENT#2026-08-09T01:07:01.347#4088bf"
+    }
+  ],
+  "chat": [],
+  "firsts": [
+    {
+      "by": "Rumtin",
+      "pk": "UNDERCITY#20260808-182231",
+      "at": "2026-08-09T00:22:26",
+      "uid": "user-rumtin",
+      "kind": "cache",
+      "sk": "FIRST#bog_cache"
+    },
+    {
+      "by": "Rumtin",
+      "at": "2026-08-09T00:23:57",
+      "pk": "UNDERCITY#20260808-182231",
+      "uid": "user-rumtin",
+      "kind": "lair",
+      "sk": "FIRST#bog_lair"
+    },
+    {
+      "by": "Rumtin",
+      "at": "2026-08-08T20:01:21",
+      "pk": "UNDERCITY#20260808-182231",
+      "uid": "user-rumtin",
+      "kind": "cache",
+      "sk": "FIRST#bone_cache"
+    },
+    {
+      "by": "Rumtin",
+      "at": "2026-08-08T19:57:55",
+      "pk": "UNDERCITY#20260808-182231",
+      "uid": "user-rumtin",
+      "kind": "lair",
+      "sk": "FIRST#bone_lair"
+    },
+    {
+      "by": "Rumtin",
+      "at": "2026-08-08T20:01:32",
+      "pk": "UNDERCITY#20260808-182231",
+      "kind": "trove",
+      "uid": "user-rumtin",
+      "sk": "FIRST#bone_trove"
+    },
+    {
+      "by": "Rumtin",
+      "pk": "UNDERCITY#20260808-182231",
+      "at": "2026-08-09T00:42:54",
+      "kind": "boss",
+      "uid": "user-rumtin",
+      "sk": "FIRST#boss"
+    },
+    {
+      "by": "Rumtin",
+      "at": "2026-08-08T21:40:25",
+      "pk": "UNDERCITY#20260808-182231",
+      "uid": "user-rumtin",
+      "kind": "cache",
+      "sk": "FIRST#cavern_cache"
+    },
+    {
+      "by": "Rumtin",
+      "pk": "UNDERCITY#20260808-182231",
+      "at": "2026-08-08T21:44:20",
+      "kind": "lair",
+      "uid": "user-rumtin",
+      "sk": "FIRST#cavern_lair"
+    },
+    {
+      "by": "Rumtin",
+      "pk": "UNDERCITY#20260808-182231",
+      "at": "2026-08-08T21:50:55",
+      "kind": "trove",
+      "uid": "user-rumtin",
+      "sk": "FIRST#cavern_trove"
+    },
+    {
+      "by": "Andrew",
+      "at": "2026-08-08T19:29:42",
+      "pk": "UNDERCITY#20260808-182231",
+      "uid": "user-andrew",
+      "kind": "cache",
+      "sk": "FIRST#garden_cache"
+    },
+    {
+      "by": "Andrew",
+      "pk": "UNDERCITY#20260808-182231",
+      "at": "2026-08-08T21:00:13",
+      "kind": "lair",
+      "uid": "user-andrew",
+      "sk": "FIRST#garden_lair"
+    },
+    {
+      "by": "Andrew",
+      "at": "2026-08-08T19:51:28",
+      "pk": "UNDERCITY#20260808-182231",
+      "uid": "user-andrew",
+      "kind": "trove",
+      "sk": "FIRST#garden_trove"
+    }
+  ],
+  "fogReveals": [
+    {
+      "by": "Rumtin",
+      "at": "2026-08-08T22:17:17",
+      "pk": "UNDERCITY#20260808-182231",
+      "uid": "user-rumtin",
+      "revealed": "wild",
+      "sk": "FOG#n248"
+    },
+    {
+      "by": "Andrew",
+      "at": "2026-08-09T01:00:06",
+      "pk": "UNDERCITY#20260808-182231",
+      "revealed": "hazard",
+      "uid": "user-andrew",
+      "sk": "FOG#n268"
+    },
+    {
+      "by": "Rumtin",
+      "at": "2026-08-09T00:14:02",
+      "pk": "UNDERCITY#20260808-182231",
+      "revealed": "wild",
+      "uid": "user-rumtin",
+      "sk": "FOG#n269"
+    },
+    {
+      "by": "Rumtin",
+      "at": "2026-08-09T00:40:18",
+      "pk": "UNDERCITY#20260808-182231",
+      "uid": "user-rumtin",
+      "revealed": "mystery",
+      "sk": "FOG#n273"
+    },
+    {
+      "by": "Rumtin",
+      "at": "2026-08-09T00:40:40",
+      "pk": "UNDERCITY#20260808-182231",
+      "revealed": "loot",
+      "uid": "user-rumtin",
+      "sk": "FOG#n297"
+    },
+    {
+      "by": "Andrew",
+      "at": "2026-08-09T01:01:39",
+      "pk": "UNDERCITY#20260808-182231",
+      "revealed": "loot",
+      "uid": "user-andrew",
+      "sk": "FOG#n299"
+    },
+    {
+      "by": "Rumtin",
+      "pk": "UNDERCITY#20260808-182231",
+      "at": "2026-08-09T00:15:58",
+      "uid": "user-rumtin",
+      "revealed": "wild",
+      "sk": "FOG#n314"
+    }
+  ]
+}

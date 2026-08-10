@@ -15,7 +15,13 @@ import {
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
-import { BoardCanvas, BoardMap, NodeInfo, SpellCastFx } from '../engine/board-canvas';
+import {
+  BoardCanvas,
+  BoardMap,
+  NodeInfo,
+  NodeInfoRow,
+  SpellCastFx,
+} from '../engine/board-canvas';
 import { legalSteps, boardDistance, nodesWithin } from '../engine/board-movement';
 import {
   AwayEvent,
@@ -37,6 +43,7 @@ import {
   UmoriReveal,
   WelcomeGift,
   VaultView,
+  WorldEventState,
   YouDoc,
   isShielded,
 } from '../services/undercity-models';
@@ -77,11 +84,16 @@ import {
   petInfo,
   petRole,
   abilityReady,
-  abilityCooldownLeftMin,
+  abilitySpacesLeft,
 } from '../data/pets';
 import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome, enemyArtUrl } from '../data/dungeons';
 import { RUIN_LAIRS, RUIN_LAIR_NAMES, ruinLairAbandoned } from '../data/ruin-lairs';
-import { WORLD_EVENT, WORLD_EVENT_SPRITE } from '../data/world-event';
+import {
+  WORLD_EVENT,
+  WORLD_EVENT_SPRITE,
+  WORLD_EVENT_MAJOR_DAMAGE,
+  WORLD_EVENT_MINOR_DAMAGE,
+} from '../data/world-event';
 import { MONSTER_SPACE } from '../data/enraged';
 import { formName } from '../data/forms';
 import { RegionInfo, regionInfo, tunnelDest } from '../data/regions';
@@ -269,13 +281,15 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return petRole(pet.species);
   }
   protected petAbilityReady(pet: Pet): boolean {
-    // Forage recharges by DISTANCE (its space countdown must hit 0); scout still
-    // runs on a real-time role cooldown.
+    // Every activated ability recharges by DISTANCE — its space countdown must
+    // have reached 0. Nothing here is gated on a wall clock.
     if (petRole(pet.species) === 'forage') return this.forageSpacesLeft() <= 0;
-    return abilityReady(this.store.you()?.petCooldowns, petRole(pet.species));
+    return abilityReady(this.store.you()?.petRecharge, petRole(pet.species));
   }
-  protected petAbilityLeftMin(pet: Pet): number {
-    return abilityCooldownLeftMin(this.store.you()?.petCooldowns, petRole(pet.species));
+  /** Board spaces still to walk before this pet's ability is ready (0 = ready). */
+  protected petAbilitySpacesLeft(pet: Pet): number {
+    if (petRole(pet.species) === 'forage') return this.forageSpacesLeft();
+    return abilitySpacesLeft(this.store.you()?.petRecharge, petRole(pet.species));
   }
   /** Board spaces still to walk before forage recharges (0 = ready). */
   protected forageSpacesLeft(): number {
@@ -2144,7 +2158,41 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   private infoNodeId: string | null = null;
 
-  /** Space name + blurb (with snare hint) for a node's popover. */
+  /** Time until the world-boss hunt is called, as a short human string. */
+  private worldEventTimeLeft(endsAt: string): string {
+    const ms = new Date(endsAt + 'Z').getTime() - Date.now();
+    const min = Math.max(0, Math.ceil(ms / 60_000));
+    if (min <= 0) return 'moments';
+    return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`;
+  }
+
+  /** " — 13 more for Major" style nudge toward the next damage bracket. */
+  private nextBracketHint(mine: number): string {
+    if (mine >= WORLD_EVENT_MAJOR_DAMAGE) return ' — Major secured';
+    const target = mine >= WORLD_EVENT_MINOR_DAMAGE
+      ? { need: WORLD_EVENT_MAJOR_DAMAGE - mine, name: 'Major' }
+      : { need: WORLD_EVENT_MINOR_DAMAGE - mine, name: 'Minor' };
+    return ` — ${target.need} more for ${target.name}`;
+  }
+
+  /** Public standings: everyone who has bled the beast, ranked by damage. The
+   *  leader is flagged as the Vanquisher, since that bracket goes to the single
+   *  top dealer regardless of how much they banked. */
+  private worldEventLeaderboard(we: WorldEventState): NodeInfoRow[] {
+    const meId = this.store.you()?.userId;
+    const names = new Map((this.store.players() ?? []).map((p) => [p.userId, p.username]));
+    const ranked = (Object.entries(we.dmg ?? {}) as [string, number][])
+      .filter(([, d]) => d > 0)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    if (!ranked.length) return [{ label: 'Nobody has struck it yet', value: '—' }];
+    return ranked.map(([uid, d], i) => ({
+      label: `${i + 1}. ${names.get(uid) ?? '???'}${i === 0 ? ' (Vanquisher)' : ''}`,
+      value: `${d}`,
+      you: uid === meId,
+    }));
+  }
+
+  /** Space name + blurb for a node's popover. */
   private buildNodeInfo(nodeId: string): NodeInfo | null {
     const u = this.store.umori();
     if (u && nodeId === u.node) {
@@ -2161,13 +2209,22 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // the shared fight works, overriding the generic wilderness space blurb.
     const we = this.store.worldEvent();
     if (we && !we.dead && we.nodes.includes(nodeId)) {
+      const meId = this.store.you()?.userId;
+      const mine = (we.dmg ?? {})[meId ?? ''] ?? 0;
+      const next = this.nextBracketHint(mine);
       return {
         nodeId,
         title: we.name,
         body:
-          `A season-shared raid boss straddling the Ashen Wilds (${we.hp}/${we.maxHp} HP). ` +
-          `Everyone hacks at one shared pool — land on it and Engage to burst it over ` +
-          `${this.worldEventRoundCap} rounds; when it falls, all who struck split the bounty by the damage they dealt.`,
+          `A shared hunt in the Ashen Wilds. It cannot be killed — this is a ` +
+          `damage check. Land on it and Engage to hack at it for up to ` +
+          `${this.worldEventRoundCap} rounds; every blow is banked against your ` +
+          `name, and you can come back and hit it again. When the hunt's clock ` +
+          `runs out the spoils are dealt out by how much damage you dealt. ` +
+          `Withdraws in ${this.worldEventTimeLeft(we.endsAt)}.` +
+          (mine ? ` You've dealt ${mine}${next}.` : ''),
+        rowsTitle: 'THE HUNT',
+        rows: this.worldEventLeaderboard(we),
       };
     }
     // A roaming enraged monster squats on this wilderness tile — it becomes a
@@ -2242,9 +2299,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           'An apex terror of the Ashen Wilds claims this ground. Brutal even for evolved units, ' +
           'and a death sentence for fresh hatchlings. Recommended Level 8+.';
       }
-    }
-    if (this.store.snares().includes(nodeId)) {
-      body += ' The ground here looks disturbed…';
     }
     return { nodeId, title, body };
   }
@@ -2330,6 +2384,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   private syncBoard(): void {
     if (!this.board) return;
+    // Fog-of-war is scoped to the current night: hand the canvas the seasonId so
+    // it drops last night's explored nodes when a new season starts. Must run
+    // before setPlayers() below, which records the own token's current node.
+    this.board.setSeason(this.store.season()?.seasonId ?? null);
     const step = this.stepping();
     // Sparkle promise: lit whenever the route walked so far touches a gate
     // (recomputed each step, so retracing off the gate clears it). The starting
@@ -2375,7 +2433,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       activePet ? petSpriteUrl(activePet.species) : null,
       activePet ? petTemperament(activePet.species) : null,
     );
-    this.board.setSnares(this.store.snares());
     this.board.setUmori(this.store.umori());
     this.board.setBarriersOpen(this.store.barriersOpen());
     this.board.setGuardianPools(this.store.guardians());
