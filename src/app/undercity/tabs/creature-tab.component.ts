@@ -21,6 +21,7 @@ import {
   SALVAGE_YIELD,
 } from '../data/items';
 import { gearProperty } from '../data/combat';
+import { GORGE_MULCH } from '../data/reclaim';
 import {
   innateSpellIds,
   GRIMOIRE_MAP,
@@ -637,6 +638,44 @@ export class CreatureTabComponent {
     }
     this.salvageArmed.set(null);
     void this.salvageFromPopup(item, 'grind');
+  }
+
+  // ── Grime Gorger: Gorge ───────────────────────────────────────────────────
+
+  /** Only a Grime Gorger can devour items, so the popup button stays hidden for
+   *  every other form. */
+  protected readonly canGorge = computed(() =>
+    (this.store.you()?.passives ?? []).includes('gorge'),
+  );
+
+  protected readonly mulch = computed(() => this.store.you()?.mulch ?? 0);
+
+  /** Mulch this item would yield — previewed on the button, like Grind's. Only
+   *  gear and consumables are edible; anything else yields nothing, which also
+   *  keeps the button off scrolls/pets/eggs. */
+  protected gorgeYield(kind: MarketKind, itemId: string): number {
+    if (kind !== 'gear' && kind !== 'consumable') return 0;
+    const tier = kind === 'gear' ? GEAR_MAP[itemId]?.tier : CONSUMABLE_MAP[itemId]?.tier;
+    return GORGE_MULCH[kind][tier ?? 1] ?? 0;
+  }
+
+  /** Devouring destroys the item, so it arms on the first tap and commits on the
+   *  second — the same guard Grind uses. */
+  protected confirmGorge(item: SelectedItem): void {
+    const key = 'gorge:' + item.kind + ':' + item.index;
+    if (this.salvageArmed() !== key) {
+      this.salvageArmed.set(key);
+      return;
+    }
+    this.salvageArmed.set(null);
+    void this.run(async () => {
+      const resp = await this.store.action('gorge', {
+        kind: item.kind,
+        index: item.index,
+      });
+      this.showToast(resp.text ?? 'Devoured.');
+      this.closeItem();
+    });
   }
 
   async salvagePet(pet: Pet): Promise<void> {

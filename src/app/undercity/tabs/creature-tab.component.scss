@@ -1976,6 +1976,14 @@ $grim-lock: #c96a5a;
     border-color: rgba(185, 140, 240, 0.42);
     .mi { color: #b98cf0; }
   }
+  // Mulch — the Grime Gorger's board-editing fuel. Rot-brown so it reads as
+  // compost rather than a third variation on the green/purple pair.
+  &.mulch {
+    color: #e8dcc4;
+    background: rgba(176, 137, 76, 0.14);
+    border-color: rgba(176, 137, 76, 0.45);
+    .mi { color: #c39a55; }
+  }
 }
 
 .mi.tiny {

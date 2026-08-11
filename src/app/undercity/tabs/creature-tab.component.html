@@ -243,6 +243,11 @@
                 <span class="gear-mat-chip ich" title="Gemstones">
                   <mat-icon class="mi ich-i">diamond</mat-icon>{{ you.materials?.ichor ?? 0 }}
                 </span>
+                @if (canGorge()) {
+                  <span class="gear-mat-chip mulch" title="Mulch — spend it on the board to reclaim a space">
+                    <mat-icon class="mi mulch-i">compost</mat-icon>{{ mulch() }}
+                  </span>
+                }
               </div>
             </div>
             @switch (gearSection()) {
@@ -1147,6 +1152,18 @@
                   </button>
                   <button class="uc-btn ghost" [disabled]="busy()" (click)="salvageFromPopup(item, 'sell')">
                     Sell +{{ sellSpores(item.id) }}<img class="spore-i" src="undercity/icons/rot.png" alt="Spores" />
+                  </button>
+                }
+                <!-- Gorge: a Grime Gorger's third fate for an item, alongside
+                     Grind (materials) and Sell (Spores) — Mulch, which buys
+                     board edits. Destructive, so it arms like Grind does. -->
+                @if (canGorge() && (item.source === 'stash' || item.source === 'bag')) {
+                  <button class="uc-btn ghost" [class.armed]="salvageArmedFor('gorge:' + item.kind + ':' + item.index)" [disabled]="busy()" (click)="confirmGorge(item)">
+                    @if (salvageArmedFor('gorge:' + item.kind + ':' + item.index)) {
+                      <mat-icon class="mi">warning</mat-icon> Tap again to devour
+                    } @else {
+                      <mat-icon class="mi">compost</mat-icon> Devour +{{ gorgeYield(item.kind, item.id) }} Mulch
+                    }
                   </button>
                 }
               </div>
