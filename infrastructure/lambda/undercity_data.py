@@ -249,7 +249,32 @@ APEX = {
         'from': ['brackish_trudge', 'vexing_pest', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman', 'squirrel_warrior'],
         'blurb': 'Treasure Sense: a hoarder\'s eye — gear turns up far more often, and one rarity tier richer.',
     },
+    'grime_gorger': {
+        'name': 'Grime Gorger', 'bonus': {'maxHp': 8, 'def': 2},
+        'passive': 'gorge', 'passives': ['gorge', 'reclaim'],
+        # non-signature shared apex #2 (like the Lich Lord): the scavengers and
+        # composters — bog brute, shell-hoarder, fungal thallid.
+        'from': ['brackish_trudge', 'shambling_shell', 'woodwraith_strangler'],
+        'blurb': 'Gorge: a ten-slot gut that devours gear and consumables into '
+                 'Mulch. Reclaim: standing on a space, spend Mulch to rewrite '
+                 'what that space is — the only creature that edits the map.',
+    },
 }
+
+# Space types the Grime Gorger may OVERWRITE. Deliberately not the same set as
+# the RECLAIM_PRICES targets it may CREATE:
+#   hazard is a source but not a target — it eats filth, it does not spread it;
+#     creating a hazard could only ever be aimed at other players, and a hazard
+#     on your own claim is useless to you.
+#   crystal_vein / excavation / shop are targets but not sources — you can make
+#     one, you cannot unmake one. That also protects a dig site's uncollected
+#     SITE# loot from being erased.
+# Topology (gate/warp/ladder/tunnel/barrier) and unique landmarks (vault/
+# vault_lock/shrine/witch/ossuary/boss) are neither: a player may change what a
+# space DOES, never what the map IS.
+RECLAIM_SOURCES = frozenset({
+    'wild', 'hazard', 'fog', 'loot', 'mystery', 'cache', 'trove', 'rest', 'elite',
+})
 
 # Each starter line's signature apex — reachable by ALL of the line's tier-2
 # forms (see the APEX design note). Enforced by test_undercity_signatures.py.
@@ -319,34 +344,34 @@ GEAR = {
     'kraul_barb':   {'name': 'Kraul Barb',   'slot': 'fang', 'tier': 2, 'cost': 45, 'atk': 4, 'rider': 'deep_biter'},
     'rabid_fang':   {'name': 'Rabid Fang',   'slot': 'fang', 'tier': 2, 'cost': 48, 'atk': 3, 'spd': 1, 'rider': 'rabid'},
     'gutcleaver':   {'name': 'Gutcleaver',   'slot': 'fang', 'tier': 2, 'cost': 50, 'atk': 4, 'rider': 'gutcleaver'},
-    'wurm_tooth':   {'name': 'Wurm Tooth',   'slot': 'fang', 'tier': 3, 'cost': 80, 'atk': 6, 'spd': 1, 'rider': 'deep_biter'},
-    'ravening_maw': {'name': 'Ravening Maw', 'slot': 'fang', 'tier': 3, 'cost': 85, 'atk': 5, 'spd': 1, 'rider': 'rabid'},
+    'wurm_tooth':   {'name': 'Wurm Barb',   'slot': 'fang', 'tier': 3, 'cost': 80, 'atk': 6, 'spd': 1, 'rider': 'deep_biter'},
+    'ravening_maw': {'name': 'Ravening Fang', 'slot': 'fang', 'tier': 3, 'cost': 85, 'atk': 5, 'spd': 1, 'rider': 'rabid'},
     # Fang — new rarity rungs (complete the barbed/bloodfang/deep_biter/rabid/gutcleaver ladders)
-    'cutter_fang':     {'name': 'Cutter Fang',     'slot': 'fang', 'tier': 1, 'cost': 22, 'atk': 2, 'rider': 'deep_biter'},
-    'feral_nip':       {'name': 'Feral Nip',       'slot': 'fang', 'tier': 1, 'cost': 23, 'atk': 2, 'rider': 'rabid'},
+    'cutter_fang':     {'name': 'Cutter Barb',     'slot': 'fang', 'tier': 1, 'cost': 22, 'atk': 2, 'rider': 'deep_biter'},
+    'feral_nip':       {'name': 'Feral Fang',       'slot': 'fang', 'tier': 1, 'cost': 23, 'atk': 2, 'rider': 'rabid'},
     'notched_cleaver': {'name': 'Notched Cleaver', 'slot': 'fang', 'tier': 1, 'cost': 24, 'atk': 2, 'rider': 'gutcleaver'},
     'serpent_fang':    {'name': 'Serpent Fang',    'slot': 'fang', 'tier': 2, 'cost': 46, 'atk': 4, 'rider': 'barbed'},
     'sanguine_fang':   {'name': 'Sanguine Fang',   'slot': 'fang', 'tier': 2, 'cost': 47, 'atk': 4, 'rider': 'bloodfang'},
-    'wyrm_venomtooth': {'name': 'Wyrm Venomtooth', 'slot': 'fang', 'tier': 3, 'cost': 82, 'atk': 6, 'spd': 1, 'rider': 'barbed'},
-    'vampiric_maw':    {'name': 'Vampiric Maw',    'slot': 'fang', 'tier': 3, 'cost': 83, 'atk': 6, 'spd': 1, 'rider': 'bloodfang'},
+    'wyrm_venomtooth': {'name': 'Wyrmvenom Fang', 'slot': 'fang', 'tier': 3, 'cost': 82, 'atk': 6, 'spd': 1, 'rider': 'barbed'},
+    'vampiric_maw':    {'name': 'Vampiric Fang',    'slot': 'fang', 'tier': 3, 'cost': 83, 'atk': 6, 'spd': 1, 'rider': 'bloodfang'},
     'gravecleaver':    {'name': 'Gravecleaver',    'slot': 'fang', 'tier': 3, 'cost': 84, 'atk': 6, 'rider': 'gutcleaver'},
     # Carapace — Guard riders
-    'chitin_scrap': {'name': 'Chitin Scrap', 'slot': 'carapace', 'tier': 1, 'cost': 20, 'def': 2, 'rider': 'thick'},
+    'chitin_scrap': {'name': 'Chitin Carapace', 'slot': 'carapace', 'tier': 1, 'cost': 20, 'def': 2, 'rider': 'thick'},
     'bramble_hide': {'name': 'Bramble Hide', 'slot': 'carapace', 'tier': 1, 'cost': 25, 'def': 2, 'rider': 'bramble'},
     'bark_hide':    {'name': 'Bark Hide',    'slot': 'carapace', 'tier': 2, 'cost': 45, 'def': 4, 'rider': 'spiked'},
     'bulwark_plate': {'name': 'Bulwark Plate', 'slot': 'carapace', 'tier': 2, 'cost': 48, 'def': 3, 'maxHp': 3, 'rider': 'bulwark'},
     'mossback':     {'name': 'Sunleaf Carapace',     'slot': 'carapace', 'tier': 2, 'cost': 50, 'def': 3, 'rider': 'mossback'},
     'troll_hide':   {'name': 'Troll Hide',   'slot': 'carapace', 'tier': 3, 'cost': 80, 'def': 5, 'maxHp': 6, 'rider': 'spiked'},
-    'ironshell_bulwark': {'name': 'Ironshell Bulwark', 'slot': 'carapace', 'tier': 3, 'cost': 85, 'def': 5, 'maxHp': 6, 'rider': 'bulwark'},
+    'ironshell_bulwark': {'name': 'Ironshell Plate', 'slot': 'carapace', 'tier': 3, 'cost': 85, 'def': 5, 'maxHp': 6, 'rider': 'bulwark'},
     # Carapace — new rarity rungs (complete the thick/bramble/spiked/bulwark/mossback ladders)
     'thornscrap_hide':   {'name': 'Thornscrap Hide', 'slot': 'carapace', 'tier': 1, 'cost': 22, 'def': 2, 'rider': 'spiked'},
-    'barricade_shell':   {'name': 'Barricade Shell', 'slot': 'carapace', 'tier': 1, 'cost': 23, 'def': 2, 'rider': 'bulwark'},
+    'barricade_shell':   {'name': 'Barricade Plate', 'slot': 'carapace', 'tier': 1, 'cost': 23, 'def': 2, 'rider': 'bulwark'},
     'mossling_hide':     {'name': 'Sunleaf Hide',   'slot': 'carapace', 'tier': 1, 'cost': 24, 'def': 2, 'rider': 'mossback'},
     'ridged_carapace':   {'name': 'Ridged Carapace', 'slot': 'carapace', 'tier': 2, 'cost': 46, 'def': 4, 'rider': 'thick'},
     'bramble_carapace':  {'name': 'Bramble Carapace', 'slot': 'carapace', 'tier': 2, 'cost': 47, 'def': 4, 'rider': 'bramble'},
-    'colossus_shell':    {'name': 'Colossus Shell',  'slot': 'carapace', 'tier': 3, 'cost': 82, 'def': 5, 'maxHp': 6, 'rider': 'thick'},
+    'colossus_shell':    {'name': 'Colossus Carapace',  'slot': 'carapace', 'tier': 3, 'cost': 82, 'def': 5, 'maxHp': 6, 'rider': 'thick'},
     'bramble_aegis':     {'name': 'Bramble Aegis',   'slot': 'carapace', 'tier': 3, 'cost': 83, 'def': 5, 'maxHp': 6, 'rider': 'bramble'},
-    'overgrown_bulwark': {'name': 'Overgrown Bulwark', 'slot': 'carapace', 'tier': 3, 'cost': 84, 'def': 5, 'maxHp': 6, 'rider': 'mossback'},
+    'overgrown_bulwark': {'name': 'Sunleaf Bulwark', 'slot': 'carapace', 'tier': 3, 'cost': 84, 'def': 5, 'maxHp': 6, 'rider': 'mossback'},
     # Carapace — Vital line (pure Max HP, no rider): trade DEF+rider for a big HP pool
     'bloatsac_plate':    {'name': 'Bloatsac Plate',    'slot': 'carapace', 'tier': 1, 'cost': 22, 'maxHp': 6, 'prop': 'vital'},
     'engorged_carapace': {'name': 'Engorged Carapace', 'slot': 'carapace', 'tier': 2, 'cost': 46, 'maxHp': 12, 'def': 1, 'prop': 'vital'},
@@ -359,16 +384,16 @@ GEAR = {
     'warbrand_plate': {'name': 'Warbrand Plate', 'slot': 'carapace', 'tier': 2, 'cost': 46, 'def': 3, 'atk': 2, 'prop': 'hybrid'},
     'wardens_charm':  {'name': "Warden's Charm",  'slot': 'charm',    'tier': 2, 'cost': 46, 'spd': 2, 'def': 2, 'prop': 'hybrid'},
     # Charm — Feint riders (new slot; light on raw stats, value is the rider)
-    'quartz_charm':   {'name': 'Quartz Charm',   'slot': 'charm', 'tier': 1, 'cost': 20, 'spd': 1, 'rider': 'trickster'},
+    'quartz_charm':   {'name': "Fool's Charm",   'slot': 'charm', 'tier': 1, 'cost': 20, 'spd': 1, 'rider': 'trickster'},
     'venom_charm':    {'name': 'Venom Charm',    'slot': 'charm', 'tier': 1, 'cost': 25, 'spd': 1, 'rider': 'venomtrick'},
     'serrated_charm': {'name': 'Serrated Charm', 'slot': 'charm', 'tier': 2, 'cost': 45, 'spd': 1, 'rider': 'serrated'},
-    'seer_charm':     {'name': 'Seer Charm',     'slot': 'charm', 'tier': 2, 'cost': 50, 'spd': 1, 'rider': 'seer', 'readBonus': 0.30},
+    'seer_charm':     {'name': "Seer's Charm",     'slot': 'charm', 'tier': 2, 'cost': 50, 'spd': 1, 'rider': 'seer', 'readBonus': 0.30},
     'cutpurse_charm': {'name': 'Cutpurse Charm', 'slot': 'charm', 'tier': 2, 'cost': 48, 'spd': 1, 'rider': 'cutpurse'},
     'glint_charm':    {'name': 'Glint Charm',    'slot': 'charm', 'tier': 3, 'cost': 80, 'spd': 2, 'rider': 'glint', 'readBonus': 0.15},
     # Charm — new rarity rungs (complete the trickster/venomtrick/serrated/seer/cutpurse/glint ladders)
     'chipped_charm':    {'name': 'Chipped Charm',   'slot': 'charm', 'tier': 1, 'cost': 22, 'spd': 1, 'rider': 'serrated'},
     'pickpocket_charm': {'name': 'Pickpocket Charm', 'slot': 'charm', 'tier': 1, 'cost': 23, 'spd': 1, 'rider': 'cutpurse'},
-    'glass_eye':        {'name': 'Glass Eye',       'slot': 'charm', 'tier': 1, 'cost': 24, 'spd': 1, 'rider': 'seer', 'readBonus': 0.15},
+    'glass_eye':        {'name': "Seer's Glass",       'slot': 'charm', 'tier': 1, 'cost': 24, 'spd': 1, 'rider': 'seer', 'readBonus': 0.15},
     'glimmer_charm':    {'name': 'Glimmer Charm',   'slot': 'charm', 'tier': 1, 'cost': 24, 'spd': 1, 'rider': 'glint', 'readBonus': 0.08},
     'jesters_charm':    {'name': "Jester's Charm",  'slot': 'charm', 'tier': 2, 'cost': 46, 'spd': 1, 'rider': 'trickster'},
     'toxin_charm':      {'name': 'Toxin Charm',     'slot': 'charm', 'tier': 2, 'cost': 47, 'spd': 1, 'rider': 'venomtrick'},
@@ -540,6 +565,13 @@ CONSUMABLES = {
                       'effect': 'reveal',
                       'blurb': 'In battle: reveal the enemy true intent this round.'},
     # ── Tier 2 · Rare ────────────────────────────────────────────────────────
+    # Recall to any home-biome Gate and LAND on it — which full-heals you. The
+    # answer to being stranded far from a Gate on low HP with rolls still banked
+    # (exactly how a player was lost in session 20260808-182231). Deliberately a
+    # retreat, not an advance: Gates sit in the home rings, away from the deep
+    # content, so recalling always costs you ground.
+    'gatestone':    {'name': 'Gatestone', 'tier': 2, 'recall': 'gate',
+                     'blurb': 'Recall to any home Gate and land on it — mending you fully.'},
     'loaded_die':   {'name': 'Loaded Die', 'tier': 2, 'die': (1, 6),
                      'blurb': 'Choose your next roll’s value (1–6).'},
     'high_roller':  {'name': 'High Roller', 'tier': 1, 'die': (4, 6),

@@ -545,3 +545,28 @@ DUNGEON_SIGIL_SCALING = 0.40
 # per creature, and scaling them would change fight *shape*, not just pressure.
 DUNGEON_SIGIL_SCALED_STATS = ('hp', 'atk', 'def')
 TREASURE_SENSE_MAX_TIER    = 3    # ceiling — never bumps into craft-only tier-4 mythics
+
+# ── Grime Gorger (design 2026-08-10) ─────────────────────────────────────────
+# The apex that edits the board. Gorge turns junk into Mulch; Reclaim spends
+# Mulch, standing on a space, to rewrite what that space is.
+GORGE_BAG_SIZE = 10           # its consumable bag; every other form keeps BAG_SIZE 5
+# Yields by item rarity (the shared 1-4 Common/Rare/Legendary/Mythic ladder).
+# Gear is worth double a consumable of the same rarity, matching the real price
+# tables (gear 23/47/82/150 vs consumables 12/25/45/80). Deliberately slightly
+# WORSE per forgone Spore at high rarity, so Commons are the efficient fuel and
+# the Gorger buys the table's junk instead of eating its own best gear.
+GORGE_MULCH_CONSUMABLE = {1: 1, 2: 2, 3: 3, 4: 4}
+GORGE_MULCH_GEAR       = {1: 2, 2: 4, 3: 6, 4: 8}
+
+# Price of creating each space type. Cheap spaces buy XP, expensive spaces buy
+# wealth — that tension is the point of the spread. `shop` at 60 is the number
+# least trusted here; revisit it after a real session.
+RECLAIM_PRICES = {'wild': 4, 'mystery': 6, 'loot': 10, 'elite': 12,
+                  'cache': 14, 'rest': 18, 'crystal_vein': 24,
+                  'excavation': 24, 'trove': 30, 'shop': 60}
+# `restsUsed` is tracked PER NODE, not as a per-descent count, so a creatable
+# rest node in the depths manufactures extra full heals and dissolves descent
+# attrition. A created shop is the same failure in economic form: a descent's
+# tension is committing without resupply. Both are free to build on the surface.
+RECLAIM_SURFACE_ONLY = ('rest', 'shop')
+RECLAIM_MAX_CLAIMS = 3        # standing claims per player; a 4th collapses the oldest
