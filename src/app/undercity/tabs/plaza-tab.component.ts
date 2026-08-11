@@ -353,7 +353,10 @@ export class PlazaTabComponent implements AfterViewInit, OnDestroy {
     if (l.kind === 'pet' || l.kind === 'egg') return affordReason(you.spores, l.price);
     const held =
       l.kind === 'consumable' ? you.bag : l.kind === 'scroll' ? you.scrolls : you.gearStash;
-    const cap = l.kind === 'consumable' ? 5 : 6; // BAG_SIZE=5; gearStash/scrolls=6
+    // Bag capacity is per-creature now (a Grime Gorger's Gorge doubles it to
+    // 10), so take it from the server rather than restating the constant here.
+    // gearStash/scrolls are still a flat 6.
+    const cap = l.kind === 'consumable' ? (you.bagCap ?? 5) : 6;
     const label =
       l.kind === 'consumable' ? 'Bag' : l.kind === 'scroll' ? 'Scroll satchel' : 'Stash';
     return (
