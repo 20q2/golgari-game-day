@@ -61,6 +61,11 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
   protected grantResource: 'rolls' | 'xp' | 'spores' = 'rolls';
   protected grantAmount = 3;
 
+  /** 'XP' reads as an initialism; the other two are plain nouns. */
+  protected get grantLabel(): string {
+    return this.grantResource === 'xp' ? 'XP' : this.grantResource;
+  }
+
   // Give-pet form state. Species options are labeled by role so you can force an
   // attack/defend pet to test the combat companion; 'random' picks from the roster.
   protected readonly petTiers = [1, 2, 3, 4];

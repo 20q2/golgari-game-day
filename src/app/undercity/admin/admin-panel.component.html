@@ -90,7 +90,11 @@
                 @if (p.isBot) {
                   <button (click)="botStep(p.userId)" [disabled]="busy()">Take turn</button>
                 }
-                <button (click)="grant(p.userId)" [disabled]="busy()">Grant</button>
+                <!-- Says what it will actually hand over, so the row button
+                     isn't a mystery that depends on a dropdown further up. -->
+                <button (click)="grant(p.userId)" [disabled]="busy()">
+                  Grant {{ grantAmount }} {{ grantLabel }}
+                </button>
                 <button (click)="givePet(p.userId)" [disabled]="busy()">Give pet</button>
                 <button (click)="heal(p.userId)" [disabled]="busy()">Heal</button>
                 @if (!p.isBot) {
