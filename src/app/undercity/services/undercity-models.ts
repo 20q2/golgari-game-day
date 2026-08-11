@@ -13,6 +13,18 @@ export interface Season {
   /** Sticky: this night ran with Dev Night at some point, so its results can
    * never be banked — ending it always discards. */
   devEverOn?: boolean;
+  /** Every standing Grime Gorger claim, keyed by node id. Shipped to the whole
+   * table so every client renders the same board. */
+  reclaimed?: Record<string, ReclaimedNode>;
+}
+
+/** A board space a Grime Gorger has rewritten with Reclaim. `origType` is what
+ *  it reverts to when the claim is released. */
+export interface ReclaimedNode {
+  type: string;
+  origType: string;
+  by: string;
+  byName: string;
 }
 
 export interface PublicPlayer {
@@ -186,6 +198,13 @@ export interface YouDoc {
   gearStash?: string[];
   /** Forge economy: crafting-material counters. */
   materials?: { moltings: number; ichor: number };
+  /** Grime Gorger: junk devoured into board-editing fuel. */
+  mulch?: number;
+  /** Effective consumable-bag ceiling — 10 for a Grime Gorger, else 5. Always
+   * prefer this over restating the constant client-side. */
+  bagCap?: number;
+  /** Grime Gorger: node ids currently held as reclaimed ground (max 3). */
+  claims?: string[];
   stance: string;
   shieldUntil?: string | null;
   pendingMove?: PendingMove | null;

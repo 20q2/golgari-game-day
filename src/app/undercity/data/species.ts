@@ -53,6 +53,7 @@ export const FORM_SPRITES: Record<string, SpeciesSprite> = {
   // Colossal Grave-Reaver inherits the vacated dragon art.
   grave_reaver: { sprite: 'swamp_dragon', regions: MASK_REGIONS, scale: 1.3 },
   izoni: { sprite: 'primeval_warden', regions: MASK_REGIONS, scale: 1.3 },
+  grime_gorger: { sprite: 'grime_gorger', regions: MASK_REGIONS, scale: 1.3 },
   daemogoth: { sprite: 'daemogoth', regions: MASK_REGIONS, scale: 1.3 },
   // Squirrel T2/T3
   // squirrel_warrior id displays as Vinereap Mentor; art = vinereap_mentor.

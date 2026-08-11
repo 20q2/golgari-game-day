@@ -48,6 +48,8 @@ export const PASSIVE_NAMES: Record<string, string> = {
   gift_of_fair_folk: 'Gift of the Fair Folk',
   stone_gaze: 'Stone Gaze',
   mimicry: 'Mimicry',
+  gorge: 'Gorge',
+  reclaim: 'Reclaim',
 };
 
 export const PASSIVE_BLURBS: Record<string, string> = {
@@ -80,6 +82,9 @@ export const PASSIVE_BLURBS: Record<string, string> = {
   gift_of_fair_folk: 'Born gifted but slow to grow: starts with 5 attribute points to allocate, but gains only 1 point on level up instead of the normal 2.',
   stone_gaze: 'Reads come easily; each read petrifies the foe — stacking slow that ends in a one-round freeze.',
   mimicry: 'At the first blow it takes the shape of its prey — a stat bump matching how the foe fights.',
+  gorge: 'A ten-slot gut: devour any gear or consumable for Mulch, richer the rarer it was.',
+  reclaim:
+    'Standing on a space, spend Mulch to rewrite what that space is — up to three claims at once.',
 };
 
 export const STARTERS: FormInfo[] = [
@@ -141,6 +146,7 @@ export const APEX: (FormInfo & { from: string[] })[] = [
   { id: 'daemogoth', name: 'Daemogoth Titan', tier: 3, passive: 'arsenal', passiveName: 'Arsenal', bonus: { atk: 2, def: 2 }, blurb: 'A demon of shadow and moss whose spare arms wield a fourth piece of gear — one no other creature can bear.', from: ['wood_lurker', 'gorgon'] },
   { id: 'calamity_beast', name: 'Calamity Beast', tier: 3, passive: 'wish', passiveName: 'Wish', bonus: { maxHp: 6, spd: 2 }, blurb: 'Learns Wish — cast ANY spell in the world.', from: ['squirrel_warrior', 'squirrel_mage'] },
   { id: 'grave_reaver', name: 'Colossal Grave-Reaver', tier: 3, passive: 'treasure_sense', passiveName: 'Treasure Sense', bonus: { maxHp: 6, atk: 2, def: 2 }, blurb: 'A hoarder\'s eye — gear turns up far more often, and one rarity tier richer.', from: ['brackish_trudge', 'vexing_pest', 'kraul_warrior', 'shambling_shell', 'deathrite_shaman', 'squirrel_warrior'] },
+  { id: 'grime_gorger', name: 'Grime Gorger', tier: 3, passive: 'gorge', passiveName: 'Gorge', passives: ['gorge', 'reclaim'], bonus: { maxHp: 8, def: 2 }, blurb: 'A refuse-elemental that eats junk and grows ground worth walking on — the only creature that edits the map.', from: ['brackish_trudge', 'shambling_shell', 'woodwraith_strangler'] },
 ];
 
 export const ALL_FORMS: Record<string, FormInfo> = Object.fromEntries(
