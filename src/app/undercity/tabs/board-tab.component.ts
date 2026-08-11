@@ -2559,6 +2559,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     );
     this.board.setFirsts(this.store.firsts());
     this.board.setFogReveals(this.store.fogReveals());
+    this.board.setReclaimed(this.store.reclaimed());
     this.board.setProgress(this.store.excavations(), this.store.veins());
   }
 

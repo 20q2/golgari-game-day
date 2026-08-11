@@ -527,6 +527,8 @@ export class BoardCanvas {
   private firsts: Record<string, { by: string; kind: string }> = {};
   /** Ashen Fog node id -> the space type it permanently revealed to. */
   private fogReveals: Record<string, string> = {};
+  /** Grime Gorger claims keyed by node id — the board's only player-made edits. */
+  private reclaimed: Record<string, { type: string; byName: string }> = {};
   private clearedDungeons = new Set<string>(); // biome keys with your sigil
   private onEnterDungeonCb: ((biome: string) => void) | null = null;
   private ambient: BoardAmbient;
@@ -735,6 +737,11 @@ export class BoardCanvas {
   /** Season-global Ashen Fog reveals: node id -> the type the fog locked to. */
   setFogReveals(fogReveals: Record<string, string>): void {
     this.fogReveals = fogReveals ?? {};
+  }
+
+  /** Grime Gorger claims — nodes whose type has been rewritten for the night. */
+  setReclaimed(reclaimed: Record<string, { type: string; byName: string }>): void {
+    this.reclaimed = reclaimed ?? {};
   }
 
   /** Dungeons YOU hold the sigil for render as 'cleared' (banner, calm glow). */
@@ -1939,7 +1946,12 @@ export class BoardCanvas {
       ctx.fillStyle = `rgba(150, 150, 165, ${0.12 + pulse * 0.14})`;
       ctx.fill();
     }
-    const discNode = fogReveal ? { ...n, type: fogReveal } : n;
+    // A Grime Gorger's claim rewrites what this space IS, so it draws as what it
+    // has become — the same override trick the fog reveal uses, and it outranks
+    // the fog type since reclaiming requires a revealed tile.
+    const claim = this.reclaimed[n.id];
+    const effType = claim?.type ?? fogReveal ?? n.type;
+    const discNode = effType !== n.type ? { ...n, type: effType } : n;
     // Depths hazard tiles hide the generic warning glyph — the dungeon boss's
     // silhouette (drawn below) is their emblem instead.
     const dungeonHazard = n.type === 'hazard' && n.region === 'depths';
@@ -1970,9 +1982,13 @@ export class BoardCanvas {
 
     // Treasure tiles wear the hoard sprite, swapping to a plundered variant once
     // their season-global first conqueror has cracked them open.
-    if (n.type === 'trove' || n.type === 'cache' || n.type === 'vault' || fogReveal === 'cache') {
+    if (effType === 'trove' || effType === 'cache' || effType === 'vault') {
       this.drawTreasureHoard(n);
     }
+
+    // Cultivated ground: a dashed Golgari-green ring marks every claim, so the
+    // whole table can see the Gorger has worked this tile.
+    if (claim) this.drawReclaimedRing(n, elapsed);
 
     // First-conqueror name-plates: lairs show at their dungeon LADDER (the den
     // entrance); Savra at the boss node; treasure at the tile itself.
@@ -1984,9 +2000,11 @@ export class BoardCanvas {
       if (b) this.drawNamePlate(n.x, n.y + 8, `First to fell the Queen: ${b.by}`);
     } else if (
       this.firsts[n.id] &&
-      (n.type === 'trove' || n.type === 'cache' || n.type === 'vault')
+      (effType === 'trove' || effType === 'cache' || effType === 'vault')
     ) {
       this.drawNamePlate(n.x, n.y + 8, `Plundered by ${this.firsts[n.id].by}`);
+    } else if (claim) {
+      this.drawNamePlate(n.x, n.y + 8, `Reclaimed by ${claim.byName}`);
     }
 
     // The wilderness World Event beast squats across its 3-node footprint.
@@ -2389,6 +2407,26 @@ export class BoardCanvas {
    * dungeon boss is dead: the passage still leads down, but only the boss's
    * vestige lingers below. A faint ghostly halo pulses so it reads as spent.
    */
+  /**
+   * Cultivated ground: a slow-rotating dashed ring around a Grime Gorger's
+   * claim. Dashed rather than solid so it reads as "tended", and rotating so it
+   * never looks like the static selection/range rings the board already uses.
+   */
+  private drawReclaimedRing(n: BoardNode, elapsed: number): void {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(n.x, n.y);
+    ctx.rotate((elapsed * 0.25) % (Math.PI * 2));
+    ctx.scale(1, DISC_RY / NODE_R); // match the disc's isometric squash
+    ctx.beginPath();
+    ctx.arc(0, 0, NODE_R + 6, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(154, 205, 50, 0.85)'; // Golgari green
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   private drawVestigeBadge(n: BoardNode, elapsed: number): void {
     const ctx = this.ctx;
     const bx = n.x + NODE_R * 0.72;

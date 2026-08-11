@@ -94,6 +94,8 @@ export class UndercityStateService {
   readonly guardians = computed(() => this._state()?.guardians ?? {});
   readonly firsts = computed(() => this._state()?.firsts ?? {});
   readonly fogReveals = computed(() => this._state()?.fogReveals ?? {});
+  /** Grime Gorger claims — board edits every client renders identically. */
+  readonly reclaimed = computed(() => this._state()?.season?.reclaimed ?? {});
   readonly worldEvent = computed(() => this._state()?.worldEvent ?? null);
   readonly enraged = computed(() => this._state()?.enraged ?? null);
   readonly wardrobe = computed(() => this._state()?.wardrobe ?? null);
