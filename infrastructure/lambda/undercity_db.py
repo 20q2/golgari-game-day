@@ -317,6 +317,28 @@ def _season_map(table, sid):
     return cached
 
 
+def _reclaimed(table, sid):
+    """Every standing Grime Gorger claim this season, keyed by node id.
+
+    Claims are an OVERRIDE LAYER, never a mutation: with PROCEDURAL_DUNGEONS off
+    `_season_map` hands back the committed module-level node dict *by reference*,
+    so editing the graph in place would corrupt state across Lambda invocations
+    (and across tests in one process). Never write a node type; layer over it."""
+    resp = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': _season_pk(sid), ':sk': 'RECLAIM#'})
+    return {it['node']: it for it in resp.get('Items', [])}
+
+
+def _effective_type(table, sid, node):
+    """What landing on `node` actually does right now — the reclaimed override
+    if one stands, else the season map's own type."""
+    claim = _reclaimed(table, sid).get(node)
+    if claim:
+        return claim['type']
+    return _season_map(table, sid)[node]['type']
+
+
 _season_depth_cache = {}   # sid -> {depths node id -> hops from its biome mouth}
 
 
@@ -4434,7 +4456,9 @@ def _maybe_bazaar_welcome(doc, stock):
 def _resolve_space(table, sid, doc, node, prev):
     """Apply the landing event for `node`, mutating doc. Returns event dict."""
     nodes = _season_map(table, sid)
-    ntype = nodes[node]['type']
+    # Read through the Grime Gorger override layer, so a reclaimed space
+    # resolves — and reports its metric — as what it has become.
+    ntype = _effective_type(table, sid, node)
     _metric(doc, 'spaces')
     _metric(doc, f'space.{ntype}')
 

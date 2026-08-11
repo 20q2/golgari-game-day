@@ -160,3 +160,39 @@ def test_gorge_is_registered_as_an_action(table):
     status, body = act(table, 'gorge', kind='gear', index=0)
     assert status == 200, body
     assert body['you']['mulch'] == 4
+
+
+# ── The reclaimed-space override layer ───────────────────────────────────────
+
+def _write_claim(table, sid, node, ntype, orig, by='user-alex'):
+    table.put_item(Item={'pk': db._season_pk(sid), 'sk': f'RECLAIM#{node}',
+                         'node': node, 'type': ntype, 'origType': orig,
+                         'price': 10, 'by': by, 'byName': 'Alex'})
+
+
+def test_effective_type_falls_back_to_the_map(table):
+    sid, _ = _player_at(table, 'cavern_r2')
+    nodes = db._season_map(table, sid)
+    assert db._effective_type(table, sid, 'cavern_r2') == nodes['cavern_r2']['type']
+
+
+def test_effective_type_honours_a_claim(table):
+    sid, _ = _player_at(table, 'cavern_r2')
+    _write_claim(table, sid, 'cavern_r2', 'loot', 'wild')
+    assert db._effective_type(table, sid, 'cavern_r2') == 'loot'
+
+
+def test_claim_does_not_mutate_the_shared_node_graph(table):
+    """Regression guard: _season_map returns data.MAP_NODES by reference when
+    PROCEDURAL_DUNGEONS is off, so writing a claim must never touch it."""
+    sid, _ = _player_at(table, 'cavern_r2')
+    before = data.MAP_NODES['cavern_r2']['type']
+    _write_claim(table, sid, 'cavern_r2', 'loot', before)
+    assert data.MAP_NODES['cavern_r2']['type'] == before
+
+
+def test_landing_resolves_as_the_claimed_type(table):
+    sid, doc = _player_at(table, 'cavern_r2')   # 'wild' in the committed map
+    _write_claim(table, sid, 'cavern_r2', 'loot', 'wild')
+    ev = db._resolve_space(table, sid, doc, 'cavern_r2', 'cavern_r1')
+    assert ev['type'] in ('loot', 'loot_puzzle')  # never a wild battle
