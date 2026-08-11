@@ -1590,10 +1590,33 @@ def _roll_scroll_drop(doc, source):
 # Player-doc fields that hold each capacity-limited kind + its cap. Shared by
 # _acquire (placement) and pickup-resolve (freeing a slot). Gear also auto-equips
 # an empty slot before it stashes, so it has extra handling in _acquire.
+def bag_cap(doc):
+    """Consumable-bag ceiling for this creature. The Grime Gorger's Gorge
+    passive doubles it — the mechanical spine of a hauler that carries junk
+    around to feed the ground."""
+    if 'gorge' in (doc.get('passives') or []):
+        return data.GORGE_BAG_SIZE
+    return data.BAG_SIZE
+
+
+# Capacity per inventory kind, resolved PER DOC. _ACQUIRE_KINDS/_MARKET_KINDS
+# are module-level dicts built at import time, so they cannot hold a cap that
+# varies by creature — this lookup is the single place caps come from.
+_KIND_CAPS = {
+    'gear':       lambda doc: data.GEAR_STASH_SIZE,
+    'consumable': bag_cap,
+    'scroll':     lambda doc: data.SCROLL_SATCHEL_CAP,
+}
+
+
+def _kind_cap(doc, kind):
+    return _KIND_CAPS[kind](doc)
+
+
 _ACQUIRE_KINDS = {
-    'gear':       {'field': 'gearStash', 'cap': data.GEAR_STASH_SIZE},
-    'consumable': {'field': 'bag',       'cap': data.BAG_SIZE},
-    'scroll':     {'field': 'scrolls',   'cap': data.SCROLL_SATCHEL_CAP},
+    'gear':       {'field': 'gearStash'},
+    'consumable': {'field': 'bag'},
+    'scroll':     {'field': 'scrolls'},
 }
 
 
@@ -1627,7 +1650,7 @@ def _acquire(doc, kind, item_id, source='loot'):
         return {**base, 'outcome': 'pending'}
     spec = _ACQUIRE_KINDS[kind]  # consumable | scroll
     inv = doc.setdefault(spec['field'], [])
-    if len(inv) < spec['cap']:
+    if len(inv) < _kind_cap(doc, kind):
         inv.append(item_id)
         return {'kind': kind, 'itemId': item_id, 'outcome': 'stored'}
     _park_pickup(doc, kind, item_id, source)
@@ -1645,7 +1668,7 @@ def _pickup_fits(doc, kind, item_id):
             return True
         return len(doc.get('gearStash') or []) < data.GEAR_STASH_SIZE
     spec = _ACQUIRE_KINDS[kind]
-    return len(doc.get(spec['field']) or []) < spec['cap']
+    return len(doc.get(spec['field']) or []) < _kind_cap(doc, kind)
 
 
 def _flush_pickups(doc):
@@ -1923,17 +1946,17 @@ def _upgrade_gear(table, sid, doc, payload):
 # field holds that kind, its capacity, and how to derive a base cost / display name.
 _MARKET_KINDS = {
     'gear': {
-        'field': 'gearStash', 'cap': data.GEAR_STASH_SIZE,
+        'field': 'gearStash',
         'cost': lambda i: data.GEAR[i]['cost'],
         'name': lambda i: data.GEAR[i]['name'],
     },
     'consumable': {
-        'field': 'bag', 'cap': data.BAG_SIZE,
+        'field': 'bag',
         'cost': lambda i: data.CONSUMABLES[i]['cost'],
         'name': lambda i: data.CONSUMABLES[i]['name'],
     },
     'scroll': {
-        'field': 'scrolls', 'cap': data.SCROLL_SATCHEL_CAP,
+        'field': 'scrolls',
         'cost': lambda i: data.INSCRIBE_COST[data.SPELLS[i]['tier']],
         'name': lambda i: data.SPELLS[i]['name'],
     },
@@ -2306,7 +2329,7 @@ def _market_buy(table, sid, doc, payload):
     price = int(listing['price'])
     if doc.get('spores', 0) < price:
         return _err('Not enough Spores.', 409)
-    if len(doc.get(spec['field']) or []) >= spec['cap']:
+    if len(doc.get(spec['field']) or []) >= _kind_cap(doc, kind):
         return _err(f"Your {_MARKET_FULL_LABEL[kind]} is full — make room first.", 409)
     try:
         table.delete_item(Key={'pk': pk, 'sk': f'MARKET#{listing_id}'},
@@ -2342,7 +2365,7 @@ def _market_cancel(table, sid, doc, payload):
     spec = _MARKET_KINDS.get(kind)
     if not spec:
         return _err('That listing is gone.', 409)
-    if len(doc.get(spec['field']) or []) >= spec['cap']:
+    if len(doc.get(spec['field']) or []) >= _kind_cap(doc, kind):
         return _err(f"Your {_MARKET_FULL_LABEL[kind]} is full — make room first.", 409)
     try:
         table.delete_item(Key={'pk': pk, 'sk': f'MARKET#{listing_id}'},
@@ -3666,7 +3689,7 @@ def _apply_shop_purchases(perm, doc, payload):
         return _err('Not enough Renown for that.', 409)
 
     n_bag = sum(1 for it in grants if it['kind'] == 'consumable')
-    if len(doc.get('bag') or []) + n_bag > data.BAG_SIZE:
+    if len(doc.get('bag') or []) + n_bag > bag_cap(doc):
         return _err('Your bag can’t hold that many starter items.', 409)
 
     owned_hats = set(perm['hats']) | set(buy_hats)
@@ -4397,7 +4420,7 @@ def _maybe_bazaar_welcome(doc, stock):
     if cheapest is None or doc.get('spores', 0) >= cheapest:
         return None
     doc['bazaarWelcomeGift'] = True
-    if len(doc.get('bag', [])) < data.BAG_SIZE:
+    if len(doc.get('bag', [])) < bag_cap(doc):
         # A starter freebie for a brand-new player: Common only, never the sink.
         item = data.roll_consumable(_rng, max_tier=1)
         doc.setdefault('bag', []).append(item)
@@ -5166,7 +5189,7 @@ def _lair_scavenge(doc, node, entry):
 
 def _scavenge_item(doc):
     """One minor consumable from the scavenge table into the bag; None if full."""
-    if len(doc.get('bag') or []) >= data.BAG_SIZE:
+    if len(doc.get('bag') or []) >= bag_cap(doc):
         return None
     item = _rng.choice(data.LAIR_SCAVENGE_ITEMS)
     doc.setdefault('bag', []).append(item)
@@ -7337,8 +7360,8 @@ def _apply_purchase(table, sid, doc, node, payload, tier_cap=None, ok_extra=None
         if line['qty'] <= 0:
             return _err('Sold out — check back after the restock.', 409)
         c = data.CONSUMABLES[item_id]
-        if len(doc.get('bag') or []) >= data.BAG_SIZE:
-            return _err('Your bag is full (3 slots).', 409)
+        if len(doc.get('bag') or []) >= bag_cap(doc):
+            return _err(f'Your bag is full ({bag_cap(doc)} slots).', 409)
         if doc.get('spores', 0) < c['cost']:
             return _err('Not enough Spores.', 409)
         doc['spores'] -= c['cost']
@@ -7532,7 +7555,7 @@ def _award_dig_loot(doc, loot, table=None, sid=None):
         doc['spores'] = doc.get('spores', 0) + amount
         return {'kind': 'spores', 'spores': amount}
     item_id = loot['item']
-    if len(doc.get('bag') or []) >= data.BAG_SIZE:
+    if len(doc.get('bag') or []) >= bag_cap(doc):
         # Bag full: rather than lose the find, auto-list it on the Player Market
         # at a fair mid price so the digger still profits when it sells. The row
         # is written by _dig after the player save commits (see _dig). Fall back
