@@ -2679,16 +2679,26 @@ def handle_state(table, query_params):
     umori_win = _umori_window()
     umori_node = _umori_node(umori_win)
 
+    # Grime Gorger claims. Every facility view below is seeded off the EFFECTIVE
+    # type, not the raw node: a bought Bazaar Post / Dig Site / Crystal Vein is a
+    # real one, and would otherwise render as a facility with nothing in it.
+    reclaims = _reclaimed(table, sid)
+
+    def _eff_type(nid):
+        claim = reclaims.get(nid)
+        return claim['type'] if claim else nodes[nid]['type']
+
     # Masked dig-site views for every excavation node (empty/covered until dug).
     excavations = {nid: _dig_view(sites.get(nid))
-                   for nid, n in nodes.items() if n['type'] == 'excavation'}
+                   for nid in nodes if _eff_type(nid) == 'excavation'}
 
     # Display-seed untouched veins/vaults so the map renders their facilities
     # from turn one without a write on read.
-    for n in nodes.values():
-        if n['type'] == 'crystal_vein':
+    for nid, n in nodes.items():
+        etype = _eff_type(nid)
+        if etype == 'crystal_vein':
             veins.setdefault(n['region'], {'depth': 0})
-        elif n['type'] == 'vault_lock':
+        elif etype == 'vault_lock':
             vaults.setdefault(n['region'], _vault_view(None))
 
     # Bazaar stock per shop node — the current-window persisted record (possibly
@@ -2696,8 +2706,8 @@ def handle_state(table, query_params):
     shop_win = _shop_window()
     refreshes_at = _shop_window_end(shop_win)
     bazaars = {}
-    for nid, n in nodes.items():
-        if n['type'] != 'shop':
+    for nid in nodes:
+        if _eff_type(nid) != 'shop':
             continue
         rec = shops.get(nid)
         st = rec if rec and rec.get('window') == shop_win else _gen_shop_stock(nid, shop_win)
@@ -2872,7 +2882,7 @@ def handle_action(table, body):
         'cancel-loot-puzzle': _cancel_loot_puzzle,
         'equip-gear': _equip_gear,
         'salvage-gear': _salvage_gear, 'upgrade-gear': _upgrade_gear,
-        'gorge': _gorge,
+        'gorge': _gorge, 'reclaim': _reclaim,
         'market-list': _market_list, 'market-buy': _market_buy,
         'market-cancel': _market_cancel, 'market-edit': _market_edit,
         'pickup-resolve': _pickup_resolve,
@@ -7214,6 +7224,63 @@ def _gorge(table, sid, doc, payload):
         return conflict
     return _ok(doc, text=f"You devour the {name_of(item_id)} — {gained} Mulch.",
                gorge={'mulch': gained, 'total': doc['mulch']})
+
+
+def _reclaim(table, sid, doc, payload):
+    """Spend Mulch, standing on a space, to rewrite what that space is.
+
+    The governing rule: a player may change what a space DOES, never what the
+    map IS. Topology and unique landmarks are therefore absent from both
+    RECLAIM_SOURCES and RECLAIM_PRICES."""
+    if 'reclaim' not in (doc.get('passives') or []):
+        return _err('Only a Grime Gorger can work the ground like that.')
+    target = payload.get('target')
+    price = data.RECLAIM_PRICES.get(target)
+    if price is None:
+        return _err('You cannot grow that here.')
+    node = doc.get('position')
+    nodes = _season_map(table, sid)
+    if node not in nodes:
+        return _err('You are nowhere the ground will take.', 409)
+
+    claims = _reclaimed(table, sid)
+    standing = claims.get(node)
+    if standing and standing['by'] != doc['userId']:
+        return _err('Another Gorger has already worked this ground.', 409)
+
+    current = standing['type'] if standing else nodes[node]['type']
+    if current == target:
+        return _err('This ground is already exactly that.')
+    # Your own claim may be re-landscaped; otherwise the underlying space must
+    # be soft ground. `origType` is preserved so a released claim reverts.
+    if not standing and current not in data.RECLAIM_SOURCES:
+        return _err('This ground will not take a change.', 409)
+    if (current == 'fog'
+            and not (_get(table, _season_pk(sid), f'FOG#{node}') or {}).get('revealed')):
+        return _err('You cannot re-landscape ground you have not seen.', 409)
+    if target in data.RECLAIM_SURFACE_ONLY and nodes[node].get('region') == 'depths':
+        return _err('The deep dark will not hold that — build it on the surface.', 409)
+    if doc.get('mulch', 0) < price:
+        return _err(f'Not enough Mulch — that costs {price}.', 409)
+
+    doc['mulch'] = doc.get('mulch', 0) - price
+    table.put_item(Item={
+        'pk': _season_pk(sid), 'sk': f'RECLAIM#{node}', 'node': node,
+        'type': target, 'price': price,
+        'origType': standing['origType'] if standing else current,
+        'by': doc['userId'], 'byName': doc.get('username', 'Someone'),
+        'at': _now()})
+    doc['claims'] = [n for n in (doc.get('claims') or []) if n != node] + [node]
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    pretty = target.replace('_', ' ')
+    _event(table, sid, 'reclaim',
+           f"{doc.get('username', 'Someone')}'s Grime Gorger works the ground — "
+           f"a {pretty} rises from the filth.",
+           actor=doc['userId'])
+    return _ok(doc, text=f'The ground churns and settles: a {pretty}.',
+               reclaim={'node': node, 'type': target, 'price': price})
 
 
 def _evolve(table, sid, doc, payload):

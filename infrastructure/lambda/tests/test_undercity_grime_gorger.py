@@ -196,3 +196,159 @@ def test_landing_resolves_as_the_claimed_type(table):
     _write_claim(table, sid, 'cavern_r2', 'loot', 'wild')
     ev = db._resolve_space(table, sid, doc, 'cavern_r2', 'cavern_r1')
     assert ev['type'] in ('loot', 'loot_puzzle')  # never a wild battle
+
+
+# ── Reclaim: Mulch -> board edits ────────────────────────────────────────────
+
+def _node_of_type(table, sid, ntype, region=None):
+    nodes = db._season_map(table, sid)
+    return next(nid for nid, n in nodes.items()
+                if n['type'] == ntype and (region is None or n['region'] == region))
+
+
+def test_reclaim_rewrites_a_space_and_charges_the_price(table):
+    sid, doc = _gorger(table)
+    node = _node_of_type(table, sid, 'wild')
+    doc['position'] = node
+    doc['mulch'] = 50
+    status, body = db._reclaim(table, sid, doc, {'target': 'loot'})
+    assert status == 200, body
+    assert body['you']['mulch'] == 50 - config.RECLAIM_PRICES['loot']
+    assert db._effective_type(table, sid, node) == 'loot'
+
+
+def test_reclaim_rejects_non_gorgers(table):
+    sid, doc = _player_at(table, 'cavern_r2')
+    doc['position'] = _node_of_type(table, sid, 'wild')
+    doc['mulch'] = 99
+    status, _ = db._reclaim(table, sid, doc, {'target': 'loot'})
+    assert status == 400
+
+
+def test_reclaim_refuses_topology_and_landmarks_as_sources(table):
+    sid, doc = _gorger(table)
+    doc['mulch'] = 999
+    for protected in ('gate', 'shop', 'ladder', 'barrier'):
+        doc['position'] = _node_of_type(table, sid, protected)
+        status, body = db._reclaim(table, sid, doc, {'target': 'loot'})
+        assert status == 409, (protected, body)
+
+
+def test_hazard_is_a_source_but_never_a_target(table):
+    sid, doc = _gorger(table)
+    doc['mulch'] = 999
+    # Overwriting a hazard is the whole fantasy: it eats filth.
+    doc['position'] = _node_of_type(table, sid, 'hazard')
+    status, _ = db._reclaim(table, sid, doc, {'target': 'loot'})
+    assert status == 200
+    # Creating one is refused: it could only ever be aimed at other players.
+    doc['position'] = _node_of_type(table, sid, 'wild')
+    status, _ = db._reclaim(table, sid, doc, {'target': 'hazard'})
+    assert status == 400
+
+
+def test_dig_sites_are_creatable_but_not_overwritable(table):
+    sid, doc = _gorger(table)
+    doc['mulch'] = 999
+    doc['position'] = _node_of_type(table, sid, 'excavation')
+    status, _ = db._reclaim(table, sid, doc, {'target': 'loot'})
+    assert status == 409
+    doc['position'] = _node_of_type(table, sid, 'wild')
+    status, _ = db._reclaim(table, sid, doc, {'target': 'excavation'})
+    assert status == 200
+
+
+def test_rest_and_shop_are_refused_in_the_depths(table):
+    """restsUsed is tracked per node, so creatable rest nodes underground would
+    manufacture extra full heals per descent; a shop is the same failure in
+    economic form."""
+    for target in ('rest', 'shop'):
+        sid, doc = _gorger(table)
+        doc['mulch'] = 999
+        doc['position'] = _node_of_type(table, sid, 'wild', region='depths')
+        status, body = db._reclaim(table, sid, doc, {'target': target})
+        assert status == 409, (target, body)
+
+
+def test_rest_and_shop_are_allowed_on_the_surface(table):
+    for target in ('rest', 'shop'):
+        sid, doc = _gorger(table)
+        doc['mulch'] = 999
+        doc['position'] = _node_of_type(table, sid, 'wild', region='cavern')
+        status, body = db._reclaim(table, sid, doc, {'target': target})
+        assert status == 200, (target, body)
+
+
+def test_reclaim_refuses_an_unrevealed_fog_node(table):
+    sid, doc = _gorger(table)
+    doc['mulch'] = 999
+    doc['position'] = _node_of_type(table, sid, 'fog')
+    status, _ = db._reclaim(table, sid, doc, {'target': 'loot'})
+    assert status == 409
+    table.put_item(Item={'pk': db._season_pk(sid),
+                         'sk': f"FOG#{doc['position']}", 'revealed': True})
+    status, _ = db._reclaim(table, sid, doc, {'target': 'loot'})
+    assert status == 200
+
+
+def test_reclaim_refuses_a_no_op_target(table):
+    sid, doc = _gorger(table)
+    doc['mulch'] = 999
+    doc['position'] = _node_of_type(table, sid, 'trove')
+    status, _ = db._reclaim(table, sid, doc, {'target': 'trove'})
+    assert status == 400
+
+
+def test_reclaim_refuses_another_players_claim(table):
+    sid, doc = _gorger(table)
+    doc['mulch'] = 999
+    node = _node_of_type(table, sid, 'wild')
+    _write_claim(table, sid, node, 'loot', 'wild', by='user-someone-else')
+    doc['position'] = node
+    status, _ = db._reclaim(table, sid, doc, {'target': 'cache'})
+    assert status == 409
+
+
+def test_a_created_shop_serves_stock(table):
+    """Shop stock reaches the client through state's `bazaars` map, which is
+    seeded per node. That seeding must honour the claim override or the buyer
+    stands on a Bazaar Post with nothing for sale."""
+    sid, doc = _gorger(table)
+    doc['mulch'] = 999
+    node = _node_of_type(table, sid, 'wild', region='cavern')
+    doc['position'] = node
+    db._put_player(table, doc)
+    assert act(table, 'reclaim', target='shop')[0] == 200
+
+    status, body = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200, body
+    stock = body['bazaars'][node]
+    assert stock['gear'] or stock['consumables']
+    # And landing there greets you as a bazaar rather than a wild.
+    doc = db._get_player(table, sid, 'user-alex')
+    assert db._resolve_space(table, sid, doc, node, None)['type'] == 'shop'
+
+
+def test_a_created_dig_site_and_vein_render_as_facilities(table):
+    """Same seeding trap as the shop: excavation views and vein depth are built
+    off node type, so a bought Dig Site must appear in `excavations`."""
+    sid, doc = _gorger(table)
+    doc['mulch'] = 999
+    node = _node_of_type(table, sid, 'wild', region='cavern')
+    doc['position'] = node
+    db._put_player(table, doc)
+    assert act(table, 'reclaim', target='excavation')[0] == 200
+    status, body = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200, body
+    assert node in body['excavations']
+
+
+def test_insufficient_mulch_changes_nothing(table):
+    sid, doc = _gorger(table)
+    node = _node_of_type(table, sid, 'wild')
+    doc['position'] = node
+    doc['mulch'] = 3
+    status, _ = db._reclaim(table, sid, doc, {'target': 'loot'})
+    assert status == 409
+    assert doc['mulch'] == 3
+    assert db._effective_type(table, sid, node) == 'wild'
