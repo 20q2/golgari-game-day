@@ -65,13 +65,64 @@
   }
 }
 
-// Floating jump-to-Umori control, bottom-right — opposite the bottom-left biome
-// chip / event feed, and clear of the action band below.
+// Floating camera/jump control, TOP-right. The bag owns the bottom-right corner
+// (the easier reach, and the more frequently tapped), so the camera moves out of
+// the thumb zone entirely.
+// NOTE: .hud-buffs in undercity-page.component.scss is also anchored right: 10px
+// just below the HUD, so these two share this corner — see the comment there.
 .focus-picker {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 6;
+}
+
+// Bag: a round icon button in the bottom-right corner, with the camera control
+// stacked above it. Uses the game's own pouch glyph rather than a generic
+// backpack, and carries a count badge so you can see you're carrying something
+// without opening it.
+.bag-fab {
   position: absolute;
   bottom: 10px;
   right: 10px;
   z-index: 6;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(26, 24, 21, 0.82);
+  border: 1px solid rgba(74, 124, 89, 0.5);
+  color: #b7e4c7;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+
+  .mi {
+    font-size: 1.25rem;
+    height: 1.25rem;
+    width: 1.25rem;
+  }
+
+  &:hover { border-color: rgba(183, 228, 199, 0.7); }
+  &:focus-visible { outline: 2px solid #b7e4c7; outline-offset: 2px; }
+
+  .bag-fab-count {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: #4a7c59;
+    color: #eafff0;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 16px;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 // Active-companion quick-use box: sits just left of the recenter control. Shows
@@ -1238,6 +1289,65 @@
 
 // Restock countdown pinned to the shop dialog's top-right corner, out of the
 // title block. Anchored to the modal (position: relative below).
+// The Awakening back room. Amber throughout — Royal Jelly is the Queen's own
+// currency and deliberately reads apart from the green Spore economy.
+.shop-tab.back-tab {
+  color: #f0c86b;
+  &.active { border-color: rgba(240, 200, 107, 0.7); }
+  .mi { color: #f0c86b; }
+}
+
+.shop-hint.back-hint {
+  color: #d9c79b;
+  font-style: italic;
+
+  .jelly-have {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 6px;
+    font-style: normal;
+    font-weight: 700;
+    color: #f0c86b;
+    .mi { font-size: 1rem; height: 1rem; width: 1rem; }
+  }
+}
+
+.shop-cost.jelly-cost {
+  color: #f0c86b;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  .mi { font-size: 1.05rem; height: 1.05rem; width: 1.05rem; }
+}
+
+// Bag: reachable from the board so a tonic or a rigged die doesn't cost you a
+// trip through the Creature tab.
+.bag-modal {
+  .bag-desc {
+    display: block;
+    font-size: 0.74rem;
+    line-height: 1.25;
+    color: #9ac79a;
+  }
+  .bag-tag {
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #8b9a8d;
+    white-space: nowrap;
+  }
+  // A rigged die offers its own faces inline — no second modal to pick a value.
+  .die-inline {
+    display: inline-flex;
+    gap: 4px;
+    .die-btn {
+      min-width: 30px;
+      padding: 3px 7px;
+    }
+  }
+}
+
 .shop-modal {
   position: relative;
 

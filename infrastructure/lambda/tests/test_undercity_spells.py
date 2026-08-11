@@ -522,26 +522,26 @@ def test_fate_die_sets_pending_loaded_die(table):
 
 # ── cast: boss strike ────────────────────────────────────────────────────────
 
-def test_boss_strike_chips_savra_and_floors(table):
+def test_savra_cannot_be_struck_from_afar(table):
+    """She is a personal trial (design 2026-08-11) — one fight, in person. Both
+    ordinary chip damage and the lethal snipe are refused at the Queen; lair
+    pools are unaffected (see test_sear_throne_slays_lair_boss)."""
     act(table, 'join', starter='pest', home='city')
     give_book(table, 'user-alex', 'queensbane_grimoire')
     status, resp = act(table, 'cast', spellId='queens_bane', source='grimoire',
                        target='boss')
-    assert status == 200
-    assert resp['cast']['dmg'] == 15
-    assert db._boss_hp(table, _sid(table)) == data.ROT_SOVEREIGN['hp'] - 15
-    assert resp['you']['bossDamage'] == 15
+    assert status == 409, resp
+    assert db._get_player(table, _sid(table), 'user-alex').get('bossDamage', 0) == 0
 
-    # Floor at 1: pool can never be spell-killed.
-    db._set_boss_hp(table, _sid(table), 5)
+    give_book(table, 'user-alex', 'throneburner_codex')
     doc = db._get_player(table, _sid(table), 'user-alex')
     doc['spellCooldowns'] = {}
     db._put_player(table, doc)
-    status, resp = act(table, 'cast', spellId='queens_bane', source='grimoire',
+    status, resp = act(table, 'cast', spellId='sear_throne', source='grimoire',
                        target='boss')
-    assert status == 200
-    assert db._boss_hp(table, _sid(table)) == 1
-    assert resp['cast']['dmg'] == 4
+    assert status == 409, resp
+    claims = db._get_player(table, _sid(table), 'user-alex').get('poiClaims') or []
+    assert 'boss' not in claims, 'the crown cannot be sniped'
 
 
 def test_boss_strike_chips_lair_pool(table):
@@ -570,23 +570,6 @@ def test_boss_strike_bad_target(table):
 
 # ── cast: Sear the Throne — the lethal exception ─────────────────────────────
 
-def test_sear_throne_can_slay_savra_and_pays_full_reward(table):
-    """Sear the Throne alone may land the killing blow on the Queen from afar —
-    it grants the full in-person kill payout and reforms the pool for the season."""
-    act(table, 'join', starter='pest', home='city')
-    give_book(table, 'user-alex', 'throneburner_codex')
-    db._set_boss_hp(table, _sid(table), 5)          # a finishing-blow range
-    status, resp = act(table, 'cast', spellId='sear_throne', source='grimoire',
-                       target='boss')
-    assert status == 200
-    assert db._boss_hp(table, _sid(table)) == data.ROT_SOVEREIGN['hp']   # reforms full
-    you = resp['you']
-    assert 'boss' in you['poiClaims']                                    # first-kill claim
-    assert resp['cast']['spores'] == data.ROT_SOVEREIGN['first']['spores']
-    assert resp['cast']['xp'] == data.ROT_SOVEREIGN['first']['xp']
-    assert you['bossDamage'] == 5                                        # only the chip counts
-
-
 def test_sear_throne_slays_lair_boss(table):
     act(table, 'join', starter='pest', home='city')
     give_book(table, 'user-alex', 'throneburner_codex')
@@ -603,15 +586,19 @@ def test_sear_throne_slays_lair_boss(table):
 
 
 def test_queens_bane_still_floors_and_cannot_kill(table):
-    """The lethal exception is Sear-the-Throne-only; Queen's Bane still floors at 1."""
+    """The lethal exception is Sear-the-Throne-only; Queen's Bane still floors a
+    pool at 1. Measured against a LAIR now that Savra takes no ranged damage."""
     act(table, 'join', starter='pest', home='city')
     give_book(table, 'user-alex', 'queensbane_grimoire')
-    db._set_boss_hp(table, _sid(table), 5)
+    sid = _sid(table)
+    db._set_lair_state(table, sid, 'city_lair', 5, False)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = 'city_r0'
+    db._put_player(table, doc)
     status, resp = act(table, 'cast', spellId='queens_bane', source='grimoire',
-                       target='boss')
-    assert status == 200
-    assert db._boss_hp(table, _sid(table)) == 1                  # floored, not slain
-    assert 'boss' not in (resp['you'].get('poiClaims') or [])
+                       target='city_lair')
+    assert status == 200, resp
+    assert db._lair_state(table, sid, 'city_lair')[0] == 1        # floored, not slain
 
 
 def test_non_lethal_damage_spells_note_the_floor():

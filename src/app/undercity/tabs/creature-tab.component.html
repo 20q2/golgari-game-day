@@ -988,17 +988,18 @@
       </div>
     }
 
-    <!-- Loaded die value picker -->
-    @if (loadedDiePick()) {
+    <!-- Rigged-die face picker: the faces offered come from the item itself, so
+         a High Roller shows 4-6 and a Low Roller 1-3. -->
+    @if (loadedDiePick(); as dieItem) {
       <div class="evolve-overlay">
-        <h2><mat-icon class="mi">casino</mat-icon> Loaded Die</h2>
+        <h2><mat-icon class="mi">casino</mat-icon> {{ consumableMap[dieItem].name }}</h2>
         <p class="muted">Choose the value of your next roll.</p>
         <div class="die-grid">
-          @for (v of dieValues; track v) {
+          @for (v of dieFaces(); track v) {
             <button class="uc-btn die-btn" [disabled]="busy()" (click)="useLoadedDie(v)">{{ v }}</button>
           }
         </div>
-        <button class="uc-btn" (click)="loadedDiePick.set(false)">Cancel</button>
+        <button class="uc-btn" (click)="loadedDiePick.set(null)">Cancel</button>
       </div>
     }
 

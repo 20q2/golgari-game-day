@@ -5159,3 +5159,72 @@ def test_every_gear_piece_has_a_named_property():
     # The three off-ladder families cover exactly the riderless pieces.
     off = {gid for gid, g in data.WORLD_GEAR.items() if not g.get('rider')}
     assert off and all(data.gear_property(g)[0] in data.GEAR_PROPS_EXTRA for g in off)
+
+
+def test_gatestone_recalls_to_a_home_gate_and_heals(table):
+    """The Gatestone LANDS you on the Gate, so the gate's own full-heal fires —
+    the answer to being stranded far from one on low HP with rolls still banked."""
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = db._active_season(table)[0]
+    doc = db._get_player(table, sid, 'user-alex')
+    gate = data.HOME_GATES['cavern']
+    far = data.HOME_GATES['bog']
+    doc['position'] = 'bog_r3' if 'bog_r3' in data.MAP_NODES else far
+    doc['hp'] = 1
+    doc['bag'] = ['gatestone']
+    db._put_player(table, doc)
+
+    doc = db._get_player(table, sid, 'user-alex')
+    status, body = act(table, 'use-item', item='gatestone')
+    assert status == 200, body
+    you = body['you']
+    assert you['position'] == gate                       # defaults to home
+    assert you['hp'] == db.engine.effective_stats(you)['maxHp']   # landed => healed
+    assert 'gatestone' not in you['bag']                 # consumed
+
+    # Any home Gate is a legal destination; nothing else is.
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['bag'] = ['gatestone']
+    doc['position'] = far
+    db._put_player(table, doc)
+    status, body = act(table, 'use-item', item='gatestone', gate=data.HOME_GATES['bone'])
+    assert status == 200 and body['you']['position'] == data.HOME_GATES['bone']
+
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['bag'] = ['gatestone']
+    db._put_player(table, doc)
+    assert act(table, 'use-item', item='gatestone', gate='cavern_r3')[0] == 409
+
+
+def test_gatestone_is_blocked_mid_fight(table):
+    """It is a retreat between turns, not an escape hatch out of a battle —
+    fleeing is what Smoke Spores are for."""
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = db._active_season(table)[0]
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['bag'] = ['gatestone']
+    npc = dict(data.DUNGEON_NPCS['city'], maxHp=data.DUNGEON_NPCS['city']['hp'])
+    db._start_battle(table, sid, doc, 'wild', npc, node=doc['position'])
+    db._put_player(table, doc)
+    assert act(table, 'use-item', item='gatestone')[0] == 409
+
+
+def test_bramble_shows_as_a_thorns_badge(table):
+    """Bramble fires in EVERY stance, unlike the other 'guard' riders, so it
+    plays as a passive. The battle snapshot stamps a Thorns badge or the
+    reflected damage looks like it comes from nowhere."""
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = db._active_season(table)[0]
+    npc = dict(data.DUNGEON_NPCS['city'], maxHp=data.DUNGEON_NPCS['city']['hp'])
+
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['gear'] = {}
+    db._start_battle(table, sid, doc, 'wild', npc, node=doc['position'])
+    assert 'thorns' not in (doc['battle']['player'].get('buffs') or [])
+
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['battle'] = None
+    bramble = next(g for g, v in data.WORLD_GEAR.items() if v.get('rider') == 'bramble')
+    doc['gear'] = {'carapace': bramble}
+    db._start_battle(table, sid, doc, 'wild', npc, node=doc['position'])
+    assert 'thorns' in doc['battle']['player']['buffs']

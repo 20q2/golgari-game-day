@@ -162,7 +162,8 @@ export class CreatureTabComponent {
   /** Reduced-motion runtime — MUST match the reduced-motion CSS fallback. */
   private static readonly CUTSCENE_REDUCED_MS = 600;
   protected readonly showEvolve = signal(false);
-  protected readonly loadedDiePick = signal(false);
+  /** The rigged-die item whose face picker is open, or null. */
+  protected readonly loadedDiePick = signal<string | null>(null);
 
   /** Which inventory item's detail popup is open (null = none). */
   protected readonly selectedItem = signal<SelectedItem | null>(null);
@@ -1364,8 +1365,10 @@ export class CreatureTabComponent {
   }
 
   async useItem(item: string): Promise<void> {
-    if (item === 'loaded_die') {
-      this.loadedDiePick.set(true);
+    // ANY rigged die needs a face first — High/Low Roller as much as the Loaded
+    // Die. Sending one without a value is rejected by the server.
+    if (CONSUMABLE_MAP[item]?.die) {
+      this.loadedDiePick.set(item);
       return;
     }
     await this.run(async () => {
@@ -1393,11 +1396,21 @@ export class CreatureTabComponent {
   }
 
   async useLoadedDie(value: number): Promise<void> {
+    const item = this.loadedDiePick();
+    if (!item) return;
     await this.run(async () => {
-      const resp = await this.store.action('use-item', { item: 'loaded_die', value });
-      this.loadedDiePick.set(false);
+      const resp = await this.store.action('use-item', { item, value });
+      this.loadedDiePick.set(null);
       this.showToast(resp.text ?? 'Loaded.');
     });
+  }
+
+  /** The faces the picked die may set, e.g. [4,5,6] for a High Roller. */
+  protected dieFaces(): number[] {
+    const spec = CONSUMABLE_MAP[this.loadedDiePick() ?? ''];
+    if (!spec?.die) return [];
+    const [lo, hi] = spec.die;
+    return Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
   }
 
   async setHat(hat: string | null): Promise<void> {

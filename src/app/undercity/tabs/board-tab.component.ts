@@ -454,8 +454,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     if (!g) return '';
     return g.kind === 'material' ? 'grass' : (CONSUMABLE_MAP[g.item ?? '']?.icon ?? 'redeem');
   }
-  protected readonly shopTab = signal<'gear' | 'consumables' | 'grimoires' | 'eggs'>('gear');
-  protected setShopTab(tab: 'gear' | 'consumables' | 'grimoires' | 'eggs'): void {
+  protected readonly shopTab = signal<'gear' | 'consumables' | 'grimoires' | 'eggs' | 'back'>('gear');
+  protected setShopTab(tab: 'gear' | 'consumables' | 'grimoires' | 'eggs' | 'back'): void {
     this.shopTab.set(tab);
     this.store.openFacility.set({ kind: 'shop', shopTab: tab });
   }
@@ -570,6 +570,50 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   private readonly ritesShown = new Set<string>();
 
   protected readonly showSpells = signal(false);
+  protected readonly showBag = signal(false);
+
+  /** Bag contents with how each item is actioned, so the board never offers a
+   *  "Use" the server would reject. Mirrors creature-tab.itemAction, plus a
+   *  'die' case that renders the item's own allowed faces inline. */
+  protected bagRows(): { info: ConsumableInfo; action: 'use' | 'die' | 'battle' | 'passive' }[] {
+    return (this.store.you()?.bag ?? [])
+      .map((id) => CONSUMABLE_MAP[id])
+      .filter((info): info is ConsumableInfo => !!info)
+      .map((info) => ({
+        info,
+        action: info.die
+          ? ('die' as const)
+          : info.id === 'smoke_spore'
+            ? ('passive' as const)
+            : info.inBattle
+              ? ('battle' as const)
+              : ('use' as const),
+      }));
+  }
+
+  /** The faces a rigged die may set — 4-6 for a High Roller, 1-3 for a Low.
+   *  (Named apart from the spell-side dieFaces further down.) */
+  protected bagDieFaces(info: ConsumableInfo): number[] {
+    if (!info.die) return [];
+    const [lo, hi] = info.die;
+    return Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+  }
+
+  protected async useBagItem(item: string): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('use-item', { item });
+      this.showBag.set(false);
+      this.showToast(resp.text ?? 'Used.');
+    });
+  }
+
+  protected async useBagDie(item: string, value: number): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('use-item', { item, value });
+      this.showBag.set(false);
+      this.showToast(resp.text ?? 'Loaded.');
+    });
+  }
   /** Field spell awaiting a player target. */
   protected readonly spellTargetPick = signal<SpellInfo | null>(null);
   /** Fate-die spell awaiting a value. */
@@ -1167,6 +1211,27 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   focusSelf(): void {
     const pos = this.store.you()?.position;
     if (pos) this.board?.spectateOn(pos);
+  }
+
+  /** The keeper's Awakening-only stock: Legendary gear priced in Royal Jelly.
+   *  Empty (and the tab hidden) until the rot-wards fall. */
+  protected backRoomRows(): { info: GearInfo; jelly: number; afford: boolean }[] {
+    const have = this.store.you()?.royalJelly ?? 0;
+    return (this.store.backRoom() ?? [])
+      .map((e) => ({ info: GEAR_MAP[e.item], jelly: e.jelly, afford: have >= e.jelly }))
+      .filter((r) => !!r.info);
+  }
+
+  protected royalJelly(): number {
+    return this.store.you()?.royalJelly ?? 0;
+  }
+
+  /** Trade Royal Jelly for a Legendary from the back room. */
+  protected async buyBackRoom(itemId: string): Promise<void> {
+    await this.run(async () => {
+      const resp = await this.store.action('back-room-buy', { item: itemId });
+      this.showToast(resp.text ?? 'The keeper slides it across.');
+    });
   }
 
   protected shopGearRows(): { info: GearInfo; qty: number; blackMarket: boolean }[] {
@@ -2532,6 +2597,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.board.setAbandonedLairs([...RUIN_LAIRS].filter((id) => ruinLairAbandoned(id, rl)));
     this.board.setWorldEvent(this.store.worldEvent());
     this.board.setEnraged(this.store.enraged());
+    this.board.setSwarm(this.store.swarm() ?? null);
+    this.board.setAwakened(!!this.store.season()?.bossPhase);
     const here = step ? stepPos(step) : null;
     const choices = step
       ? (this.moveMode() ? this.freeStepChoices(step) : this.stepChoices(step))

@@ -167,6 +167,11 @@ export const STATUS_INFO: Record<string, StatusInfo> = {
     blurb: 'A lingering curse saps this fighter.' },
   vines: { label: 'Bog Snare', icon: 'grass', tone: 'debuff',
     blurb: 'Snared by clinging vines.' },
+  // Not a real buff on the doc — the server stamps it on the battle snapshot for
+  // any creature wearing Bramble gear, because that rider fires in EVERY stance
+  // and would otherwise reflect damage from nowhere.
+  thorns: { label: 'Thorns', icon: 'grass', tone: 'buff',
+    blurb: 'Reflects flat damage to anything that strikes you, in any stance.' },
   savage_roar: { label: 'Savage Roar', icon: 'whatshot', tone: 'buff',
     blurb: '+5 ATK for this battle.' },
   iron_hide: { label: 'Iron Hide', icon: 'security', tone: 'buff',

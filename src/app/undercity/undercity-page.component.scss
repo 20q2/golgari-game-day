@@ -292,34 +292,47 @@
   }
 }
 
-.hud-stats {
+// The purse (Spores / Sigils / Royal Jelly) floats a row below the toolbar on
+// the LEFT, mirroring .hud-buffs on the right. Moved out of the HUD so the
+// creature card keeps its width and the wallet has room to grow as new
+// currencies land.
+.hud-purse {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 10px;
+  z-index: 6;
   display: flex;
-  gap: 8px;
-  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none; // display-only; never steals a tap from the board
 }
 
-.hud-chip {
+.purse-chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(74, 124, 89, 0.18);
-  border: 1px solid rgba(74, 124, 89, 0.4);
+  padding: 4px 10px 4px 7px;
+  background: rgba(26, 24, 21, 0.82);
+  border: 1px solid rgba(74, 124, 89, 0.5);
   border-radius: 16px;
-  padding: 4px 10px;
-  font-weight: 700;
-  font-size: 0.95rem;
+  color: #b7e4c7;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(2px);
   white-space: nowrap;
 
-  .mi {
-    font-size: 1.05rem;
-    height: 1.05rem;
-    width: 1.05rem;
-
-    &.gold {
-      color: #fbbf24;
-    }
+  // Jelly is the Queen's own currency — set it apart from the Spore economy.
+  &.jelly-chip {
+    color: #f0c86b;
+    border-color: rgba(240, 200, 107, 0.45);
+    .mi { color: #f0c86b; }
   }
 }
+
+// The sigil chip's gold glyph, carried over from the retired .hud-chip rule.
+.purse-chip .mi.gold { color: #fbbf24; }
 
 // Spore wallet: anchor for the floating delta and the number's pop pulse.
 .spore-chip {

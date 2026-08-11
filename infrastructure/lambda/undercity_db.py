@@ -1117,6 +1117,9 @@ def _add_rolls(doc, n):
 
 
 def _grant_xp(table, sid, doc, amount):
+    # Every XP award in the game funnels through here, so the Awakening's world
+    # buff is applied in exactly one place.
+    amount = int(round(amount * _xp_multiplier(table, sid)))
     doc['xp'] = doc.get('xp', 0) + amount
     _metric(doc, 'xpGained', amount)
     gained = engine.apply_level_ups(doc)
@@ -2746,7 +2749,13 @@ def handle_state(table, query_params):
         'veins': veins,
         'vaults': vaults,
         'barriersOpen': sorted(_open_barriers(table, sid)),
-        'boss': {'hp': _boss_hp(table, sid), 'maxHp': data.ROT_SOVEREIGN['hp']},
+        # She is always whole now — a personal trial has no pool to report.
+        'boss': {'hp': data.ROT_SOVEREIGN['hp'], 'maxHp': data.ROT_SOVEREIGN['hp']},
+        'finale': _finale_public(table, sid),
+        'swarm': {'nodes': _swarm_nodes(table, sid),
+                  'name': data.SCOURING_SWARM['name'],
+                  'spriteId': data.SCOURING_SWARM['sprite']},
+        'backRoom': _back_room(table, sid),
         'firsts': firsts,
         'fogReveals': fog_reveals,
         'worldEvent': _world_event_public(table, sid),
@@ -2881,6 +2890,7 @@ def handle_action(table, body):
         'buy': _buy, 'use-item': _use_item, 'shrine': _shrine, 'warp': _warp,
         'gamble': _gamble, 'poke': _poke, 'high-five': _high_five, 'customize': _customize,
         'set-status': _set_status, 'chat': _chat,
+        'back-room-buy': _back_room_buy,
         'drop-item': _drop_item,
         'attack-boss': _attack_boss, 'world-engage': _world_engage,
         'umori-bid': _umori_bid, 'dig': _dig, 'strike': _strike,
@@ -3508,6 +3518,8 @@ def _admin_export(table, sid, payload):
         # pool got, and which lair pools were left standing.
         'worldEvent': _one('WORLDEVENT'),
         'boss': _one('BOSS'),
+        'finale': _one('BOSS'),
+        'swarm': _one('SWARM'),
         'enraged': _one('ENRAGED'),
         'lairs': _all('LAIR#'),
     }
@@ -3637,7 +3649,7 @@ def _new_player_doc(sid, user_id, username, starter, home, *,
         'spellCooldowns': {}, 'highFiveCooldowns': {}, 'awayEvents': [],
         'pendingPickups': [],   # overflow items awaiting the pickup modal
         'pets': [], 'activePetId': None,
-        'eggs': [], 'incubator': None, 'petRecharge': {},
+        'eggs': [], 'incubator': None, 'petRecharge': {}, 'royalJelly': 0,
         'lastFinishedClaim': None, 'taughtClaims': 0, 'pokesReceived': 0,
         'pvpWins': 0, 'wildWins': 0, 'composts': 0, 'bossDamage': 0,
         'paint': {'body': body_hue, 'belly': 50, 'stripes': body_hue},
@@ -4494,6 +4506,19 @@ def _resolve_space(table, sid, doc, node, prev):
     if region != 'depths' and doc.get('restsUsed'):
         doc['restsUsed'] = []
 
+    # Scouring Swarm overlay: Savra's brood physically holds the tile, so it
+    # overrides the space's normal event. Split lazily first so a swarm that was
+    # due to spill has done so before we look.
+    _tick_swarm(table, sid)
+    if node in _swarm_nodes(table, sid):
+        spec = data.SCOURING_SWARM
+        npc = engine.npc_from_spec(spec)
+        npc['spriteId'] = spec['sprite']
+        npc['personality'] = spec['personality']
+        npc['bluff'] = spec['bluff']
+        npc['tier'] = 2
+        return _start_battle(table, sid, doc, 'swarm', npc, node=node)
+
     # World Event overlay: a live Great Beast squats on 3 wilderness nodes and
     # overrides their normal event — including Umori's wandering stall, since the
     # beast physically occupies the tile, and overrides Umori and the node's
@@ -5267,23 +5292,204 @@ def _scale_for_sigils(npc, doc, stats=None):
     return npc
 
 
-def _boss_hp(table, sid):
-    item = _get(table, _season_pk(sid), 'BOSS')
-    return int((item or {}).get('hp', data.ROT_SOVEREIGN['hp']))
+def _all_players(table, sid):
+    """Every player doc in the season. The codebase queries `PLAYER#` inline in
+    a few places; this is the shared reader for callers that just want the list."""
+    resp = table.query(
+        KeyConditionExpression='pk = :pk AND begins_with(sk, :sk)',
+        ExpressionAttributeValues={':pk': _season_pk(sid), ':sk': 'PLAYER#'})
+    return [_clean(i) for i in resp.get('Items', [])]
+
+
+def _awakened(table, sid):
+    """True once the Queen's Awakening has fired — the rot-wards are down for
+    everyone and the Scouring Swarm is loose. One-way for the night."""
+    config = _get(table, _season_pk(sid), 'CONFIG') or {}
+    return bool(config.get('bossPhase'))
+
+
+def _tick_swarm(table, sid):
+    """Split the brood if its window has elapsed. Lazy, like every other shared
+    world clock here — there is no server tick, so the paths that touch the
+    swarm advance it."""
+    rec = _get(table, _season_pk(sid), 'SWARM') or {}
+    if not rec.get('nodes') or _now() < (rec.get('splitAt') or ''):
+        return False
+    _split_swarm(table, sid)
+    return True
+
+
+def _swarm_nodes(table, sid):
+    """Board nodes currently holding a Scouring Swarm."""
+    return list((_get(table, _season_pk(sid), 'SWARM') or {}).get('nodes') or [])
+
+
+def _set_swarm(table, sid, nodes, split_at=None):
+    """Persist the brood's footprint and its next split time."""
+    rec = {'pk': _season_pk(sid), 'sk': 'SWARM', 'nodes': sorted(set(nodes))}
+    rec['splitAt'] = split_at or _iso_in_minutes(data.SWARM_SPLIT_MINUTES)
+    table.put_item(Item=rec)
+
+
+def _swarmable_nodes(table, sid):
+    """Where a swarm may sit. They are opportunity, not menace, so they never
+    take a facility hostage — gates, shops, the boss island and dungeon mouths
+    are all off limits."""
+    nodes = _season_map(table, sid)
+    banned = {'gate', 'boss', 'shop', 'barrier', 'lair', 'vault', 'ladder'}
+    return [nid for nid, n in nodes.items() if n.get('type') not in banned]
+
+
+def _seed_swarm(table, sid):
+    """Release the brood: one swarm within SWARM_SEED_RADIUS of every living
+    player, so nobody is too far behind to join the finale."""
+    nodes = _season_map(table, sid)
+    allowed = set(_swarmable_nodes(table, sid))
+    placed = []
+    for p in _all_players(table, sid):
+        here = p.get('position')
+        if not here:
+            continue
+        near = [n for n in allowed
+                if n not in placed
+                and engine.board_distance(nodes, here, n,
+                                          data.SWARM_SEED_RADIUS, set()) is not None]
+        for n in sorted(near)[:data.SWARM_SEED_PER_PLAYER]:
+            placed.append(n)
+    _set_swarm(table, sid, placed)
+    return placed
+
+
+def _split_swarm(table, sid):
+    """The brood copies itself: each existing swarm tries to spill onto a free
+    neighbouring node, up to SWARM_MAX_NODES."""
+    nodes = _season_map(table, sid)
+    allowed = set(_swarmable_nodes(table, sid))
+    current = _swarm_nodes(table, sid)
+    grown = list(current)
+    for nid in current:
+        if len(grown) >= data.SWARM_MAX_NODES:
+            break
+        for nb in sorted(nodes.get(nid, {}).get('neighbors') or []):
+            if nb in allowed and nb not in grown:
+                grown.append(nb)
+                break
+    _set_swarm(table, sid, grown)
+    return grown
+
+
+def _maybe_awaken(table, sid, doc):
+    """Fire the Queen's Awakening the first time any player holds
+    SIGILS_REQUIRED sigils: the rot-wards fall for EVERYONE and the Scouring
+    Swarm is released. Idempotent and one-way."""
+    if _awakened(table, sid):
+        return False
+    if _sigil_count(doc) < data.SIGILS_REQUIRED:
+        return False
+    config = _get(table, _season_pk(sid), 'CONFIG') or {}
+    table.put_item(Item=dict(config, bossPhase=True))
+    _seed_swarm(table, sid)
+    _event(table, sid, 'boss',
+           f"{doc['username']} raises the third Guild Sigil — THE ROT-WARDS FALL! "
+           "Savra's brood pours out across the Undercity, and the island lies "
+           'open to every creature.')
+    _push_broadcast(table, sid,
+                    'THE ROT-WARDS FALL — the Scouring Swarm is loose and the '
+                    'island is open. Storm her lair!',
+                    exclude_user_id=doc.get('userId'))
+    return True
+
+
+def _back_room(table, sid):
+    """The keeper's Awakening-only stock: one Legendary per gear slot, priced in
+    Royal Jelly. Empty until the rot-wards fall. Deterministic per season so a
+    player sees the same shelf every time they look."""
+    if not _awakened(table, sid):
+        return []
+    rng = random.Random(f'backroom:{sid}')
+    stock = []
+    for slot in data.GEAR_SLOTS:
+        pool = sorted(g for g, v in data.WORLD_GEAR.items()
+                      if v['slot'] == slot and v['tier'] == 3)
+        if pool:
+            stock.append({'item': rng.choice(pool),
+                          'jelly': data.BACKROOM_JELLY_COST})
+    return stock
+
+
+def _back_room_buy(table, sid, doc, payload):
+    """Trade Royal Jelly for a Legendary from the back room. Jelly is the ONLY
+    currency accepted — Spores buy nothing here."""
+    if not _awakened(table, sid):
+        return _err('The keeper has nothing for you.', 409)
+    node = doc.get('position')
+    nodes = _season_map(table, sid)
+    if (nodes.get(node) or {}).get('type') != 'shop':
+        return _err('You must be at a bazaar.', 409)
+    item = (payload or {}).get('item')
+    entry = next((e for e in _back_room(table, sid) if e['item'] == item), None)
+    if not entry:
+        return _err('The keeper has no such thing out back.', 409)
+    have = int(doc.get('royalJelly', 0))
+    if have < entry['jelly']:
+        return _err(f'The keeper wants {entry["jelly"]} Royal Jelly — you have '
+                    f'{have}. Fell more of the brood.', 409)
+    doc['royalJelly'] = have - entry['jelly']
+    _gain_gear(doc, item)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    name = data.GEAR[item]['name']
+    return _ok(doc, text=f'The keeper checks over both shoulders and slides the '
+                         f'{name} across. "Pleasure doing business."')
+
+
+def _finale(table, sid):
+    """Season finale state: who took the crown and when. Lives on the BOSS
+    record alongside the Queen's field-curses."""
+    return dict(_get(table, _season_pk(sid), 'BOSS') or {})
+
+
+def _xp_multiplier(table, sid):
+    """Season XP multiplier. 1.0 until the Queen falls; boosted for the rest of
+    the night once a Queenslayer is crowned."""
+    if _finale(table, sid).get('slayer'):
+        return 1 + data.AWAKENING_XP_BUFF
+    return 1.0
+
+
+def _finale_public(table, sid):
+    """Client-facing finale block: who wears the crown and the live XP bonus."""
+    rec = _finale(table, sid)
+    return {'slayer': rec.get('slayer'), 'slayerName': rec.get('slayerName'),
+            'xpBonus': data.AWAKENING_XP_BUFF if rec.get('slayer') else 0.0}
+
+
+def _claim_crown(table, sid, doc):
+    """Record the first Queenslayer of the season. Returns True if THIS player
+    took the crown, False if it was already claimed. Idempotent: a concurrent
+    second kill reads the stored slayer and loses."""
+    rec = _finale(table, sid)
+    if rec.get('slayer'):
+        return False
+    rec.update({'pk': _season_pk(sid), 'sk': 'BOSS',
+                'slayer': doc['userId'], 'slayerName': doc.get('username', '?'),
+                'slayerAt': _now()})
+    table.put_item(Item=rec)
+    return True
 
 
 def _boss_buffs(table, sid):
     return list((_get(table, _season_pk(sid), 'BOSS') or {}).get('buffs') or [])
 
 
-def _set_boss_hp(table, sid, hp, buffs=None):
-    """buffs=None preserves stored curses; pass [] to clear."""
-    if buffs is None:
-        buffs = (_get(table, _season_pk(sid), 'BOSS') or {}).get('buffs') or []
-    item = {'pk': _season_pk(sid), 'sk': 'BOSS', 'hp': int(hp)}
-    if buffs:
-        item['buffs'] = buffs
-    table.put_item(Item=item)
+def _set_boss_buffs(table, sid, buffs):
+    """Persist field-curses laid on the Queen. Her HP is NOT stored — she is a
+    personal trial and every challenger meets her whole."""
+    rec = dict(_get(table, _season_pk(sid), 'BOSS') or {})
+    rec.update({'pk': _season_pk(sid), 'sk': 'BOSS', 'buffs': list(buffs)})
+    rec.pop('hp', None)
+    table.put_item(Item=rec)
 
 
 # ── Interactive combat state machine (Plan 2) ────────────────────────────────
@@ -5532,6 +5738,8 @@ def _finish_battle(table, sid, doc, rec, result):
         out = _finish_wild(table, sid, doc, rec, result)
     elif kind == 'barrier':
         out = _finish_barrier(table, sid, doc, rec, result)
+    elif kind == 'swarm':
+        out = _finish_swarm(table, sid, doc, rec, result)
     elif kind == 'lair':
         out = _finish_lair(table, sid, doc, rec, result)
     elif kind == 'world':
@@ -5775,6 +5983,8 @@ def _award_lair_kill(table, sid, doc, node, slain, out):
                actor=doc['userId'])
         _broadcast_away(table, sid, {'kind': 'boss', 'by': doc['username'],
                                      'name': display, 'at': _now()}, doc['userId'])
+        # The third sigil in the season starts the endgame for EVERYONE.
+        _maybe_awaken(table, sid, doc)
         _push_broadcast(table, sid,
                         f"{doc['username']} cleared the {biome_name} dungeon "
                         f"and claimed a Guild Sigil!",
@@ -6165,15 +6375,31 @@ def _pay_world_reward_retry(table, sid, uid, reward, bracket, roster):
 
 
 def _award_boss_kill(table, sid, doc, node, out):
-    """Grant the full Queen-slain payout — the pool reforms at full strength for
-    the season, the first-kill is claimed, and spores/XP/gear land on `doc`/`out`
-    — then announce her fall to everyone else. Shared by the in-person finale
-    (_finish_boss) and the lethal Sear-the-Throne strike (_cast_boss_strike);
-    each caller supplies its own flavor `text`, scroll roll, and news event so
-    the phrasing fits the context. Returns the reward table used."""
+    """Grant the full Queen-slain payout: the first-kill is claimed, the first
+    slayer of the season takes the Queenslayer crown (and fires the world XP
+    buff), and spores/XP/gear land on `doc`/`out`. She is a personal trial — no
+    pool reforms, because none is stored; the next challenger simply meets her
+    whole. Called only by the in-person finale (_finish_boss): she cannot be
+    slain at range. Returns the reward table used."""
     boss = data.ROT_SOVEREIGN
-    _set_boss_hp(table, sid, boss['hp'])
     _claim_first(table, sid, node, 'boss', doc)
+    # First blood in the season takes the Queenslayer crown — once, ever.
+    if _claim_crown(table, sid, doc):
+        out['queenslayer'] = True
+        perm = _get_perm(table, doc['userId'])
+        perm['renown'] = perm.get('renown', 0) + data.QUEENSLAYER_RENOWN
+        table.put_item(Item=perm)
+        _event(table, sid, 'boss',
+               f"{doc['username']} is the QUEENSLAYER — first to fell Savra, "
+               'Queen of the Golgari!', actor=doc['userId'])
+        _event(table, sid, 'boss',
+               "The Queen's death-cry echoes through the Undercity — every "
+               f'creature feels it. (+{int(data.AWAKENING_XP_BUFF * 100)}% XP '
+               'for the rest of the night!)')
+        _push_broadcast(table, sid,
+                        f'SAVRA HAS FALLEN — +{int(data.AWAKENING_XP_BUFF * 100)}% '
+                        'XP for everyone, for the rest of the night!',
+                        exclude_user_id=doc['userId'])
     claims = doc.setdefault('poiClaims', [])
     first = 'boss' not in claims
     reward = boss['first'] if first else boss['repeat']
@@ -6195,6 +6421,31 @@ def _award_boss_kill(table, sid, doc, node, out):
     return reward
 
 
+def _finish_swarm(table, sid, doc, rec, result):
+    """A felled Scouring Swarm clears its node and drops Royal Jelly — the
+    currency that buys a challenger their kit for the Queen."""
+    spec = data.SCOURING_SWARM
+    out = {'type': 'swarm', 'npc': {'name': spec['name'], 'maxHp': spec['hp']},
+           'battle': result}
+    if result['outcome'] != 'attacker':
+        out['text'] = f"The {spec['name']} boils over you and skitters on."
+        return out
+    nodes = [n for n in _swarm_nodes(table, sid) if n != rec.get('node')]
+    _set_swarm(table, sid, nodes,
+               split_at=(_get(table, _season_pk(sid), 'SWARM') or {}).get('splitAt'))
+    doc['spores'] = doc.get('spores', 0) + spec['bounty']
+    levels = _grant_xp(table, sid, doc, spec['xp'])
+    doc['royalJelly'] = doc.get('royalJelly', 0) + data.SWARM_JELLY_DROP
+    _add_win_renown(doc, 'elite', 2)
+    out.update({'spores': spec['bounty'], 'xp': spec['xp'],
+                'jelly': data.SWARM_JELLY_DROP, 'royalJelly': doc['royalJelly']})
+    if levels:
+        out['levels'] = levels
+    out['text'] = (f"The {spec['name']} bursts apart, and the brood-jelly is "
+                   f"yours (+{data.SWARM_JELLY_DROP} Royal Jelly).")
+    return out
+
+
 def _finish_boss(table, sid, doc, rec, result):
     node = rec['node']
     boss = data.ROT_SOVEREIGN
@@ -6212,22 +6463,15 @@ def _finish_boss(table, sid, doc, rec, result):
                f"{doc['username']} struck down SAVRA, QUEEN OF THE GOLGARI! "
                'The island trembles as she reforms.', actor=doc['userId'])
     elif result['outcome'] == 'defender':
-        _set_boss_hp(table, sid, result['defenderHp'])
         _grant_xp(table, sid, doc, data.XP_REWARDS['wild_loss'])
         _compost(table, sid, doc,
-                 f"{doc['username']} fell to Savra "
-                 f'(she lingers at {result["defenderHp"]} HP — finish her!)')
-        out['text'] = (f'The Queen grinds you into the mulch — but your blows told: '
-                       f'she lingers at {result["defenderHp"]}/{boss["hp"]} HP.')
+                 f"{doc['username']} was broken on the steps of Savra's throne.")
+        out['text'] = ('The Queen grinds you into the mulch. Her wounds close as '
+                       'you fall — the next challenger meets her whole.')
     else:
-        _set_boss_hp(table, sid, result['defenderHp'])
         _grant_xp(table, sid, doc, data.XP_REWARDS['timeout'])
-        out['text'] = (f'You withdraw, bleeding. The Queen seethes at '
-                       f'{result["defenderHp"]}/{boss["hp"]} HP.')
-        if dealt > 0:
-            _event(table, sid, 'boss',
-                   f"{doc['username']} wounded Savra, Queen of the Golgari — "
-                   f'{result["defenderHp"]}/{boss["hp"]} HP remains!', actor=doc['userId'])
+        out['text'] = ('You withdraw, bleeding. The rot knits her back together '
+                       'behind you — there are no second rounds with the Queen.')
     return out
 
 
@@ -6250,15 +6494,16 @@ def _boss(table, sid, doc, node, prev):
                         f'{missing} more Guild Sigil{"s" if missing != 1 else ""}. '
                         f'({sigils}/{data.SIGILS_REQUIRED})'}
 
+    # Personal trial (design 2026-08-11): no season-shared pool. Every
+    # challenger meets a whole Queen, so one fight decides it.
     boss = data.ROT_SOVEREIGN
-    hp_before = _boss_hp(table, sid)
     buffs = _boss_buffs(table, sid)
-    npc = dict(boss, hp=hp_before, maxHp=boss['hp'])
+    npc = dict(boss, hp=boss['hp'], maxHp=boss['hp'])
     _apply_guardian_debuffs(npc, buffs)
     if buffs:
-        _set_boss_hp(table, sid, hp_before, [])   # consumed on engagement
+        _set_boss_buffs(table, sid, [])           # curses are spent on engagement
     return _start_battle(table, sid, doc, 'boss', npc, node=node,
-                         ctx={'hpBefore': hp_before})
+                         ctx={'hpBefore': boss['hp']})
 
 
 def _vault(table, sid, doc, node):
@@ -6782,12 +7027,13 @@ def _cast_at_guardian(table, sid, doc, spell, target_id):
     if target_id == 'boss':
         node = data.BOSS_NODE
         name = data.ROT_SOVEREIGN['name']
-        hp = _boss_hp(table, sid)
-        maxhp = data.ROT_SOVEREIGN['hp']
+        # Personal trial: no pool to chip, so ranged DAMAGE is refused below.
+        # Curses still land — they are read at her next battle.
+        hp = maxhp = data.ROT_SOVEREIGN['hp']
         buffs = _boss_buffs(table, sid)
 
         def save(new_hp, new_buffs):
-            _set_boss_hp(table, sid, new_hp, new_buffs)
+            _set_boss_buffs(table, sid, new_buffs)
     elif target_id in data.BARRIER_GUARDIANS:
         if target_id in _open_barriers(table, sid):
             return _spell_err('That barrier already lies in rubble.', 'invalid_target', 409)
@@ -6813,6 +7059,10 @@ def _cast_at_guardian(table, sid, doc, spell, target_id):
     if dist is None:
         return _spell_err(f"It is beyond the spell's reach ({spell['range']} spaces).",
                           'out_of_range')
+
+    if spell['effect'] == 'field_damage' and target_id == 'boss':
+        return _spell_err('The rot-wards swallow your magic — Savra must be '
+                          'faced in person.', 'invalid_target', 409)
 
     if spell['effect'] == 'field_damage':
         new_hp = max(1, hp - _spell_damage(spell, doc))
@@ -6979,38 +7229,18 @@ def _cast_teleport(table, sid, doc, spell, to):
 
 
 def _cast_boss_strike(table, sid, doc, spell, target):
-    """Chip a persistent HP pool (Savra or a lair) from anywhere. Pools floor at
-    1 — the killing blow must be landed in person — UNLESS the spell is flagged
-    `lethal` (Sear the Throne), which alone may slay a boss at range and reap the
-    full in-person kill reward."""
+    """Chip a LAIR's persistent HP pool from anywhere. Pools floor at 1 — the
+    killing blow must be landed in person — UNLESS the spell is flagged `lethal`
+    (Sear the Throne), which alone may slay a lair boss at range and reap the
+    full in-person kill reward. Savra is exempt: she is a personal trial
+    (design 2026-08-11) and must be faced in person."""
+    if target == 'boss':
+        # Personal trial (design 2026-08-11): the Queen is one fight, in person.
+        # Lair pools below are still shared and still chippable at range.
+        return _err('The rot-wards swallow your magic. Savra must be faced in '
+                    'person.', 409)
     lethal = bool(spell.get('lethal'))
     floor = 0 if lethal else 1
-    if target == 'boss':
-        hp = _boss_hp(table, sid)
-        new_hp = max(floor, hp - _spell_damage(spell, doc))
-        dealt = hp - new_hp
-        doc['bossDamage'] = doc.get('bossDamage', 0) + dealt
-        name = data.ROT_SOVEREIGN['name']
-        if lethal and new_hp <= 0:
-            out = {'dmg': dealt, 'targetName': name}
-            reward = _award_boss_kill(table, sid, doc, data.BOSS_NODE, out)
-            out['text'] = (f'{spell["name"]} sears clean through — SAVRA, QUEEN OF THE '
-                           f'GOLGARI, FALLS! +{reward["spores"]} Spores. She reforms anew…')
-            _append_scroll(doc, out, 'boss')
-            _event(table, sid, 'boss',
-                   f"{doc['username']}'s {spell['name']} struck down SAVRA, QUEEN OF THE "
-                   'GOLGARI, from afar! The island trembles as she reforms.',
-                   actor=doc['userId'])
-            return out
-        _set_boss_hp(table, sid, new_hp)
-        if dealt:
-            _event(table, sid, 'spell',
-                   f"{doc['username']}'s {spell['name']} sears {name} from afar "
-                   f'({new_hp}/{data.ROT_SOVEREIGN["hp"]} HP)!', actor=doc['userId'])
-            text = f'{spell["name"]} sears the Queen for {dealt}! ({new_hp} HP remains)'
-        else:
-            text = 'The Queen is already at the brink — finish her in person.'
-        return {'dmg': dealt, 'targetName': name, 'text': text}
     if target in data.LAIR_BOSSES:
         if target in data.RESPAWN_LAIRS:
             return {'dmg': 0, 'targetName': data.LAIR_BOSSES[target]['name'],

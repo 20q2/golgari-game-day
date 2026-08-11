@@ -67,6 +67,21 @@
     <!-- Bottom-left recent-events ticker (display-only overlay) -->
     <app-undercity-event-feed />
 
+    <!-- Bag: a small round icon in the bottom-right cluster, beside the camera
+         control, so consumables are one tap from the board. -->
+    @if ((store.you()?.bag?.length ?? 0) > 0) {
+      <button
+        type="button"
+        class="bag-fab"
+        title="Open your bag"
+        aria-label="Open your bag"
+        (click)="showBag.set(true)"
+      >
+        <mat-icon class="mi" svgIcon="uc-pouch"></mat-icon>
+        <span class="bag-fab-count">{{ store.you()?.bag?.length }}</span>
+      </button>
+    }
+
     @if (currentBiome(); as biome) {
       <button
         type="button"
@@ -693,9 +708,49 @@
           <button class="shop-tab" [class.active]="shopTab() === 'eggs'" (click)="setShopTab('eggs')">
             <mat-icon class="mi">egg</mat-icon> Eggs
           </button>
+          <!-- Only appears once the Awakening has fired and the keeper starts
+               craving Royal Jelly. -->
+          @if (backRoomRows().length) {
+            <button class="shop-tab back-tab" [class.active]="shopTab() === 'back'" (click)="setShopTab('back')">
+              <mat-icon class="mi">hive</mat-icon> Back Room
+            </button>
+          }
         </div>
 
         @switch (shopTab()) {
+          @case ('back') {
+            <div class="shop-hint back-hint">
+              "You've got the jelly? …Come round the back." Legendary kit, paid
+              for in Royal Jelly alone — Spores buy nothing here.
+              <span class="jelly-have"><mat-icon class="mi">hive</mat-icon> {{ royalJelly() }} on hand</span>
+            </div>
+            @for (r of backRoomRows(); track r.info.id) {
+              <div class="shop-row grid3" [attr.data-rarity]="tierRarity(r.info.tier).key">
+                <span class="shop-name">
+                  <span class="shop-name-line">
+                    <mat-icon class="mi slot-mi" [svgIcon]="'uc-' + r.info.slot"></mat-icon>
+                    {{ r.info.name }}
+                  </span>
+                  <span class="shop-chips">
+                    @for (c of gearStatChips(r.info); track c) {
+                      <span class="chip chip--stat">{{ c }}</span>
+                    }
+                  </span>
+                </span>
+                <span class="shop-cost jelly-cost">
+                  <mat-icon class="mi">hive</mat-icon> {{ r.jelly }}
+                </span>
+                <button
+                  class="uc-btn uc-btn-primary shop-buy"
+                  [disabled]="busy() || !r.afford"
+                  [title]="r.afford ? 'Trade Royal Jelly for it' : 'Fell more of the brood'"
+                  (click)="buyBackRoom(r.info.id)"
+                >
+                  Trade
+                </button>
+              </div>
+            }
+          }
           @case ('gear') {
             <div class="shop-hint">
               Purchases go to your stash.
@@ -1292,6 +1347,48 @@
     </div>
   }
 
+
+  <!-- Bag: use a consumable without leaving the board -->
+  @if (showBag()) {
+    <div class="uc-modal-backdrop" (click)="showBag.set(false)">
+      <div class="uc-modal bag-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">backpack</mat-icon> Bag</h3>
+        @for (row of bagRows(); track $index) {
+          <div class="shop-row grid3">
+            <span class="shop-name">
+              <span class="shop-name-line">
+                <mat-icon class="mi">{{ row.info.icon }}</mat-icon> {{ row.info.name }}
+              </span>
+              <span class="bag-desc">{{ row.info.desc }}</span>
+            </span>
+            <span></span>
+            @switch (row.action) {
+              @case ('use') {
+                <button class="uc-btn uc-btn-primary shop-buy" [disabled]="busy()"
+                        (click)="useBagItem(row.info.id)">Use</button>
+              }
+              @case ('die') {
+                <span class="die-inline">
+                  @for (v of bagDieFaces(row.info); track v) {
+                    <button class="uc-btn die-btn" [disabled]="busy()"
+                            (click)="useBagDie(row.info.id, v)">{{ v }}</button>
+                  }
+                </span>
+              }
+              @case ('battle') { <span class="bag-tag">Battle only</span> }
+              @case ('passive') { <span class="bag-tag">Auto</span> }
+            }
+          </div>
+        }
+        @if (!bagRows().length) {
+          <p class="muted">Empty. The bazaars stock helpful rot.</p>
+        }
+        <div class="uc-modal-actions">
+          <button class="uc-btn" (click)="showBag.set(false)">Close</button>
+        </div>
+      </div>
+    </div>
+  }
 
   <!-- Spell picker -->
   @if (showSpells()) {

@@ -419,6 +419,11 @@ const WORLD_EVENT_H = 150;
 // that a player across the board can still realistically detour and get a swing
 // in before the spoils are dealt.
 const WORLD_EVENT_CLOCK_WARN_MIN = 15;
+// The Awakening spill: how far the brood streams from the island gate, how many
+// crawlers are on the ring, and how fast they crawl out (loops per second).
+const SPILL_RADIUS = 190;
+const SPILL_COUNT = 14;
+const SPILL_SPEED = 0.16;
 // A body hump on each flank tile — shorter than the reared head+neck.
 const WORLD_EVENT_PIECE_H = 96;
 // Cap the body-line tilt (radians) so a near-vertical flank→center run never
@@ -474,6 +479,8 @@ export class BoardCanvas {
   /** The live wilderness enraged monster (spell-targetable, relocates hourly),
    *  or null when it's dead this window / never fed. */
   private enraged: EnragedMonster | null = null;
+  private swarm: { nodes: string[]; spriteId: string } | null = null;
+  private awakened = false;
   private choices = new Set<string>();
   private backChoice: string | null = null;
   private info: NodeInfo | null = null;
@@ -1084,6 +1091,21 @@ export class BoardCanvas {
   setWorldEvent(we: WorldEventState | null): void {
     this.worldEvent = we && !we.dead ? we : null;
     if (this.worldEvent) this.loadWorldEvent();
+  }
+
+  /** The Scouring Swarm's live footprint. Savra's brood is released by the
+   *  Awakening and copies itself across the board until the night ends. */
+  setSwarm(sw: { nodes: string[]; spriteId: string } | null): void {
+    this.swarm = sw && sw.nodes?.length ? sw : null;
+    if (this.swarm) this.loadEnemy(this.swarm.spriteId);
+  }
+
+  /** Whether the Queen's Awakening has fired. Drives the permanent spill of
+   *  brood pouring out of the island gate — the standing tell that says "the
+   *  endgame started" to anyone who wasn't watching when it did. */
+  setAwakened(on: boolean): void {
+    this.awakened = on;
+    if (on) this.loadEnemy('scouring_swarm');
   }
 
   /** The live wilderness enraged monster, or null to clear it (dead / never
@@ -1811,6 +1833,8 @@ export class BoardCanvas {
     this.drawHealNumbers();
 
     if (this.umori) this.drawUmori(ts);
+    this.drawAwakeningSpill(ts);
+    this.drawSwarm(ts);
     this.drawEnraged(ts);
 
     this.drawInfo();
@@ -2516,6 +2540,104 @@ export class BoardCanvas {
     const ms = new Date(this.umori.movesAt + 'Z').getTime() - Date.now();
     const min = Math.max(0, Math.ceil(ms / 60_000));
     return min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min}m`;
+  }
+
+  /** The Awakening's standing tell: brood pouring endlessly out of the island
+   *  gate at the centre of the board. This is deliberately PERMANENT rather than
+   *  a one-shot burst — a player who opens the app an hour after the rot-wards
+   *  fell still needs to see, at a glance, that the endgame is underway and
+   *  where it came from. Purely decorative; the fightable swarms are the
+   *  separate node sprites drawn by drawSwarm(). */
+  private drawAwakeningSpill(ts: number): void {
+    if (!this.awakened) return;
+    const boss = [...this.nodeMap.values()].find((n) => n.type === 'boss');
+    if (!boss || !this.inActive(boss.id)) return;
+    const ctx = this.ctx;
+    const elapsed = (ts - this.startTime) / 1000;
+    const art = this.enemyArt('scouring_swarm');
+
+    ctx.save();
+    // A slow amber bloom under the gate — reads even fully zoomed out, where
+    // the individual crawlers are too small to make out.
+    const bloom = 0.10 + 0.05 * Math.sin(elapsed * 1.1);
+    const grad = ctx.createRadialGradient(boss.x, boss.y, 0, boss.x, boss.y, SPILL_RADIUS);
+    grad.addColorStop(0, `rgba(240, 200, 107, ${bloom})`);
+    grad.addColorStop(1, 'rgba(240, 200, 107, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(boss.x, boss.y, SPILL_RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Crawlers streaming outward on fixed rays, each looping out and fading.
+    for (let i = 0; i < SPILL_COUNT; i++) {
+      const angle = (i / SPILL_COUNT) * Math.PI * 2;
+      // Stagger each ray so they don't pulse as one ring.
+      const t = ((elapsed * SPILL_SPEED + i / SPILL_COUNT) % 1);
+      const dist = t * SPILL_RADIUS;
+      const fade = Math.sin(t * Math.PI); // fade in from the gate, out at the rim
+      const x = boss.x + Math.cos(angle) * dist;
+      const y = boss.y + Math.sin(angle) * dist * 0.55; // board is drawn oblique
+      ctx.globalAlpha = fade * 0.85;
+      if (art) {
+        const h = 20;
+        const w = art.width * (h / art.height);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(Math.cos(angle) >= 0 ? 1 : -1, 1);  // face outward
+        ctx.drawImage(art, -w / 2, -h / 2, w, h);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = '#f0c86b';
+        ctx.beginPath();
+        ctx.ellipse(x, y, 3, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  /** Savra's brood: one skittering swarm per held node. Deliberately quieter
+   *  than the enraged monster — no HP bar, no countdown — because there are many
+   *  of them and they are opportunity rather than a single named threat. The
+   *  sickly amber halo is the tell that the Awakening is loose on the board. */
+  private drawSwarm(ts: number): void {
+    const sw = this.swarm;
+    if (!sw) return;
+    const ctx = this.ctx;
+    const elapsed = (ts - this.startTime) / 1000;
+    const art = this.enemyArt(sw.spriteId);
+    for (const id of sw.nodes) {
+      const n = this.nodeMap.get(id);
+      if (!n || !this.inActive(id)) continue;
+      // Phase each swarm off its own node id so the brood doesn't pulse in
+      // lockstep — a hash of the id, not an index, so it stays put as the
+      // footprint grows and shrinks around it.
+      let hash = 0;
+      for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+      const phase = (hash % 100) / 100 * Math.PI * 2;
+      const scuttle = Math.sin(elapsed * SCUTTLE_SPEED + phase);
+      const hop = Math.abs(Math.sin(elapsed * SCUTTLE_SPEED * 2 + phase)) * SCUTTLE_BOB;
+
+      const pulse = 0.22 + 0.16 * Math.sin(elapsed * 2.2 + phase);
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(n.x, n.y + 4, 32, 16, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(240, 200, 107, ${pulse})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+
+      if (!art) continue;
+      const h = 42;
+      const w = art.width * (h / art.height);
+      ctx.save();
+      ctx.translate(n.x + scuttle * SCUTTLE_AMT * 0.6, n.y - 4 - hop);
+      ctx.scale(Math.cos(elapsed * SCUTTLE_SPEED + phase) >= 0 ? 1 : -1, 1);
+      ctx.shadowColor = 'rgba(240, 200, 107, 0.85)';
+      ctx.shadowBlur = 4;
+      ctx.drawImage(art, -w / 2, -h, w, h);
+      ctx.restore();
+    }
   }
 
   /** The wilderness enraged monster: its sprite hopping above its node with an

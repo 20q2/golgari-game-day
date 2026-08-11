@@ -112,6 +112,8 @@ export const BOSS_SPAWN_SPRITES = new Set<string>([
   'gitrog_spawn2',
   'sarulfs_packmate',
   'ishankas_hatchling',
+  // Savra's brood, released by the Queen's Awakening.
+  'scouring_swarm',
 ]);
 
 /** Battle-art URL for an enemy sprite id, honoring the boss_spawns/ folder. */

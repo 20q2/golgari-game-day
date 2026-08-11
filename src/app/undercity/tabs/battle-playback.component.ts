@@ -54,6 +54,9 @@ export interface BattleRewards {
   gearStashed?: boolean;
   /** Companion egg tier dropped by a won fight (e.g. a Monster Nest guardian). */
   eggTier?: number;
+  /** Spores lifted by a Cutpurse charm off a winning Feint. Shown apart from the
+   *  battle bounty so it's clear which Spores your charm earned you. */
+  cutpurse?: number;
 }
 
 /** One spore coin in the victory rain — pre-randomized so it doesn't jitter on

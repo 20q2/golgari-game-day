@@ -363,6 +363,43 @@ ENRAGED_DWELL_MIN = 90       # minutes a monster haunts one node before it hops
 ENRAGED_KILL_RENOWN = 18     # renown to the killing blow's perm doc (design: 15–20)
 ENRAGED_KILL_XP = 30         # XP to the killer
 
+# ── The Queen's Awakening (design 2026-08-11) ────────────────────────────────
+# Renown to the FIRST player in the season to fell Savra. Sized near 2.5 POI
+# claims (RENOWN['per_poi'] is 25) so the crown is the night's single biggest
+# prize without eclipsing a whole night of exploration.
+QUEENSLAYER_RENOWN = 60
+# Season-wide XP multiplier granted to EVERY player the moment the first
+# Queenslayer is crowned, for the rest of the night (Zul'Gurub tradition).
+# Deliberately denominated in XP: it is worth a great deal to a level 6 still
+# climbing and exactly nothing to a level 12 at cap, so it self-targets the
+# players who are behind WITHOUT scaling by how far behind they are — no
+# handicap on the leader. See "no rubberbanding" in the design.
+AWAKENING_XP_BUFF = 0.50
+
+# ── The Scouring Swarm ───────────────────────────────────────────────────────
+# Savra's brood, released the moment the Awakening fires. Visible board monsters
+# like the enraged terror, seeded so EVERY living player has one in reach — that
+# is the load-bearing rule, and it is what puts a level-3 player in the finale on
+# the same tick as the leader. They are opportunity, not menace: they never squat
+# on shops, choke gates, or block dungeon mouths.
+SWARM_SEED_PER_PLAYER = 1     # swarms seeded near each living player at release
+SWARM_SEED_RADIUS = 3         # board spaces — "in reach" is about one roll
+SWARM_SPLIT_MINUTES = 20      # the brood copies itself on this window. Wall clock
+                              # is correct: this is SHARED world state, not a
+                              # player's own action economy (cf. the step-timer rule)
+SWARM_MAX_NODES = 12          # ceiling so the board never saturates
+SWARM_JELLY_DROP = 3          # Royal Jelly per swarm felled
+
+# ── The back room ────────────────────────────────────────────────────────────
+# Once the Awakening fires, every Rot-Farm Bazaar keeper turns hungry for Royal
+# Jelly and offers "the good stuff from the back". LEGENDARY only: Mythic stays
+# craft-only (3 Chrysalis Ichor at the Blacksmith), and Legendary is the better
+# gamble anyway — it puts a level 6 at 30% and a level 8 at a 49% coin flip
+# against the Queen. Priced in Jelly alone, so it is a road into the finale that
+# has nothing to do with your Spore economy.
+BACKROOM_JELLY_COST = 12      # ~4 swarm kills a piece, ~12 for a full kit
+BACKROOM_SLOTS = 3            # one piece offered per gear slot
+
 # ── Boss-area signature minions ──────────────────────────────────────────────
 # Each biome depths pocket (and the ruins) has one themed "signature" enemy that
 # is thematically aligned with the boss that lairs there — Skullbriar's ossuary

@@ -50,7 +50,7 @@ export type FacilityKind =
 export interface OpenFacility {
   kind: FacilityKind;
   /** Only 'shop' uses this, to restore the selected Bazaar sub-tab. */
-  shopTab?: 'gear' | 'consumables' | 'grimoires' | 'eggs';
+  shopTab?: 'gear' | 'consumables' | 'grimoires' | 'eggs' | 'back';
   /** Only 'warp' uses this — the destination list isn't derivable from any
    * other store signal, so it's carried directly. */
   warpOptions?: string[];
@@ -98,6 +98,10 @@ export class UndercityStateService {
   readonly reclaimed = computed(() => this._state()?.season?.reclaimed ?? {});
   readonly worldEvent = computed(() => this._state()?.worldEvent ?? null);
   readonly enraged = computed(() => this._state()?.enraged ?? null);
+  /** The Scouring Swarm's live board footprint (empty until the Awakening). */
+  readonly swarm = computed(() => this._state()?.swarm ?? null);
+  /** The bazaar keeper's Awakening-only back-room stock, priced in Royal Jelly. */
+  readonly backRoom = computed(() => this._state()?.backRoom ?? []);
   readonly wardrobe = computed(() => this._state()?.wardrobe ?? null);
   readonly result = computed(() => this._state()?.result ?? null);
   readonly hallOfFame = computed(() => this._state()?.hallOfFame ?? []);

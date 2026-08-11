@@ -256,6 +256,10 @@ export class SpectatorComponent implements OnInit, AfterViewInit, OnDestroy {
     );
     this.board.setBarriersOpen(barriers);
     this.board.setGuardianPools(guardians);
+    // The broadcast screen is where "everyone should know what's going on"
+    // matters most — the Awakening spill and the brood belong here too.
+    this.board.setSwarm(this.store.swarm() ?? null);
+    this.board.setAwakened(!!this.store.season()?.bossPhase);
   }
 
   ngOnInit(): void {

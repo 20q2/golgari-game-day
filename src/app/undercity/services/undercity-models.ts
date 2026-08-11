@@ -198,6 +198,9 @@ export interface YouDoc {
   gearStash?: string[];
   /** Forge economy: crafting-material counters. */
   materials?: { moltings: number; ichor: number };
+  /** Royal Jelly — dropped only by the Scouring Swarm, spent only in the
+   *  bazaar's Awakening back room. */
+  royalJelly?: number;
   /** Grime Gorger: junk devoured into board-editing fuel. */
   mulch?: number;
   /** Effective consumable-bag ceiling — 10 for a Grime Gorger, else 5. Always
@@ -393,6 +396,19 @@ export interface GameState {
   barriersOpen?: string[];
   /** Island-boss (Savra) persistent HP pool. */
   boss?: { hp: number; maxHp: number };
+  /** The Queen's Awakening finale. `xpBonus` is the live season-wide XP
+   *  multiplier bonus (0 until a Queenslayer is crowned). */
+  finale?: {
+    slayer: string | null;
+    slayerName: string | null;
+    xpBonus: number;
+  };
+  /** Board nodes currently held by the Scouring Swarm — Savra's brood, released
+   *  by the Awakening. Empty until the rot-wards fall. */
+  swarm?: { nodes: string[]; name: string; spriteId: string };
+  /** The bazaar keeper's Awakening-only stock: Legendary gear priced in Royal
+   *  Jelly. Empty until the Awakening fires. */
+  backRoom?: { item: string; jelly: number }[];
   /** Landmark node id -> its season-global first conqueror.
    *  `kind` is 'lair' | 'boss' | 'trove' | 'cache' | 'vault'. */
   firsts?: Record<string, { by: string; at?: string; kind: string }>;

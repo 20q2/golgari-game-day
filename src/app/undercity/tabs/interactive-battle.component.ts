@@ -695,7 +695,18 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
 
   protected hasRewards(): boolean {
     const r = this.rewards();
-    return this.outcome() === 'attacker' && !!r && (!!r.spores || !!r.xp || !!r.renown || !!r.levels || !!r.itemName || !!r.gearName || !!r.eggTier);
+    return (
+      this.outcome() === 'attacker' &&
+      !!r &&
+      (!!r.spores ||
+        !!r.cutpurse ||
+        !!r.xp ||
+        !!r.renown ||
+        !!r.levels ||
+        !!r.itemName ||
+        !!r.gearName ||
+        !!r.eggTier)
+    );
   }
 
   // Built once on first read (when a win is shown) so the victory rain doesn't

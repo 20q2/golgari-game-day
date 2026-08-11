@@ -1431,8 +1431,8 @@ ENEMY_SPECS_BY_ID = dict(_SPEC)
 # fair fight for." Calibrated against the enemy tables and the recommended-level
 # notes scattered above: basic wilds ~Lv1, elites ~Lv2-3, wilderness wilds
 # ~Lv5-6, wilderness elites ~Lv7-8, lair/barrier bosses ~Lv3-5. maxHp is capped
-# so the finale boss's huge SHARED persistent pool (Savra, 400 HP) doesn't read
-# as an absurd level — her menace is the shared pool the HP bar already shows.
+# so the finale boss's single-fight personal trial (Savra, 560 HP) doesn't read
+# as an absurd level — her menace is that HP bar, faced whole, in one fight.
 # The battle_start / battle-resume payloads carry the computed level to the
 # client (no client mirror — the value always arrives with the fight).
 ENEMY_LEVEL_HP_CAP = 80   # above any normal enemy (max is 70); clips only the boss pool
@@ -1605,6 +1605,17 @@ LAIR_ABANDONED_DIALOGUE = {
 
 # Minor consumables scrounged from an abandoned lair (bag-full falls back to Spores).
 LAIR_SCAVENGE_ITEMS = ['healing_moss', 'smoke_spore', 'scrying_spore']
+
+# Savra's brood — the Scouring Swarm, released by the Queen's Awakening. Sits at
+# elite strength for a mid-tier zone: worth fighting for the Jelly, but never a
+# wall for the low-level player it is meant to bring into the finale. `sprite`
+# maps to public/undercity/boss_spawns/scouring_swarm.png.
+SCOURING_SWARM = {
+    'id': 'scouring_swarm', 'name': 'Scouring Swarm', 'sprite': 'scouring_swarm',
+    'hp': 34, 'atk': 11, 'def': 4, 'spd': 7,
+    'bounty': 18, 'xp': 24, 'itemChance': 0.10,
+    'personality': 'trickster', 'bluff': 0.25,
+}
 
 # The wilderness World Event boss. `spriteId` maps to public/undercity/sigil_boss/
 # art on the client. Stats are per-swing combat stats; the live shared pool comes

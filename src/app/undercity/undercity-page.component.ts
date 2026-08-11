@@ -59,6 +59,10 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   protected readonly sigilsRequired = SIGILS_REQUIRED;
   /** Guild Sigils held: lair first-kills recorded in poiClaims (mirrors the
    *  count board-tab uses for the sigil-claimed celebration). */
+  /** Royal Jelly on hand — dropped only by the Scouring Swarm, spent only in
+   *  the bazaar's Awakening back room. Hidden until you hold some. */
+  protected readonly royalJelly = computed(() => this.store.you()?.royalJelly ?? 0);
+
   protected readonly sigilsHeld = computed(() => {
     const claims = this.store.you()?.poiClaims ?? [];
     return Object.keys(DUNGEONS).filter((b) => claims.includes(`${b}_lair`)).length;
