@@ -1081,6 +1081,70 @@
   margin-top: 2px;
 }
 
+// ── Reclaim (Grime Gorger) ──────────────────────────────────────────────────
+// Ten purchasable space types, so this grid is denser than the shrine's three
+// altars and scrolls rather than growing the modal.
+.reclaim-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 2px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.reclaim-releases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.reclaim-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  text-align: left;
+  font-family: inherit;
+  color: #e8dcc4;
+  // Rot-brown, matching the Mulch chip on the creature tab, so the currency
+  // and the thing it buys read as one system.
+  background: rgba(176, 137, 76, 0.13);
+  border: 1px solid rgba(176, 137, 76, 0.4);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  &:not(:disabled):active {
+    transform: translateY(1px);
+  }
+
+  .reclaim-card-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+
+  .reclaim-card-price {
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+    color: #c39a55;
+  }
+
+  // Why this one is unbuyable — the modal never offers a doomed purchase
+  // without saying what is wrong.
+  .reclaim-card-why {
+    font-size: 0.72rem;
+    opacity: 0.8;
+  }
+}
+
 // One blessing as a tappable altar tile: icon, name, one-line effect. The
 // left accent bar + tinted icon give each stat its own identity.
 .shrine-card {

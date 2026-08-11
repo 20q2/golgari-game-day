@@ -117,6 +117,13 @@ import { UcActionBandComponent } from './action-band.component';
 import { PickupModalComponent } from './pickup-modal.component';
 import { BossIntroComponent } from './boss-intro.component';
 import { bossLines } from '../data/boss-dialogue';
+import {
+  RECLAIM_PRICES,
+  RECLAIM_SOURCES,
+  RECLAIM_SURFACE_ONLY,
+  RECLAIM_LABELS,
+  RECLAIM_MAX_CLAIMS,
+} from '../data/reclaim';
 
 interface BattleView {
   battle: BattleResult;
@@ -473,6 +480,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   protected readonly yourBid = computed(() => this.umoriAuction()?.yourBid ?? 0);
   /** Top-right focus picker: pick any player (or Umori) to center the camera on. */
   protected readonly showFocusMenu = signal(false);
+  // ── Grime Gorger: Reclaim ──
+  protected readonly showReclaim = signal(false);
+  /** Which of your three claims to let collapse, when a fourth needs a slot. */
+  protected readonly pendingRelease = signal<string | null>(null);
   protected readonly showExcavation = signal(false);
   protected readonly excavationGrid = signal<DigGrid | null>(null);
   protected readonly showFlowPuzzle = signal(false);
@@ -1447,6 +1458,87 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     if (!bossHere && this.store.umori()?.node === pos) return 'trading_post';
     return this.map?.nodes.find((n) => n.id === pos)?.type ?? null;
   });
+
+  // ── Grime Gorger: Reclaim ─────────────────────────────────────────────────
+
+  protected readonly reclaimTargets = Object.keys(RECLAIM_PRICES);
+  protected readonly reclaimPrice = (t: string) => RECLAIM_PRICES[t];
+  protected readonly reclaimLabel = (t: string) => RECLAIM_LABELS[t] ?? t;
+  protected readonly reclaimMaxClaims = RECLAIM_MAX_CLAIMS;
+
+  protected readonly canReclaim = computed(() =>
+    (this.store.you()?.passives ?? []).includes('reclaim'),
+  );
+
+  protected readonly mulch = computed(() => this.store.you()?.mulch ?? 0);
+  protected readonly myClaims = computed(() => this.store.you()?.claims ?? []);
+
+  /** What the space under you actually is: the claim override if one stands,
+   *  else the map's own type. Deliberately NOT `nodeType()`, which reports a
+   *  parked Umori as a trading post — Reclaim cares about the real ground. */
+  protected readonly standingType = computed(() => {
+    const pos = this.store.you()?.position;
+    if (!pos) return '';
+    const claim = this.store.season()?.reclaimed?.[pos];
+    return claim?.type ?? this.map?.nodes.find((n) => n.id === pos)?.type ?? '';
+  });
+
+  /** The claim on your tile, if it is yours to re-landscape. */
+  protected readonly standingClaim = computed(() => {
+    const pos = this.store.you()?.position;
+    const claim = pos ? this.store.season()?.reclaimed?.[pos] : undefined;
+    return claim && claim.by === this.store.you()?.userId ? claim : null;
+  });
+
+  /** Three claims stand and this tile is not one of them, so the server will
+   *  demand a release — the modal collects that choice up front. */
+  protected readonly needsRelease = computed(() => {
+    const held = this.myClaims();
+    return (
+      !this.standingClaim() &&
+      held.length >= RECLAIM_MAX_CLAIMS &&
+      !held.includes(this.store.you()?.position ?? '')
+    );
+  });
+
+  /** Null when this target is buildable here, else why not. Mirrors the
+   *  server's validation order so the modal never offers a doomed purchase. */
+  protected reclaimBlocker(target: string): string | null {
+    const you = this.store.you();
+    const pos = you?.position ?? '';
+    const claim = pos ? this.store.season()?.reclaimed?.[pos] : undefined;
+    const standing = this.standingType();
+    if (claim && claim.by !== you?.userId) return 'Another Gorger holds this ground';
+    if (!claim && !RECLAIM_SOURCES.has(standing)) return 'This ground will not take a change';
+    if (target === standing) return 'Already exactly that';
+    if (
+      RECLAIM_SURFACE_ONLY.has(target) &&
+      this.map?.nodes.find((n) => n.id === pos)?.region === 'depths'
+    ) {
+      return 'Surface only';
+    }
+    if (this.mulch() < RECLAIM_PRICES[target]) return 'Not enough Mulch';
+    return null;
+  }
+
+  protected openReclaim(): void {
+    this.pendingRelease.set(null);
+    this.showReclaim.set(true);
+  }
+
+  protected async reclaim(target: string): Promise<void> {
+    if (this.reclaimBlocker(target)) return;
+    await this.run(async () => {
+      const release = this.pendingRelease();
+      const resp = await this.store.action(
+        'reclaim',
+        release ? { target, release } : { target },
+      );
+      this.showToast(resp.text ?? 'The ground churns.');
+      this.showReclaim.set(false);
+      this.pendingRelease.set(null);
+    });
+  }
 
   /** True while the plotted/walked route crosses a gate — i.e. the pending
    *  gate-pass heal (GATE_PASS_HEAL_FRACTION of max HP) that lands when the move
@@ -3015,9 +3107,14 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     item?: string;
     gear?: SpaceEvent['gear'];
     egg?: SpaceEvent['egg'];
+    cutpurse?: number;
   }): BattleRewards {
+    // The server folds the Cutpurse bonus into `spores`; split it back out so
+    // the popup shows what the fight paid and what the charm lifted.
+    const lifted = src.cutpurse ?? 0;
     const rewards: BattleRewards = {
-      spores: src.spores,
+      spores: Math.max(0, (src.spores ?? 0) - lifted) || undefined,
+      cutpurse: lifted || undefined,
       xp: src.xp,
       renown: src.renownGained,
       levels: src.levels,

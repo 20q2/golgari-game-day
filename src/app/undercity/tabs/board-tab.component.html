@@ -231,6 +231,15 @@
             </button>
           }
 
+          <!-- Reclaim: a Grime Gorger can work the ground it stands on. Sits
+               beside the facility button, since it applies on any soft tile
+               rather than at one facility. -->
+          @if (canReclaim() && !rolling() && !store.you()?.pendingMove) {
+            <button class="uc-btn facility-btn reclaim-btn" title="Reclaim this ground" aria-label="Reclaim this ground" (click)="openReclaim()">
+              <mat-icon class="mi">compost</mat-icon>
+            </button>
+          }
+
           <!-- Current-space (facility) round button — only while idle -->
           @if (!rolling() && !store.you()?.pendingMove) {
             @switch (nodeType()) {
@@ -838,6 +847,67 @@
         } @else {
           <button class="uc-btn close-btn" (click)="closeFacilities()">Leave</button>
         }
+      </div>
+    </div>
+  }
+
+  <!-- Reclaim (Grime Gorger) -->
+  @if (showReclaim()) {
+    <div class="uc-modal-backdrop" (click)="showReclaim.set(false)">
+      <div
+        class="uc-modal"
+        (click)="$event.stopPropagation()"
+        [style.background-image]="regionWashBg()"
+      >
+        <h3><mat-icon class="mi">compost</mat-icon> Work the Ground</h3>
+        <p class="modal-sub">
+          Currently: <strong>{{ reclaimLabel(standingType()) }}</strong>
+        </p>
+
+        <div class="shrine-wallet" [class.short]="!mulch()">
+          <mat-icon class="mi">compost</mat-icon>
+          <span>{{ mulch() }}</span>
+          <em>mulch · {{ myClaims().length }}/{{ reclaimMaxClaims }} claims</em>
+        </div>
+
+        @if (needsRelease()) {
+          <p class="modal-sub warn">
+            You already hold {{ reclaimMaxClaims }} claims. Pick one to let collapse —
+            it reverts to what it was.
+          </p>
+          <div class="reclaim-releases">
+            @for (node of myClaims(); track node) {
+              <button
+                class="uc-btn ghost"
+                [class.armed]="pendingRelease() === node"
+                (click)="pendingRelease.set(node)"
+              >
+                {{ reclaimLabel(store.season()?.reclaimed?.[node]?.type ?? '') }}
+                @if (pendingRelease() === node) {
+                  <mat-icon class="mi">check</mat-icon>
+                }
+              </button>
+            }
+          </div>
+        }
+
+        <div class="reclaim-grid">
+          @for (t of reclaimTargets; track t) {
+            <button
+              class="reclaim-card"
+              [disabled]="busy() || !!reclaimBlocker(t) || (needsRelease() && !pendingRelease())"
+              (click)="reclaim(t)"
+            >
+              <span class="reclaim-card-name">{{ reclaimLabel(t) }}</span>
+              <span class="reclaim-card-price">{{ reclaimPrice(t) }} mulch</span>
+              @if (reclaimBlocker(t)) {
+                <span class="reclaim-card-why">{{ reclaimBlocker(t) }}</span>
+              }
+            </button>
+          }
+        </div>
+
+        <button class="uc-btn close-btn" (click)="showReclaim.set(false)">Leave</button>
       </div>
     </div>
   }
