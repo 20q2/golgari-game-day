@@ -90,3 +90,73 @@ def test_single_passive_forms_are_unchanged_by_the_list_support(table):
     status, body = act(table, 'evolve', form='grave_titan')
     assert status == 200, body
     assert body['you']['passives'] == ['spikeshell', 'colossus']
+
+
+# ── Gorge: items -> Mulch ────────────────────────────────────────────────────
+
+def _first_gear_of_tier(tier):
+    return next(gid for gid, g in data.GEAR.items() if g['tier'] == tier)
+
+
+def _first_consumable_of_tier(tier):
+    return next(cid for cid, c in data.CONSUMABLES.items() if c['tier'] == tier)
+
+
+def test_gorge_gear_credits_mulch_by_rarity(table):
+    for tier, expected in config.GORGE_MULCH_GEAR.items():
+        sid, doc = _gorger(table)
+        doc['gearStash'] = [_first_gear_of_tier(tier)]
+        status, body = db._gorge(table, sid, doc, {'kind': 'gear', 'index': 0})
+        assert status == 200, body
+        assert body['you']['mulch'] == expected, tier
+        assert body['you']['gearStash'] == []
+
+
+def test_gorge_consumable_credits_mulch_by_rarity(table):
+    for tier, expected in config.GORGE_MULCH_CONSUMABLE.items():
+        sid, doc = _gorger(table)
+        doc['bag'] = [_first_consumable_of_tier(tier)]
+        status, body = db._gorge(table, sid, doc, {'kind': 'consumable', 'index': 0})
+        assert status == 200, body
+        assert body['you']['mulch'] == expected, tier
+        assert body['you']['bag'] == []
+
+
+def test_gorge_accumulates(table):
+    """Two devours in a row through the real action path — which re-reads the
+    doc each time, so this also proves the save is not tripping the optimistic
+    `ver` guard between turns."""
+    sid, doc = _gorger(table)
+    doc['gearStash'] = [_first_gear_of_tier(1), _first_gear_of_tier(1)]
+    db._put_player(table, doc)
+    assert act(table, 'gorge', kind='gear', index=0)[0] == 200
+    status, body = act(table, 'gorge', kind='gear', index=0)
+    assert status == 200, body
+    assert body['you']['mulch'] == 4
+    assert body['you']['gearStash'] == []
+
+
+def test_gorge_rejects_non_gorgers(table):
+    sid, doc = _player_at(table, 'cavern_r2')
+    doc['gearStash'] = [_first_gear_of_tier(1)]
+    status, body = db._gorge(table, sid, doc, {'kind': 'gear', 'index': 0})
+    assert status == 400
+    assert doc['gearStash'] == [_first_gear_of_tier(1)]  # item untouched
+
+
+def test_gorge_rejects_bad_slot(table):
+    sid, doc = _gorger(table)
+    doc['gearStash'] = []
+    status, body = db._gorge(table, sid, doc, {'kind': 'gear', 'index': 0})
+    assert status == 409
+    status, body = db._gorge(table, sid, doc, {'kind': 'pets', 'index': 0})
+    assert status == 400
+
+
+def test_gorge_is_registered_as_an_action(table):
+    sid, doc = _gorger(table)
+    doc['gearStash'] = [_first_gear_of_tier(2)]
+    db._put_player(table, doc)
+    status, body = act(table, 'gorge', kind='gear', index=0)
+    assert status == 200, body
+    assert body['you']['mulch'] == 4

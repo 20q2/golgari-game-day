@@ -2850,6 +2850,7 @@ def handle_action(table, body):
         'cancel-loot-puzzle': _cancel_loot_puzzle,
         'equip-gear': _equip_gear,
         'salvage-gear': _salvage_gear, 'upgrade-gear': _upgrade_gear,
+        'gorge': _gorge,
         'market-list': _market_list, 'market-buy': _market_buy,
         'market-cancel': _market_cancel, 'market-edit': _market_edit,
         'pickup-resolve': _pickup_resolve,
@@ -7149,6 +7150,46 @@ def _spend_stat(table, sid, doc, payload):
     if conflict:
         return conflict
     return _ok(doc)
+
+
+# ── Grime Gorger ─────────────────────────────────────────────────────────────
+
+_GORGE_KINDS = {
+    'gear':       ('gearStash', lambda i: data.GEAR[i]['tier'],
+                   lambda i: data.GEAR[i]['name'], data.GORGE_MULCH_GEAR),
+    'consumable': ('bag', lambda i: data.CONSUMABLES[i]['tier'],
+                   lambda i: data.CONSUMABLES[i]['name'],
+                   data.GORGE_MULCH_CONSUMABLE),
+}
+
+
+def _gorge(table, sid, doc, payload):
+    """Devour a stashed gear piece or a bagged consumable into Mulch. A third
+    fate for an item alongside Salvage (-> materials) and the Market (-> Spores),
+    so 'what do I do with this junk' is a real fork."""
+    if 'gorge' not in (doc.get('passives') or []):
+        return _err('Only a Grime Gorger can stomach that.')
+    kind = payload.get('kind')
+    spec = _GORGE_KINDS.get(kind)
+    if not spec:
+        return _err('You can only devour gear and consumables.')
+    field, tier_of, name_of, yields = spec
+    inv = doc.get(field) or []
+    try:
+        index = int(payload.get('index'))
+    except (TypeError, ValueError):
+        return _err('Pick something to devour.')
+    if index < 0 or index >= len(inv):
+        return _err('That slot is empty.', 409)
+    item_id = inv.pop(index)
+    doc[field] = inv
+    gained = yields[tier_of(item_id)]
+    doc['mulch'] = doc.get('mulch', 0) + gained
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text=f"You devour the {name_of(item_id)} — {gained} Mulch.",
+               gorge={'mulch': gained, 'total': doc['mulch']})
 
 
 def _evolve(table, sid, doc, payload):
