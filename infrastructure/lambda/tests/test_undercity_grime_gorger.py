@@ -352,3 +352,87 @@ def test_insufficient_mulch_changes_nothing(table):
     assert status == 409
     assert doc['mulch'] == 3
     assert db._effective_type(table, sid, node) == 'wild'
+
+
+# ── The three-claim cap ──────────────────────────────────────────────────────
+
+def _wilds(table, sid, n):
+    nodes = db._season_map(table, sid)
+    return [nid for nid, x in nodes.items() if x['type'] == 'wild'][:n]
+
+
+def _stand_and_reclaim(table, sid, node, target, **payload):
+    """Move the saved doc onto `node` and reclaim through the real action path,
+    which re-reads the doc each turn (so the optimistic `ver` guard is honoured
+    exactly as it is in play)."""
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = node
+    db._put_player(table, doc)
+    return act(table, 'reclaim', target=target, **payload)
+
+
+def _claim_three(table, sid):
+    a, b, c, d = _wilds(table, sid, 4)
+    for node in (a, b, c):
+        assert _stand_and_reclaim(table, sid, node, 'loot')[0] == 200
+    return a, b, c, d
+
+
+def test_fourth_claim_is_refused_with_the_claim_list(table):
+    sid, doc = _gorger(table)
+    doc['mulch'] = 999
+    db._put_player(table, doc)
+    a, b, c, d = _claim_three(table, sid)
+    status, body = _stand_and_reclaim(table, sid, d, 'loot')
+    assert status == 409, body
+    assert sorted(body['claims']) == sorted([a, b, c])
+
+
+def test_releasing_a_claim_frees_the_slot_and_reverts_the_ground(table):
+    sid, doc = _gorger(table)
+    doc['mulch'] = 999
+    db._put_player(table, doc)
+    a, b, c, d = _claim_three(table, sid)
+    status, body = _stand_and_reclaim(table, sid, d, 'loot', release=a)
+    assert status == 200, body
+    assert db._effective_type(table, sid, a) == 'wild'   # reverted
+    assert db._effective_type(table, sid, d) == 'loot'
+    assert sorted(body['you']['claims']) == sorted([b, c, d])
+
+
+def test_release_must_name_one_of_your_own_claims(table):
+    sid, doc = _gorger(table)
+    doc['mulch'] = 999
+    db._put_player(table, doc)
+    a, b, c, d = _claim_three(table, sid)
+    status, _ = _stand_and_reclaim(table, sid, d, 'loot', release=d)
+    assert status == 409
+
+
+def test_relandscaping_your_own_claim_is_not_a_new_claim(table):
+    """Re-working ground you already hold costs the new type's FULL price but
+    does not consume a fresh slot."""
+    sid, doc = _gorger(table)
+    doc['mulch'] = 999
+    db._put_player(table, doc)
+    a, b, c, _ = _claim_three(table, sid)
+    before = db._get_player(table, sid, 'user-alex')['mulch']
+    status, body = _stand_and_reclaim(table, sid, a, 'trove')
+    assert status == 200, body
+    assert body['you']['mulch'] == before - config.RECLAIM_PRICES['trove']
+    assert len(body['you']['claims']) == 3
+    assert db._effective_type(table, sid, a) == 'trove'
+
+
+def test_released_claim_reverts_to_its_original_type_not_the_previous_one(table):
+    sid, doc = _gorger(table)
+    doc['mulch'] = 999
+    db._put_player(table, doc)
+    node = _node_of_type(table, sid, 'hazard')
+    assert _stand_and_reclaim(table, sid, node, 'loot')[0] == 200
+    assert _stand_and_reclaim(table, sid, node, 'trove')[0] == 200   # re-landscape
+    a, b, c = _wilds(table, sid, 3)
+    for n in (a, b):
+        assert _stand_and_reclaim(table, sid, n, 'loot')[0] == 200
+    assert _stand_and_reclaim(table, sid, c, 'loot', release=node)[0] == 200
+    assert db._effective_type(table, sid, node) == 'hazard'   # the ORIGINAL

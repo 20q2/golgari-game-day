@@ -238,8 +238,10 @@ def _clean(obj):
     return obj
 
 
-def _err(msg, code=400):
-    return code, {'error': msg}
+def _err(msg, code=400, **extra):
+    """`extra` rides along in the body for errors the client must act on — e.g.
+    Reclaim's claim list, so the UI can ask which claim to release."""
+    return code, {'error': msg, **extra}
 
 
 def _season_pk(sid):
@@ -7263,6 +7265,20 @@ def _reclaim(table, sid, doc, payload):
     if doc.get('mulch', 0) < price:
         return _err(f'Not enough Mulch — that costs {price}.', 409)
 
+    # Three standing claims, ever. Under this price list that cap is the only
+    # thing between a wealthy hoarder and a rebuilt biome — the decision is
+    # always WHERE, never how many. Re-landscaping ground you already hold does
+    # not consume a fresh slot.
+    held = [n for n in (doc.get('claims') or []) if n in claims]
+    if not standing and len(held) >= data.RECLAIM_MAX_CLAIMS:
+        release = payload.get('release')
+        if release not in held:
+            return _err('You already hold three claims — release one first.',
+                        409, claims=held)
+        table.delete_item(Key={'pk': _season_pk(sid), 'sk': f'RECLAIM#{release}'})
+        held = [n for n in held if n != release]
+        doc['claims'] = held
+
     doc['mulch'] = doc.get('mulch', 0) - price
     table.put_item(Item={
         'pk': _season_pk(sid), 'sk': f'RECLAIM#{node}', 'node': node,
@@ -7270,7 +7286,9 @@ def _reclaim(table, sid, doc, payload):
         'origType': standing['origType'] if standing else current,
         'by': doc['userId'], 'byName': doc.get('username', 'Someone'),
         'at': _now()})
-    doc['claims'] = [n for n in (doc.get('claims') or []) if n != node] + [node]
+    # Rebuild from `held` (not the raw field) so any claim that vanished — a new
+    # night, a released slot — is pruned rather than counted forever.
+    doc['claims'] = [n for n in held if n != node] + [node]
     conflict = _save_or_conflict(table, doc)
     if conflict:
         return conflict
