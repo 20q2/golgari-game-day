@@ -2646,6 +2646,9 @@ def handle_state(table, query_params):
                 # right after an action and yank the client's max HP down below
                 # current hp (hp is always clamped to the effective max).
                 you['maxHp'] = engine.effective_stats(item)['maxHp']
+                # Bag capacity is per-creature (a Grime Gorger's Gorge doubles
+                # it), so the client reads it from here instead of restating it.
+                you['bagCap'] = bag_cap(item)
         elif item['sk'].startswith('POST#UMORI#'):
             pass  # auction bid records, not a rendered trading post
         elif item['sk'].startswith('POST#'):
@@ -2723,7 +2726,12 @@ def handle_state(table, query_params):
                    'launchAt': config.get('launchAt'),
                    'bossPhase': bool(config.get('bossPhase')),
                    'devMode': bool(config.get('devMode')),
-                   'devEverOn': bool(config.get('devEverOn'))},
+                   'devEverOn': bool(config.get('devEverOn')),
+                   # Grime Gorger claims go to EVERY client, not just the owner:
+                   # the whole table has to render the same board.
+                   'reclaimed': {nid: {'type': c['type'], 'origType': c['origType'],
+                                       'by': c['by'], 'byName': c['byName']}
+                                 for nid, c in reclaims.items()}},
         'you': you,
         'players': players,
         'tradingPosts': posts,
@@ -2967,6 +2975,7 @@ def _ok(doc, **extra):
     # always healed/clamped to the effective max, so echoing base maxHp made a
     # full-HP creature read as "hp over max" on the client. Match _public_player.
     you['maxHp'] = engine.effective_stats(doc)['maxHp']
+    you['bagCap'] = bag_cap(doc)
     return 200, {'ok': True, 'you': you, **extra}
 
 

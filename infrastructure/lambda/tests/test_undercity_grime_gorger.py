@@ -436,3 +436,46 @@ def test_released_claim_reverts_to_its_original_type_not_the_previous_one(table)
         assert _stand_and_reclaim(table, sid, n, 'loot')[0] == 200
     assert _stand_and_reclaim(table, sid, c, 'loot', release=node)[0] == 200
     assert db._effective_type(table, sid, node) == 'hazard'   # the ORIGINAL
+
+
+# ── State exposure ───────────────────────────────────────────────────────────
+
+def test_state_exposes_bag_cap_and_mulch(table):
+    sid, doc = _gorger(table)
+    doc['mulch'] = 7
+    db._put_player(table, doc)
+    status, body = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200, body
+    assert body['you']['mulch'] == 7
+    assert body['you']['bagCap'] == 10
+
+
+def test_state_bag_cap_is_five_for_everyone_else(table):
+    _player_at(table, 'cavern_r2')
+    status, body = db.handle_state(table, {'userId': 'user-alex'})
+    assert body['you']['bagCap'] == 5
+
+
+def test_action_responses_carry_the_bag_cap(table):
+    sid, doc = _gorger(table)
+    doc['gearStash'] = [_first_gear_of_tier(1)]
+    db._put_player(table, doc)
+    status, body = act(table, 'gorge', kind='gear', index=0)
+    assert body['you']['bagCap'] == 10
+
+
+def test_reclaimed_ground_is_visible_to_other_players(table):
+    sid, doc = _gorger(table)
+    doc['mulch'] = 99
+    node = _node_of_type(table, sid, 'wild')
+    doc['position'] = node
+    db._put_player(table, doc)
+    assert act(table, 'reclaim', target='loot')[0] == 200
+    # A DIFFERENT player's state fetch must see the changed ground, or the
+    # table renders two different boards.
+    status, body = db.handle_state(table, {'userId': 'user-blair'})
+    assert status == 200, body
+    claim = body['season']['reclaimed'][node]
+    assert claim['type'] == 'loot'
+    assert claim['origType'] == 'wild'
+    assert claim['byName'] == 'Alex'
