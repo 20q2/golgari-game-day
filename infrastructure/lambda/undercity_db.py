@@ -988,6 +988,11 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None, region=None):
         npc_snap['statDelta'] = npc.get('statDelta')
     player_snap = _bt_snapshot(player_c)
     player_snap['statDelta'] = _buff_stat_delta(doc)
+    # Bramble is the one rider that fires in ANY stance instead of off a stance
+    # you choose, so it plays like a passive the creature has. Surface it as a
+    # Thorns badge, or the reflected damage looks like it comes from nowhere.
+    if player_c.mag('bramble', 0):
+        player_snap['buffs'] = sorted(set(player_snap.get('buffs') or []) | {'thorns'})
     npc_tier = _battle_tier(table, sid, kind, npc, node)
     rec = {
         'kind': kind, 'node': node, 'round': 1,
@@ -7145,7 +7150,11 @@ def _evolve(table, sid, doc, payload):
         doc[stat] = doc.get(stat, 0) + amt
     doc['form'] = form
     doc['tier'] = tier + 1
-    doc.setdefault('passives', []).append(spec['passive'])
+    # Forms may carry more than one innate passive (`passives`); the singular
+    # `passive` is the display headline and the fallback for the other forms.
+    for _p in (spec.get('passives') or [spec['passive']]):
+        if _p not in doc.setdefault('passives', []):
+            doc['passives'].append(_p)
     doc['hp'] = engine.effective_stats(doc)['maxHp']  # evolution fully heals
     doc['hpUpdatedAt'] = _now()
     doc['evolvedAt'] = _now()
@@ -7909,6 +7918,31 @@ def _use_item(table, sid, doc, payload):
             parts.append(f'braced for {data.CONSUMABLE_BUFF_BATTLES} fights')
         bag.remove(item)
         text = f"{spec['name']}: {', '.join(parts)}."
+    elif spec.get('recall') == 'gate':
+        # Recall to a home Gate and LAND on it, so the gate's own full-heal
+        # fires exactly as if you had walked there. `gate` picks which one;
+        # default is your home biome's.
+        if doc.get('battle'):
+            return _err('Not in the middle of a fight.', 409)
+        if doc.get('pendingMove'):
+            return _err('Resolve your current move first.', 409)
+        gates = data.HOME_GATES
+        target = payload.get('gate') or gates.get(doc.get('homeBiome')) or data.GATE_NODE
+        if target not in set(gates.values()):
+            return _err('That is not a home Gate.', 409)
+        if doc.get('position') == target:
+            return _err('You are already standing on that Gate.', 409)
+        doc['position'] = target
+        doc['lastBiome'] = nodes.get(target, {}).get('region') or doc.get('lastBiome')
+        bag.remove(item)
+        doc['bag'] = bag
+        # Resolve the landing so the heal (and the gate event) happen for real.
+        space_event = _resolve_space(table, sid, doc, target, prev=None)
+        conflict = _save_or_conflict(table, doc)
+        if conflict:
+            return conflict
+        return _ok(doc, spaceEvent=space_event,
+                   text='The Gatestone crumbles — the mycelium pulls you home.')
     elif spec.get('die'):
         # One path for every rigged die. `die` is the (lo, hi) face range the
         # item may set — the cheaper rollers only cover half the faces, which is
