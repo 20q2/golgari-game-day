@@ -102,9 +102,11 @@
 
 // Passive roll-economy readouts. Information, not choices — so they stay out of
 // the fan and sit with the rest of the corner furniture instead.
+// Top offset clears the page-level .hud-purse (the Spore wallet floats 6px below
+// the HUD strip, over this scene) so the roll chips stack under it, same left rail.
 .fan-status {
   position: absolute;
-  top: 10px;
+  top: 42px;
   left: 10px;
   z-index: 5;
   display: flex;
@@ -334,6 +336,9 @@
   min-width: 160px;
   max-height: 60vh;
   overflow-y: auto;
+  // The board scene sets touch-action:none for its pan/pinch gestures; this list
+  // sits inside it and still needs to scroll on a phone.
+  touch-action: pan-y;
   display: flex;
   flex-direction: column;
   padding: 4px;

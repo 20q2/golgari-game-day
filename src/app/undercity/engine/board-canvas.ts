@@ -354,6 +354,14 @@ export interface TokenAnchor {
   y: number;
   /** On-screen sprite height, so callers can offset clear of the body. */
   h: number;
+  /**
+   * Centre of the disc the token is standing on — i.e. the ground under it, not
+   * its body. Chrome that should read as lying on the board's 2.5D ground plane
+   * anchors here instead of to `y`.
+   */
+  groundY: number;
+  /** The disc's on-screen horizontal radius (`NODE_R × zoom`). */
+  groundR: number;
   /** False once the token's box has left the viewport entirely. */
   onScreen: boolean;
 }
@@ -511,6 +519,9 @@ export class BoardCanvas {
   private choices = new Set<string>();
   private backChoice: string | null = null;
   private info: NodeInfo | null = null;
+  /** World-space rect of every info card drawn last frame, keyed by its space and
+   *  in paint order — the tap hit-test for the cards themselves (see hitPopover). */
+  private popoverHits = new Map<string, { x: number; y: number; w: number; h: number }>();
   private infoShownAt = 0;
   // Popovers shown on every legal destination while a move is in progress.
   private choiceInfos: NodeInfo[] = [];
@@ -852,6 +863,10 @@ export class BoardCanvas {
   private ownDarkvision = false;
 
   private boundResize = () => this.resize();
+  /** Element the pan/pinch/wheel listeners are bound to — the canvas's parent
+   *  (the board scene), so overlay chrome stacked above the canvas can't swallow
+   *  a drag. Set by initInput; null on a non-interactive (spectator) board. */
+  private inputSurface: HTMLElement | null = null;
   private pointerHandlers: {
     onDown: (e: PointerEvent) => void;
     onMove: (e: PointerEvent) => void;
@@ -1433,20 +1448,49 @@ export class BoardCanvas {
   }
 
   private initInput(): void {
-    this.canvas.style.touchAction = 'none';
+    // Gestures bind to the SCENE, not the canvas. Every bit of board chrome —
+    // status chips, toasts, the coach pill, the action fan's header, a menu's
+    // dismiss catcher — is a DOM sibling stacked above the canvas, so a
+    // canvas-only listener meant a finger that happened to land on one of them
+    // couldn't pan the board at all (it just sat there). Listening one level up
+    // makes the whole board rectangle draggable no matter what floats over it;
+    // real controls opt out via CONTROLS below.
+    const surface: HTMLElement = this.canvas.parentElement ?? this.canvas;
+    this.inputSurface = surface;
+    surface.style.touchAction = 'none';
     const pointers = new Map<number, { x: number; y: number }>();
     let dragStart: { x: number; y: number; camX: number; camY: number } | null = null;
     let didDrag = false;
     let lastPinchDist = 0;
+    // Cleared when the gesture starts on a dismiss catcher: it still pans, but
+    // must not ALSO tap the space underneath when the finger lifts.
+    let tapThrough = true;
+
+    const startedOn = (e: PointerEvent, sel: string): boolean =>
+      e.target instanceof Element && !!e.target.closest(sel);
+    // Widgets that own their own gestures. A drag off a button must not double as
+    // a pan — the button still fires its click on release — and a scrollable
+    // panel keeps its scroll (`data-uc-panel`).
+    const CONTROLS = 'button, a, input, select, textarea, [role="button"], [data-uc-panel]';
 
     const onDown = (e: PointerEvent) => {
-      e.preventDefault();
+      if (startedOn(e, CONTROLS)) return;
       this.camGlide = null; // manual panning wins over an in-flight glide
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      this.canvas.setPointerCapture(e.pointerId);
+      const onCatcher = startedOn(e, '[data-uc-claim]');
+      // A gesture on a dismiss catcher is left natively intact — capture would
+      // retarget the follow-up click, and cancelling the event risks the same, so
+      // the catcher keeps the tap that closes it. The board still reads the drag
+      // through the window-level listeners below.
+      if (!onCatcher) {
+        e.preventDefault();
+        surface.setPointerCapture(e.pointerId);
+      }
       if (pointers.size === 1) {
+        bindGesture();
         dragStart = { x: e.clientX, y: e.clientY, camX: this.camX, camY: this.camY };
         didDrag = false;
+        tapThrough = !onCatcher;
       } else if (pointers.size === 2) {
         const pts = [...pointers.values()];
         lastPinchDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
@@ -1455,9 +1499,35 @@ export class BoardCanvas {
       }
     };
 
-    const onMove = (e: PointerEvent) => {
-      e.preventDefault();
+    const onUp = (e: PointerEvent) => {
       if (!pointers.has(e.pointerId)) return;
+      pointers.delete(e.pointerId);
+      if (pointers.size === 0) {
+        if (!didDrag && dragStart && tapThrough) {
+          const rect = this.canvas.getBoundingClientRect();
+          this.handleTap(e.clientX - rect.left, e.clientY - rect.top);
+        }
+        dragStart = null;
+        tapThrough = true;
+        lastPinchDist = 0;
+        unbindGesture();
+      } else if (pointers.size === 1) {
+        const remaining = [...pointers.values()][0];
+        dragStart = { x: remaining.x, y: remaining.y, camX: this.camX, camY: this.camY };
+        lastPinchDist = 0;
+      }
+    };
+
+    const onMove = (e: PointerEvent) => {
+      if (!pointers.has(e.pointerId)) return;
+      // A mouse released outside the window never sends pointerup. Spotting that
+      // the buttons are already up retires the id here — otherwise it lingers and
+      // the next single click reads as a second finger, i.e. a dead board.
+      if (e.pointerType === 'mouse' && e.buttons === 0) {
+        onUp(e);
+        return;
+      }
+      e.preventDefault();
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pointers.size === 1 && dragStart) {
         const dx = e.clientX - dragStart.x;
@@ -1491,29 +1561,29 @@ export class BoardCanvas {
       }
     };
 
-    const onUp = (e: PointerEvent) => {
-      pointers.delete(e.pointerId);
-      if (pointers.size === 0) {
-        if (!didDrag && dragStart) {
-          const rect = this.canvas.getBoundingClientRect();
-          this.handleTap(e.clientX - rect.left, e.clientY - rect.top);
-        }
-        dragStart = null;
-        lastPinchDist = 0;
-      } else if (pointers.size === 1) {
-        const remaining = [...pointers.values()][0];
-        dragStart = { x: remaining.x, y: remaining.y, camX: this.camX, camY: this.camY };
-        lastPinchDist = 0;
-      }
-    };
+    // Move/release ride on the window, so a gesture is never lost mid-pan: a
+    // finger that slides off the board (onto the action band, or clear out of the
+    // window) still reports its release, and `pointers` can't strand a dead id
+    // that would make the next single touch look like a pinch. Bound only for the
+    // life of a gesture — an idle board shouldn't wake change detection on every
+    // stray mousemove over the rest of the page.
+    function bindGesture(): void {
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onUp);
+    }
+    function unbindGesture(): void {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    }
 
-    this.canvas.addEventListener('pointerdown', onDown);
-    this.canvas.addEventListener('pointermove', onMove);
-    this.canvas.addEventListener('pointerup', onUp);
-    this.canvas.addEventListener('pointercancel', onUp);
+    surface.addEventListener('pointerdown', onDown);
     this.pointerHandlers = { onDown, onMove, onUp };
 
     const onWheel = (e: WheelEvent) => {
+      // A scrollable panel over the board keeps its own wheel.
+      if (e.target instanceof Element && e.target.closest('[data-uc-panel]')) return;
       e.preventDefault();
       this.camGlide = null;
       const rect = this.canvas.getBoundingClientRect();
@@ -1527,13 +1597,31 @@ export class BoardCanvas {
       this.camY = wy - my / this.zoom;
       this.clampCamera();
     };
-    this.canvas.addEventListener('wheel', onWheel, { passive: false });
+    surface.addEventListener('wheel', onWheel, { passive: false });
     this.onWheelHandler = onWheel;
+  }
+
+  /** The space whose info card covers this world point, topmost first. */
+  private hitPopover(wx: number, wy: number): string | null {
+    const entries = [...this.popoverHits.entries()];
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const [nodeId, r] = entries[i];
+      if (wx >= r.x && wx <= r.x + r.w && wy >= r.y && wy <= r.y + r.h) return nodeId;
+    }
+    return null;
   }
 
   private handleTap(screenX: number, screenY: number): void {
     const wx = this.camX + screenX / this.zoom;
     const wy = this.camY + screenY / this.zoom;
+    // An open info card is the biggest thing on the board and reads as the thing
+    // you tap, so it takes the tap for its own space — tapping a destination card
+    // walks there, and tapping the card you opened closes it again.
+    const onCard = this.hitPopover(wx, wy);
+    if (onCard) {
+      this.onTapNode(onCard);
+      return;
+    }
     // Catch radius in world units, but floored to a finger-sized target on
     // screen. NODE_R * 1.6 is ~9 px at MIN_ZOOM, so zoomed-out spaces become
     // un-tappable without this floor.
@@ -1607,12 +1695,12 @@ export class BoardCanvas {
     }
     window.removeEventListener('resize', this.boundResize);
     if (this.pointerHandlers) {
-      this.canvas.removeEventListener('pointerdown', this.pointerHandlers.onDown);
-      this.canvas.removeEventListener('pointermove', this.pointerHandlers.onMove);
-      this.canvas.removeEventListener('pointerup', this.pointerHandlers.onUp);
-      this.canvas.removeEventListener('pointercancel', this.pointerHandlers.onUp);
+      this.inputSurface?.removeEventListener('pointerdown', this.pointerHandlers.onDown);
+      window.removeEventListener('pointermove', this.pointerHandlers.onMove);
+      window.removeEventListener('pointerup', this.pointerHandlers.onUp);
+      window.removeEventListener('pointercancel', this.pointerHandlers.onUp);
     }
-    if (this.onWheelHandler) this.canvas.removeEventListener('wheel', this.onWheelHandler);
+    if (this.onWheelHandler) this.inputSurface?.removeEventListener('wheel', this.onWheelHandler);
   }
 
   // ── Drawing ────────────────────────────────────────────────────────────────
@@ -2831,6 +2919,9 @@ export class BoardCanvas {
   /** Space-info popover, drawn in world space so it pans/zooms with the board. */
   private drawInfo(): void {
     const now = performance.now();
+    // Rebuilt every frame so handleTap can hit-test the cards themselves; a card
+    // that's no longer drawn drops out of the map with it.
+    this.popoverHits.clear();
     // Destination popovers first (so a tapped popover sits on top of them).
     for (const ci of this.choiceInfos) {
       const born = this.choiceShownAt.get(ci.nodeId) ?? now;
@@ -2882,6 +2973,12 @@ export class BoardCanvas {
     const anchorY = n.y - NODE_R - 12;
     const x = n.x - w / 2;
     const y = anchorY - h;
+    // Remember the card's world rect: it's painted over the board, so a tap on it
+    // has to resolve to ITS space. Without this the hit-test saw only the node
+    // circles, so tapping a card either did nothing or — worse — caught whatever
+    // unrelated space happened to lie behind it. Insertion order is paint order,
+    // so hitPopover walks it backwards for the topmost card.
+    this.popoverHits.set(info.nodeId, { x, y, w, h });
 
     // Grow out of the anchor point as it appears.
     ctx.translate(n.x, anchorY);
@@ -3437,16 +3534,24 @@ export class BoardCanvas {
       const x = (t.x - this.camX) * this.zoom;
       const y = (t.y - this.camY) * this.zoom;
 
+      // The ground under the token: the disc's own centre, so chrome can sit on
+      // the board's 2.5D ground plane rather than on the sprite's midriff. Falls
+      // back to the token's feet if the node somehow isn't on this layer.
+      const n = this.nodeMap.get(t.p.position);
+      const groundY = n ? (n.y - this.camY) * this.zoom : y + h * 0.48;
+
       // Pooled: grow once, then reuse the same objects every frame.
       let a = this.anchorPool[i];
       if (!a) {
-        a = { userId: '', x: 0, y: 0, h: 0, onScreen: false };
+        a = { userId: '', x: 0, y: 0, h: 0, groundY: 0, groundR: 0, onScreen: false };
         this.anchorPool[i] = a;
       }
       a.userId = t.p.userId;
       a.x = x;
       a.y = y;
       a.h = h;
+      a.groundY = groundY;
+      a.groundR = NODE_R * this.zoom;
       // True while any part of the sprite box still overlaps the viewport;
       // consumers apply their own inset/hysteresis on top.
       const half = h / 2;

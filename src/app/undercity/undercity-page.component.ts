@@ -211,6 +211,36 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   /** Whether the floating buff detail panel (tap-to-expand) is open. */
   protected readonly showBuffDetails = signal(false);
 
+  /** Outside-tap dismissal for the buff panel, live only while it's open. It used
+   *  to be a fixed, full-screen catcher div, which meant an open buff tooltip
+   *  froze the board underneath: every drag went into the catcher instead of
+   *  panning the map. A document listener dismisses just as reliably and leaves
+   *  the board's own gestures alone. */
+  private buffDismiss: ((e: PointerEvent) => void) | null = null;
+
+  protected toggleBuffDetails(): void {
+    if (this.showBuffDetails()) {
+      this.closeBuffDetails();
+      return;
+    }
+    this.showBuffDetails.set(true);
+    // The badge row and the panel itself are inside .hud-buffs, so neither the
+    // opening tap nor a scroll of the list counts as "outside".
+    this.buffDismiss = (e: PointerEvent) => {
+      if (e.target instanceof Element && e.target.closest('.hud-buffs')) return;
+      this.closeBuffDetails();
+    };
+    document.addEventListener('pointerdown', this.buffDismiss);
+  }
+
+  private closeBuffDetails(): void {
+    this.showBuffDetails.set(false);
+    if (this.buffDismiss) {
+      document.removeEventListener('pointerdown', this.buffDismiss);
+      this.buffDismiss = null;
+    }
+  }
+
   /** True while a battle is in progress — the server tracks this independently
    * of which tab is mounted, via UndercityStateService.pendingBattle(). */
   protected readonly inBattle = computed(() => !!this.store.pendingBattle());
@@ -386,6 +416,7 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     document.body.classList.remove('undercity-page');
+    this.closeBuffDetails();
     this.store.stopPolling();
     if (this.sporeDeltaTimer) clearTimeout(this.sporeDeltaTimer);
     if (this.sporePulseTimer) clearTimeout(this.sporePulseTimer);

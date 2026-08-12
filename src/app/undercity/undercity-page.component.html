@@ -153,7 +153,7 @@
                 class="buff-badges"
                 aria-label="Active buffs — tap for details"
                 [attr.aria-expanded]="showBuffDetails()"
-                (click)="showBuffDetails.set(!showBuffDetails())"
+                (click)="toggleBuffDetails()"
               >
                 @for (b of hudBadges().shown; track b.kind) {
                   <span class="buff-badge" [class.debuff]="b.info.tone === 'debuff'">
@@ -165,7 +165,9 @@
                 }
               </button>
               @if (showBuffDetails()) {
-                <div class="buff-backdrop" (click)="showBuffDetails.set(false)"></div>
+                <!-- No backdrop catcher: an outside pointerdown dismisses this
+                     (see toggleBuffDetails), so the board stays draggable while
+                     the tooltip is up. -->
                 <div class="buff-details" role="dialog" aria-label="Active buff details">
                   <h4 class="buff-details-title">Active effects</h4>
                   @for (b of activeBuffs(); track b.kind) {

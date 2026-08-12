@@ -72,49 +72,108 @@ radiating from a single point**, each tilted along its own spoke, all narrowing 
 character. That convergence is the whole effect, and a vertically-stacked list can't produce it: stacked tips form a
 vertical line rather than meeting anywhere.
 
-So each wedge is absolutely positioned on a zero-size spoke that pivots about the fan's origin, and the origin sits on
-the **token centre**. `fanAngles(n)` spreads one wing's spokes over an arc (max 84°, ~34° apart, biased **22°
-downward**). Text tilts with its wedge, as in the reference.
+Each chip is absolutely positioned relative to the fan's origin: out to the side by the radius, then stepped vertically
+by a fixed pixel amount. Text tilts with its chip, as in the reference.
+
+**Spacing is vertical and in pixels, not angular.** This is the load-bearing decision. A radial fan cannot work at this
+scale: with the spikes hard against the disc rim there aren't enough pixels for an angle to separate fixed-height chips,
+so the only way to stop them colliding was to fling the whole fan far away from the creature — which then looked
+detached. Stepping by a fixed vertical distance (`V_STEP`, which must exceed a chip's height) separates neighbours at
+*any* radius and at *any* zoom, which is what lets the chips sit right against the base where they belong.
+
+**The origin is the centre of the disc the creature stands on** — not the sprite's midriff — so the fan belongs to the
+space. Chips are drawn **facing the camera**; only their **shadows** are flattened onto the floor by `PROJECTION`, which
+is what keeps them looking like objects above a board rather than decals on it.
+
+**Each chip is rotated to the angle from its own spike back to the centre of the space** (`atan2(y, FAN_RADIUS)`), and
+its `transform-origin` sits on that spike so the rotation swings the *body* while the tip stays pinned where it was
+placed. Rotating about the chip's centre instead drags the tip off its aim.
+
+This is the crux of the layout, and the failure mode is specific: rotate a chip to anything else — its stack position, or
+a flat cosmetic tilt — and its spike aims past the disc. Because the sprite stands directly above the disc, "past the
+disc" reads unmistakably as *the menu is pointing at my creature*, which is the opposite of the intent. The far wing
+negates the angle; without that flip the chip is rotated a half-turn and its text reads upside down.
+
+`FAN_RADIUS` is **exported and used as the positioner's floor** for the real radius. The tilt is derived from it, so if
+the two disagreed the spikes would stop aiming at the space.
+
+`PROJECTION = DISC_RY / NODE_R` is **derived from the board's own disc constants** rather than eyeballed, so retuning the
+board's projection carries the fan with it.
+
+Two rejected approaches, both instructive:
+
+- **Squashing the chips too** (one `scaleY` wrapping the spokes) is geometrically truer — one transform gives you the
+  ellipse *and* the shear for free. But it lays the type face-up on the floor, where it's hard to read. Placement wants
+  the ground plane; text wants the camera.
+- **`perspective()` / `rotateX`** is wrong for this board. The projection is **orthographic**: a space's ellipse has the
+  same `ry/rx` wherever it sits on screen, with no vanishing point. Real 3D perspective would make the fan disagree with
+  the tile under it, and it blurs text. An affine offset is the correct match and cheaper.
+
+Because the chips stand up, `--gy` carries the projection pre-multiplied and nothing else in the fan is squashed —
+which keeps the two coordinate systems from leaking into each other.
+
+This is why `TokenAnchor` carries `groundY` / `groundR` alongside the token centre: chrome that belongs on the ground
+plane needs the disc, and chrome that points *at* the creature (the off-screen indicator) still needs the body.
 
 Two numbers matter more than they look:
 
-- **Spike radius** is `max(38px, 0.78 × sprite height)`. It must clear the sprite *and* the selection ring drawn around
-  it. A first pass used 0.42× and the wedges landed on top of the creature and its name label — burying the one thing
-  the screen is about. The wedges should aim at the creature from outside it, never cover it.
-- **Arc bias** hangs the fan *below* the creature rather than through it. At a shallow bias the wedges sat at eye level
-  and sliced the sprite in half horizontally; it read as three labels arranged around a token instead of a burst
-  radiating from one.
+- **Spike radius** is `max(34px, 1.45 × disc radius)` — scaled off the disc so it tracks zoom, and far enough out to
+  clear the selection ring. An early pass used a fraction of *sprite height* at 0.42× and the wedges landed on top of
+  the creature and its name label, burying the one thing the screen is about.
+- **Arc bias** swings the fan clear of the sprite. The origin is now the creature's feet, so an unbiased spoke runs
+  straight through the body standing on it.
+
+**Zoom.** The radius is `max(FAN_RADIUS, disc radius + 14)` — tight against the base, clear of the selection ring, and
+growing with the disc when you zoom in so the sprite never swallows the chips. It does *not* need to grow to prevent
+overlap: that job belongs entirely to the fixed vertical step, which is why the fan can stay close.
 
 **Two wings, not one.** Wedges split across *both* sides of the token, as Persona's own command list does. This isn't
 only fidelity: piling everything into one wing makes the wedges overlap near the convergence point, which is exactly
 where they're closest together. Three actions on one side was visibly too many.
 
-`fanSplit(items)` picks the divide by **label width, not count**. Halving by count lets both long labels land on one
-side and both short ones on the other — the counts match while the fan looks lopsided. Items stay in order, so the
-primary action always leads.
+**A wedge's side is declared, never derived.** `FanItem.wing` fixes it (0 = leading, 1 = far), assigned by meaning where
+the actions are built: your own verbs (Roll/Blink, Cast) lead, and the situational ones — this space's facility, Reclaim,
+the admin tools — take the far side. Every two-choice prompt uses one shape, accept on the leading wing and decline on
+the far one; the six Blink faces split 1-2-3 / 4-5-6.
 
-`fanAngles` and `fanSplit` are **exported and shared** with the positioner: it needs the same numbers to work out how
-much room a fan will occupy, and if the two disagreed the fit check would lie.
+This replaced two earlier mechanisms that both **moved buttons between sides**, and it's the most important rule here:
+
+- Wings were balanced by *label width*, so adding or removing an unrelated action could shuffle a button across the
+  creature between turns.
+- The fan as a whole mirrored to stay inside the viewport, so panning near an edge threw every wedge to the other side.
+
+Both traded muscle memory for tidier packing. Muscle memory wins: a fan that clips a screen edge is a smaller cost than
+a Roll button that isn't where the thumb expects it. Only a **rival's** fan mirrors now, purely to lean away from your
+creature — and its wedges all stay on one wing, since a far wing would send one back across the shared space into your
+own fan.
+
+`fanAngles` and `fanWings` are **exported and shared** with the positioner: it needs the same numbers to work out a fan's
+vertical span, and if the two disagreed the arc-swing would misfire.
 
 **Shape.** A spike at the inner end and a **zigzag torn edge** at the outer — two big teeth, because three small ones
 just read as a straight edge at board scale. The silhouette lives in one `--shape` custom property shared by all three
 clipped layers.
 
-Behind each wedge sits an **offset accent shard**, the layered-offset trick that gives Persona's panels their punch.
-It's committed — a large offset plus a counter-rotation — because a small one read as a bevel artifact rather than a
-deliberate second shape. Violet by default so it sits inside the Golgari palette instead of fighting the teal board;
-the primary wedge gets the loud crimson, which doubles as the hierarchy cue that keeps Roll from tying with Cast.
+Each chip casts a **`.shadow`** layer — the layered-offset trick that gives Persona's panels their punch, doubling here as
+the cue that the chip is raised off the floor. It's dropped by the same lift that raised the chip and squashed by
+`PROJECTION`, so it lands on the ground plane beneath. Committed rather than hinted: a small offset read as a bevel
+artifact rather than a deliberate second shape.
 
-The shard carries the **same torn silhouette** as the plate. Giving it a plain wedge instead was tried and reverted:
-the doubled teeth are the look, and the "noise" they create where the layers overlap is wanted, not a defect.
+It's **translucent black**, not a colour: it picks up whatever terrain is under it instead of fighting the teal board,
+and it can't compete with the plate for attention. Coloured versions — violet, with crimson on the primary — were tried
+and dropped, because a shadow that changes colour per action stops reading as a shadow. Hierarchy comes from the plate,
+text size and the glow instead. The chip's own `drop-shadow` filter stays light, since this layer does the depth work.
+
+It carries the **same torn silhouette** as the plate. Giving it a plain wedge instead was tried and reverted: the doubled
+teeth are the look, and the "noise" they create where the layers overlap is wanted, not a defect.
 
 **Labels are heavy uppercase** with a shared minimum length (and a larger floor for the primary). Title case read as an
 ordinary web button, and without a length floor a short label like CAST sits between two long wedges as a stub instead
 of reading as one set. The floor drops away in `compact` mode, where there are no labels to keep honest.
 
-Because `clip-path` clips its own descendants, the offset shard cannot be a child of the clipped plate — it would be
-cut away to nothing. So a wedge is four sibling layers inside the button, painted in DOM order: **shard, plate
-(rim), body (dark inner), face (content)**.
+Because `clip-path` clips its own descendants, the offset shadow cannot be a child of the clipped plate — it would be cut
+away to nothing. So a chip is four sibling layers inside the button, painted in DOM order: **shadow, plate (rim), body
+(dark inner), face (content)**.
 
 Three consequences worth knowing, because each is easy to get wrong:
 
@@ -129,16 +188,16 @@ Three consequences worth knowing, because each is easy to get wrong:
 
 **Anchoring.** The fan follows the token's *animated* screen position, so it stays attached while the camera glides.
 
-**Fitting.** Two adaptations, both from the emitted viewport size:
+**Fitting: none, on purpose.** The fan does not adapt to the viewport. Sides are fixed by each item's `wing`, and there
+is no clamping, no side-swap and no arc-swing — a fan near a screen edge simply clips. Same rule as the wing decision: a
+control that rearranges itself costs more in muscle memory than it saves in packing. In practice the camera keeps your
+token centred, and a fan panned fully off-screen hides anyway.
 
-- **Side.** Since both sides carry wedges, this picks which one gets the *bigger* wing: if the arc's reach
-  (`spike radius + widest wedge`) won't fit on the preferred side, the bigger wing swaps to the other.
-- **Arc swing.** If the arc would overrun the top or bottom, the whole fan **rotates** (`--uc-fan-bias`) rather than
-  sliding — a token low on screen opens its fan upward. Sliding would drag the convergence point off the sprite, which
-  is the one thing that must not move.
-
-The container itself has no measurable box (its children are absolutely positioned and rotated), so reach is derived
-from the shared spoke angles plus the widest wedge measured unrotated.
+Earlier revisions did adapt — a side-swap when the arc wouldn't fit, then an arc-swing (`--uc-fan-bias`) rotating the
+whole fan away from an edge. Both are gone, and the removal was a simplification rather than a loss: they were the only
+consumers of the measured chip box, and **measuring forced synchronous layout on a 60fps path**. Dropping the adaptation
+deleted the measure pass, its 3-frame re-measure window, the `effect` that armed it, and two `Map`s of cached geometry.
+`placeFan` is now a handful of style writes that read nothing back.
 
 **During movement.** The own fan **fades out while `rolling()` or stepping** and pops back on landing. A fan of wedges
 chasing the token across the board makes the move itself hard to read. Passed-occupant High Five fans are the

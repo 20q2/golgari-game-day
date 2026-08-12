@@ -116,8 +116,11 @@
         <mat-icon class="mi">center_focus_strong</mat-icon>
       </button>
       @if (showFocusMenu()) {
-        <div class="focus-backdrop" (click)="showFocusMenu.set(false)"></div>
-        <div class="focus-menu">
+        <!-- data-uc-claim: the catcher still lets you pan the board through it,
+             but a plain tap only dismisses (no tap-through to the space below).
+             data-uc-panel keeps the menu's own scroll off the board's gestures. -->
+        <div class="focus-backdrop" data-uc-claim (click)="showFocusMenu.set(false)"></div>
+        <div class="focus-menu" data-uc-panel>
           @for (t of focusTargets(); track t.key) {
             <button class="focus-row" [class.you]="t.isYou" (click)="focusTarget(t.node)">
               @if (t.spriteUrl; as url) {

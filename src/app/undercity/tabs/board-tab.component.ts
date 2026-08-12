@@ -119,11 +119,10 @@ import { UcActionBandComponent } from './action-band.component';
 import {
   FAN_HIDDEN,
   FAN_MIRROR,
+  FAN_RADIUS,
   FanHeader,
   FanItem,
   UcActionFanComponent,
-  fanAngles,
-  fanSplit,
 } from './action-fan.component';
 import { UcOffscreenIndicatorComponent } from './offscreen-indicator.component';
 import { PickupModalComponent } from './pickup-modal.component';
@@ -1993,8 +1992,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // mid-celebration (the sigil auto-dismiss timer won't fire its release).
     this.store.landingDialogHold.set(false);
     this.fanEls.clear();
-    this.fanSize.clear();
-    this.fanFlip.clear();
   }
 
   // ── Action fan (experimental) ──────────────────────────────────────────────
@@ -2014,10 +2011,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     const next = !this.fanMode();
     this.fanMode.set(next);
     localStorage.setItem(BoardTabComponent.FAN_KEY, next ? '1' : '0');
-    // Stale boxes/elements/flips belong to the scheme we just left.
+    // Stale element handles belong to the scheme we just left.
     this.fanEls.clear();
-    this.fanSize.clear();
-    this.fanFlip.clear();
   }
 
   /** The current space's facility, as a fan slab. Mirrors the band's `@switch`. */
@@ -2058,8 +2053,10 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       return {
         header: { text: 'You rolled a 1 — Fleetfoot', tone: 'warn' },
         items: [
-          { id: 'reroll', label: 'Reroll', icon: 'refresh', kind: 'primary', disabled: busy, run: () => this.reroll() },
-          { id: 'keep1', label: 'Keep the 1', icon: 'do_not_step', disabled: busy, run: () => this.keepRoll() },
+          // Every two-choice prompt uses the same shape: take it on the leading
+          // wing, decline it on the far one.
+          { id: 'reroll', label: 'Reroll', icon: 'refresh', kind: 'primary', wing: 0, disabled: busy, run: () => this.reroll() },
+          { id: 'keep1', label: 'Keep the 1', icon: 'do_not_step', wing: 1, disabled: busy, run: () => this.keepRoll() },
         ],
       };
     }
@@ -2069,11 +2066,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     if (pick) {
       return {
         header: { text: 'Pathfinder — keep either die', tone: 'warn' },
-        items: pick.map((v) => ({
+        items: pick.map((v, i) => ({
           id: `die-${v}`,
           label: `Move ${v}`,
           imgSrc: 'undercity/icons/die.png',
           kind: 'primary' as const,
+          // One die per side, so the choice reads as a fork.
+          wing: (i === 0 ? 0 : 1) as 0 | 1,
           disabled: busy,
           run: () => this.chooseDie(v),
         })),
@@ -2090,10 +2089,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
             label: 'Move here',
             icon: 'flag',
             kind: 'primary',
+            wing: 0,
             disabled: busy || (this.stepping()?.path?.length ?? 0) < 2,
             run: () => void this.commitFreeMove(),
           },
-          { id: 'movecancel', label: 'Cancel', icon: 'close', disabled: busy, run: () => this.exitMoveMode() },
+          { id: 'movecancel', label: 'Cancel', icon: 'close', wing: 1, disabled: busy, run: () => this.exitMoveMode() },
         ],
       };
     }
@@ -2101,9 +2101,12 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // 4. Face picker (Blink, or the dev-build debug picker) — also a takeover,
     //    so the faces read as the choice in front of you rather than an extra row.
     if (this.showRollPicker() && (this.blinkAllowed() || this.pickAllowed())) {
+      // Faces are a fixed set of six, so a straight 1-2-3 / 4-5-6 split keeps
+      // reading order intact and puts each face in the same place every time.
       const faces: FanItem[] = [1, 2, 3, 4, 5, 6].map((n) => ({
         id: `face-${n}`,
         label: String(n),
+        wing: (n <= 3 ? 0 : 1) as 0 | 1,
         disabled: busy,
         run: () => this.pickRoll(n),
       }));
@@ -2112,6 +2115,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           id: 'face-rand',
           label: 'Random',
           icon: 'casino',
+          wing: 1,
           title: 'Roll at random — keeps Blink ready',
           disabled: busy,
           run: () => void this.roll(),
@@ -2121,6 +2125,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     }
 
     // 5. Routine turn.
+    //
+    // Wings are assigned by *meaning*, and the same way every turn: your own
+    // verbs (Roll, Cast) lead, and the situational ones — this space's facility,
+    // Reclaim, the admin tools — hang off the far side. So Roll is always in the
+    // same place, and the facility button doesn't wander when Reclaim appears.
     const items: FanItem[] = [];
     const rollDisabled = busy || rolling || pending || this.rollBlocked();
     const count = this.debugMode() ? '∞' : this.rollsBanked();
@@ -2130,6 +2139,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         label: `Blink (${count})`,
         icon: 'bolt',
         kind: 'primary',
+        wing: 0,
         title: 'Blink — choose your face',
         disabled: rollDisabled,
         run: () => this.showRollPicker.set(!this.showRollPicker()),
@@ -2140,6 +2150,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         label: `Roll (${count})`,
         imgSrc: 'undercity/icons/die.png',
         kind: 'primary',
+        wing: 0,
         disabled: rollDisabled,
         run: () => void this.roll(),
       });
@@ -2150,6 +2161,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         id: 'cast',
         label: 'Cast',
         icon: 'auto_fix_high',
+        wing: 0,
         disabled: busy || rolling || pending,
         run: () => this.showSpells.set(true),
       });
@@ -2162,25 +2174,34 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           id: 'pick',
           label: 'Pick',
           icon: 'casino',
+          wing: 1,
           disabled: busy,
           run: () => this.showRollPicker.set(!this.showRollPicker()),
         });
       }
       if (this.isAdmin()) {
-        items.push({ id: 'freemove', label: 'Move', icon: 'open_with', disabled: busy, run: () => this.toggleMoveMode() });
+        items.push({
+          id: 'freemove',
+          label: 'Move',
+          icon: 'open_with',
+          wing: 1,
+          disabled: busy,
+          run: () => this.toggleMoveMode(),
+        });
       }
       if (this.canReclaim()) {
         items.push({
           id: 'reclaim',
           label: 'Reclaim',
           icon: 'compost',
+          wing: 1,
           title: 'Reclaim this ground',
           disabled: busy,
           run: () => this.openReclaim(),
         });
       }
       const fac = this.facilityFanItem();
-      if (fac) items.push({ ...fac, disabled: busy });
+      if (fac) items.push({ ...fac, wing: 1, disabled: busy });
     }
 
     return { header: null, items };
@@ -2204,6 +2225,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         ? []
         : this.occupantsHere();
 
+    // A rival's wedges all stay on one wing. The fan already mirrors to lean away
+    // from your creature; a far wing would send a wedge back across the shared
+    // space and collide with your own fan.
     return list.map((o, i) => {
       const items: FanItem[] = [];
       if (!stepping) {
@@ -2212,6 +2236,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           label: 'Battle',
           icon: 'sports_kabaddi',
           kind: 'danger',
+          wing: 0,
           title: o.shielded ? 'Protected by a Compost Shield' : 'Battle',
           disabled: busy || o.shielded,
           run: () => void this.attack(o),
@@ -2221,6 +2246,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         id: `hf-${o.userId}`,
         label: 'High Five',
         icon: 'back_hand',
+        wing: 0,
         disabled: busy,
         run: () => void this.highFive(o),
       });
@@ -2248,24 +2274,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Fan host elements by anchor key (`own`, or a rival's userId). */
   private fanEls = new Map<string, HTMLElement>();
-  /** Last measured fan box per key, for the flip decisions. */
-  private fanSize = new Map<string, { w: number; h: number }>();
-/** Which side each fan last opened on. Sticky, so it can't flap — see placeFan. */
-  private fanFlip = new Map<string, boolean>();
-  /**
-   * Frames left in which to re-measure. Measuring forces synchronous layout, so
-   * it happens only after contents change — for a few frames, since an effect
-   * can run before the template it depends on has been rewritten.
-   */
-  private fanMeasure = 0;
-
-  /** Contents changed → the boxes need re-measuring before the next flip call. */
-  private readonly fanMeasureOnChange = effect(() => {
-    this.ownFan();
-    this.rivalFans();
-    this.fanMode();
-    this.fanMeasure = 3;
-  });
 
   private refreshFanEls(): void {
     this.fanEls.clear();
@@ -2295,19 +2303,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   private onAnchors(f: AnchorFrame): void {
     if (!this.fanMode()) return;
 
-    const measure = this.fanMeasure > 0;
-    if (measure) {
-      this.fanMeasure--;
-      this.refreshFanEls();
-    }
-
     const own = f.own;
-    // A dice animation or a walk is a moment to watch, not to act in — and four
-    // slabs chasing the token makes the move itself hard to read.
+    // A dice animation or a walk is a moment to watch, not to act in — and a fan
+    // of chips chasing the token makes the move itself hard to read.
     const ownSuppressed = this.rolling() || !!this.stepping();
     if (this.ownFanShown()) {
       const el = this.fanEl('own');
-      if (el) this.placeFan(el, 'own', own, own, f, measure, ownSuppressed);
+      if (el) this.placeFan(el, own, own, ownSuppressed);
     }
 
     // Rival fans survive a walk: the passing High Five exists *because* you're
@@ -2316,24 +2318,28 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       const el = this.fanEl(r.userId);
       if (!el) continue;
       const a = f.others.find((o) => o.userId === r.userId) ?? null;
-      this.placeFan(el, r.userId, a, own, f, measure, this.rolling());
+      this.placeFan(el, a, own, this.rolling());
     }
 
     this.updateIndicator(own, f);
   }
 
   /**
-   * Place one fan. The host lands on the token centre — that's the point every
-   * spoke pivots about, so the wedges' spikes converge on the creature — and the
-   * only choices left are which side to open on and how far out to start.
+   * Place one fan. The host lands on the centre of the disc the creature stands
+   * on — the ground, not the body — so the chips arrange themselves out of the
+   * *space* along the board's 2.5D plane and their spikes point back at it.
+   *
+   * Deliberately tiny. The fan does not adapt to the viewport at all: sides are
+   * fixed by each item's `wing`, and there's no clamping or arc-swing either, so
+   * a fan near a screen edge simply clips. Both follow from the same rule — a
+   * control that rearranges itself costs more in muscle memory than it saves in
+   * packing — and it's why nothing here has to measure a chip. That matters: the
+   * measuring this used to do forced synchronous layout on a 60fps path.
    */
   private placeFan(
     el: HTMLElement,
-    key: string,
     a: TokenAnchor | null,
     own: TokenAnchor | null,
-    f: AnchorFrame,
-    measure: boolean,
     suppressed: boolean,
   ): void {
     if (!a || !a.onScreen || suppressed) {
@@ -2341,80 +2347,30 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // Measure the widest wedge, unrotated. Each wedge is absolutely positioned
-    // on its spoke, so the fan container itself has no size to read — and the
-    // rotations mean a bounding box wouldn't help anyway. Reach is computed from
-    // the spoke angles instead, which is why fanAngles() is shared with the view.
-    if (measure) {
-      let w = 0;
-      let h = 0;
-      for (const s of Array.from(el.querySelectorAll<HTMLElement>('.slab'))) {
-        w = Math.max(w, s.offsetWidth);
-        h = Math.max(h, s.offsetHeight);
-      }
-      if (w) this.fanSize.set(key, { w, h });
-    }
-    const size = this.fanSize.get(key) ?? { w: 150, h: 34 };
+    // How far out the chips' spikes sit: hard against the base, just clear of the
+    // disc and its selection ring. Neighbours are kept apart by a fixed vertical
+    // step inside the component, not by this radius, so it's free to stay tight.
+    //
+    // FAN_RADIUS is the nominal the component derives each chip's tilt from, so
+    // it doubles as the floor here — the two have to agree or the spikes stop
+    // aiming at the space. Above it the radius follows the disc, so zooming in
+    // pushes the chips out with the board instead of letting the sprite swallow
+    // them.
+    const r = Math.max(FAN_RADIUS, a.groundR + 14);
 
-    const pad = 8;
-    // Where the spikes start. This has to clear the sprite *and* the selection
-    // ring drawn around it — at a tighter radius the wedges landed on top of the
-    // creature and its name label, burying the one thing the screen is about.
-    // They should aim at the creature from outside it, not cover it.
-    const r = Math.max(38, a.h * 0.78);
-    const reach = r + size.w;
+    // A rival's fan mirrors, purely to lean away from your creature so the two
+    // clusters don't pile up on a shared space. Both tokens sit on the same node,
+    // so that comparison is stable — no dead-band needed. Your own fan never
+    // mirrors at all.
+    const mirror = a !== own && !!own && a.x < own.x;
 
-    // The fan opens on BOTH sides, so this picks which one carries the bigger
-    // wing rather than which one carries the fan. Sticky: the camera parks your
-    // token at the screen centre, so a bare `a.x > viewW / 2` test would flap on
-    // sub-pixel drift, and a swap is only worth taking when the other side
-    // genuinely has room — otherwise the two rules fight frame to frame.
-    let mirror = this.fanFlip.get(key) ?? false;
-
-    if (a !== own && own) {
-      // A rival's bigger wing leans away from your creature, so the two fans
-      // don't pile up. Both tokens sit on one node, so this needs no dead-band.
-      mirror = a.x < own.x;
-    } else if (a.x > f.viewW * 0.58) {
-      mirror = true;
-    } else if (a.x < f.viewW * 0.42) {
-      mirror = false;
-    }
-
-    const fitsRight = a.x + reach <= f.viewW - pad;
-    const fitsLeft = a.x - reach >= pad;
-    if (mirror && !fitsLeft && fitsRight) mirror = false;
-    else if (!mirror && !fitsRight && fitsLeft) mirror = true;
-
-    this.fanFlip.set(key, mirror);
-
-    // Swing the whole arc rather than sliding the fan off the creature: a token
-    // low on screen opens its fan upward, and vice versa. Keeps the convergence
-    // point exactly on the sprite, which sliding would break.
-    const items = this.fanItemsFor(key);
-    const lead = fanSplit(items);
-    // Worst case of the two wings — the bigger one sets the vertical span.
-    const angles = fanAngles(Math.max(lead, items.length - lead));
-    const spanTop = Math.min(...angles, 0);
-    const spanBot = Math.max(...angles, 0);
-    const rad = Math.PI / 180;
-    const overBot = a.y + Math.sin(spanBot * rad) * reach + size.h - (f.viewH - pad);
-    const overTop = pad - (a.y + Math.sin(spanTop * rad) * reach - size.h);
-    let bias = 0;
-    if (overBot > 0) bias -= Math.min(26, (overBot / Math.max(reach, 1)) / rad);
-    if (overTop > 0) bias += Math.min(26, (overTop / Math.max(reach, 1)) / rad);
-
-    el.style.transform = `translate3d(${Math.round(a.x)}px, ${Math.round(a.y)}px, 0)`;
+    // Anchored to the ground, not the body. The radius is the only measurement
+    // the fan needs — the lift and every angle derive from it inside the
+    // component, which is what keeps the spikes aimed at the space.
+    el.style.transform = `translate3d(${Math.round(a.x)}px, ${Math.round(a.groundY)}px, 0)`;
     el.style.setProperty('--uc-fan-r', `${Math.round(r)}px`);
-    el.style.setProperty('--uc-fan-bias', `${bias.toFixed(1)}deg`);
     el.classList.toggle(FAN_MIRROR, mirror);
     el.classList.remove(FAN_HIDDEN);
-  }
-
-  /** The wedges a fan is showing — split into wings to size its arc. */
-  private fanItemsFor(key: string): FanItem[] {
-    if (key === 'own') return this.ownFan().items;
-    return this.rivalFans().find((r) => r.userId === key)?.items ?? [];
   }
 
   /**
