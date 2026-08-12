@@ -137,7 +137,11 @@ interface Rock {
                   class="band"
                   [class.lit]="lv <= depth"
                   [class.next]="lv === depth + 1"
+                  [class.loot]="lv >= CONSUMABLE_MIN && lv < MAX"
                   [class.heart]="lv === MAX"
+                  [attr.title]="
+                    lv >= CONSUMABLE_MIN && lv < MAX ? 'Deep enough for a bonus find' : null
+                  "
                 >
                   @if (lv === MAX) {
                     <mat-icon class="mi heart-gem">diamond</mat-icon>
@@ -530,6 +534,34 @@ interface Rock {
         outline-offset: -1px;
         animation: nextPulse 1.4s ease-in-out infinite;
         z-index: 2;
+      }
+      /* Strata deep enough to drop a bonus find (level >= the consumable band)
+         run warmer than the barren shallow rock — same gold the find chips use,
+         kept muted so the Heartstone below still reads as the prize. */
+      .band.loot {
+        background: linear-gradient(180deg, #2b2820 0%, #1f1c15 100%);
+        border-color: rgba(224, 192, 136, 0.2);
+      }
+      .band.loot.lit {
+        background: linear-gradient(180deg, rgba(186, 154, 92, 0.5) 0%, rgba(126, 98, 48, 0.38) 100%);
+        border-color: rgba(224, 192, 136, 0.35);
+        box-shadow: inset 0 0 8px rgba(224, 192, 136, 0.2);
+      }
+      .band.loot.lit::after {
+        background: linear-gradient(90deg, transparent, rgba(255, 233, 180, 0.5), transparent);
+      }
+      .band.loot.next {
+        outline-color: rgba(224, 192, 136, 0.85);
+        animation-name: nextPulseLoot;
+      }
+      @keyframes nextPulseLoot {
+        0%,
+        100% {
+          outline-color: rgba(224, 192, 136, 0.35);
+        }
+        50% {
+          outline-color: rgba(224, 192, 136, 1);
+        }
       }
       /* the Heartstone stratum at the very bottom */
       .band.heart {

@@ -65,6 +65,93 @@
   }
 }
 
+// ── Action-fan scheme (experimental) ────────────────────────────────────────
+// Furniture that only exists while the creature-anchored fan replaces the bottom
+// action band. The fans and the off-screen indicator position themselves (see
+// BoardTabComponent.onAnchors); everything here is static corner chrome.
+
+// Scheme switch, tucked under the camera control on the right rail.
+.fan-toggle {
+  position: absolute;
+  top: 58px;
+  right: 10px;
+  z-index: 6;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(26, 24, 21, 0.82);
+  border: 1px solid rgba(74, 124, 89, 0.5);
+  color: #9db98a;
+  cursor: pointer;
+
+  &.on {
+    color: #b7e4c7;
+    border-color: rgba(143, 224, 160, 0.75);
+  }
+
+  .mi {
+    font-size: 18px;
+    height: 18px;
+    width: 18px;
+  }
+}
+
+// Passive roll-economy readouts. Information, not choices — so they stay out of
+// the fan and sit with the rest of the corner furniture instead.
+.fan-status {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.fan-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: rgba(12, 16, 9, 0.82);
+  border: 1px solid rgba(103, 194, 128, 0.3);
+  color: #cfe6bd;
+  font-size: 0.72rem;
+  white-space: nowrap;
+
+  &.rested {
+    border-color: rgba(150, 200, 255, 0.45);
+    color: #cfe0ff;
+  }
+
+  .mi {
+    font-size: 13px;
+    height: 13px;
+    width: 13px;
+  }
+}
+
+// The coach hint is a band-row pill by default; floated here it needs its own
+// placement, low and centred so it reads under the fan rather than over it.
+.coach-pill.fan-coach {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 6;
+  flex-basis: auto;
+  margin-top: 0;
+  max-width: calc(100% - 100px);
+  background: rgba(40, 32, 12, 0.92);
+}
+
 // Floating camera/jump control, TOP-right. The bag owns the bottom-right corner
 // (the easier reach, and the more frequently tapped), so the camera moves out of
 // the thumb zone entirely.

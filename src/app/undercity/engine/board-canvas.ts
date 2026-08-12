@@ -341,6 +341,33 @@ export interface SpellHitFx {
   dodged?: boolean;
 }
 
+/**
+ * Where a creature token sits on screen this frame, so DOM chrome (the action
+ * fan, the off-screen indicator) can hang off it. Coordinates are CSS-logical
+ * px relative to the canvas element's top-left — the same space pointer events
+ * arrive in — not device px and not world units.
+ */
+export interface TokenAnchor {
+  userId: string;
+  /** Token centre. */
+  x: number;
+  y: number;
+  /** On-screen sprite height, so callers can offset clear of the body. */
+  h: number;
+  /** False once the token's box has left the viewport entirely. */
+  onScreen: boolean;
+}
+
+/** One frame's worth of anchors. @see BoardCanvas.setOnAnchors */
+export interface AnchorFrame {
+  viewW: number;
+  viewH: number;
+  /** Null when your token isn't on the layer currently being drawn. */
+  own: TokenAnchor | null;
+  /** Every other visible player on this layer. */
+  others: TokenAnchor[];
+}
+
 // Movement/idle animation of the creature tokens.
 const HOP_COUNT = 2; // footfalls per node-to-node move
 const HOP_HEIGHT = 10; // px the sprite lifts at the peak of a hop
@@ -538,6 +565,12 @@ export class BoardCanvas {
   private reclaimed: Record<string, { type: string; byName: string }> = {};
   private clearedDungeons = new Set<string>(); // biome keys with your sigil
   private onEnterDungeonCb: ((biome: string) => void) | null = null;
+
+  /** Per-frame token-position feed for DOM chrome. @see setOnAnchors */
+  private onAnchorsCb: ((f: AnchorFrame) => void) | null = null;
+  /** Reused across frames so a 60fps feed allocates nothing. */
+  private anchorFrame: AnchorFrame = { viewW: 0, viewH: 0, own: null, others: [] };
+  private anchorPool: TokenAnchor[] = [];
   private ambient: BoardAmbient;
 
   private get active(): Layer {
@@ -782,6 +815,20 @@ export class BoardCanvas {
   /** Fires once per layer-swap into a dungeon (component shows the rite card). */
   setOnEnterDungeon(cb: (biome: string) => void): void {
     this.onEnterDungeonCb = cb;
+  }
+
+  /**
+   * Subscribe to per-frame token screen positions (see `AnchorFrame`).
+   *
+   * Called once per rendered frame, so the callback must be cheap and must not
+   * touch Angular signals — writing one at 60fps would run change detection
+   * 60×/sec. The intended consumer writes `style.transform` directly.
+   *
+   * The frame object and its anchors are **pooled and mutated in place** every
+   * frame: read what you need synchronously, never retain the reference.
+   */
+  setOnAnchors(cb: ((f: AnchorFrame) => void) | null): void {
+    this.onAnchorsCb = cb;
   }
 
   private camX = 0;
@@ -1756,6 +1803,7 @@ export class BoardCanvas {
         placed.push({ p, x: a.x + hfDx, y: a.y, hopY, breath });
       });
     }
+    this.emitAnchors(placed);
     // Dust settles under the tokens; the gate-heal sparkle rides just above it.
     this.drawDust();
     this.drawSparkles();
@@ -3363,6 +3411,54 @@ export class BoardCanvas {
    * spectator board (no own token) everyone is bumped up a little so creatures
    * stay legible on a TV even when the camera is pulled back.
    */
+  /**
+   * Project this frame's token positions into screen space for DOM chrome.
+   *
+   * `hopY` is deliberately ignored: the anchor stays put through a hop so
+   * attached chrome doesn't jitter. (The action fan hides mid-move anyway, but
+   * the off-screen indicator doesn't, and it shouldn't bob.)
+   */
+  private emitAnchors(
+    placed: { p: BoardPlayer; x: number; y: number; hopY: number; breath: number }[],
+  ): void {
+    const cb = this.onAnchorsCb;
+    if (!cb) return;
+
+    const f = this.anchorFrame;
+    f.viewW = this.viewW;
+    f.viewH = this.viewH;
+    f.own = null;
+    f.others.length = 0;
+
+    placed.forEach((t, i) => {
+      const isOwn = t.p.userId === this.ownUserId;
+      const spr = formSprite(t.p.form, t.p.spriteVariant);
+      const h = this.tokenHeight(isOwn, t.p.tier) * spr.scale * this.zoom;
+      const x = (t.x - this.camX) * this.zoom;
+      const y = (t.y - this.camY) * this.zoom;
+
+      // Pooled: grow once, then reuse the same objects every frame.
+      let a = this.anchorPool[i];
+      if (!a) {
+        a = { userId: '', x: 0, y: 0, h: 0, onScreen: false };
+        this.anchorPool[i] = a;
+      }
+      a.userId = t.p.userId;
+      a.x = x;
+      a.y = y;
+      a.h = h;
+      // True while any part of the sprite box still overlaps the viewport;
+      // consumers apply their own inset/hysteresis on top.
+      const half = h / 2;
+      a.onScreen = x + half > 0 && x - half < this.viewW && y + half > 0 && y - half < this.viewH;
+
+      if (isOwn) f.own = a;
+      else f.others.push(a);
+    });
+
+    cb(f);
+  }
+
   private tokenHeight(isOwn: boolean, tier = 1): number {
     const base = isOwn ? 72 : this.interactive ? 56 : 68;
     // Evolved units (Tier 2+) loom larger on the board so their upgrade

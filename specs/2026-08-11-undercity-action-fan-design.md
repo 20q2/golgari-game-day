@@ -5,7 +5,7 @@
 ## Goal
 
 Replace the board tab's fixed bottom action band with actions that **fan off the creature they belong to**, in the
-style of Persona 5's battle command list: skewed labelled slabs cascading diagonally from the token.
+style of Persona 5's battle command list: tapered wedges radiating from the token, spikes converging on it.
 
 Three payoffs, in priority order:
 
@@ -63,28 +63,89 @@ feed, bag FAB, biome chip.
 
 ## The fan
 
-**Geometry.** Slabs cascade **down and away** from the token: each successive slab steps further from the creature
-along the diagonal. Skew is `-11deg` with the text counter-skewed so labels stay upright and readable. The primary
-action (Roll/Blink) is the slab nearest the creature, in the accent green; the rest are dark slabs with a green rim.
-Every slab is a real labelled button — icon *and* word — including the facility and Reclaim actions, which are
-icon-only today. Discoverability is the point; four-letter abbreviations would defeat it.
+**Wedges.** The primary action (Roll/Blink) takes the top spoke of the leading wing in accent green; the rest are dark
+wedges with a green rim. Every one is a real labelled button — icon *and* word — including the facility and Reclaim actions, which
+are icon-only in the band today. Discoverability is the point; four-letter abbreviations would defeat it.
+
+**Geometry: radial, not stacked.** Persona's commands are not a stack of skewed rectangles — they're **tapered wedges
+radiating from a single point**, each tilted along its own spoke, all narrowing to a spike that converges on the
+character. That convergence is the whole effect, and a vertically-stacked list can't produce it: stacked tips form a
+vertical line rather than meeting anywhere.
+
+So each wedge is absolutely positioned on a zero-size spoke that pivots about the fan's origin, and the origin sits on
+the **token centre**. `fanAngles(n)` spreads one wing's spokes over an arc (max 84°, ~34° apart, biased **22°
+downward**). Text tilts with its wedge, as in the reference.
+
+Two numbers matter more than they look:
+
+- **Spike radius** is `max(38px, 0.78 × sprite height)`. It must clear the sprite *and* the selection ring drawn around
+  it. A first pass used 0.42× and the wedges landed on top of the creature and its name label — burying the one thing
+  the screen is about. The wedges should aim at the creature from outside it, never cover it.
+- **Arc bias** hangs the fan *below* the creature rather than through it. At a shallow bias the wedges sat at eye level
+  and sliced the sprite in half horizontally; it read as three labels arranged around a token instead of a burst
+  radiating from one.
+
+**Two wings, not one.** Wedges split across *both* sides of the token, as Persona's own command list does. This isn't
+only fidelity: piling everything into one wing makes the wedges overlap near the convergence point, which is exactly
+where they're closest together. Three actions on one side was visibly too many.
+
+`fanSplit(items)` picks the divide by **label width, not count**. Halving by count lets both long labels land on one
+side and both short ones on the other — the counts match while the fan looks lopsided. Items stay in order, so the
+primary action always leads.
+
+`fanAngles` and `fanSplit` are **exported and shared** with the positioner: it needs the same numbers to work out how
+much room a fan will occupy, and if the two disagreed the fit check would lie.
+
+**Shape.** A spike at the inner end and a **zigzag torn edge** at the outer — two big teeth, because three small ones
+just read as a straight edge at board scale. The silhouette lives in one `--shape` custom property shared by all three
+clipped layers.
+
+Behind each wedge sits an **offset accent shard**, the layered-offset trick that gives Persona's panels their punch.
+It's committed — a large offset plus a counter-rotation — because a small one read as a bevel artifact rather than a
+deliberate second shape. Violet by default so it sits inside the Golgari palette instead of fighting the teal board;
+the primary wedge gets the loud crimson, which doubles as the hierarchy cue that keeps Roll from tying with Cast.
+
+The shard carries the **same torn silhouette** as the plate. Giving it a plain wedge instead was tried and reverted:
+the doubled teeth are the look, and the "noise" they create where the layers overlap is wanted, not a defect.
+
+**Labels are heavy uppercase** with a shared minimum length (and a larger floor for the primary). Title case read as an
+ordinary web button, and without a length floor a short label like CAST sits between two long wedges as a stub instead
+of reading as one set. The floor drops away in `compact` mode, where there are no labels to keep honest.
+
+Because `clip-path` clips its own descendants, the offset shard cannot be a child of the clipped plate — it would be
+cut away to nothing. So a wedge is four sibling layers inside the button, painted in DOM order: **shard, plate
+(rim), body (dark inner), face (content)**.
+
+Three consequences worth knowing, because each is easy to get wrong:
+
+- `clip-path` slices a CSS border clean off, so the green rim is a **second clipped layer** behind the face rather
+  than a `border`. `box-shadow` is clipped for the same reason, so the drop shadow is a `filter` instead.
+- A wing on the far side is a **true reflection** (`scaleX(-1)` on the spoke), which mirrors the wedges so their spikes
+  swap edges automatically; only the text needs flipping back. Hand-writing a separate mirrored clip path and a negated
+  rotation is the fiddlier, bug-prone route. Leading-vs-far and mirrored-vs-not combine as an XOR, expressed as four
+  ordered CSS rules setting a `--flip` factor.
+- **No tether.** An earlier pass ran a hairline from the fan back to the token; once the spikes converge on the
+  creature the line is redundant, and its length collapses to nearly zero anyway.
 
 **Anchoring.** The fan follows the token's *animated* screen position, so it stays attached while the camera glides.
 
-**Flipping.** The fan picks its quadrant from available room:
+**Fitting.** Two adaptations, both from the emitted viewport size:
 
-- Not enough horizontal room on the default side → mirror across the token (skew inverts, cascade runs the other way).
-- Not enough vertical room below → cascade upward instead.
+- **Side.** Since both sides carry wedges, this picks which one gets the *bigger* wing: if the arc's reach
+  (`spike radius + widest wedge`) won't fit on the preferred side, the bigger wing swaps to the other.
+- **Arc swing.** If the arc would overrun the top or bottom, the whole fan **rotates** (`--uc-fan-bias`) rather than
+  sliding — a token low on screen opens its fan upward. Sliding would drag the convergence point off the sprite, which
+  is the one thing that must not move.
 
-Both are computed from the emitted viewport size, so a short phone with a centered token doesn't push slabs under the
-tab bar. This is the single most likely thing to need tuning once it's on a real device.
+The container itself has no measurable box (its children are absolutely positioned and rotated), so reach is derived
+from the shared spoke angles plus the widest wedge measured unrotated.
 
-**During movement.** The own fan **fades out while `rolling()` or stepping** and pops back on landing. Four slabs
+**During movement.** The own fan **fades out while `rolling()` or stepping** and pops back on landing. A fan of wedges
 chasing the token across the board makes the move itself hard to read. Passed-occupant High Five fans are the
 exception — they appear *because* you're stepping, so they show during the walk.
 
 **Crowding.** Two occupants on a space means two small fans. A third or more collapses the far ones to icon-only
-slabs, so a busy space degrades rather than becoming an unreadable pile.
+wedges, so a busy space degrades rather than becoming an unreadable pile.
 
 ## Ownership model
 
@@ -95,13 +156,13 @@ slabs, so a busy space degrades rather than becoming an unreadable pile.
 | Another player's creature (passed mid-walk) | name slab, High Five |
 
 Other-player fans mirror so they lean *away* from your creature, which keeps the two clusters from colliding on a
-shared space. The name slab is an inverted (light-on-dark reversed) slab above the fan, carrying
+shared space. The name wedge is an inverted (light-on-dark reversed) wedge on the spoke above the actions, carrying
 `{username}'s {creatureName} (L{level})` — the same string the band shows now, and the shield icon when `o.shielded`
 disables Battle.
 
 ## Prompts swap into the fan
 
-A prompt does **not** spawn a second surface. The fan's contents swap: routine verbs slide out, a bright header slab
+A prompt does **not** spawn a second surface. The fan's contents swap: routine verbs slide out, a bright header wedge
 plus the prompt's choices slide in, at the same anchor with the same geometry. Fleetfoot, Pathfinder, and move-mode
 all use this shape. Precedence matches the current template's `@if` chain exactly, so behaviour can't drift:
 
@@ -169,13 +230,13 @@ against a very large board-tab template. So the two concerns are split:
   computed signals and re-render only when those change — which is rarely.
 - **Position is imperative.** The anchor callback writes `style.transform = translate3d(x, y, 0)` directly on each fan
   container via `ElementRef`, outside Angular's zone. No signal write, no CD tick.
-- **Discrete state changes do touch signals** — mirror side, cascade direction, fan visibility, indicator visibility
+- **Discrete state changes do touch signals** — fan visibility, indicator visibility
   and edge bearing — but each is written only on *change*, so they fire on the order of once per turn, not per frame.
 
 ### New components
 
 - `tabs/action-fan.component.ts` — presentational. Inputs: an ordered `FanItem[]` (`{ id, label, icon, kind, disabled,
-  run }`), a mirror flag, a cascade-direction flag, and an optional header slab. Emits nothing but the item's own
+  run }`), an optional header, and a `compact` flag. Emits nothing but the item's own
   handler. Holds no game logic; the board tab builds the item list.
 - `tabs/offscreen-indicator.component.ts` — presentational. Inputs: sprite URL, edge, bearing angle. Output: tap.
 
@@ -201,8 +262,9 @@ the creature and plaza tabs still use it.
   doesn't collapse and re-expand mid-turn. This is distinct from `rolling()`/stepping above, where the whole own fan
   fades out — a dice animation or a walk is a moment where the fan would obscure the thing you're watching, whereas
   `busy()` is a network wait during which the fan should hold its shape.
-- **Zoom.** The fan is DOM at fixed px, so it does **not** scale with camera zoom — only its anchor moves. Zoomed far
-  out, slabs will look large relative to tiny tokens; accepted for v1.
+- **Zoom.** The wedges are DOM at fixed px, so they do **not** scale with camera zoom — only the fan's origin moves
+  and the spike radius, which tracks sprite height. Zoomed far out, wedges will look large relative to tiny tokens;
+  accepted for v1.
 - **Spectator mode** (`interactive: false`) never wires the fan.
 - **Legibility over terrain.** Slabs need enough background opacity to beat mottled floor art without reading as a
   solid panel again — a tuning item, flagged for the live pass.
@@ -212,7 +274,7 @@ the creature and plaza tabs still use it.
 - `npm run build` must stay green. (Lint is unreliable in this repo; the build is the gate.)
 - No frontend test runner exists, and there are no server changes, so the backend pytest suite is untouched and should
   stay green as a regression check that nothing leaked server-side.
-- **Live pass via the `run-undercity` skill** is the real verification, since the two open risks — vertical room and
+- **Live pass via the `run-undercity` skill** is the real verification, since the two open risks — arc room on a short screen and
   legibility over real terrain — are only judgeable on the actual board. Checklist: idle fan; a facility space; a
   shared space with another creature; a Fleetfoot 1; a walk past an occupant; camera panned away in each of the four
   directions plus a corner; and the toggle flipped back to the band.
