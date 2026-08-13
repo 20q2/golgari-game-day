@@ -11,20 +11,24 @@
  */
 import { rgbToHsv, hsvToRgb } from './colors';
 import { ALL_SPRITES } from '../data/species';
-import { HATS, HatInfo, NEUTRAL_BANDS } from '../data/cosmetics';
+import { HATS, HatInfo, NEUTRAL_BANDS, TINT_BANDS } from '../data/cosmetics';
 
 type Classifier = (r: number, g: number, b: number, a: number) => number;
 
 /**
  * Recolor a single pixel by a paint value. A value ≥ 0 is a hue: shift hue and
  * keep the pixel's own saturation/brightness (the classic marker recolor). A
- * value < 0 is an achromatic sentinel (see NEUTRAL_BANDS in cosmetics.ts):
+ * value < 0 is a sentinel — either achromatic (NEUTRAL_BANDS in cosmetics.ts):
  * force saturation to 0 and remap the pixel's brightness into the paint's band,
- * so the region turns greyscale while keeping its light-and-shadow.
+ * so the region turns greyscale while keeping its light-and-shadow; or tinted
+ * (TINT_BANDS, e.g. brown): same brightness remap, but into a fixed hue and
+ * saturation instead of grey.
  */
 export function paintedRgb(r: number, g: number, b: number, value: number): [number, number, number] {
   const hsv = rgbToHsv(r, g, b);
   if (value >= 0) return hsvToRgb(value, hsv.s, hsv.v);
+  const tint = TINT_BANDS[value];
+  if (tint) return hsvToRgb(tint.hue, tint.sat, tint.lo + hsv.v * (tint.hi - tint.lo));
   const band = NEUTRAL_BANDS[value];
   if (!band) return hsvToRgb(0, 0, hsv.v); // unknown sentinel → plain desaturate
   const [lo, hi] = band;

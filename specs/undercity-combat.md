@@ -89,7 +89,12 @@ resume).
 
 Combat consumables map to three general one-round modifiers on `resolve_round`:
 `force_winner` (auto-win), `double_win_for` (double a win), `negate_loss_for`
-(cancel a punish). Reveal is the separate `combat-peek` action.
+(cancel a punish). Two effects act **on tap** instead, each through its own action,
+because neither needs an exchange to mean anything and both would otherwise feel
+dead until the next stance: reveal → `combat-peek`, heal → `combat-item` (the
+`_INSTANT_COMBAT_ITEM` set). Neither spends a round, which is what they always
+cost — the salve used to resolve just before the exchange of the round it rode on,
+so tapping it is the same economy with immediate feedback.
 
 ## 3. Add an enemy
 
@@ -178,8 +183,11 @@ a Mythic = one tier-4 `GEAR` entry (auto-indexes into `GEAR_FAMILY[rider][4]`) +
 - **New combat consumable:** add a `CONSUMABLES` entry with `'combat': True` +
   an `effect`; map the id in `undercity_db._COMBAT_ITEM` to one of
   `auto_win`/`double_punish`/`negate`. A genuinely new mechanic needs a new
-  optional modifier arg on `engine.resolve_round` + an engine test. Reveal-style
-  effects go through `combat-peek`, not `combat-round`.
+  optional modifier arg on `engine.resolve_round` + an engine test. Effects that
+  don't need an exchange act on tap instead of arming: reveal-style through
+  `combat-peek`, instant-effect through `combat-item` (add the id to
+  `_INSTANT_COMBAT_ITEM`) — mirror the tap behaviour in the client's `armItem`,
+  which branches on `ConsumableInfo.effect`.
 
 ### Soul Trophy — a variable-amount one-battle buff
 

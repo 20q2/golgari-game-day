@@ -2,6 +2,27 @@
 
 *2026-08-11 · experimental board UI · client-only*
 
+> **Status: built, played, and reverted (2026-08-12).** None of this ships. The board is back on the bottom action
+> band, and `action-fan.component.ts`, `action-wheel.component.ts`, `offscreen-indicator.component.ts` and the canvas's
+> per-frame anchor feed have all been deleted. Kept as a record of what was tried and what it cost, so the same ground
+> isn't re-explored from scratch.
+>
+> What's worth carrying forward if anyone revisits creature-anchored controls:
+>
+> - **Ownership-by-position works.** Hanging Battle/High Five off the rival's own token really does answer "why is this
+>   button here" better than a named row in a band. That was the strongest part of the idea.
+> - **Muscle memory beats packing.** Every mechanism that let a control move — width-balanced wings, side-swapping near
+>   a screen edge, arc-swing — had to be removed. A button that isn't where the thumb expects costs more than a fan
+>   that clips.
+> - **Angular spacing fails at small radius.** Fixed-size controls near the token can't be separated by an angle; there
+>   aren't enough pixels. Vertical pixel spacing is what let the chips sit against the base without colliding.
+> - **The board is orthographic.** Match it with an affine squash derived from `DISC_RY / NODE_R`, never `perspective()`
+>   / `rotateX`, which disagrees with the tile and blurs text.
+> - **Anchoring DOM to canvas is cheap if you keep the split**: contents reactive, position written straight to
+>   `style.transform` outside change detection. A signal write per frame would have run CD at 60fps.
+> - The prettier it got, the more it fought the board art — the map is busy, and chrome sitting *on* it competes with
+>   the thing it's decorating. That, more than any single detail, is why it didn't stick.
+
 ## Goal
 
 Replace the board tab's fixed bottom action band with actions that **fan off the creature they belong to**, in the
@@ -18,8 +39,9 @@ Three payoffs, in priority order:
    of a portrait board.
 3. **Character.** The board is the game's signature screen; a plain button bar undersells it.
 
-This is an **experiment behind a toggle**, not a one-way removal. The band and the fan are both live; a preference
-picks between them, so the fan can be judged against the real board with real art and reverted with one tap.
+This is an **experiment behind a toggle**, not a one-way removal. Three schemes are live — the classic band, the
+Persona-style fan, and an action wheel — and the toggle cycles between them, so each can be judged against the real
+board with real art and abandoned with one tap.
 
 Server-side: **no changes at all.** Every action contract, every guard, every `store.action(...)` call is untouched.
 This is a presentation-layer swap.
@@ -205,6 +227,29 @@ exception — they appear *because* you're stepping, so they show during the wal
 
 **Crowding.** Two occupants on a space means two small fans. A third or more collapses the far ones to icon-only
 wedges, so a busy space degrades rather than becoming an unreadable pile.
+
+## The action wheel (third scheme)
+
+A ring of labelled knobs around the creature's space, as an alternative to the fan. It exists to be compared against the
+fan on the real board rather than argued about in the abstract, so the toggle **cycles fan → wheel → band** and the
+choice persists.
+
+It costs very little to keep both because it reuses everything structural:
+
+- the same `FanItem[]` from `ownFan()` / `rivalFans()`, so no action logic is duplicated;
+- the same `data-uc-fan` attribute and `FAN_MIRROR` / `FAN_HIDDEN` host classes, so the positioner drives either one
+  without knowing which is mounted;
+- the same two hard rules — the ring is flattened by `PROJECTION` so it lies on the board's ground plane, and a knob's
+  side comes from `FanItem.wing` rather than being derived, so buttons never migrate between turns.
+
+Knobs are laid out **from the bottom of the wheel upwards** on each side. The bottom is the easiest reach for a thumb,
+so the first action on each wing gets it; and knobs never climb past the horizontal, because the sprite stands above the
+disc and the top of the ring is unusable. Each knob carries its label — icons alone would give up the discoverability
+the whole redesign was for — and casts its own flattened shadow.
+
+`WHEEL_RADIUS` is exported for the same reason `FAN_RADIUS` is: the positioner floors the real radius at each scheme's
+nominal. The wheel needs a **wider** ring than the fan, because fixed-size knobs spaced around a circle need room, where
+the fan holds its chips apart with a vertical step instead and can sit tight against the base.
 
 ## Ownership model
 

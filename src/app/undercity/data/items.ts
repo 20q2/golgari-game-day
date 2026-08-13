@@ -281,9 +281,11 @@ export const CONSUMABLE_COST_BY_TIER: Record<number, number> = {
 
 export const CONSUMABLES: ConsumableInfo[] = [
   // ── Tier 1 · Common ──
+  // Like the Scrying Spore, `effect: 'heal'` acts on tap (fires `combat-item`)
+  // rather than arming for a stance — the HP is back immediately.
   { id: 'mending_salve', name: 'Mending Salve', tier: 1, cost: 12, icon: 'healing',
     effect: 'heal', inBattle: true,
-    desc: 'In battle: drink before the exchange to restore 25% max HP.' },
+    desc: 'In battle: drink it to restore 25% max HP right away — costs no round.' },
   { id: 'healing_moss', name: 'Healing Moss', tier: 1, cost: 12, desc: 'Restore 50% max HP.', icon: 'healing' },
   { id: 'smoke_spore', name: 'Smoke Spore', tier: 1, cost: 12, desc: 'Held: your next failed flee auto-succeeds.', icon: 'air' },
   // Half-range rigged dice: less control than the Loaded Die, a rarity cheaper.

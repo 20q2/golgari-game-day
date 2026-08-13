@@ -1,78 +1,6 @@
 <div class="board-tab">
-  <div class="board-scene" #boardScene>
+  <div class="board-scene">
     <canvas #boardCanvas class="board-canvas"></canvas>
-
-    <!-- Experimental control scheme: actions fanned off the creature they belong
-         to instead of a fixed bottom band. Everything here is positioned by
-         BoardTabComponent.onAnchors() from the canvas's per-frame anchor feed —
-         the `data-uc-fan` / `data-uc-recenter` attributes are how it finds them. -->
-    @if (fanMode()) {
-      @if (ownFanShown()) {
-        <app-uc-action-fan
-          data-uc-fan="own"
-          class="uc-fan-hidden"
-          [items]="ownFan().items"
-          [header]="ownFan().header"
-        />
-      }
-      <!-- Battle / High Five hang off the rival they target. -->
-      @for (r of rivalFans(); track r.userId) {
-        <app-uc-action-fan
-          [attr.data-uc-fan]="r.userId"
-          class="uc-fan-hidden"
-          [items]="r.items"
-          [header]="r.header"
-          [compact]="r.compact"
-        />
-      }
-      @if (showRecenter()) {
-        <app-uc-offscreen-indicator
-          data-uc-recenter
-          [spriteUrl]="youSpriteUrl()"
-          (tap)="focusSelf()"
-        />
-      }
-
-      <!-- Passive status the fan deliberately doesn't carry: it's information,
-           not a choice, so it sits with the other corner furniture. -->
-      <div class="fan-status">
-        @if (nextRollLabel(); as nrl) {
-          <div class="fan-status-chip">new rolls in {{ nrl }}</div>
-        }
-        @if (restedRolls() > 0) {
-          <div
-            class="fan-status-chip rested"
-            title="Rested rolls — your next timed rolls come in twice as fast until spent."
-          >
-            <mat-icon class="mi">bedtime</mat-icon> {{ restedRolls() }} rested
-          </div>
-        }
-        @if (blinkRecharging()) {
-          <div class="fan-status-chip">Blink recharges — ready next turn</div>
-        }
-      </div>
-
-      @if (showCoach()) {
-        <div class="coach-pill fan-coach" role="status">
-          <span>New here? Tap <strong>Roll</strong> to take your first turn.</span>
-          <button class="coach-close" (click)="dismissCoach()" aria-label="Dismiss">
-            <mat-icon class="mi">close</mat-icon>
-          </button>
-        </div>
-      }
-    }
-
-    <!-- Experiment switch: fanned actions vs. the classic bottom band. -->
-    <button
-      type="button"
-      class="fan-toggle"
-      [class.on]="fanMode()"
-      [title]="fanMode() ? 'Switch to the action bar' : 'Switch to fanned actions (experimental)'"
-      [attr.aria-label]="fanMode() ? 'Switch to the action bar' : 'Switch to fanned actions'"
-      (click)="toggleFanMode()"
-    >
-      <mat-icon class="mi">{{ fanMode() ? 'view_agenda' : 'auto_awesome' }}</mat-icon>
-    </button>
 
     <!-- Active-companion quick-use: a non-combat pet gets a little box here so its
          action is one tap from the board, not buried in Gear. Forage/scout fire
@@ -136,7 +64,12 @@
     </div>
 
     @if (toast(); as t) {
-      <div class="board-toast">{{ t }}</div>
+      <div class="board-toast">
+        @if (t.icon) {
+          <mat-icon class="mi toast-icon">{{ t.icon }}</mat-icon>
+        }
+        <span>{{ t.text }}</span>
+      </div>
     }
 
     <!-- Bottom-left recent-events ticker (display-only overlay) -->
@@ -170,7 +103,6 @@
     }
   </div>
 
-  @if (!fanMode()) {
   <app-uc-action-band>
     <!-- Roll-regen status lines, stacked at the band's top-left -->
     <div class="band-status-stack">
@@ -422,7 +354,6 @@
     }
     }
   </app-uc-action-band>
-  }
 
   <!-- Bag-full sorter: a non-blocking board dialogue. It dims only the board (like
        every other board dialog), never the HUD or tab bar, so the player can still
@@ -1257,7 +1188,7 @@
   @if (digCleared() !== null) {
     <div class="uc-modal-backdrop dig-clear-backdrop" (click)="closeDigCleared()">
       <div class="uc-modal dig-clear-modal" (click)="$event.stopPropagation()">
-        <div class="dig-clear-burst">⛏️✨</div>
+        <mat-icon class="dig-clear-burst">grid_view</mat-icon>
         <h3>Site picked clean!</h3>
         <p class="modal-sub">
           You tidy up the dig site and pocket a
@@ -1330,6 +1261,7 @@
       [startRound]="lb.startRound"
       [frenzyFrom]="lb.frenzyFrom"
       (submitStance)="onStance($event)"
+      (useItem)="onUseItem($event)"
       (peek)="onPeek()"
       (flee)="onFlee()"
       (closed)="closeLiveBattle()"

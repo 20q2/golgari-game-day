@@ -193,6 +193,8 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
   @Input() frenzyFrom: number | null = null;
 
   @Output() submitStance = new EventEmitter<{ stance: Stance; item?: string }>();
+  /** An instant item (the Mending Salve) played on tap, outside any exchange. */
+  @Output() useItem = new EventEmitter<string>();
   @Output() peek = new EventEmitter<void>();
   @Output() flee = new EventEmitter<void>();
   @Output() closed = new EventEmitter<void>();
@@ -425,10 +427,12 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
     this.pendingItem.set(null);
   }
 
-  /** Tap an item in the tray. The Scrying Spore (`effect: 'reveal'`) acts at
-   *  once — it fires the peek instead of arming, since its whole point is to
-   *  reveal before you commit a stance. Everything else arms (or disarms) and
-   *  applies to the next stance. Either way, dismiss the panel. */
+  /** Tap an item in the tray. Two of them act at once rather than arming: the
+   *  Scrying Spore (`reveal`), whose whole point is to read the foe before you
+   *  commit, and the Mending Salve (`heal`) — you drink it and the HP comes back
+   *  now, not after your next stance. The rest only mean something inside an
+   *  exchange, so they arm (or disarm) for the stance you pick next. Either way,
+   *  dismiss the panel. */
   protected armItem(id: string): void {
     if (this.busy() || this.done()) return;
     const it = this.items.find((i) => i.id === id);
@@ -437,8 +441,21 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
       this.doPeek();
       return;
     }
+    if (it?.effect === 'heal') {
+      if (this.atFullHp()) return;
+      this.showItems.set(false);
+      this.busy.set(true);
+      this.useItem.emit(id);
+      return;
+    }
     this.pendingItem.set(this.pendingItem() === id ? null : id);
     this.showItems.set(false);
+  }
+
+  /** No point burning a heal at full health — the tray greys it out and the
+   *  server refuses it too. */
+  protected atFullHp(): boolean {
+    return this.attackerHp() >= this.attacker.maxHp;
   }
 
   protected doPeek(): void {
@@ -490,6 +507,16 @@ export class InteractiveBattleComponent implements OnInit, OnDestroy {
 
   applyPeek(trueIntent: Stance): void {
     this.revealed.set(trueIntent);
+    this.busy.set(false);
+  }
+
+  /** An instant heal landed: run the bar up to the server's HP and float a green
+   *  `+N` off the player, the same pop a lifesteal/regrow beat uses. Input is
+   *  re-enabled straight away — drinking costs no round. */
+  applyHeal(healed: number, playerHp: number): void {
+    this.attackerHp.set(playerHp);
+    this.pop.set({ side: 'attacker', text: `+${healed}`, kind: 'heal', icon: 'healing' });
+    this.timers.push(setTimeout(() => this.pop.set(null), 880));
     this.busy.set(false);
   }
 

@@ -556,7 +556,8 @@ CONSUMABLES = {
     # ── Tier 1 · Common ──────────────────────────────────────────────────────
     'mending_salve': {'name': 'Mending Salve', 'tier': 1, 'combat': True,
                       'effect': 'heal',
-                      'blurb': 'In battle: drink before the exchange to restore 25% max HP.'},
+                      'blurb': 'In battle: drink it to restore 25% max HP right away '
+                               '— costs no round.'},
     'healing_moss': {'name': 'Healing Moss', 'tier': 1, 'heal': 0.5,
                      'blurb': 'Restore 50% max HP.'},
     'smoke_spore':  {'name': 'Smoke Spore', 'tier': 1,
@@ -1485,6 +1486,10 @@ PAINTS = [
     {'id': 'white', 'name': 'White', 'hue': -1},
     {'id': 'grey', 'name': 'Grey', 'hue': -2},
     {'id': 'black', 'name': 'Black', 'hue': -3},
+    # Brown is a sentinel for the same reason but is tinted, not achromatic:
+    # there is no brown hue (brown is dark, muted orange), so the client remaps
+    # brightness into a fixed hue+saturation (TINT_BANDS in cosmetics.ts).
+    {'id': 'brown', 'name': 'Brown', 'hue': -4},
 ]
 DEFAULT_PAINTS = ['forest', 'gold']  # everyone owns these from their first hatch
 

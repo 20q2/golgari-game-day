@@ -310,6 +310,13 @@
             <mat-icon class="mi">local_fire_department</mat-icon>×{{ mult }}
           </span>
         }
+        <!-- Hints ride inside the util row (rather than as their own line below it)
+             so appearing/disappearing never changes the card's height. -->
+        @if (pendingItem()) {
+          <span class="row-hint armed">Item armed — pick a stance to use it.</span>
+        } @else if (canFlee && !hasActed()) {
+          <span class="row-hint">You can't flee on the first round — make a move.</span>
+        }
         @if (canFlee) {
           <button
             class="util-btn flee-btn"
@@ -327,11 +334,6 @@
           </button>
         }
       </div>
-      @if (pendingItem()) {
-        <div class="armed-hint">Item armed — pick a stance to use it.</div>
-      } @else if (canFlee && !hasActed()) {
-        <div class="flee-hint">You can't flee on the first round — make a move.</div>
-      }
     }
 
     <!-- Inventory tray (opened by the center backpack button) -->
@@ -344,8 +346,12 @@
               <button
                 class="item-row"
                 [class.armed]="pendingItem() === it.id"
-                [class.reveal]="it.effect === 'reveal'"
-                [disabled]="busy() || (it.effect === 'reveal' && !!revealed())"
+                [class.reveal]="it.effect === 'reveal' || it.effect === 'heal'"
+                [disabled]="
+                  busy() ||
+                  (it.effect === 'reveal' && !!revealed()) ||
+                  (it.effect === 'heal' && atFullHp())
+                "
                 (click)="armItem(it.id)"
               >
                 <mat-icon class="mi item-icon">{{ it.icon }}</mat-icon>
@@ -355,13 +361,18 @@
                 </span>
                 @if (it.effect === 'reveal') {
                   <span class="item-tag">{{ revealed() ? 'Scried' : 'Reveal now' }}</span>
+                } @else if (it.effect === 'heal') {
+                  <span class="item-tag">{{ atFullHp() ? 'Full HP' : 'Drink now' }}</span>
                 } @else if (pendingItem() === it.id) {
                   <mat-icon class="mi item-check">check_circle</mat-icon>
                 }
               </button>
             }
           </div>
-          <p class="item-hint">Tap to arm it for your next stance — the Scrying Spore reveals the foe instantly.</p>
+          <p class="item-hint">
+            Tap to arm it for your next stance. The Scrying Spore and Mending Salve act the
+            moment you tap them, and cost you no round.
+          </p>
         </div>
       </div>
     }
@@ -392,11 +403,11 @@
       <div class="result-line"><mat-icon class="mi">flag</mat-icon><span>{{ resultText() }}</span></div>
     }
 
-    <div class="battle-actions">
-      @if (done()) {
+    @if (done()) {
+      <div class="battle-actions">
         <button class="uc-btn uc-btn-primary" (click)="close()">Continue</button>
-      }
-    </div>
+      </div>
+    }
 
     <!-- Effects & how-to-fight panel -->
     @if (showHelp()) {

@@ -54,6 +54,11 @@ export const PAINTS: PaintInfo[] = [
   { id: 'white', name: 'White', hue: -1 },
   { id: 'grey', name: 'Grey', hue: -2 },
   { id: 'black', name: 'Black', hue: -3 },
+  // Brown is a sentinel for the same reason, but tinted rather than achromatic:
+  // there is no brown hue. Brown IS dark, muted orange, and a plain hue shift
+  // keeps each pixel's own saturation/brightness — which just reads as orange.
+  // See TINT_BANDS: fixed hue + fixed saturation + a low brightness band.
+  { id: 'brown', name: 'Brown', hue: -4 },
 ];
 
 export const PAINT_MAP: Record<string, PaintInfo> = Object.fromEntries(PAINTS.map((p) => [p.id, p]));
@@ -73,12 +78,40 @@ export const NEUTRAL_BANDS: Record<number, [number, number]> = {
   [-3]: [0.04, 0.32], // black
 };
 
-/** A paint value is achromatic (neutral) rather than a hue. */
-export function isNeutralPaint(value: number): boolean {
+/**
+ * Tinted (non-achromatic) sentinels: a fixed hue + fixed saturation, with the
+ * pixel's brightness remapped into [lo, hi]. Same trick as NEUTRAL_BANDS, but
+ * the region keeps a colour — needed for tones that aren't a hue you can shift
+ * to, because they're defined by being dark and muted. Pinning saturation
+ * (rather than keeping the pixel's) is what stops highlights reading orange.
+ * Mirror: TINT_BANDS in infrastructure/lambda/undercity_data.py.
+ */
+export interface TintBand {
+  hue: number;
+  sat: number;
+  /** Brightness band [lo, hi] the region's pixels are remapped into. */
+  lo: number;
+  hi: number;
+}
+
+export const TINT_BANDS: Record<number, TintBand> = {
+  // Brown. Hue 25 is the orange/amber wedge; the low band + mid saturation
+  // pull it to leather/bark. `hi` stays under 0.65 — brighter than that and the
+  // top of the band goes tan-orange again.
+  [-4]: { hue: 25, sat: 0.62, lo: 0.16, hi: 0.62 },
+};
+
+/** A paint value is a sentinel (neutral or tinted) rather than a real hue. */
+export function isSentinelPaint(value: number): boolean {
   return value < 0;
 }
 
-/** CSS `background` for a paint swatch — a fixed tone for neutrals, else hsl. */
+/** A paint value is achromatic (white/grey/black) rather than a hue or tint. */
+export function isNeutralPaint(value: number): boolean {
+  return value in NEUTRAL_BANDS;
+}
+
+/** CSS `background` for a paint swatch — a fixed tone for sentinels, else hsl. */
 export function paintSwatchCss(value: number, saturation = 60, lightness = 45): string {
   switch (value) {
     case -1:
@@ -87,6 +120,8 @@ export function paintSwatchCss(value: number, saturation = 60, lightness = 45): 
       return '#808080';
     case -3:
       return '#1e1e1e';
+    case -4:
+      return '#6b4423';
     default:
       return `hsl(${value}, ${saturation}%, ${lightness}%)`;
   }

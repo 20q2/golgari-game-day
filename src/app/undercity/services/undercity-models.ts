@@ -921,6 +921,8 @@ export interface ActionResponse {
   battle?: BattleResult;
   combat?: CombatRound | CombatFlee;
   peek?: CombatPeek;
+  /** An instant in-battle item (Mending Salve) resolved on tap — no round spent. */
+  combatHeal?: { healed: number; playerHp: number };
   cast?: CastResult;
   /** The message a `chat` action just created, echoed for instant local append. */
   chat?: ChatMessage;

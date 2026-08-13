@@ -22,7 +22,10 @@
 
 .battle-card {
   width: min(460px, 100%);
-  height: min(640px, 92vh);
+  // Phone-first: on a short screen the card is viewport-bound (as ever), but on a
+  // tall desktop window it may use a little more height than the old 640 so the
+  // arena and the full stance triangle both fit without an inner scroll.
+  height: min(680px, 92vh);
   overflow-y: auto;
   background: #1a1815;
   border: 1px solid rgba(74, 124, 89, 0.45);
@@ -51,7 +54,12 @@
   // fighters are feet-seated on the stage's content bottom, so this one number
   // is how high the shared floor line (feet + shadows) rides up the stage: more
   // padding → fighters stand higher / more centered with floor in front of them.
-  padding: 30px 14px 78px;
+  //
+  // Both paddings are empty air, so they're the first thing to give up when the
+  // card is viewport-bound — clamped to the viewport they hold the designed look
+  // on a tall window and quietly tighten the arena on a short one, instead of
+  // pushing the stance controls below the card's scroll fold.
+  padding: clamp(14px, 3.4vh, 30px) 14px clamp(46px, 9vh, 78px);
   background-size: cover;
   background-position: center;
   border-bottom: 2px solid rgba(74, 124, 89, 0.5);
@@ -479,7 +487,12 @@
 .stance-triangle {
   position: relative;
   flex-shrink: 0;
-  margin: 0 14px;
+  // Width-capped, not full-bleed: the aspect-ratio below derives the triangle's
+  // HEIGHT from its width, so letting it span a 460px card made it ~250px tall and
+  // pushed Guard/Feint (and the util row) past the bottom of the card. 320px is the
+  // phone width it was tuned at, so a wider card now just gets more side margin.
+  width: min(100% - 28px, 320px);
+  margin: 0 auto;
   aspect-ratio: 100 / 58; // matches the SVG viewBox so arc coords map 1:1 to %
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -723,20 +736,23 @@
   border: 1.5px solid #1a1815;
 }
 
-.armed-hint {
-  flex-shrink: 0;
-  padding: 0 16px;
-  font-size: 0.74rem;
-  color: #fbbf24;
-}
-
-.flee-hint {
-  flex-shrink: 0;
-  padding: 0 16px;
-  font-size: 0.72rem;
+// Flee / armed-item hint, centered in the util row between Help and Flee (both of
+// which claim the corners with auto margins). Two short lines still fit inside the
+// row's button height, so the hint costs the card no vertical space at all.
+.row-hint {
+  min-width: 0;
+  margin: 0 auto;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  text-align: center;
   color: #9aa79a;
   font-style: italic;
-  text-align: center;
+
+  &.armed {
+    color: #fbbf24;
+    font-style: normal;
+    font-weight: 600;
+  }
 }
 
 // ── Rewards + log ──────────────────────────────────────────────────────────────

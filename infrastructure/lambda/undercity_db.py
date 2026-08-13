@@ -2884,7 +2884,7 @@ def handle_action(table, body):
         'ladder-cross': _ladder_cross,
         'battle': _battle,
         'combat-round': _combat_round, 'combat-peek': _combat_peek,
-        'combat-flee': _combat_flee,
+        'combat-flee': _combat_flee, 'combat-item': _combat_item,
         'set-stance': _set_stance, 'spend-stat': _spend_stat, 'evolve': _evolve,
         'trophy-choose': _trophy_choose,
         'buy': _buy, 'use-item': _use_item, 'shrine': _shrine, 'warp': _warp,
@@ -2925,7 +2925,7 @@ def handle_action(table, body):
 
 # Actions permitted while a battle is in progress (combat + read-only/meta).
 _BATTLE_ALLOWED_ACTIONS = frozenset({
-    'combat-round', 'combat-peek', 'combat-flee',
+    'combat-round', 'combat-peek', 'combat-flee', 'combat-item',
     'set-stance', 'spend-stat', 'customize', 'set-status', 'chat', 'ack-events',
 })
 
@@ -5499,6 +5499,40 @@ _COMBAT_ITEM = {
     'ambush_musk': 'auto_win', 'rot_bomb': 'double_punish', 'chitin_ward': 'negate',
     'mending_salve': 'heal',
 }
+
+# Instant combat items: they act on tap, through `combat-item`, instead of riding
+# along with a stance in `_combat_round`. A salve was already a free action there
+# (it resolved before the exchange), so firing it immediately is the same economy
+# — the player just sees the HP come back when they drink it. The other three
+# _COMBAT_ITEM effects only mean anything *inside* an exchange, so they stay bundled
+# with the stance. `_combat_round` still honours 'mending_salve' so a cached client
+# keeps working.
+_INSTANT_COMBAT_ITEM = frozenset({'mending_salve'})
+
+
+def _combat_item(table, sid, doc, payload):
+    """Drink/apply an instant combat item mid-fight, without spending a round."""
+    rec = doc.get('battle')
+    if not rec:
+        return _err('No battle in progress.', 409)
+    item = (payload or {}).get('item')
+    if item not in _INSTANT_COMBAT_ITEM:
+        return _err('You cannot use that here.', 409)
+    if item not in (doc.get('bag') or []):
+        return _err(f"You have no {data.CONSUMABLES[item]['name']}.", 409)
+
+    player = rec['player']
+    hp, max_hp = int(player['hp']), int(player['maxHp'])
+    if hp >= max_hp:
+        return _err('You are already at full health.', 409)
+
+    healed = min(max_hp - hp, max(1, round(max_hp * data.COMBAT_HEAL_FRAC)))
+    doc['bag'].remove(item)
+    player['hp'] = hp + healed
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, combatHeal={'healed': healed, 'playerHp': player['hp']})
 
 
 def _combat_peek(table, sid, doc, payload):

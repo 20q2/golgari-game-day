@@ -3326,9 +3326,14 @@ def test_renown_shop_price_tables_are_sane():
     assert data.paint_price('crimson') == data.PAINT_PRICE
     assert data.paint_price('black') == data.PAINT_PRICE_PREMIUM == 100
     assert data.paint_price('white') == 100 and data.paint_price('grey') == 100
+    # Brown is a sentinel like the neutrals, but an ordinary earthy color — base price.
+    assert data.paint_price('brown') == data.PAINT_PRICE
     # Every hat/paint id resolves through the new maps.
     assert data.HAT_MAP['party_hat']['rarity'] == 'common'
     assert data.PAINT_MAP['crimson']['hue'] == 0
+    # Sentinel colors carry out-of-range values; HUE_TO_PAINT needs them unique.
+    assert data.PAINT_MAP['brown']['hue'] == -4
+    assert len(data.HUE_TO_PAINT) == len(data.PAINTS)
     # Starter kit: real item ids (or the synthetic spore pouch), each with a cost.
     ids = {i['id'] for i in data.RENOWN_SHOP_ITEMS}
     assert ids == {'healing_moss', 'rusted_fang', 'chitin_scrap', 'spore_pouch'}
@@ -5128,6 +5133,95 @@ def test_mending_salve_heals_mid_battle(table, monkeypatch):
     assert status == 200
     assert doc['battle'] is None or doc['battle']['player']['hp'] > 3
     assert 'mending_salve' not in doc['bag']      # consumed
+
+
+def _salve_fight(table, hp=3):
+    """A joined player holding one salve, mid-fight, on `hp` health."""
+    act(table, 'join', starter='saproling', home='cavern')
+    sid = db._active_season(table)[0]
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['bag'] = ['mending_salve']
+    db._put_player(table, doc)
+    doc = db._get_player(table, sid, 'user-alex')
+    npc = dict(data.DUNGEON_NPCS['city'], maxHp=data.DUNGEON_NPCS['city']['hp'])
+    db._start_battle(table, sid, doc, 'wild', npc, node=doc['position'])
+    doc['battle']['player']['hp'] = hp
+    db._put_player(table, doc)
+    return sid, db._get_player(table, sid, 'user-alex')
+
+
+def test_salve_heals_the_moment_you_tap_it(table):
+    """Drinking the salve is its own action: the HP is back before you pick a
+    stance, and it costs no round — same economy as riding along with a stance
+    (which it did before), just immediate."""
+    sid, doc = _salve_fight(table, hp=3)
+    max_hp = int(doc['battle']['player']['maxHp'])
+    expected = max(1, round(max_hp * data.COMBAT_HEAL_FRAC))
+
+    status, body = db._combat_item(table, sid, doc, {'item': 'mending_salve'})
+
+    assert status == 200
+    assert body['combatHeal'] == {'healed': expected, 'playerHp': 3 + expected}
+    assert doc['battle']['player']['hp'] == 3 + expected
+    assert doc['battle']['round'] == 1            # no round was spent
+    assert 'mending_salve' not in doc['bag']      # consumed
+
+
+def test_salve_heal_clamps_to_max_and_is_refused_at_full_hp(table):
+    """Never overheal, and never let a tap burn the item for nothing."""
+    sid, doc = _salve_fight(table, hp=3)
+    max_hp = int(doc['battle']['player']['maxHp'])
+    doc['battle']['player']['hp'] = max_hp - 1
+    db._put_player(table, doc)
+
+    doc = db._get_player(table, sid, 'user-alex')
+    status, body = db._combat_item(table, sid, doc, {'item': 'mending_salve'})
+    assert status == 200
+    assert body['combatHeal'] == {'healed': 1, 'playerHp': max_hp}
+
+    # Now at full: the tap is refused and the salve stays in the bag.
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['bag'] = ['mending_salve']
+    db._put_player(table, doc)
+    doc = db._get_player(table, sid, 'user-alex')
+    status, body = db._combat_item(table, sid, doc, {'item': 'mending_salve'})
+    assert status == 409
+    assert 'mending_salve' in doc['bag']
+
+
+def test_combat_item_rejects_missing_item_and_non_instant_items(table):
+    """Only instant items route here, and only ones you actually hold."""
+    sid, doc = _salve_fight(table)
+    doc['bag'] = []
+    db._put_player(table, doc)
+    doc = db._get_player(table, sid, 'user-alex')
+    status, _ = db._combat_item(table, sid, doc, {'item': 'mending_salve'})
+    assert status == 409
+
+    # rot_bomb is a real combat item, but it resolves with a stance, not on tap.
+    doc['bag'] = ['rot_bomb']
+    db._put_player(table, doc)
+    doc = db._get_player(table, sid, 'user-alex')
+    status, _ = db._combat_item(table, sid, doc, {'item': 'rot_bomb'})
+    assert status == 409
+    assert 'rot_bomb' in doc['bag']
+
+
+def test_combat_item_is_allowed_mid_fight_by_the_dispatcher(table):
+    """The action has to survive the "finish your fight first" gate, and needs a
+    battle to be in progress at all."""
+    sid, doc = _salve_fight(table, hp=3)
+    status, body = act(table, 'combat-item', item='mending_salve')
+    assert status == 200
+    assert body['combatHeal']['healed'] > 0
+
+    # No fight in progress → 409, not a crash.
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['battle'] = None
+    doc['bag'] = ['mending_salve']
+    db._put_player(table, doc)
+    status, _ = act(table, 'combat-item', item='mending_salve')
+    assert status == 409
 
 
 def test_roller_dice_only_set_their_half_of_the_faces():

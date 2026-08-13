@@ -16,13 +16,11 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UndercityStateService } from '../services/undercity-state.service';
 import {
-  AnchorFrame,
   BoardCanvas,
   BoardMap,
   NodeInfo,
   NodeInfoRow,
   SpellCastFx,
-  TokenAnchor,
 } from '../engine/board-canvas';
 import { legalSteps, boardDistance, nodesWithin } from '../engine/board-movement';
 import {
@@ -116,15 +114,6 @@ import { MysterySkitComponent } from './mystery-skit.component';
 import { HazardWheelComponent, HazardWheelTarget } from './hazard-wheel.component';
 import { BoardEventFeedComponent } from './board-event-feed.component';
 import { UcActionBandComponent } from './action-band.component';
-import {
-  FAN_HIDDEN,
-  FAN_MIRROR,
-  FAN_RADIUS,
-  FanHeader,
-  FanItem,
-  UcActionFanComponent,
-} from './action-fan.component';
-import { UcOffscreenIndicatorComponent } from './offscreen-indicator.component';
 import { PickupModalComponent } from './pickup-modal.component';
 import { BossIntroComponent } from './boss-intro.component';
 import { bossLines } from '../data/boss-dialogue';
@@ -257,8 +246,6 @@ const FX_TINT: Record<string, [string, string]> = {
     HazardWheelComponent,
     BoardEventFeedComponent,
     UcActionBandComponent,
-    UcActionFanComponent,
-    UcOffscreenIndicatorComponent,
     PickupModalComponent,
   ],
   templateUrl: './board-tab.component.html',
@@ -267,8 +254,6 @@ const FX_TINT: Record<string, [string, string]> = {
 export class BoardTabComponent implements AfterViewInit, OnDestroy {
   @Input({ required: true }) map!: BoardMap;
   @ViewChild('boardCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
-  /** The canvas's positioning parent — the action fan's coordinate space. */
-  @ViewChild('boardScene') sceneRef?: ElementRef<HTMLElement>;
 
   /** Whether the Board tab is the visible tab. The component now stays mounted
    *  while other tabs are shown (so the terrain never re-bakes on return), so we
@@ -289,7 +274,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   private board: BoardCanvas | null = null;
 
   protected readonly busy = signal(false);
-  protected readonly toast = signal<string | null>(null);
+  /** Transient board toast. `icon` is a Material glyph name (never an emoji —
+   * the game's symbol language is Material and uc- SVG icons only). */
+  protected readonly toast = signal<{ text: string; icon?: string } | null>(null);
 
   // ── Active-companion quick-use (board shortcut for activated pets) ──────────
   // Non-combat companions (forage/scout) have a manual ability that otherwise
@@ -1929,8 +1916,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       const rite = DUNGEONS[biome]?.rite;
       if (rite) this.showToast(rite);
     });
-    // Per-frame token positions for the creature-anchored action fan.
-    this.board.setOnAnchors((f) => this.onAnchors(f));
     this.syncBoard();
     // Restore the zoom the player left at (before start()'s first-frame focus,
     // so your creature re-centers at that zoom rather than the 0.8 default).
@@ -1991,441 +1976,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     // Don't leave the page's level-up fanfare stuck deferred if we're torn down
     // mid-celebration (the sigil auto-dismiss timer won't fire its release).
     this.store.landingDialogHold.set(false);
-    this.fanEls.clear();
-  }
-
-  // ── Action fan (experimental) ──────────────────────────────────────────────
-  //
-  // Persona-style alternative to the bottom action band: the same verbs, fanned
-  // off the creature they belong to. Your verbs hang off you; Battle/High Five
-  // hang off the rival they target, which is what makes them self-explanatory.
-  //
-  // Contents below are ordinary computeds. Geometry is NOT — see onAnchors().
-
-  private static readonly FAN_KEY = 'uc.actionFan';
-
-  /** Which board control scheme is live. Persisted so it survives a reload. */
-  protected readonly fanMode = signal(localStorage.getItem(BoardTabComponent.FAN_KEY) !== '0');
-
-  protected toggleFanMode(): void {
-    const next = !this.fanMode();
-    this.fanMode.set(next);
-    localStorage.setItem(BoardTabComponent.FAN_KEY, next ? '1' : '0');
-    // Stale element handles belong to the scheme we just left.
-    this.fanEls.clear();
-  }
-
-  /** The current space's facility, as a fan slab. Mirrors the band's `@switch`. */
-  private facilityFanItem(): FanItem | null {
-    switch (this.nodeType()) {
-      case 'shop':
-        return { id: 'shop', label: 'Bazaar', icon: 'storefront', run: () => this.showShop.set(true) };
-      case 'ossuary':
-        return { id: 'ossuary', label: 'The Casino', icon: 'casino', run: () => this.showOssuary.set(true) };
-      case 'witch':
-        return { id: 'witch', label: 'The Witch', icon: 'auto_fix_high', run: () => this.showWitch.set(true) };
-      case 'trading_post':
-        return { id: 'tpost', label: 'Trading Post', icon: 'swap_horiz', run: () => this.openTradingPost() };
-      case 'excavation':
-        return { id: 'dig', label: 'Dig Site', icon: 'grid_view', run: () => this.openExcavation() };
-      case 'crystal_vein':
-        return { id: 'vein', label: 'Crystal Vein', icon: 'diamond', run: () => this.openVein() };
-      case 'vault_lock':
-        return { id: 'vault', label: 'Guildvault', icon: 'dialpad', run: () => this.openVault() };
-      default:
-        return null;
-    }
-  }
-
-  /**
-   * What hangs off your own creature. A live decision *replaces* the routine
-   * verbs rather than opening a second surface, so your eye never leaves your
-   * token — precedence deliberately matches the band's old `@if` chain.
-   */
-  protected readonly ownFan = computed<{ header: FanHeader | null; items: FanItem[] }>(() => {
-    const you = this.store.you();
-    const pending = !!you?.pendingMove;
-    const busy = this.busy();
-    const rolling = this.rolling();
-
-    // 1. Fleetfoot: a rolled 1 can be rerolled once.
-    if (!rolling && pending && this.canReroll()) {
-      return {
-        header: { text: 'You rolled a 1 — Fleetfoot', tone: 'warn' },
-        items: [
-          // Every two-choice prompt uses the same shape: take it on the leading
-          // wing, decline it on the far one.
-          { id: 'reroll', label: 'Reroll', icon: 'refresh', kind: 'primary', wing: 0, disabled: busy, run: () => this.reroll() },
-          { id: 'keep1', label: 'Keep the 1', icon: 'do_not_step', wing: 1, disabled: busy, run: () => this.keepRoll() },
-        ],
-      };
-    }
-
-    // 2. Pathfinder: keep either die.
-    const pick = !rolling && !this.canReroll() ? this.pathfinderPick() : null;
-    if (pick) {
-      return {
-        header: { text: 'Pathfinder — keep either die', tone: 'warn' },
-        items: pick.map((v, i) => ({
-          id: `die-${v}`,
-          label: `Move ${v}`,
-          imgSrc: 'undercity/icons/die.png',
-          kind: 'primary' as const,
-          // One die per side, so the choice reads as a fork.
-          wing: (i === 0 ? 0 : 1) as 0 | 1,
-          disabled: busy,
-          run: () => this.chooseDie(v),
-        })),
-      };
-    }
-
-    // 3. Admin free-move.
-    if (this.moveMode()) {
-      return {
-        header: { text: 'Tap spaces to walk', tone: 'warn' },
-        items: [
-          {
-            id: 'movehere',
-            label: 'Move here',
-            icon: 'flag',
-            kind: 'primary',
-            wing: 0,
-            disabled: busy || (this.stepping()?.path?.length ?? 0) < 2,
-            run: () => void this.commitFreeMove(),
-          },
-          { id: 'movecancel', label: 'Cancel', icon: 'close', wing: 1, disabled: busy, run: () => this.exitMoveMode() },
-        ],
-      };
-    }
-
-    // 4. Face picker (Blink, or the dev-build debug picker) — also a takeover,
-    //    so the faces read as the choice in front of you rather than an extra row.
-    if (this.showRollPicker() && (this.blinkAllowed() || this.pickAllowed())) {
-      // Faces are a fixed set of six, so a straight 1-2-3 / 4-5-6 split keeps
-      // reading order intact and puts each face in the same place every time.
-      const faces: FanItem[] = [1, 2, 3, 4, 5, 6].map((n) => ({
-        id: `face-${n}`,
-        label: String(n),
-        wing: (n <= 3 ? 0 : 1) as 0 | 1,
-        disabled: busy,
-        run: () => this.pickRoll(n),
-      }));
-      if (this.blinkAllowed()) {
-        faces.push({
-          id: 'face-rand',
-          label: 'Random',
-          icon: 'casino',
-          wing: 1,
-          title: 'Roll at random — keeps Blink ready',
-          disabled: busy,
-          run: () => void this.roll(),
-        });
-      }
-      return { header: { text: 'Choose your face', tone: 'warn' }, items: faces };
-    }
-
-    // 5. Routine turn.
-    //
-    // Wings are assigned by *meaning*, and the same way every turn: your own
-    // verbs (Roll, Cast) lead, and the situational ones — this space's facility,
-    // Reclaim, the admin tools — hang off the far side. So Roll is always in the
-    // same place, and the facility button doesn't wander when Reclaim appears.
-    const items: FanItem[] = [];
-    const rollDisabled = busy || rolling || pending || this.rollBlocked();
-    const count = this.debugMode() ? '∞' : this.rollsBanked();
-    if (this.blinkAllowed()) {
-      items.push({
-        id: 'blink',
-        label: `Blink (${count})`,
-        icon: 'bolt',
-        kind: 'primary',
-        wing: 0,
-        title: 'Blink — choose your face',
-        disabled: rollDisabled,
-        run: () => this.showRollPicker.set(!this.showRollPicker()),
-      });
-    } else {
-      items.push({
-        id: 'roll',
-        label: `Roll (${count})`,
-        imgSrc: 'undercity/icons/die.png',
-        kind: 'primary',
-        wing: 0,
-        disabled: rollDisabled,
-        run: () => void this.roll(),
-      });
-    }
-
-    if (this.castableSpells().length || this.castableScrolls().length) {
-      items.push({
-        id: 'cast',
-        label: 'Cast',
-        icon: 'auto_fix_high',
-        wing: 0,
-        disabled: busy || rolling || pending,
-        run: () => this.showSpells.set(true),
-      });
-    }
-
-    // The rest are landing-only, exactly as in the band.
-    if (!rolling && !pending) {
-      if (this.pickAllowed()) {
-        items.push({
-          id: 'pick',
-          label: 'Pick',
-          icon: 'casino',
-          wing: 1,
-          disabled: busy,
-          run: () => this.showRollPicker.set(!this.showRollPicker()),
-        });
-      }
-      if (this.isAdmin()) {
-        items.push({
-          id: 'freemove',
-          label: 'Move',
-          icon: 'open_with',
-          wing: 1,
-          disabled: busy,
-          run: () => this.toggleMoveMode(),
-        });
-      }
-      if (this.canReclaim()) {
-        items.push({
-          id: 'reclaim',
-          label: 'Reclaim',
-          icon: 'compost',
-          wing: 1,
-          title: 'Reclaim this ground',
-          disabled: busy,
-          run: () => this.openReclaim(),
-        });
-      }
-      const fac = this.facilityFanItem();
-      if (fac) items.push({ ...fac, wing: 1, disabled: busy });
-    }
-
-    return { header: null, items };
-  });
-
-  /**
-   * Fans belonging to *other* creatures. This is the payoff of the whole layout:
-   * Battle and High Five sit on the body they act on, so there's no name list to
-   * read and no question about which rival a button means.
-   *
-   * Mid-walk you get the passing set (High Five only — Battle stays landing-only).
-   */
-  protected readonly rivalFans = computed<
-    { userId: string; header: FanHeader; items: FanItem[]; compact: boolean }[]
-  >(() => {
-    const busy = this.busy();
-    const stepping = !!this.stepping();
-    const list = stepping
-      ? this.occupantsPassing()
-      : this.store.you()?.pendingMove
-        ? []
-        : this.occupantsHere();
-
-    // A rival's wedges all stay on one wing. The fan already mirrors to lean away
-    // from your creature; a far wing would send a wedge back across the shared
-    // space and collide with your own fan.
-    return list.map((o, i) => {
-      const items: FanItem[] = [];
-      if (!stepping) {
-        items.push({
-          id: `atk-${o.userId}`,
-          label: 'Battle',
-          icon: 'sports_kabaddi',
-          kind: 'danger',
-          wing: 0,
-          title: o.shielded ? 'Protected by a Compost Shield' : 'Battle',
-          disabled: busy || o.shielded,
-          run: () => void this.attack(o),
-        });
-      }
-      items.push({
-        id: `hf-${o.userId}`,
-        label: 'High Five',
-        icon: 'back_hand',
-        wing: 0,
-        disabled: busy,
-        run: () => void this.highFive(o),
-      });
-      return {
-        userId: o.userId,
-        header: {
-          text: `${o.username}'s ${o.creatureName || o.formName} (L${o.level})`,
-          tone: 'name' as const,
-          icon: o.shielded ? 'shield' : undefined,
-        },
-        items,
-        // A crowded space degrades to icons rather than an unreadable pile.
-        compact: i >= 2,
-      };
-    });
-  });
-
-  /** Whether the own fan is in the DOM at all (it may still be faded out). */
-  protected readonly ownFanShown = computed(
-    () => this.fanMode() && (this.ownFan().items.length > 0 || !!this.ownFan().header),
-  );
-
-  /** Camera panned off your creature — the off-screen indicator takes over. */
-  protected readonly showRecenter = signal(false);
-
-  /** Fan host elements by anchor key (`own`, or a rival's userId). */
-  private fanEls = new Map<string, HTMLElement>();
-
-  private refreshFanEls(): void {
-    this.fanEls.clear();
-    const scene = this.sceneRef?.nativeElement;
-    if (!scene) return;
-    for (const el of Array.from(scene.querySelectorAll<HTMLElement>('[data-uc-fan]'))) {
-      this.fanEls.set(el.dataset['ucFan'] ?? '', el);
-    }
-  }
-
-  private fanEl(key: string): HTMLElement | null {
-    const cached = this.fanEls.get(key);
-    if (cached?.isConnected) return cached;
-    this.refreshFanEls();
-    const el = this.fanEls.get(key);
-    return el?.isConnected ? el : null;
-  }
-
-  /**
-   * Per-frame positioning, driven by the canvas's anchor feed.
-   *
-   * Runs ~60×/sec, so it writes `style.transform` and toggles classes directly
-   * instead of touching signals — a signal write per frame would run change
-   * detection against this component's (very large) template every frame. The
-   * only signal here is `showRecenter`, written on transitions alone.
-   */
-  private onAnchors(f: AnchorFrame): void {
-    if (!this.fanMode()) return;
-
-    const own = f.own;
-    // A dice animation or a walk is a moment to watch, not to act in — and a fan
-    // of chips chasing the token makes the move itself hard to read.
-    const ownSuppressed = this.rolling() || !!this.stepping();
-    if (this.ownFanShown()) {
-      const el = this.fanEl('own');
-      if (el) this.placeFan(el, own, own, ownSuppressed);
-    }
-
-    // Rival fans survive a walk: the passing High Five exists *because* you're
-    // mid-step, so hiding it during the step would defeat the point.
-    for (const r of this.rivalFans()) {
-      const el = this.fanEl(r.userId);
-      if (!el) continue;
-      const a = f.others.find((o) => o.userId === r.userId) ?? null;
-      this.placeFan(el, a, own, this.rolling());
-    }
-
-    this.updateIndicator(own, f);
-  }
-
-  /**
-   * Place one fan. The host lands on the centre of the disc the creature stands
-   * on — the ground, not the body — so the chips arrange themselves out of the
-   * *space* along the board's 2.5D plane and their spikes point back at it.
-   *
-   * Deliberately tiny. The fan does not adapt to the viewport at all: sides are
-   * fixed by each item's `wing`, and there's no clamping or arc-swing either, so
-   * a fan near a screen edge simply clips. Both follow from the same rule — a
-   * control that rearranges itself costs more in muscle memory than it saves in
-   * packing — and it's why nothing here has to measure a chip. That matters: the
-   * measuring this used to do forced synchronous layout on a 60fps path.
-   */
-  private placeFan(
-    el: HTMLElement,
-    a: TokenAnchor | null,
-    own: TokenAnchor | null,
-    suppressed: boolean,
-  ): void {
-    if (!a || !a.onScreen || suppressed) {
-      el.classList.add(FAN_HIDDEN);
-      return;
-    }
-
-    // How far out the chips' spikes sit: hard against the base, just clear of the
-    // disc and its selection ring. Neighbours are kept apart by a fixed vertical
-    // step inside the component, not by this radius, so it's free to stay tight.
-    //
-    // FAN_RADIUS is the nominal the component derives each chip's tilt from, so
-    // it doubles as the floor here — the two have to agree or the spikes stop
-    // aiming at the space. Above it the radius follows the disc, so zooming in
-    // pushes the chips out with the board instead of letting the sprite swallow
-    // them.
-    const r = Math.max(FAN_RADIUS, a.groundR + 14);
-
-    // A rival's fan mirrors, purely to lean away from your creature so the two
-    // clusters don't pile up on a shared space. Both tokens sit on the same node,
-    // so that comparison is stable — no dead-band needed. Your own fan never
-    // mirrors at all.
-    const mirror = a !== own && !!own && a.x < own.x;
-
-    // Anchored to the ground, not the body. The radius is the only measurement
-    // the fan needs — the lift and every angle derive from it inside the
-    // component, which is what keeps the spikes aimed at the space.
-    el.style.transform = `translate3d(${Math.round(a.x)}px, ${Math.round(a.groundY)}px, 0)`;
-    el.style.setProperty('--uc-fan-r', `${Math.round(r)}px`);
-    el.classList.toggle(FAN_MIRROR, mirror);
-    el.classList.remove(FAN_HIDDEN);
-  }
-
-  /**
-   * Ride the off-screen indicator along the screen edge at the true bearing to
-   * your creature. Position and angle are CSS custom properties so this stays a
-   * pure style write; see UcOffscreenIndicatorComponent.
-   */
-  private updateIndicator(own: TokenAnchor | null, f: AnchorFrame): void {
-    // Not on this layer (you're down a dungeon, camera's on the overworld):
-    // there's nothing to point at, so don't offer to snap to it.
-    if (!own) {
-      if (this.showRecenter()) this.showRecenter.set(false);
-      return;
-    }
-
-    // Hysteresis: appear once the token is fully gone, but don't disappear until
-    // it's comfortably back inside — otherwise it strobes at the boundary.
-    const D = 26;
-    const inside =
-      own.x > D && own.x < f.viewW - D && own.y > D && own.y < f.viewH - D;
-    const next = own.onScreen ? (inside ? false : this.showRecenter()) : true;
-    if (next !== this.showRecenter()) this.showRecenter.set(next);
-    if (!next) return;
-
-    const el = this.recenterEl();
-    if (!el) return;
-
-    const cx = f.viewW / 2;
-    const cy = f.viewH / 2;
-    const dx = own.x - cx;
-    const dy = own.y - cy;
-    if (!dx && !dy) return;
-
-    // Insets keep the badge clear of the existing scene furniture: the focus
-    // picker (top-right), the bag FAB, and the biome chip (bottom corners).
-    const L = 34;
-    const R = 34;
-    const T = 58;
-    const B = 64;
-    const tx = dx !== 0 ? ((dx > 0 ? f.viewW - R : L) - cx) / dx : Infinity;
-    const ty = dy !== 0 ? ((dy > 0 ? f.viewH - B : T) - cy) / dy : Infinity;
-    const t = Math.max(0, Math.min(tx, ty));
-
-    el.style.setProperty('--uc-ind-x', `${Math.round(cx + dx * t)}px`);
-    el.style.setProperty('--uc-ind-y', `${Math.round(cy + dy * t)}px`);
-    // 0deg points straight up, growing clockwise.
-    el.style.setProperty('--uc-ind-a', `${((Math.atan2(dx, -dy) * 180) / Math.PI).toFixed(1)}deg`);
-  }
-
-  private recenterElCache: HTMLElement | null = null;
-  private recenterEl(): HTMLElement | null {
-    if (this.recenterElCache?.isConnected) return this.recenterElCache;
-    this.recenterElCache =
-      this.sceneRef?.nativeElement.querySelector<HTMLElement>('[data-uc-recenter]') ?? null;
-    return this.recenterElCache;
   }
 
   // ── Roll & move ────────────────────────────────────────────────────────────
@@ -3461,9 +3011,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   private showFoundToast(found: DigFound, fallback?: string): void {
     const name = found.item ? (CONSUMABLE_MAP[found.item]?.name ?? 'a relic') : '';
     if (found.kind === 'item') {
-      this.showToast(`🎒 ${name} added to your bag!`);
+      this.showToast(`${name} added to your bag!`, 'backpack');
     } else if (found.kind === 'listed') {
-      this.showToast(`🎒 Bag full — ${name} auto-listed on the Market for ${found.price} Spores.`);
+      this.showToast(`Bag full — ${name} auto-listed on the Market for ${found.price} Spores.`, 'storefront');
     } else {
       this.showToast(fallback ?? 'You dig…');
     }
@@ -3856,6 +3406,22 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  /** An instant combat item (the salve) — resolves on its own action, so the heal
+   *  shows up the moment it's tapped instead of riding on the next stance. */
+  async onUseItem(item: string): Promise<void> {
+    try {
+      const resp = await this.store.action('combat-item', { item });
+      if (resp.combatHeal) {
+        this.liveB?.applyHeal(resp.combatHeal.healed, resp.combatHeal.playerHp);
+      } else {
+        this.liveB?.unlock();
+      }
+      this.refreshBagFlags();
+    } catch {
+      this.liveB?.unlock();
+    }
+  }
+
   async onPeek(): Promise<void> {
     try {
       const resp = await this.store.action('combat-peek');
@@ -4038,10 +3604,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private showToast(text: string): void {
-    this.toast.set(text);
+  private showToast(text: string, icon?: string): void {
+    const t = { text, icon };
+    this.toast.set(t);
     setTimeout(() => {
-      if (this.toast() === text) this.toast.set(null);
+      // Identity check: only clear the toast this call put up, so a newer one
+      // that replaced it keeps its own full dwell.
+      if (this.toast() === t) this.toast.set(null);
     }, 3500);
   }
 }

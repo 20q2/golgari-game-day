@@ -46,7 +46,7 @@ interface CellVM {
   template: `
     <div class="dig-overlay" (click)="closed.emit()">
       <div class="dig-card" (click)="$event.stopPropagation()" [style.background-image]="washBg">
-        <h3>⛏️ Dig Site</h3>
+        <h3><mat-icon class="mi">grid_view</mat-icon> Dig Site</h3>
         <p class="dig-sub">
           {{ grid.remaining }} find{{ grid.remaining === 1 ? '' : 's' }} still buried ·
           <strong>{{ digsLeft }}</strong> dig{{ digsLeft === 1 ? '' : 's' }} left this visit
@@ -79,7 +79,7 @@ interface CellVM {
                   >
                 }
                 @if (vm.collected && vm.anchor) {
-                  <span class="check">✓</span>
+                  <mat-icon class="check">check</mat-icon>
                 }
               </button>
             }
@@ -121,6 +121,16 @@ interface CellVM {
       h3 {
         margin: 0;
         color: #e0c088;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+      }
+      h3 .mi {
+        font-size: 1.15rem;
+        width: 1.15rem;
+        height: 1.15rem;
+        flex-shrink: 0;
       }
       .dig-sub {
         margin: 0;
@@ -208,16 +218,19 @@ interface CellVM {
       .cell.collected .find {
         color: #8a978a;
       }
-      .check {
+      /* mat-icon + class so the sizing wins over Material's 24px base rule. */
+      mat-icon.check {
         position: absolute;
         inset: 0;
+        width: 100%;
+        height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
         color: rgba(255, 255, 255, 0.85);
-        font-weight: 900;
-        font-size: 1.1rem;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        font-size: 1.2rem;
+        line-height: 1;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
         z-index: 2;
       }
       .dig-hint {
