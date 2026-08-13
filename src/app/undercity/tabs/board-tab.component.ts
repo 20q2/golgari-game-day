@@ -2062,6 +2062,25 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.pickRoll(value);
   }
 
+  /** The band still has something to say: a pending decision, or a PvP
+   *  opportunity. Under the dial skin the band renders only for these. */
+  protected bandHasDecision(): boolean {
+    return (
+      this.canReroll() ||
+      !!this.pathfinderPick() ||
+      this.moveMode() ||
+      this.occupantsHere().length > 0 ||
+      (!!this.stepping() && this.occupantsPassing().length > 0)
+    );
+  }
+
+  /** Decisions that must be answered before rolling again, so the dial goes
+   *  inert. PvP is NOT one: Battle sits alongside Roll on purpose, and a player
+   *  has to be able to roll away from a camped space. */
+  protected exclusiveDecision(): boolean {
+    return this.canReroll() || !!this.pathfinderPick() || this.moveMode();
+  }
+
   /** Current-space actions, richest first. Slot 3 shows the only entry, or a
    *  `more` button when several apply (a Grime Gorger on a Bazaar tile, or an
    *  admin anywhere). Admin Move never takes a thumb slot of its own. */
@@ -2086,11 +2105,6 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       out.push({ key: 'freemove', slot: 3, tone: 'ctx', icon: 'open_with', label: 'Admin: move anywhere' });
     }
     return out;
-  }
-
-  /** True when slot 3 is a `more` button rather than a single action. */
-  protected dialOverflow(): boolean {
-    return this.spaceActions().length > 1;
   }
 
   /** Everything the arc shows. Unavailable actions simply omit their slot — the

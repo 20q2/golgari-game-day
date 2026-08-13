@@ -115,6 +115,7 @@
         [countdown]="nextRollLabel()"
         [rolledValue]="rolling() || store.you()?.pendingMove ? rolledValue() : null"
         [disabled]="busy() || rolling() || !!store.you()?.pendingMove || rollBlocked()"
+        [dimmed]="exclusiveDecision()"
         [faceRingOpen]="showRollPicker()"
         [faceRandom]="blinkAllowed()"
         [notes]="dialNotes()"
@@ -126,6 +127,7 @@
     }
   </div>
 
+  @if (!hudSkin.isDial() || bandHasDecision()) {
   <app-uc-action-band>
     <!-- Roll-regen status lines, stacked at the band's top-left -->
     <div class="band-status-stack">
@@ -379,6 +381,7 @@
     }
     }
   </app-uc-action-band>
+  }
 
   <!-- Bag-full sorter: a non-blocking board dialogue. It dims only the board (like
        every other board dialog), never the HUD or tab bar, so the player can still
