@@ -110,6 +110,22 @@
               <div class="bar-fill" [style.width.%]="xpPct()"></div>
             </div>
           </div>
+          <!-- HUD skin switch: flips the board's routine controls between the
+               classic bottom action bar and the radial turn dial. Player
+               preference, remembered per device. -->
+          <button
+            type="button"
+            class="hud-skin-toggle"
+            [class.active]="hudSkin.isDial()"
+            [attr.aria-pressed]="hudSkin.isDial()"
+            aria-label="Switch HUD style"
+            [title]="
+              hudSkin.isDial() ? 'Switch to the classic action bar' : 'Switch to the turn dial'
+            "
+            (click)="hudSkin.toggle()"
+          >
+            <mat-icon class="mi">dashboard_customize</mat-icon>
+          </button>
           <!-- The purse floats a row below the toolbar (mirroring hud-buffs on the
                right) so the HUD keeps its room and the wallet has space to grow.
                Page-level, not board-level, so it stays visible on the tabs where

@@ -11,6 +11,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { UserService } from '../services/user.service';
 import { UndercityStateService } from './services/undercity-state.service';
+import { HudSkinService } from './services/hud-skin.service';
 import { preloadAll, getRecoloredWithHatDataUrl } from './engine/sprite-engine';
 import { BoardMap } from './engine/board-canvas';
 import { decideMapSync, MapSyncState } from './engine/map-sync';
@@ -49,6 +50,8 @@ type Tab = 'board' | 'creature' | 'gear' | 'plaza' | 'log';
 export class UndercityPageComponent implements OnInit, OnDestroy {
   protected readonly userService = inject(UserService);
   protected readonly store = inject(UndercityStateService);
+  /** Board HUD skin switch — drives the header toggle button. */
+  protected readonly hudSkin = inject(HudSkinService);
   private readonly api = inject(UndercityApiService);
 
   protected readonly tab = signal<Tab>('board');
