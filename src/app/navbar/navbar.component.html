@@ -15,6 +15,19 @@
       <mat-icon>live_tv</mat-icon>
       <span class="nav-text">Spectate</span>
     </a>
+    <!-- Static handout shipped from public/; relative href so it resolves under
+         the GitHub Pages base href. Opens outside the SPA. -->
+    <a
+      mat-button
+      href="player-handout.html"
+      target="_blank"
+      rel="noopener"
+      class="nav-link"
+      title="Undercity player handout (opens in a new tab)"
+    >
+      <mat-icon>menu_book</mat-icon>
+      <span class="nav-text">Handout</span>
+    </a>
     @if (isLocalhost) {
       <a
         mat-button
