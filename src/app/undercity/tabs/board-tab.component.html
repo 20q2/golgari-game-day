@@ -106,6 +106,11 @@
          action row. All handlers still live on this component — the dial only
          renders state and emits taps. -->
     @if (hudSkin.isDial()) {
+      @if (showRollPicker()) {
+        <!-- data-uc-claim: a tap here only closes the ring; the board still pans
+             through it but must not also tap the space underneath. -->
+        <div class="dial-ring-backdrop" data-uc-claim (click)="closeFaceRing()"></div>
+      }
       <app-uc-turn-dial
         [mode]="dialMode()"
         [count]="rollsBanked()"
@@ -117,7 +122,7 @@
         [disabled]="busy() || rolling() || !!store.you()?.pendingMove || rollBlocked()"
         [dimmed]="exclusiveDecision()"
         [faceRingOpen]="showRollPicker()"
-        [faceRandom]="blinkAllowed()"
+        [faceRandom]="blinkAllowed() || pickAllowed()"
         [notes]="dialNotes()"
         [satellites]="dialSatellites()"
         (primary)="onDialPrimary()"
@@ -129,6 +134,8 @@
 
   @if (!hudSkin.isDial() || bandHasDecision()) {
   <app-uc-action-band>
+    <!-- Under the dial skin these live on the dial itself (countdown + notes). -->
+    @if (!hudSkin.isDial()) {
     <!-- Roll-regen status lines, stacked at the band's top-left -->
     <div class="band-status-stack">
       @if (nextRollLabel(); as nrl) {
@@ -141,6 +148,7 @@
         </div>
       }
     </div>
+    }
     <!-- PvP: someone shares your space — Battle stays available alongside Roll -->
     @if (occupantsHere().length && !store.you()?.pendingMove) {
       <div class="band-morph pvp-strip">

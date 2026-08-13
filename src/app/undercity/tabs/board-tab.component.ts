@@ -2062,14 +2062,22 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.pickRoll(value);
   }
 
+  /** Close the dial's face ring when the next roll resolves it elsewhere. */
+  protected closeFaceRing(): void {
+    this.showRollPicker.set(false);
+  }
+
   /** The band still has something to say: a pending decision, or a PvP
    *  opportunity. Under the dial skin the band renders only for these. */
   protected bandHasDecision(): boolean {
+    // Each term mirrors the condition on the band branch it would reveal — the
+    // PvP strip is itself gated on !pendingMove, so without that guard the band
+    // would mount empty while walking away from an occupied space.
     return (
       this.canReroll() ||
       !!this.pathfinderPick() ||
       this.moveMode() ||
-      this.occupantsHere().length > 0 ||
+      (this.occupantsHere().length > 0 && !this.store.you()?.pendingMove) ||
       (!!this.stepping() && this.occupantsPassing().length > 0)
     );
   }

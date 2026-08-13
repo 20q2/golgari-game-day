@@ -2621,3 +2621,10 @@
     grid-template-columns: 1fr;
   }
 }
+
+// Dismissal catcher for the dial's face ring. Transparent and full-scene.
+.dial-ring-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 6; // below the dial (7), above the canvas
+}
