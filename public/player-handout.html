@@ -1,0 +1,692 @@
+<title>The Shadow War — Standing Orders</title>
+<style>
+  :root {
+    --ground: #0B0C11;
+    --panel: #16171F;
+    --panel-2: #1D1F29;
+    --line: #2E3040;
+    --line-soft: #23252F;
+    --text: #E9E7EE;
+    --text-dim: #A5A2B2;
+    --text-faint: #74717F;
+    --shadow: #7C67B0;
+    --gold: #E0B65C;
+    --gold-deep: #8A6A24;
+    --red: #D14B3C;
+    --teal: #5FA8A0;
+    --mono: Consolas, "Cascadia Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --body: Candara, Optima, "Segoe UI", system-ui, sans-serif;
+    --display: "Palatino Linotype", "Book Antiqua", Palatino, "Iowan Old Style", Georgia, serif;
+
+    --r-penn: #A67BA6;
+    --r-frontier: #2ECC2E;
+    --r-nova: #DD2222;
+    --r-mary: #8A2BE2;
+    --r-illva: #F28C0F;
+    --r-darkburg: #3C5BC8;
+    --r-sova: #E0C020;
+    --r-noca: #8FB284;
+    --r-tenadeez: #9B1B1B;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --ground: #E9E8E4; --panel: #F5F4F1; --panel-2: #EDECE8;
+      --line: #C0BFB8; --line-soft: #D7D6D0;
+      --text: #191922; --text-dim: #4E4C5A; --text-faint: #7B7986;
+      --shadow: #5B4494; --gold: #8A6614; --gold-deep: #C9A44E;
+      --red: #A62F22; --teal: #2F6E68;
+      --r-frontier: #1B8F1B; --r-sova: #A88808; --r-noca: #5E8452; --r-penn: #7E4E7E;
+      --r-darkburg: #23409B;
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #E9E8E4; --panel: #F5F4F1; --panel-2: #EDECE8;
+    --line: #C0BFB8; --line-soft: #D7D6D0;
+    --text: #191922; --text-dim: #4E4C5A; --text-faint: #7B7986;
+    --shadow: #5B4494; --gold: #8A6614; --gold-deep: #C9A44E;
+    --red: #A62F22; --teal: #2F6E68;
+    --r-frontier: #1B8F1B; --r-sova: #A88808; --r-noca: #5E8452; --r-penn: #7E4E7E;
+    --r-darkburg: #23409B;
+  }
+  :root[data-theme="dark"] {
+    --ground: #0B0C11; --panel: #16171F; --panel-2: #1D1F29;
+    --line: #2E3040; --line-soft: #23252F;
+    --text: #E9E7EE; --text-dim: #A5A2B2; --text-faint: #74717F;
+    --shadow: #7C67B0; --gold: #E0B65C; --gold-deep: #8A6A24;
+    --red: #D14B3C; --teal: #5FA8A0;
+    --r-frontier: #2ECC2E; --r-sova: #E0C020; --r-noca: #8FB284; --r-penn: #A67BA6;
+    --r-darkburg: #3C5BC8;
+  }
+
+  body {
+    background: var(--ground); color: var(--text);
+    font-family: var(--body); font-size: 16px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    position: relative;
+    background:
+      radial-gradient(ellipse 120% 60% at 50% -10%, color-mix(in srgb, var(--gold) 7%, transparent), transparent 70%),
+      radial-gradient(ellipse 90% 50% at 50% 108%, color-mix(in srgb, var(--shadow) 12%, transparent), transparent 72%);
+  }
+  .sheet { max-width: 880px; margin: 0 auto; padding: 40px 24px 72px; display: flex; flex-direction: column; gap: 38px; position: relative; }
+
+  h1, h2, h3, h4 { font-family: var(--display); margin: 0; font-weight: 700; text-wrap: balance; }
+  h1 { font-size: clamp(2.4rem, 7vw, 4rem); line-height: 0.94; letter-spacing: -0.025em; }
+  h2 { font-size: 1.4rem; letter-spacing: -0.01em; }
+  h3 { font-size: 1.06rem; }
+  p { margin: 0; }
+  strong { color: var(--text); }
+  em { color: var(--text-dim); }
+
+  .label {
+    font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.24em;
+    text-transform: uppercase; color: var(--text-faint); margin: 0;
+  }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .dc { font-family: var(--mono); color: var(--gold); white-space: nowrap; }
+  .skills {
+    font-family: var(--mono); font-size: 0.63rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--teal); display: block; margin-top: 3px;
+  }
+  .tag {
+    display: inline-block; font-family: var(--mono); font-size: 0.59rem; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 2px 7px; border: 1px solid var(--line);
+    color: var(--text-dim); white-space: nowrap; vertical-align: middle;
+  }
+  .tag.red { color: var(--red); border-color: color-mix(in srgb, var(--red) 45%, transparent); }
+  .tag.gold { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 45%, transparent); }
+
+  .icon { width: 1.55em; height: 1.55em; flex: 0 0 auto; stroke: var(--gold); fill: none;
+          stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+  .icon.dim { stroke: var(--text-faint); }
+
+  header { display: flex; flex-direction: column; gap: 18px; }
+  .crest-row { display: flex; align-items: center; gap: 20px; }
+  .crest { width: 86px; height: 100px; flex: 0 0 86px; }
+  .crest-text { display: flex; flex-direction: column; gap: 6px; }
+  .rule-double { border-top: 1px solid var(--line); border-bottom: 3px double var(--line); height: 4px; }
+  .lede { font-size: 1.1rem; color: var(--text-dim); max-width: 60ch; }
+
+  section { display: flex; flex-direction: column; gap: 16px; }
+  .head { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+  .head h2 { flex: 0 0 auto; }
+  .head .label { flex: 1 1 auto; text-align: right; }
+
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); }
+  .grid.two { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); padding: 15px 17px;
+    display: flex; flex-direction: column; gap: 8px; break-inside: avoid;
+  }
+  .card p, .card li { font-size: 0.94rem; }
+  .card.accent { border-left: 3px solid var(--gold); }
+  .card-head { display: flex; align-items: flex-start; gap: 10px; }
+  .card-head .icon { margin-top: 1px; }
+
+  .rules { background: var(--panel-2); border: 1px solid var(--line); padding: 17px 19px; }
+  .ladder { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+  .ladder li { display: grid; grid-template-columns: 84px 1fr; gap: 13px; align-items: baseline; font-size: 0.94rem; }
+  .ladder .k { font-family: var(--mono); color: var(--gold); font-size: 0.88rem; text-align: right; }
+  .ladder.plain .k { color: var(--text-faint); }
+
+  ul.tick { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 5px; }
+  ul.tick li { font-size: 0.94rem; }
+
+  ol.fort { margin: 0; padding-left: 1.35rem; display: flex; flex-direction: column; gap: 9px; }
+  ol.fort li { font-size: 0.89rem; line-height: 1.45; }
+  ol.fort li::marker { font-family: var(--mono); color: var(--gold); font-size: 0.82rem; }
+
+  .allies { border: 1px solid var(--line); }
+  .ally {
+    display: grid; grid-template-columns: 13px 196px 1fr; gap: 14px; align-items: start;
+    padding: 13px 16px; border-bottom: 1px solid var(--line-soft); font-size: 0.93rem;
+    break-inside: avoid;
+  }
+  .ally:last-child { border-bottom: 0; }
+  .ally:nth-child(even) { background: color-mix(in srgb, var(--panel) 55%, transparent); }
+  .ally .dot {
+    width: 11px; height: 11px; border-radius: 50%; border: 2.5px solid currentColor;
+    align-self: start; margin-top: 5px;
+  }
+  .ally .n { font-weight: 700; font-family: var(--display); font-size: 1.02rem; line-height: 1.24; }
+  .ally .n .tag { display: inline-block; margin-top: 5px; }
+  .ally .t { line-height: 1.5; }
+  @media (max-width: 700px) {
+    .ally { grid-template-columns: 13px 1fr; gap: 10px; }
+    .ally .t { grid-column: 2 / -1; }
+  }
+
+  .divider { display: flex; align-items: center; gap: 14px; color: var(--line); }
+  .divider::before, .divider::after { content: ""; flex: 1 1 auto; border-top: 1px solid var(--line); }
+  .divider svg { width: 34px; height: 12px; stroke: var(--gold-deep); fill: none; stroke-width: 1.2; }
+
+  footer { border-top: 3px double var(--line); padding-top: 20px; }
+
+  @media print {
+    /* redefine the tokens, not just body — everything below is coloured through them,
+       so printing from a dark view would otherwise put near-white text on white paper */
+    :root, :root[data-theme="dark"], :root[data-theme="light"] {
+      --ground: #ffffff; --panel: #ffffff; --panel-2: #f6f5f2;
+      --line: #9a9a94; --line-soft: #cfcec9;
+      --text: #000000; --text-dim: #333333; --text-faint: #5f5f5f;
+      --shadow: #4a3a75; --gold: #6f5210; --gold-deep: #9a7a2a;
+      --red: #8f2418; --teal: #1f5a55;
+      --r-penn: #6e406e; --r-frontier: #177617; --r-nova: #b01a1a; --r-mary: #6a1fb0;
+      --r-illva: #a75f06; --r-darkburg: #1c3480; --r-sova: #8a7000; --r-noca: #4d7042;
+      --r-tenadeez: #7d1515;
+    }
+    body { background: #fff; color: #000; font-size: 9pt; line-height: 1.34; }
+    .page { background: none; }
+    .sheet { max-width: none; padding: 0; gap: 11px; }
+    section { gap: 8px; break-inside: auto; }
+    header { gap: 8px; }
+    .card, .rules, .allies, .ally { background: #fff; border-color: #9a9a94; }
+    .ally:nth-child(even) { background: #f4f3f0; }
+    .card { padding: 8px 10px; gap: 5px; }
+    .rules { padding: 8px 10px; }
+    .ally { padding: 7px 10px; gap: 9px; }
+    .grid, .grid.two { gap: 8px; grid-template-columns: 1fr 1fr; }
+    .card p, .card li, ul.tick li, .ladder li, .ally { font-size: 8.6pt; }
+    .icon { stroke: #444; width: 1.25em; height: 1.25em; }
+    .crest { width: 54px; height: 63px; flex: 0 0 54px; }
+    .crest-row { gap: 13px; }
+    h1 { font-size: 22pt; }
+    h2 { font-size: 12pt; }
+    h3 { font-size: 9.6pt; }
+    .lede { font-size: 9.6pt; }
+    .head { padding-bottom: 4px; }
+    .card, .ally, .rules { break-inside: avoid; }
+    .divider { display: none; }
+    footer { border-top: 2px solid #9a9a94; padding-top: 10px; }
+    @page { margin: 12mm 11mm; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-eye" viewBox="0 0 24 24">
+    <path d="M1.8 12S5.6 5.6 12 5.6 22.2 12 22.2 12 18.4 18.4 12 18.4 1.8 12 1.8 12Z"></path>
+    <circle cx="12" cy="12" r="3.1"></circle>
+    <path d="M12 2.6v1.4M12 20v1.4M4 4.6l1 1M19 18.4l1 1"></path>
+  </symbol>
+  <symbol id="i-swords" viewBox="0 0 24 24">
+    <path d="M4 3.5 14.5 14M20 3.5 9.5 14"></path>
+    <path d="M3.2 8.4V3.2h5.2M20.8 8.4V3.2h-5.2"></path>
+    <path d="M7 20.5 10.6 17M17 20.5 13.4 17"></path>
+    <path d="M9.5 14.4 12 16.9l2.5-2.5-2.5-2.5Z"></path>
+  </symbol>
+  <symbol id="i-anvil" viewBox="0 0 24 24">
+    <path d="M3 10.5h13.5c2.6 0 4.5-1.6 4.5-3.6"></path>
+    <path d="M3 10.5v2.6h11v-2.6"></path>
+    <path d="M8.6 13.1v4.6M8.6 17.7h-3v2.6h12v-2.6h-3"></path>
+    <path d="M13.6 17.7H8.6"></path>
+    <path d="M6.4 7.2 2.6 3.4M2.6 3.4l1.6-.9 4 4"></path>
+  </symbol>
+  <symbol id="i-wall" viewBox="0 0 24 24">
+    <path d="M2 21V9.5h3.2V7h3.1v2.5h3.4V7h3.1v2.5H18V7h3.1v2.5h.9V21Z"></path>
+    <path d="M2 13.6h20M8.3 13.6V21M15.7 13.6V21"></path>
+  </symbol>
+  <symbol id="i-seal" viewBox="0 0 24 24">
+    <path d="M4.2 3.4h11.2l4.4 4.4V17c0 .9-.7 1.6-1.6 1.6H4.2c-.9 0-1.6-.7-1.6-1.6V5c0-.9.7-1.6 1.6-1.6Z"></path>
+    <path d="M15.4 3.4v4.4h4.4"></path>
+    <circle cx="9.6" cy="15.2" r="3.4"></circle>
+    <path d="M7.6 18.1 6.4 21.8l3.2-1.6 3.2 1.6-1.2-3.7"></path>
+  </symbol>
+  <symbol id="i-pennant" viewBox="0 0 24 24">
+    <path d="M6.4 2.4V21.6"></path>
+    <path d="M6.4 3.6h13.2l-3.4 3.8 3.4 3.8H6.4"></path>
+    <path d="M3.4 21.6h6"></path>
+  </symbol>
+  <symbol id="i-colossus" viewBox="0 0 24 24">
+    <path d="M8.6 2.6h6.8v4.2H8.6Z"></path>
+    <path d="M10.2 6.8h3.6v3H10.2Z"></path>
+    <path d="M6.4 9.8h11.2v6.4H6.4Z"></path>
+    <path d="M3.6 10.6v6M20.4 10.6v6"></path>
+    <path d="M9.2 16.2v5.2M14.8 16.2v5.2"></path>
+    <path d="M10.6 4.4h2.8"></path>
+  </symbol>
+  <symbol id="i-cannon" viewBox="0 0 24 24">
+    <path d="M3.4 13.4 17.6 7.2l1.9 4.3-14.2 6.2Z"></path>
+    <circle cx="7.4" cy="19" r="2.4"></circle>
+    <circle cx="16" cy="15.6" r="1.6"></circle>
+    <path d="M19.6 6.6c1.2-1.2 2-1 2.4-.4M20.8 4.4c.4-1.2 1-1.4 1.6-1.2"></path>
+  </symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24">
+    <path d="M12 2.4 20.4 5v7c0 5-3.6 8.4-8.4 10.2C7.2 20.4 3.6 17 3.6 12V5Z"></path>
+    <path d="M12 7.4v8.4M8.2 11.6h7.6"></path>
+  </symbol>
+  <symbol id="i-scroll" viewBox="0 0 24 24">
+    <path d="M5.4 3.4h13.2v14.4c0 1.8-1.4 3.2-3.2 3.2H5.4"></path>
+    <path d="M5.4 3.4c-1.4 0-2.4 1-2.4 2.4S4 8.2 5.4 8.2"></path>
+    <path d="M5.4 21c-1.4 0-2.4-1-2.4-2.4s1-2.4 2.4-2.4"></path>
+    <path d="M9 8h6.4M9 11.6h6.4M9 15.2h4"></path>
+  </symbol>
+  <symbol id="i-flourish" viewBox="0 0 34 12">
+    <path d="M1 6h9M24 6h9"></path>
+    <path d="M17 1.6 20.2 6 17 10.4 13.8 6Z"></path>
+    <path d="M11.4 6h.9M21.7 6h.9"></path>
+  </symbol>
+</svg>
+
+<div class="page">
+<div class="sheet">
+
+  <header>
+    <div class="crest-row">
+      <svg class="crest" viewBox="0 0 86 100" role="img" aria-label="The seal of Starbrook.">
+        <defs>
+          <linearGradient id="shieldFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="var(--panel-2)"></stop>
+            <stop offset="1" stop-color="var(--panel)"></stop>
+          </linearGradient>
+        </defs>
+        <circle cx="43" cy="13" r="8.4" fill="var(--gold)" opacity="0.85"></circle>
+        <circle cx="47.4" cy="10.4" r="8.4" fill="var(--ground)"></circle>
+        <path d="M43 25 78 33v27c0 19-14 30-35 37C22 90 8 79 8 60V33Z"
+              fill="url(#shieldFill)" stroke="var(--gold)" stroke-width="2"></path>
+        <path d="M43 39l4.6 9.6 10.4 1.4-7.6 7.4 1.9 10.4L43 63.3l-9.3 4.9 1.9-10.4-7.6-7.4 10.4-1.4Z"
+              fill="none" stroke="var(--gold)" stroke-width="1.9" stroke-linejoin="round"></path>
+        <path d="M18 76c5-3.4 9-3.4 14 0s9 3.4 14 0 9-3.4 14 0"
+              fill="none" stroke="var(--teal)" stroke-width="2.1" stroke-linecap="round"></path>
+        <path d="M20 83c4.6-3 8.4-3 13 0s8.4 3 13 0 8.4-3 13 0"
+              fill="none" stroke="var(--teal)" stroke-width="1.5" stroke-linecap="round" opacity="0.6"></path>
+      </svg>
+      <div class="crest-text">
+        <p class="label">Starbrook · War Cabinet · Standing Orders</p>
+        <h1>The Shadow War</h1>
+      </div>
+    </div>
+    <div class="rule-double"></div>
+    <p class="lede">Twelve days until the Long Dark reaches our walls. His three lieutenants are already
+    inside the borders.</p>
+  </header>
+
+  <!-- ============ THE DAY ============ -->
+  <section>
+    <div class="head">
+      <svg class="icon dim" aria-hidden="true"><use href="#i-scroll"></use></svg>
+      <h2>Each Day</h2><p class="label">the loop</p>
+    </div>
+    <p>Every one of you takes <strong>one action</strong>. You all declare before anyone rolls. Then the
+    Colossus gets its order, and the Standing Army gets its own. Then the night event is resolved.</p>
+
+    <div class="grid two">
+      <div class="rules">
+        <p class="label" style="margin-bottom:10px;">Resolving an action</p>
+        <ul class="ladder">
+          <li><span class="k">10+</span><span><strong>Success</strong> — 1 point</span></li>
+          <li><span class="k">25+</span><span><strong>Great Success</strong> — 2 points</span></li>
+          <li><span class="k">9 or less</span><span><strong>Failure</strong> — nothing</span></li>
+          <li><span class="k">nat 20</span><span>Always a Great Success</span></li>
+          <li><span class="k">nat 1</span><span>Always a failure</span></li>
+        </ul>
+      </div>
+      <div class="rules">
+        <p class="label" style="margin-bottom:10px;">Also true</p>
+        <ul class="ladder plain">
+          <li><span class="k">Push</span><span>After a failure, take one level of exhaustion and reroll</span></li>
+          <li><span class="k">Assist</span><span>Give up your action to grant someone advantage</span></li>
+          <li><span class="k">Stack</span><span>Two of you may take the same action; results add up</span></li>
+          <li><span class="k">Rest</span><span>A long rest every night, unless something stops you</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card accent">
+      <div class="card-head">
+        <svg class="icon" aria-hidden="true"><use href="#i-eye"></use></svg>
+        <h3>Using your character sheet</h3>
+      </div>
+      <p><strong>Flavour</strong> changes the story, not the roll. <strong>A well-suited spell or
+      tool</strong> grants advantage. <strong>Something that outright solves the problem</strong> —
+      <em>scrying</em> on a named lieutenant, <em>planar ally</em> spent on a negotiation — is an automatic
+      Great Success. Once per resource; the same trick doesn't work twice.</p>
+    </div>
+  </section>
+
+  <div class="divider"><svg aria-hidden="true"><use href="#i-flourish"></use></svg></div>
+
+  <!-- ============ WAR MAP ACTIONS ============ -->
+  <section>
+    <div class="head">
+      <svg class="icon dim" aria-hidden="true"><use href="#i-shield"></use></svg>
+      <h2>War Map Actions</h2><p class="label">one per person, per day</p>
+    </div>
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#i-eye"></use></svg>
+          <h3>Gather Intel<span class="skills">Stealth · Investigation</span></h3>
+        </div>
+        <p>Three lieutenants serve the Shadow Lord. Each is uncovered in three stages, in order: their
+        <strong>name</strong>, then a <strong>description and where they lair</strong>, then their
+        <strong>secrets</strong>.</p>
+        <p>One point buys one stage.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#i-anvil"></use></svg>
+          <h3>Commission an Item<span class="skills">Arcana · Artisan's tools</span></h3>
+        </div>
+        <p>Build from the list of twenty-eight <span class="tag">separate sheet</span>. Standard items cost
+        <strong>1 point</strong>, so a Great Success is two copies. Major items cost <strong>2
+        points</strong>: one Great Success, two of you pooling a success, or one of you banking today and
+        finishing tomorrow.</p>
+        <p>The same action purifies a captured artifact. Three items cannot be built until you have Stage
+        III intel on their target.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#i-wall"></use></svg>
+          <h3>Fortify Defenses<span class="skills">Athletics · Sleight of Hand · Religion / Arcana</span></h3>
+        </div>
+        <p>Three tracks at Starbrook — <strong>Bulwark</strong>, <strong>Sky</strong>,
+        <strong>Ward</strong> — five levels each. Name the track before you roll. One point raises it one
+        level.</p>
+        <p>Each level is either <strong>passive</strong> (higher ground, unquenchable light, wards in the
+        stone) or adds a <strong>garrison order</strong> you can command in battle. Each of the three
+        lieutenants tests a different track at night.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#i-seal"></use></svg>
+          <h3>Beseech Allies<span class="skills">Persuasion · Insight</span></h3>
+        </div>
+        <p>Name one of the allied nations. On a success, choose <strong>one</strong>:</p>
+        <ul class="tick">
+          <li>Their <strong>special power</strong></li>
+          <li><strong>2 Muster</strong></li>
+          <li><strong>Push the shadow back</strong> out of their borders by one step</li>
+        </ul>
+        <p>On a Great Success, take two <em>different</em> ones.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ OTHER ACTIONS ============ -->
+  <section>
+    <div class="head">
+      <svg class="icon dim" aria-hidden="true"><use href="#i-swords"></use></svg>
+      <h2>Other Actions</h2><p class="label">no check</p>
+    </div>
+    <div class="grid two">
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#i-swords"></use></svg>
+          <h3>Launch an Assault <span class="tag red">all four of you</span></h3>
+        </div>
+        <p>Take the fight to a lieutenant whose name you know. One killed now is one absent from the last
+        battle, and its artifact is yours.</p>
+        <p>If you go without knowing where they lair, you spend the day finding the place: you arrive with
+        no short rest, you cannot spend Hit Dice first, and they act before you do.</p>
+        <p>Everything you have secured can be brought — allied powers, Muster, the Colossus and the Standing
+        Army if they are standing at the lair.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#i-pennant"></use></svg>
+          <h3>Raise or Reinforce an Army <span class="tag gold">War Room</span><span class="skills">no check · 1,000 gp</span></h3>
+        </div>
+        <p>One day and a thousand gold raises a <strong>Standing Army</strong> — about a thousand riders and
+        foot, at <strong>Strength 3</strong>. No roll.</p>
+        <p>One Standing Army at a time. <strong>If one is already in the field, this action reinforces it
+        instead</strong> — <span class="mono">+1 Strength</span> for 1,000 gp, to a maximum of 3, as often
+        as you like.</p>
+        <p>Buying Strength back always costs one of <em>you</em> a day. The army never spends one of its own
+        orders on it, and it keeps marching, holding or striking while you do the paperwork.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="divider"><svg aria-hidden="true"><use href="#i-flourish"></use></svg></div>
+
+  <!-- ============ MAP PIECES ============ -->
+  <section>
+    <div class="head">
+      <svg class="icon dim" aria-hidden="true"><use href="#i-colossus"></use></svg>
+      <h2>The Colossus &amp; the Standing Army</h2><p class="label">pieces on the map</p>
+    </div>
+    <div class="grid two">
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#i-colossus"></use></svg>
+          <h3>The Colossus <span class="tag">the party's</span></h3>
+        </div>
+        <p>It has no hit points and cannot be destroyed. It stands in <strong>one region</strong>, and each
+        day the four of you agree on one order:</p>
+        <ul class="tick">
+          <li><strong>MOVE</strong> — one region.</li>
+          <li><strong>HOLD</strong> — its region gains no shadow tonight, from any source.</li>
+          <li><strong>STRIKE</strong> — remove 1 shadow from its region; or, if it stands at a lair on an assault day, it joins the fight for <span class="mono">60 damage</span> a round, ignoring resistance, and soaks a wave of minions each round.</li>
+        </ul>
+        <p>In the final battle it fights the whole fight — <strong>if it is standing at Starbrook</strong>.
+        Otherwise it arrives a round later for every region it has to cross.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#i-pennant"></use></svg>
+          <h3>The Standing Army <span class="tag gold">its raiser's</span></h3>
+        </div>
+        <p><strong>Strength 3.</strong> Its orders are given by whoever raised it. At Strength 0 it is
+        destroyed.</p>
+        <ul class="tick">
+          <li><strong>MARCH</strong> — one region.</li>
+          <li><strong>HOLD THE LINE</strong> — prevent 1 shadow in its region tonight. Costs <span class="mono">1 Strength</span> if it prevents anything.</li>
+          <li><strong>STRIKE</strong> — remove 1 shadow from its region; or join an assault at the lair it stands in. Costs <span class="mono">1 Strength</span> either way.</li>
+        </ul>
+        <p>Strength is bought back with the <strong>Raise or Reinforce an Army</strong> action, not with one
+        of these orders. An army does not resupply itself.</p>
+        <p>In a battle it adds a garrison order: <strong>Send in the Riders</strong> — <span class="mono">4d10</span>
+        to each of up to three enemies in a 60-ft line, each making a <span class="dc">DC 18 Str</span> save
+        or knocked prone with speed halved.</p>
+        <p>You may also disband it mid-battle as a free action for <strong>2 Muster per remaining
+        Strength</strong>.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="divider"><svg aria-hidden="true"><use href="#i-flourish"></use></svg></div>
+
+  <!-- ============ IN A BATTLE ============ -->
+  <section>
+    <div class="head">
+      <svg class="icon dim" aria-hidden="true"><use href="#i-cannon"></use></svg>
+      <h2>In a Battle</h2><p class="label">what your preparations do</p>
+    </div>
+    <div class="grid two">
+      <div class="card accent">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#i-cannon"></use></svg>
+          <h3>Garrison Orders</h3>
+        </div>
+        <p>At the <strong>top of every round</strong>, the party commands <strong>one</strong> of the things
+        you've built. It costs nobody a turn, action, or reaction.</p>
+        <p><em>Fire the cannons. Loose the ballistae. Throw the chains. Send in the riders.</em></p>
+        <p><strong>One order a round, no matter how much you own.</strong> Some orders are once per battle.</p>
+      </div>
+      <div class="card accent">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+          <h3>Muster <span class="tag">charges</span></h3>
+        </div>
+        <p><strong>Up to 2 charges per round</strong>, in any fight, no action required, any conscious one
+        of you may call it. Charges are spent permanently; they do not refresh between fights.</p>
+        <ul class="tick">
+          <li><strong>Intercept</strong> — a soldier steps in front of an attack that <em>has already hit</em>. It misses instead. Works on anything with an attack roll, including legendary actions.</li>
+          <li><strong>Field Medic</strong> — a character at 0 hit points is dragged clear, stabilised, and stands with <strong>half their hit point maximum</strong>. They lose no turn to it.</li>
+          <li><strong>Haul Them Out</strong> — move an ally up to 30 ft to a space you choose and end one of <strong>grappled, restrained or prone</strong> on them.</li>
+          <li><strong>Rally</strong> — one ally <strong>rerolls a failed saving throw</strong> against fear, charm, or psychic damage.</li>
+          <li><strong>Break Ranks</strong> — one <em>minion</em> is removed from the field entirely. Not a lieutenant, and not the Shadow Lord.</li>
+        </ul>
+        <p class="note">No damage option, deliberately. Everything here does something you cannot do for
+        yourselves.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"><svg aria-hidden="true"><use href="#i-flourish"></use></svg></div>
+
+  <!-- ============ DEFENCES ============ -->
+  <section>
+    <div class="head">
+      <svg class="icon dim" aria-hidden="true"><use href="#i-wall"></use></svg>
+      <h2>Your Defences</h2><p class="label">five levels per track</p>
+    </div>
+    <p>Everything you build at Starbrook is either <span class="tag">passive</span> — simply true, all the
+    time — or a <span class="tag gold">garrison</span> order you can command at the top of a round. Levels
+    are earned in order, and every one is permanent once built.</p>
+
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#i-wall"></use></svg>
+          <h3>Bulwark<span class="skills">Athletics · Survival</span></h3>
+        </div>
+        <ol class="fort">
+          <li><strong>Fire the Cannons</strong> <span class="tag gold">garrison</span><br>Two guns. One or two targets within 600 ft: <span class="mono">+12</span> to hit, <span class="mono">6d10</span> force each, hitting automatically against anything Huge or larger. Shadow creatures have no resistance to it.</li>
+          <li><strong>Terraform: the Slope</strong> <span class="tag">passive</span><br>Ground within 60 ft outside the walls is difficult terrain for enemies, and ranged attacks made from the walls get <span class="mono">+2</span> to hit.</li>
+          <li><strong>Throw the Chains</strong> <span class="tag red">1 per battle</span><br>One Huge or larger creature within 120 ft is restrained and cannot teleport until the end of its next turn. <strong>No save.</strong></li>
+          <li><strong>Watchfires</strong> <span class="tag">passive</span><br>The whole field is in bright light, and magic of 6th level or lower cannot dim it.</li>
+          <li><strong>Into the Deepwork</strong> <span class="tag red">1 per battle</span><br>You and anyone you name within 30 ft drop into the tunnels: total cover from one effect, however large. You re-emerge anywhere along the walls.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#i-cannon"></use></svg>
+          <h3>Sky<span class="skills">Sleight of Hand · Perception</span></h3>
+        </div>
+        <ol class="fort">
+          <li><strong>Loose the Ballistae</strong> <span class="tag gold">garrison</span><br>Two bolts within 600 ft: <span class="mono">+12</span> to hit, <span class="mono">4d10</span> piercing each, auto-hitting Huge or larger. A creature hit has its <strong>fly speed halved and cannot Disengage</strong> until the end of its next turn.</li>
+          <li><strong>Skywatch</strong> <span class="tag">passive</span><br>Nothing surprises Starbrook. You are never surprised at home, and every assault you launch opens with a surprise round — even if all you have is a name.</li>
+          <li><strong>Fog Nets</strong> <span class="tag">passive</span><br>Any flying creature above Starbrook has its speed halved and cannot Disengage.</li>
+          <li><strong>Signal</strong> <span class="tag red">1 per battle</span><br>Reroll any one d20 rolled by anyone on the field — or re-run an allied nation's power that has just misfired.</li>
+          <li><strong>Call the Rig</strong> <span class="tag red">1 per battle</span><br>The storm rig discharges: a 100-ft line, <span class="mono">16d6</span> lightning, <span class="dc">DC 20 Dex</span> for half. You choose the line and the moment.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#i-seal"></use></svg>
+          <h3>Ward<span class="skills">Religion · Arcana</span></h3>
+        </div>
+        <ol class="fort">
+          <li><strong>Scour</strong> <span class="tag gold">garrison</span><br>The scopes rake a 20-ft radius within 600 ft: <span class="mono">5d8</span> radiant, <strong>no save</strong>, and every shadow creature in it loses concealment until the end of its next turn.<br><em>Also passive:</em> spells cast from the walls have double range.</li>
+          <li><strong>Consecration</strong> <span class="tag">passive</span><br>Your home region can no longer take shadow from spread — only from a direct strike. In a fight, a shadow or undead creature takes <span class="mono">3d6</span> radiant the first time each turn it comes within 30 ft of the walls.</li>
+          <li><strong>Dampen</strong> <span class="tag red">1 per battle</span><br>Negate one lair action or one legendary action as it is used, before it takes effect.</li>
+          <li><strong>Truesight Lattice</strong> <span class="tag">passive</span><br>Everyone on your side ignores shadow concealment, invisibility and illusion inside the field. Also <span class="mono">+2</span> to every Gather Intel check for the rest of the war.</li>
+          <li><strong>Break the Sigil</strong> <span class="tag red">1 per battle</span><br>Until the end of the round, <strong>no creature on the field may use Legendary Resistance</strong>, and one magical effect of your choice ends.</li>
+        </ol>
+      </div>
+
+    </div>
+    <p class="note">Remember the cap: <strong>one garrison order a round</strong>, however many you own.
+    Building deep buys you choices, not extra attacks.</p>
+  </section>
+
+  <div class="divider"><svg aria-hidden="true"><use href="#i-flourish"></use></svg></div>
+
+  <!-- ============ ALLIED NATIONS ============ -->
+  <section>
+    <div class="head">
+      <svg class="icon dim" aria-hidden="true"><use href="#i-seal"></use></svg>
+      <h2>Allied Nations</h2><p class="label">eight of them</p>
+    </div>
+    <p>Their powers work in any fight — hunting a lieutenant, defending Starbrook, or the last battle.
+    <strong>Charges do not refresh.</strong> Entries with no charge tag are permanent once secured.</p>
+
+    <div class="allies">
+
+      <div class="ally">
+        <span class="dot" style="color:var(--r-frontier)"></span>
+        <span class="n">The Western Frontier <span class="tag red">1 charge</span></span>
+        <span class="t"><strong>Call the Storm.</strong> Three rounds over the whole battlefield; it spares
+        you. No hostile creature can hide or gain concealment. Flying enemies have their speed halved and
+        cannot hover. Any enemy failing a <span class="dc">DC 18 Con</span> save attacks at disadvantage
+        until its turn ends. Choose the element as you call it — ice, flaywind, flame, or acid.</span>
+      </div>
+
+      <div class="ally">
+        <span class="dot" style="color:var(--r-mary)"></span>
+        <span class="n">Mary's Land <span class="tag red">1 charge</span></span>
+        <span class="t"><strong>Divine Grace.</strong> Every ally within 200 ft regains 60 hit points, ends
+        one condition, and cannot drop below 1 hit point until the end of the round.<br>
+        <em>Permanent:</em> once a day they cleanse one lingering corruption from one of you.</span>
+      </div>
+
+      <div class="ally">
+        <span class="dot" style="color:var(--r-illva)"></span>
+        <span class="n">Illva Kingdom</span>
+        <span class="t"><strong>The Battle Tortoise.</strong> A living fortress 40 ft across.
+        <span class="mono">AC 20, 300 HP</span>, moving 20 ft on its own at the top of each round. Anyone
+        inside has <span class="mono">+5 AC</span> and <span class="mono">+5</span> to Dexterity saves and
+        can still shoot out. It carries your garrison guns — the only way they leave Starbrook.</span>
+      </div>
+
+      <div class="ally">
+        <span class="dot" style="color:var(--r-penn)"></span>
+        <span class="n">Outer Penn <span class="tag red">1 charge</span></span>
+        <span class="t"><strong>The Hour Unspent.</strong> All four of you take an extra round. No enemy
+        acts, reacts, or uses a legendary action during it.<br>
+        <em>Permanent, once:</em> one of you takes two actions in a single day.</span>
+      </div>
+
+      <div class="ally">
+        <span class="dot" style="color:var(--r-darkburg)"></span>
+        <span class="n">Darkburg <span class="tag red">1 charge</span></span>
+        <span class="t"><strong>The Night Sphere.</strong> True darkness over an entire region, lasting the
+        whole battle. Inside it no creature can hide in shadow, move between shadows, or draw concealment
+        from them. There is also no bright light anywhere inside it.</span>
+      </div>
+
+      <div class="ally">
+        <span class="dot" style="color:var(--r-sova)"></span>
+        <span class="n">Sova Region <span class="tag red">1 charge</span></span>
+        <span class="t"><strong>Gravity Squeeze.</strong> A 200-ft field for three rounds, centred where you
+        choose; it spares you. Every enemy inside is dragged 20 ft toward the centre at the start of its
+        turn with <strong>no saving throw</strong> — 10 ft if Gargantuan. Flying enemies are pulled to the
+        ground, prone. Moving away costs them double. Anything within 10 ft of the centre takes
+        <span class="mono">6d10</span> force at the end of each round.</span>
+      </div>
+
+      <div class="ally">
+        <span class="dot" style="color:var(--r-noca)"></span>
+        <span class="n">NoCA Region <span class="tag red">3 charges</span></span>
+        <span class="t"><strong>The Creation Troop.</strong> One Huge object of ordinary material, lasting
+        an hour. Three charges per battle, and they refresh between battles.<br><span class="mono">wall ·
+        ramp · cage · great lens · door-sized mirror · cistern</span> — or anything else within those limits
+        that cannot deal damage on its own.<br><em>Permanent:</em> one such object a day outside of battle.</span>
+      </div>
+
+      <div class="ally">
+        <span class="dot" style="color:var(--r-tenadeez)"></span>
+        <span class="n">TENADEEZ <span class="tag red">1 charge</span></span>
+        <span class="t"><strong>Necrotic Tempest.</strong> A 200-ft storm for up to five rounds, centred
+        where you choose; it spares you. Every enemy inside takes <span class="mono">3d10</span> necrotic at
+        the start of its turn, or half as much force if immune to necrotic. Any enemy that dies inside rises
+        next turn and fights for you — up to four at a time.</span>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    <p class="label">Twelve days · four war map actions · three lieutenants · one final battle</p>
+  </footer>
+
+</div>
+</div>
