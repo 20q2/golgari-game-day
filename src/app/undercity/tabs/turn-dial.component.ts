@@ -36,8 +36,14 @@ export interface DialSatellite {
   ready?: boolean;
 }
 
-/** Wrapper box, and the dial centre's offset from its top-left corner. */
-const BOX = 150;
+/**
+ * The dial centre's offset from the wrapper's top-left corner.
+ *
+ * The wrapper is 150x150 and the dial is drawn at this offset. Both numbers are
+ * ALSO hardcoded in the SCSS below (`.dial-box` width/height, `.dial` left/top)
+ * because Angular's `styles` array is a plain string and cannot interpolate a TS
+ * constant. Keep the two in sync.
+ */
 const CENTRE = 104;
 /** Satellite ring: radius, and the fixed angle of each slot in degrees. */
 const SAT_R = 66;
@@ -101,31 +107,35 @@ const RESTED_CIRC = 2 * Math.PI * RESTED_R;
         }
       }
 
-      <!-- Satellite arc -->
-      @for (s of satellites; track s.key) {
-        <button
-          type="button"
-          class="dial-sat"
-          [class.ctx]="s.tone === 'ctx'"
-          [class.ready]="!!s.ready"
-          [style.left.px]="slotPos(s.slot).left"
-          [style.top.px]="slotPos(s.slot).top"
-          [disabled]="!!s.disabled"
-          [attr.aria-label]="s.label"
-          [title]="s.label"
-          (click)="act.emit(s.key)"
-        >
-          @if (s.spriteUrl) {
-            <img class="dial-sat-sprite" [src]="s.spriteUrl" alt="" />
-          } @else if (s.svgIcon) {
-            <mat-icon class="mi" [svgIcon]="s.svgIcon"></mat-icon>
-          } @else if (s.icon) {
-            <mat-icon class="mi">{{ s.icon }}</mat-icon>
-          }
-          @if (s.badge) {
-            <span class="dial-sat-badge">{{ s.badge }}</span>
-          }
-        </button>
+      <!-- Satellite arc. Hidden while the face ring is up: the two rings share
+           angles and sit only 8px apart radially (66 vs 58), so they would
+           overlap and steal each other's taps. -->
+      @if (!faceRingOpen) {
+        @for (s of satellites; track s.key) {
+          <button
+            type="button"
+            class="dial-sat"
+            [class.ctx]="s.tone === 'ctx'"
+            [class.ready]="!!s.ready"
+            [style.left.px]="slotPos(s.slot).left"
+            [style.top.px]="slotPos(s.slot).top"
+            [disabled]="!!s.disabled"
+            [attr.aria-label]="s.label"
+            [title]="s.label"
+            (click)="act.emit(s.key)"
+          >
+            @if (s.spriteUrl) {
+              <img class="dial-sat-sprite" [src]="s.spriteUrl" alt="" />
+            } @else if (s.svgIcon) {
+              <mat-icon class="mi" [svgIcon]="s.svgIcon"></mat-icon>
+            } @else if (s.icon) {
+              <mat-icon class="mi">{{ s.icon }}</mat-icon>
+            }
+            @if (s.badge) {
+              <span class="dial-sat-badge">{{ s.badge }}</span>
+            }
+          </button>
+        }
       }
 
       <!-- The dial itself -->
@@ -189,6 +199,7 @@ const RESTED_CIRC = 2 * Math.PI * RESTED_R;
 
       .dial-box {
         position: relative;
+        // 150x150 — keep in sync with the CENTRE doc comment in the .ts above.
         width: 150px;
         height: 150px;
       }
@@ -205,6 +216,7 @@ const RESTED_CIRC = 2 * Math.PI * RESTED_R;
 
       .dial {
         position: absolute;
+        // left/top = the CENTRE constant (104). Keep in sync.
         left: 104px;
         top: 104px;
         transform: translate(-50%, -50%);
@@ -453,8 +465,11 @@ export class UcTurnDialComponent {
   @Input() faceRingOpen = false;
   /** Include the 7th "random" slot — Blink only; dev Pick has no random. */
   @Input() faceRandom = false;
+  /** Arc satellites. Pass a NEW array when it changes — this component is
+   *  OnPush, so an in-place mutation (push/splice) will not repaint. */
   @Input() satellites: DialSatellite[] = [];
-  /** Transient one-line notes stacked above the dial. */
+  /** Transient one-line notes stacked above the dial. Pass a NEW array when it
+   *  changes — same OnPush caveat as `satellites`. */
   @Input() notes: string[] = [];
 
   /** Dial tapped. */
