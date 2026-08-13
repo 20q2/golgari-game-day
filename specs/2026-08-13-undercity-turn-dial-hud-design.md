@@ -170,13 +170,19 @@ Total footprint ~150×150.
 | 180° | Bag (`uc-pouch` + count badge) | bag empty |
 | 210° | Cast | no castable spells or scrolls |
 | 240° | Pet (sprite, ready-pulse, cooldown) — port of `.pet-quickuse` | no active usable pet |
-| 270° | Context: node facility → Reclaim (priority order) | neither applies |
-| 300° | More | only shown when the context slot has >1 claimant |
+| 270° | Context: node facility → Reclaim (priority order), **or `more_horiz`** | neither applies |
+
+There is no fifth slot. Five satellites across the 180°→270° quarter would need
+22.5° spacing — 24px between centres for 30px buttons — so they would overlap.
+Four at 30° is the maximum that fits. Overflow therefore collapses **into slot
+270°**: when more than one current-space action applies, that slot becomes a
+`more_horiz` button badged with the claimant count, and its sheet lists every
+claimant including the facility.
 
 Worst-case simultaneous actions is six (bag, cast, pet, facility, Reclaim on
-soft ground, admin Move), hence the overflow slot. **Admin `Move` lives
-permanently in More**, never in the main four — it is a dev affordance and
-should not cost a player a thumb slot.
+soft ground, admin Move), hence the overflow. **Admin `Move` lives permanently in
+the overflow sheet**, never in the main four — it is a dev affordance and should
+not cost a player a thumb slot.
 
 Rejected alternatives: a dynamic evenly-spread arc (icons shift between turns →
 mis-taps) and a 3-slot arc with a "this space" submenu (adds a tap to the single
@@ -184,10 +190,15 @@ most common interaction, opening the facility you just landed on).
 
 ### Gesture claim
 
-The board canvas owns pan/drag. Existing overlays opt out via the
-`data-uc-claim` / `data-uc-panel` attributes (`board-tab.component.html:50-51`).
-The dial and every satellite must carry the same, or a drag starting on the dial
-will pan the board.
+The board canvas owns pan/drag, but it already excludes `button` elements from
+starting a pan (`board-canvas.ts:1421` — its `CONTROLS` selector). Satellites are
+`<button>`s, so they need no extra attribute.
+
+What does need care is the wrapper: it is `pointer-events: none` with
+`pointer-events: auto` on its buttons, which keeps the board pannable *through*
+the arc's gaps while the buttons stay tappable. The face ring's dismissal catcher
+carries `data-uc-claim` so a tap on it only closes the ring rather than also
+tapping the space underneath (`data-uc-panel` remains for scrollable panels).
 
 ## Decision handoff
 
@@ -198,9 +209,14 @@ bandHasDecision() =
      canReroll()
   || !!pathfinderPick()
   || moveMode()
-  || occupantsHere().length > 0
+  || (occupantsHere().length > 0 && !you.pendingMove)
   || (stepping() && occupantsPassing().length > 0)
 ```
+
+**Every term must mirror the guard on the band branch it would reveal.** The PvP
+strip is itself gated on `!pendingMove`, so omitting that guard here makes the
+band mount empty for the duration of every walk away from an occupied space —
+routine controls hidden, PvP strip suppressed, nothing left but the status stack.
 
 - Band renders when `skin() === 'band' || bandHasDecision()`.
 - Routine `.action-row` branch renders only when `skin() === 'band'`.
@@ -223,6 +239,10 @@ Under the dial skin it re-homes explicitly:
 | rested count | thin second outer arc + numeric badge on the dial |
 | coach pill ("Tap Roll to take your first turn") | pill anchored directly above the dial |
 | blink recharge note | pill anchored directly above the dial |
+
+Because the dial owns that information, the band's own `.band-status-stack` is
+suppressed under the dial skin. Otherwise the countdown and rested count would
+render twice in the states where the band *is* up (a decision, or PvP).
 
 ## Toggle
 

@@ -1389,3 +1389,62 @@ git commit -m "docs(undercity): record the turn dial's final arc geometry"
 **Two deliberate deviations from the spec**, both recorded in Task 8: the arc is 4 slots with overflow folded into slot 3 (five would overlap), and the gesture-claim note is narrowed because `<button>` is already excluded from panning.
 
 **One deviation from the writing-plans skill:** no TDD steps. This repo has no frontend test runner — Karma was removed and `ng test` does not work (`CLAUDE.md`) — so writing `.spec.ts` files would produce tests nothing executes. Each task gates on `npm run build` plus named manual checks instead. The plan is also saved to `specs/` rather than `docs/superpowers/plans/` because `docs/` is gitignored build output that every build wipes.
+
+---
+
+## What actually shipped, where it differs from the plan above
+
+The task text above is preserved as the record of what was dispatched. Six
+corrections emerged during execution — five of them plan bugs, not
+implementation errors. The design spec has been updated to match; this list is
+the audit trail.
+
+**1. The face ring and the satellite arc collided (Task 3, caught in review).**
+The plan put satellites at radius 66 on angles 180/210/240/270 and the six faces
+at radius 58 across 150°→300°, i.e. sharing four angles 8px apart when a 15px
+satellite and a 12px face need 27px. Fix: `UcTurnDialComponent` now hides the
+satellite arc whenever `faceRingOpen` is true, so the guarantee lives in the
+component rather than depending on the caller. Commit `10e82b4`.
+
+**2. `BOX` was dead and the SCSS silently duplicated `CENTRE` (Task 3).** `BOX`
+was never referenced; `.dial-box`'s 150 and `.dial`'s 104 hardcode values that
+Angular's `styles` array cannot interpolate. `BOX` was removed and cross-
+reference comments added at all three sites. Commit `10e82b4`.
+
+**3. `dialOverflow()` was dead code (Task 5).** The plan specified it, but the
+template distinguishes the overflow case via the `'more'` satellite key, so
+nothing ever called it. Removed in commit `351aee5`.
+
+**4. The overflow sheet's SCSS and one class name were wrong (Task 5).** The plan
+used `class="modal-actions"`, which exists nowhere in the repo — the established
+(unstyled) pattern in this file is `uc-modal-actions`. The plan's
+`.dial-more .choice-grid { display: grid; gap: 8px }` was also ineffective:
+`.choice-grid` is `grid-template-columns: 1fr 1fr`, so making the sheet
+single-column required overriding the column count explicitly. Both corrected
+before dispatch.
+
+**5. Dev Pick had no random-roll path (Tasks 4-6, caught in review).** Under the
+band, the dev "Pick" button sits *beside* Roll; on the dial, `dialMode()`
+returns `'pick'` and the tap opens the ring *instead of* rolling — but
+`faceRandom` was bound to `blinkAllowed()` only, so with `pickAllowed() &&
+!blinkAllowed()` the ring showed faces 1-6 and no way to roll at random. Dev-only
+(`debugMode() && isDevMode()`) but a real parity gap. Fixed by binding
+`faceRandom` to `blinkAllowed() || pickAllowed()`. Commit `fcd8c5d`.
+
+**6. `bandHasDecision()` mounted an empty band (Tasks 4-6, caught in review).**
+Its PvP term was `occupantsHere().length > 0`, but the band's PvP strip is itself
+gated on `!pendingMove` — so every roll away from an occupied space flashed in a
+band with the routine row hidden and the strip suppressed. Each term must mirror
+the guard of the branch it reveals. Fixed, plus the band's `.band-status-stack`
+is now suppressed under the dial skin to stop the countdown/rested count
+rendering twice. Commit `fcd8c5d`.
+
+**Considered and declined:** moving the `ROLL_CAP` mirror into
+`src/app/undercity/data/`. `CLAUDE.md` points display mirrors there, but that
+directory is domain-grouped with no scalar-config home, and `POKE_COOLDOWN_MIN`
+already sets the precedent of a single-consumer scalar living in its consumer
+(`poke-wheel.component.ts`). A new file for one number is not worth it.
+
+**Still outstanding:** Task 7's manual verification sweep. Every task was gated
+on `npm run build` only; nothing in this feature has been exercised against a
+running game, which needs a live Undercity night on the real AWS backend.
