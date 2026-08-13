@@ -124,6 +124,12 @@ import {
   RECLAIM_LABELS,
   RECLAIM_MAX_CLAIMS,
 } from '../data/reclaim';
+import { HudSkinService } from '../services/hud-skin.service';
+import { UcTurnDialComponent, DialMode, DialSatellite } from './turn-dial.component';
+
+/** Display mirror of ROLL_CAP in infrastructure/lambda/undercity_config.py.
+ *  Update this if the server cap is tuned. */
+const ROLL_CAP = 10;
 
 interface BattleView {
   battle: BattleResult;
@@ -247,6 +253,7 @@ const FX_TINT: Record<string, [string, string]> = {
     BoardEventFeedComponent,
     UcActionBandComponent,
     PickupModalComponent,
+    UcTurnDialComponent,
   ],
   templateUrl: './board-tab.component.html',
   styleUrls: ['./board-tab.component.scss'],
@@ -2002,6 +2009,58 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Rested rolls banked past the cap (server-owned; display only). */
   protected readonly restedRolls = computed(() => this.store.you()?.rested ?? 0);
+
+  /** Board HUD skin — `dial` swaps the routine action row for the turn dial. */
+  protected readonly hudSkin = inject(HudSkinService);
+
+  /** Which primary action the dial offers. Mirrors the band's Roll/Blink/Pick. */
+  protected dialMode(): DialMode {
+    if (this.blinkAllowed()) return 'blink';
+    if (this.pickAllowed()) return 'pick';
+    return 'roll';
+  }
+
+  /** Roll-bank gauge fill. Not a regen countdown: nextRollLabel() is
+   *  minute-granularity and poll-refreshed, and a timed arc would read wrong
+   *  while rested rolls pay a double tick. */
+  protected dialGaugeFrac(): number {
+    return Math.min(1, this.rollsBanked() / ROLL_CAP);
+  }
+
+  protected dialRestedFrac(): number {
+    return Math.min(1, this.restedRolls() / ROLL_CAP);
+  }
+
+  /** Transient notes above the dial: the first-turn coach nudge and the Blink
+   *  recharge hint, both of which live in the band under the classic skin. */
+  protected dialNotes(): string[] {
+    const notes: string[] = [];
+    if (this.showCoach()) notes.push('New here? Tap the dial to take your first turn.');
+    if (this.blinkRecharging()) notes.push('Blink recharges — ready next turn');
+    if (this.restedRolls() > 0) {
+      notes.push(`${this.restedRolls()} rested — next rolls come twice as fast`);
+    }
+    return notes;
+  }
+
+  /** Dial tapped: Blink and dev Pick open the face ring, plain Roll rolls. */
+  protected onDialPrimary(): void {
+    if (this.dialMode() === 'roll') {
+      void this.roll();
+      return;
+    }
+    this.showRollPicker.set(!this.showRollPicker());
+  }
+
+  /** A face chosen from the ring. 0 is the random slot, which rolls normally and
+   *  so leaves Blink ready — same contract as the band's `.pick-random`. */
+  protected onDialFace(value: number): void {
+    if (value === 0) {
+      void this.roll();
+      return;
+    }
+    this.pickRoll(value);
+  }
 
   /** True when the roll button should be disabled (out of rolls). Debug builds
    *  roll freely. No user-facing text — the disabled button + the next-roll

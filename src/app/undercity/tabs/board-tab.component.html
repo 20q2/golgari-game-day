@@ -101,6 +101,27 @@
         <mat-icon class="mi">location_on</mat-icon>{{ biome }}
       </button>
     }
+
+    <!-- Radial turn dial: the `dial` HUD skin's replacement for the routine
+         action row. All handlers still live on this component — the dial only
+         renders state and emits taps. -->
+    @if (hudSkin.isDial()) {
+      <app-uc-turn-dial
+        [mode]="dialMode()"
+        [count]="rollsBanked()"
+        [infinite]="debugMode()"
+        [gaugeFrac]="dialGaugeFrac()"
+        [restedFrac]="dialRestedFrac()"
+        [countdown]="nextRollLabel()"
+        [rolledValue]="rolling() || store.you()?.pendingMove ? rolledValue() : null"
+        [disabled]="busy() || rolling() || !!store.you()?.pendingMove || rollBlocked()"
+        [faceRingOpen]="showRollPicker()"
+        [faceRandom]="blinkAllowed()"
+        [notes]="dialNotes()"
+        (primary)="onDialPrimary()"
+        (pickFace)="onDialFace($event)"
+      />
+    }
   </div>
 
   <app-uc-action-band>
@@ -213,6 +234,7 @@
         <!-- Primary controls stay together on ONE line: Roll/Blink, Cast, and the
              round current-space button. Roll/Cast persist (disabled) through
              rolling + moving so the row never collapses or jumps mid-turn. -->
+        @if (!hudSkin.isDial()) {
         <div class="action-row">
           @if (blinkAllowed()) {
             <button
@@ -304,9 +326,10 @@
             }
           }
         </div>
+        }
 
         <!-- Extras drop onto their own line(s) below the button row -->
-        @if (!rolling() && !store.you()?.pendingMove) {
+        @if (!hudSkin.isDial() && !rolling() && !store.you()?.pendingMove) {
           @if (blinkAllowed()) {
             <span class="next-roll-hint blink-note">Blink ready — choose your face</span>
             @if (showRollPicker()) {
