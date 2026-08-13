@@ -2608,3 +2608,16 @@
   image-rendering: pixelated;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
 }
+
+// Slot-3 overflow sheet: a plain list, since the arc has no room for a fifth
+// satellite (five across the 180-270deg quarter would overlap).
+.dial-more {
+  max-width: 320px;
+
+  // One action per row: these labels are sentences ("Reclaim this ground"),
+  // unlike the two-up choices .choice-grid is normally used for. Only the column
+  // count is overridden — display/gap are inherited from .choice-grid.
+  .choice-grid {
+    grid-template-columns: 1fr;
+  }
+}

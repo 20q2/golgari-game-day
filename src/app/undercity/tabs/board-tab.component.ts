@@ -2062,6 +2062,137 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.pickRoll(value);
   }
 
+  /** Current-space actions, richest first. Slot 3 shows the only entry, or a
+   *  `more` button when several apply (a Grime Gorger on a Bazaar tile, or an
+   *  admin anywhere). Admin Move never takes a thumb slot of its own. */
+  protected spaceActions(): DialSatellite[] {
+    if (this.rolling() || this.store.you()?.pendingMove) return [];
+    const out: DialSatellite[] = [];
+    const facility: Partial<Record<string, { icon: string; label: string }>> = {
+      shop: { icon: 'storefront', label: 'Bazaar' },
+      ossuary: { icon: 'casino', label: 'The Casino' },
+      witch: { icon: 'auto_fix_high', label: 'The Witch' },
+      trading_post: { icon: 'swap_horiz', label: 'Trading Post' },
+      excavation: { icon: 'grid_view', label: 'Dig Site' },
+      crystal_vein: { icon: 'diamond', label: 'Crystal Vein' },
+      vault_lock: { icon: 'dialpad', label: 'Guildvault' },
+    };
+    const here = facility[this.nodeType() ?? ''];
+    if (here) out.push({ key: this.nodeType()!, slot: 3, tone: 'ctx', ...here });
+    if (this.canReclaim()) {
+      out.push({ key: 'reclaim', slot: 3, tone: 'ctx', icon: 'compost', label: 'Reclaim this ground' });
+    }
+    if (this.isAdmin()) {
+      out.push({ key: 'freemove', slot: 3, tone: 'ctx', icon: 'open_with', label: 'Admin: move anywhere' });
+    }
+    return out;
+  }
+
+  /** True when slot 3 is a `more` button rather than a single action. */
+  protected dialOverflow(): boolean {
+    return this.spaceActions().length > 1;
+  }
+
+  /** Everything the arc shows. Unavailable actions simply omit their slot — the
+   *  remaining ones never reflow, so positions stay learnable. */
+  protected dialSatellites(): DialSatellite[] {
+    const out: DialSatellite[] = [];
+    const bag = this.store.you()?.bag?.length ?? 0;
+    if (bag > 0) {
+      out.push({ key: 'bag', slot: 0, svgIcon: 'uc-pouch', label: 'Open your bag', badge: String(bag) });
+    }
+    if (this.castableSpells().length || this.castableScrolls().length) {
+      out.push({
+        key: 'cast',
+        slot: 1,
+        icon: 'auto_fix_high',
+        label: 'Cast a spell',
+        disabled: this.busy() || this.rolling() || !!this.store.you()?.pendingMove,
+      });
+    }
+    const pet = this.activeUsablePet();
+    if (pet) {
+      const ready = this.petBoxReady(pet);
+      out.push({
+        key: 'pet',
+        slot: 2,
+        spriteUrl: this.petSpriteUrl(pet.species),
+        label: `${this.petInfoOf(pet).name} — ${this.petInfoOf(pet).blurb}`,
+        badge: this.petIsEconomy(pet) ? String(this.economyAccruedNow(pet)) : null,
+        ready,
+        disabled: this.busy() || !ready,
+      });
+    }
+    const space = this.spaceActions();
+    if (space.length === 1) {
+      out.push(space[0]);
+    } else if (space.length > 1) {
+      out.push({
+        key: 'more',
+        slot: 3,
+        icon: 'more_horiz',
+        tone: 'ctx',
+        label: 'Actions on this space',
+        badge: String(space.length),
+      });
+    }
+    return out;
+  }
+
+  /** Overflow sheet visibility for slot 3. */
+  protected readonly showDialMore = signal(false);
+
+  /** Route a satellite tap to the handler that already exists for it. */
+  protected onDialAct(key: string): void {
+    switch (key) {
+      case 'bag':
+        this.showBag.set(true);
+        return;
+      case 'cast':
+        this.showSpells.set(true);
+        return;
+      case 'pet':
+        this.tapBoardPet();
+        return;
+      case 'more':
+        this.showDialMore.set(true);
+        return;
+      case 'reclaim':
+        this.openReclaim();
+        return;
+      case 'freemove':
+        this.toggleMoveMode();
+        return;
+      case 'shop':
+        this.showShop.set(true);
+        return;
+      case 'ossuary':
+        this.showOssuary.set(true);
+        return;
+      case 'witch':
+        this.showWitch.set(true);
+        return;
+      case 'trading_post':
+        this.openTradingPost();
+        return;
+      case 'excavation':
+        this.openExcavation();
+        return;
+      case 'crystal_vein':
+        this.openVein();
+        return;
+      case 'vault_lock':
+        this.openVault();
+        return;
+    }
+  }
+
+  /** An overflow-sheet row tapped: close the sheet, then run the action. */
+  protected onDialMorePick(key: string): void {
+    this.showDialMore.set(false);
+    this.onDialAct(key);
+  }
+
   /** True when the roll button should be disabled (out of rolls). Debug builds
    *  roll freely. No user-facing text — the disabled button + the next-roll
    *  countdown (nextRollLabel()) already convey "out of rolls". */

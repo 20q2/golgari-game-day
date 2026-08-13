@@ -5,7 +5,7 @@
     <!-- Active-companion quick-use: a non-combat pet gets a little box here so its
          action is one tap from the board, not buried in Gear. Forage/scout fire
          their ability; economy pets show gathered Spores to collect. -->
-    @if (activeUsablePet(); as pet) {
+    @if (!hudSkin.isDial() && activeUsablePet(); as pet) {
       <button
         type="button"
         class="pet-quickuse"
@@ -77,7 +77,7 @@
 
     <!-- Bag: a small round icon in the bottom-right cluster, beside the camera
          control, so consumables are one tap from the board. -->
-    @if ((store.you()?.bag?.length ?? 0) > 0) {
+    @if (!hudSkin.isDial() && (store.you()?.bag?.length ?? 0) > 0) {
       <button
         type="button"
         class="bag-fab"
@@ -118,8 +118,10 @@
         [faceRingOpen]="showRollPicker()"
         [faceRandom]="blinkAllowed()"
         [notes]="dialNotes()"
+        [satellites]="dialSatellites()"
         (primary)="onDialPrimary()"
         (pickFace)="onDialFace($event)"
+        (act)="onDialAct($event)"
       />
     }
   </div>
@@ -383,6 +385,26 @@
        hop to the Plaza to free a slot. Rolling stays locked (rollBlocked) until the
        overflow is resolved. Self-hides when pendingPickups is empty. -->
   <app-pickup-modal />
+
+  <!-- Slot-3 overflow: several actions apply on this space at once (e.g. a Grime
+       Gorger standing on a Bazaar tile, or an admin's free move). -->
+  @if (showDialMore()) {
+    <div class="uc-modal-backdrop" (click)="showDialMore.set(false)">
+      <div class="uc-modal dial-more" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">more_horiz</mat-icon> This space</h3>
+        <div class="choice-grid">
+          @for (a of spaceActions(); track a.key) {
+            <button class="uc-btn" [disabled]="busy()" (click)="onDialMorePick(a.key)">
+              <mat-icon class="mi">{{ a.icon }}</mat-icon> {{ a.label }}
+            </button>
+          }
+        </div>
+        <div class="uc-modal-actions">
+          <button class="uc-btn" (click)="showDialMore.set(false)">Close</button>
+        </div>
+      </div>
+    </div>
+  }
 
   <!-- Respawn gate choice (after a compost). Held until the battle-result dialog
        is dismissed so the DEFEAT screen reads before the Composted gate takes over. -->
