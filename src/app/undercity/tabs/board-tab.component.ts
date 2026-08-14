@@ -600,6 +600,16 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       }));
   }
 
+  /** Blurb for the quick bag. Battle items carry an "In battle" chip beside
+   *  their name here, so the blurb's own "In battle:" prefix would say it twice
+   *  — strip it for this view only. The shop and the item popup keep the full
+   *  sentence, since neither shows the chip. */
+  protected bagDesc(info: ConsumableInfo): string {
+    const desc = info.desc ?? '';
+    const stripped = desc.replace(/^in battle:\s*/i, '');
+    return stripped === desc ? desc : stripped.charAt(0).toUpperCase() + stripped.slice(1);
+  }
+
   /** The faces a rigged die may set — 4-6 for a High Roller, 1-3 for a Low.
    *  (Named apart from the spell-side dieFaces further down.) */
   protected bagDieFaces(info: ConsumableInfo): number[] {

@@ -1357,6 +1357,20 @@
     color: #8b9a8d;
     white-space: nowrap;
   }
+  // "In battle" rides next to the item's NAME rather than in the action column:
+  // it qualifies what the item IS, not something you can do from this modal.
+  .bag-chip {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    padding: 2px 7px;
+    border-radius: 999px;
+    color: #cfe0d2;
+    background: rgba(74, 124, 89, 0.22);
+    border: 1px solid rgba(74, 124, 89, 0.45);
+  }
   // A rigged die offers its own faces inline — no second modal to pick a value.
   .die-inline {
     display: inline-flex;

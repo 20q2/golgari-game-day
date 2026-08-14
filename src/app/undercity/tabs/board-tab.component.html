@@ -1423,8 +1423,9 @@
             <span class="shop-name">
               <span class="shop-name-line">
                 <mat-icon class="mi">{{ row.info.icon }}</mat-icon> {{ row.info.name }}
+                @if (row.action === 'battle') { <span class="bag-chip">In battle</span> }
               </span>
-              <span class="bag-desc">{{ row.info.desc }}</span>
+              <span class="bag-desc">{{ bagDesc(row.info) }}</span>
             </span>
             <span></span>
             @switch (row.action) {
@@ -1440,7 +1441,8 @@
                   }
                 </span>
               }
-              @case ('battle') { <span class="bag-tag">Battle only</span> }
+              <!-- 'battle' has no action here: the chip beside its name already
+                   says when it is used, so the right-hand column stays empty. -->
               @case ('passive') { <span class="bag-tag">Auto</span> }
             }
           </div>
