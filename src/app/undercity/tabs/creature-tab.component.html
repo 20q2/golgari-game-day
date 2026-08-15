@@ -463,13 +463,17 @@
                 <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
             <!-- Bag -->
             <section class="card">
-              <h3>Bag <span class="muted">({{ you.bag.length }}/5)</span></h3>
+              <!-- Capacity is per-creature (a Grime Gorger's Gorge doubles it),
+                   so it comes from the server rather than a literal 5. -->
+              <h3>Bag <span class="muted">({{ you.bag.length }}/{{ you.bagCap ?? 5 }})</span></h3>
               @if (!you.bag.length) {
                 <p class="muted bag-empty">Empty. The bazaars stock helpful rot.</p>
               }
               <div class="bag-rows">
                 @for (item of you.bag; track $index) {
-                  <div class="bag-row bag-row--tap" (click)="selectItem('bag', item, $index, 'Bag item')">
+                  <div class="bag-row bag-row--tap"
+                       [attr.data-rarity]="tierRarity(consumableMap[item].tier).key"
+                       (click)="selectItem('bag', item, $index, 'Bag item')">
                     <span class="bag-item">
                       <mat-icon class="mi">{{ consumableMap[item].icon }}</mat-icon>
                       {{ consumableMap[item].name }}

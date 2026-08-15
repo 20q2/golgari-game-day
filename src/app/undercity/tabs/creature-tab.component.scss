@@ -890,6 +890,9 @@
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(74, 124, 89, 0.25);
   font-size: 0.88rem;
+  // Rarity reads at a glance, same accent gear and companions already use.
+  // Declared after `border` so the left edge wins the shorthand.
+  @extend %pet-rarity-accent;
 
   .bag-item {
     display: inline-flex;
