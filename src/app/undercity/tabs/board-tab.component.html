@@ -1417,7 +1417,7 @@
   @if (showBag()) {
     <div class="uc-modal-backdrop" (click)="showBag.set(false)">
       <div class="uc-modal bag-modal" (click)="$event.stopPropagation()">
-        <h3><mat-icon class="mi">backpack</mat-icon> Bag</h3>
+        <h3><mat-icon class="mi" svgIcon="uc-duffel"></mat-icon> Bag</h3>
         @for (row of bagRows(); track $index) {
           <div class="shop-row grid3" [attr.data-rarity]="tierRarity(row.info.tier).key">
             <span class="shop-name">
