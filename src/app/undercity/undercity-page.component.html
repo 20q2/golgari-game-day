@@ -131,11 +131,9 @@
                Page-level, not board-level, so it stays visible on the tabs where
                you actually spend. -->
           <div class="hud-purse">
-            <!-- The Gear tab shows Spores in its own resource row, alongside the
-                 crafting materials they're spent with — so the floating purse
-                 would just say it twice. Sigils/Jelly stay: nothing else shows
-                 those. -->
-            @if (tab() !== 'gear') {
+            <!-- Hidden on the creature/gear screens (see showPurseSpores).
+                 Sigils/Jelly below stay on every tab: nothing else shows those. -->
+            @if (showPurseSpores()) {
               <span class="purse-chip" title="Spores">
                 <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                 <span class="spore-count" [class.bump]="sporePulse()" [class.big]="sporeBig()">{{
