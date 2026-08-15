@@ -1599,6 +1599,7 @@
   &.common { color: #9aa7a0; }
   &.rare { color: #5fd18a; }
   &.legendary { color: #fbbf24; }
+  &.mythic { color: #f04350; }
   &.equipped { color: #7fd0ff; }
 }
 
@@ -1637,6 +1638,7 @@
   &[data-rarity='common'] { border-left-color: #9aa7a0; }
   &[data-rarity='rare'] { border-left-color: #5fd18a; }
   &[data-rarity='legendary'] { border-left-color: #fbbf24; }
+  &[data-rarity='mythic'] { border-left-color: #f04350; }
 
   .shop-name {
     font-size: 0.85rem;
@@ -1814,6 +1816,7 @@
   &[data-rarity='common'] { border-color: rgba(154, 167, 160, 0.55); }
   &[data-rarity='rare'] { border-color: rgba(95, 209, 138, 0.6); }
   &[data-rarity='legendary'] { border-color: rgba(251, 191, 36, 0.6); }
+  &[data-rarity='mythic'] { border-color: rgba(240, 67, 80, 0.6); }
 
   &:hover {
     border-color: rgba(120, 200, 140, 0.6);
@@ -2360,6 +2363,7 @@
     &[data-rarity='common'] { border-left-color: #9aa7a0; }
     &[data-rarity='rare'] { border-left-color: #5fd18a; }
     &[data-rarity='legendary'] { border-left-color: #fbbf24; }
+    &[data-rarity='mythic'] { border-left-color: #f04350; }
     &.picked { outline: 2px solid var(--accent-color, #e91e63); }
   }
   .wc-name { font-weight: 700; font-size: 0.86rem; color: #d8f3dc; }
@@ -2387,6 +2391,7 @@
     &.common { color: #9aa7a0; }
     &.rare { color: #5fd18a; }
     &.legendary { color: #fbbf24; }
+    &.mythic { color: #f04350; }
   }
   .wc-pips { display: flex; gap: 2px; }
   .wc-pip { font-size: 0.7rem; color: #cdddcd; opacity: 0.35; &.filled { opacity: 1; color: #5fd18a; } }
@@ -2454,6 +2459,7 @@
     &[data-rarity='common'] { border-left-color: #9aa7a0; }
     &[data-rarity='rare'] { border-left-color: #5fd18a; }
     &[data-rarity='legendary'] { border-left-color: #fbbf24; }
+    &[data-rarity='mythic'] { border-left-color: #f04350; }
     .wd-label {
       font-size: 0.66rem;
       font-weight: 700;

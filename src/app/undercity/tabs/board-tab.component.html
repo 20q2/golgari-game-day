@@ -1419,7 +1419,7 @@
       <div class="uc-modal bag-modal" (click)="$event.stopPropagation()">
         <h3><mat-icon class="mi">backpack</mat-icon> Bag</h3>
         @for (row of bagRows(); track $index) {
-          <div class="shop-row grid3">
+          <div class="shop-row grid3" [attr.data-rarity]="tierRarity(row.info.tier).key">
             <span class="shop-name">
               <span class="shop-name-line">
                 <mat-icon class="mi">{{ row.info.icon }}</mat-icon> {{ row.info.name }}
