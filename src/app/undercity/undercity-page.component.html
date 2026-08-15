@@ -131,22 +131,28 @@
                Page-level, not board-level, so it stays visible on the tabs where
                you actually spend. -->
           <div class="hud-purse">
-            <span class="purse-chip" title="Spores">
-              <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-              <span class="spore-count" [class.bump]="sporePulse()" [class.big]="sporeBig()">{{
-                you.spores
-              }}</span>
-              @for (d of sporeDeltaList(); track d.id) {
-                <span
-                  class="spore-delta"
-                  [class.gain]="d.amount > 0"
-                  [class.spend]="d.amount < 0"
-                  [class.big]="d.big"
-                >
-                  {{ d.amount > 0 ? '+' : '' }}{{ d.amount }}
-                </span>
-              }
-            </span>
+            <!-- The Gear tab shows Spores in its own resource row, alongside the
+                 crafting materials they're spent with — so the floating purse
+                 would just say it twice. Sigils/Jelly stay: nothing else shows
+                 those. -->
+            @if (tab() !== 'gear') {
+              <span class="purse-chip" title="Spores">
+                <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+                <span class="spore-count" [class.bump]="sporePulse()" [class.big]="sporeBig()">{{
+                  you.spores
+                }}</span>
+                @for (d of sporeDeltaList(); track d.id) {
+                  <span
+                    class="spore-delta"
+                    [class.gain]="d.amount > 0"
+                    [class.spend]="d.amount < 0"
+                    [class.big]="d.big"
+                  >
+                    {{ d.amount > 0 ? '+' : '' }}{{ d.amount }}
+                  </span>
+                }
+              </span>
+            }
             @if (sigilsHeld() > 0) {
               <span class="purse-chip" title="Claim Guild Sigils from lair bosses to unseal the Queen">
                 <mat-icon class="mi gold">workspace_premium</mat-icon> {{ sigilsHeld() }}/{{ sigilsRequired }}

@@ -237,6 +237,12 @@
                 </button>
               }
               <div class="gear-mat-chips">
+                <!-- Spores lead the row: it's the currency the other two are
+                     spent alongside, and the page-level purse hides on this tab
+                     so this is the only place it's shown here. -->
+                <span class="gear-mat-chip spore" title="Spores">
+                  <img class="spore-i" src="undercity/icons/rot.png" alt="" />{{ you.spores }}
+                </span>
                 <span class="gear-mat-chip mtl" title="Moltings">
                   <mat-icon class="mi mtl-i">grass</mat-icon>{{ you.materials?.moltings ?? 0 }}
                 </span>
