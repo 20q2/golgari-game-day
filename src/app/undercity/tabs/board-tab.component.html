@@ -5,7 +5,7 @@
     <!-- Active-companion quick-use: a non-combat pet gets a little box here so its
          action is one tap from the board, not buried in Gear. Forage/scout fire
          their ability; economy pets show gathered Spores to collect. -->
-    @if (!hudSkin.isDial() && activeUsablePet(); as pet) {
+    @if (activeUsablePet(); as pet) {
       <button
         type="button"
         class="pet-quickuse"
@@ -77,7 +77,7 @@
 
     <!-- Bag: a small round icon in the bottom-right cluster, beside the camera
          control, so consumables are one tap from the board. -->
-    @if (!hudSkin.isDial() && (store.you()?.bag?.length ?? 0) > 0) {
+    @if ((store.you()?.bag?.length ?? 0) > 0) {
       <button
         type="button"
         class="bag-fab"
@@ -101,41 +101,9 @@
         <mat-icon class="mi">location_on</mat-icon>{{ biome }}
       </button>
     }
-
-    <!-- Radial turn dial: the `dial` HUD skin's replacement for the routine
-         action row. All handlers still live on this component — the dial only
-         renders state and emits taps. -->
-    @if (hudSkin.isDial()) {
-      @if (showRollPicker()) {
-        <!-- data-uc-claim: a tap here only closes the ring; the board still pans
-             through it but must not also tap the space underneath. -->
-        <div class="dial-ring-backdrop" data-uc-claim (click)="closeFaceRing()"></div>
-      }
-      <app-uc-turn-dial
-        [mode]="dialMode()"
-        [count]="rollsBanked()"
-        [infinite]="debugMode()"
-        [gaugeFrac]="dialGaugeFrac()"
-        [restedFrac]="dialRestedFrac()"
-        [countdown]="nextRollLabel()"
-        [rolledValue]="rolling() || store.you()?.pendingMove ? rolledValue() : null"
-        [disabled]="busy() || rolling() || !!store.you()?.pendingMove || rollBlocked()"
-        [dimmed]="exclusiveDecision()"
-        [faceRingOpen]="showRollPicker()"
-        [faceRandom]="blinkAllowed() || pickAllowed()"
-        [notes]="dialNotes()"
-        [satellites]="dialSatellites()"
-        (primary)="onDialPrimary()"
-        (pickFace)="onDialFace($event)"
-        (act)="onDialAct($event)"
-      />
-    }
   </div>
 
-  @if (!hudSkin.isDial() || bandHasDecision()) {
   <app-uc-action-band>
-    <!-- Under the dial skin these live on the dial itself (countdown + notes). -->
-    @if (!hudSkin.isDial()) {
     <!-- Roll-regen status lines, stacked at the band's top-left -->
     <div class="band-status-stack">
       @if (nextRollLabel(); as nrl) {
@@ -148,7 +116,6 @@
         </div>
       }
     </div>
-    }
     <!-- PvP: someone shares your space — Battle stays available alongside Roll -->
     @if (occupantsHere().length && !store.you()?.pendingMove) {
       <div class="band-morph pvp-strip">
@@ -246,7 +213,6 @@
         <!-- Primary controls stay together on ONE line: Roll/Blink, Cast, and the
              round current-space button. Roll/Cast persist (disabled) through
              rolling + moving so the row never collapses or jumps mid-turn. -->
-        @if (!hudSkin.isDial()) {
         <div class="action-row">
           @if (blinkAllowed()) {
             <button
@@ -338,10 +304,9 @@
             }
           }
         </div>
-        }
 
         <!-- Extras drop onto their own line(s) below the button row -->
-        @if (!hudSkin.isDial() && !rolling() && !store.you()?.pendingMove) {
+        @if (!rolling() && !store.you()?.pendingMove) {
           @if (blinkAllowed()) {
             <span class="next-roll-hint blink-note">Blink ready — choose your face</span>
             @if (showRollPicker()) {
@@ -389,33 +354,12 @@
     }
     }
   </app-uc-action-band>
-  }
 
   <!-- Bag-full sorter: a non-blocking board dialogue. It dims only the board (like
        every other board dialog), never the HUD or tab bar, so the player can still
        hop to the Plaza to free a slot. Rolling stays locked (rollBlocked) until the
        overflow is resolved. Self-hides when pendingPickups is empty. -->
   <app-pickup-modal />
-
-  <!-- Slot-3 overflow: several actions apply on this space at once (e.g. a Grime
-       Gorger standing on a Bazaar tile, or an admin's free move). -->
-  @if (showDialMore()) {
-    <div class="uc-modal-backdrop" (click)="showDialMore.set(false)">
-      <div class="uc-modal dial-more" (click)="$event.stopPropagation()">
-        <h3><mat-icon class="mi">more_horiz</mat-icon> This space</h3>
-        <div class="choice-grid">
-          @for (a of spaceActions(); track a.key) {
-            <button class="uc-btn" [disabled]="busy()" (click)="onDialMorePick(a.key)">
-              <mat-icon class="mi">{{ a.icon }}</mat-icon> {{ a.label }}
-            </button>
-          }
-        </div>
-        <div class="uc-modal-actions">
-          <button class="uc-btn" (click)="showDialMore.set(false)">Close</button>
-        </div>
-      </div>
-    </div>
-  }
 
   <!-- Respawn gate choice (after a compost). Held until the battle-result dialog
        is dismissed so the DEFEAT screen reads before the Composted gate takes over. -->
