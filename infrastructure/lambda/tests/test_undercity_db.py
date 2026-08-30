@@ -697,6 +697,24 @@ def test_pass_through_gate_caps_at_max(table):
     assert resp['you']['hp'] == max_hp
 
 
+def test_gate_pass_heal_is_reported_by_the_battle_it_walks_into(table):
+    """A gate crossed on the way into a fight heals BEFORE the combat snapshot
+    freezes, so the fight really does start at the healed HP. battle_start has to
+    say so — otherwise the client opens the HUD on its own pre-move reading and
+    the bar only corrects itself after round 1 resolves."""
+    act(table, 'join', starter='saproling', home='cavern')
+    doc = _prime_move(table, 'city_r1', 3, ['city_r8'], hp=1)
+    max_hp = engine.effective_stats(doc)['maxHp']
+    healed = 1 + round(0.5 * max_hp)
+    status, resp = act(table, 'move', to='city_r8',
+                       path=['city_r1', 'city_r0', 'city_r9', 'city_r8'])
+    assert status == 200, resp
+    assert resp['you']['hp'] == healed
+    ev = resp['spaceEvent']
+    assert ev['type'] == 'battle_start'
+    assert ev['playerHp'] == healed
+
+
 def test_landing_on_gate_heals_full(table):
     act(table, 'join', starter='saproling', home='cavern')
     doc = _prime_move(table, 'city_r1', 1, ['city_r0'], hp=1)

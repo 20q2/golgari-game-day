@@ -65,14 +65,12 @@
   }
 }
 
-// Floating camera/jump control, TOP-right. The bag owns the bottom-right corner
-// (the easier reach, and the more frequently tapped), so the camera moves out of
-// the thumb zone entirely.
-// NOTE: .hud-buffs in undercity-page.component.scss is also anchored right: 10px
-// just below the HUD, so these two share this corner — see the comment there.
+// Floating camera/jump control: bottom-right, stacked directly above the bag
+// button (40px tall + its own 10px inset, plus an 8px gap) so both live in the
+// same thumb-reach cluster. The menu below opens upward from here.
 .focus-picker {
   position: absolute;
-  top: 10px;
+  bottom: 58px;
   right: 10px;
   z-index: 6;
 }

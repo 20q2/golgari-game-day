@@ -883,6 +883,10 @@ export interface SpaceEvent {
   frenzyFrom?: number | null;
   /** SPD-based escape % shown on the flee button (100 with a held Smoke Spore). */
   fleeChance?: number;
+  /** HP the server froze the fight at. Authoritative — the action that walked you
+   *  in here may have changed HP first (the gate pass-through heal), so the HUD
+   *  must open on this rather than on the caller's pre-action reading. */
+  playerHp?: number;
   playerStatus?: BattleStatus;
   npcStatus?: BattleStatus;
 }

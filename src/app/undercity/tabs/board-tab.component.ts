@@ -3287,8 +3287,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     };
   }
 
+  /** `preHp` is only the fallback for a server that predates `ev.playerHp`: the
+   *  caller's reading is taken before the action, so any HP the action itself
+   *  changed on the way in (the gate pass-through heal) is missing from it — the
+   *  bar would open low and not correct itself until round 1 came back. */
   private openLiveBattle(ev: SpaceEvent, preHp: number): void {
     const you = this.store.you();
+    const startHp = ev.playerHp ?? preHp;
     const bag = you?.bag ?? [];
     const items: BattleItem[] = bag
       .map((id) => CONSUMABLE_MAP[id])
@@ -3298,8 +3303,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       attacker: {
         name: this.youBattleName(),
         spriteUrl: this.youSpriteUrl(),
-        startHp: preHp,
-        maxHp: you?.maxHp ?? preHp,
+        startHp,
+        maxHp: you?.maxHp ?? startHp,
         level: you?.level,
         tier: you?.tier,
         companion: this.youCompanion(),

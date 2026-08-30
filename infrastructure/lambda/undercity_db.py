@@ -1044,6 +1044,13 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None, region=None):
             'telegraph': shown, 'round': 1,
             'frenzyFrom': _frenzy_from(kind),
             'fleeChance': _flee_pct(rec),
+            # The HP the fight is frozen at. Same field the resume view sends, and
+            # for the same reason: the client must not infer the opening HP from
+            # its own pre-action reading. Anything that heals or hurts in the
+            # action that walked you in here (the gate pass-through heal, a hazard)
+            # lands before this snapshot, so a client guess opens the bar wrong and
+            # only self-corrects when round 1 returns.
+            'playerHp': player_snap['hp'],
             'playerStatus': _battle_status(rec['player']),
             'npcStatus': _battle_status(rec['npc']),
             'text': f'A {npc["name"]} bars your path!'}

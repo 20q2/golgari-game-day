@@ -459,7 +459,7 @@
 }
 
 // Active overworld buffs/curses carried into the next battle. Floats in its own
-// section one row below the HUD (top-right, mirroring the board's focus picker)
+// section one row below the HUD (top-right, mirroring .hud-purse on the left)
 // so the HP/XP bars aren't crowded. Tap the badge row to expand the details.
 .hud-buffs {
   position: absolute;
