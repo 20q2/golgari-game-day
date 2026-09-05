@@ -29,9 +29,10 @@ import {
   GrimoireInfo,
   SPELL_MAP,
   SpellInfo,
-  cooldownLeftMin,
-  grimoireSwapLeftMin,
-  GRIMOIRE_SWAP_COOLDOWN_MIN,
+  cooldownLeftSteps,
+  grimoireSwapLeftSteps,
+  GRIMOIRE_SWAP_COOLDOWN_STEPS,
+  spellStepCost,
   spellPowerLabel,
 } from '../data/spells';
 import {
@@ -99,6 +100,9 @@ function loadSubTab(): CreatureSubTab {
 }
 
 type GearSection = 'home' | 'equip' | 'magic' | 'bag' | 'companion';
+
+/** The resource chips on the Gear top bar, each tappable for a blurb. */
+type GearMatKey = 'spores' | 'moltings' | 'ichor' | 'mulch';
 
 type ItemSource = 'equipped' | 'stash' | 'bag';
 
@@ -250,10 +254,64 @@ export class CreatureTabComponent {
     this.openStat.update((cur) => (cur === stat ? null : stat));
   }
 
+  /** Which resource chip's info card is open above the Gear panel (null = none). */
+  protected readonly gearMatInfo = signal<GearMatKey | null>(null);
+
+  /** Player-facing blurbs for the Gear tab's resource chips — the same
+   *  tap-a-chip-to-read affordance the plaza's material chips have.
+   *  `ichor` is the internal id for the Gemstone the UI shows. */
+  protected readonly gearMatMeta: Record<
+    GearMatKey,
+    { name: string; icon?: string; img?: string; desc: string }
+  > = {
+    spores: {
+      name: 'Spores',
+      img: 'undercity/icons/rot.png',
+      desc: "The Undercity's coin. Won from fights, board spaces and selling gear you don't want. Spend it at the bazaar, the shrines and the Player Market — and alongside Moltings at the Blacksmith.",
+    },
+    moltings: {
+      name: 'Moltings',
+      icon: 'grass',
+      desc: 'Shed husks and chitin — the common crafting material. Grind gear at the Salvage Yard, or dig them from Excavation Sites and mines. Spend them at the Blacksmith to climb a piece up its rarity ladder.',
+    },
+    ichor: {
+      name: 'Gemstone',
+      icon: 'diamond',
+      desc: 'Raw crystal torn from the deep — the rare crafting material. Comes from grinding Rare-or-better gear and from deep mine strikes. The Blacksmith needs Gemstones for the top upgrade rungs.',
+    },
+    mulch: {
+      name: 'Mulch',
+      icon: 'compost',
+      desc: 'Chewed-down junk, only the Grime Gorger makes it — feed it gear and consumables you have no use for. Spend Mulch on the board to reclaim a space and rewrite what it does.',
+    },
+  };
+
+  /** Live count behind each chip, so the info card can show it alongside the blurb. */
+  protected gearMatCount(key: GearMatKey): number {
+    const you = this.store.you();
+    switch (key) {
+      case 'spores':
+        return you?.spores ?? 0;
+      case 'moltings':
+        return you?.materials?.moltings ?? 0;
+      case 'ichor':
+        return you?.materials?.ichor ?? 0;
+      case 'mulch':
+        return this.mulch();
+    }
+  }
+
+  /** Toggle a resource's info card; tapping the open chip (or the card) closes it. */
+  protected toggleGearMatInfo(key: GearMatKey): void {
+    this.gearMatInfo.update((cur) => (cur === key ? null : key));
+  }
+
   /** Open a gear section from the hub, or return to the hub with 'home'. */
   selectGear(section: GearSection): void {
     this.gearNav.set(section === 'home' ? 'back' : 'forward');
     this.gearSection.set(section);
+    // Don't leave a resource blurb hanging over the panel you just opened.
+    this.gearMatInfo.set(null);
   }
 
   /** Bottom-bar Gear button: always lands on the hub — whether entering the
@@ -262,6 +320,7 @@ export class CreatureTabComponent {
   selectGearTab(): void {
     this.gearNav.set('back');
     this.gearSection.set('home');
+    this.gearMatInfo.set(null);
     this.subTab.set('gear');
   }
 
@@ -1170,22 +1229,28 @@ export class CreatureTabComponent {
   }
 
   cooldownLabel(spellId: string): string {
-    const left = cooldownLeftMin(this.store.you()?.spellCooldowns, spellId);
-    return left > 0 ? `${left} min` : 'Ready';
+    const left = cooldownLeftSteps(this.store.you()?.spellCooldowns, spellId);
+    return left > 0 ? `${left} ${left === 1 ? 'step' : 'steps'}` : 'Ready';
   }
 
-  /** Minutes until a *different* grimoire can be opened (0 = ready). */
+  /** A spell's full step cost for this creature — shown before casting so the
+   *  cost can be weighed, not just discovered once the spell is spent. */
+  protected stepCost(sp: SpellInfo): number {
+    return spellStepCost(sp, this.store.you()?.passives ?? []);
+  }
+
+  /** Board spaces still owed before a *different* grimoire can be opened. */
   protected readonly grimoireSwapLeft = computed(() =>
-    grimoireSwapLeftMin(this.store.you()?.lastGrimoireSwap),
+    grimoireSwapLeftSteps(this.store.you()?.grimoireSwapSteps),
   );
 
   /** Whether a different book can be opened right now. */
   protected readonly swapReady = computed(() => this.grimoireSwapLeft() === 0);
 
-  /** Fraction of the swap cooldown still remaining (1 → just swapped, 0 → ready),
+  /** Fraction of the swap countdown still remaining (1 → just swapped, 0 → ready),
    *  for the draining bar on the status pill. */
   protected readonly swapPct = computed(() =>
-    Math.max(0, Math.min(1, this.grimoireSwapLeft() / GRIMOIRE_SWAP_COOLDOWN_MIN)),
+    Math.max(0, Math.min(1, this.grimoireSwapLeft() / GRIMOIRE_SWAP_COOLDOWN_STEPS)),
   );
 
   /** The book selected in the switcher for preview/compare. Falls back to the

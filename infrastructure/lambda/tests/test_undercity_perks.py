@@ -240,7 +240,7 @@ def test_last_stand_revives_at_half_max_hp(table, monkeypatch):
     you = db._get_player(table, sid, 'user-alex')
     mh = db.engine.effective_stats(you)['maxHp']
     assert you['hp'] == max(1, round(mh * 0.5))   # rose at half max HP
-    assert you.get('lastStandReadyAt')            # cooldown stamped
+    assert you.get('lastStandSteps')              # countdown armed, in steps
 
 
 def test_last_stand_on_cooldown_does_not_save(table, monkeypatch):
@@ -249,7 +249,7 @@ def test_last_stand_on_cooldown_does_not_save(table, monkeypatch):
     doc = db._get_player(table, sid, 'user-alex')
     doc['def'] = 18
     doc['hp'] = 20
-    doc['lastStandReadyAt'] = '2999-01-01T00:00:00'   # far-future: still charging
+    doc['lastStandSteps'] = 12                        # still walking it off
     db._put_player(table, doc)
     doc = db._get_player(table, sid, 'user-alex')
     db._wild_battle(table, sid, doc)
@@ -264,7 +264,7 @@ def test_last_stand_recharges_after_cooldown(table, monkeypatch):
     doc = db._get_player(table, sid, 'user-alex')
     doc['def'] = 18
     doc['hp'] = 20
-    doc['lastStandReadyAt'] = '2000-01-01T00:00:00'   # already elapsed
+    doc['lastStandSteps'] = 0                         # walked off, ready again
     db._put_player(table, doc)
     doc = db._get_player(table, sid, 'user-alex')
     db._wild_battle(table, sid, doc)
@@ -281,7 +281,23 @@ def test_last_stand_not_triggered_without_perk(table, monkeypatch):
     se = _finish_started_battle(table, monkeypatch, doc, outcome='defender', defender_hp=5)
     assert se['battle']['outcome'] == 'defender'
     you = db._get_player(table, sid, 'user-alex')
-    assert not you.get('lastStandReadyAt')
+    assert not you.get('lastStandSteps')
+
+
+def test_last_stand_arms_a_step_countdown_and_walks_off(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['def'] = 18
+    doc['hp'] = 20
+    db._put_player(table, doc)
+    doc = db._get_player(table, sid, 'user-alex')
+    db._wild_battle(table, sid, doc)
+    _finish_started_battle(table, monkeypatch, doc, outcome='defender', defender_hp=5)
+    you = db._get_player(table, sid, 'user-alex')
+    assert you['lastStandSteps'] == data.LAST_STAND_COOLDOWN_STEPS
+    db._tick_step_timers(you, data.LAST_STAND_COOLDOWN_STEPS)
+    assert you['lastStandSteps'] == 0                  # walking recharges it
 
 
 # ── Task 10: Blink ───────────────────────────────────────────────────────────

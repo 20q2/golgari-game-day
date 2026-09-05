@@ -38,10 +38,38 @@ Each player has an independent cycle per ruin lair:
 - A ruin-lair kill **does not** reform a Vestige, **does not** wake the Moor-Wyrm
   world event, and **does not** stamp first-conqueror — it is repeatable farm
   content now, so it must not re-trigger season-global events on each cycle.
-- The two ruin lairs are removed from `_guardian_pools`, so field / `boss_strike`
-  spells can no longer chip them from afar. This is the correct consequence:
-  with per-player fresh fights there is no shared pool to chip. The overworld
-  also stops drawing a shared HP bar over these nodes.
+- ~~The two ruin lairs are removed from `_guardian_pools`, so field /
+  `boss_strike` spells can no longer chip them from afar. This is the correct
+  consequence: with per-player fresh fights there is no shared pool to chip. The
+  overworld also stops drawing a shared HP bar over these nodes.~~
+  **Superseded 2026-09-02 — see "Amendment: ranged softening" below.**
+
+### Amendment: ranged softening (2026-09-02)
+
+Dropping these nodes from `_guardian_pools` left the spell picker with nothing to
+list, so casting at Doomgape reported the generic *"Nothing is in range. Stalk
+closer"* — advice that could never come true, and cost the player turns walking
+toward a target that would never light up.
+
+The lairs are targetable again, but the pool a spell chips is **per-player**,
+stored on `doc['ruinLairs'][node]` next to the abandonment timer:
+
+- `hp` / `buffs` are absent until something lands, so a pristine nest carries no
+  state; a kill replaces the entry wholesale, so it respawns whole.
+- **Damage always floors at 1** — including `sear_throne`'s `lethal` flag, which
+  *can* unmake a sigil lair boss at range. A ruin-lair kill hands out a
+  guaranteed prize egg and a POI claim, so it has to cost a trip to the nest.
+- **Consumed on engagement.** Landing there opens the fight at the chipped HP
+  with the curses applied, and resets the pool. Softening buys you one easier
+  fight, not a permanent discount — so there is no chip-flee-chip loop, and the
+  hourly respawn still caps the farm rate.
+- **Not targetable while abandoned** — an empty nest has nothing to wound, and
+  `_guardian_pools` omits it (so the overworld drops its HP bar too).
+- `_guardian_pools` now takes the viewer's `doc`. The spectator board passes
+  none and therefore shows no personal pools — a private pool has no business on
+  the broadcast screen.
+- The first-kill payout is keyed off `respawnAt`, not the entry's existence: a
+  chip creates an entry too, and must not demote your first kill to `repeat`.
 
 ## Data
 
@@ -87,7 +115,8 @@ No new DynamoDB records — this rides on the existing player document.
   - **skip** `_award_lair_kill` (no Vestige reform, no world-event wake, no
     first-conqueror).
   - Loss / timeout: no persistent pool write — the fight simply ends.
-- **`_guardian_pools`** — skip nodes in `data.RESPAWN_LAIRS`.
+- **`_guardian_pools`** — ~~skip nodes in `data.RESPAWN_LAIRS`~~ report them as
+  `kind: 'ruin'` from the viewer's own doc (2026-09-02 amendment).
 
 ## Client (`src/app/undercity/`)
 

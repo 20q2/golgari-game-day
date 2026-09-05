@@ -99,6 +99,13 @@ export interface MapDecal {
   rot: number;
   layer: 'under' | 'over';
   seed?: number;
+  /**
+   * Id of the node whose render layer owns this decal. Absent means the
+   * overworld. Dungeon pockets share the overworld's coordinate space, so
+   * ownership has to be recorded at placement time — it can't be inferred
+   * from x/y.
+   */
+  anchor?: string;
 }
 
 /** Free-floating ghosted title text, styled like the region labels. */
@@ -112,6 +119,8 @@ export interface MapLabel {
   rot: number;
   /** Ink opacity — region labels use 0.16. */
   alpha: number;
+  /** Owning node's id, as on {@link MapDecal.anchor}. Absent = overworld. */
+  anchor?: string;
 }
 
 export interface BoardMap {

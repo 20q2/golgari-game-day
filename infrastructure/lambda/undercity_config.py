@@ -36,9 +36,11 @@ CLAIM_TAUGHT_MAX = 2
 POKE_COOLDOWN_MIN = 15       # each creature can be poked once every N min, by ANYONE
                              # (every poke grants the target +1 roll)
 HIGH_FIVE_COOLDOWN_MIN = 30  # a player can re-high-five the SAME creature only every N min
-GRIMOIRE_SWAP_COOLDOWN_MIN = 30  # opening a different grimoire is gated for N min
-                             # (stowing your open book is always free) — client
-                             # mirror in src/app/undercity/data/spells.ts
+# Opening a different grimoire is gated by board spaces walked, not a clock
+# (design 2026-09-02) — a loadout swap costs distance, never dead waiting.
+# (Stowing your open book is always free.) Client mirror in
+# src/app/undercity/data/spells.ts
+GRIMOIRE_SWAP_COOLDOWN_STEPS = 6
 
 # ── XP curve (design 2026-08-08 retune; supersedes 2026-08-04 pacing) ────────
 # Progressive per-level cost so leveling paces a whole game night instead of
@@ -200,9 +202,12 @@ THICK_HIDE_DODGE_DUNGEON_MULT = 0.5  # depths/dungeon hazards dodge at half the 
 # brutal — down there only Thick Hide's own resist can turn a hazard aside.
 HAZARD_LUCKY_AVOID = 0.08            # surface-only baseline no-harm chance (everyone)
 # DEF-18 Last Stand (design 2026-08-01): revive at half max HP on an otherwise-
-# lethal blow, recharging on a real-time cooldown instead of once per descent.
+# lethal blow, recharging over distance instead of once per descent.
 LAST_STAND_HP_FRAC = 0.5             # fraction of max HP to revive at (was a flat 1)
-LAST_STAND_COOLDOWN_MINUTES = 60     # real-time recharge between saves
+# Board spaces walked between death-saves, not a real-time clock (design
+# 2026-09-02). Longer than the old 60 min at the observed pace, but a player
+# spending banked rolls can re-arm it inside one session.
+LAST_STAND_COOLDOWN_STEPS = 12
 # Blink (SPD-15): choosing your die value is strong, so it paces itself — after a
 # blink you must take this many ordinary rolls before you can blink again. 1 =
 # "once every 2 rolls" (blink, roll, blink, ...). 0 disables the cooldown.

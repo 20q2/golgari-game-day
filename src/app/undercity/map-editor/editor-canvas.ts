@@ -15,6 +15,7 @@ import {
   renderTerrain,
   drawDecals,
   drawMapLabels,
+  layerOwnsDecoration,
   preloadDecalImages,
   decalImageSize,
   TerrainArt,
@@ -343,19 +344,31 @@ export class EditorCanvas {
     return { x: l.x - w / 2, y: l.y - h / 2, w, h };
   }
 
-  /** Does this decal/label belong to the active layer (nearest-node rule)? */
-  private inActiveLayer(x: number, y: number): boolean {
+  /** Does this decal/label's anchor put it in the active layer? */
+  private inActiveLayer(anchor: string | undefined): boolean {
+    return layerOwnsDecoration(this.activeLayer(), anchor);
+  }
+
+  /**
+   * The anchor to stamp on a decal/label dropped at this point: undefined on
+   * the overworld, else the nearest node of the pocket being edited. Recording
+   * it at placement time is what keeps the decoration in the view it was drawn
+   * in — position alone can't say, since pockets overlay the surface.
+   */
+  anchorFor(x: number, y: number): string | undefined {
     const layer = this.activeLayer();
-    let best: BoardNode | null = null;
+    if (layer.id === OVERWORLD) return undefined;
+    let best: string | undefined;
     let bd = Infinity;
     for (const n of this.doc.nodes) {
+      if (!layer.nodeIds.has(n.id)) continue;
       const d = (n.x - x) ** 2 + (n.y - y) ** 2;
       if (d < bd) {
         bd = d;
-        best = n;
+        best = n.id;
       }
     }
-    return !!best && layer.nodeIds.has(best.id);
+    return best;
   }
 
   /** Active-layer node ids whose center falls inside a world-space rectangle. */
@@ -395,7 +408,7 @@ export class EditorCanvas {
         worldX <= b.x + b.w &&
         worldY >= b.y &&
         worldY <= b.y + b.h &&
-        this.inActiveLayer(labels[i].x, labels[i].y)
+        this.inActiveLayer(labels[i].anchor)
       ) {
         return { kind: 'label', index: i };
       }
@@ -408,7 +421,7 @@ export class EditorCanvas {
         worldX <= b.x + b.w &&
         worldY >= b.y &&
         worldY <= b.y + b.h &&
-        this.inActiveLayer(decals[i].x, decals[i].y)
+        this.inActiveLayer(decals[i].anchor)
       ) {
         return { kind: 'decal', index: i };
       }

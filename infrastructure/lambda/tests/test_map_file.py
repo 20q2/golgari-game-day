@@ -23,6 +23,18 @@ def test_map_file_exists_with_v2_sections():
         assert n['region'] in doc['regions'], n['id']
 
 
+def test_decoration_anchors_name_real_nodes():
+    """A decal/label renders only in its anchor node's layer (absent = the
+    overworld). A dangling anchor would silently hide the decoration, which is
+    exactly the failure the anchor field replaced."""
+    doc = _load(LAMBDA_DIR / 'map.json')
+    ids = {n['id'] for n in doc['nodes']}
+    for kind in ('decals', 'labels'):
+        for i, d in enumerate(doc.get(kind, [])):
+            anchor = d.get('anchor')
+            assert anchor is None or anchor in ids, f'{kind}[{i}] anchor={anchor!r}'
+
+
 def test_data_module_loads_from_map_json():
     import undercity_data as data
     doc = _load(LAMBDA_DIR / 'map.json')

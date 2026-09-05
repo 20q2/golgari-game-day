@@ -226,10 +226,10 @@ export interface YouDoc {
   grimoireSpells?: Record<string, string[]>;
   /** Held spell scrolls (spell ids) — cast one-shot or inscribe at the witch. */
   scrolls?: string[];
-  /** ISO time the open grimoire was last changed; opening another is gated. */
-  lastGrimoireSwap?: string | null;
-  /** spellId -> ISO time it comes off cooldown (server clock, no trailing Z). */
-  spellCooldowns?: Record<string, string>;
+  /** Board spaces still owed before a different grimoire can be opened. */
+  grimoireSwapSteps?: number;
+  /** spellId -> board spaces still owed before it can be recast (0 = ready). */
+  spellCooldowns?: Record<string, number>;
   /** Companions (animal pets) — owned roster incl. the active one; eggs carried;
    *  the single incubator slot; and per-species activated-ability cooldowns. */
   pets?: Pet[];
@@ -339,7 +339,8 @@ export interface Wardrobe {
 }
 
 export interface GuardianPool {
-  kind: 'barrier' | 'lair';
+  /** 'ruin' is a RESPAWN_LAIRS nest — a pool private to you, not the season. */
+  kind: 'barrier' | 'lair' | 'ruin';
   name: string;
   npcId: string;
   hp: number;

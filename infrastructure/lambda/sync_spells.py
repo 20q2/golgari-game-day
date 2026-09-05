@@ -31,7 +31,7 @@ def _ts(value):
 def _spell_line(spell_id, sp):
     parts = [f'id: {_ts(spell_id)}', f'name: {_ts(sp["name"])}',
              f'category: {_ts(sp["category"])}', f'tier: {sp["tier"]}',
-             f'cooldownMin: {sp["cooldownMin"]}', f'effect: {_ts(sp["effect"])}']
+             f'cooldownSteps: {sp["cooldownSteps"]}', f'effect: {_ts(sp["effect"])}']
     for opt in _SPELL_OPTIONAL:
         if opt in sp:
             parts.append(f'{opt}: {sp[opt]}')

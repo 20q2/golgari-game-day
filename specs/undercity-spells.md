@@ -17,7 +17,7 @@ A living reference for the Dokapon-style spell system: what it does for players,
 
 ### Casting
 
-- **Cooldowns**, not mana: each spell has a real-time cooldown (15–60 min). Cooldowns keep ticking while your phone is down.
+- **Cooldowns**, not mana: each spell recharges over **board spaces walked** (3–12 steps), not a clock. Walking is the only thing that recharges a spell — idling never does, and a long fight can't be waited out. The Squirrel Spell Haste passive halves the cost (rounded up, minimum 1).
 - **Range**: targeted spells reach N board spaces, measured as shortest-path distance over the tunnels (sealed barriers block the path). Teleports use the same rule.
 - **Dodge**: spells aimed at players can be dodged. Chance = `10% + 3% × (target SPD − caster SPD)`, clamped to 5–40%, using effective stats (gear + buffs count). A dodged spell still burns your cooldown.
 - **Almost no spell can kill.** Player damage floors at 1 HP; boss/lair HP pools floor at 1. Killing blows must be landed in person. Casting a spell never composts anyone. **The one exception is Sear the Throne** (`sear_throne`, the only spell carrying `'lethal': True`): it alone may slay the Queen or a lair boss at range, reaping the full in-person kill reward (`_award_boss_kill` / `_award_lair_kill`). Player-vs-player damage is never lethal, even for a lethal spell.
@@ -130,7 +130,7 @@ Mystery spaces: when the d12 lands on a "free item" outcome, there's a 25% chanc
 
 ### UI map
 
-- **Creature tab → Grimoire card**: innate spell pinned on top, open book's spells with live cooldown labels, and your collection as equip chips (tap the open book again to stow it).
+- **Creature tab → Grimoire card**: innate spell pinned on top, open book's spells with each spell's step cost and a live steps-remaining label, and your collection as equip chips (tap the open book again to stow it).
 - **Board tab → Cast button** (beside Roll): spell picker → then a target picker (rivals in range, with distance and HP), a die-value picker (Fate Die), a pool picker (boss strikes), or highlighted board spaces you tap to blink to (teleports).
 - **Bazaar**: a Grimoires section under the consumables.
 
@@ -147,7 +147,7 @@ Mystery spaces: when the d12 lands on a "free item" outcome, there's a 25% chanc
 | Pure math (BFS range, dodge %) | `infrastructure/lambda/undercity_engine.py` — `board_distance()`, `spell_dodge_chance()`; spell buff kinds in `effective_stats()` |
 | Cast resolution + persistence | `infrastructure/lambda/undercity_db.py` — "Spells" section: `_cast`, `_cast_at_player`, `_cast_teleport`, `_cast_boss_strike`, `_equip_grimoire`, `_ack_events`, plus `_grant_grimoire` (acquisition) and the grimoire branches in `_buy` / `_mystery` |
 | Tests | `infrastructure/lambda/tests/test_undercity_spells.py` (in-memory FakeTable suite) |
-| Client display mirror | `src/app/undercity/data/spells.generated.ts` (GENERATED data arrays — do not hand-edit) + `src/app/undercity/data/spells.ts` (types, `SPELL_MAP`, helpers like `cooldownLeftMin()`, `spellPower()`, which re-exports the generated `SPELLS`/`GRIMOIRES`/`BIOME_SPELLS`) |
+| Client display mirror | `src/app/undercity/data/spells.generated.ts` (GENERATED data arrays — do not hand-edit) + `src/app/undercity/data/spells.ts` (types, `SPELL_MAP`, helpers like `cooldownLeftSteps()`, `spellStepCost()`, `spellPower()`, which re-exports the generated `SPELLS`/`GRIMOIRES`/`BIOME_SPELLS`) |
 | Client BFS mirror | `src/app/undercity/engine/board-movement.ts` — `boardDistance()`, `nodesWithin()` |
 | Client types | `src/app/undercity/services/undercity-models.ts` — `AwayEvent`, `CastResult`, spell fields on `YouDoc` |
 | Cast UI | `src/app/undercity/tabs/board-tab.component.*` (cast flow, away inbox, shop section) |
@@ -219,6 +219,7 @@ Cross-doc concurrency: field spells write the victim's doc first (`_put_player`,
 - **Spells never kill, except Sear the Throne** — every damage path floors at 1 (players, Savra, lairs). The sole carve-out is a `'lethal': True` `boss_strike` spell (Sear the Throne), which may land the killing blow on Savra or a lair boss; player-vs-player damage still always floors at 1.
 - **Cooldowns only start on a successful cast** — validation errors and shielded/out-of-range targets must return before `_start_spell_cooldown`.
 - **A dodge still costs the cooldown and still notifies the victim.**
+- **Cooldowns are step countdowns, never clocks** (design 2026-09-02). `doc['spellCooldowns'][id]` is an **int** of board spaces still owed, paid down only in `_tick_step_timers`. Never store a timestamp there: `_prune_cooldowns` drops non-ints, and comparing an int to an ISO string raises. Nothing but walking may recharge a spell.
 - **The grimoire collection is permanent** — nothing removes entries from `grimoires`.
 - **Loadouts are mutable but capacity-bounded** (design 2026-07-23, retires the old
   "fixed bundles" rule). A book's contents are per-player state (`grimoireSpells`,

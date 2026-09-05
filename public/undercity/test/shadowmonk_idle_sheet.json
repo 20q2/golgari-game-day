@@ -1,0 +1,11 @@
+{
+  "image": "shadowmonk_idle_sheet.png",
+  "frameWidth": 128,
+  "frameHeight": 128,
+  "frames": 16,
+  "cols": 4,
+  "rows": 4,
+  "fps": 24.0,
+  "loop": true,
+  "source": "shadowmonk_httpss.mj.runYkqd9GE47cQ_animated_in_a_lively_idle_3d7344b3-fe4a-44cc-b0a7-1726265c3701_3.mp4"
+}

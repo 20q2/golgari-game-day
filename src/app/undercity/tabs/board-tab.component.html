@@ -1549,7 +1549,7 @@
                 <span class="wc-cat" [style.color]="spellCategoryStyle(scroll).color">
                   {{ spellCategoryStyle(scroll).kind }}
                   @if (spellPowerLabel(scroll, playerLevel()); as pw) { · {{ pw }} }
-                  @if (scroll.cooldownMin) { · {{ scroll.cooldownMin }}m cooldown }
+                  @if (scroll.cooldownSteps) { · {{ scroll.cooldownSteps }}-step cooldown }
                 </span>
                 <span class="wd-desc">{{ scroll.desc }}</span>
               </div>
@@ -1596,7 +1596,7 @@
                           <span class="wc-cat" [style.color]="spellCategoryStyle(info).color">
                             {{ spellCategoryStyle(info).kind }}
                             @if (spellPowerLabel(info, playerLevel()); as pw) { · {{ pw }} }
-                            @if (info.cooldownMin) { · {{ info.cooldownMin }}m CD }
+                            @if (info.cooldownSteps) { · {{ info.cooldownSteps }}-step CD }
                           </span>
                           @if (bookFull(book)) {
                             <mat-icon class="wsr-burn">{{ burnTarget() === sp ? 'local_fire_department' : 'delete_outline' }}</mat-icon>

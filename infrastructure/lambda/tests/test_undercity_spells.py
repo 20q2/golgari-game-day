@@ -89,7 +89,7 @@ def test_spell_fields_match_effect_kind():
         assert sp['effect'] in ('self_buff', 'self_heal', 'field_curse',
                                 'field_damage', 'teleport', 'recall',
                                 'fate_die', 'boss_strike', 'wish'), sid_
-        assert sp['cooldownMin'] > 0, sid_
+        assert sp['cooldownSteps'] > 0, sid_
         if sp['effect'] in ('field_curse', 'field_damage', 'teleport'):
             assert sp.get('range', 0) > 0, sid_
         if sp['effect'] in ('field_damage', 'self_heal', 'boss_strike'):
@@ -232,11 +232,25 @@ def test_join_seeds_spell_fields(table):
     assert you['spellCooldowns'] == {} and you['awayEvents'] == []
 
 
-def test_prune_cooldowns_drops_expired():
-    doc = {'spellCooldowns': {'rot_surge': '2000-01-01T00:00:00',
-                              'spore_bolt': '2099-01-01T00:00:00'}}
+def test_prune_cooldowns_drops_ready_spells():
+    doc = {'spellCooldowns': {'rot_surge': 0, 'spore_bolt': 3}}
     db._prune_cooldowns(doc)
-    assert doc['spellCooldowns'] == {'spore_bolt': '2099-01-01T00:00:00'}
+    assert doc['spellCooldowns'] == {'spore_bolt': 3}
+
+
+def test_prune_cooldowns_drops_legacy_timestamps():
+    # Pre-step documents: dropped, not compared (an int > str compare raises).
+    doc = {'spellCooldowns': {'rot_surge': '2999-01-01T00:00:00', 'spore_bolt': 2}}
+    db._prune_cooldowns(doc)
+    assert doc['spellCooldowns'] == {'spore_bolt': 2}
+
+
+def test_prune_cooldowns_leaves_high_fives_on_the_clock():
+    # highFiveCooldowns is social anti-spam and stays wall-clock by design.
+    doc = {'highFiveCooldowns': {'a': '2000-01-01T00:00:00',
+                                 'b': '2999-01-01T00:00:00'}}
+    db._prune_cooldowns(doc)
+    assert doc['highFiveCooldowns'] == {'b': '2999-01-01T00:00:00'}
 
 
 # ── cast: validation + self spells ───────────────────────────────────────────
@@ -246,7 +260,7 @@ def test_cast_innate_self_buff_and_cooldown(table):
     status, resp = act(table, 'cast', spellId='rot_surge', source='innate')
     assert status == 200
     assert {'kind': 'rot_surge'} in resp['you']['buffs']
-    assert resp['you']['spellCooldowns']['rot_surge'] > db._now()
+    assert resp['you']['spellCooldowns']['rot_surge'] == 6   # steps owed
     assert resp['cast']['spellId'] == 'rot_surge'
 
     status, resp = act(table, 'cast', spellId='rot_surge', source='innate')
@@ -373,7 +387,7 @@ def test_field_spell_dodge_still_notifies_and_cools(table, monkeypatch):
                        target='user-sam')
     assert status == 200
     assert resp['cast']['dodged'] is True
-    assert resp['you']['spellCooldowns']['scrap_toss'] > db._now()  # dodge still cools
+    assert resp['you']['spellCooldowns']['scrap_toss'] == 6  # dodge still cools
     sam = db._get_player(table, _sid(table), 'user-sam')
     assert sam['hp'] == 30
     assert sam['awayEvents'][-1]['kind'] == 'spell_dodged'
@@ -547,8 +561,8 @@ def test_savra_cannot_be_struck_from_afar(table):
 def test_boss_strike_chips_lair_pool(table):
     act(table, 'join', starter='pest', home='city')
     give_book(table, 'user-alex', 'queensbane_grimoire')
-    # A shared-pool sigil lair — the two ruin lairs (RESPAWN_LAIRS) are per-player
-    # fresh fights and can't be chipped from afar (design 2026-08-02).
+    # A shared-pool sigil lair. The two ruin lairs (RESPAWN_LAIRS) are chippable
+    # too, but into a per-player pool — see test_ruin_lair_chip_is_per_player.
     lair = 'city_lair'
     full = data.LAIR_BOSSES[lair]['hp']
     status, resp = act(table, 'cast', spellId='queens_bane', source='grimoire',
@@ -558,6 +572,63 @@ def test_boss_strike_chips_lair_pool(table):
     assert hp == full - 15 and slain is False
     you = resp['you']
     assert you.get('bossDamage', 0) == 0        # renown pool is Savra-only
+
+
+# ── cast: the ruin lairs (Doomgape / Lord of Extinction) ─────────────────────
+# They are per-player respawning content, so ranged magic chips a pool that lives
+# on the caster's own doc. The KILL still has to be landed in the lair.
+
+def test_ruin_lair_chip_is_per_player(table):
+    sid = _cast_near_node(table, 'lair_titan')
+    full = data.LAIR_BOSSES['lair_titan']['hp']
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate',
+                       target='lair_titan')
+    assert status == 200, resp
+    assert resp['cast']['dmg'] == 8
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['ruinLairs']['lair_titan']['hp'] == full - 8
+    # The season-shared pool is never written: this wound is nobody else's.
+    assert db._get(table, db._season_pk(sid), 'LAIR#lair_titan') is None
+
+
+def test_ruin_lair_chip_floors_at_one(table):
+    sid = _cast_near_node(table, 'lair_titan')
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['ruinLairs'] = {'lair_titan': {'hp': 4}}
+    db._put_player(table, doc)
+    status, resp = act(table, 'cast', spellId='scrap_toss', source='innate',
+                       target='lair_titan')
+    assert status == 200, resp
+    assert db._get_player(table, sid, 'user-alex')['ruinLairs']['lair_titan']['hp'] == 1
+
+
+def test_sear_throne_cannot_snipe_a_ruin_lair(table):
+    """The lethal snipe unmakes a sigil lair boss at range (see
+    test_sear_throne_slays_lair_boss) but only floors a ruin lair: its kill hands
+    out a prize egg + POI claim, which must cost a trip to the nest."""
+    sid = _cast_near_node(table, 'lair_titan')
+    give_book(table, 'user-alex', 'throneburner_codex')
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['ruinLairs'] = {'lair_titan': {'hp': 4}}
+    db._put_player(table, doc)
+    status, resp = act(table, 'cast', spellId='sear_throne', source='grimoire',
+                       target='lair_titan')
+    assert status == 200, resp
+    doc = db._get_player(table, sid, 'user-alex')
+    entry = doc['ruinLairs']['lair_titan']
+    assert entry['hp'] == 1                       # floored, not slain
+    assert not entry.get('respawnAt')             # no abandonment window stamped
+    assert 'lair_titan' not in (doc.get('poiClaims') or [])
+    assert doc.get('wildWins', 0) == 0
+
+
+def test_ruin_lair_curse_persists_per_player(table):
+    sid = _cast_near_node(table, 'lair_titan', home='bone')
+    status, resp = act(table, 'cast', spellId='bone_chill', source='innate',
+                       target='lair_titan')
+    assert status == 200, resp
+    doc = db._get_player(table, sid, 'user-alex')
+    assert {'kind': 'bone_chill'} in doc['ruinLairs']['lair_titan']['buffs']
 
 
 def test_boss_strike_bad_target(table):
@@ -640,12 +711,9 @@ def test_equip_grimoire_swap_cooldown(table):
     status, resp = act(table, 'equip-grimoire', grimoireId='gardeners_primer')
     assert status == 429
 
-    # Once the cooldown lapses, the swap goes through.
-    from datetime import datetime, timedelta
+    # Once the countdown is walked off, the swap goes through.
     doc = db._get_player(table, _sid(table), 'user-alex')
-    doc['lastGrimoireSwap'] = (
-        datetime.utcnow() - timedelta(minutes=data.GRIMOIRE_SWAP_COOLDOWN_MIN + 1)
-    ).isoformat(timespec='seconds')
+    doc['grimoireSwapSteps'] = 0
     db._put_player(table, doc)
     status, resp = act(table, 'equip-grimoire', grimoireId='gardeners_primer')
     assert status == 200 and resp['you']['equippedGrimoire'] == 'gardeners_primer'
@@ -838,6 +906,9 @@ def test_state_exposes_guardian_pools(table):
     assert guardians['bar_e']['npcId'] == 'golgari_grave_troll'
     assert guardians['bar_e']['hp'] == data.BARRIER_GUARDIANS['bar_e']['hp']
     assert 'city_lair' in guardians and guardians['city_lair']['kind'] == 'lair'
+    # The ruin lairs ride along as personal pools, tagged apart from the shared ones.
+    assert guardians['n288']['kind'] == 'ruin'
+    assert guardians['n288']['maxHp'] == data.LAIR_BOSSES['n288']['hp']
 
 
 # ── Spell level-scaling (design 2026-07-22 §2.5 pillar 1) ────────────────────
@@ -887,17 +958,30 @@ def _set_passives(table, user, passives, home='garden'):
     return doc
 
 
-def test_spell_haste_halves_cooldown():
-    from datetime import datetime
-    base = {'passives': []}
-    db._start_spell_cooldown(base, 'rot_surge')            # 30 min base
+def test_spell_cooldown_is_a_step_count():
+    doc = {'passives': []}
+    db._start_spell_cooldown(doc, 'rot_surge')             # 6 steps base
+    assert doc['spellCooldowns'] == {'rot_surge': 6}
+
+
+def test_spell_haste_halves_cooldown_steps_rounding_up():
+    # ceil(x/2), floored at 1: haste is strong but never makes a spell free.
     hasted = {'passives': ['spell_haste']}
-    db._start_spell_cooldown(hasted, 'rot_surge')
-    now = datetime.utcnow()
-    base_min = (datetime.fromisoformat(base['spellCooldowns']['rot_surge']) - now).total_seconds() / 60
-    hasted_min = (datetime.fromisoformat(hasted['spellCooldowns']['rot_surge']) - now).total_seconds() / 60
-    assert 29 <= base_min <= 30
-    assert 14 <= hasted_min <= 15                          # halved
+    for spell_id, expected in (('rot_surge', 3),      # 6 -> 3
+                               ('skitter_step', 3),   # 5 -> 3 (ceil, not 2)
+                               ('ember_fleck', 2),    # 3 -> 2
+                               ('wish', 6)):          # 12 -> 6
+        db._start_spell_cooldown(hasted, spell_id)
+        assert hasted['spellCooldowns'][spell_id] == expected, spell_id
+
+
+def test_spell_cd_ready_treats_zero_and_legacy_timestamps_as_ready():
+    assert db._spell_cd_ready({}, 'rot_surge')
+    assert db._spell_cd_ready({'spellCooldowns': {'rot_surge': 0}}, 'rot_surge')
+    assert not db._spell_cd_ready({'spellCooldowns': {'rot_surge': 1}}, 'rot_surge')
+    # A document written before the step conversion: forgive it rather than crash.
+    legacy = {'spellCooldowns': {'rot_surge': '2999-01-01T00:00:00'}}
+    assert db._spell_cd_ready(legacy, 'rot_surge')
 
 
 def test_spell_warrior_doubles_self_buff(table):
@@ -1116,7 +1200,7 @@ def test_acorn_fury_data_and_species_map():
     assert sp['effect'] == 'self_buff'
     assert sp['buffKind'] == 'acorn_fury'
     assert sp['category'] == 'buff'
-    assert sp['cooldownMin'] == 15
+    assert sp['cooldownSteps'] == 3
     assert sp['icon'] and sp['desc']          # client fields required
     assert data.SPECIES_SPELLS['squirrel'] == 'acorn_fury'
     for spell_id in data.SPECIES_SPELLS.values():
@@ -1195,3 +1279,114 @@ def test_non_rootwall_form_cannot_cast_mend_flesh_innate(table):
     _become(table, 'deathrite_shaman', ['regrowth', 'soul_trophy'])
     status, resp = act(table, 'cast', spellId='mend_flesh', source='innate')
     assert status == 409 and resp['code'] == 'not_castable', resp
+
+
+# ── step cooldowns: walking pays them down ───────────────────────────────────
+
+def test_tick_step_timers_counts_spell_cooldowns_down():
+    doc = {'spellCooldowns': {'rot_surge': 6, 'spore_bolt': 2}}
+    db._tick_step_timers(doc, 2)
+    assert doc['spellCooldowns'] == {'rot_surge': 4, 'spore_bolt': 0}
+
+
+def test_tick_step_timers_clamps_spell_cooldowns_at_zero():
+    doc = {'spellCooldowns': {'rot_surge': 3}}
+    db._tick_step_timers(doc, 99)
+    assert doc['spellCooldowns'] == {'rot_surge': 0}      # never negative
+
+
+def test_tick_step_timers_ignores_legacy_and_absent_cooldowns():
+    legacy = {'spellCooldowns': {'rot_surge': '2999-01-01T00:00:00'}}
+    db._tick_step_timers(legacy, 3)                       # must not raise
+    assert legacy['spellCooldowns'] == {'rot_surge': '2999-01-01T00:00:00'}
+    bare = {}
+    db._tick_step_timers(bare, 3)
+    assert 'spellCooldowns' not in bare                   # untouched, not created
+
+
+_SPELL_WALK = ('n257', 'n258', 'n259')
+# A legal 6-edge, all-fog run: long enough to walk a 6-step cooldown fully off
+# in a single move, and quiet enough that the landing starts nothing.
+_SIX_SPACE_WALK = ('n245', 'n248', 'n249', 'n270', 'n269', 'n250', 'n251')
+
+
+def _prime_spell_walk(table, sid):
+    """Put user-alex at the start of a legal 2-space walk, ready to commit."""
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = _SPELL_WALK[0]
+    doc['pendingMove'] = {'value': 2, 'dests': [_SPELL_WALK[2]]}
+    doc['spellCooldowns'] = {'rot_surge': 6}
+    db._save_or_conflict(table, doc)
+
+
+def test_walking_pays_down_a_spell_cooldown(table):
+    act(table, 'join', starter='pest', home='garden')
+    sid = _sid(table)
+    _prime_spell_walk(table, sid)
+    status, resp = act(table, 'move', to=_SPELL_WALK[-1], path=list(_SPELL_WALK))
+    assert status == 200, resp
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['spellCooldowns']['rot_surge'] == 4      # 6 - 2 spaces
+
+
+def test_cooldown_still_ticks_when_the_client_omits_the_path(table):
+    # A stale client that sends no `path` must not freeze cooldowns forever —
+    # the server falls back to the validated roll distance.
+    act(table, 'join', starter='pest', home='garden')
+    sid = _sid(table)
+    _prime_spell_walk(table, sid)
+    status, resp = act(table, 'move', to=_SPELL_WALK[-1])
+    assert status == 200, resp
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['spellCooldowns']['rot_surge'] == 4      # 6 - pm['value']
+
+
+def test_grimoire_swap_is_step_gated(table):
+    act(table, 'join', starter='pest', home='garden')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['grimoires'] = ['gardeners_primer', 'sewer_codex']
+    doc['equippedGrimoire'] = 'sewer_codex'
+    doc['grimoireSwapSteps'] = 2
+    db._save_or_conflict(table, doc)
+    status, body = act(table, 'equip-grimoire', grimoireId='gardeners_primer')
+    assert status == 429 and 'steps' in body['error']
+
+    doc = db._get_player(table, sid, 'user-alex')
+    db._tick_step_timers(doc, 2)                      # walk it off
+    db._save_or_conflict(table, doc)
+    status, resp = act(table, 'equip-grimoire', grimoireId='gardeners_primer')
+    assert status == 200
+    # Swapping re-arms the countdown in steps.
+    assert resp['you']['grimoireSwapSteps'] == data.GRIMOIRE_SWAP_COOLDOWN_STEPS
+
+
+def test_cast_walk_recast_full_loop(table):
+    # The whole point of the conversion: a spell spent on turn one is castable
+    # again purely by walking, with no clock involved.
+    act(table, 'join', starter='pest', home='garden')     # garden -> rot_surge (6)
+    sid = _sid(table)
+    status, resp = act(table, 'cast', spellId='rot_surge', source='innate')
+    assert status == 200
+    assert resp['you']['spellCooldowns']['rot_surge'] == 6
+    assert act(table, 'cast', spellId='rot_surge', source='innate')[0] == 429
+
+    # Walk all six spaces in one legal all-fog hop, without touching the
+    # countdown by hand — only movement may pay it down. (One move, not three:
+    # a real landing can start a wild fight that blocks the next action.)
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['position'] = _SIX_SPACE_WALK[0]
+    doc['pendingMove'] = {'value': 6, 'dests': [_SIX_SPACE_WALK[-1]]}
+    db._save_or_conflict(table, doc)
+    status, resp = act(table, 'move', to=_SIX_SPACE_WALK[-1],
+                       path=list(_SIX_SPACE_WALK))
+    assert status == 200, resp
+
+    doc = db._get_player(table, sid, 'user-alex')
+    assert doc['spellCooldowns'].get('rot_surge', 0) == 0  # walked all the way off
+    # The landing may have started a wild fight, which blocks every turn action;
+    # drop it so the recast below tests the cooldown gate and nothing else.
+    doc.pop('battle', None)
+    db._save_or_conflict(table, doc)
+    status, resp = act(table, 'cast', spellId='rot_surge', source='innate')
+    assert status == 200, resp                            # castable again

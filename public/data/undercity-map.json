@@ -1,5 +1,5 @@
 {
- "worldW": 4641,
+ "worldW": 4806,
  "worldH": 3576,
  "gate": "city_r0",
  "boss": "boss",
@@ -1000,18 +1000,20 @@
    "region": "ruin",
    "neighbors": [
     "bar_e",
-    "e2"
+    "e2",
+    "n325"
    ]
   },
   {
    "id": "e2",
    "type": "elite",
-   "x": 4241,
-   "y": 806,
+   "x": 4331,
+   "y": 912,
    "region": "ruin",
    "neighbors": [
     "e1",
-    "lair_titan"
+    "lair_titan",
+    "n325"
    ]
   },
   {
@@ -1354,8 +1356,7 @@
    "neighbors": [
     "city_d13",
     "city_lg1",
-    "city_lg2",
-    "city_esc"
+    "city_lg2"
    ]
   },
   {
@@ -1717,8 +1718,7 @@
    "neighbors": [
     "cavern_s6",
     "cavern_lg1",
-    "cavern_lg2",
-    "cavern_esc"
+    "cavern_lg2"
    ]
   },
   {
@@ -2008,8 +2008,7 @@
    "neighbors": [
     "bog_m21",
     "bog_lg1",
-    "bog_lg2",
-    "bog_esc"
+    "bog_lg2"
    ]
   },
   {
@@ -2274,8 +2273,7 @@
    "region": "depths",
    "neighbors": [
     "bone_g24",
-    "bone_g33",
-    "bone_esc"
+    "bone_g33"
    ]
   },
   {
@@ -2473,8 +2471,7 @@
    "neighbors": [
     "garden_m11",
     "garden_lg1",
-    "garden_lg2",
-    "garden_esc"
+    "garden_lg2"
    ]
   },
   {
@@ -2669,8 +2666,9 @@
     "bog_r0",
     "bog_i0"
    ],
-   "spriteAngle": 105,
-   "hideSprite": false
+   "spriteAngle": 110,
+   "hideSprite": false,
+   "spriteDist": 62
   },
   {
    "id": "n245",
@@ -3124,23 +3122,25 @@
   {
    "id": "n289",
    "type": "wild",
-   "x": 3776,
-   "y": 3134,
+   "x": 3638,
+   "y": 3088,
    "region": "ruin",
    "neighbors": [
     "n288",
-    "n290"
+    "n290",
+    "n324"
    ]
   },
   {
    "id": "n290",
    "type": "hazard",
-   "x": 3723,
-   "y": 2898,
+   "x": 3775,
+   "y": 2785,
    "region": "ruin",
    "neighbors": [
     "n289",
-    "n286"
+    "n286",
+    "n324"
    ]
   },
   {
@@ -3512,53 +3512,25 @@
    ]
   },
   {
-   "id": "cavern_esc",
-   "type": "ladder",
-   "x": 410,
-   "y": 1310,
-   "region": "depths",
+   "id": "n324",
+   "type": "wild",
+   "x": 3930,
+   "y": 2993,
+   "region": "ruin",
    "neighbors": [
-    "cavern_lair"
+    "n290",
+    "n289"
    ]
   },
   {
-   "id": "bog_esc",
-   "type": "ladder",
-   "x": 3270,
-   "y": 620,
-   "region": "depths",
+   "id": "n325",
+   "type": "wild",
+   "x": 4406,
+   "y": 757,
+   "region": "ruin",
    "neighbors": [
-    "bog_lair"
-   ]
-  },
-  {
-   "id": "garden_esc",
-   "type": "ladder",
-   "x": 3110,
-   "y": 2230,
-   "region": "depths",
-   "neighbors": [
-    "garden_lair"
-   ]
-  },
-  {
-   "id": "city_esc",
-   "type": "ladder",
-   "x": 1600,
-   "y": 2625,
-   "region": "depths",
-   "neighbors": [
-    "city_lair"
-   ]
-  },
-  {
-   "id": "bone_esc",
-   "type": "ladder",
-   "x": 730,
-   "y": 2120,
-   "region": "depths",
-   "neighbors": [
-    "bone_lair"
+    "e1",
+    "e2"
    ]
   }
  ],
@@ -3617,7 +3589,428 @@
    "dark": false
   }
  },
- "decals": [],
+ "decals": [
+  {
+   "kind": "stamp",
+   "stamp": "reeds",
+   "x": 3288,
+   "y": 0,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 691687
+  },
+  {
+   "kind": "stamp",
+   "stamp": "reeds",
+   "x": 3583,
+   "y": -43,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 169090
+  },
+  {
+   "kind": "stamp",
+   "stamp": "reeds",
+   "x": 3775,
+   "y": -34,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 297987
+  },
+  {
+   "kind": "stamp",
+   "stamp": "reeds",
+   "x": 3276,
+   "y": -164,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 969482
+  },
+  {
+   "kind": "stamp",
+   "stamp": "bog_tree",
+   "x": 2714,
+   "y": 121,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 395017
+  },
+  {
+   "kind": "stamp",
+   "stamp": "bog_tree",
+   "x": 3568,
+   "y": -266,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 875310
+  },
+  {
+   "kind": "stamp",
+   "stamp": "crystal_arch",
+   "x": -23,
+   "y": 9,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 487013
+  },
+  {
+   "kind": "stamp",
+   "stamp": "bone_mound",
+   "x": -417,
+   "y": 1427,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 125411
+  },
+  {
+   "kind": "stamp",
+   "stamp": "skull_pile",
+   "x": 120,
+   "y": 1526,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 187281
+  },
+  {
+   "kind": "stamp",
+   "stamp": "skull_pile",
+   "x": -63,
+   "y": 1731,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 331549
+  },
+  {
+   "kind": "stamp",
+   "stamp": "skull_pile",
+   "x": -317,
+   "y": 1785,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 66225
+  },
+  {
+   "kind": "stamp",
+   "stamp": "skull_pile",
+   "x": -103,
+   "y": 1984,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 575136
+  },
+  {
+   "kind": "stamp",
+   "stamp": "skull_pile",
+   "x": -16,
+   "y": 1785,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 55491
+  },
+  {
+   "kind": "stamp",
+   "stamp": "skull_pile",
+   "x": -117,
+   "y": 1619,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 110537
+  },
+  {
+   "kind": "stamp",
+   "stamp": "skull_pile",
+   "x": -304,
+   "y": 1972,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 873530
+  },
+  {
+   "kind": "stamp",
+   "stamp": "egg_cluster",
+   "x": 3347,
+   "y": 3158,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 498069
+  },
+  {
+   "kind": "stamp",
+   "stamp": "egg_cluster",
+   "x": 3409,
+   "y": 3152,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 410058
+  },
+  {
+   "kind": "stamp",
+   "stamp": "egg_cluster",
+   "x": 3292,
+   "y": 3155,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 783652
+  },
+  {
+   "kind": "stamp",
+   "stamp": "egg_cluster",
+   "x": 4210,
+   "y": 1026,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 960313
+  },
+  {
+   "kind": "stamp",
+   "stamp": "egg_cluster",
+   "x": 4171,
+   "y": 1031,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 835314
+  },
+  {
+   "kind": "stamp",
+   "stamp": "egg_cluster",
+   "x": 4110,
+   "y": 1025,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 686004
+  },
+  {
+   "kind": "stamp",
+   "stamp": "embers",
+   "x": 2171,
+   "y": 379,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 405527
+  },
+  {
+   "kind": "stamp",
+   "stamp": "embers",
+   "x": 1746,
+   "y": 296,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 794784
+  },
+  {
+   "kind": "stamp",
+   "stamp": "embers",
+   "x": 2835,
+   "y": 744,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 805960
+  },
+  {
+   "kind": "stamp",
+   "stamp": "embers",
+   "x": 3064,
+   "y": 1082,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 91591
+  },
+  {
+   "kind": "stamp",
+   "stamp": "embers",
+   "x": 2708,
+   "y": 1212,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 213796
+  },
+  {
+   "kind": "stamp",
+   "stamp": "embers",
+   "x": 2738,
+   "y": 875,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 317963
+  },
+  {
+   "kind": "stamp",
+   "stamp": "embers",
+   "x": 2520,
+   "y": 702,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 44565
+  },
+  {
+   "kind": "stamp",
+   "stamp": "embers",
+   "x": 2778,
+   "y": 1596,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 786579
+  },
+  {
+   "kind": "stamp",
+   "stamp": "embers",
+   "x": 2974,
+   "y": 1428,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 802239
+  },
+  {
+   "kind": "stamp",
+   "stamp": "embers",
+   "x": 2820,
+   "y": 1810,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 912295
+  },
+  {
+   "kind": "stamp",
+   "stamp": "embers",
+   "x": 3087,
+   "y": 1774,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 943062
+  },
+  {
+   "kind": "stamp",
+   "stamp": "embers",
+   "x": 2595,
+   "y": 1968,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 988274
+  },
+  {
+   "kind": "stamp",
+   "stamp": "tar_pit",
+   "x": 1983,
+   "y": 1962,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 513230
+  },
+  {
+   "kind": "stamp",
+   "stamp": "tar_pit",
+   "x": 2472,
+   "y": 2176,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 3919
+  },
+  {
+   "kind": "stamp",
+   "stamp": "tar_pit",
+   "x": 1554,
+   "y": 2079,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 852309
+  },
+  {
+   "kind": "stamp",
+   "stamp": "tar_pit",
+   "x": 848,
+   "y": 1990,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 65672
+  },
+  {
+   "kind": "stamp",
+   "stamp": "tar_pit",
+   "x": 659,
+   "y": 1589,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 402153
+  },
+  {
+   "kind": "stamp",
+   "stamp": "tar_pit",
+   "x": 488,
+   "y": 1247,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 298880
+  },
+  {
+   "kind": "stamp",
+   "stamp": "tar_pit",
+   "x": 644,
+   "y": 1085,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 745825
+  },
+  {
+   "kind": "stamp",
+   "stamp": "tar_pit",
+   "x": 510,
+   "y": 883,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 259748
+  },
+  {
+   "kind": "stamp",
+   "stamp": "tar_pit",
+   "x": 932,
+   "y": 653,
+   "scale": 1,
+   "rot": 0,
+   "layer": "under",
+   "seed": 638695
+  }
+ ],
  "labels": [
   {
    "text": "The Sunken Vault",

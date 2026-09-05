@@ -1222,25 +1222,32 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
   private placeDecalAt(x: number, y: number): void {
     this.snapshot();
     const doc = this.d();
+    const sx = this.applySnap(x);
+    const sy = this.applySnap(y);
+    // Anchor the decal to the layer being edited, so a surface decal can't be
+    // swallowed by a dungeon pocket that shares these coordinates.
+    const anchor = this.canvas.anchorFor(sx, sy);
     const decal: MapDecal = this.placingStamp()
       ? {
           kind: 'stamp',
           stamp: this.placingStamp()!,
-          x: this.applySnap(x),
-          y: this.applySnap(y),
+          x: sx,
+          y: sy,
           scale: 1,
           rot: 0,
           layer: 'under',
           seed: Math.floor(Math.random() * 1e6),
+          anchor,
         }
       : {
           kind: 'image',
           src: this.placingImage()!,
-          x: this.applySnap(x),
-          y: this.applySnap(y),
+          x: sx,
+          y: sy,
           scale: 1,
           rot: 0,
           layer: 'under',
+          anchor,
         };
     doc.decals!.push(decal);
     this.selDecal.set(doc.decals!.length - 1);
@@ -1262,13 +1269,16 @@ export class MapEditorComponent implements AfterViewInit, OnDestroy {
 
   private placeLabelAt(x: number, y: number): void {
     this.snapshot();
+    const sx = this.applySnap(x);
+    const sy = this.applySnap(y);
     const label: MapLabel = {
       text: 'New Label',
-      x: this.applySnap(x),
-      y: this.applySnap(y),
+      x: sx,
+      y: sy,
       size: 46,
       rot: 0,
       alpha: 0.16,
+      anchor: this.canvas.anchorFor(sx, sy),
     };
     this.d().labels!.push(label);
     this.selLabel.set(this.d().labels!.length - 1);

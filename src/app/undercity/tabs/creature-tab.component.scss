@@ -1688,6 +1688,28 @@ $grim-lock: #c96a5a;
   background: #9ac26e;
 }
 
+// The step cost to recharge. Deliberately quieter than .spell-power-chip:
+// damage is the headline, cost is the qualifier.
+.spell-cost-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 6px 1px 4px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #cfe3c0;
+  background: rgba(154, 194, 110, 0.16);
+  border: 1px solid rgba(154, 194, 110, 0.34);
+
+  .mi {
+    font-size: 0.72rem;
+    width: 0.72rem;
+    height: 0.72rem;
+  }
+}
+
 .commit-btn {
   display: flex;
   align-items: center;
@@ -1932,6 +1954,8 @@ $grim-lock: #c96a5a;
   align-items: center;
   gap: 8px;
   margin: 10px 12px 8px;
+  // Anchors the tapped chip's info card, which hangs below the bar.
+  position: relative;
 
   .gear-back {
     align-self: center;
@@ -2002,6 +2026,87 @@ $grim-lock: #c96a5a;
     background: rgba(176, 137, 76, 0.14);
     border-color: rgba(176, 137, 76, 0.45);
     .mi { color: #c39a55; }
+  }
+}
+
+// The chips are buttons (tap for the blurb) — strip the UA button styling,
+// then add the press feedback and light up the one whose card is open.
+button.gear-mat-chip {
+  cursor: pointer;
+  font-family: inherit;
+  appearance: none;
+  transition:
+    filter 0.12s ease,
+    transform 0.06s ease;
+
+  &:hover { filter: brightness(1.15); }
+  &:active { transform: translateY(1px); }
+  &.on {
+    filter: brightness(1.2);
+    box-shadow: 0 0 0 1px rgba(103, 194, 128, 0.6);
+  }
+}
+
+// Info card popped by tapping a resource chip; drops below the top bar,
+// right-aligned under the chips. Tapping it anywhere dismisses it.
+.gear-mat-card {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(80vw, 320px);
+  background: rgba(18, 20, 16, 0.98);
+  border: 1px solid rgba(74, 124, 89, 0.5);
+  border-radius: 12px;
+  padding: 10px 12px;
+  z-index: 8;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  animation: uc-desc-in 0.16s ease;
+
+  &.ich { border-color: rgba(185, 140, 240, 0.55); }
+  &.mulch { border-color: rgba(176, 137, 76, 0.5); }
+
+  .gear-mat-card-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+
+    .mi {
+      color: #9fd6a6;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+    // The Spore coin leads the head like the chip's does, so kill the inline
+    // left gap it carries for trailing "+N spores" runs.
+    .spore-i {
+      margin-left: 0;
+      width: 16px;
+      height: 16px;
+      vertical-align: middle;
+    }
+    .gear-mat-card-name {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #eafff0;
+    }
+    .gear-mat-card-count {
+      margin-left: auto;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #d8f3dc;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+  &.ich .gear-mat-card-head .mi { color: #b98cf0; }
+  &.mulch .gear-mat-card-head .mi { color: #c39a55; }
+
+  .gear-mat-card-desc {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: #b7c7b7;
   }
 }
 

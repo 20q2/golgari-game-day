@@ -4679,24 +4679,67 @@ def test_ruin_lair_respawns_after_the_window(table, monkeypatch):
     assert ev['npc']['hp'] == b['hp'] and ev['npc']['name'] == b['name']
 
 
-def test_respawn_lairs_are_not_field_spell_targets(table):
-    act(table, 'join', starter='pest')
-    sid, _ = db._active_season(table)
-    pools = db._guardian_pools(table, sid)
-    assert 'lair_titan' not in pools and 'n288' not in pools
-    # The five sigil lairs are still rooted pools.
-    assert 'city_lair' in pools
-
-
-def test_field_spell_rejects_a_respawn_lair_target(table):
+def test_respawn_lairs_are_per_player_spell_targets(table):
+    """Ranged magic reaches the ruin lairs, but the pool it chips belongs to the
+    caller alone — so the pools view needs their doc, and the spectator board
+    (no doc) shows no personal pools at all."""
     act(table, 'join', starter='pest')
     sid, _ = db._active_season(table)
     doc = db._get_player(table, sid, 'user-alex')
-    # The RESPAWN_LAIRS guard is the first line of _cast_field and returns before
-    # the spell dict is read, so a minimal stub spell is enough to exercise it.
-    res = db._cast_field(table, sid, doc, 'stub', {'effect': 'damage'}, 'lair_titan')
+    pools = db._guardian_pools(table, sid, doc)
+    for node in data.RESPAWN_LAIRS:
+        assert pools[node]['kind'] == 'ruin'
+        assert pools[node]['hp'] == pools[node]['maxHp'] == data.LAIR_BOSSES[node]['hp']
+    # The five sigil lairs are still shared, season-rooted pools.
+    assert pools['city_lair']['kind'] == 'lair'
+    assert not (set(db._guardian_pools(table, sid)) & data.RESPAWN_LAIRS)
+
+
+def test_abandoned_ruin_lair_is_not_a_spell_target(table):
+    """Nothing to wound while the nest sits empty on your respawn timer."""
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    doc = db._get_player(table, sid, 'user-alex')
+    future = (db.datetime.utcnow() + db.timedelta(minutes=30)).isoformat(timespec='seconds')
+    doc['ruinLairs'] = {'lair_titan': {'respawnAt': future, 'scavenged': False}}
+    db._put_player(table, doc)
+    assert 'lair_titan' not in db._guardian_pools(table, sid, doc)
+    res = db._cast_field(table, sid, doc, 'stub',
+                         {'effect': 'field_damage', 'range': 9}, 'lair_titan')
     # Error tuple (status int, body) — the caster's cooldown is left unstarted.
     assert isinstance(res[0], int) and res[0] >= 400
+
+
+def test_ruin_lair_fight_starts_at_the_chipped_hp(table):
+    """Softening from afar is spent on the next visit: the fight opens at the
+    chipped HP with the curse applied, then the pool is whole again."""
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    b = data.LAIR_BOSSES['lair_titan']
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['ruinLairs'] = {'lair_titan': {'hp': 12, 'buffs': [{'kind': 'bone_chill'}]}}
+    doc['position'] = 'lair_titan'
+    ev = db._lair(table, sid, doc, 'lair_titan')
+    assert ev['type'] == 'battle_start'
+    assert ev['npc']['hp'] == 12 and ev['npc']['maxHp'] == b['hp']
+    assert 'bone_chill' in db._battle_status(doc['battle']['npc'])['buffs']
+    assert doc['battle']['npc']['atk'] < b['atk']      # the curse really bit
+    # Consumed on engagement: whole again, and a pristine pool keeps no state.
+    assert db._ruin_lair_state(doc, 'lair_titan') == (b['hp'], [])
+    assert 'lair_titan' not in (doc.get('ruinLairs') or {})
+
+
+def test_ruin_lair_chip_does_not_downgrade_the_first_kill(table, monkeypatch):
+    """A chip-created ruinLairs entry must not read as 'already killed once' and
+    drop the first kill to the `repeat` payout."""
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    b = data.LAIR_BOSSES['lair_titan']
+    doc = db._get_player(table, sid, 'user-alex')
+    doc['ruinLairs'] = {'lair_titan': {'hp': 20}}
+    db._put_player(table, doc)
+    _, out = _ruin_lair_fight(table, sid, 'user-alex', 'attacker', 0, monkeypatch)
+    assert out['spores'] == b['first']['spores']
 
 
 # ── Boss familiars (design 2026-08-04) ───────────────────────────────────────

@@ -17,6 +17,7 @@ Item layout (existing single table, pk/sk strings):
   UNDERCITYUSER#{uid}       / META           permanent wardrobe/seals/lifetime
 """
 import json
+import math
 import random
 import uuid
 import zlib
@@ -1096,8 +1097,13 @@ def _expire_buffs(doc):
 
 def _prune_cooldowns(doc):
     now = _now()
+    # Spell cooldowns are step countdowns: drop them once walked to 0. Anything
+    # that isn't an int is a pre-step-conversion leftover — drop it too (never
+    # compare it, an int/str compare raises).
     cds = doc.get('spellCooldowns') or {}
-    doc['spellCooldowns'] = {k: v for k, v in cds.items() if v > now}
+    doc['spellCooldowns'] = {k: v for k, v in cds.items()
+                             if isinstance(v, int) and v > 0}
+    # High fives are social anti-spam and stay on the wall clock.
     hfcds = doc.get('highFiveCooldowns') or {}
     doc['highFiveCooldowns'] = {k: v for k, v in hfcds.items() if v > now}
 
@@ -1387,10 +1393,12 @@ def _pet_scout_recharge_spaces(level):
 
 def _tick_step_timers(doc, spaces):
     """Advance every distance-based countdown by `spaces` walked: forage's
-    recharge, each activated role's recharge, and the incubating egg.
+    recharge, each activated role's recharge, the incubating egg, spell
+    cooldowns, the grimoire swap, and Last Stand.
 
-    These replaced wall-clock timers (design 2026-08-10) so that nothing a
-    player starts can only be finished by waiting — walking always finishes it.
+    These replaced wall-clock timers (designs 2026-08-10 and 2026-09-02) so that
+    nothing a player starts can only be finished by waiting — walking always
+    finishes it.
     """
     if spaces <= 0:
         return
@@ -1403,6 +1411,16 @@ def _tick_step_timers(doc, spaces):
     inc = doc.get('incubator')
     if inc and int(inc.get('spacesLeft', 0)) > 0:
         inc['spacesLeft'] = max(0, int(inc['spacesLeft']) - spaces)
+    # Spell cooldowns (design 2026-09-02). Non-int values are pre-conversion
+    # leftovers — skipped here and dropped by _prune_cooldowns.
+    cds = doc.get('spellCooldowns') or {}
+    for spell_id, left in list(cds.items()):
+        if isinstance(left, int) and left > 0:
+            cds[spell_id] = max(0, left - spaces)
+    if int(doc.get('grimoireSwapSteps', 0) or 0) > 0:
+        doc['grimoireSwapSteps'] = max(0, int(doc['grimoireSwapSteps']) - spaces)
+    if int(doc.get('lastStandSteps', 0) or 0) > 0:
+        doc['lastStandSteps'] = max(0, int(doc['lastStandSteps']) - spaces)
 
 
 def _pet_scout_tier_cap(level):
@@ -2767,7 +2785,7 @@ def handle_state(table, query_params):
         'fogReveals': fog_reveals,
         'worldEvent': _world_event_public(table, sid),
         'enraged': _enraged_public(table, sid),
-        'guardians': _guardian_pools(table, sid),
+        'guardians': _guardian_pools(table, sid, you),
         'events': [{k: v for k, v in e.items() if k not in ('pk', 'sk')} for e in events],
         'chat': [{k: v for k, v in m.items() if k not in ('pk', 'sk')} for m in chat],
         'result': result if config.get('status') == 'ended' else None,
@@ -4118,12 +4136,14 @@ def _move(table, sid, doc, payload):
                 scavenge = {'spores': gain, 'bank': doc['petSporeBank'],
                             'nodes': loot_nodes}
 
-    # Every companion countdown runs on DISTANCE, not a clock: each board space
-    # walked ticks them toward ready. Needs the walked `path`; a stale client
-    # that omits it simply doesn't tick. Fields are only touched when already
-    # live (>0), so they never appear on players who don't use the feature.
-    if path:
-        _tick_step_timers(doc, len(path) - 1)
+    # Every companion countdown, spell cooldown, and gear timer runs on
+    # DISTANCE, not a clock: each board space walked ticks them toward ready.
+    # Prefer the validated `path`; a stale client that omits it still ticks by
+    # the pending roll's distance, so a cooldown can never freeze forever.
+    # Fields are only touched when already live (>0), so they never appear on
+    # players who don't use the feature.
+    spaces = (len(path) - 1) if path else int(pm['value'])
+    _tick_step_timers(doc, spaces)
 
     conflict = _save_or_conflict(table, doc)
     if conflict:
@@ -5023,9 +5043,13 @@ def _set_barrier_state(table, sid, node, hp, buffs=None):
     table.put_item(Item=item)
 
 
-def _guardian_pools(table, sid):
+def _guardian_pools(table, sid, doc=None):
     """Live HP + curse state for every rooted target a field spell can reach:
-    unbroken barrier guardians and lair bosses. Savra stays under `boss`."""
+    unbroken barrier guardians and lair bosses. Savra stays under `boss`.
+
+    The two ruin lairs are per-player content, so they only appear when a `doc`
+    is supplied (the owner's own view) and only while the nest is occupied —
+    the spectator board, which has no player, shows no personal pools."""
     open_bars = _open_barriers(table, sid)
     out = {}
     for node, g in data.BARRIER_GUARDIANS.items():
@@ -5036,7 +5060,13 @@ def _guardian_pools(table, sid):
                      'hp': hp, 'maxHp': g['hp'], 'buffs': [b['kind'] for b in buffs]}
     for node, b in data.LAIR_BOSSES.items():
         if node in data.RESPAWN_LAIRS:
-            continue                       # per-player fights: no shared pool to chip
+            if doc is None or _ruin_lair_abandoned(doc, node):
+                continue
+            hp, buffs = _ruin_lair_state(doc, node)
+            out[node] = {'kind': 'ruin', 'npcId': b['id'], 'name': b['name'],
+                         'hp': hp, 'maxHp': b['hp'],
+                         'buffs': [x['kind'] for x in buffs]}
+            continue
         hp, slain, buffs = _lair_state(table, sid, node)
         out[node] = {'kind': 'lair', 'npcId': b['id'],
                      'name': f"Vestige of {b['name']}" if slain else b['name'],
@@ -5061,6 +5091,47 @@ def _set_lair_state(table, sid, node, hp, slain, buffs=None):
     if buffs:
         item['buffs'] = buffs
     table.put_item(Item=item)
+
+
+# ── Ruin-lair (RESPAWN_LAIRS) personal pools ─────────────────────────────────
+# The two ruin lairs are per-player content, so there is no season record to
+# chip — a spell's wound rides on the caster's own doc['ruinLairs'][node]
+# alongside the abandonment timer. `hp`/`buffs` are absent until something
+# actually lands, and a kill drops them again (the nest respawns whole).
+
+def _ruin_lair_abandoned(doc, node):
+    """True while this player's own respawn window is still running — the nest
+    is empty, so there is nothing there to wound."""
+    entry = (doc.get('ruinLairs') or {}).get(node) or {}
+    return _now() < (entry.get('respawnAt') or '')
+
+
+def _ruin_lair_state(doc, node):
+    """This player's standing wound on a ruin lair: (hp, curse buffs). Defaults
+    to the boss at full strength."""
+    entry = (doc.get('ruinLairs') or {}).get(node) or {}
+    full = data.LAIR_BOSSES[node]['hp']
+    return int(entry.get('hp', full)), list(entry.get('buffs') or [])
+
+
+def _set_ruin_lair_state(doc, node, hp, buffs=None):
+    """Write the personal pool, preserving the abandonment fields. Mutates doc —
+    every caller is inside an action that persists it. Storing full HP with no
+    curses clears the keys again, so a pristine lair carries no state."""
+    entry = dict((doc.get('ruinLairs') or {}).get(node) or {})
+    full = data.LAIR_BOSSES[node]['hp']
+    if int(hp) >= full:
+        entry.pop('hp', None)
+    else:
+        entry['hp'] = int(hp)
+    if buffs:
+        entry['buffs'] = buffs
+    else:
+        entry.pop('buffs', None)
+    if entry:
+        doc.setdefault('ruinLairs', {})[node] = entry
+    else:
+        (doc.get('ruinLairs') or {}).pop(node, None)
 
 
 # ── World Event ("The Great Beast") shared state ─────────────────────────────
@@ -5220,14 +5291,22 @@ def _lair(table, sid, doc, node):
 
 def _respawn_lair(table, sid, doc, node):
     """A ruin lair on its per-player cycle: abandoned (scavenge) while the timer
-    is live, otherwise a fresh full-HP fight. State lives on doc['ruinLairs']."""
+    is live, otherwise a fight. State lives on doc['ruinLairs'].
+
+    Anything this player softened from afar is spent here — the fight opens at
+    the chipped HP with the curses applied, and the personal pool resets to full
+    behind it. Attempts you didn't prepare for are still fresh full-HP fights."""
     entry = (doc.get('ruinLairs') or {}).get(node)
     if entry and _now() < (entry.get('respawnAt') or ''):
         return _lair_scavenge(doc, node, entry)
     b = data.LAIR_BOSSES[node]
-    npc = dict(b, maxHp=b['hp'],
+    hp, buffs = _ruin_lair_state(doc, node)
+    npc = dict(b, hp=hp, maxHp=b['hp'],
                personality=b.get('personality', 'balanced'),
                bluff=b.get('bluff', 0.20))
+    _apply_guardian_debuffs(npc, buffs)
+    if hp < b['hp'] or buffs:
+        _set_ruin_lair_state(doc, node, b['hp'], [])   # consumed on engagement
     return _start_battle(table, sid, doc, 'lair', npc, node=node,
                          ctx={'respawn': True})
 
@@ -5737,14 +5816,14 @@ def _finish_battle(table, sid, doc, rec, result):
     """Apply final HP, consume buffs, dispatch to the per-kind reward finisher,
     persist, and return the space-event response."""
     # Last Stand (DEF-18 perk): survive an otherwise-lethal blow, rising at half
-    # max HP, on a real-time cooldown (design 2026-08-01 — was 1 HP once/descent).
+    # max HP, on a step countdown (design 2026-09-02 — was a real-time hour).
     # It doesn't turn a loss into a win — the outcome drops to a 'timeout' (no
     # compost, no reward; a persistent-pool foe lingers).
-    _ls_ready = (not doc.get('lastStandReadyAt')) or doc['lastStandReadyAt'] <= _now()
+    _ls_left = doc.get('lastStandSteps')
+    _ls_ready = not isinstance(_ls_left, int) or _ls_left <= 0
     if (result['attackerHp'] <= 0 and _ls_ready
             and 'last_stand' in engine.attribute_perks(doc)):
-        ready = datetime.utcnow() + timedelta(minutes=data.LAST_STAND_COOLDOWN_MINUTES)
-        doc['lastStandReadyAt'] = ready.isoformat(timespec='seconds')
+        doc['lastStandSteps'] = data.LAST_STAND_COOLDOWN_STEPS
         max_hp = engine.effective_stats(doc)['maxHp']
         result['attackerHp'] = max(1, round(max_hp * data.LAST_STAND_HP_FRAC))
         if result['outcome'] == 'defender':
@@ -6049,7 +6128,10 @@ def _award_respawn_lair_kill(table, sid, doc, node, out):
     event, sigil, or first-conqueror. Stamps the per-player abandonment window."""
     b = data.LAIR_BOSSES[node]
     ruin = doc.setdefault('ruinLairs', {})
-    first_ever = node not in ruin
+    # Keyed off the abandonment stamp, not the entry: a ranged chip creates an
+    # entry too, and softening the nest must not demote your first kill to the
+    # `repeat` payout. Every past kill leaves a respawnAt behind (it just ages).
+    first_ever = not (ruin.get(node) or {}).get('respawnAt')
     reward = b['first'] if first_ever else b['repeat']
     doc['spores'] = doc.get('spores', 0) + reward['spores']
     _add_win_renown(doc, 'lair')
@@ -6772,17 +6854,24 @@ def _spell_err(msg, code, status=409):
 
 
 def _spell_cd_ready(doc, spell_id):
-    ready_at = (doc.get('spellCooldowns') or {}).get(spell_id)
-    return not ready_at or ready_at <= _now()
+    """Ready when no countdown is stored, or it has walked down to 0. A value
+    left over from the pre-step model (an ISO string) reads as ready — those
+    documents are forgiven once rather than migrated."""
+    left = (doc.get('spellCooldowns') or {}).get(spell_id)
+    if not isinstance(left, int):
+        return True
+    return left <= 0
 
 
 def _start_spell_cooldown(doc, spell_id):
-    minutes = data.SPELLS[spell_id]['cooldownMin']
-    # Squirrel Spell Haste: cooldowns are halved (cast twice as often).
+    """Owe the spell's cooldown in board spaces. Walking pays it down in
+    _tick_step_timers — a cooldown can never be finished by idling."""
+    steps = data.SPELLS[spell_id]['cooldownSteps']
+    # Squirrel Spell Haste: cooldowns are halved (cast twice as often). Rounded
+    # UP and floored at 1 so haste never makes a spell free.
     if 'spell_haste' in (doc.get('passives') or []):
-        minutes *= data.SPELL_HASTE_MULT
-    until = datetime.utcnow() + timedelta(minutes=minutes)
-    doc.setdefault('spellCooldowns', {})[spell_id] = until.isoformat(timespec='seconds')
+        steps = max(1, math.ceil(steps * data.SPELL_HASTE_MULT))
+    doc.setdefault('spellCooldowns', {})[spell_id] = steps
 
 
 def _spell_damage(spell, doc):
@@ -7048,9 +7137,6 @@ def _cast(table, sid, doc, payload):
 
 def _cast_field(table, sid, doc, spell_id, spell, target_id):
     """Route a field spell to a guardian/boss/enraged target, else a rival player."""
-    if target_id in data.RESPAWN_LAIRS:
-        return _spell_err('That beast can only be faced in its lair, in person.',
-                          'invalid_target', 409)
     if target_id == 'boss' or target_id in data.BARRIER_GUARDIANS or target_id in data.LAIR_BOSSES:
         return _cast_at_guardian(table, sid, doc, spell, target_id)
     er = _enraged_state(table, sid)
@@ -7085,6 +7171,20 @@ def _cast_at_guardian(table, sid, doc, spell, target_id):
 
         def save(new_hp, new_buffs):
             _set_barrier_state(table, sid, target_id, new_hp, new_buffs)
+    elif target_id in data.RESPAWN_LAIRS:
+        # Per-player content: the wound rides on the caster's own doc, which the
+        # cast wrapper persists. Nobody else's nest is touched.
+        if _ruin_lair_abandoned(doc, target_id):
+            return _spell_err('That nest already lies quiet — nothing there to wound.',
+                              'invalid_target', 409)
+        node = target_id
+        b = data.LAIR_BOSSES[target_id]
+        name = b['name']
+        maxhp = b['hp']
+        hp, buffs = _ruin_lair_state(doc, target_id)
+
+        def save(new_hp, new_buffs):
+            _set_ruin_lair_state(doc, target_id, new_hp, new_buffs)
     else:  # lair boss
         node = target_id
         b = data.LAIR_BOSSES[target_id]
@@ -7284,8 +7384,25 @@ def _cast_boss_strike(table, sid, doc, spell, target):
     floor = 0 if lethal else 1
     if target in data.LAIR_BOSSES:
         if target in data.RESPAWN_LAIRS:
-            return {'dmg': 0, 'targetName': data.LAIR_BOSSES[target]['name'],
-                    'text': 'Your reach falls short — that beast must be faced in its lair.'}
+            # Per-player nest: chip the caster's own pool. The lethal flag buys
+            # nothing here — its kill hands out a prize egg and a POI claim, so
+            # it has to cost a trip to the lair. Always floors at 1.
+            b = data.LAIR_BOSSES[target]
+            if _ruin_lair_abandoned(doc, target):
+                return _err('That nest already lies quiet — nothing there to wound.', 409)
+            hp, buffs = _ruin_lair_state(doc, target)
+            new_hp = max(1, hp - _spell_damage(spell, doc))
+            dealt = hp - new_hp
+            _set_ruin_lair_state(doc, target, new_hp, buffs)
+            if dealt:
+                _event(table, sid, 'spell',
+                       f"{doc['username']}'s {spell['name']} wounds the {b['name']} "
+                       'from afar!', actor=doc['userId'])
+                text = (f'{spell["name"]} wounds the {b["name"]} for {dealt}! '
+                        f'({new_hp}/{b["hp"]} HP)')
+            else:
+                text = f'The {b["name"]} is already at the brink — finish it in its lair.'
+            return {'dmg': dealt, 'targetName': b['name'], 'text': text}
         hp, slain, _ = _lair_state(table, sid, target)
         new_hp = max(floor, hp - _spell_damage(spell, doc))
         dealt = hp - new_hp
@@ -7403,13 +7520,10 @@ def _equip_grimoire(table, sid, doc, payload):
     # hot-swap spell loadouts on demand. Stowing (gid=None) is always free, and
     # re-opening after a stow is still gated — so it can't be used to bypass.
     if gid and gid != doc.get('equippedGrimoire'):
-        last = doc.get('lastGrimoireSwap')
-        if last:
-            elapsed = datetime.utcnow() - datetime.fromisoformat(last)
-            if elapsed < timedelta(minutes=data.GRIMOIRE_SWAP_COOLDOWN_MIN):
-                wait = data.GRIMOIRE_SWAP_COOLDOWN_MIN - int(elapsed.total_seconds() // 60)
-                return _err(f'Grimoire swap on cooldown ({wait} min left).', 429)
-        doc['lastGrimoireSwap'] = _now()
+        left = doc.get('grimoireSwapSteps')
+        if isinstance(left, int) and left > 0:
+            return _err(f'Grimoire swap on cooldown ({left} steps left).', 429)
+        doc['grimoireSwapSteps'] = data.GRIMOIRE_SWAP_COOLDOWN_STEPS
     doc['equippedGrimoire'] = gid
     conflict = _save_or_conflict(table, doc)
     if conflict:

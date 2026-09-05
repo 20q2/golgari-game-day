@@ -49,7 +49,8 @@ export interface SpellInfo {
   name: string;
   category: 'buff' | 'field' | 'traversal' | 'boss';
   tier: 1 | 2 | 3;
-  cooldownMin: number;
+  /** Board spaces that must be walked before recasting (design 2026-09-02). */
+  cooldownSteps: number;
   effect: SpellEffect;
   range?: number;
   /** fate_die: highest face the value-picker offers (defaults to 6). */
@@ -79,26 +80,31 @@ export const GRIMOIRE_MAP: Record<string, GrimoireInfo> = Object.fromEntries(
   GRIMOIRES.map((g) => [g.id, g]),
 );
 
-/** Whole minutes until a spell is ready again (0 = ready now). */
-export function cooldownLeftMin(
-  cooldowns: Record<string, string> | undefined,
+/** Board spaces still owed before a spell is ready again (0 = ready now).
+ *  A server-pushed integer, so unlike the old clock it never drifts stale
+ *  between polls. A legacy string value reads as ready. */
+export function cooldownLeftSteps(
+  cooldowns: Record<string, number> | undefined,
   spellId: string,
 ): number {
-  const readyAt = cooldowns?.[spellId];
-  if (!readyAt) return 0;
-  const ms = new Date(readyAt + 'Z').getTime() - Date.now();
-  return ms > 0 ? Math.ceil(ms / 60_000) : 0;
+  const left = cooldowns?.[spellId];
+  return typeof left === 'number' && left > 0 ? left : 0;
 }
 
-/** Mirror of GRIMOIRE_SWAP_COOLDOWN_MIN in infrastructure/lambda/undercity_config.py. */
-export const GRIMOIRE_SWAP_COOLDOWN_MIN = 30;
+/** Mirror of GRIMOIRE_SWAP_COOLDOWN_STEPS in infrastructure/lambda/undercity_config.py. */
+export const GRIMOIRE_SWAP_COOLDOWN_STEPS = 6;
 
-/** Whole minutes until a different grimoire can be opened (0 = ready now). */
-export function grimoireSwapLeftMin(lastSwap: string | null | undefined): number {
-  if (!lastSwap) return 0;
-  const readyMs = new Date(lastSwap + 'Z').getTime() + GRIMOIRE_SWAP_COOLDOWN_MIN * 60_000;
-  const ms = readyMs - Date.now();
-  return ms > 0 ? Math.ceil(ms / 60_000) : 0;
+/** Board spaces still owed before a different grimoire can be opened (0 = ready). */
+export function grimoireSwapLeftSteps(left: number | null | undefined): number {
+  return typeof left === 'number' && left > 0 ? left : 0;
+}
+
+/** A spell's step cost for THIS creature — halved (rounded up, min 1) by the
+ *  Squirrel Spell Haste passive, mirroring _start_spell_cooldown in
+ *  infrastructure/lambda/undercity_db.py. */
+export function spellStepCost(spell: SpellInfo, passives: string[] = []): number {
+  const base = spell.cooldownSteps;
+  return passives.includes('spell_haste') ? Math.max(1, Math.ceil(base / 2)) : base;
 }
 
 /** Mirror of GRIMOIRE_CAPACITY / WITCH_SCROLL_STOCK in undercity_config.py /

@@ -57,7 +57,7 @@ import {
   SPELL_MAP,
   SpellInfo,
   WITCH_SCROLL_STOCK,
-  cooldownLeftMin,
+  cooldownLeftSteps,
   spellCategoryStyle,
   spellPowerLabel,
 } from '../data/spells';
@@ -687,8 +687,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   protected cooldownLabel(spellId: string): string {
-    const left = cooldownLeftMin(this.store.you()?.spellCooldowns, spellId);
-    return left > 0 ? `${left} min` : 'Ready';
+    const left = cooldownLeftSteps(this.store.you()?.spellCooldowns, spellId);
+    return left > 0 ? `${left} ${left === 1 ? 'step' : 'steps'}` : 'Ready';
   }
 
   /** Level-scaled magnitude label for a spell at the player's level ('' if flat). */
@@ -698,7 +698,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   protected spellReady(spellId: string): boolean {
-    return cooldownLeftMin(this.store.you()?.spellCooldowns, spellId) === 0;
+    return cooldownLeftSteps(this.store.you()?.spellCooldowns, spellId) === 0;
   }
 
   private closedBarrierIds(): string[] {
@@ -762,10 +762,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Live lair bosses a boss-strike spell can sear. boss_strike is range-less
    *  ("from anywhere"), so no distance filter — lairs carry their node id, which
-   *  the server matches against data.LAIR_BOSSES. */
+   *  the server matches against data.LAIR_BOSSES. Ruin nests ('ruin') are in
+   *  too; their pool is yours alone and the killing blow stays in-person. */
   protected spellLairTargets(): { target: string; name: string; hp: number; maxHp: number }[] {
     const out = Object.entries(this.store.guardians())
-      .filter(([, g]) => g.kind === 'lair')
+      .filter(([, g]) => g.kind === 'lair' || g.kind === 'ruin')
       .map(([node, g]) => ({ target: node, name: g.name, hp: g.hp, maxHp: g.maxHp }));
     const er = this.store.enraged();
     if (er && !er.dead && er.node && typeof er.hp === 'number' && typeof er.maxHp === 'number') {

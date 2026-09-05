@@ -236,25 +236,71 @@
                   <mat-icon class="mi">chevron_left</mat-icon> Gear
                 </button>
               }
+              <!-- Chips are buttons: tapping one pops its blurb below the bar,
+                   the same read-what-this-is affordance the plaza chips have. -->
               <div class="gear-mat-chips">
                 <!-- Spores lead the row: it's the currency the other two are
                      spent alongside, and the page-level purse hides on this tab
                      so this is the only place it's shown here. -->
-                <span class="gear-mat-chip spore" title="Spores">
+                <button
+                  type="button"
+                  class="gear-mat-chip spore"
+                  [class.on]="gearMatInfo() === 'spores'"
+                  title="Spores — tap for info"
+                  (click)="toggleGearMatInfo('spores')"
+                >
                   <img class="spore-i" src="undercity/icons/rot.png" alt="" />{{ you.spores }}
-                </span>
-                <span class="gear-mat-chip mtl" title="Moltings">
+                </button>
+                <button
+                  type="button"
+                  class="gear-mat-chip mtl"
+                  [class.on]="gearMatInfo() === 'moltings'"
+                  title="Moltings — tap for info"
+                  (click)="toggleGearMatInfo('moltings')"
+                >
                   <mat-icon class="mi mtl-i">grass</mat-icon>{{ you.materials?.moltings ?? 0 }}
-                </span>
-                <span class="gear-mat-chip ich" title="Gemstones">
+                </button>
+                <button
+                  type="button"
+                  class="gear-mat-chip ich"
+                  [class.on]="gearMatInfo() === 'ichor'"
+                  title="Gemstones — tap for info"
+                  (click)="toggleGearMatInfo('ichor')"
+                >
                   <mat-icon class="mi ich-i">diamond</mat-icon>{{ you.materials?.ichor ?? 0 }}
-                </span>
+                </button>
                 @if (canGorge()) {
-                  <span class="gear-mat-chip mulch" title="Mulch — spend it on the board to reclaim a space">
+                  <button
+                    type="button"
+                    class="gear-mat-chip mulch"
+                    [class.on]="gearMatInfo() === 'mulch'"
+                    title="Mulch — tap for info"
+                    (click)="toggleGearMatInfo('mulch')"
+                  >
                     <mat-icon class="mi mulch-i">compost</mat-icon>{{ mulch() }}
-                  </span>
+                  </button>
                 }
               </div>
+              @if (gearMatInfo(); as mk) {
+                <div
+                  class="gear-mat-card"
+                  [class.ich]="mk === 'ichor'"
+                  [class.mulch]="mk === 'mulch'"
+                  [class.spore]="mk === 'spores'"
+                  (click)="gearMatInfo.set(null)"
+                >
+                  <div class="gear-mat-card-head">
+                    @if (gearMatMeta[mk].img; as img) {
+                      <img class="spore-i" [src]="img" alt="" />
+                    } @else {
+                      <mat-icon class="mi">{{ gearMatMeta[mk].icon }}</mat-icon>
+                    }
+                    <span class="gear-mat-card-name">{{ gearMatMeta[mk].name }}</span>
+                    <span class="gear-mat-card-count">×{{ gearMatCount(mk) }}</span>
+                  </div>
+                  <p class="gear-mat-card-desc">{{ gearMatMeta[mk].desc }}</p>
+                </div>
+              }
             </div>
             @switch (gearSection()) {
               @case ('home') {
@@ -531,6 +577,12 @@
                           @if (spellPowerLabel(sp, playerLevel()); as pw) {
                             <span class="spell-power-chip">{{ pw }}</span>
                           }
+                          <span
+                            class="spell-cost-chip"
+                            [title]="'Recharges after ' + stepCost(sp) + ' spaces walked'"
+                          >
+                            <mat-icon class="mi">directions_walk</mat-icon>{{ stepCost(sp) }}
+                          </span>
                         </span>
                         <span class="spell-desc">{{ sp.desc }}</span>
                       </span>
@@ -560,6 +612,12 @@
                             @if (spellPowerLabel(sp, playerLevel()); as pw) {
                               <span class="spell-power-chip">{{ pw }}</span>
                             }
+                            <span
+                              class="spell-cost-chip"
+                              [title]="'Recharges after ' + stepCost(sp) + ' spaces walked'"
+                            >
+                              <mat-icon class="mi">directions_walk</mat-icon>{{ stepCost(sp) }}
+                            </span>
                           </span>
                           <span class="spell-desc">{{ sp.desc }}</span>
                         </span>
@@ -596,7 +654,8 @@
                     </span>
                   } @else {
                     <span class="swap-pill locked">
-                      <mat-icon class="mi">lock</mat-icon> Swap in {{ grimoireSwapLeft() }}m
+                      <mat-icon class="mi">lock</mat-icon> Swap in {{ grimoireSwapLeft() }}
+                      {{ grimoireSwapLeft() === 1 ? 'step' : 'steps' }}
                       <span class="swap-bar"><i [style.width.%]="swapPct() * 100"></i></span>
                     </span>
                   }

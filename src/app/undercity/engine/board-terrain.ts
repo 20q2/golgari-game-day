@@ -3546,9 +3546,16 @@ export function drawPathMotifs(
 }
 
 // ── Decals ───────────────────────────────────────────────────────────────────
-// Hand-placed decoration from map.json. A decal belongs to the render layer
-// of its nearest node, so pocket dressing stays inside the pocket view and
+// Hand-placed decoration from map.json. A decal belongs to the render layer of
+// its `anchor` node, so pocket dressing stays inside the pocket view and
 // everything else shows on the overworld.
+//
+// Ownership is explicit rather than positional. Dungeon pockets are laid out
+// over the same world coordinates as the surface, so the old "nearest node
+// wins" rule assigned any decal that happened to sit closer to a buried pocket
+// node than to a surface node to that pocket — which made it invisible on the
+// overworld and unselectable in the editor. Roughly a quarter of the board was
+// a dead zone that silently ate decals.
 
 const decalImages = new Map<string, HTMLImageElement>();
 
@@ -3583,6 +3590,14 @@ function nearestNode(map: BoardMap, x: number, y: number): BoardNode | null {
   return best;
 }
 
+/**
+ * Does `layer` own a decoration anchored to `anchor`? Anchorless decorations
+ * (everything authored before the field existed) belong to the overworld.
+ */
+export function layerOwnsDecoration(layer: LayerSpec, anchor: string | undefined): boolean {
+  return anchor === undefined ? layer.id === OVERWORLD : layer.nodeIds.has(anchor);
+}
+
 function drawImageDecal(ctx: CanvasRenderingContext2D, d: MapDecal): void {
   const size = decalImageSize(d.src);
   if (!size) return; // not arrived yet; the load callback re-renders
@@ -3606,8 +3621,10 @@ export function drawMapLabels(
   layer?: LayerSpec,
 ): void {
   for (const l of map.labels ?? []) {
-    const n = nearestNode(map, l.x, l.y);
-    if (layer && (!n || !layer.nodeIds.has(n.id))) continue;
+    if (layer && !layerOwnsDecoration(layer, l.anchor)) continue;
+    const n =
+      (l.anchor ? (map.nodes.find((x) => x.id === l.anchor) ?? null) : null) ??
+      nearestNode(map, l.x, l.y);
     const glow = theme(n ? themeKeyFor(n) : 'cavern').glow;
     ctx.save();
     ctx.translate(l.x, l.y);
@@ -3632,10 +3649,7 @@ export function drawDecals(
 ): void {
   for (const d of map.decals ?? []) {
     if (d.layer !== which) continue;
-    if (layer) {
-      const n = nearestNode(map, d.x, d.y);
-      if (!n || !layer.nodeIds.has(n.id)) continue;
-    }
+    if (layer && !layerOwnsDecoration(layer, d.anchor)) continue;
     if (d.kind === 'stamp' && d.stamp) {
       drawStamp(ctx, d.stamp, d.x, d.y, d.scale, d.rot, d.seed, glowSpots);
     } else if (d.kind === 'image') {
