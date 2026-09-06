@@ -271,4 +271,11 @@
       }
     }
   }
+
+  <!-- The Queen's Awakening: the sealed gate grinds open and the brood spills
+       out. Fires for every player on the tick the third Sigil is raised, over
+       whatever screen they happen to be on. -->
+  @if (gatesOpen()) {
+    <app-undercity-gates-open (done)="closeGates()" />
+  }
 </div>

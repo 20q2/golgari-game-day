@@ -2,19 +2,22 @@ import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ColorTestComponent } from '../color-test/color-test.component';
 import { MysteryFxLabComponent } from './mystery-fx-lab.component';
+import { CinematicLabComponent } from './cinematic-lab.component';
 
-type LabTab = 'sprite' | 'fx';
+type LabTab = 'sprite' | 'fx' | 'cine';
 
 /**
  * Undercity Lab (route: /undercity/test) — a dev-only sandbox shell.
- * Two tabs: the sprite-recolor sandbox (ColorTestComponent) and the
- * mystery-event FX previewer (MysteryFxLabComponent). Nothing here touches
- * game state. Localhost-gated in the navbar.
+ * Three tabs: the sprite-recolor sandbox (ColorTestComponent), the
+ * mystery-event FX previewer (MysteryFxLabComponent), and the cinematic
+ * previewer (CinematicLabComponent) for the full-screen scenes that are
+ * otherwise gated behind rare game states. Nothing here touches game state.
+ * Localhost-gated in the navbar.
  */
 @Component({
   selector: 'app-undercity-lab',
   standalone: true,
-  imports: [CommonModule, ColorTestComponent, MysteryFxLabComponent],
+  imports: [CommonModule, ColorTestComponent, MysteryFxLabComponent, CinematicLabComponent],
   template: `
     <div class="lab">
       <div class="tabs">
@@ -24,6 +27,9 @@ type LabTab = 'sprite' | 'fx';
         <button class="tab" [class.active]="tab() === 'fx'" (click)="tab.set('fx')">
           Mystery FX
         </button>
+        <button class="tab" [class.active]="tab() === 'cine'" (click)="tab.set('cine')">
+          Cinematics
+        </button>
       </div>
       <div class="panel">
         @switch (tab()) {
@@ -32,6 +38,9 @@ type LabTab = 'sprite' | 'fx';
           }
           @case ('fx') {
             <app-undercity-mystery-fx-lab />
+          }
+          @case ('cine') {
+            <app-undercity-cinematic-lab />
           }
         }
       </div>

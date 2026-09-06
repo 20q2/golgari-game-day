@@ -243,7 +243,11 @@ MARKET_MAX_LISTINGS = 10      # active listings per seller
 RIDER_SCALE = {
     # rider          {1: common, 2: rare, 3: legendary, 4: mythic}   # unit / anchor to today's value
     'barbed':        {1: 1,    2: 2,    3: 3,    4: 4},     # rot stacks on Aggress (T1 today=1)
-    'bloodfang':     {1: 0.40, 2: 0.50, 3: 0.60, 4: 0.70},  # heal frac of Aggress-win dmg (T1 today=0.40)
+    # Heal frac of Aggress-win dmg. Cut to roughly a third of the original
+    # 0.40/0.50/0.60/0.70 ladder: sustain that refills faster than a fight can
+    # drain it made every other defensive rider pointless at every tier, so the
+    # bloodfang is now a trickle you build around, not a win condition.
+    'bloodfang':     {1: 0.13, 2: 0.17, 3: 0.20, 4: 0.23},
     'deep_biter':    {1: 0.35, 2: 0.50, 3: 0.70, 4: 0.90},  # +win MULTIPLIER (T2 today=0.50; T3 buffed)
     'rabid':         {1: 1,    2: 2,    3: 3,    4: 4},      # +ATK ramp per Aggress win (T2 today=2; T3 buffed)
     'gutcleaver':    {1: 0.35, 2: 0.50, 3: 0.70, 4: 0.90},  # +win multiplier vs a foe under
@@ -387,12 +391,17 @@ AWAKENING_XP_BUFF = 0.50
 # is the load-bearing rule, and it is what puts a level-3 player in the finale on
 # the same tick as the leader. They are opportunity, not menace: they never squat
 # on shops, choke gates, or block dungeon mouths.
-SWARM_SEED_PER_PLAYER = 1     # swarms seeded near each living player at release
+# The release is deliberately a flood, not a sprinkle: at one swarm per player
+# the brood was invisible on a big board and Royal Jelly — the only currency that
+# buys a challenger their kit for the Queen — dried up after a couple of kills.
+SWARM_SEED_PER_PLAYER = 3     # swarms seeded near each living player at release
 SWARM_SEED_RADIUS = 3         # board spaces — "in reach" is about one roll
-SWARM_SPLIT_MINUTES = 20      # the brood copies itself on this window. Wall clock
+SWARM_SPLIT_MINUTES = 8       # the brood copies itself on this window. Wall clock
                               # is correct: this is SHARED world state, not a
-                              # player's own action economy (cf. the step-timer rule)
-SWARM_MAX_NODES = 12          # ceiling so the board never saturates
+                              # player's own action economy (cf. the step-timer rule).
+                              # Short enough that Jelly keeps trickling in while
+                              # players work their way toward the island.
+SWARM_MAX_NODES = 36          # ceiling so the board never saturates
 SWARM_JELLY_DROP = 3          # Royal Jelly per swarm felled
 
 # ── The back room ────────────────────────────────────────────────────────────

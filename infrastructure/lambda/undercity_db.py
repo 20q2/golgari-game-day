@@ -2777,7 +2777,9 @@ def handle_state(table, query_params):
         # She is always whole now — a personal trial has no pool to report.
         'boss': {'hp': data.ROT_SOVEREIGN['hp'], 'maxHp': data.ROT_SOVEREIGN['hp']},
         'finale': _finale_public(table, sid),
-        'swarm': {'nodes': _swarm_nodes(table, sid),
+        # Ticked here too, not just on landing, so the brood visibly spreads on
+        # the board for players who are watching rather than moving.
+        'swarm': {'nodes': _tick_swarm(table, sid),
                   'name': data.SCOURING_SWARM['name'],
                   'spriteId': data.SCOURING_SWARM['sprite']},
         'backRoom': _back_room(table, sid),
@@ -4536,8 +4538,7 @@ def _resolve_space(table, sid, doc, node, prev):
     # Scouring Swarm overlay: Savra's brood physically holds the tile, so it
     # overrides the space's normal event. Split lazily first so a swarm that was
     # due to spill has done so before we look.
-    _tick_swarm(table, sid)
-    if node in _swarm_nodes(table, sid):
+    if node in _tick_swarm(table, sid):
         spec = data.SCOURING_SWARM
         npc = engine.npc_from_spec(spec)
         npc['spriteId'] = spec['sprite']
@@ -5395,14 +5396,25 @@ def _awakened(table, sid):
 
 
 def _tick_swarm(table, sid):
-    """Split the brood if its window has elapsed. Lazy, like every other shared
-    world clock here — there is no server tick, so the paths that touch the
-    swarm advance it."""
-    rec = _get(table, _season_pk(sid), 'SWARM') or {}
-    if not rec.get('nodes') or _now() < (rec.get('splitAt') or ''):
-        return False
-    _split_swarm(table, sid)
-    return True
+    """Advance the brood's shared clock and return the nodes it now holds. Lazy,
+    like every other shared world clock here — there is no server tick, so the
+    paths that touch the swarm advance it.
+
+    Two ways it grows. On its split window it copies itself outward. If players
+    have cleared it off the board entirely it reseeds immediately, without
+    waiting out the window: Royal Jelly is the road into the finale, so the
+    brood running dry would quietly close that road for the rest of the night.
+    An absent record means the Awakening hasn't fired, and there is nothing to
+    advance."""
+    rec = _get(table, _season_pk(sid), 'SWARM')
+    if not rec:
+        return []
+    nodes = list(rec.get('nodes') or [])
+    if not nodes:
+        return _seed_swarm(table, sid)
+    if _now() < (rec.get('splitAt') or ''):
+        return nodes
+    return _split_swarm(table, sid)
 
 
 def _swarm_nodes(table, sid):
@@ -5420,10 +5432,13 @@ def _set_swarm(table, sid, nodes, split_at=None):
 def _swarmable_nodes(table, sid):
     """Where a swarm may sit. They are opportunity, not menace, so they never
     take a facility hostage — gates, shops, the boss island and dungeon mouths
-    are all off limits."""
+    are all off limits. The depths are off limits too: the brood is a surface
+    event you choose to walk into, and an elite lying in wait in an unlit dungeon
+    corridor is an ambush, which is the opposite of the point."""
     nodes = _season_map(table, sid)
     banned = {'gate', 'boss', 'shop', 'barrier', 'lair', 'vault', 'ladder'}
-    return [nid for nid, n in nodes.items() if n.get('type') not in banned]
+    return [nid for nid, n in nodes.items()
+            if n.get('type') not in banned and n.get('region') != 'depths']
 
 
 def _seed_swarm(table, sid):

@@ -853,19 +853,34 @@
                   </span>
                 </span>
                 <span class="shop-desc">{{ grimoireSpellList(g) }}</span>
-                @if (shopMode() === 'courier') {
-                  <button class="uc-btn shop-buy" [class.staged]="isStaged('grimoire:' + g.id)"
-                          [disabled]="busy() || scoutOnCooldown() || ownsGrimoire(g.id)"
-                          (click)="stageGrimoire(g)">
-                    @if (isStaged('grimoire:' + g.id)) { In cart }
-                    @else if (ownsGrimoire(g.id)) { Owned }
-                    @else { Deliver <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ g.cost }} }
+                <span class="shop-buy-cell">
+                  <button
+                    type="button"
+                    class="uc-btn grim-info-btn"
+                    title="What do these spells do?"
+                    aria-label="Spell details"
+                    (click)="grimoireInfo.set(g)"
+                  >
+                    <mat-icon class="mi">info_outline</mat-icon>
                   </button>
-                  @if (scoutOnCooldown() && !ownsGrimoire(g.id)) { <span class="block-reason">Your scout is resting.</span> }
-                } @else {
-                  <button class="uc-btn shop-buy" [disabled]="busy() || ownsGrimoire(g.id) || !canAfford(g.cost)" (click)="buy(g)">
-                    {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
-                  </button>
+                  @if (shopMode() === 'courier') {
+                    <button class="uc-btn shop-buy" [class.staged]="isStaged('grimoire:' + g.id)"
+                            [disabled]="busy() || scoutOnCooldown() || ownsGrimoire(g.id)"
+                            (click)="stageGrimoire(g)">
+                      @if (isStaged('grimoire:' + g.id)) { In cart }
+                      @else if (ownsGrimoire(g.id)) { Owned }
+                      @else { Deliver <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" /> {{ g.cost }} }
+                    </button>
+                  } @else {
+                    <button class="uc-btn shop-buy" [disabled]="busy() || ownsGrimoire(g.id) || !canAfford(g.cost)" (click)="buy(g)">
+                      {{ g.cost }} <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
+                    </button>
+                  }
+                </span>
+                <!-- Stays a direct grid child so .block-reason's grid-column:1/-1
+                     still spans the whole row instead of squeezing into the cell. -->
+                @if (shopMode() === 'courier' && scoutOnCooldown() && !ownsGrimoire(g.id)) {
+                  <span class="block-reason">Your scout is resting.</span>
                 }
               </div>
             } @empty {
@@ -1408,7 +1423,7 @@
       <div class="uc-modal" (click)="$event.stopPropagation()">
         <h3><mat-icon class="mi">auto_fix_high</mat-icon> Cast a Spell</h3>
         @for (sp of castableSpells(); track sp.id) {
-          <div class="shop-row spell-cast-row">
+          <div class="shop-row spell-cast-row" [class.cooling]="!spellReady(sp.id)">
             <span class="spell-cast-name">
               <mat-icon class="mi">{{ sp.icon }}</mat-icon> {{ sp.name }}
             </span>
@@ -1416,7 +1431,23 @@
               @if (spellPowerLabel(sp, playerLevel()); as pw) {
                 <span class="spell-power-chip">{{ pw }}</span>
               }
+              <span
+                class="spell-cost-chip"
+                [title]="'Recharges after ' + stepCost(sp) + ' spaces walked'"
+              >
+                <mat-icon class="mi">directions_walk</mat-icon>{{ stepCost(sp) }}
+              </span>
               <em>{{ sp.desc }}</em>
+              @if (!spellReady(sp.id)) {
+                <span class="spell-cool">
+                  <span class="spell-cool-text">
+                    <mat-icon class="mi">directions_walk</mat-icon>
+                    Walk {{ cooldownLeft(sp.id) }} more
+                    {{ cooldownLeft(sp.id) === 1 ? 'space' : 'spaces' }}
+                  </span>
+                  <span class="spell-cool-bar"><i [style.width.%]="cooldownPct(sp) * 100"></i></span>
+                </span>
+              }
             </span>
             <button
               class="uc-btn shop-buy"
@@ -1445,6 +1476,40 @@
           }
         }
         <button class="uc-btn close-btn" (click)="closeSpellPickers()">Never mind</button>
+      </div>
+    </div>
+  }
+
+  <!-- Grimoire spell details: shop rows only have room for names, so this is
+       where a shopper reads what a tome actually does before buying it. -->
+  @if (grimoireInfo(); as g) {
+    <div class="uc-modal-backdrop" (click)="grimoireInfo.set(null)">
+      <div class="uc-modal" (click)="$event.stopPropagation()">
+        <h3><mat-icon class="mi">auto_stories</mat-icon> {{ g.name }}</h3>
+        <p class="grim-info-blurb">{{ g.desc }}</p>
+        @for (sp of grimoireSpells(g); track sp.id) {
+          <div class="grim-info-row">
+            <mat-icon class="mi grim-info-glyph">{{ sp.icon }}</mat-icon>
+            <span class="grim-info-body">
+              <span class="grim-info-line">
+                <span class="grim-info-name">{{ sp.name }}</span>
+                @if (spellPowerLabel(sp, playerLevel()); as pw) {
+                  <span class="spell-power-chip">{{ pw }}</span>
+                }
+                <span
+                  class="spell-cost-chip"
+                  [title]="'Recharges after ' + stepCost(sp) + ' spaces walked'"
+                >
+                  <mat-icon class="mi">directions_walk</mat-icon>{{ stepCost(sp) }}
+                </span>
+              </span>
+              <span class="grim-info-desc">{{ sp.desc }}</span>
+            </span>
+          </div>
+        } @empty {
+          <p class="muted">This tome's pages are blank.</p>
+        }
+        <button class="uc-btn close-btn" (click)="grimoireInfo.set(null)">Close</button>
       </div>
     </div>
   }

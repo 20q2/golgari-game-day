@@ -918,7 +918,8 @@ def pet_combat(pet: dict, level_bonus: int = 0) -> dict:
     if not cfg:
         return out
     lvl = int(pet.get('level', 1)) + level_bonus
-    chance = cfg['chance_base'] + cfg['chance_per_lvl'] * (lvl - 1)
+    chance = min(cfg['chance_base'] + cfg['chance_per_lvl'] * (lvl - 1),
+                 cfg.get('chance_max', 1.0))
     flat = int(cfg['flat_base'] + cfg['flat_per_lvl'] * (lvl - 1))
     if role == 'attack':
         out['followup_chance'] = chance

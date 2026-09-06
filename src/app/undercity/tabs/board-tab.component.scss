@@ -2254,6 +2254,156 @@
 }
 
 // Level-scaled spell magnitude chip in the cast picker (spell-scaling plan).
+// Step cost to recharge a spell. Deliberately quieter than .spell-power-chip:
+// the magnitude is the headline, the cost is the qualifier. Mirrors the chip on
+// the creature tab's Spells list so both menus speak one visual language.
+.spell-cost-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 4px;
+  padding: 1px 7px 1px 5px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #cfe3c0;
+  background: rgba(154, 194, 110, 0.16);
+  border: 1px solid rgba(154, 194, 110, 0.34);
+  vertical-align: middle;
+
+  .mi {
+    font-size: 0.8rem;
+    width: 0.8rem;
+    height: 0.8rem;
+  }
+}
+
+// A spell still recharging: say how much walking is left and show it draining,
+// so waiting reads as progress instead of a dead button.
+.spell-cast-row.cooling {
+  .spell-cast-name,
+  .spell-cast-desc em {
+    opacity: 0.55;
+  }
+}
+
+.spell-cool {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.spell-cool-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #d9b061;
+
+  .mi {
+    font-size: 0.85rem;
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+}
+
+.spell-cool-bar {
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(217, 176, 97, 0.2);
+  overflow: hidden;
+
+  i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #d9b061;
+    transition: width 0.25s ease;
+  }
+}
+
+// Grimoire shop rows pair a small info button with the buy/cost button.
+.shop-buy-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.grim-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  min-width: 0;
+  line-height: 1;
+  color: #9ac26e;
+  background: rgba(154, 194, 110, 0.12);
+  border: 1px solid rgba(154, 194, 110, 0.3);
+
+  .mi {
+    font-size: 1.05rem;
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+}
+
+// Grimoire spell-details popover.
+.grim-info-blurb {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: #9aa79a;
+}
+
+.grim-info-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 7px 0;
+  border-top: 1px solid rgba(154, 194, 110, 0.14);
+}
+
+.grim-info-glyph {
+  color: #9ac26e;
+  font-size: 1.15rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 1px;
+}
+
+.grim-info-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.grim-info-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.grim-info-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #e8f0e2;
+}
+
+.grim-info-desc {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #9aa79a;
+}
+
 .spell-power-chip {
   display: inline-block;
   margin: 0 4px;

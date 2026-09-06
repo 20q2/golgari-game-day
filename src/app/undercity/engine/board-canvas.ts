@@ -1944,10 +1944,16 @@ export class BoardCanvas {
   private veil: HTMLCanvasElement | null = null;
 
   /**
-   * Unexplored gloom over a dungeon: a dark wash with soft light holes at lit
-   * nodes. Composited on a scratch canvas (in screen space) so cutting the
+   * Unexplored gloom over a dungeon: a pitch-black wash with soft light holes at
+   * lit nodes. Composited on a scratch canvas (in screen space) so cutting the
    * holes erases only the veil — never the terrain underneath — then blitted
    * over the frame at identity transform.
+   *
+   * The veil is fully opaque on purpose. At 82% the baked terrain still showed
+   * through, so the causeways between chambers sketched the whole pocket's
+   * layout before you had walked a step of it and a dungeon could be beelined.
+   * Total darkness makes the crawl an actual search, and it is what gives the
+   * Darkvision perk and the illuminating gear set something to be worth.
    */
   private drawGloomVeil(): void {
     if (!this.veil) this.veil = document.createElement('canvas');
@@ -1962,7 +1968,7 @@ export class BoardCanvas {
     // Draw the veil in logical coords (the blit below is device-pixel 1:1).
     vc.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     vc.clearRect(0, 0, this.viewW, this.viewH);
-    vc.fillStyle = 'rgba(4, 3, 6, 0.82)';
+    vc.fillStyle = 'rgb(4, 3, 6)';
     vc.fillRect(0, 0, this.viewW, this.viewH);
     vc.globalCompositeOperation = 'destination-out';
     for (const n of this.map.nodes) {
@@ -2699,7 +2705,9 @@ export class BoardCanvas {
     const art = this.enemyArt(sw.spriteId);
     for (const id of sw.nodes) {
       const n = this.nodeMap.get(id);
-      if (!n || !this.inActive(id)) continue;
+      // isLit matters because the dungeon veil is opaque: anything drawn over it
+      // would float in the dark and give away an unexplored node's position.
+      if (!n || !this.inActive(id) || !this.isLit(id)) continue;
       // Phase each swarm off its own node id so the brood doesn't pulse in
       // lockstep — a hash of the id, not an index, so it stays put as the
       // footprint grows and shrinks around it.
@@ -2738,7 +2746,7 @@ export class BoardCanvas {
     const er = this.enraged;
     if (!er || !er.node) return;
     const n = this.nodeMap.get(er.node);
-    if (!n || !this.inActive(n.id)) return;
+    if (!n || !this.inActive(n.id) || !this.isLit(n.id)) return;
     const ctx = this.ctx;
     const elapsed = (ts - this.startTime) / 1000;
     // Skitter: horizontal drift, a bob at twice the rate, and a facing flip that

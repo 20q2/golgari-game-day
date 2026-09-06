@@ -26,6 +26,7 @@ import { PlazaTabComponent } from './tabs/plaza-tab.component';
 import { LogTabComponent } from './tabs/log-tab.component';
 import { HostPanelComponent } from './host/host-panel.component';
 import { CeremonyComponent } from './ceremony/ceremony.component';
+import { GatesOpenComponent } from './gates/gates-open.component';
 
 type Tab = 'board' | 'creature' | 'gear' | 'plaza' | 'log';
 
@@ -42,6 +43,7 @@ type Tab = 'board' | 'creature' | 'gear' | 'plaza' | 'log';
     LogTabComponent,
     HostPanelComponent,
     CeremonyComponent,
+    GatesOpenComponent,
   ],
   templateUrl: './undercity-page.component.html',
   styleUrls: ['./undercity-page.component.scss'],
@@ -263,6 +265,15 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   private prevLevel: number | null = null;
   /** Last castRequest id acted on, so the tab-switch fires once per request. */
   private lastCastReqId = 0;
+
+  /** The Queen's Awakening cinematic — the sealed gate splitting open. */
+  protected readonly gatesOpen = signal(false);
+  /** Last bossPhase we've seen; null before the first read so joining a night
+   * that is ALREADY past its Awakening never replays the cinematic — only a
+   * live false→true transition does. */
+  private prevBossPhase: boolean | null = null;
+  /** The Awakening fired while we were mid-battle; play it once we're clear. */
+  private pendingGates = false;
   /** Levels gained but not yet celebrated — banked while a battle is in
    * progress so the fanfare pops once the victory screen closes. */
   private pendingLevels = 0;
@@ -331,6 +342,34 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
       ) {
         this.levelUpCelebration.set({ level: this.prevLevel, gained: this.pendingLevels });
         this.pendingLevels = 0;
+      }
+    });
+
+    // The Awakening watcher: bossPhase is a one-way season flag, so the moment
+    // it flips true every player still on the page gets the gate cinematic —
+    // the board event and push both announce it, but this is the night's pivot
+    // and a log line is easy to miss mid-turn. Held back until we're clear of
+    // battle so it never lands on top of a fight.
+    effect(() => {
+      const season = this.store.season();
+      const inBattle = this.inBattle();
+      if (!season) {
+        this.prevBossPhase = null;
+        this.pendingGates = false;
+        return;
+      }
+      const awake = season.bossPhase === true;
+      if (this.prevBossPhase === null) {
+        this.prevBossPhase = awake;
+      } else if (awake && !this.prevBossPhase) {
+        this.pendingGates = true;
+        this.prevBossPhase = awake;
+      } else {
+        this.prevBossPhase = awake;
+      }
+      if (this.pendingGates && !inBattle) {
+        this.pendingGates = false;
+        this.gatesOpen.set(true);
       }
     });
 
@@ -451,6 +490,11 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
   /** Dismiss the level-up fanfare without navigating. */
   closeLevelUp(): void {
     this.levelUpCelebration.set(null);
+  }
+
+  /** The Awakening cinematic has played out (or been tapped through). */
+  closeGates(): void {
+    this.gatesOpen.set(false);
   }
 
   /** "Upgrade Stats" — close the fanfare and jump to the Creature tab, landing

@@ -212,9 +212,14 @@ export function economySporeCap(level: number): number {
 
 // ── Combat magnitudes (mirror undercity_data.PET_COMBAT) ─────────────────────
 export const PET_COMBAT = {
-  attack: { chanceBase: 0.1, chancePerLvl: 0.07, flatBase: 2, flatPerLvl: 0.75 },
-  defend: { chanceBase: 0.1, chancePerLvl: 0.07, flatBase: 2, flatPerLvl: 0.75 },
+  attack: { chanceBase: 0.5, chancePerLvl: 0.04, chanceMax: 0.85, flatBase: 2, flatPerLvl: 0.75 },
+  defend: { chanceBase: 0.5, chancePerLvl: 0.04, chanceMax: 0.85, flatBase: 2, flatPerLvl: 0.75 },
 } as const;
+
+/** Proc chance for a combat pet at `level`, clamped the way the server does. */
+function petProcChance(c: (typeof PET_COMBAT)['attack'], level: number): number {
+  return Math.min(c.chanceBase + c.chancePerLvl * (level - 1), c.chanceMax);
+}
 
 // Forage (Mouse) yields (mirror undercity_config PET_MOUSE_*).
 export const PET_MOUSE_SPORES_BASE = 8;
@@ -273,14 +278,14 @@ export function petAbilityStats(pet: Pet): { label: string; value: string }[] {
     case 'attack': {
       const c = PET_COMBAT.attack;
       return [
-        { label: 'Strike chance', value: pct(c.chanceBase + c.chancePerLvl * (lvl - 1)) },
+        { label: 'Strike chance', value: pct(petProcChance(c, lvl)) },
         { label: 'Bonus damage', value: `${Math.floor(c.flatBase + c.flatPerLvl * (lvl - 1))}` },
       ];
     }
     case 'defend': {
       const c = PET_COMBAT.defend;
       return [
-        { label: 'Deflect chance', value: pct(c.chanceBase + c.chancePerLvl * (lvl - 1)) },
+        { label: 'Deflect chance', value: pct(petProcChance(c, lvl)) },
         { label: 'Damage blocked', value: `${Math.floor(c.flatBase + c.flatPerLvl * (lvl - 1))}` },
       ];
     }

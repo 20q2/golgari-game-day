@@ -1743,11 +1743,22 @@ def test_pet_combat_symmetric_scaling():
     from undercity_engine import pet_combat
     a1 = pet_combat({'species': 'baby_leyline_prowler', 'tier': 1, 'level': 1})  # attack
     a9 = pet_combat({'species': 'baby_leyline_prowler', 'tier': 4, 'level': 9})
-    assert abs(a1['followup_chance'] - 0.10) < 1e-9 and a1['followup_flat'] == 2
-    assert abs(a9['followup_chance'] - 0.66) < 1e-9 and a9['followup_flat'] == 8
+    # A fresh companion procs on half its owner's decisive rounds; the ladder
+    # then climbs gently to 0.82 at the Mythic level cap.
+    assert abs(a1['followup_chance'] - 0.50) < 1e-9 and a1['followup_flat'] == 2
+    assert abs(a9['followup_chance'] - 0.82) < 1e-9 and a9['followup_flat'] == 8
     assert 'followup_mult' not in a9                     # multiplier is gone
     d9 = pet_combat({'species': 'decimator_beetle', 'tier': 4, 'level': 9})  # defend
-    assert abs(d9['deflect_chance'] - 0.66) < 1e-9 and d9['deflect_flat'] == 8
+    assert abs(d9['deflect_chance'] - 0.82) < 1e-9 and d9['deflect_flat'] == 8
+
+
+def test_pet_combat_chance_is_capped_below_certainty():
+    """Even a maxed Mythic riding a Gorgon's Stonewright level bonus stays short
+    of a guaranteed proc — the companion is an edge, never a second attack."""
+    from undercity_engine import pet_combat
+    maxed = pet_combat({'species': 'baby_leyline_prowler', 'tier': 4, 'level': 9},
+                       level_bonus=1)
+    assert abs(maxed['followup_chance'] - 0.85) < 1e-9
 
 
 def test_pet_combat_defend_and_noncombat():

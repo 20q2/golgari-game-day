@@ -1564,9 +1564,16 @@ BARRIER_GUARDIANS = {
 }
 
 # Mini-bosses at the lairs. First kill per player pays `first`; repeats pay
-# `repeat`. Tuned so a level-6-7 creature kills them inside the 6-round cap
-# (see the tier-balance tests). The five biome-dungeon lairs grant Guild
-# Sigils on first clear; lair_titan is side content.
+# `repeat`. The five biome-dungeon lairs grant Guild Sigils on first clear;
+# lair_titan and n288 are the respawning ruin nests (side content).
+#
+# The five SIGIL lairs are the night's set-piece fights, so they are built to
+# last: ~2x the HP of the ruin nests and ~half the swing. A Sigil guardian that
+# died in three exchanges never got to show its passive, and losing one felt
+# like a dice accident rather than a fight — the long, low-damage shape gives
+# doom_counters/dredge/grave_growth room to actually ramp and gives the player
+# rounds to answer them. The ruin nests keep their old brisk stat line: they are
+# a farm on a respawn timer, not a set piece.
 _LAIR_REWARD = {'first': {'spores': 60, 'xp': 35}, 'repeat': {'spores': 15, 'xp': 12}}
 LAIR_BOSSES = {
     'lair_titan': {'id': 'lord_of_extinction', 'name': 'Lord of Extinction',
@@ -1576,23 +1583,23 @@ LAIR_BOSSES = {
              'hp': 46, 'atk': 15, 'def': 6, 'spd': 5,
              'personality': 'brute', 'bluff': 0.35, **_LAIR_REWARD},
     'city_lair': {'id': 'ishkanah', 'name': 'Ishkanah, Grafwidow',
-                  'hp': 42, 'atk': 14, 'def': 5, 'spd': 8,
+                  'hp': 84, 'atk': 7, 'def': 5, 'spd': 8,
                   'personality': 'trickster', 'bluff': 0.35,
                   'passives': ['web_venom'], **_LAIR_REWARD},
     'cavern_lair': {'id': 'sarulf', 'name': 'Sarulf, Realm Eater',
-                    'hp': 44, 'atk': 13, 'def': 6, 'spd': 7,
+                    'hp': 88, 'atk': 7, 'def': 6, 'spd': 7,
                     'personality': 'balanced', 'bluff': 0.35,
                     'passives': ['doom_counters'], **_LAIR_REWARD},
     'bog_lair': {'id': 'gitrog_monster', 'name': 'The Gitrog Monster',
-                 'hp': 48, 'atk': 12, 'def': 7, 'spd': 5,
+                 'hp': 96, 'atk': 6, 'def': 7, 'spd': 5,
                  'personality': 'turtle', 'bluff': 0.35,
                  'passives': ['dredge'], **_LAIR_REWARD},
     'bone_lair': {'id': 'skullbriar', 'name': 'Skullbriar, the Walking Grave',
-                  'hp': 40, 'atk': 15, 'def': 6, 'spd': 6,
+                  'hp': 80, 'atk': 8, 'def': 6, 'spd': 6,
                   'personality': 'brute', 'bluff': 0.35,
                   'passives': ['grave_growth'], **_LAIR_REWARD},
     'garden_lair': {'id': 'slimefoot', 'name': 'Slimefoot, the Stowaway',
-                    'hp': 46, 'atk': 13, 'def': 7, 'spd': 4,
+                    'hp': 92, 'atk': 7, 'def': 7, 'spd': 4,
                     'personality': 'turtle', 'bluff': 0.35,
                     'passives': ['swarm'], **_LAIR_REWARD},
 }
@@ -2070,11 +2077,14 @@ PET_HATCH = {
 }
 
 # Combat-pet magnitudes, keyed by ROLE (both attack species share one profile,
-# both defend species another). Small and level-scaled.
+# both defend species another). A fresh companion procs on half its owner's
+# decisive rounds — at the old 10% a level-1 pet did nothing often enough that
+# players read the whole role as broken. `chance_max` keeps even a maxed Mythic
+# (level 9, +1 from a Gorgon's Stonewright) short of a guaranteed proc.
 PET_COMBAT = {
-    'attack': {'chance_base': 0.10, 'chance_per_lvl': 0.07,
+    'attack': {'chance_base': 0.50, 'chance_per_lvl': 0.04, 'chance_max': 0.85,
                'flat_base': 2, 'flat_per_lvl': 0.75},
-    'defend': {'chance_base': 0.10, 'chance_per_lvl': 0.07,
+    'defend': {'chance_base': 0.50, 'chance_per_lvl': 0.04, 'chance_max': 0.85,
                'flat_base': 2, 'flat_per_lvl': 0.75},
 }
 

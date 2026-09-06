@@ -60,6 +60,7 @@ import {
   cooldownLeftSteps,
   spellCategoryStyle,
   spellPowerLabel,
+  spellStepCost,
 } from '../data/spells';
 import {
   GEAR_MAP,
@@ -701,6 +702,24 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return cooldownLeftSteps(this.store.you()?.spellCooldowns, spellId) === 0;
   }
 
+  /** Board spaces still owed on a spell (0 = ready). */
+  protected cooldownLeft(spellId: string): number {
+    return cooldownLeftSteps(this.store.you()?.spellCooldowns, spellId);
+  }
+
+  /** A spell's full step cost for this creature (Spell Haste applied). */
+  protected stepCost(sp: SpellInfo): number {
+    return spellStepCost(sp, this.store.you()?.passives ?? []);
+  }
+
+  /** How much of a recharge is already walked off, 0..1 — the draining bar on a
+   *  cooling row, so waiting reads as progress rather than a dead number. */
+  protected cooldownPct(sp: SpellInfo): number {
+    const total = this.stepCost(sp);
+    if (total <= 0) return 1;
+    return Math.max(0, Math.min(1, (total - this.cooldownLeft(sp.id)) / total));
+  }
+
   private closedBarrierIds(): string[] {
     return this.map.nodes
       .filter(
@@ -1048,6 +1067,16 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   protected grimoireSpellList(g: GrimoireInfo): string {
     return g.spells.map((s) => SPELL_MAP[s]?.name ?? s).join(', ');
+  }
+
+  /** The tome whose spell list is open in the shop's info popover (null = closed).
+   *  Shop rows only have room for spell NAMES, so this is where a shopper reads
+   *  what a book actually does before spending on it. */
+  protected readonly grimoireInfo = signal<GrimoireInfo | null>(null);
+
+  /** Full spell entries for a grimoire, for the info popover. */
+  protected grimoireSpells(g: GrimoireInfo): SpellInfo[] {
+    return g.spells.map((s) => SPELL_MAP[s]).filter(Boolean);
   }
 
   // ── Trading post (leave-one-take-one, any owned item) ───────────────────
@@ -2122,12 +2151,19 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
    *  `biome` (→ that lair's boss silhouette); a surface hazard carries a rolled
    *  `hazardOutcome` (→ one of the three generic effect faces). `hazardAvoid`
    *  (lucky|resist) says which no-harm wedge won; `hazardPerk` (Thick Hide
-   *  present) tells the wheel to paint the resist tease wedges. */
+   *  present) tells the wheel to paint the resist wedges. */
   private hazardWheelTarget(ev: SpaceEvent): HazardWheelTarget {
     const hasPerk = ev.hazardPerk === true;
     const avoid = ev.hazardAvoid;
     if (ev.biome && DUNGEONS[ev.biome]) {
-      return { mode: 'dungeon', bossId: DUNGEONS[ev.biome].lairNpcId, hasPerk, avoid };
+      const d = DUNGEONS[ev.biome];
+      return {
+        mode: 'dungeon',
+        bossId: d.lairNpcId,
+        hazardLabel: d.hazardName,
+        hasPerk,
+        avoid,
+      };
     }
     return { mode: 'surface', outcome: avoid ? 'safe' : ev.hazardOutcome, hasPerk, avoid };
   }

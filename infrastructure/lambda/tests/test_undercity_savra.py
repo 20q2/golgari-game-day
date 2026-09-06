@@ -222,6 +222,51 @@ def test_the_swarm_copies_itself_but_respects_its_ceiling(table):
     assert len(db._swarm_nodes(table, sid)) <= data.SWARM_MAX_NODES
 
 
+def test_the_release_seeds_several_swarms_per_player(table):
+    """The Awakening is a flood, not a sprinkle — each player gets a handful of
+    swarms in reach so Royal Jelly is actually farmable."""
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    nodes = db._season_map(table, sid)
+
+    alex = db._get_player(table, sid, 'user-alex')
+    alex['poiClaims'] = sorted(data.SIGIL_LAIRS)[:data.SIGILS_REQUIRED]
+    db._maybe_awaken(table, sid, alex)
+
+    doc = db._get_player(table, sid, 'user-alex')
+    near = [n for n in db._swarm_nodes(table, sid)
+            if db.engine.board_distance(nodes, doc['position'], n,
+                                        data.SWARM_SEED_RADIUS, set()) is not None]
+    assert len(near) >= data.SWARM_SEED_PER_PLAYER > 1
+
+
+def test_a_brood_cleared_off_the_board_reseeds_at_once(table):
+    """Royal Jelly is the only road into the finale, so wiping the brood must not
+    close that road for the rest of the night. An emptied brood comes back on the
+    next tick without waiting out the split window."""
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    alex = db._get_player(table, sid, 'user-alex')
+    alex['poiClaims'] = sorted(data.SIGIL_LAIRS)[:data.SIGILS_REQUIRED]
+    db._maybe_awaken(table, sid, alex)
+
+    # Players fell every last swarm; the split window is still a way off.
+    db._set_swarm(table, sid, [])
+    assert db._swarm_nodes(table, sid) == []
+
+    regrown = db._tick_swarm(table, sid)
+    assert regrown, 'the Queen sends more the moment the board is clear'
+    assert db._swarm_nodes(table, sid) == sorted(regrown)
+
+
+def test_the_swarm_does_not_stir_before_the_awakening(table):
+    """No SWARM record means the rot-wards still hold — nothing to advance."""
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    assert db._tick_swarm(table, sid) == []
+    assert db._swarm_nodes(table, sid) == []
+
+
 def test_landing_on_a_swarm_fights_it_and_the_kill_clears_the_node(table, monkeypatch):
     """A swarm overrides the tile's normal event. Felling it consumes that node —
     the brood only grows back through its split window."""
