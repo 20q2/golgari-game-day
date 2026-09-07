@@ -744,3 +744,67 @@ def test_longstride_does_not_apply_to_a_blink(table):
     assert status == 200
     assert resp['roll']['value'] == 4
     assert 'combined' not in resp['roll']
+
+
+def test_pm_values_includes_the_combined_total():
+    assert db._pm_values({'value': 4, 'values': [4, 5], 'combined': 9}) == [4, 5, 9]
+
+
+def test_pm_values_without_longstride():
+    assert db._pm_values({'value': 4, 'values': [4, 5]}) == [4, 5]
+    assert db._pm_values({'value': 3}) == [3]
+
+
+def test_move_accepts_a_combined_length_walk(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 24
+    db._put_player(table, doc)
+    # 1 + 1 = 2, so the combined walk is a short, easy-to-construct two-hopper.
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: 1)
+    status, resp = act(table, 'roll')
+    assert status == 200
+    assert resp['roll']['combined'] == 2
+
+    pos_doc = db._get_player(table, sid, 'user-alex')
+    pos = pos_doc['position']
+    closed = db._stop_nodes(table, sid, pos_doc)
+    blocked = db._blocked_nodes(pos_doc)
+    # Find a legal 2-hop route: a neighbour of an open neighbour, not the start.
+    route = None
+    for mid in data.MAP_NODES[pos]['neighbors']:
+        if mid in blocked or mid in closed:
+            continue
+        for end in data.MAP_NODES[mid]['neighbors']:
+            if end != pos and end not in blocked:
+                route = [pos, mid, end]
+                break
+        if route:
+            break
+    assert route, 'map has no open 2-hop route from the spawn gate'
+
+    status, resp = act(table, 'move', to=route[-1], path=route)
+    assert status == 200
+    assert db._get_player(table, sid, 'user-alex')['position'] == route[-1]
+
+
+def test_move_still_rejects_an_illegal_length(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 24
+    db._put_player(table, doc)
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: 1)
+    act(table, 'roll')          # values [1, 1], combined 2
+    pos = db._get_player(table, sid, 'user-alex')['position']
+    mid = data.MAP_NODES[pos]['neighbors'][0]
+    # A 3-hop path is neither face (1) nor the combined total (2).
+    for end in data.MAP_NODES[mid]['neighbors']:
+        if end == pos:
+            continue
+        for far in data.MAP_NODES[end]['neighbors']:
+            if far == mid:
+                continue
+            status, _ = act(table, 'move', to=far, path=[pos, mid, end, far])
+            assert status == 409
+            return
+    assert False, 'map has no 3-hop route to test rejection with'

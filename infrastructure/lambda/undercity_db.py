@@ -4053,6 +4053,21 @@ def _roll(table, sid, doc, payload):
     return _ok(doc, roll=roll)
 
 
+def _pm_values(pm):
+    """Every hop count a pending move may legally spend: the rolled face(s), plus
+    their combined total under Longstride (SPD-24). Used for walk validation, for
+    the ladder/tunnel resume that banks leftover steps, and for reach checks.
+
+    Deliberately NOT used by Fleetfoot's "showed a 1" test — a combined total is
+    not a die face, so a 1 there must never come from the sum.
+    """
+    vals = list(pm.get('values') or [pm['value']])
+    combined = pm.get('combined')
+    if combined:
+        vals.append(combined)
+    return vals
+
+
 def _move(table, sid, doc, payload):
     pm = doc.get('pendingMove')
     to = payload.get('to')
@@ -4071,7 +4086,7 @@ def _move(table, sid, doc, payload):
     # omits `path` keeps the old destination-only behavior — no pass-heal.
     path = payload.get('path')
     if path is not None:
-        allowed = set(pm.get('values') or [pm['value']])
+        allowed = set(_pm_values(pm))
         # Mirror _roll's destination pass: _stop_nodes (not the bare shared
         # barrier set) so an evolved unit's bridge mouths count as legal bonk
         # stops here too — otherwise a T2 that rolls past a mouth is offered it
@@ -4102,7 +4117,7 @@ def _move(table, sid, doc, payload):
     # top of _move, before pendingMove was cleared below.
     if space_event.get('type') == 'ladder':
         hops = (len(path) - 1) if path else pm['value']
-        allowed = [v for v in (pm.get('values') or [pm['value']]) if v >= hops]
+        allowed = [v for v in _pm_values(pm) if v >= hops]
         value_used = min(allowed) if allowed else pm['value']
         remaining = max(0, value_used - hops)
         if remaining > 0:
@@ -4120,7 +4135,7 @@ def _move(table, sid, doc, payload):
     # the store effect restarts the walk on the other side.
     if space_event.get('type') == 'tunnel':
         hops = (len(path) - 1) if path else pm['value']
-        allowed = [v for v in (pm.get('values') or [pm['value']]) if v >= hops]
+        allowed = [v for v in _pm_values(pm) if v >= hops]
         value_used = min(allowed) if allowed else pm['value']
         remaining = max(0, value_used - hops)
         if remaining > 0:
@@ -8710,7 +8725,7 @@ def _high_five(table, sid, doc, payload):
         if target.get('position') != at_node:
             return _err('You can only high-five someone on your space.')
         nodes = _season_map(table, sid)
-        reach = max(pm.get('values') or [pm['value']])
+        reach = max(_pm_values(pm))
         closed = _stop_nodes(table, sid, doc)
         blocked = _blocked_nodes(doc)
         if at_node not in nodes or engine.board_distance(
