@@ -520,3 +520,12 @@ def test_every_track_has_four_nodes_with_definitions():
         assert [t for t, _ in nodes] == [6, 12, 18, 24]
         for _, pid in nodes:
             assert data.PERKS[pid]['track'] == track
+
+
+def test_grindstone_extends_the_def_maxhp_stack():
+    def mh(dfn):
+        return engine.effective_stats({'atk': 1, 'def': dfn, 'spd': 1, 'maxHp': 30})['maxHp']
+    # Cumulative across the track: +5 / +15 / +30 / +55.
+    assert mh(18) == 60
+    assert mh(24) == 60 + data.GRINDSTONE_MAXHP
+    assert mh(24) == 85

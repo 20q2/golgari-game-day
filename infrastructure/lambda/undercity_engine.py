@@ -863,7 +863,7 @@ def effective_stats(player: dict) -> dict:
     # DEF track Max HP: each held node adds a flat, stacking Max HP bump. Derived
     # here (not persisted) so it appears in state and combat and vanishes cleanly
     # if a perk ever stops applying — same layer as gear maxHp. Cumulative:
-    # DEF 6 -> +5, DEF 12 -> +15, DEF 18 -> +30.
+    # DEF 6 -> +5, DEF 12 -> +15, DEF 18 -> +30, DEF 24 -> +55.
     perks = attribute_perks(player)
     if 'thick_hide' in perks:
         eff['maxHp'] += data.THICK_HIDE_MAXHP
@@ -871,6 +871,8 @@ def effective_stats(player: dict) -> dict:
         eff['maxHp'] += data.CARAPACE_GRIND_MAXHP
     if 'last_stand' in perks:
         eff['maxHp'] += data.LAST_STAND_MAXHP
+    if 'grindstone' in perks:
+        eff['maxHp'] += data.GRINDSTONE_MAXHP
     return eff
 
 
