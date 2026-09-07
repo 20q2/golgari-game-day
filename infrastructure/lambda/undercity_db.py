@@ -782,6 +782,7 @@ def _bt_snapshot(c):
         'rot_stacks': int(c.rot_stacks), 'first_win_used': bool(c.first_win_used),
         'dmg_penalty': int(c.dmg_penalty), 'reveal_next': bool(c.reveal_next),
         'aggress_ramp': int(c.aggress_ramp), 'feint_won': bool(c.feint_won),
+        'armor_strip': int(c.armor_strip),
         'growth_stacks': int(c.growth_stacks), 'doom_stacks': int(c.doom_stacks),
         'petrify': int(c.petrify),
         'pet_followup_chance': float(c.pet_followup_chance),
@@ -811,6 +812,7 @@ def _bt_to_combatant(s):
     c.dmg_penalty = int(s.get('dmg_penalty', 0))
     c.reveal_next = bool(s.get('reveal_next', False))
     c.aggress_ramp = int(s.get('aggress_ramp', 0))
+    c.armor_strip = int(s.get('armor_strip', 0))
     c.feint_won = bool(s.get('feint_won', False))
     c.growth_stacks = int(s.get('growth_stacks', 0))
     c.doom_stacks = int(s.get('doom_stacks', 0))
@@ -831,6 +833,9 @@ def _bt_store(c, rec_side):
     rec_side['atk'] = int(c.atk)
     rec_side['spd'] = int(c.spd)
     rec_side['aggress_ramp'] = int(c.aggress_ramp)
+    # Shellsplitter's accumulated armour strip must persist across the round
+    # boundary or the perk silently resets every request.
+    rec_side['armor_strip'] = int(c.armor_strip)
     rec_side['feint_won'] = bool(c.feint_won)
     rec_side['growth_stacks'] = int(c.growth_stacks)
     rec_side['doom_stacks'] = int(c.doom_stacks)

@@ -604,3 +604,29 @@ def test_no_strip_without_the_perk():
     entries = engine.resolve_round(me, foe, 'aggress', 'feint', 1, random.Random(3))
     assert me.armor_strip == 0
     assert not any(e.get('armorStrip') for e in entries)
+
+
+def test_armor_strip_survives_the_round_boundary():
+    # Battles are rebuilt from a stored snapshot on every request, so a strip that
+    # does not round-trip resets each round and the perk does nothing in-game.
+    doc = {'username': 'x', 'hp': 60, 'maxHp': 60, 'atk': 24, 'def': 5, 'spd': 5,
+           'stance': 'fight'}
+    c = db._combatant(doc)
+    assert c.has_perk('shellsplitter')
+    c.armor_strip = 6
+
+    snap = db._bt_snapshot(c)
+    assert snap['armor_strip'] == 6
+    assert db._bt_to_combatant(snap).armor_strip == 6
+
+    rec_side = {}
+    db._bt_store(c, rec_side)
+    assert rec_side['armor_strip'] == 6
+
+
+def test_armor_strip_absent_from_an_old_snapshot_defaults_to_zero():
+    doc = {'username': 'x', 'hp': 60, 'maxHp': 60, 'atk': 24, 'def': 5, 'spd': 5,
+           'stance': 'fight'}
+    snap = db._bt_snapshot(db._combatant(doc))
+    del snap['armor_strip']          # a battle stored before this feature shipped
+    assert db._bt_to_combatant(snap).armor_strip == 0
