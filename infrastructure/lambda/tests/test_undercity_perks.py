@@ -529,3 +529,28 @@ def test_grindstone_extends_the_def_maxhp_stack():
     assert mh(18) == 60
     assert mh(24) == 60 + data.GRINDSTONE_MAXHP
     assert mh(24) == 85
+
+
+def _strip_hit(strip, foe_dfn=12):
+    """One aggress swing at a foe, with `strip` already accumulated. Fixed seed,
+    so the only variable is the armour strip."""
+    import random
+    me = engine.Combatant(name='m', hp=40, max_hp=40, atk=12, dfn=5, spd=6)
+    me.armor_strip = strip
+    foe = engine.Combatant(name='f', hp=500, max_hp=500, atk=5, dfn=foe_dfn, spd=3)
+    return engine._base_hit(me, foe, random.Random(7), stance='aggress')
+
+
+def test_armor_strip_raises_damage_through_mitigation():
+    assert _strip_hit(0) < _strip_hit(6) < _strip_hit(12)
+
+
+def test_armor_strip_floors_at_zero_def():
+    # Stripping past the foe's DEF is capped by the existing max(0, ...) floor,
+    # so a full strip is its own ceiling — no negative-DEF damage bonus.
+    assert _strip_hit(12) == _strip_hit(30)
+
+
+def test_armor_strip_defaults_to_zero():
+    c = engine.Combatant(name='c', hp=10, max_hp=10, atk=1, dfn=1, spd=1)
+    assert c.armor_strip == 0

@@ -38,6 +38,7 @@ class Combatant:
     reveal_next: bool = field(default=False, repr=False)  # glint set a reveal
     struck_yet: bool = field(default=False, repr=False)
     aggress_ramp: int = field(default=0, repr=False)   # rabid: +dmg to Aggress, stacks
+    armor_strip: int = field(default=0, repr=False)    # shellsplitter: foe DEF stripped, stacks
     growth_stacks: int = field(default=0, repr=False)  # grave_growth ramp count
     doom_stacks: int = field(default=0, repr=False)    # doom_counters ramp count
     petrify: int = field(default=0, repr=False)        # Gorgon Stone Gaze: enemy freeze counter
@@ -171,12 +172,15 @@ def _base_hit(striker: Combatant, target: Combatant, rng, pierce: int = 0,
     from _swing_base (Aggress↔ATK, Guard↔DEF, Feint↔SPD, at per-stance weights).
     DEF is PROPORTIONAL mitigation: the swing is scaled by (1 - def/(def+K)),
     capped at MITIGATION_CAP so nothing is invincible; `pierce` lowers effective
-    DEF before the ratio. `ramp` is the escalation factor (>1 once a fight drags
+    DEF before the ratio. The striker's accumulated `armor_strip` (Shellsplitter,
+    ATK-24) is applied on top of `pierce` here rather than at each call site, so
+    every strike site inherits it and the existing floor doubles as its cap.
+    `ramp` is the escalation factor (>1 once a fight drags
     past FRENZY_START) that grows every creature's own swings so a slow fight
     still resolves. Floors at 1. A pending dmg_penalty (from a Serrated feint) is
     spent here on the striker's next hit."""
     raw = _swing_base(striker, stance) * ramp * rng.uniform(0.85, 1.15)
-    dfn = max(0, target.dfn - pierce)
+    dfn = max(0, target.dfn - pierce - striker.armor_strip)
     mitigation = min(data.MITIGATION_CAP, dfn / (dfn + data.MITIGATION_K))
     hit = max(1, round(raw * (1 - mitigation)))
     if striker.dmg_penalty:
