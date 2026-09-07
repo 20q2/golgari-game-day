@@ -470,17 +470,28 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             c.hp += heal
             entries.append({'round': rnd, 'by': side, 'heal': heal})
 
-    # Carapace Grind (DEF perk): a Guard holder that did NOT win the exchange
+    # Carapace Grind (DEF-12 perk): a Guard holder that did NOT win the exchange
     # still grinds the foe for a DEF-scaled chip — converts DEF to offense every
     # round independent of the triangle. Gated on the perk, so NPCs never do it.
+    # Grindstone (DEF-24) widens it: the chip lands on EVERY round including the
+    # ones the holder wins, at a raised coefficient. That is the turtle's answer
+    # to a 560 HP boss, where its problem was output and never survival.
     grind_winner = exchange_winner(a_stance, d_stance)
     for side, s, t, st in (('attacker', attacker, defender, a_stance),
                            ('defender', defender, attacker, d_stance)):
-        if (st == 'guard' and s.has_perk('carapace_grind')
-                and s.hp > 0 and t.hp > 0 and grind_winner != side):
-            chip = max(1, round(_swing_base(s, 'guard') * ramp * data.GUARD_CHIP_COEFF))
-            t.hp -= chip
-            entries.append({'round': rnd, 'by': side, 'dmg': chip, 'guardChip': True})
+        if not (st == 'guard' and s.has_perk('carapace_grind')
+                and s.hp > 0 and t.hp > 0):
+            continue
+        grinds = s.has_perk('grindstone')
+        if not grinds and grind_winner == side:
+            continue
+        coeff = data.GRINDSTONE_CHIP_COEFF if grinds else data.GUARD_CHIP_COEFF
+        chip = max(1, round(_swing_base(s, 'guard') * ramp * coeff))
+        t.hp -= chip
+        entry = {'round': rnd, 'by': side, 'dmg': chip, 'guardChip': True}
+        if grinds:
+            entry['grindstone'] = True
+        entries.append(entry)
 
     # ── Boss signature traits (design 2026-08-04) ────────────────────────────
     # Stat-mutating snowballs (grave_growth/doom_counters) edit atk/def/spd in

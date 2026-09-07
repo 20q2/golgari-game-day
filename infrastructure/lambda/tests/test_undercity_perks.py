@@ -630,3 +630,49 @@ def test_armor_strip_absent_from_an_old_snapshot_defaults_to_zero():
     snap = db._bt_snapshot(db._combatant(doc))
     del snap['armor_strip']          # a battle stored before this feature shipped
     assert db._bt_to_combatant(snap).armor_strip == 0
+
+
+def _tank(perks):
+    tank = engine.Combatant(name='t', hp=200, max_hp=200, atk=5, dfn=24, spd=5,
+                            perks=perks)
+    foe = engine.Combatant(name='f', hp=5000, max_hp=5000, atk=6, dfn=6, spd=6)
+    return tank, foe
+
+
+def test_grindstone_chips_on_a_round_the_tank_wins():
+    # guard > aggress: the tank WINS, which is exactly the round Carapace Grind
+    # alone skips. Grindstone grinds anyway.
+    import random
+    tank, foe = _tank(frozenset({'carapace_grind', 'grindstone'}))
+    entries = engine.resolve_round(tank, foe, 'guard', 'aggress', 1, random.Random(1))
+    assert any(e.get('guardChip') for e in entries)
+
+
+def test_carapace_grind_alone_skips_a_won_round():
+    import random
+    tank, foe = _tank(frozenset({'carapace_grind'}))
+    entries = engine.resolve_round(tank, foe, 'guard', 'aggress', 1, random.Random(1))
+    assert not any(e.get('guardChip') for e in entries)
+
+
+def _lost_guard_chip(perks):
+    """Chip magnitude on a round the tank LOSES (guard < feint), where both the
+    plain grind and Grindstone fire — isolating the coefficient."""
+    import random
+    tank, foe = _tank(perks)
+    entries = engine.resolve_round(tank, foe, 'guard', 'feint', 1, random.Random(1))
+    return next(e['dmg'] for e in entries if e.get('guardChip'))
+
+
+def test_grindstone_raises_the_chip_coefficient():
+    assert (_lost_guard_chip(frozenset({'carapace_grind', 'grindstone'}))
+            > _lost_guard_chip(frozenset({'carapace_grind'})))
+
+
+def test_grindstone_without_carapace_grind_does_nothing():
+    # Unreachable in play (24 implies 12), but the block must not fire on a bare
+    # grindstone perk set — the gate is the Guard-chip mechanic itself.
+    import random
+    tank, foe = _tank(frozenset({'grindstone'}))
+    entries = engine.resolve_round(tank, foe, 'guard', 'aggress', 1, random.Random(1))
+    assert not any(e.get('guardChip') for e in entries)
