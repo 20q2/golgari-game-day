@@ -325,6 +325,23 @@ export const CONSUMABLES: ConsumableInfo[] = [
     desc: 'Drink deep: full HP, and +ATK, +DEF and +SPD — stacks with the lesser tonics.' },
 ];
 
+/** Registered `uc-<slot>` SVG icon for a gear slot — the one the Equipment
+ *  screen, the stash, the pickup modal and the loot chips all share. Bind it
+ *  with [svgIcon]; it is not a Material ligature. */
+export function gearSlotIcon(slot: string): string {
+  return slot === 'fang' || slot === 'carapace' || slot === 'charm' ? `uc-${slot}` : 'uc-charm';
+}
+
+/** Trailing note for a found piece, by where it landed. A full stash parks the
+ *  find in the pickup modal — it is never ground down — so only 'pending' says
+ *  anything about the stash, and nothing here ever claims a loss. Equipped is
+ *  worth calling out because the drop changed your build on the spot. */
+export function gearOutcomeNote(outcome?: string): string {
+  if (outcome === 'equipped') return ' — equipped';
+  if (outcome === 'pending') return ' — stash full → pickup';
+  return '';
+}
+
 export const GEAR_MAP: Record<string, GearInfo> = Object.fromEntries(GEAR.map((g) => [g.id, g]));
 
 // Gorgon "Gear+" masterwork variants (mirror of the generation in

@@ -132,6 +132,11 @@ export interface CastResult {
   wished?: string;
 }
 
+/** Where a newly-found gear piece ended up — mirrors the `outcome` of
+ * undercity_db._acquire. 'pending' means both the slot and the stash were full,
+ * so it's waiting in the pickup modal (held, never destroyed). */
+export type GearOutcome = 'equipped' | 'stashed' | 'pending';
+
 /** One item that overflowed a full inventory, awaiting the pickup modal
  * (mirrors undercity_db._park_pickup). */
 export interface PendingPickup {
@@ -753,15 +758,15 @@ export interface SpaceEvent {
   item?: string;
   /** A spell-scroll drop (mirrors undercity_db._roll_scroll_drop): the spell id. */
   scroll?: string;
-  /** A gear drop from a loot source (mirrors undercity_db._roll_gear_drop).
-   * Found gear routes to the stash; if the stash was full it is auto-ground
-   * into materials ('stash-full'). */
+  /** A gear drop from a loot source (mirrors undercity_db._roll_gear_drop). */
   gear?: {
     id: string;
     slot: string;
     tier: number;
-    outcome: 'equipped' | 'stashed' | 'stash-full';
-    materials?: { moltings: number; ichor: number };
+    /** Where the find landed (server _gain_gear): straight into an empty slot,
+     *  into the stash, or — both full — parked in pendingPickups for the modal.
+     *  A full stash never grinds the piece; nothing is ever lost. */
+    outcome: GearOutcome;
   };
   /** Companion egg dropped by this event (Monster Nest scavenge, cache, loot…). */
   egg?: { tier: number };

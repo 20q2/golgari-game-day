@@ -55,11 +55,11 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
 
   protected readonly tab = signal<Tab>('board');
 
-  /** The floating purse's Spore chip is for the tabs where you SPEND. The
-   *  creature and gear screens are about the creature itself, and Gear already
-   *  shows Spores in its own resource row, so the chip would only be clutter
-   *  (or a duplicate) there. */
-  protected readonly showPurseSpores = computed(
+  /** The floating resource row — purse (Spores/Sigils/Jelly) AND the buff
+   *  badges — belongs to the tabs where you SPEND and fight. The creature and
+   *  gear screens are about the creature itself and carry their own resource
+   *  row, so the whole strip stands down there rather than crowding them. */
+  protected readonly showHudResources = computed(
     () => this.tab() !== 'gear' && this.tab() !== 'creature',
   );
   protected readonly assetsReady = signal(false);

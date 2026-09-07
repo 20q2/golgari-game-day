@@ -191,51 +191,9 @@
             </section>
           }
           @case ('gear') {
-            <!-- Active companion rides above the gear top-bar on the Companion
-                 screen — a standalone hero card (no outer card wrapper). -->
-            @if (gearSection() === 'companion' && activePet(); as pet) {
-              <div class="active-pet active-pet--top" [attr.data-rarity]="petRarity(pet)"
-                   style="background-image: linear-gradient(rgba(12, 16, 12, 0.55), rgba(12, 16, 12, 0.85)), url('undercity/swamp_background.webp')">
-                <button type="button" class="active-pet-portrait" (click)="openPet(pet)" [title]="'Manage ' + petName(pet)">
-                  <img class="pet-sprite active-pet-ico" [src]="petSpriteUrl(pet.species)" [alt]="petName(pet)" />
-                </button>
-                <span class="active-pet-lvl">Lv {{ pet.level }} / {{ petLevelCap(pet.tier) }}</span>
-                <div class="active-pet-body">
-                  <div class="active-pet-titlerow">
-                    <h4 class="active-pet-name">{{ petName(pet) }}</h4>
-                  </div>
-                  <span class="active-pet-blurb">{{ petInfo(pet.species).blurb }}</span>
-                  <div class="active-pet-actions">
-                    @if (petInfo(pet.species).kind === 'activated') {
-                      @if (petRoleOf(pet) === 'forage') {
-                        <button type="button" class="pet-btn" [disabled]="busy() || !petAbilityReady(pet)" (click)="usePetAbility(pet)">
-                          {{
-                            petAbilityReady(pet)
-                              ? 'Send scavenging'
-                              : forageSpacesLeft() + (forageSpacesLeft() === 1 ? ' space' : ' spaces')
-                          }}
-                        </button>
-                      } @else if (petRoleOf(pet) === 'scout') {
-                        <span class="pet-btn ghost" title="Use your scout from the board map">Scout from the board</span>
-                      }
-                    } @else if (petInfo(pet.species).kind === 'economy') {
-                      <button type="button" class="pet-btn" [disabled]="busy() || economyAccruedNow(pet) <= 0" (click)="usePetAbility(pet)">
-                        Collect {{ economyAccruedNow(pet) }} Spores
-                      </button>
-                    }
-                    <button type="button" class="pet-btn ghost" (click)="openPet(pet)">Manage</button>
-                  </div>
-                </div>
-              </div>
-            }
-
-            <!-- Gear top bar: Back (in a sub-menu) on the left, resources on the right. -->
+            <!-- Gear top bar: resources hold the left corner — the same place the
+                 board's purse puts Spores — so Back sits at the right end. -->
             <div class="gear-topbar">
-              @if (gearSection() !== 'home') {
-                <button type="button" class="gear-back" (click)="selectGear('home')">
-                  <mat-icon class="mi">chevron_left</mat-icon> Gear
-                </button>
-              }
               <!-- Chips are buttons: tapping one pops its blurb below the bar,
                    the same read-what-this-is affordance the plaza chips have. -->
               <div class="gear-mat-chips">
@@ -301,7 +259,51 @@
                   <p class="gear-mat-card-desc">{{ gearMatMeta[mk].desc }}</p>
                 </div>
               }
+              @if (gearSection() !== 'home') {
+                <button type="button" class="gear-back" (click)="selectGear('home')">
+                  <mat-icon class="mi">chevron_left</mat-icon> Gear
+                </button>
+              }
             </div>
+
+            <!-- Active companion sits under the gear top-bar on the Companion
+                 screen — a standalone hero card (no outer card wrapper). -->
+            @if (gearSection() === 'companion' && activePet(); as pet) {
+              <div class="active-pet active-pet--top" [attr.data-rarity]="petRarity(pet)"
+                   style="background-image: linear-gradient(rgba(12, 16, 12, 0.55), rgba(12, 16, 12, 0.85)), url('undercity/swamp_background.webp')">
+                <button type="button" class="active-pet-portrait" (click)="openPet(pet)" [title]="'Manage ' + petName(pet)">
+                  <img class="pet-sprite active-pet-ico" [src]="petSpriteUrl(pet.species)" [alt]="petName(pet)" />
+                </button>
+                <span class="active-pet-lvl">Lv {{ pet.level }} / {{ petLevelCap(pet.tier) }}</span>
+                <div class="active-pet-body">
+                  <div class="active-pet-titlerow">
+                    <h4 class="active-pet-name">{{ petName(pet) }}</h4>
+                  </div>
+                  <span class="active-pet-blurb">{{ petInfo(pet.species).blurb }}</span>
+                  <div class="active-pet-actions">
+                    @if (petInfo(pet.species).kind === 'activated') {
+                      @if (petRoleOf(pet) === 'forage') {
+                        <button type="button" class="pet-btn" [disabled]="busy() || !petAbilityReady(pet)" (click)="usePetAbility(pet)">
+                          {{
+                            petAbilityReady(pet)
+                              ? 'Send scavenging'
+                              : forageSpacesLeft() + (forageSpacesLeft() === 1 ? ' space' : ' spaces')
+                          }}
+                        </button>
+                      } @else if (petRoleOf(pet) === 'scout') {
+                        <span class="pet-btn ghost" title="Use your scout from the board map">Scout from the board</span>
+                      }
+                    } @else if (petInfo(pet.species).kind === 'economy') {
+                      <button type="button" class="pet-btn" [disabled]="busy() || economyAccruedNow(pet) <= 0" (click)="usePetAbility(pet)">
+                        Collect {{ economyAccruedNow(pet) }} Spores
+                      </button>
+                    }
+                    <button type="button" class="pet-btn ghost" (click)="openPet(pet)">Manage</button>
+                  </div>
+                </div>
+              </div>
+            }
+
             @switch (gearSection()) {
               @case ('home') {
                 <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">

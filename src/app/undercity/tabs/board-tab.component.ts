@@ -76,6 +76,7 @@ import {
   INSCRIBE_COST,
   inscribeCost,
   witchScrollPrice,
+  gearOutcomeNote,
 } from '../data/items';
 import {
   Pet,
@@ -1082,10 +1083,13 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   // ── Trading post (leave-one-take-one, any owned item) ───────────────────
   /** Material-icon fallbacks for gear slots (battle-reward chips that can't use
    *  the svg registry). The Bazaar/Umori rows use the richer 'uc-<slot>' svgs. */
+  /** Registered `uc-<slot>` SVG icon per gear slot, matching the Equipment
+   *  screen, the gear stash and the pickup modal. These are svgIcon ids, not
+   *  ligatures — bind them with [svgIcon]. */
   private readonly SLOT_ICONS: Record<string, string> = {
-    fang: 'hardware',
-    carapace: 'shield',
-    charm: 'auto_awesome',
+    fang: 'uc-fang',
+    carapace: 'uc-carapace',
+    charm: 'uc-charm',
   };
 
   /** Gift-box art for an auction rank: #1 gold, #2 silver, #3 bronze. */
@@ -1302,6 +1306,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   protected readonly tierRarity = tierRarity;
+  /** Templates can only call class members — rebind the pure helper. */
+  protected readonly gearOutcomeNote = gearOutcomeNote;
   protected readonly eggSpriteUrl = eggSpriteUrl;
 
   /** Held-stash cap (mirrors GEAR_STASH_SIZE in undercity_config.py). */
@@ -1543,7 +1549,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
   }
 
   protected slotIcon(slot: string): string {
-    return this.SLOT_ICONS[slot] ?? 'hardware';
+    return this.SLOT_ICONS[slot] ?? 'uc-charm';
   }
 
   protected eventHasChips(ev: SpaceEvent): boolean {
@@ -3258,8 +3264,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     if (src.gear) {
       const g = GEAR_MAP[src.gear.id];
       rewards.gearName = g?.name ?? src.gear.id;
-      rewards.gearIcon = this.SLOT_ICONS[src.gear.slot] ?? 'hardware';
-      rewards.gearStashed = src.gear.outcome === 'stashed';
+      rewards.gearIcon = this.slotIcon(src.gear.slot);
+      rewards.gearOutcome = src.gear.outcome;
     }
     if (src.egg) {
       rewards.eggTier = src.egg.tier;

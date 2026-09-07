@@ -113,11 +113,10 @@
           <!-- The purse floats a row below the toolbar (mirroring hud-buffs on the
                right) so the HUD keeps its room and the wallet has space to grow.
                Page-level, not board-level, so it stays visible on the tabs where
-               you actually spend. -->
-          <div class="hud-purse">
-            <!-- Hidden on the creature/gear screens (see showPurseSpores).
-                 Sigils/Jelly below stay on every tab: nothing else shows those. -->
-            @if (showPurseSpores()) {
+               you actually spend. The whole strip stands down on the creature and
+               gear screens (see showHudResources) — those carry their own row. -->
+          @if (showHudResources()) {
+            <div class="hud-purse">
               <span class="purse-chip" title="Spores">
                 <img class="rot-coin" src="undercity/icons/rot.png" alt="Spores" />
                 <span class="spore-count" [class.bump]="sporePulse()" [class.big]="sporeBig()">{{
@@ -134,60 +133,60 @@
                   </span>
                 }
               </span>
-            }
-            @if (sigilsHeld() > 0) {
-              <span class="purse-chip" title="Claim Guild Sigils from lair bosses to unseal the Queen">
-                <mat-icon class="mi gold">workspace_premium</mat-icon> {{ sigilsHeld() }}/{{ sigilsRequired }}
-              </span>
-            }
-            @if (royalJelly() > 0) {
-              <span class="purse-chip jelly-chip"
-                    title="Royal Jelly — dropped by the Scouring Swarm, spent in the bazaar's back room">
-                <mat-icon class="mi">hive</mat-icon> {{ royalJelly() }}
-              </span>
-            }
-          </div>
-          @if (activeBuffs().length) {
-            <!-- Buffs float in their own section one row below the HUD (top-right,
-                 like the board's focus picker) so the HP/XP bars get room to
-                 breathe. Tap the row to expand a detail panel. -->
-            <div class="hud-buffs" [class.open]="showBuffDetails()">
-              <button
-                type="button"
-                class="buff-badges"
-                aria-label="Active buffs — tap for details"
-                [attr.aria-expanded]="showBuffDetails()"
-                (click)="toggleBuffDetails()"
-              >
-                @for (b of hudBadges().shown; track b.kind) {
-                  <span class="buff-badge" [class.debuff]="b.info.tone === 'debuff'">
-                    <mat-icon class="mi">{{ b.info.icon }}</mat-icon>
-                  </span>
-                }
-                @if (hudBadges().overflow) {
-                  <span class="buff-badge buff-badge-more">+{{ hudBadges().overflow }}</span>
-                }
-              </button>
-              @if (showBuffDetails()) {
-                <!-- No backdrop catcher: an outside pointerdown dismisses this
-                     (see toggleBuffDetails), so the board stays draggable while
-                     the tooltip is up. -->
-                <div class="buff-details" role="dialog" aria-label="Active buff details">
-                  <h4 class="buff-details-title">Active effects</h4>
-                  @for (b of activeBuffs(); track b.kind) {
-                    <div class="buff-detail-row" [class.debuff]="b.info.tone === 'debuff'">
-                      <span class="buff-badge" [class.debuff]="b.info.tone === 'debuff'">
-                        <mat-icon class="mi">{{ b.info.icon }}</mat-icon>
-                      </span>
-                      <span class="buff-detail-text">
-                        <span class="buff-detail-name">{{ b.info.label }}</span>
-                        <span class="buff-detail-blurb">{{ b.info.blurb }}</span>
-                      </span>
-                    </div>
-                  }
-                </div>
+              @if (sigilsHeld() > 0) {
+                <span class="purse-chip" title="Claim Guild Sigils from lair bosses to unseal the Queen">
+                  <mat-icon class="mi gold">workspace_premium</mat-icon> {{ sigilsHeld() }}/{{ sigilsRequired }}
+                </span>
+              }
+              @if (royalJelly() > 0) {
+                <span class="purse-chip jelly-chip"
+                      title="Royal Jelly — dropped by the Scouring Swarm, spent in the bazaar's back room">
+                  <mat-icon class="mi">hive</mat-icon> {{ royalJelly() }}
+                </span>
               }
             </div>
+            @if (activeBuffs().length) {
+              <!-- Buffs float in their own section one row below the HUD (top-right,
+                   like the board's focus picker) so the HP/XP bars get room to
+                   breathe. Tap the row to expand a detail panel. -->
+              <div class="hud-buffs" [class.open]="showBuffDetails()">
+                <button
+                  type="button"
+                  class="buff-badges"
+                  aria-label="Active buffs — tap for details"
+                  [attr.aria-expanded]="showBuffDetails()"
+                  (click)="toggleBuffDetails()"
+                >
+                  @for (b of hudBadges().shown; track b.kind) {
+                    <span class="buff-badge" [class.debuff]="b.info.tone === 'debuff'">
+                      <mat-icon class="mi">{{ b.info.icon }}</mat-icon>
+                    </span>
+                  }
+                  @if (hudBadges().overflow) {
+                    <span class="buff-badge buff-badge-more">+{{ hudBadges().overflow }}</span>
+                  }
+                </button>
+                @if (showBuffDetails()) {
+                  <!-- No backdrop catcher: an outside pointerdown dismisses this
+                       (see toggleBuffDetails), so the board stays draggable while
+                       the tooltip is up. -->
+                  <div class="buff-details" role="dialog" aria-label="Active buff details">
+                    <h4 class="buff-details-title">Active effects</h4>
+                    @for (b of activeBuffs(); track b.kind) {
+                      <div class="buff-detail-row" [class.debuff]="b.info.tone === 'debuff'">
+                        <span class="buff-badge" [class.debuff]="b.info.tone === 'debuff'">
+                          <mat-icon class="mi">{{ b.info.icon }}</mat-icon>
+                        </span>
+                        <span class="buff-detail-text">
+                          <span class="buff-detail-name">{{ b.info.label }}</span>
+                          <span class="buff-detail-blurb">{{ b.info.blurb }}</span>
+                        </span>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
           }
         </header>
 

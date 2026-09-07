@@ -616,14 +616,10 @@
             }
             @if (ev.gear && gearInfo(ev.gear.id); as g) {
               <span class="chip item">
-                <mat-icon class="mi">{{ slotIcon(ev.gear.slot) }}</mat-icon>
+                <mat-icon class="mi" [svgIcon]="slotIcon(ev.gear.slot)"></mat-icon>
                 {{ g.name }}
                 <span class="rarity-badge {{ tierRarity(g.tier).key }}">{{ tierRarity(g.tier).label }}</span>
-                @if (ev.gear.outcome === 'equipped') {
-                  — equipped
-                } @else if (ev.gear.outcome === 'stash-full') {
-                  — → materials
-                }
+                {{ gearOutcomeNote(ev.gear.outcome) }}
               </span>
             }
             @if (ev.egg) {

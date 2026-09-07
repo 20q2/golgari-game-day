@@ -1957,17 +1957,20 @@ $grim-lock: #c96a5a;
   // Anchors the tapped chip's info card, which hangs below the bar.
   position: relative;
 
+  // Back is last in the row, shoved to the far end: the resource chips own the
+  // left corner so Spores land where the board's purse keeps them.
   .gear-back {
     align-self: center;
-    margin: 0;
+    margin: 0 0 0 auto;
   }
 }
 
-// Materials as small chips, pushed to the right of the top bar.
+// Materials as small chips holding the top bar's left corner.
 .gear-mat-chips {
   display: flex;
   gap: 8px;
-  margin-left: auto;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 .gear-mat-chip {
   display: inline-flex;
@@ -2052,7 +2055,7 @@ button.gear-mat-chip {
 .gear-mat-card {
   position: absolute;
   top: calc(100% + 6px);
-  right: 0;
+  left: 0;
   width: min(80vw, 320px);
   background: rgba(18, 20, 16, 0.98);
   border: 1px solid rgba(74, 124, 89, 0.5);

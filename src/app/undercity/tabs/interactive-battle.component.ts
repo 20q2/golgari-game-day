@@ -12,6 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { BattleSide, BattleRewards, CoinParticle, buildCoinParticles } from './battle-playback.component';
 import { CombatEntry, Stance, BattleStatus } from '../services/undercity-models';
 import { STANCES, STANCE_MAP, PERSONALITY_TELL, StanceAugment, COUNTER, StatusChip, StatusInfo, STATUS_INFO, statusChips, FRENZY_RAMP } from '../data/combat';
+import { gearOutcomeNote } from '../data/items';
 
 /** A held combat consumable the player may fire this round. */
 export interface BattleItem {
@@ -161,6 +162,9 @@ export function spriteScale(mine?: number, theirs?: number): number {
   styleUrls: ['./interactive-battle.component.scss'],
 })
 export class InteractiveBattleComponent implements OnInit, OnDestroy {
+  /** Templates can only call class members — rebind the pure helper. */
+  protected readonly gearOutcomeNote = gearOutcomeNote;
+
   @Input({ required: true }) attacker!: BattleSide;
   @Input({ required: true }) defender!: BattleSide;
   @Input({ required: true }) personality!: string;

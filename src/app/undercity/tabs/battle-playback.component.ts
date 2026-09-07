@@ -10,7 +10,8 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-import { BattleResult, CombatEntry } from '../services/undercity-models';
+import { BattleResult, CombatEntry, GearOutcome } from '../services/undercity-models';
+import { gearOutcomeNote } from '../data/items';
 
 /** A combat companion rendered beside the player in the arena. Only attack/defend
  *  pets appear (the only roles that act in a fight); set on the attacker side only. */
@@ -49,9 +50,12 @@ export interface BattleRewards {
   itemName?: string;
   itemIcon?: string;
   gearName?: string;
+  /** `uc-<slot>` SVG id (bind with [svgIcon]), so the chip wears the slot the
+   *  piece actually fills rather than one generic tool glyph. */
   gearIcon?: string;
-  /** true = sent to the stash; false = stash was full, auto-ground for materials. */
-  gearStashed?: boolean;
+  /** Where the find landed. Absent on legacy/replayed rewards, which render
+   *  with no annotation rather than guessing. */
+  gearOutcome?: GearOutcome;
   /** Companion egg tier dropped by a won fight (e.g. a Monster Nest guardian). */
   eggTier?: number;
   /** Spores lifted by a Cutpurse charm off a winning Feint. Shown apart from the
@@ -116,6 +120,9 @@ interface LogEntry {
   styleUrls: ['./battle-playback.component.scss'],
 })
 export class BattlePlaybackComponent implements OnInit, OnDestroy {
+  /** Templates can only call class members — rebind the pure helper. */
+  protected readonly gearOutcomeNote = gearOutcomeNote;
+
   @Input({ required: true }) battle!: BattleResult;
   @Input({ required: true }) attacker!: BattleSide;
   @Input({ required: true }) defender!: BattleSide;

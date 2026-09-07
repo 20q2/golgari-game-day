@@ -132,13 +132,13 @@
           }
           @if (r.itemName) {
             <span class="reward-chip item">
-              <mat-icon class="mi">{{ r.itemIcon ?? 'backpack' }}</mat-icon> {{ r.itemName }}
+              <mat-icon class="mi">{{ r.itemIcon ?? 'category' }}</mat-icon> {{ r.itemName }}
             </span>
           }
           @if (r.gearName) {
             <span class="reward-chip item">
-              <mat-icon class="mi">{{ r.gearIcon ?? 'hardware' }}</mat-icon>
-              {{ r.gearName }}{{ r.gearStashed ? '' : ' — stash full → materials' }}
+              <mat-icon class="mi" [svgIcon]="r.gearIcon ?? 'uc-charm'"></mat-icon>
+              {{ r.gearName }}{{ gearOutcomeNote(r.gearOutcome) }}
             </span>
           }
           @if (r.eggTier) {
