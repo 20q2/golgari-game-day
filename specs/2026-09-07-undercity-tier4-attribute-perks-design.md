@@ -229,8 +229,13 @@ design's tuning depends on.
 
 ## Balance validation
 
-`sim/proto_fix.py` is the harness that set `GUARD_CHIP_COEFF`; it is the right
-tool here for the same reason. Re-run all three archetypes against Savra to:
+`sim/proto_fix.py` set `GUARD_CHIP_COEFF`, but it is *not* the right tool here:
+it prototypes rules by monkeypatching the engine precisely so the engine need not
+be edited, and these perks ship in the engine itself. Measure the real rules
+through `sim/arena.py` instead (`make_leveled_doc` + `winrate(..., kind='boss')`),
+isolating each perk by subtracting it from `attribute_perks` at identical stats —
+otherwise the six points of raw stat that come with reaching 24 are counted as
+the perk's contribution. Measure all three archetypes against Savra to:
 
 1. set `GRINDSTONE_CHIP_COEFF` — 0.8 is a proposal; pick the value that makes
    mono-DEF/Guard a viable boss path without overshooting mono-ATK;
