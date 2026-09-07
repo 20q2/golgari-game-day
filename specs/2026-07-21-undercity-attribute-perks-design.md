@@ -37,7 +37,9 @@ This design fixes that two ways at once:
   round to round and would toggle perks mid-fight. *(Updated 2026-07-23: gear was
   originally excluded so swaps never touched perk state; the tactical gear layer
   now feeds the threshold intentionally.)*
-- Nodes at **6 / 12 / 18**. Unlock is `doc[stat] >= threshold` — monotonic and
+- Nodes at **6 / 12 / 18**, plus a fourth at **24** added 2026-09-07 (see
+  [2026-09-07-undercity-tier4-attribute-perks-design.md](2026-09-07-undercity-tier4-attribute-perks-design.md)).
+  Unlock is `doc[stat] >= threshold` — monotonic and
   stateless, so it derives from the save with no migration and no new currency.
 - **Base stats light the tier-1 node.** A kraul (atk 8) hatches with *Rend*; a
   saproling (def 7) hatches with *Thick Hide*. This is intended — it reinforces

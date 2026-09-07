@@ -253,7 +253,9 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
     Escalation (replaces the old environmental Collapse): once rnd >= frenzy_from
     every creature's OWN swing is scaled by `ramp` (grows +FRENZY_RAMP per tier),
     so a dragging fight builds to a real kill. The arena itself never deals
-    damage. frenzy_from=None (boss/lair) disables the ramp entirely.
+    damage. frenzy_from=None disables the ramp entirely — but note that no caller
+    does: undercity_db._frenzy_from returns FRENZY_START for EVERY battle kind,
+    boss and lair included, so every fight escalates and none can stalemate.
     """
     entries = []
     ramp = 1.0
