@@ -374,6 +374,16 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
                 _deal(losr, winr, lose_side, rnd, chip_raw, data.STANCE_STALL_MULT,
                       entries, tag='chip')
             _spikeshell(losr, winr, lose_side, rnd, entries)
+
+        # Shellsplitter (ATK-24 perk): any won exchange cracks the foe's armour
+        # open for the rest of the fight. Applied AFTER this round's damage, so
+        # the strip pays off on subsequent hits — and keyed on the triangle
+        # result rather than on damage landing, so a dodged punish still counts.
+        if winr.has_perk('shellsplitter') and losr.hp > 0:
+            winr.armor_strip += data.SHELLSPLITTER_STRIP
+            entries.append({'round': rnd, 'by': win_side,
+                            'armorStrip': data.SHELLSPLITTER_STRIP,
+                            'armorStripTotal': winr.armor_strip})
     elif winner == 'clash':
         # A-vs-A: both strike full; SPD-first lands first (matters for a kill).
         # first_bite forces striking first regardless of SPD.

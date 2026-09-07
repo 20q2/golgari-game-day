@@ -554,3 +554,53 @@ def test_armor_strip_floors_at_zero_def():
 def test_armor_strip_defaults_to_zero():
     c = engine.Combatant(name='c', hp=10, max_hp=10, atk=1, dfn=1, spd=1)
     assert c.armor_strip == 0
+
+
+def _splitter(perks=frozenset({'shellsplitter'})):
+    me = engine.Combatant(name='m', hp=200, max_hp=200, atk=24, dfn=5, spd=6,
+                          perks=perks)
+    foe = engine.Combatant(name='f', hp=5000, max_hp=5000, atk=5, dfn=12, spd=3)
+    return me, foe
+
+
+def test_shellsplitter_strips_on_a_won_exchange():
+    import random
+    me, foe = _splitter()
+    # aggress > feint: me wins the exchange.
+    entries = engine.resolve_round(me, foe, 'aggress', 'feint', 1, random.Random(3))
+    assert me.armor_strip == data.SHELLSPLITTER_STRIP
+    assert any(e.get('armorStrip') == data.SHELLSPLITTER_STRIP for e in entries)
+
+
+def test_shellsplitter_accumulates_across_rounds():
+    import random
+    me, foe = _splitter()
+    rng = random.Random(3)
+    for rnd in (1, 2, 3):
+        engine.resolve_round(me, foe, 'aggress', 'feint', rnd, rng)
+    assert me.armor_strip == 3 * data.SHELLSPLITTER_STRIP
+
+
+def test_shellsplitter_does_not_strip_on_a_loss():
+    import random
+    me, foe = _splitter()
+    # feint < aggress: the foe wins, so no armour comes off.
+    engine.resolve_round(me, foe, 'feint', 'aggress', 1, random.Random(3))
+    assert me.armor_strip == 0
+
+
+def test_shellsplitter_strips_on_a_won_guard_exchange_too():
+    # "Any won exchange" — holding Guard to survive a round must not cost progress.
+    import random
+    me, foe = _splitter()
+    entries = engine.resolve_round(me, foe, 'guard', 'aggress', 1, random.Random(3))
+    assert me.armor_strip == data.SHELLSPLITTER_STRIP
+    assert any(e.get('armorStrip') for e in entries)
+
+
+def test_no_strip_without_the_perk():
+    import random
+    me, foe = _splitter(perks=frozenset())
+    entries = engine.resolve_round(me, foe, 'aggress', 'feint', 1, random.Random(3))
+    assert me.armor_strip == 0
+    assert not any(e.get('armorStrip') for e in entries)
