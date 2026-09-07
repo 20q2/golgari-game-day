@@ -213,6 +213,24 @@ LAST_STAND_COOLDOWN_STEPS = 12
 # "once every 2 rolls" (blink, roll, blink, ...). 0 disables the cooldown.
 BLINK_COOLDOWN_ROLLS = 1
 
+# ── Tier-4 attribute perks (the 24 nodes, design 2026-09-07) ─────────────────
+# 24 is the first threshold a build split across two attributes cannot reach, so
+# these are the loudest effects in the game — the payoff for going mono.
+# Shellsplitter (ATK-24): each won exchange strips this much off the foe's
+# effective DEF for the rest of the fight. DEF is PROPORTIONAL mitigation
+# (def/(def+MITIGATION_K)), so stripping it is multiplicative on damage: against
+# Savra (DEF 12) a full strip is +120% damage. Floored at 0 by _base_hit.
+SHELLSPLITTER_STRIP = 2
+# Grindstone (DEF-24): the DEF track's Max HP grant continues (cumulative
+# +5/+15/+30/+55), and Carapace Grind's chip lands EVERY round including the ones
+# the holder wins, at a raised coefficient. A turtle's problem against a 560 HP
+# boss was never dying, it was dealing damage.
+GRINDSTONE_MAXHP = 25
+# SIM-SET. 0.8 is the design proposal, not a validated value — it roughly triples
+# a turtle's damage output, the largest single swing in the tier-4 design. Set it
+# with sim/tier4_check.py (see the 2026-09-07 plan, Task 12).
+GRINDSTONE_CHIP_COEFF = 0.8
+
 # ── Forge economy (gear stash · Salvage Yard · Blacksmith) ───────────────────
 # See specs/2026-07-20-undercity-forge-economy-design.md. Found gear lands in a
 # capped stash instead of auto-mulching; the Salvage Yard grinds stash pieces

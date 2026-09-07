@@ -304,13 +304,18 @@ ALL_FORMS = {**{k: dict(v, tier=1) for k, v in STARTERS.items()},
 # ── Attribute perk tracks (design 2026-07-21) ────────────────────────────────
 # A perk unlocks when the INVESTED base stat (species base + level spends +
 # evolution bonuses) PLUS equipped gear reaches its threshold; temporary buffs
-# still never light a perk (see engine.perk_stat). Nodes at 6/12/18;
+# still never light a perk (see engine.perk_stat). Nodes at 6/12/18/24;
 # base stats can already light the tier-1 node (kraul atk 8 -> Brutal Strikes).
+# The 24 node (design 2026-09-07) is the first a build split across two stats
+# cannot reach, so it carries the loudest effects in the game.
 # Client mirror: src/app/undercity/data/perks.ts
 PERK_TRACKS = {
-    'atk': [(6, 'brutal_strikes'), (12, 'menace'), (18, 'deathdrive')],
-    'def': [(6, 'thick_hide'), (12, 'carapace_grind'), (18, 'last_stand')],
-    'spd': [(6, 'fleetfoot'), (12, 'pathfinder'), (18, 'blink')],
+    'atk': [(6, 'brutal_strikes'), (12, 'menace'), (18, 'deathdrive'),
+            (24, 'shellsplitter')],
+    'def': [(6, 'thick_hide'), (12, 'carapace_grind'), (18, 'last_stand'),
+            (24, 'grindstone')],
+    'spd': [(6, 'fleetfoot'), (12, 'pathfinder'), (18, 'blink'),
+            (24, 'longstride')],
 }
 
 PERKS = {
@@ -332,6 +337,12 @@ PERKS = {
                        'blurb': 'Roll with advantage — roll two dice, keep either.'},
     'blink':          {'name': 'Blink', 'track': 'spd', 'threshold': 18,
                        'blurb': 'Choose your die value — then recharges for one roll.'},
+    'shellsplitter':  {'name': 'Shellsplitter', 'track': 'atk', 'threshold': 24,
+                       'blurb': "Every exchange you win cracks the foe's armour open."},
+    'grindstone':     {'name': 'Grindstone', 'track': 'def', 'threshold': 24,
+                       'blurb': '+25 Max HP. Guard grinds the foe down every single round.'},
+    'longstride':     {'name': 'Longstride', 'track': 'spd', 'threshold': 24,
+                       'blurb': 'Combine both dice — travel up to twelve spaces.'},
 }
 
 

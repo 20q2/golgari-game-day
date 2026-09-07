@@ -475,3 +475,48 @@ def test_state_surfaces_perks(table):
     status, state = db.handle_state(table, {'userId': 'user-alex'})
     assert status == 200
     assert 'thick_hide' in state['you']['perks']
+
+
+# ── Tier 4: the 24 nodes (design 2026-09-07) ─────────────────────────────────
+
+def test_tier4_nodes_unlock_at_24():
+    assert 'shellsplitter' in engine.attribute_perks(_doc(atk=24))
+    assert 'grindstone' in engine.attribute_perks(_doc(dfn=24))
+    assert 'longstride' in engine.attribute_perks(_doc(spd=24))
+
+
+def test_tier4_locked_at_23():
+    assert 'shellsplitter' not in engine.attribute_perks(_doc(atk=23))
+    assert 'grindstone' not in engine.attribute_perks(_doc(dfn=23))
+    assert 'longstride' not in engine.attribute_perks(_doc(spd=23))
+
+
+def test_tier4_stacks_on_the_whole_track():
+    assert engine.attribute_perks(_doc(atk=24)) == frozenset(
+        {'brutal_strikes', 'menace', 'deathdrive', 'shellsplitter'})
+
+
+def test_gear_can_bridge_to_tier4():
+    # wurm_tooth is +6 atk, so base 18 + gear reaches the 24 node.
+    doc = {'atk': 18, 'def': 1, 'spd': 1, 'gear': {'fang': 'wurm_tooth'}}
+    assert 'shellsplitter' in engine.attribute_perks(doc)
+
+
+def test_removing_gear_dims_tier4():
+    doc = {'atk': 18, 'def': 1, 'spd': 1, 'gear': {'fang': 'wurm_tooth'}}
+    assert 'shellsplitter' in engine.attribute_perks(doc)
+    doc['gear'] = {}
+    assert 'shellsplitter' not in engine.attribute_perks(doc)
+
+
+def test_temporary_buffs_never_light_tier4():
+    # savage_roar is +5 atk in effective_stats but must not reach the threshold.
+    doc = {'atk': 20, 'def': 1, 'spd': 1, 'buffs': [{'kind': 'savage_roar'}]}
+    assert 'shellsplitter' not in engine.attribute_perks(doc)
+
+
+def test_every_track_has_four_nodes_with_definitions():
+    for track, nodes in data.PERK_TRACKS.items():
+        assert [t for t, _ in nodes] == [6, 12, 18, 24]
+        for _, pid in nodes:
+            assert data.PERKS[pid]['track'] == track
