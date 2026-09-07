@@ -1,7 +1,7 @@
 // Mirror of infrastructure/lambda/undercity_data.py PERKS / PERK_TRACKS.
 // Perks derive from base stat (species base + level spends + evolution bonuses)
 // PLUS equipped gear — gear can bridge a creature up to a threshold, so swapping
-// gear may light/dim a perk. Temporary buffs still never count. Nodes at 6/12/18;
+// gear may light/dim a perk. Temporary buffs still never count. Nodes at 6/12/18/24;
 // base stats can already light the tier-1 node. Keep in sync with the server.
 export type PerkTrack = 'atk' | 'def' | 'spd';
 
@@ -9,25 +9,28 @@ export interface Perk {
   id: string;
   name: string;
   track: PerkTrack;
-  threshold: 6 | 12 | 18;
+  threshold: 6 | 12 | 18 | 24;
   blurb: string;
 }
 
-export const PERK_TRACKS: Record<PerkTrack, { threshold: 6 | 12 | 18; id: string }[]> = {
+export const PERK_TRACKS: Record<PerkTrack, { threshold: 6 | 12 | 18 | 24; id: string }[]> = {
   atk: [
     { threshold: 6, id: 'brutal_strikes' },
     { threshold: 12, id: 'menace' },
     { threshold: 18, id: 'deathdrive' },
+    { threshold: 24, id: 'shellsplitter' },
   ],
   def: [
     { threshold: 6, id: 'thick_hide' },
     { threshold: 12, id: 'carapace_grind' },
     { threshold: 18, id: 'last_stand' },
+    { threshold: 24, id: 'grindstone' },
   ],
   spd: [
     { threshold: 6, id: 'fleetfoot' },
     { threshold: 12, id: 'pathfinder' },
     { threshold: 18, id: 'blink' },
+    { threshold: 24, id: 'longstride' },
   ],
 };
 
@@ -41,6 +44,9 @@ export const PERKS: Record<string, Perk> = {
   fleetfoot: { id: 'fleetfoot', name: 'Fleetfoot', track: 'spd', threshold: 6, blurb: 'You may reroll a die that shows 1.' },
   pathfinder: { id: 'pathfinder', name: 'Pathfinder', track: 'spd', threshold: 12, blurb: 'Roll with advantage — roll two dice, keep either.' },
   blink: { id: 'blink', name: 'Blink', track: 'spd', threshold: 18, blurb: 'Choose your die value — then recharges for one roll.' },
+  shellsplitter: { id: 'shellsplitter', name: 'Shellsplitter', track: 'atk', threshold: 24, blurb: "Every exchange you win cracks the foe's armour open." },
+  grindstone: { id: 'grindstone', name: 'Grindstone', track: 'def', threshold: 24, blurb: '+25 Max HP. Guard grinds the foe down every single round.' },
+  longstride: { id: 'longstride', name: 'Longstride', track: 'spd', threshold: 24, blurb: 'Combine both dice — travel up to twelve spaces.' },
 };
 
 /** The perks unlocked at a given invested stat value on one track. */

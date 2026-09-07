@@ -81,6 +81,8 @@ export interface PendingMove {
   dests: string[];
   /** Pathfinder (SPD-10): both rolled faces when the move came from an advantage roll. */
   values?: number[];
+  /** Longstride (SPD-24): the two faces' combined total, also a legal walk length. */
+  combined?: number;
 }
 
 /** Something that hit you (or missed) while your phone was down. */
@@ -911,6 +913,8 @@ export interface ActionResponse {
     destinations: string[];
     /** Pathfinder (SPD-10): the two rolled faces; destinations are their union. */
     values?: number[];
+    /** Longstride (SPD-24): the two faces' combined total; its destinations are in the union. */
+    combined?: number;
     /** Blink (SPD-15): the value was chosen, not rolled. */
     blink?: boolean;
     /** Fleetfoot (SPD-5): this rolled 1 may be rerolled once. */
