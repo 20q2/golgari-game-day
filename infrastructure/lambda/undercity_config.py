@@ -220,16 +220,23 @@ BLINK_COOLDOWN_ROLLS = 1
 # effective DEF for the rest of the fight. DEF is PROPORTIONAL mitigation
 # (def/(def+MITIGATION_K)), so stripping it is multiplicative on damage: against
 # Savra (DEF 12) a full strip is +120% damage. Floored at 0 by _base_hit.
-SHELLSPLITTER_STRIP = 2
+# SIM-SET at 4 (sim/tier4_check.py, 2026-09-07). 2 was the design proposal, but a
+# mono-ATK boss fight lasts only ~7.5 rounds and a pure-aggress build wins ~33% of
+# exchanges against a trickster, so 2/win needed 6 wins the build never gets — the
+# perk's headline effect was unreachable by the build designed around it. At 4 it
+# matures in 3 wins, inside that lifespan. Measured: boss win 24% -> 46%.
+SHELLSPLITTER_STRIP = 4
 # Grindstone (DEF-24): the DEF track's Max HP grant continues (cumulative
 # +5/+15/+30/+55), and Carapace Grind's chip lands EVERY round including the ones
 # the holder wins, at a raised coefficient. A turtle's problem against a 560 HP
 # boss was never dying, it was dealing damage.
 GRINDSTONE_MAXHP = 25
-# SIM-SET. 0.8 is the design proposal, not a validated value — it roughly triples
-# a turtle's damage output, the largest single swing in the tier-4 design. Set it
-# with sim/tier4_check.py (see the 2026-09-07 plan, Task 12).
-GRINDSTONE_CHIP_COEFF = 0.8
+# SIM-SET at 0.65 (sim/tier4_check.py, 2026-09-07). The design proposed 0.8, which
+# measured an 80% boss win rate against mono-ATK's 46% — the turtle would have been
+# the outright best boss build. 0.65 puts the two archetypes co-equal (47% vs 46%).
+# A mono-DEF fight lasts ~14.8 rounds (144 max HP), so this chip compounds far more
+# than the raw coefficient suggests. Re-measure with sim/tier4_check.py if touched.
+GRINDSTONE_CHIP_COEFF = 0.65
 
 # ── Forge economy (gear stash · Salvage Yard · Blacksmith) ───────────────────
 # See specs/2026-07-20-undercity-forge-economy-design.md. Found gear lands in a

@@ -248,6 +248,52 @@ the perk's contribution. Measure all three archetypes against Savra to:
 The sweep's bot never enters dungeons, so it cannot speak to sigil, treasure or
 XP pacing; those stay judged from measured export data.
 
+### Measured (2026-09-07, `sim/tier4_check.py`, 300 trials)
+
+Each row is a paired comparison at **identical stats** — the perk on versus the
+perk subtracted from `attribute_perks` — so the delta is the perk itself and not
+the six points of raw stat that came with reaching 24.
+
+| build | boss damage | boss win rate |
+|---|---|---|
+| mono-ATK / Aggress + Shellsplitter | 342 → **423** (+24%) | 24% → **46%** |
+| mono-DEF / Guard + Grindstone | 309 → **519** (+68%) | 0% → **47%** |
+| mono-SPD / Feint + Longstride | 47 → 47 (+0%) | 0% → 0% |
+
+mono-SPD is the control: Longstride has no combat effect, and measuring exactly
+zero confirms no perk id leaked into a combat path.
+
+**Two design corrections came out of this.**
+
+1. **`SHELLSPLITTER_STRIP` is 4, not 2.** A mono-ATK boss fight lasts only ~7.5
+   rounds (69 max HP against a ramping ATK-26), and a pure-Aggress build wins just
+   ~33% of exchanges — Savra is a `trickster`, so Aggress beats her Feint and
+   nothing else. That is ~2.5 wins per fight against the 6 wins a 2-per-win strip
+   needs to reach the +120% headline, so the perk's loudest effect was
+   *unreachable by the build designed around it*. At 4 it matures in 3 wins, inside
+   that lifespan. The +120% figure in the table above is still the arithmetic at a
+   full strip; it is now actually achievable.
+2. **`GRINDSTONE_CHIP_COEFF` is 0.65, not 0.8.** At 0.8 the turtle won 80% against
+   mono-ATK's 46% — it would have been the outright best boss build, not a
+   co-equal one. A mono-DEF fight lasts ~14.8 rounds (144 max HP), so the
+   every-round chip compounds far more than the raw coefficient suggests. 0.65
+   puts the two archetypes level at 47% and 46%.
+
+**Ordinary content is untouched — bit-identically so.** A paired check against six
+wild/elite stat blocks showed the same win rate and the same mean damage to the
+decimal with each perk on and suppressed, for all three archetypes. Tier-1 mobs
+(26-34 HP) die in one or two rounds, before any round-ramping perk can fire. This
+is a stronger result than `sim.sweep` can give: the sweep is not a paired
+comparison, and its own run-to-run divergence moves `wild[1-4]` win rates by ~10
+points — at levels 1-4 no 24-node can possibly be active, which makes that
+movement a useful noise control and the sweep the wrong instrument here.
+
+**What these numbers do not cover.** `sim.arena.arena_fight` holds one live
+`Combatant` for the whole fight and never round-trips `_bt_snapshot`, so no sim
+result can detect a battle-serde regression. Shellsplitter's persistence across
+the round boundary is guarded only by
+`tests/test_undercity_perks.py::test_armor_strip_survives_the_round_boundary`.
+
 ## Tests
 
 New cases in `tests/test_undercity_perks.py`:
