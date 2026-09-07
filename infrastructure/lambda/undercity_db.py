@@ -3993,11 +3993,21 @@ def _roll(table, sid, doc, payload):
     # Pathfinder (SPD-10 perk): roll a second die and keep either — destinations
     # are the union of both faces. Only on an ordinary random roll (a chosen
     # value via Blink/loaded die is already deliberate).
+    # Longstride (SPD-24 perk): the two faces may also be COMBINED, so the union
+    # gains the destinations of their sum — up to 12 spaces on one roll. The short
+    # destinations stay on the menu, so it is never a forced overshoot. Stored as
+    # its own field: `values` stays face-only so Fleetfoot's "showed a 1" check
+    # and the client's two-face display are untouched.
     values = None
+    combined = None
     if random_roll and 'pathfinder' in perks:
         value2 = _rng.randint(1, 6)
         values = sorted([value, value2])
-        dests = sorted(set(_legal(value)) | set(_legal(value2)))
+        dests = set(_legal(value)) | set(_legal(value2))
+        if 'longstride' in perks:
+            combined = value + value2
+            dests |= set(_legal(combined))
+        dests = sorted(dests)
     else:
         dests = sorted(_legal(value))
 
@@ -4015,6 +4025,8 @@ def _roll(table, sid, doc, payload):
     pm = {'value': value, 'dests': dests}
     if values:
         pm['values'] = values
+    if combined:
+        pm['combined'] = combined
     if is_reroll:
         pm['rerolled'] = True    # Fleetfoot spent — the fresh face stands
     doc['pendingMove'] = pm
@@ -4027,6 +4039,8 @@ def _roll(table, sid, doc, payload):
     roll = {'value': value, 'destinations': dests}
     if values:
         roll['values'] = values
+    if combined:
+        roll['combined'] = combined
     if used_blink:
         roll['blink'] = True
     # Offer a one-time Fleetfoot reroll on a fresh, randomly-rolled 1 (not one

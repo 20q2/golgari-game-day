@@ -676,3 +676,71 @@ def test_grindstone_without_carapace_grind_does_nothing():
     tank, foe = _tank(frozenset({'grindstone'}))
     entries = engine.resolve_round(tank, foe, 'guard', 'aggress', 1, random.Random(1))
     assert not any(e.get('guardChip') for e in entries)
+
+
+def test_longstride_unions_the_combined_value(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 24  # longstride
+    db._put_player(table, doc)
+    vals = iter([2, 5])
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: next(vals))
+    status, resp = act(table, 'roll')
+    assert status == 200
+    assert sorted(resp['roll']['values']) == [2, 5]
+    assert resp['roll']['combined'] == 7
+
+    pos_doc = db._get_player(table, sid, 'user-alex')
+    pos = pos_doc['position']
+    closed = db._stop_nodes(table, sid, pos_doc)
+    blocked = db._blocked_nodes(pos_doc)
+
+    def legal(n):
+        return set(engine.legal_destinations(data.MAP_NODES, pos, n, closed, blocked))
+
+    # This also covers the barrier claim: the expected union uses the same
+    # _stop_nodes/_blocked_nodes sets the roll uses, so a _legal(combined) that
+    # ignored barriers would break the equality.
+    assert set(resp['roll']['destinations']) == legal(2) | legal(5) | legal(7)
+    assert pos_doc['pendingMove']['combined'] == 7
+
+
+def test_pathfinder_alone_does_not_combine(table, monkeypatch):
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 12  # pathfinder only
+    db._put_player(table, doc)
+    vals = iter([2, 5])
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: next(vals))
+    status, resp = act(table, 'roll')
+    assert status == 200
+    assert 'combined' not in resp['roll']
+    assert 'combined' not in db._get_player(table, sid, 'user-alex')['pendingMove']
+
+
+def test_longstride_keeps_values_face_only_for_fleetfoot(table, monkeypatch):
+    # A 1 on either FACE must still offer the Fleetfoot reroll; the combined total
+    # is not a die face and must not pollute pm['values'].
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 24
+    db._put_player(table, doc)
+    vals = iter([1, 4])
+    monkeypatch.setattr(db._rng, 'randint', lambda a, b: next(vals))
+    status, resp = act(table, 'roll')
+    assert status == 200
+    assert sorted(resp['roll']['values']) == [1, 4]
+    assert resp['roll']['combined'] == 5
+    assert resp['roll'].get('canReroll') is True
+
+
+def test_longstride_does_not_apply_to_a_blink(table):
+    # Blink names a value, so random_roll is False and nothing combines.
+    act(table, 'join', starter='pest')
+    sid = _sid(table)
+    doc = db._get_player(table, sid, 'user-alex'); doc['spd'] = 24
+    db._put_player(table, doc)
+    status, resp = act(table, 'roll', value=4, blink=True)
+    assert status == 200
+    assert resp['roll']['value'] == 4
+    assert 'combined' not in resp['roll']
