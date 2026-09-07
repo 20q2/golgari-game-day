@@ -1760,8 +1760,11 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         // advantage roll (two distinct faces) waits for the player to pick which
         // die to move — seeding the walk with only pm.value would strand the
         // second die's destinations (the exact-count walker can't reach them).
+        // Seeding the walk with only pm.value would strand the other die's (and
+        // the Longstride combine's) destinations, since the walker is exact-count.
         const vals = pm.values;
-        const needsPick = !!vals && vals.length === 2 && vals[0] !== vals[1];
+        const needsPick =
+          !!vals && vals.length === 2 && (vals[0] !== vals[1] || !!pm.combined);
         if (!needsPick) {
           this.stepping.set({ path: [you.position], left: pm.value });
         }
@@ -2108,13 +2111,24 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.canReroll.set(false);
   }
 
-  /** Pathfinder (SPD-10): the two advantage faces awaiting a pick, or null when
-   *  there's nothing to choose (single die, matched faces, or already walking). */
+  /** Pathfinder (SPD-10): the two advantage faces awaiting a pick, plus the
+   *  combined total under Longstride (SPD-24). Null when there's nothing to
+   *  choose (single die, or matched faces with no combine available) or when the
+   *  walk is already under way. Matched faces DO offer a choice under Longstride
+   *  — 3+3 means "move 3 or move 6". */
   protected pathfinderPick(): number[] | null {
-    const vals = this.store.you()?.pendingMove?.values;
-    if (!vals || vals.length !== 2 || vals[0] === vals[1]) return null;
+    const pm = this.store.you()?.pendingMove;
+    const vals = pm?.values;
+    if (!vals || vals.length !== 2) return null;
     if (this.rolling() || this.canReroll() || this.stepping()) return null;
-    return vals;
+    const combined = pm?.combined;
+    if (combined) return [...new Set([...vals, combined])];
+    return vals[0] === vals[1] ? null : vals;
+  }
+
+  /** True while the pick on offer includes a Longstride combine. */
+  protected longstridePick(): boolean {
+    return !!this.store.you()?.pendingMove?.combined;
   }
 
   /** Pathfinder: commit to one of the two faces — that value seeds the walk, so

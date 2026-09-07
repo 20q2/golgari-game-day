@@ -176,11 +176,15 @@
       </div>
     } @else {
       @if (!rolling() && !canReroll() && pathfinderPick(); as pick) {
-      <!-- Pathfinder: keep either die -->
+      <!-- Pathfinder: keep either die. Longstride adds the combined total. -->
       <div class="band-morph reroll-prompt">
         <div class="reroll-prompt-msg">
           <img class="die-icon" src="undercity/icons/die.png" alt="" />
-          <em>Pathfinder</em> — keep either die.
+          @if (longstridePick()) {
+            <em>Longstride</em> — keep either die, or combine them.
+          } @else {
+            <em>Pathfinder</em> — keep either die.
+          }
         </div>
         <div class="reroll-prompt-actions">
           @for (v of pick; track v) {
