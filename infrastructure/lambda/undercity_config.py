@@ -42,29 +42,52 @@ HIGH_FIVE_COOLDOWN_MIN = 30  # a player can re-high-five the SAME creature only 
 # src/app/undercity/data/spells.ts
 GRIMOIRE_SWAP_COOLDOWN_STEPS = 6
 
-# ── XP curve (design 2026-08-08 retune; supersedes 2026-08-04 pacing) ────────
-# Progressive per-level cost so leveling paces a whole game night instead of
-# capping early. Flat-ish early (casuals unaffected), ramps after RAMP_FROM so
-# a single T2/T3 elite rarely auto-levels. Cap stays 12 — this changes PACE,
-# not the power ceiling.
+# ── XP curve (design 2026-09-07 band-aligned; supersedes 2026-08-08 retune) ──
+# Per-level XP cost, indexed by the level you are LEAVING (index 0 = L1->2, the
+# last entry = L11->12). An explicit table, not a polynomial, and that is the
+# whole point of this retune.
 #
-# Retuned from session 20260808-182231, where BOTH engaged players hit the L12
-# cap with time to spare (Rumtin 00:22, 45min early; Andrew 01:01) and then
-# burned 499 XP into a level that doesn't exist. Design target is now:
-#   • L10 = the normal ceiling for a solidly engaged night ("most but not all")
-#   • L11/L12 = genuine stretch goals ("12 should be REALLY good")
-# Calibrated to that night's MEASURED income over 6h45m / ~55-57 rolls: the
-# top two players earned 883 and 970 XP. Totals L1->12 = 950 (was 677), L1->10
-# = 510 (was 420) — so 970 scrapes L12 by 20 XP and 883 ends at L11. Levels
-# 1-6 are UNCHANGED (cumulative 150) on purpose: the fast early climb is the
-# new-player onramp and every player that night died within 5 minutes of
-# hatching, so the first hour must not get slower.
+# WHY A TABLE. Enemy XP is a STEP function of region tier, because difficulty is
+# WHERE you fight (REGION_TIER): T1 surface homes pay ~10-25 a kill, T2
+# depths/ruin/wilderness pay ~40-56, T3 Sigil Isle pays ~70-98. The old curve
+# was one smooth quadratic (BASE + LIN*L + RAMP*(L-5)^2), so at every tier
+# boundary per-kill income jumped 2-4x while the curve barely moved — leveling
+# ACCELERATED exactly where it should have held steady. Measured cost of a
+# level in kills-of-your-current-band under the old numbers:
+#     L1->2 1.3   L2->3 1.7   L3->4 2.0   L4->5 2.3     (T1, ~15/kill)
+#     L5->6 0.9   L6->7 1.1   L7->8 1.6   L8->9 2.3     (T2, ~44/kill)
+#     L9->10 1.7  L10->11 2.3  L11->12 3.0              (T3, ~82/kill)
+# L5 and L6 cost LESS THAN ONE T2 kill each — the mid game levelled you on
+# literally every fight — and L9->10 dips back to 1.7, the same bug one tier up
+# (why the late game also read as fast).
+#
+# THE FIX. Price each level in kills of the band a player of that level is
+# actually in, climbing gently ~2 -> ~3.5 with no dip at a boundary:
+#     L1->2 1.3   L2->3 1.7   L3->4 2.0   L4->5 2.3     (T1, untouched)
+#     L5->6 1.9   L6->7 2.7   L7->8 3.3   L8->9 3.6     (T2)
+#     L9->10 2.5  L10->11 3.0  L11->12 3.5              (T3)
+# Levels 1-4 are UNCHANGED (cumulative 110) for the same reason as before: the
+# fast early climb is the new-player onramp. L5->6 is deliberately the softest
+# post-onramp level (1.9 kills) so crossing into the depths pays off at once and
+# a player still farming home is not walled the instant they hit 5.
+#
+# PACE. Cumulative to each level:
+#     L2 20  L3 45  L4 75  L5 110  L6 195  L7 315  L8 460
+#     L9 620  L10 825  L11 1070  L12 1355     (was 950 to cap)
+# Calibrated against MEASURED income from session 20260808-182231, where the top
+# two engaged players earned 883 and 970 XP over 6h45m / ~55-57 rolls. Under the
+# old curve both blew past the L12 cap and burned ~499 XP into a level that does
+# not exist; under this one 970 -> L10 + 145 banked and 883 -> L10, which is the
+# standing design target: L10 is the ceiling for a solidly engaged night, L11/L12
+# are genuine stretch goals. A casual on ~200 XP still reaches L6.
+#
+# APEX GATE. This moves L10 from ~57% to ~92% of a night's income, and the L10
+# apex gate (undercity_db._evolve) is deliberately LEFT THERE: an apex form is a
+# capstone you earn by hitting the end-of-night ceiling, not a mid-game power
+# step. Tier 2 still gates at L5, whose timing is unchanged (cumulative 110).
 # Client mirror in src/app/undercity/data/forms.ts::xpToNext; sim harness in
 # infrastructure/lambda/sim/.
-XP_CURVE_BASE = 15
-XP_CURVE_LINEAR = 5
-XP_CURVE_RAMP = 5          # the "C" coefficient (quadratic ramp magnitude)
-XP_CURVE_RAMP_FROM = 5     # ramp only bites for levels above this
+XP_CURVE = (20, 25, 30, 35, 85, 120, 145, 160, 205, 245, 285)
 # Flat XP granted the first time a player claims a biome Guild Sigil (on top of
 # the lair boss's own XP). Five biome sigils => up to 250 bonus XP over a night,
 # an alternative progression path to grinding wilds.

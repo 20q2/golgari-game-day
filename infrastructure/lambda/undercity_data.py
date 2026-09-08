@@ -34,13 +34,18 @@ XP_REWARDS = {
 def xp_to_next(level: int) -> int:
     """XP cost to go from `level` to `level + 1`.
 
-    Progressive curve (design 2026-08-04): flat-ish early so casuals keep fast
-    early levels, then a quadratic ramp above XP_CURVE_RAMP_FROM so leveling
-    lasts the night and a single elite never auto-levels. Scalars in
-    undercity_config; client mirror in src/app/undercity/data/forms.ts.
+    Band-aligned curve (design 2026-09-07): each level is priced in *kills of
+    the region tier a player of that level actually fights*, because enemy XP
+    steps by tier (T1 ~15 -> T2 ~44 -> T3 ~82) rather than growing smoothly. A
+    polynomial cannot track a step function, which is why the previous quadratic
+    let the mid game level you on every single fight. Table + full derivation in
+    undercity_config.XP_CURVE; client mirror in src/app/undercity/data/forms.ts.
+
+    Levels at or beyond the table (only reachable if LEVEL_CAP grows) keep
+    charging the last tabulated step, so the curve degrades flat, never free.
     """
-    ramp = max(0, level - XP_CURVE_RAMP_FROM)
-    return XP_CURVE_BASE + XP_CURVE_LINEAR * level + XP_CURVE_RAMP * ramp * ramp
+    idx = max(1, level) - 1
+    return XP_CURVE[min(idx, len(XP_CURVE) - 1)]
 
 
 # ── Creatures ────────────────────────────────────────────────────────────────

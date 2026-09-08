@@ -1390,3 +1390,27 @@ def test_cast_walk_recast_full_loop(table):
     db._save_or_conflict(table, doc)
     status, resp = act(table, 'cast', spellId='rot_surge', source='innate')
     assert status == 200, resp                            # castable again
+
+
+def test_step_counts_survive_dynamodb_decimals():
+    # DynamoDB hands numbers back as Decimal. _clean normally converts them, but
+    # a read path that skipped it must not silently read as "ready" — that would
+    # disable cooldowns outright instead of failing loudly.
+    from decimal import Decimal
+    doc = {'spellCooldowns': {'rot_surge': Decimal('4')}}
+    assert not db._spell_cd_ready(doc, 'rot_surge')        # still recharging
+    db._tick_step_timers(doc, 3)
+    assert doc['spellCooldowns']['rot_surge'] == 1
+    db._prune_cooldowns(doc)
+    assert doc['spellCooldowns'] == {'rot_surge': 1}       # kept, not dropped
+    db._tick_step_timers(doc, 1)
+    assert db._spell_cd_ready(doc, 'rot_surge')            # walked off
+    db._prune_cooldowns(doc)
+    assert doc['spellCooldowns'] == {}
+
+
+def test_step_count_rejects_strings_and_bools():
+    assert db._step_count('2999-01-01T00:00:00') is None   # legacy timestamp
+    assert db._step_count(None) is None
+    assert db._step_count(True) is None                    # int subclass, not a count
+    assert db._step_count(6) == 6

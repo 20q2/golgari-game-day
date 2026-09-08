@@ -1947,6 +1947,105 @@ $grim-lock: #c96a5a;
   vertical-align: -2px;
 }
 
+// Blacksmith band in the item sheet — a full-width strip UNDER the two-column
+// body (never a third column), tinted by the rarity you'd forge into so the
+// reward reads before the price does. Mirrors the Plaza smith row's diff
+// vocabulary (.diff-old / .diff-new) via the shared descDiff helper.
+.item-forge {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.28);
+
+  &[data-rarity='rare'] { border-color: rgba(95, 209, 138, 0.45); }
+  &[data-rarity='legendary'] { border-color: rgba(251, 191, 36, 0.45); }
+  &[data-rarity='mythic'] { border-color: rgba(240, 67, 80, 0.45); }
+
+  .rarity-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-radius: 8px;
+    padding: 1px 6px;
+    background: rgba(0, 0, 0, 0.35);
+    &.common { color: #9aa7a0; }
+    &.rare { color: #5fd18a; }
+    &.legendary { color: #fbbf24; }
+    &.mythic { color: #f04350; }
+  }
+}
+
+.item-forge-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #d8f3dc;
+
+  .mi { font-size: 16px; width: 16px; height: 16px; opacity: 0.8; }
+}
+
+// The forged description, with changed spans marked old→new. Rarity tints the
+// new text, matching the Plaza smith row.
+.item-forge-diff {
+  margin: 0.3rem 0 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #b9c7bc;
+
+  .diff-chg { white-space: nowrap; }
+
+  .diff-old {
+    color: #7c8a7c;
+    text-decoration: line-through;
+    opacity: 0.75;
+  }
+
+  .diff-new {
+    color: #fbbf24;
+    font-weight: 700;
+  }
+}
+
+.item-forge[data-rarity='common'] .diff-new { color: #e5efe5; }
+.item-forge[data-rarity='rare'] .diff-new { color: #5fd18a; }
+.item-forge[data-rarity='legendary'] .diff-new { color: #fbbf24; }
+.item-forge[data-rarity='mythic'] .diff-new { color: #f04350; }
+
+.item-forge-btn {
+  width: 100%;
+  min-height: 42px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 0.82rem;
+
+  .mi { font-size: 17px; width: 17px; height: 17px; }
+}
+
+// Cost run: Spores · Moltings · Gemstones, kept on one line so the tiny
+// material glyphs never orphan from their numbers.
+.item-forge-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+.item-forge-why {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
 // Inline material glyphs inside the salvage "Grind +N" buttons.
 // Gear top bar: Back (when in a sub-menu) on the left, resource chips right.
 .gear-topbar {

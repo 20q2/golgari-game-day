@@ -1240,6 +1240,29 @@
                 }
               </div>
             </div>
+            <!-- Blacksmith, in place: the same forge the Plaza offers, so a
+                 piece can climb its rarity ladder without walking there. The
+                 diff reads the new description with the changed spans marked. -->
+            @if (itemUpgrade(); as up) {
+              <div class="item-forge" [attr.data-rarity]="tierRarity(up.to.tier).key">
+                <div class="item-forge-head">
+                  <mat-icon class="mi">hardware</mat-icon>
+                  <span class="item-forge-to">{{ up.to.name }}</span>
+                  <span class="rarity-badge {{ tierRarity(up.to.tier).key }}">{{ tierRarity(up.to.tier).label }}</span>
+                </div>
+                <p class="item-forge-diff">@for (seg of up.diff; track $index) {@if (seg.same !== undefined) {<span>{{ seg.same }}</span>} @else {<span class="diff-chg">@if (seg.from) {<s class="diff-old">{{ seg.from }}</s> }<span class="diff-new">{{ seg.to }}</span></span>}{{ ' ' }}}</p>
+                <button class="uc-btn item-forge-btn" [disabled]="busy() || !!upgradeReason(up.cost)" (click)="upgradeFromPopup(item)">
+                  <mat-icon class="mi">hardware</mat-icon> Forge
+                  <span class="item-forge-cost">
+                    {{ up.cost.spores }}<img class="spore-i" src="undercity/icons/rot.png" alt="Spores" />
+                    · {{ up.cost.moltings }}<mat-icon class="mi tiny mtl-i">grass</mat-icon>@if (up.cost.ichor) {&nbsp;· {{ up.cost.ichor }}<mat-icon class="mi tiny ich-i">diamond</mat-icon>}
+                  </span>
+                </button>
+                @if (upgradeReason(up.cost); as why) {
+                  <span class="item-forge-why muted">{{ why }}</span>
+                }
+              </div>
+            }
           }
         </div>
       </div>

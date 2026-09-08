@@ -3,6 +3,7 @@
  * the map editor so both render spaces pixel-identically.
  */
 import { SPACE_ICONS } from '../data/items';
+import { dungeonBiome } from '../data/dungeons';
 import type { BoardNode } from './board-canvas';
 
 export const NODE_R = 36; // disc rx, also the tap radius — chunky Dokapon-style coins
@@ -52,7 +53,8 @@ function isLightHex(hex: string): boolean {
   return 0.299 * r + 0.587 * g + 0.114 * b > 176;
 }
 
-/** Bone skull glyph for boss + monster lairs — 'Material Icons' has no skull ligature. */
+/** Bone skull glyph for every boss space — the island boss, each sigil dungeon's
+ *  lair, and raid-corrupted tiles. 'Material Icons' has no skull ligature. */
 export function drawSkull(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
   ctx.save();
   ctx.translate(cx, cy);
@@ -98,10 +100,10 @@ export function drawSkull(ctx: CanvasRenderingContext2D, cx: number, cy: number)
 }
 
 /**
- * Speckled egg glyph for monster nests (`lair` tiles) — reads as the clutch a
- * nest guardian broods over (and the companion egg it drops when beaten), and
- * distinguishes a nest from the boss/raid skull at a glance. Hand-drawn like the
- * skull because 'Material Icons' has no egg ligature.
+ * Speckled egg glyph for the ruin monster nests — reads as the clutch a nest
+ * guardian broods over (and the companion egg it drops when beaten), and
+ * distinguishes side-content nests from the skull that marks a real boss.
+ * Hand-drawn like the skull because 'Material Icons' has no egg ligature.
  */
 export function drawEgg(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
   ctx.save();
@@ -246,7 +248,12 @@ export function drawSpaceDisc(
     ctx.fillStyle = isLightHex(topColor) ? 'rgba(24, 28, 22, 0.92)' : 'rgba(250, 255, 250, 1)';
     ctx.fillText(opts.glyph, n.x, n.y);
   } else if (n.type === 'lair') {
-    drawEgg(ctx, n.x, n.y);
+    // A sigil dungeon's lair IS its boss space, so it wears the skull like the
+    // island boss does. Ruin lairs are side-content monster nests — those keep
+    // the speckled egg (the clutch their guardian broods, and the companion egg
+    // it drops), which is what the egg glyph was drawn for.
+    if (dungeonBiome(n.id, n.region)) drawSkull(ctx, n.x, n.y);
+    else drawEgg(ctx, n.x, n.y);
   } else if (n.type === 'boss' || opts.corrupted) {
     drawSkull(ctx, n.x, n.y);
   } else if (!opts.hideGlyph) {

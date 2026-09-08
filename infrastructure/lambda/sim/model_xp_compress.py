@@ -28,8 +28,7 @@ def snapshot():
     """Capture the numbers we mutate so we can restore exactly."""
     snap = {'pools': {n: [dict(s) for s in getattr(data, n)] for n in POOL_NAMES},
             'familiar': copy.deepcopy(data.LAIR_FAMILIAR),
-            'curve': (data.XP_CURVE_BASE, data.XP_CURVE_LINEAR,
-                      data.XP_CURVE_RAMP, data.XP_CURVE_RAMP_FROM)}
+            'curve': tuple(data.XP_CURVE)}
     return snap
 
 
@@ -39,8 +38,7 @@ def restore(snap):
             spec.update(orig)
     for k, orig in snap['familiar'].items():
         data.LAIR_FAMILIAR[k].update(orig)
-    (data.XP_CURVE_BASE, data.XP_CURVE_LINEAR,
-     data.XP_CURVE_RAMP, data.XP_CURVE_RAMP_FROM) = snap['curve']
+    data.XP_CURVE = tuple(snap['curve'])
 
 
 ANCHOR = 25          # tier-1 elite XP — the value we anchor the compression to
@@ -61,11 +59,10 @@ def compress_xp(factor):
         spec['xp'] = new(spec['xp'])
 
 
-def set_curve(base, linear, ramp, ramp_from):
-    data.XP_CURVE_BASE = base
-    data.XP_CURVE_LINEAR = linear
-    data.XP_CURVE_RAMP = ramp
-    data.XP_CURVE_RAMP_FROM = ramp_from
+def set_curve(costs):
+    """Swap in a whole per-level cost table (design 2026-09-07: the curve is a
+    band-aligned table, not a 4-scalar polynomial)."""
+    data.XP_CURVE = tuple(costs)
 
 
 def cumulative():
@@ -98,8 +95,7 @@ def run_scenario(label):
     for k, v in reps.items():
         print(f'  {k:10} {v:4}   {v / t1e:.2f}x')
     cum = cumulative()
-    print(f'curve: BASE={data.XP_CURVE_BASE} LIN={data.XP_CURVE_LINEAR} '
-          f'RAMP={data.XP_CURVE_RAMP} FROM={data.XP_CURVE_RAMP_FROM}  '
+    print(f'curve: {list(data.XP_CURVE)}  '
           f'| cum to L10={cum[10]} L12(cap)={cum[12]}')
     rows = {}
     for bot, starter, home in BUILD_BOTS:
@@ -122,18 +118,20 @@ if __name__ == '__main__':
         # rusher's L12 near the baseline (~45 turns). Curve unchanged first, as the
         # reference point, then progressively gentler cuts.
         curves = [
-            ('curve UNCHANGED (677)',      (15, 5, 2, 5)),
-            ('curve RAMP 2->1 only (535)', (15, 5, 1, 5)),
-            ('curve LIN 5->4 only (587)',  (15, 4, 2, 5)),
+            ('curve UNCHANGED (1355)', data.XP_CURVE),
+            ('mid band -20% (1245)',
+             (20, 25, 30, 35, 68, 96, 116, 128, 205, 245, 285)),
+            ('all bands -15% (1152)',
+             (20, 25, 30, 35, 72, 102, 123, 136, 174, 208, 242)),
         ]
         for label, cv in curves:
             restore(snap)
             compress_xp(0.5)
-            set_curve(*cv)
+            set_curve(cv)
             run_scenario(f'B[0.5]. compress 0.5 + {label}')
     finally:
         restore(snap)
         # sanity: numbers restored
         assert data.DEPTHS_MID[0]['xp'] == snap['pools']['DEPTHS_MID'][0]['xp']
-        assert (data.XP_CURVE_RAMP, data.XP_CURVE_LINEAR) == (snap['curve'][2], snap['curve'][1])
+        assert tuple(data.XP_CURVE) == snap['curve']
         print('\n[restored original numbers]')

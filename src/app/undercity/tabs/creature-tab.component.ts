@@ -19,7 +19,12 @@ import {
   pricePresets,
   MarketKind,
   SALVAGE_YIELD,
+  UPGRADE_COST,
+  nextRung,
+  GearInfo,
 } from '../data/items';
+import { DescSeg, descDiff } from '../data/gear-diff';
+import { affordReason, materialReason } from '../data/block-reasons';
 import { gearProperty } from '../data/combat';
 import { GORGE_MULCH } from '../data/reclaim';
 import {
@@ -140,6 +145,14 @@ interface SelectedItem {
   id: string;
   index: number;
   slotLabel: string; // 'Fang' | 'Carapace' | 'Charm' | item type — header sub-label
+}
+
+/** The Blacksmith offer for the open gear piece: the next rung of its rarity
+ *  family, what forging it costs, and its description word-diffed old→new. */
+interface UpgradePreview {
+  to: GearInfo;
+  cost: { spores: number; moltings: number; ichor: number };
+  diff: DescSeg[];
 }
 
 @Component({
@@ -1021,6 +1034,67 @@ export class CreatureTabComponent {
       const resp = await this.store.action('salvage-gear', { index: item.index, mode });
       this.showToast(resp.text ?? 'Salvaged.');
       this.closeItem();
+    });
+  }
+
+  // ── Blacksmith (from the Gear menu) ───────────────────────────────────────
+
+  /** Which `doc.gear` key the open equipped piece sits in. `slotLabel` is a
+   *  display label ('Fang', 'Wildcard'), so lower-case it and translate the
+   *  Daemogoth's wildcard to the 'wild' key the server stores it under. */
+  private equippedSlotKey(item: SelectedItem): string {
+    const k = item.slotLabel.toLowerCase();
+    return k === 'wildcard' ? 'wild' : k;
+  }
+
+  /** The Blacksmith offer for the open piece, or null when there is none —
+   *  a consumable, a piece with no rarity family, or one already topped out. */
+  protected readonly itemUpgrade = computed<UpgradePreview | null>(() => {
+    const item = this.selectedItem();
+    if (!item || item.kind !== 'gear') return null;
+    const from = GEAR_MAP[item.id];
+    const nxt = nextRung(item.id);
+    const to = nxt ? GEAR_MAP[nxt] : undefined;
+    if (!from || !to) return null;
+    return {
+      to,
+      cost: UPGRADE_COST[to.tier] ?? { spores: 0, moltings: 0, ichor: 0 },
+      diff: descDiff(from.desc, to.desc),
+    };
+  });
+
+  /** Why forging is blocked (Spores first, then materials), or null when it can
+   *  go ahead — the same order the Plaza Blacksmith reports shortfalls in. */
+  protected upgradeReason(cost: { spores: number; moltings: number; ichor: number }): string | null {
+    const you = this.store.you();
+    if (!you) return 'Unavailable';
+    const m = you.materials ?? { moltings: 0, ichor: 0 };
+    return (
+      affordReason(you.spores, cost.spores) ??
+      materialReason(m.moltings, m.ichor, cost.moltings, cost.ichor)
+    );
+  }
+
+  /** Forge the open piece up a rung. Reuses the shipped `upgrade-gear` action,
+   *  which — like `salvage-gear` — isn't gated on standing in the Plaza, so the
+   *  Gear menu can drive it directly. The sheet stays open on the forged piece
+   *  (its id is re-read from the patched state, so a Stonewright's "+" stamp is
+   *  picked up) to make climbing the ladder a single repeated tap. */
+  protected async upgradeFromPopup(item: SelectedItem): Promise<void> {
+    await this.run(async () => {
+      const target =
+        item.source === 'equipped'
+          ? { where: 'equipped', slot: this.equippedSlotKey(item) }
+          : { where: 'stash', index: item.index };
+      const resp = await this.store.action('upgrade-gear', { target });
+      this.showToast(resp.text ?? 'Forged!');
+      const you = this.store.you();
+      const forged =
+        item.source === 'equipped'
+          ? you?.gear?.[this.equippedSlotKey(item)]
+          : (you?.gearStash ?? [])[item.index];
+      if (forged) this.selectedItem.set({ ...item, id: forged });
+      else this.closeItem();
     });
   }
 

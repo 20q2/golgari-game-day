@@ -163,12 +163,16 @@ export function formName(form: string | undefined): string {
   return ALL_FORMS[form ?? '']?.name ?? 'Creature';
 }
 
-// Mirror of undercity_data.xp_to_next (undercity_config XP_CURVE_* scalars).
-// Progressive curve (design 2026-08-08 retune): flat-ish early, ramps hard
-// after level 5 so L10 is the normal end-of-night ceiling and L11/L12 are
-// stretch goals. Total L1->12 = 950; levels 1-6 match the old curve exactly.
+// Mirror of undercity_data.xp_to_next (undercity_config.XP_CURVE).
+// Band-aligned curve (design 2026-09-07): each level costs roughly 2-3.5 kills
+// of the region tier you fight at that level, since enemy XP steps by tier
+// (T1 ~15 -> T2 ~44 -> T3 ~82) instead of growing smoothly. Levels 1-4 are the
+// untouched onramp; L10 is the normal end-of-night ceiling and L11/L12 stretch
+// goals. Total L1->12 = 1355. Indexed by the level you are LEAVING.
 // Keep in sync with the server — the client only displays this for the XP bar.
+const XP_CURVE = [20, 25, 30, 35, 85, 120, 145, 160, 205, 245, 285];
+
 export function xpToNext(level: number): number {
-  const ramp = Math.max(0, level - 5);
-  return 15 + 5 * level + 5 * ramp * ramp;
+  const idx = Math.max(1, level) - 1;
+  return XP_CURVE[Math.min(idx, XP_CURVE.length - 1)];
 }

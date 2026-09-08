@@ -92,23 +92,60 @@ def test_compute_renown_uses_win_renown_with_grandfather_fallback():
 # ── Leveling ─────────────────────────────────────────────────────────────────
 
 def test_xp_curve():
-    # Progressive curve (design 2026-08-08 retune): flat-ish early, ramps hard
-    # after L5. Calibrated to a measured ~6h45m / 55-roll night where the top
-    # two players earned 883 and 970 XP; total L1->12 = 950.
+    # Band-aligned curve (design 2026-09-07): priced in kills of the region tier
+    # you fight at that level, since enemy XP steps by tier. Total L1->12 = 1355.
     assert data.xp_to_next(1) == 20      # anchor: 2 basic wild kills (10 XP each)
-    assert data.xp_to_next(5) == 40
-    assert data.xp_to_next(6) == 50      # ramp begins
-    assert data.xp_to_next(9) == 140
-    assert data.xp_to_next(11) == 250
-    assert sum(data.xp_to_next(l) for l in range(1, 12)) == 950
-    # The early onramp is deliberately untouched by the retune: levels 1-6 cost
-    # the same as the old curve, so a brand-new player's first hour is unchanged.
-    assert sum(data.xp_to_next(l) for l in range(1, 6)) == 150
+    assert data.xp_to_next(5) == 85      # T2 band begins
+    assert data.xp_to_next(9) == 205     # T3 band begins
+    assert data.xp_to_next(11) == 285
+    assert sum(data.xp_to_next(l) for l in range(1, 12)) == 1355
+    # The early onramp is deliberately untouched: levels 1-4 cost exactly what
+    # they always have, so a brand-new player's first hour is unchanged.
+    assert sum(data.xp_to_next(l) for l in range(1, 5)) == 110
     # L10 is the "normal" end-of-night ceiling; L11/L12 are stretch goals.
-    assert sum(data.xp_to_next(l) for l in range(1, 10)) == 510
-    # A single mid/high elite shouldn't reliably auto-level in the ramp band.
-    assert data.xp_to_next(7) > 47       # a T2 elite (~47) no longer levels you
-    assert data.xp_to_next(11) > 100     # nor the fattest T3 apex elite (~100)
+    assert sum(data.xp_to_next(l) for l in range(1, 10)) == 825
+    # The table must cover every real level, or the tail levels would silently
+    # all cost the same as the last entry.
+    assert len(data.XP_CURVE) == data.LEVEL_CAP - 1
+    # Cost must never fall as you level, and must be defined outside the table.
+    costs = [data.xp_to_next(l) for l in range(1, data.LEVEL_CAP)]
+    assert costs == sorted(costs)
+    assert data.xp_to_next(0) == data.xp_to_next(1)                 # clamped low
+    assert data.xp_to_next(data.LEVEL_CAP + 5) == costs[-1]         # clamped high
+
+
+def test_xp_curve_never_levels_you_on_one_kill():
+    """The bug this curve fixes: a level must cost several kills of the band the
+    player is actually in, and must not get CHEAPER in kills at a tier boundary.
+
+    Enemy XP steps by region tier (REGION_TIER), so per-kill income jumps 2-4x
+    at each boundary. The old quadratic ignored that, which made L5/L6 cost less
+    than a single T2 kill (level-up on literally every fight) and made L9->10
+    dip to 1.7 kills right after L8->9 cost 2.3.
+    """
+    def per_kill(level):
+        """Typical per-fight XP of the content band a player of `level` is in."""
+        pools = ([data.REGION_NPCS[r] for r in ('city', 'garden', 'cavern')]
+                 if level <= 4 else
+                 [data.REGION_NPCS[r] for r in ('depths', 'wilderness')]
+                 if level <= 8 else [data.REGION_NPCS['isle']])
+        xps = [s['xp'] for p in pools for s in (p['wild'] + p['elite'])]
+        return sum(xps) / len(xps)
+
+    kills = [data.xp_to_next(l) / per_kill(l) for l in range(1, data.LEVEL_CAP)]
+    # Nothing past the level-1 onramp may be a one-fight level.
+    for lvl, k in enumerate(kills[1:], start=2):
+        assert k >= 1.5, f'L{lvl}->{lvl + 1} costs only {k:.1f} kills'
+    # L5->6 is the one deliberate soft landing: it is the reward for crossing
+    # into the depths, so it may sit below the onramp's last level in kills --
+    # but nowhere near the old 0.9.
+    onramp_end = kills[3]                       # L4->5
+    assert 1.75 <= kills[4] < onramp_end, f'L5->6 is {kills[4]:.1f} kills'
+    # From L6 up the climb never dips back below where the onramp ended.
+    for lvl, k in enumerate(kills[5:], start=6):
+        assert k >= onramp_end, f'L{lvl}->{lvl + 1} dips to {k:.1f} kills'
+    # And the whole curve stays in a sane band — no 6-kill grind walls either.
+    assert max(kills) <= 4.5
 
 
 def test_level_up_grants():

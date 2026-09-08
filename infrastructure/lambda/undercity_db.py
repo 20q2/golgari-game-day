@@ -1100,6 +1100,17 @@ def _expire_buffs(doc):
                     if not (b.get('until') and b['until'] < now)]
 
 
+def _step_count(value):
+    """A step countdown as an int, or None when the value isn't one — a
+    pre-step-conversion ISO string (design 2026-09-02 forgives those), or
+    anything unexpected. Accepts any real number so a Decimal that skipped
+    _clean can't silently read as "ready" and disable a cooldown outright.
+    bool is rejected on purpose: it subclasses int but is never a count."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+        return None
+    return int(value)
+
+
 def _prune_cooldowns(doc):
     now = _now()
     # Spell cooldowns are step countdowns: drop them once walked to 0. Anything
@@ -1107,7 +1118,7 @@ def _prune_cooldowns(doc):
     # compare it, an int/str compare raises).
     cds = doc.get('spellCooldowns') or {}
     doc['spellCooldowns'] = {k: v for k, v in cds.items()
-                             if isinstance(v, int) and v > 0}
+                             if (_step_count(v) or 0) > 0}
     # High fives are social anti-spam and stay on the wall clock.
     hfcds = doc.get('highFiveCooldowns') or {}
     doc['highFiveCooldowns'] = {k: v for k, v in hfcds.items() if v > now}
@@ -1419,8 +1430,9 @@ def _tick_step_timers(doc, spaces):
     # Spell cooldowns (design 2026-09-02). Non-int values are pre-conversion
     # leftovers — skipped here and dropped by _prune_cooldowns.
     cds = doc.get('spellCooldowns') or {}
-    for spell_id, left in list(cds.items()):
-        if isinstance(left, int) and left > 0:
+    for spell_id, raw in list(cds.items()):
+        left = _step_count(raw)
+        if left is not None and left > 0:
             cds[spell_id] = max(0, left - spaces)
     if int(doc.get('grimoireSwapSteps', 0) or 0) > 0:
         doc['grimoireSwapSteps'] = max(0, int(doc['grimoireSwapSteps']) - spaces)
@@ -5868,8 +5880,8 @@ def _finish_battle(table, sid, doc, rec, result):
     # max HP, on a step countdown (design 2026-09-02 — was a real-time hour).
     # It doesn't turn a loss into a win — the outcome drops to a 'timeout' (no
     # compost, no reward; a persistent-pool foe lingers).
-    _ls_left = doc.get('lastStandSteps')
-    _ls_ready = not isinstance(_ls_left, int) or _ls_left <= 0
+    _ls_left = _step_count(doc.get('lastStandSteps'))
+    _ls_ready = _ls_left is None or _ls_left <= 0
     if (result['attackerHp'] <= 0 and _ls_ready
             and 'last_stand' in engine.attribute_perks(doc)):
         doc['lastStandSteps'] = data.LAST_STAND_COOLDOWN_STEPS
@@ -6906,10 +6918,8 @@ def _spell_cd_ready(doc, spell_id):
     """Ready when no countdown is stored, or it has walked down to 0. A value
     left over from the pre-step model (an ISO string) reads as ready — those
     documents are forgiven once rather than migrated."""
-    left = (doc.get('spellCooldowns') or {}).get(spell_id)
-    if not isinstance(left, int):
-        return True
-    return left <= 0
+    left = _step_count((doc.get('spellCooldowns') or {}).get(spell_id))
+    return left is None or left <= 0
 
 
 def _start_spell_cooldown(doc, spell_id):
@@ -7569,8 +7579,8 @@ def _equip_grimoire(table, sid, doc, payload):
     # hot-swap spell loadouts on demand. Stowing (gid=None) is always free, and
     # re-opening after a stow is still gated — so it can't be used to bypass.
     if gid and gid != doc.get('equippedGrimoire'):
-        left = doc.get('grimoireSwapSteps')
-        if isinstance(left, int) and left > 0:
+        left = _step_count(doc.get('grimoireSwapSteps'))
+        if left is not None and left > 0:
             return _err(f'Grimoire swap on cooldown ({left} steps left).', 429)
         doc['grimoireSwapSteps'] = data.GRIMOIRE_SWAP_COOLDOWN_STEPS
     doc['equippedGrimoire'] = gid
