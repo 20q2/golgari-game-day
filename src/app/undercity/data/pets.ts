@@ -264,6 +264,21 @@ export interface Egg {
 
 // ── Derived display helpers ──────────────────────────────────────────────────
 
+/** The two states worth nudging the player about at the incubator:
+ *   1. the slot is free and eggs are sitting uncooked — go start one;
+ *   2. a slotted egg has been carried far enough — tap it to hatch.
+ *  Incubation is a STEP timer, so this flips when the walk finishes, not on a
+ *  clock; no wall-clock tick is needed to keep it current. Shared so the board
+ *  nudge, the Gear tab badge and the hub notice can't disagree. */
+export function eggsNeedAttention(
+  you: { eggs?: Egg[]; incubator?: { spacesLeft?: number } | null } | null | undefined,
+): boolean {
+  if (!you) return false;
+  const inc = you.incubator;
+  if (!inc) return (you.eggs?.length ?? 0) > 0;
+  return (inc.spacesLeft ?? 0) <= 0;
+}
+
 /** Display name for a pet instance: its nickname if set, else the species name. */
 export function petName(pet: Pet): string {
   return pet.name?.trim() || petInfo(pet.species).name;

@@ -32,6 +32,23 @@
       </button>
     }
 
+    <!-- Egg nudge: tops the bottom-right cluster (above the camera control)
+         whenever the incubator wants attention — a free slot with eggs in hand,
+         or a slotted egg carried far enough to crack. Hidden otherwise, so the
+         cluster stays quiet when there's nothing to do. -->
+    @if (eggsWaiting()) {
+      <button
+        type="button"
+        class="egg-fab"
+        [class.ready]="incubatorReady()"
+        [title]="incubatorReady() ? 'An egg is ready to hatch!' : 'Start an egg incubating'"
+        [attr.aria-label]="incubatorReady() ? 'An egg is ready to hatch' : 'Start an egg incubating'"
+        (click)="openIncubator.emit()"
+      >
+        <mat-icon class="mi">egg</mat-icon>
+      </button>
+    }
+
     <!-- Focus picker: jump the camera to any player (or the wandering Umori).
          Sits in the bottom-right cluster, directly above the bag button. -->
     <div class="focus-picker">

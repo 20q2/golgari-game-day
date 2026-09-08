@@ -1,4 +1,12 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  OnInit,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -162,7 +170,7 @@ interface UpgradePreview {
   templateUrl: './creature-tab.component.html',
   styleUrls: ['./creature-tab.component.scss'],
 })
-export class CreatureTabComponent {
+export class CreatureTabComponent implements OnInit {
   protected readonly store = inject(UndercityStateService);
 
   protected readonly busy = signal(false);
@@ -193,6 +201,13 @@ export class CreatureTabComponent {
    *  screen (its own bottom-nav destination). Gear lives here so it can reuse the
    *  hub + all the gear/companion sub-sections and popups. */
   readonly view = input<'creature' | 'gear'>('creature');
+
+  /** Deep-link: which gear sub-panel to open on entry instead of the hub. Only
+   *  the board's egg nudge sets it (to 'companion'); an ordinary Gear tab press
+   *  passes null and gets the hub. Applied once in ngOnInit (inputs are not
+   *  bound yet during construction); this view is re-created on every tab
+   *  switch, so there is nothing to re-apply later. */
+  readonly startSection = input<GearSection | null>(null);
 
   /** Which sub-panel of the creature screen is showing below the pinned hero.
    *  Seeded from and persisted to localStorage so it survives leaving the tab. */
@@ -231,6 +246,16 @@ export class CreatureTabComponent {
       if (ready && !this.wasIncubatorReady) this.showToast('An egg is ready to hatch!');
       this.wasIncubatorReady = ready;
     });
+  }
+
+  ngOnInit(): void {
+    // Deep link from the board's egg nudge: open straight onto the Companion
+    // screen (where the incubator lives) instead of the Gear hub.
+    const start = this.startSection();
+    if (start && start !== 'home') {
+      this.gearNav.set('forward');
+      this.gearSection.set(start);
+    }
   }
 
   /** Tracks the ready→toast edge so the "egg ready" nudge fires only once. */

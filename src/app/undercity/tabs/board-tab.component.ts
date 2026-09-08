@@ -11,6 +11,8 @@ import {
   isDevMode,
   signal,
   untracked,
+  Output,
+  EventEmitter,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -87,6 +89,7 @@ import {
   petRole,
   abilityReady,
   abilitySpacesLeft,
+  eggsNeedAttention,
 } from '../data/pets';
 import { DUNGEONS, SIGILS_REQUIRED, dungeonBiome, enemyArtUrl } from '../data/dungeons';
 import { RUIN_LAIRS, RUIN_LAIR_NAMES, ruinLairAbandoned } from '../data/ruin-lairs';
@@ -255,6 +258,22 @@ const FX_TINT: Record<string, [string, string]> = {
 })
 export class BoardTabComponent implements AfterViewInit, OnDestroy {
   @Input({ required: true }) map!: BoardMap;
+  /** Tapped the board's egg nudge — the page owns navigation, so it decides
+   *  where the incubator lives and takes the player there. */
+  @Output() openIncubator = new EventEmitter<void>();
+
+  /** An egg needs you: a free slot with eggs in hand, or one carried far enough
+   *  to crack. Drives the board's egg button (shared with the Gear tab badge). */
+  protected readonly eggsWaiting = computed<boolean>(() =>
+    eggsNeedAttention(this.store.you()),
+  );
+
+  /** Of the two nudge states, the urgent one: a slotted egg has been carried
+   *  far enough and is waiting to be cracked. Drives the button's pulse. */
+  protected readonly incubatorReady = computed<boolean>(() => {
+    const inc = this.store.you()?.incubator;
+    return !!inc && (inc.spacesLeft ?? 0) <= 0;
+  });
   @ViewChild('boardCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
 
   /** Whether the Board tab is the visible tab. The component now stays mounted

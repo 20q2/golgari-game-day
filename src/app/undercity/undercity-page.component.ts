@@ -27,6 +27,7 @@ import { LogTabComponent } from './tabs/log-tab.component';
 import { HostPanelComponent } from './host/host-panel.component';
 import { CeremonyComponent } from './ceremony/ceremony.component';
 import { GatesOpenComponent } from './gates/gates-open.component';
+import { eggsNeedAttention } from './data/pets';
 
 type Tab = 'board' | 'creature' | 'gear' | 'plaza' | 'log';
 
@@ -84,13 +85,9 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
    *   2. An egg is slotted and has been carried far enough — tap it to hatch.
    *  Incubation is a STEP timer, so this lights up when the walk finishes, not
    *  on a clock; no nowMs() dependency is needed. */
-  protected readonly eggsWaiting = computed<boolean>(() => {
-    const you = this.store.you();
-    if (!you) return false;
-    const inc = you.incubator;
-    if (!inc) return (you.eggs?.length ?? 0) > 0;
-    return (inc.spacesLeft ?? 0) <= 0;
-  });
+  protected readonly eggsWaiting = computed<boolean>(() =>
+    eggsNeedAttention(this.store.you()),
+  );
 
   protected readonly phase = computed<
     'signin' | 'loading' | 'idle' | 'lobby' | 'hatch' | 'play' | 'ended'
@@ -477,7 +474,22 @@ export class UndercityPageComponent implements OnInit, OnDestroy {
 
   setTab(tab: Tab): void {
     if (tab !== 'board' && this.inBattle()) return;
+    // Any ordinary tab press lands on the Gear hub; only goToIncubator() below
+    // deep-links past it.
+    this.gearStartSection.set(null);
     this.tab.set(tab);
+  }
+
+  /** Which Gear sub-panel to open on entry, or null for the usual hub. Consumed
+   *  once by the Gear view, which is re-created on every tab switch. */
+  protected readonly gearStartSection = signal<'companion' | null>(null);
+
+  /** The board's egg nudge: jump straight to the incubator on the Companion
+   *  screen rather than making the player walk the Gear hub to find it. */
+  protected goToIncubator(): void {
+    if (this.inBattle()) return;
+    this.gearStartSection.set('companion');
+    this.tab.set('gear');
   }
 
   /** Tapping the HUD portrait re-centers the board camera on your creature.

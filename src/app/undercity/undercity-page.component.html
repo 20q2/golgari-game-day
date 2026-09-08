@@ -198,13 +198,14 @@
             [map]="map()!"
             [active]="tab() === 'board'"
             [hidden]="tab() !== 'board'"
+            (openIncubator)="goToIncubator()"
           />
           @switch (tab()) {
             @case ('creature') {
               <app-undercity-creature-tab view="creature" />
             }
             @case ('gear') {
-              <app-undercity-creature-tab view="gear" />
+              <app-undercity-creature-tab view="gear" [startSection]="gearStartSection()" />
             }
             @case ('plaza') {
               <app-undercity-plaza-tab />

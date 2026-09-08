@@ -75,6 +75,68 @@
   z-index: 6;
 }
 
+// Egg nudge: tops the bottom-right stack (bag 10 -> camera 58 -> egg 106, each
+// 40px tall with an 8px gap). Amber rather than the cluster's green so it reads
+// as "something wants you" instead of another board control, and it only exists
+// while there's an egg to act on.
+.egg-fab {
+  position: absolute;
+  bottom: 106px;
+  right: 10px;
+  z-index: 6;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(46, 34, 18, 0.86);
+  border: 1px solid rgba(230, 184, 92, 0.65);
+  color: #f0d08a;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+
+  .mi {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+
+  // Ready to hatch is the urgent half: brighten it and breathe so it pulls the
+  // eye away from the quieter "you could start one" state.
+  &.ready {
+    background: rgba(74, 56, 20, 0.92);
+    border-color: rgba(245, 205, 120, 0.95);
+    color: #ffe6a8;
+    animation: egg-fab-pulse 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes egg-fab-pulse {
+  0%,
+  100% {
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 3px 10px rgba(0, 0, 0, 0.4),
+      0 0 0 5px rgba(245, 205, 120, 0.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .egg-fab.ready {
+    animation: none;
+  }
+}
+
 // Bag: a round icon button in the bottom-right corner, with the camera control
 // stacked above it. Uses the game's own pouch glyph rather than a generic
 // backpack, and carries a count badge so you can see you're carrying something
