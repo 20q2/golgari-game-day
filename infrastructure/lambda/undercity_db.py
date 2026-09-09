@@ -2947,6 +2947,7 @@ def handle_action(table, body):
         'equip-gear': _equip_gear,
         'salvage-gear': _salvage_gear, 'upgrade-gear': _upgrade_gear,
         'gorge': _gorge, 'reclaim': _reclaim,
+        'landing-reclaim': _landing_reclaim,
         'market-list': _market_list, 'market-buy': _market_buy,
         'market-cancel': _market_cancel, 'market-edit': _market_edit,
         'pickup-resolve': _pickup_resolve,
@@ -2960,6 +2961,11 @@ def handle_action(table, body):
     handler = handlers.get(atype)
     if not handler:
         return _err(f'Unknown action: {atype}')
+    # A landing paused for the Gorger's reshape blocks the turn the same way a
+    # fight does — otherwise you could sit on an unresolved hazard forever, or
+    # roll away from a space you never actually stood on.
+    if doc.get('pendingLanding') and atype not in _LANDING_ALLOWED_ACTIONS:
+        return _err('Settle the ground under you first.', 409)
     # A pending interactive battle blocks turn actions until it resolves; only
     # the combat actions and read-only/meta actions are allowed mid-fight.
     if doc.get('battle') and atype not in _BATTLE_ALLOWED_ACTIONS:
@@ -2971,6 +2977,13 @@ def handle_action(table, body):
 _BATTLE_ALLOWED_ACTIONS = frozenset({
     'combat-round', 'combat-peek', 'combat-flee', 'combat-item',
     'set-stance', 'spend-stat', 'customize', 'set-status', 'chat', 'ack-events',
+})
+
+# Allowed while a landing waits on the reshape decision: the decision itself,
+# plus the read-only/meta actions that never touch the board.
+_LANDING_ALLOWED_ACTIONS = frozenset({
+    'landing-reclaim',
+    'spend-stat', 'customize', 'set-status', 'chat', 'ack-events',
 })
 
 
@@ -4561,12 +4574,31 @@ def _maybe_bazaar_welcome(doc, stock):
     return {'kind': 'material', 'name': 'Molting', 'amount': 1}
 
 
-def _resolve_space(table, sid, doc, node, prev):
-    """Apply the landing event for `node`, mutating doc. Returns event dict."""
+def _resolve_space(table, sid, doc, node, prev, offer=True):
+    """Apply the landing event for `node`, mutating doc. Returns event dict.
+
+    `offer` gates the Grime Gorger's reshape-on-landing: the first pass pauses
+    and hands back the menu, and _landing_reclaim re-enters with offer=False to
+    actually resolve (whatever the ground has become by then)."""
     nodes = _season_map(table, sid)
     # Read through the Grime Gorger override layer, so a reclaimed space
     # resolves — and reports its metric — as what it has become.
     ntype = _effective_type(table, sid, node)
+
+    # Reshape-on-landing: pause BEFORE anything is counted or applied, so the
+    # deferred pass records the space the player actually meets rather than
+    # double-counting this one. Nothing here has touched doc yet.
+    if offer:
+        targets = _landing_reshape_targets(table, sid, doc, node)
+        if targets:
+            doc['pendingLanding'] = {'node': node, 'prev': prev}
+            return {'type': 'reclaim_offer', 'node': node, 'current': ntype,
+                    'targets': sorted(targets, key=lambda t: data.RECLAIM_PRICES[t]),
+                    'mulch': doc.get('mulch', 0),
+                    'claims': list(doc.get('claims') or []),
+                    'text': 'The filth stirs underfoot. Work this ground before you '
+                            'set your weight on it?'}
+
     _metric(doc, 'spaces')
     _metric(doc, f'space.{ntype}')
 
@@ -7681,42 +7713,95 @@ def _gorge(table, sid, doc, payload):
                gorge={'mulch': gained, 'total': doc['mulch']})
 
 
-def _reclaim(table, sid, doc, payload):
-    """Spend Mulch, standing on a space, to rewrite what that space is.
+def _reclaim_check(table, sid, doc, node, target, nodes=None, claims=None):
+    """Shared gate for every way a Gorger rewrites ground — the standing Reclaim
+    action and the reshape offered on landing. Returns (err, ctx): `err` is an
+    _err tuple when the change is refused, else None and ctx carries the
+    resolved {price, current, standing} the caller needs to commit.
 
     The governing rule: a player may change what a space DOES, never what the
     map IS. Topology and unique landmarks are therefore absent from both
     RECLAIM_SOURCES and RECLAIM_PRICES."""
     if 'reclaim' not in (doc.get('passives') or []):
-        return _err('Only a Grime Gorger can work the ground like that.')
-    target = payload.get('target')
+        return _err('Only a Grime Gorger can work the ground like that.'), None
     price = data.RECLAIM_PRICES.get(target)
     if price is None:
-        return _err('You cannot grow that here.')
-    node = doc.get('position')
-    nodes = _season_map(table, sid)
+        return _err('You cannot grow that here.'), None
+    nodes = nodes if nodes is not None else _season_map(table, sid)
     if node not in nodes:
-        return _err('You are nowhere the ground will take.', 409)
+        return _err('You are nowhere the ground will take.', 409), None
 
-    claims = _reclaimed(table, sid)
+    claims = claims if claims is not None else _reclaimed(table, sid)
     standing = claims.get(node)
     if standing and standing['by'] != doc['userId']:
-        return _err('Another Gorger has already worked this ground.', 409)
+        return _err('Another Gorger has already worked this ground.', 409), None
 
     current = standing['type'] if standing else nodes[node]['type']
     if current == target:
-        return _err('This ground is already exactly that.')
+        return _err('This ground is already exactly that.'), None
     # Your own claim may be re-landscaped; otherwise the underlying space must
     # be soft ground. `origType` is preserved so a released claim reverts.
     if not standing and current not in data.RECLAIM_SOURCES:
-        return _err('This ground will not take a change.', 409)
+        return _err('This ground will not take a change.', 409), None
     if (current == 'fog'
             and not (_get(table, _season_pk(sid), f'FOG#{node}') or {}).get('revealed')):
-        return _err('You cannot re-landscape ground you have not seen.', 409)
+        return _err('You cannot re-landscape ground you have not seen.', 409), None
     if target in data.RECLAIM_SURFACE_ONLY and nodes[node].get('region') == 'depths':
-        return _err('The deep dark will not hold that — build it on the surface.', 409)
+        return _err('The deep dark will not hold that — build it on the surface.', 409), None
     if doc.get('mulch', 0) < price:
-        return _err(f'Not enough Mulch — that costs {price}.', 409)
+        return _err(f'Not enough Mulch — that costs {price}.', 409), None
+    return None, {'price': price, 'current': current, 'standing': standing,
+                  'claims': claims, 'nodes': nodes}
+
+
+def _tile_is_overlaid(table, sid, doc, node):
+    """True when something physically occupies this tile and overrides its type
+    (Savra's brood, the Great Beast, Umori's stall, the enraged monster). Ground
+    under an occupier cannot be reshaped — Mulch must never buy a way out of a
+    fight that is standing on you."""
+    if node in _swarm_nodes(table, sid):
+        return True
+    we = _world_event(table, sid)
+    if we and we.get('spawned') and not we.get('dead') and node in (we.get('nodes') or []):
+        return True
+    if node == _umori_node(_umori_window()):
+        return True
+    er = _enraged_state(table, sid)
+    return not er.get('dead') and node == er.get('node')
+
+
+def _landing_reshape_targets(table, sid, doc, node):
+    """Ground this Gorger could grow here, right now, with the Mulch on hand —
+    the menu offered on landing. Empty when the reshape isn't on the table at
+    all (not a Gorger, occupied tile, hard ground, or nothing affordable), which
+    is what keeps the prompt off ordinary turns."""
+    if 'reclaim' not in (doc.get('passives') or []):
+        return []
+    if _tile_is_overlaid(table, sid, doc, node):
+        return []
+    nodes = _season_map(table, sid)
+    claims = _reclaimed(table, sid)
+    # Ground you already hold you built on purpose — landing on your own Bazaar
+    # Post should open the bazaar, not ask whether to tear it up. The standing
+    # Reclaim action still re-landscapes it.
+    if (claims.get(node) or {}).get('by') == doc['userId']:
+        return []
+    return [t for t in data.RECLAIM_PRICES
+            if _reclaim_check(table, sid, doc, node, t, nodes, claims)[0] is None]
+
+
+def _reclaim_apply(table, sid, doc, node, target, payload):
+    """Charge the Mulch, write the claim and announce it - everything a reclaim
+    does EXCEPT persisting the player doc, which is left to the caller so a
+    landing reshape can resolve the new space and save exactly once (_put_player
+    bumps `ver` on a copy, so a second save from the same doc always conflicts).
+
+    Returns (err, info); `info` is the `reclaim` payload for the response."""
+    err, ctx = _reclaim_check(table, sid, doc, node, target)
+    if err:
+        return err, None
+    price, current, standing = ctx['price'], ctx['current'], ctx['standing']
+    claims = ctx['claims']
 
     # Three standing claims, ever. Under this price list that cap is the only
     # thing between a wealthy hoarder and a rebuilt biome — the decision is
@@ -7727,7 +7812,7 @@ def _reclaim(table, sid, doc, payload):
         release = payload.get('release')
         if release not in held:
             return _err('You already hold three claims — release one first.',
-                        409, claims=held)
+                        409, claims=held), None
         table.delete_item(Key={'pk': _season_pk(sid), 'sk': f'RECLAIM#{release}'})
         held = [n for n in held if n != release]
         doc['claims'] = held
@@ -7742,16 +7827,59 @@ def _reclaim(table, sid, doc, payload):
     # Rebuild from `held` (not the raw field) so any claim that vanished — a new
     # night, a released slot — is pruned rather than counted forever.
     doc['claims'] = [n for n in held if n != node] + [node]
-    conflict = _save_or_conflict(table, doc)
-    if conflict:
-        return conflict
     pretty = target.replace('_', ' ')
     _event(table, sid, 'reclaim',
            f"{doc.get('username', 'Someone')}'s Grime Gorger works the ground — "
            f"a {pretty} rises from the filth.",
            actor=doc['userId'])
-    return _ok(doc, text=f'The ground churns and settles: a {pretty}.',
-               reclaim={'node': node, 'type': target, 'price': price})
+    return None, {'node': node, 'type': target, 'price': price, 'pretty': pretty}
+
+
+def _reclaim(table, sid, doc, payload):
+    """Spend Mulch, standing on a space, to rewrite what that space is."""
+    err, info = _reclaim_apply(table, sid, doc, doc.get('position'),
+                               payload.get('target'), payload)
+    if err:
+        return err
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    return _ok(doc, text=f"The ground churns and settles: a {info['pretty']}.",
+               reclaim={k: info[k] for k in ('node', 'type', 'price')})
+
+
+def _landing_reclaim(table, sid, doc, payload):
+    """Answer the reshape offered on landing: rewrite the ground and then meet
+    what you built, or wave it off and take the space as it lies. Either way the
+    landing finally resolves here, so the turn can never stall on the choice.
+
+    Rewriting uses the ordinary Reclaim rules, prices and three-claim cap — this
+    is the same landscaping, just bought at the moment it matters most."""
+    pending = doc.get('pendingLanding')
+    if not pending:
+        return _err('Nothing underfoot is waiting on you.', 409)
+    node = pending['node']
+    prev = pending.get('prev')
+    target = payload.get('target')
+
+    reclaimed = None
+    if not payload.get('skip') and target:
+        # Same landscaping the standing Reclaim action does — shared code, so the
+        # claim cap, release and prices can never diverge between the two paths.
+        err, reclaimed = _reclaim_apply(table, sid, doc, node, target, payload)
+        if err:
+            return err            # refused: the landing stays pending, retry or skip
+
+    # Committed either way now — resolve the space for real. offer=False stops
+    # the freshly-built ground from offering itself all over again.
+    doc.pop('pendingLanding', None)
+    event = _resolve_space(table, sid, doc, node, prev, offer=False)
+    conflict = _save_or_conflict(table, doc)
+    if conflict:
+        return conflict
+    extra = ({'reclaim': {k: reclaimed[k] for k in ('node', 'type', 'price')}}
+             if reclaimed else {})
+    return _ok(doc, spaceEvent=event, **extra)
 
 
 def _evolve(table, sid, doc, payload):

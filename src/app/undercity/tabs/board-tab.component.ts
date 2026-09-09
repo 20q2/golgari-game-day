@@ -1653,6 +1653,46 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return null;
   }
 
+  // ── Reshape-on-landing ────────────────────────────────────────────────────
+  // Driven off server state, not the landing event, so a reload reopens the
+  // prompt rather than stranding the player on a turn the server won't advance.
+
+  /** The paused landing waiting on a reshape decision, or null. */
+  protected readonly landingOffer = computed(() => this.store.you()?.pendingLanding ?? null);
+
+  /** Ground worth offering here: the same menu the standing Reclaim modal
+   *  builds, minus anything blocked. The server independently re-checks each
+   *  choice, so this is presentation, not trust. */
+  protected readonly landingTargets = computed(() =>
+    this.reclaimTargets
+      .filter((t) => !this.reclaimBlocker(t))
+      .sort((a, b) => RECLAIM_PRICES[a] - RECLAIM_PRICES[b]),
+  );
+
+  /** Take the offer: rewrite the ground, then land on what you built. */
+  protected async landingReclaim(target: string): Promise<void> {
+    if (this.reclaimBlocker(target)) return;
+    await this.run(async () => {
+      const preHp = this.store.you()?.hp ?? 0;
+      const resp = await this.store.action('landing-reclaim', {
+        target,
+        ...(this.needsRelease() && this.pendingRelease() ? { release: this.pendingRelease() } : {}),
+      });
+      this.pendingRelease.set(null);
+      if (resp.spaceEvent) this.routeSpaceEvent(resp.spaceEvent, preHp);
+    });
+  }
+
+  /** Wave it off and take the space as it lies. */
+  protected async landingSkip(): Promise<void> {
+    await this.run(async () => {
+      const preHp = this.store.you()?.hp ?? 0;
+      const resp = await this.store.action('landing-reclaim', { skip: true });
+      this.pendingRelease.set(null);
+      if (resp.spaceEvent) this.routeSpaceEvent(resp.spaceEvent, preHp);
+    });
+  }
+
   protected openReclaim(): void {
     this.pendingRelease.set(null);
     this.showReclaim.set(true);
@@ -2834,6 +2874,9 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   /** Open the right modal/animation for a landing event (move or teleport). */
   private routeSpaceEvent(ev: SpaceEvent, preHp: number, skipBossIntro = false): void {
+    // A paused landing has its own prompt, driven off you.pendingLanding — there
+    // is nothing to show here yet, and the real event arrives once it resolves.
+    if (ev.type === 'reclaim_offer') return;
     // A fresh biome-lair boss or Savra encounter gets a spoken dialogue card
     // first (design 2026-08-04). Defer the real dispatch until the player taps
     // Fight (beginBossBattle re-enters with skipBossIntro=true). Detection keys

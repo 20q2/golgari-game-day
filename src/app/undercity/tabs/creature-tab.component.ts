@@ -30,11 +30,18 @@ import {
   UPGRADE_COST,
   nextRung,
   GearInfo,
+  SPACE_ICONS,
 } from '../data/items';
 import { DescSeg, descDiff } from '../data/gear-diff';
 import { affordReason, materialReason } from '../data/block-reasons';
 import { gearProperty } from '../data/combat';
-import { GORGE_MULCH } from '../data/reclaim';
+import {
+  GORGE_MULCH,
+  RECLAIM_PRICES,
+  RECLAIM_LABELS,
+  RECLAIM_SURFACE_ONLY,
+  RECLAIM_MAX_CLAIMS,
+} from '../data/reclaim';
 import {
   innateSpellIds,
   GRIMOIRE_MAP,
@@ -112,7 +119,7 @@ function loadSubTab(): CreatureSubTab {
   return 'stats';
 }
 
-type GearSection = 'home' | 'equip' | 'magic' | 'bag' | 'companion';
+type GearSection = 'home' | 'equip' | 'magic' | 'bag' | 'companion' | 'compost';
 
 /** The resource chips on the Gear top bar, each tappable for a blurb. */
 type GearMatKey = 'spores' | 'moltings' | 'ichor' | 'mulch';
@@ -755,6 +762,88 @@ export class CreatureTabComponent implements OnInit {
     if (kind !== 'gear' && kind !== 'consumable') return 0;
     const tier = kind === 'gear' ? GEAR_MAP[itemId]?.tier : CONSUMABLE_MAP[itemId]?.tier;
     return GORGE_MULCH[kind][tier ?? 1] ?? 0;
+  }
+
+  // ── Compost Works (the Gorger's bench) ───────────────────────────────────
+
+  /** Everything the gut can actually take, in one list: stashed gear first
+   *  (worth double a consumable of the same rarity), then bagged consumables.
+   *  Equipped gear is absent on purpose — the server's _GORGE_KINDS only reaches
+   *  `gearStash` and `bag`, so a worn piece has to come off first. */
+  protected readonly compostFeed = computed(() => {
+    const you = this.store.you();
+    const rows: {
+      key: string;
+      kind: MarketKind;
+      source: ItemSource;
+      id: string;
+      index: number;
+      name: string;
+      sub: string;
+      tier: number;
+      icon?: string;
+      svgIcon?: string;
+      yield: number;
+    }[] = [];
+    (you?.gearStash ?? []).forEach((id, index) => {
+      const g = GEAR_MAP[id];
+      if (!g) return;
+      rows.push({
+        key: `stash:${index}`, kind: 'gear', source: 'stash', id, index,
+        name: g.name, sub: g.slot, tier: g.tier, svgIcon: `uc-${g.slot}`,
+        yield: GORGE_MULCH.gear[g.tier] ?? 0,
+      });
+    });
+    (you?.bag ?? []).forEach((id, index) => {
+      const c = CONSUMABLE_MAP[id];
+      if (!c) return;
+      rows.push({
+        key: `bag:${index}`, kind: 'consumable', source: 'bag', id, index,
+        name: c.name, sub: 'consumable', tier: c.tier, icon: c.icon,
+        yield: GORGE_MULCH.consumable[c.tier] ?? 0,
+      });
+    });
+    return rows;
+  });
+
+  /** Total Mulch sitting in the trough if you devoured the lot — the "what is
+   *  this pile worth" number the bench exists to answer. */
+  protected readonly compostFeedTotal = computed(() =>
+    this.compostFeed().reduce((n, r) => n + r.yield, 0),
+  );
+
+  /** Ground you can grow, cheapest first, as a price reference. Depth-locked
+   *  entries are flagged rather than hidden — knowing a Rest Alcove is surface
+   *  only is the point of a reference card. */
+  protected readonly reclaimMenu = computed(() =>
+    Object.entries(RECLAIM_PRICES)
+      .map(([type, price]) => ({
+        type,
+        price,
+        label: RECLAIM_LABELS[type] ?? type,
+        surfaceOnly: RECLAIM_SURFACE_ONLY.has(type),
+        affordable: this.mulch() >= price,
+      }))
+      .sort((a, b) => a.price - b.price),
+  );
+
+  /** Board glyph per space type, so the price card reads in the same symbol
+   *  language as the map itself. */
+  protected readonly spaceIcons = SPACE_ICONS;
+  protected readonly reclaimMaxClaims = RECLAIM_MAX_CLAIMS;
+  protected readonly claimsHeld = computed(() => (this.store.you()?.claims ?? []).length);
+
+  /** Devour straight from the bench. Same two-tap arm as the item popup's
+   *  button, keyed per row so arming one never arms another. */
+  protected confirmGorgeRow(row: { source: ItemSource; kind: MarketKind; id: string; index: number; sub: string }): void {
+    this.confirmGorge({
+      source: row.source, kind: row.kind, id: row.id, index: row.index, slotLabel: row.sub,
+    });
+  }
+
+  /** True while this bench row is armed and one more tap will eat it. */
+  protected gorgeArmed(row: { kind: MarketKind; index: number }): boolean {
+    return this.salvageArmed() === 'gorge:' + row.kind + ':' + row.index;
   }
 
   /** Devouring destroys the item, so it arms on the first tap and commits on the

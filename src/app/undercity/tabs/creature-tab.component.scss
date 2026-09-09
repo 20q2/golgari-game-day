@@ -3560,3 +3560,301 @@ button.gear-mat-chip {
 .hatch-reveal[data-rarity='rare'] .hatch-reveal-burst { background: radial-gradient(circle, rgba(95, 209, 138, 0.28) 0%, transparent 68%); }
 .hatch-reveal[data-rarity='legendary'] .hatch-reveal-burst { background: radial-gradient(circle, rgba(251, 191, 36, 0.3) 0%, transparent 68%); }
 .hatch-reveal[data-rarity='mythic'] .hatch-reveal-burst { background: radial-gradient(circle, rgba(240, 67, 80, 0.34) 0%, transparent 66%); }
+
+// ── Compost Works ───────────────────────────────────────────────────────────
+// The Grime Gorger's bench. Rot-brown throughout, matching the Mulch chip on
+// the gear top bar, so the whole screen reads as this one creature's mechanic
+// rather than another generic inventory list.
+.gear-hub-tile.compost {
+  border-color: rgba(176, 137, 76, 0.45);
+
+  .gear-hub-ico .mi { color: #c39a55; }
+  .gear-hub-count {
+    color: #e8dcc4;
+    background: rgba(176, 137, 76, 0.2);
+    border-color: rgba(176, 137, 76, 0.5);
+  }
+}
+
+.compost-intro {
+  border-color: rgba(176, 137, 76, 0.4);
+}
+
+.compost-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+
+  .compost-head-ico {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+    color: #c39a55;
+  }
+
+  .compost-head-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+
+    h3 { margin: 0; }
+  }
+
+  .compost-sub {
+    font-size: 0.76rem;
+    color: #a89a80;
+    line-height: 1.3;
+  }
+
+  // Mulch on hand, pinned right — the number every price below is measured against.
+  .compost-bank {
+    margin-left: auto;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: rgba(176, 137, 76, 0.16);
+    border: 1px solid rgba(176, 137, 76, 0.5);
+    color: #e8dcc4;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+
+    .mi { font-size: 17px; width: 17px; height: 17px; color: #c39a55; }
+  }
+}
+
+.compost-steps {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: #c3d3c3;
+  }
+
+  b { color: #e8dcc4; }
+
+  .compost-step-n {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(176, 137, 76, 0.22);
+    border: 1px solid rgba(176, 137, 76, 0.5);
+    color: #e8dcc4;
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+}
+
+.compost-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: #9fae9f;
+
+  .mi {
+    flex: 0 0 auto;
+    font-size: 15px;
+    width: 15px;
+    height: 15px;
+    color: #c39a55;
+  }
+}
+
+.compost-trough-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  h3 { margin: 0; }
+
+  .compost-total {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.75rem;
+    color: #a89a80;
+
+    b { color: #e8dcc4; }
+    .mi { font-size: 15px; width: 15px; height: 15px; color: #c39a55; }
+  }
+}
+
+.compost-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+// One edible item. A whole-row button: first tap arms, second devours (the same
+// destructive-action guard Grind and the item popup use).
+.compost-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #101709;
+  border: 1px solid #26331f;
+  border-left-width: 3px;
+  color: #dfe7df;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+
+  &[data-rarity='rare'] { border-left-color: #5aa9e6; }
+  &[data-rarity='legendary'] { border-left-color: #e0a44a; }
+  &[data-rarity='mythic'] { border-left-color: #c86bd8; }
+
+  &:hover:not(:disabled) { background: #15200d; }
+  &:disabled { opacity: 0.55; cursor: default; }
+
+  &.armed {
+    background: rgba(120, 40, 30, 0.28);
+    border-color: rgba(220, 110, 90, 0.7);
+  }
+
+  .compost-row-ico {
+    flex: 0 0 auto;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: #9fd6a6;
+  }
+
+  .compost-row-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .compost-row-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 0.84rem;
+    font-weight: 700;
+  }
+
+  .compost-row-sub {
+    font-size: 0.7rem;
+    color: #8c9a8c;
+    text-transform: capitalize;
+  }
+
+  .compost-row-yield {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #e8dcc4;
+    font-variant-numeric: tabular-nums;
+
+    .mi { font-size: 16px; width: 16px; height: 16px; color: #c39a55; }
+
+    &.warn {
+      color: #ffb4a2;
+      .mi { color: #ffb4a2; }
+    }
+  }
+}
+
+.compost-price-hint {
+  margin: 2px 0 9px;
+  font-size: 0.74rem;
+}
+
+.compost-prices {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+// A price row. Dimmed until you can actually afford it, so the card doubles as
+// "what can I do right now" at a glance.
+.compost-price {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  opacity: 0.55;
+
+  &.afford {
+    opacity: 1;
+    background: rgba(176, 137, 76, 0.1);
+  }
+
+  .compost-price-ico {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #9fd6a6;
+  }
+
+  .compost-price-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #dfe7df;
+  }
+
+  .compost-price-tag {
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(90, 169, 230, 0.16);
+    border: 1px solid rgba(90, 169, 230, 0.4);
+    color: #9fcdf0;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .compost-price-cost {
+    flex: 0 0 auto;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #e8dcc4;
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -479,3 +479,92 @@ def test_reclaimed_ground_is_visible_to_other_players(table):
     assert claim['type'] == 'loot'
     assert claim['origType'] == 'wild'
     assert claim['byName'] == 'Alex'
+
+
+# ── Reshape-on-landing (the Gorger picks what it lands on) ───────────────────
+# Landing pauses before the space resolves so the Gorger can rewrite the ground
+# and then meet what it built. Same Reclaim rules, prices and 3-claim cap.
+
+def test_landing_offers_a_reshape_before_the_space_resolves(table):
+    sid, doc = _gorger(table)
+    node = _node_of_type(table, sid, 'wild')
+    doc['mulch'] = 99
+    ev = db._resolve_space(table, sid, doc, node, None)
+    assert ev['type'] == 'reclaim_offer'
+    assert ev['node'] == node and ev['current'] == 'wild'
+    # A wild space would normally start a fight — it must not have.
+    assert not doc.get('battle')
+    assert doc['pendingLanding']['node'] == node
+    # Only what the Mulch on hand can actually buy is offered.
+    assert 'loot' in ev['targets'] and 'wild' not in ev['targets']
+
+
+def test_landing_does_not_offer_without_the_mulch_to_act(table):
+    sid, doc = _gorger(table)
+    node = _node_of_type(table, sid, 'wild')
+    doc['mulch'] = 1                       # under every price
+    ev = db._resolve_space(table, sid, doc, node, None)
+    assert ev['type'] != 'reclaim_offer'
+    assert not doc.get('pendingLanding')
+
+
+def test_landing_never_offers_to_a_non_gorger(table):
+    sid, doc = _player_at(table, 'cavern_r2')
+    node = _node_of_type(table, sid, 'wild')
+    doc['mulch'] = 99                      # even if somehow held
+    ev = db._resolve_space(table, sid, doc, node, None)
+    assert ev['type'] != 'reclaim_offer'
+
+
+def test_taking_the_offer_rewrites_then_resolves_the_new_ground(table):
+    sid, doc = _gorger(table)
+    node = _node_of_type(table, sid, 'wild')
+    doc['mulch'] = 99
+    db._resolve_space(table, sid, doc, node, None)
+    db._put_player(table, doc)
+    doc = db._get_player(table, sid, 'user-alex')
+    status, body = db._landing_reclaim(table, sid, doc, {'target': 'loot'})
+    assert status == 200, body
+    assert db._effective_type(table, sid, node) == 'loot'
+    assert doc['mulch'] == 99 - config.RECLAIM_PRICES['loot']
+    assert not doc.get('pendingLanding')
+    # The landing actually happened, as the NEW space — not the wild fight.
+    assert body['spaceEvent']['type'] != 'reclaim_offer'
+    assert not doc.get('battle')
+
+
+def test_declining_the_offer_resolves_the_original_ground(table):
+    sid, doc = _gorger(table)
+    node = _node_of_type(table, sid, 'wild')
+    doc['mulch'] = 99
+    db._resolve_space(table, sid, doc, node, None)
+    db._put_player(table, doc)
+    doc = db._get_player(table, sid, 'user-alex')
+    status, body = db._landing_reclaim(table, sid, doc, {'skip': True})
+    assert status == 200, body
+    assert doc['mulch'] == 99               # nothing spent
+    assert not doc.get('pendingLanding')
+    assert db._effective_type(table, sid, node) == 'wild'
+    # The wild space resolved for real: a fight is waiting.
+    assert doc.get('battle')
+
+
+def test_a_pending_landing_blocks_the_turn(table):
+    sid, doc = _gorger(table)
+    node = _node_of_type(table, sid, 'wild')
+    doc['mulch'] = 99
+    db._resolve_space(table, sid, doc, node, None)
+    db._put_player(table, doc)
+    status, body = db.handle_action(table, {"seasonId": sid, "userId": "user-alex", "type": "roll", "payload": {}})
+    assert status == 409, body
+
+
+def test_overlay_tiles_cannot_be_reshaped_away(table):
+    """A Scouring Swarm physically holds the tile — Mulch must not dodge it."""
+    sid, doc = _gorger(table)
+    node = _node_of_type(table, sid, 'wild')
+    doc['mulch'] = 99
+    db._set_swarm(table, sid, [node])
+    ev = db._resolve_space(table, sid, doc, node, None)
+    assert ev['type'] != 'reclaim_offer'
+    assert not doc.get('pendingLanding')

@@ -215,6 +215,11 @@ export interface YouDoc {
   bagCap?: number;
   /** Grime Gorger: node ids currently held as reclaimed ground (max 3). */
   claims?: string[];
+  /** Grime Gorger: a landing paused on the reshape decision. While this is set
+   * the server refuses turn actions (mirrors _LANDING_ALLOWED_ACTIONS), so the
+   * client must resolve it via the `landing-reclaim` action. Present on the
+   * state fetch too, so a reload reopens the prompt instead of soft-locking. */
+  pendingLanding?: { node: string; prev?: string | null } | null;
   stance: string;
   shieldUntil?: string | null;
   pendingMove?: PendingMove | null;

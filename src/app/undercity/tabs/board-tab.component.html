@@ -948,6 +948,65 @@
   }
 
   <!-- Reclaim (Grime Gorger) -->
+  <!-- Reshape-on-landing: the server paused this landing and will refuse turn
+       actions until it is answered, so this prompt has no backdrop dismiss and
+       no close button — the only ways out are building something or leaving it. -->
+  @if (landingOffer(); as pending) {
+    <div class="uc-modal-backdrop">
+      <div class="uc-modal" [style.background-image]="regionWashBg()">
+        <h3><mat-icon class="mi">compost</mat-icon> Work the Ground?</h3>
+        <p class="modal-sub">
+          You come down on <strong>{{ reclaimLabel(standingType()) }}</strong>. Rewrite it
+          before you set your weight, and you land on what you build instead.
+        </p>
+
+        <div class="shrine-wallet" [class.short]="!mulch()">
+          <mat-icon class="mi">compost</mat-icon>
+          <span>{{ mulch() }}</span>
+          <em>mulch · {{ myClaims().length }}/{{ reclaimMaxClaims }} claims</em>
+        </div>
+
+        @if (needsRelease()) {
+          <p class="modal-sub warn">
+            You already hold {{ reclaimMaxClaims }} claims. Pick one to let collapse —
+            it reverts to what it was.
+          </p>
+          <div class="reclaim-releases">
+            @for (node of myClaims(); track node) {
+              <button
+                class="uc-btn ghost"
+                [class.armed]="pendingRelease() === node"
+                (click)="pendingRelease.set(node)"
+              >
+                {{ reclaimLabel(store.season()?.reclaimed?.[node]?.type ?? '') }}
+                @if (pendingRelease() === node) {
+                  <mat-icon class="mi">check</mat-icon>
+                }
+              </button>
+            }
+          </div>
+        }
+
+        <div class="reclaim-grid">
+          @for (t of landingTargets(); track t) {
+            <button
+              class="reclaim-card"
+              [disabled]="busy() || (needsRelease() && !pendingRelease())"
+              (click)="landingReclaim(t)"
+            >
+              <span class="reclaim-card-name">{{ reclaimLabel(t) }}</span>
+              <span class="reclaim-card-price">{{ reclaimPrice(t) }} mulch</span>
+            </button>
+          }
+        </div>
+
+        <button class="uc-btn close-btn" [disabled]="busy()" (click)="landingSkip()">
+          Leave it — land as it lies
+        </button>
+      </div>
+    </div>
+  }
+
   @if (showReclaim()) {
     <div class="uc-modal-backdrop" (click)="showReclaim.set(false)">
       <div

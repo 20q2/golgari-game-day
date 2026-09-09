@@ -320,8 +320,9 @@
                     </button>
 
                     <button type="button" class="gear-hub-tile bag" (click)="selectGear('bag')">
-                      <span class="gear-hub-count" [class.gear-hub-count--full]="you.bag.length >= 5">
-                        {{ you.bag.length }}/5
+                      <span class="gear-hub-count"
+                            [class.gear-hub-count--full]="you.bag.length >= (you.bagCap ?? 5)">
+                        {{ you.bag.length }}/{{ you.bagCap ?? 5 }}
                       </span>
                       <span class="gear-hub-ico"><mat-icon class="mi" svgIcon="uc-pouch"></mat-icon></span>
                       <span class="gear-hub-title">Bag</span>
@@ -346,6 +347,17 @@
                       </span>
                       <span class="gear-hub-title">Companion</span>
                     </button>
+
+                    <!-- Only a Grime Gorger can stomach junk, so the bench only
+                         exists for one creature (canGorge mirrors the server's
+                         'gorge' passive check). -->
+                    @if (canGorge()) {
+                      <button type="button" class="gear-hub-tile compost" (click)="selectGear('compost')">
+                        <span class="gear-hub-count">{{ mulch() }}</span>
+                        <span class="gear-hub-ico"><mat-icon class="mi">compost</mat-icon></span>
+                        <span class="gear-hub-title">Compost Works</span>
+                      </button>
+                    }
                   </section>
                 </div>
               }
@@ -882,6 +894,119 @@
                     } @else {
                       <p class="muted bag-empty">No other companions. Hatch more eggs to build a roster.</p>
                     }
+                  </section>
+                </div>
+              }
+
+              @case ('compost') {
+                <div class="gear-view" [class.gear-view--back]="gearNav() === 'back'">
+                  <!-- The Grime Gorger's bench. Everything here is one creature's
+                       mechanic: eat junk for Mulch, spend Mulch to rewrite ground. -->
+                  <section class="card compost-intro">
+                    <div class="compost-head">
+                      <mat-icon class="mi compost-head-ico">compost</mat-icon>
+                      <div class="compost-head-text">
+                        <h3>Compost Works</h3>
+                        <span class="compost-sub">Eat what you don't need. Grow ground worth walking on.</span>
+                      </div>
+                      <span class="compost-bank" title="Mulch on hand">
+                        <mat-icon class="mi">compost</mat-icon>{{ mulch() }}
+                      </span>
+                    </div>
+                    <ol class="compost-steps">
+                      <li>
+                        <span class="compost-step-n">1</span>
+                        <span><b>Devour</b> stashed gear or bagged consumables for Mulch — the rarer
+                          the piece, the richer the yield. Gear is worth double a consumable of the
+                          same rarity.</span>
+                      </li>
+                      <li>
+                        <span class="compost-step-n">2</span>
+                        <span><b>Reclaim</b> from the board: standing on a space, spend Mulch to
+                          rewrite what that space <i>is</i>. Hold up to
+                          {{ reclaimMaxClaims }} claims at once ({{ claimsHeld() }} held now) — taking
+                          a fourth releases your oldest.</span>
+                      </li>
+                    </ol>
+                    <p class="compost-note">
+                      <mat-icon class="mi">info</mat-icon>
+                      Worn gear can't be eaten — unequip it first. Scrolls, eggs and companions
+                      aren't food. You can change what a space <i>does</i>, never what the map
+                      <i>is</i>: gates, ladders and landmarks are off the menu.
+                    </p>
+                  </section>
+
+                  <!-- The trough: everything the gut can currently take. -->
+                  <section class="card">
+                    <div class="compost-trough-head">
+                      <h3>The Trough</h3>
+                      @if (compostFeed().length) {
+                        <span class="compost-total" title="Mulch if you devoured everything here">
+                          all of it = <b>{{ compostFeedTotal() }}</b>
+                          <mat-icon class="mi">compost</mat-icon>
+                        </span>
+                      }
+                    </div>
+                    @if (!compostFeed().length) {
+                      <p class="muted bag-empty">
+                        Nothing to eat. Gear you stash and consumables you carry both end up here.
+                      </p>
+                    } @else {
+                      <div class="compost-rows">
+                        @for (row of compostFeed(); track row.key) {
+                          <button
+                            type="button"
+                            class="compost-row"
+                            [class.armed]="gorgeArmed(row)"
+                            [attr.data-rarity]="tierRarity(row.tier).key"
+                            [disabled]="busy()"
+                            (click)="confirmGorgeRow(row)"
+                          >
+                            @if (row.svgIcon) {
+                              <mat-icon class="mi compost-row-ico" [svgIcon]="row.svgIcon"></mat-icon>
+                            } @else {
+                              <mat-icon class="mi compost-row-ico">{{ row.icon }}</mat-icon>
+                            }
+                            <span class="compost-row-body">
+                              <span class="compost-row-name">
+                                {{ row.name }}
+                                <span class="rarity-badge {{ tierRarity(row.tier).key }}">{{ tierRarity(row.tier).label }}</span>
+                              </span>
+                              <span class="compost-row-sub">{{ row.sub }}</span>
+                            </span>
+                            <span class="compost-row-yield" [class.warn]="gorgeArmed(row)">
+                              @if (gorgeArmed(row)) {
+                                <mat-icon class="mi">warning</mat-icon> Tap again
+                              } @else {
+                                +{{ row.yield }} <mat-icon class="mi">compost</mat-icon>
+                              }
+                            </span>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </section>
+
+                  <!-- Price list: what each kind of ground costs to grow. -->
+                  <section class="card">
+                    <h3>Ground Prices <span class="muted">(Mulch)</span></h3>
+                    <p class="muted compost-price-hint">
+                      Stand on a space you're allowed to overwrite, then Reclaim from the board.
+                    </p>
+                    <div class="compost-prices">
+                      @for (r of reclaimMenu(); track r.type) {
+                        <div class="compost-price" [class.afford]="r.affordable">
+                          <mat-icon class="mi compost-price-ico">{{ spaceIcons[r.type] ?? 'terrain' }}</mat-icon>
+                          <span class="compost-price-name">
+                            {{ r.label }}
+                            @if (r.surfaceOnly) {
+                              <span class="compost-price-tag" title="Can't be grown in the depths">surface only</span>
+                            }
+                          </span>
+                          <span class="compost-price-cost">{{ r.price }}</span>
+                        </div>
+                      }
+                    </div>
                   </section>
                 </div>
               }
