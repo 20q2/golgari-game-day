@@ -70,9 +70,9 @@
   position: absolute;
   inset: 0;
   z-index: 1100;
+  // Dim only, no blur - matches the board's dialog layer so the floating
+  // .hud-purse resource chips stay readable behind it.
   background: rgba(8, 6, 4, 0.72);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
   display: flex;
   align-items: center;
   justify-content: center;

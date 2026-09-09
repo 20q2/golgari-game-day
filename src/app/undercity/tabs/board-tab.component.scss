@@ -698,9 +698,10 @@
   position: absolute;
   inset: 0;
   z-index: 1100;
+  // Dim only, deliberately no backdrop-filter blur: the floating .hud-purse
+  // chips (spores/sigils/jelly) sit under this layer, and blurring made the
+  // player's own resource counts unreadable while a dialog was open.
   background: rgba(8, 6, 4, 0.72);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
   display: flex;
   align-items: center;
   justify-content: center;
