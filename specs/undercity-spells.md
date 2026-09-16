@@ -17,7 +17,7 @@ A living reference for the Dokapon-style spell system: what it does for players,
 
 ### Casting
 
-- **Cooldowns**, not mana: each spell recharges over **board spaces walked** (3–12 steps), not a clock. Walking is the only thing that recharges a spell — idling never does, and a long fight can't be waited out. The Squirrel Spell Haste passive halves the cost (rounded up, minimum 1).
+- **Cooldowns**, not mana: each spell recharges over **board spaces walked** (6–24 steps), not a clock. Walking is the only thing that recharges a spell — idling never does, and a long fight can't be waited out. The Squirrel Spell Haste passive halves the cost (rounded up, minimum 1) — costs were doubled on 2026-09-09 so that the fast ~2-turn cast cadence is the **squirrel's** niche, and a hasted squirrel now casts at the rate everyone used to.
 - **Range**: targeted spells reach N board spaces, measured as shortest-path distance over the tunnels (sealed barriers block the path). Teleports use the same rule.
 - **Dodge**: spells aimed at players can be dodged. Chance = `10% + 3% × (target SPD − caster SPD)`, clamped to 5–40%, using effective stats (gear + buffs count). A dodged spell still burns your cooldown.
 - **Almost no spell can kill.** Player damage floors at 1 HP; boss/lair HP pools floor at 1. Killing blows must be landed in person. Casting a spell never composts anyone. **The one exception is Sear the Throne** (`sear_throne`, the only spell carrying `'lethal': True`): it alone may slay the Queen or a lair boss at range, reaping the full in-person kill reward (`_award_boss_kill` / `_award_lair_kill`). Player-vs-player damage is never lethal, even for a lethal spell.
@@ -44,20 +44,20 @@ Every spell that hits (or fizzles against) you lands in your inbox:
 
 | Home biome | Spell | Effect | Cooldown |
 | --- | --- | --- | --- |
-| The Rot-Gardens (garden) | **Rot Surge** | Self: +3 ATK next battle | 30 min |
-| Ossuary Fields (bone) | **Bone Chill** | Curse, range 5: −2 ATK next battle | 30 min |
-| The Sedgemoor (bog) | **Bog Snare** | Curse, range 5: next roll halved | 30 min |
-| Mosslight Cavern (cavern) | **Glowveil** | Self: +2 SPD & +15% flee next battle | 30 min |
-| The Undercity (city) | **Scrap Toss** | 8 damage, range 5 | 30 min |
+| The Rot-Gardens (garden) | **Rot Surge** | Self: +3 ATK next battle | 12 steps |
+| Ossuary Fields (bone) | **Bone Chill** | Curse, range 5: −2 ATK next battle | 12 steps |
+| The Sedgemoor (bog) | **Bog Snare** | Curse, range 5: next roll halved | 12 steps |
+| Mosslight Cavern (cavern) | **Glowveil** | Self: +2 SPD & +15% flee next battle | 12 steps |
+| The Undercity (city) | **Scrap Toss** | 8 damage, range 5 | 12 steps |
 
 > **Species innate:** the Squirrel race additionally always knows **Acorn Fury**
-> (self: +2 ATK next battle, 15 min) on top of its biome innate — the only race
+> (self: +2 ATK next battle, 6 steps) on top of its biome innate — the only race
 > with two innate spells (doubled to +4 by a Squirrel Warrior, and its cooldown is
 > halved by `spell_haste`). Keyed by `SPECIES_SPELLS` in `undercity_data.py`.
 
 > **Form innate:** a *form* can also grant an innate spell via `FORM_SPELLS` in
 > `undercity_data.py` (keyed by the form's passive). The **Shambling Shell** (passive
-> `rootwall`) always knows **Mend Flesh** (self-heal +12, 20 min). Because passives
+> `rootwall`) always knows **Mend Flesh** (self-heal +12, 8 steps). Because passives
 > accumulate through evolution, the form's apexes (Grave Titan / Golgari Lich Lord)
 > keep it, and existing live creatures gain it with no migration. Server gathers all
 > three sources in `_innate_spell_ids(doc)`; the client mirror is `FORM_SPELLS` +
@@ -67,30 +67,30 @@ Every spell that hits (or fizzles against) you lands in your inbox:
 
 | Spell | Tier | Effect | Range | Cooldown |
 | --- | --- | --- | --- | --- |
-| Spore Bolt | I | 12 damage | 6 | 20 min |
-| Mend Flesh | I | Self-heal 12 HP | — | 15 min |
-| Harden Shell | I | Self: +2 DEF next battle | — | 20 min |
-| Skitter Step | I | Choose next roll (1–3) | — | 25 min |
-| Rot Bolt | II | 20 damage | 7 | 25 min |
-| Weaken Hex | II | Curse: −3 ATK next battle | 6 | 25 min |
-| Mycelial Recall | II | Return to your home gate | — | 45 min |
-| Fate Die | II | Choose your next roll (1–6) | — | 40 min |
-| Spore Burst | III | 30 damage | 8 | 30 min |
-| Deep Step | III | Teleport | 6 | 30 min |
-| Queen's Bane | III | 15 damage to Savra or a lair pool, from anywhere | ∞ | 60 min |
-| Ember Fleck | I | 10 damage | 4 | 15 min |
-| Necrotic Lance | II | 16 damage | 9 | 28 min |
-| Withering Gout | III | 26 damage | 6 | 26 min |
-| Renewing Bloom | II | Self-heal 20 HP | — | 25 min |
-| Deep Mend | III | Self-heal 34 HP | — | 30 min |
-| Shadowstep | II | Teleport | 3 | 25 min |
-| Savage Roar | II | Self: +5 ATK next battle | — | 25 min |
-| Iron Hide | II | Self: +4 DEF next battle | — | 25 min |
-| Fleetfoot Draught | II | Self: +3 SPD next battle | — | 25 min |
-| Warding Dance | III | Self: +3 DEF & +3 SPD next battle | — | 30 min |
-| Sap Vigor | II | Curse: −3 SPD next battle | 6 | 25 min |
-| Rust Curse | III | Curse: −4 DEF next battle | 6 | 28 min |
-| Sear the Throne | III | 22 damage to Savra or a lair pool, from anywhere | ∞ | 60 min |
+| Spore Bolt | I | 12 damage | 6 | 8 steps |
+| Mend Flesh | I | Self-heal 12 HP | — | 8 steps |
+| Harden Shell | I | Self: +2 DEF next battle | — | 8 steps |
+| Skitter Step | I | Choose next roll (1–3) | — | 10 steps |
+| Rot Bolt | II | 20 damage | 7 | 10 steps |
+| Weaken Hex | II | Curse: −3 ATK next battle | 6 | 10 steps |
+| Mycelial Recall | II | Return to your home gate | — | 18 steps |
+| Fate Die | II | Choose your next roll (1–6) | — | 16 steps |
+| Spore Burst | III | 30 damage | 8 | 12 steps |
+| Deep Step | III | Teleport | 6 | 12 steps |
+| Queen's Bane | III | 15 damage to Savra or a lair pool, from anywhere | ∞ | 24 steps |
+| Ember Fleck | I | 10 damage | 4 | 6 steps |
+| Necrotic Lance | II | 16 damage | 9 | 12 steps |
+| Withering Gout | III | 26 damage | 6 | 10 steps |
+| Renewing Bloom | II | Self-heal 20 HP | — | 10 steps |
+| Deep Mend | III | Self-heal 34 HP | — | 12 steps |
+| Shadowstep | II | Teleport | 3 | 10 steps |
+| Savage Roar | II | Self: +5 ATK next battle | — | 10 steps |
+| Iron Hide | II | Self: +4 DEF next battle | — | 10 steps |
+| Fleetfoot Draught | II | Self: +3 SPD next battle | — | 10 steps |
+| Warding Dance | III | Self: +3 DEF & +3 SPD next battle | — | 12 steps |
+| Sap Vigor | II | Curse: −3 SPD next battle | 6 | 10 steps |
+| Rust Curse | III | Curse: −4 DEF next battle | 6 | 12 steps |
+| Sear the Throne | III | 22 damage to Savra or a lair pool, from anywhere | ∞ | 24 steps |
 
 ### Spell power scales with level
 

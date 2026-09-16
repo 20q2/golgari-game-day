@@ -5,6 +5,7 @@
   "scripts": {
     "ng": "ng",
     "gen:player-sprites": "node scripts/gen-player-sprites-manifest.mjs",
+    "sync:shadow-war": "node scripts/sync-shadow-war.mjs",
     "prestart": "npm run gen:player-sprites",
     "prebuild": "npm run gen:player-sprites",
     "prebuild:prod": "npm run gen:player-sprites",

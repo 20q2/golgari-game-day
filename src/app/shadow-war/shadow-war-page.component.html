@@ -1,0 +1,69 @@
+<div class="sw-page">
+  <header class="sw-head">
+    <p class="sw-eyebrow">Campaign · four sessions</p>
+    <h1>The Shadow War</h1>
+    <p class="sw-lede">
+      Twelve days before Noctyrix arrives in person. Two documents: one for the table, one for
+      behind the screen.
+    </p>
+  </header>
+
+  <div class="sw-cards">
+    <!-- Player handout -->
+    <a class="sw-card sw-card--player" [href]="playerPath" target="_blank" rel="noopener">
+      <span class="sw-badge sw-badge--safe">
+        <mat-icon>groups</mat-icon>
+        Safe for players
+      </span>
+      <h2>Standing Orders</h2>
+      <p class="sw-desc">
+        The player handout. Rules only — how a day works, the four war map actions, the Colossus
+        and the standing army, what happens in a battle, and what each allied nation gives you.
+        No spoilers, no hints.
+      </p>
+      <span class="sw-open">
+        Open handout
+        <mat-icon>open_in_new</mat-icon>
+      </span>
+    </a>
+
+    <!-- DM kit -->
+    <a class="sw-card sw-card--dm" [href]="dmPath" target="_blank" rel="noopener">
+      <span class="sw-badge sw-badge--spoiler">
+        <mat-icon>visibility_off</mat-icon>
+        DM only · spoilers
+      </span>
+      <h2>DM Field Kit</h2>
+      <p class="sw-desc">
+        Everything behind the screen. Run sheet, board setup, the twelve nights in order,
+        lieutenant dossiers and statblocks, the difficulty ramp, the finale, and the prep
+        checklist.
+      </p>
+      <span class="sw-open">
+        Open DM kit
+        <mat-icon>open_in_new</mat-icon>
+      </span>
+    </a>
+  </div>
+
+  <!-- Share strip: the whole reason the player doc has its own URL. -->
+  <section class="sw-share">
+    <div class="sw-share-copy">
+      <h3>
+        <mat-icon>share</mat-icon>
+        Send this to your players
+      </h3>
+      <p class="sw-share-note">
+        Links straight to the handout — no app, no login, and it opens on a phone. The DM kit is
+        not reachable from it.
+      </p>
+    </div>
+    <div class="sw-share-row">
+      <code id="player-url" class="sw-url">{{ playerUrl }}</code>
+      <button type="button" class="sw-copy" (click)="copyPlayerLink()">
+        <mat-icon>{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
+        {{ copied() ? 'Copied' : 'Copy link' }}
+      </button>
+    </div>
+  </section>
+</div>

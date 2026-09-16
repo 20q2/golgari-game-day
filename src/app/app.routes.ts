@@ -34,5 +34,13 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./undercity/admin/admin-panel.component').then((m) => m.AdminPanelComponent),
   },
+  {
+    // Shadow War campaign docs. The two documents are standalone static pages
+    // under public/shadow-war/ (they carry their own stylesheets); this route
+    // is only the picker and the shareable player link.
+    path: 'shadow-war',
+    loadComponent: () =>
+      import('./shadow-war/shadow-war-page.component').then((m) => m.ShadowWarPageComponent),
+  },
   { path: '**', redirectTo: '/home' }
 ];

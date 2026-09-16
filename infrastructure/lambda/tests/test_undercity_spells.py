@@ -260,7 +260,7 @@ def test_cast_innate_self_buff_and_cooldown(table):
     status, resp = act(table, 'cast', spellId='rot_surge', source='innate')
     assert status == 200
     assert {'kind': 'rot_surge'} in resp['you']['buffs']
-    assert resp['you']['spellCooldowns']['rot_surge'] == 6   # steps owed
+    assert resp['you']['spellCooldowns']['rot_surge'] == 12  # steps owed
     assert resp['cast']['spellId'] == 'rot_surge'
 
     status, resp = act(table, 'cast', spellId='rot_surge', source='innate')
@@ -387,7 +387,7 @@ def test_field_spell_dodge_still_notifies_and_cools(table, monkeypatch):
                        target='user-sam')
     assert status == 200
     assert resp['cast']['dodged'] is True
-    assert resp['you']['spellCooldowns']['scrap_toss'] == 6  # dodge still cools
+    assert resp['you']['spellCooldowns']['scrap_toss'] == 12  # dodge still cools
     sam = db._get_player(table, _sid(table), 'user-sam')
     assert sam['hp'] == 30
     assert sam['awayEvents'][-1]['kind'] == 'spell_dodged'
@@ -960,17 +960,17 @@ def _set_passives(table, user, passives, home='garden'):
 
 def test_spell_cooldown_is_a_step_count():
     doc = {'passives': []}
-    db._start_spell_cooldown(doc, 'rot_surge')             # 6 steps base
-    assert doc['spellCooldowns'] == {'rot_surge': 6}
+    db._start_spell_cooldown(doc, 'rot_surge')             # 12 steps base
+    assert doc['spellCooldowns'] == {'rot_surge': 12}
 
 
 def test_spell_haste_halves_cooldown_steps_rounding_up():
     # ceil(x/2), floored at 1: haste is strong but never makes a spell free.
     hasted = {'passives': ['spell_haste']}
-    for spell_id, expected in (('rot_surge', 3),      # 6 -> 3
-                               ('skitter_step', 3),   # 5 -> 3 (ceil, not 2)
-                               ('ember_fleck', 2),    # 3 -> 2
-                               ('wish', 6)):          # 12 -> 6
+    for spell_id, expected in (('rot_surge', 6),      # 12 -> 6
+                               ('skitter_step', 5),   # 10 -> 5
+                               ('ember_fleck', 3),    # 6 -> 3
+                               ('wish', 12)):         # 24 -> 12
         db._start_spell_cooldown(hasted, spell_id)
         assert hasted['spellCooldowns'][spell_id] == expected, spell_id
 
@@ -1200,7 +1200,7 @@ def test_acorn_fury_data_and_species_map():
     assert sp['effect'] == 'self_buff'
     assert sp['buffKind'] == 'acorn_fury'
     assert sp['category'] == 'buff'
-    assert sp['cooldownSteps'] == 3
+    assert sp['cooldownSteps'] == 6
     assert sp['icon'] and sp['desc']          # client fields required
     assert data.SPECIES_SPELLS['squirrel'] == 'acorn_fury'
     for spell_id in data.SPECIES_SPELLS.values():
@@ -1305,9 +1305,10 @@ def test_tick_step_timers_ignores_legacy_and_absent_cooldowns():
 
 
 _SPELL_WALK = ('n257', 'n258', 'n259')
-# A legal 6-edge, all-fog run: long enough to walk a 6-step cooldown fully off
-# in a single move, and quiet enough that the landing starts nothing.
-_SIX_SPACE_WALK = ('n245', 'n248', 'n249', 'n270', 'n269', 'n250', 'n251')
+# A legal 12-edge, all-fog run: long enough to walk the longest tier-1 cooldown
+# fully off in a single move, and quiet enough that the landing starts nothing.
+_LONG_WALK = ('n252', 'n251', 'n250', 'n269', 'n270', 'n249', 'n248',
+              'n245', 'n271', 'n273', 'n274', 'n314', 'n320')
 
 
 def _prime_spell_walk(table, sid):
@@ -1368,18 +1369,17 @@ def test_cast_walk_recast_full_loop(table):
     sid = _sid(table)
     status, resp = act(table, 'cast', spellId='rot_surge', source='innate')
     assert status == 200
-    assert resp['you']['spellCooldowns']['rot_surge'] == 6
+    assert resp['you']['spellCooldowns']['rot_surge'] == 12
     assert act(table, 'cast', spellId='rot_surge', source='innate')[0] == 429
 
-    # Walk all six spaces in one legal all-fog hop, without touching the
-    # countdown by hand — only movement may pay it down. (One move, not three:
+    # Walk all twelve spaces in one legal all-fog hop, without touching the
+    # countdown by hand — only movement may pay it down. (One move, not several:
     # a real landing can start a wild fight that blocks the next action.)
     doc = db._get_player(table, sid, 'user-alex')
-    doc['position'] = _SIX_SPACE_WALK[0]
-    doc['pendingMove'] = {'value': 6, 'dests': [_SIX_SPACE_WALK[-1]]}
+    doc['position'] = _LONG_WALK[0]
+    doc['pendingMove'] = {'value': 12, 'dests': [_LONG_WALK[-1]]}
     db._save_or_conflict(table, doc)
-    status, resp = act(table, 'move', to=_SIX_SPACE_WALK[-1],
-                       path=list(_SIX_SPACE_WALK))
+    status, resp = act(table, 'move', to=_LONG_WALK[-1], path=list(_LONG_WALK))
     assert status == 200, resp
 
     doc = db._get_player(table, sid, 'user-alex')

@@ -1,0 +1,222 @@
+// The two documents are dark and gothic; this page borrows just enough of that
+// to feel like their front door without leaving the app's token system.
+.sw-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: var(--spacing-xl) var(--spacing-md) calc(var(--spacing-xl) * 2);
+}
+
+.sw-head {
+  margin-bottom: var(--spacing-xl);
+  text-align: center;
+
+  h1 {
+    margin: var(--spacing-xs) 0 var(--spacing-sm);
+    font-size: clamp(2rem, 6vw, 3rem);
+    line-height: 1.05;
+    color: var(--text-primary);
+  }
+}
+
+.sw-eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.sw-lede {
+  max-width: 52ch;
+  margin: 0 auto;
+  color: var(--text-secondary);
+}
+
+// ---------- the two cards ----------
+.sw-cards {
+  display: grid;
+  gap: var(--spacing-lg);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.sw-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
+  color: #f2f1f5;
+  text-decoration: none;
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-xl);
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 1.45rem;
+    line-height: 1.15;
+  }
+}
+
+.sw-card--player {
+  background: linear-gradient(160deg, #16171f 0%, #1d2a26 100%);
+  border-color: rgba(95, 168, 160, 0.35);
+}
+
+.sw-card--dm {
+  background: linear-gradient(160deg, #16171f 0%, #241c2e 100%);
+  border-color: rgba(124, 103, 176, 0.4);
+}
+
+.sw-desc {
+  flex: 1;
+  margin: 0;
+  font-size: 0.94rem;
+  line-height: 1.55;
+  color: rgba(242, 241, 245, 0.72);
+}
+
+.sw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  align-self: flex-start;
+  padding: 3px 10px 3px 6px;
+  border: 1px solid currentColor;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+    line-height: 14px;
+  }
+}
+
+.sw-badge--safe {
+  color: #7fc9c1;
+}
+.sw-badge--spoiler {
+  color: #d14b3c;
+}
+
+.sw-open {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e0b65c;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    line-height: 16px;
+  }
+}
+
+// ---------- share strip ----------
+.sw-share {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: var(--background-secondary);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--border-radius-lg);
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin: 0 0 var(--spacing-xs);
+    font-size: 1.05rem;
+    color: var(--text-primary);
+
+    mat-icon {
+      color: var(--primary-color);
+    }
+  }
+}
+
+.sw-share-note {
+  margin: 0 0 var(--spacing-md);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.sw-share-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: stretch;
+}
+
+.sw-url {
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  overflow-x: auto;
+  background: var(--background-tertiary);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.sw-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--primary-color);
+  border: 0;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+
+  &:hover,
+  &:focus-visible {
+    background: var(--primary-dark);
+  }
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    line-height: 18px;
+  }
+}
+
+@media (max-width: 600px) {
+  .sw-page {
+    padding-top: var(--spacing-lg);
+  }
+  .sw-url {
+    flex-basis: 100%;
+  }
+  .sw-copy {
+    width: 100%;
+    justify-content: center;
+  }
+}
