@@ -439,6 +439,22 @@ const WORLD_EVENT_PIECE_H = 96;
 // lays a hump flat on its side.
 const WORLD_EVENT_PIECE_TILT_MAX = 1.0;
 
+// ── Main-thread budget ───────────────────────────────────────────────────────
+// A frame longer than this (two 60 Hz frames — i.e. the board has already
+// dropped under ~30 fps) is an overrun; the loop then sleeps for the frame's
+// own duration (capped) before the next one so the board never holds more than
+// ~half the main thread on a slow device. Two frames, not one, so a 30 Hz
+// display or a merely busy 60 Hz one is never paced.
+const FRAME_BUDGET_MS = 34;
+const PACE_MAX_MS = 250;
+// How long the first terrain bake waits for startup art before baking anyway.
+const ART_DEADLINE_MS = 1500;
+// Art-load re-bakes: trailing debounce, and the minimum gap between two re-bakes.
+const REBUILD_DEBOUNCE_MS = 300;
+const REBUILD_MIN_GAP_MS = 5000;
+// Minimum gap between two eviction recoveries (each is a full re-bake).
+const RECOVERY_MIN_GAP_MS = 15000;
+
 /** One render/view layer: its node subset + world bounds, and its terrain. */
 interface Layer {
   spec: LayerSpec;
@@ -522,7 +538,27 @@ export class BoardCanvas {
   private lastTs = performance.now();
   /** Timestamp of the last terrain backing-store integrity probe (see draw). */
   private lastIntegrityTs = 0;
+  /** Wall-clock ms of the last eviction recovery — recoveries are rate-limited
+   *  because each one is a full re-bake, and on a memory-starved phone a re-bake
+   *  can itself trigger the next eviction (see recoverLostCanvases). */
+  private lastRecoveryMs = 0;
+  /** Wall-clock ms the last art-load rebuild finished (see scheduleRebuild). */
+  private lastRebuildMs = 0;
   private rafId: number | null = null;
+  /** Frame-pacing sleep between draws on slow devices (see start). */
+  private paceTimer: ReturnType<typeof setTimeout> | null = null;
+  private running = false;
+  /**
+   * Startup terrain gate. The first bake waits for the floor/landmark/decal art
+   * to settle (bounded by ART_DEADLINE_MS) so the board bakes ONCE, with art,
+   * instead of an artless bake followed by a full art-load re-bake. Each bake
+   * blocks the main thread for seconds on an older phone, so the second bake
+   * was doubling the freeze on entry. On a warm cache every image settles in a
+   * few ms and the gate is invisible.
+   */
+  private terrainReady = false;
+  private startupArtPending = 0;
+  private artDeadline: ReturnType<typeof setTimeout> | null = null;
   private startTime = performance.now();
   private layerSpecs: LayerSpec[];
   private layers = new Map<string, Layer>();
@@ -555,6 +591,13 @@ export class BoardCanvas {
 
   private get active(): Layer {
     return this.layerFor(this.activeLayerId) ?? this.layerFor(OVERWORLD)!;
+  }
+
+  /** The active layer's spec (node subset + bounds) WITHOUT touching its terrain.
+   *  Camera clamping and ambient context only need bounds, and reading `active`
+   *  for them would force a terrain bake before the startup art gate opens. */
+  private get activeSpec(): LayerSpec {
+    return this.specById.get(this.activeLayerId) ?? this.specById.get(OVERWORLD) ?? this.layerSpecs[0];
   }
 
   /**
@@ -690,10 +733,39 @@ export class BoardCanvas {
   private rebuildTimer: ReturnType<typeof setTimeout> | null = null;
   private scheduleRebuild(): void {
     if (this.rebuildTimer !== null) clearTimeout(this.rebuildTimer);
+    // Stragglers on a slow connection trickle in seconds apart; with a short
+    // debounce each one bought a full re-bake. Hold at least REBUILD_MIN_GAP_MS
+    // since the last rebuild so a trickle costs one re-bake per window, not one
+    // per image.
+    const sinceLast = performance.now() - this.lastRebuildMs;
+    const wait = Math.max(REBUILD_DEBOUNCE_MS, REBUILD_MIN_GAP_MS - sinceLast);
     this.rebuildTimer = setTimeout(() => {
       this.rebuildTimer = null;
       this.rebuildLayers();
-    }, 150);
+      this.lastRebuildMs = performance.now();
+    }, wait);
+  }
+
+  /** One startup image (floor, landmark, or decal) has loaded or failed. */
+  private onStartupArtSettled(): void {
+    if (this.terrainReady) {
+      this.scheduleRebuild(); // a straggler past the gate: re-bake, coalesced
+      return;
+    }
+    this.startupArtPending--;
+    if (this.startupArtPending <= 0) this.openTerrainGate();
+  }
+
+  /** Let draw() bake the first terrain — all startup art is in, or we've waited
+   *  long enough. The bake itself happens lazily via `active` on the next frame. */
+  private openTerrainGate(): void {
+    if (this.terrainReady) return;
+    this.terrainReady = true;
+    if (this.artDeadline !== null) {
+      clearTimeout(this.artDeadline);
+      this.artDeadline = null;
+    }
+    this.lastRebuildMs = performance.now();
   }
 
   /**
@@ -709,7 +781,12 @@ export class BoardCanvas {
    * Probed at most every ~2s; one 1×1 readback is cheap.
    */
   private checkTerrainIntact(ts: number): void {
+    if (!this.terrainReady) return; // nothing baked yet — nothing to lose
     if (ts - this.lastIntegrityTs < 2000) return;
+    // Rate limit: a recovery is a full re-bake, and on a memory-starved phone
+    // that allocation can be what triggers the next eviction — unbounded, that
+    // is a bake→evict→bake loop that keeps the main thread pinned.
+    if (ts - this.lastRecoveryMs < RECOVERY_MIN_GAP_MS) return;
     this.lastIntegrityTs = ts;
     const cv = this.active.terrain.canvas;
     let lost = cv.width === 0 || cv.height === 0;
@@ -734,6 +811,7 @@ export class BoardCanvas {
    */
   private recoverLostCanvases(): void {
     console.warn('[undercity] canvas backing store evicted — rebuilding board terrain');
+    this.lastRecoveryMs = performance.now();
     for (const [id, layer] of [...this.layers]) {
       const spec = this.specById.get(id);
       if (!spec) continue;
@@ -845,20 +923,12 @@ export class BoardCanvas {
     this.layerSpecs = computeLayers(map);
     this.layerOf = layerIndex(this.layerSpecs);
     for (const spec of this.layerSpecs) this.specById.set(spec.id, spec);
-    // Bake only the layer you open on (the overworld) so first paint is instant;
-    // every other layer bakes lazily on first entry (see layerFor). Baking all
-    // ~6 layers up front cost seconds of black screen on each board-tab entry.
-    // This first bake is artless (floor/landmark images load async right below);
-    // the debounced art-load rebuild re-bakes it once the art arrives.
-    const initial = this.specById.get(this.activeLayerId) ?? this.layerSpecs[0];
-    this.layers.set(initial.id, {
-      spec: initial,
-      terrain: renderTerrain(map, undefined, undefined, initial, {
-        resolution: TERRAIN_RES,
-        animateFlora: true,
-        animatePaths: true,
-      }),
-    });
+    // Bake only the layer you open on (the overworld); every other layer bakes
+    // lazily on first entry (see layerFor). Baking all ~6 layers up front cost
+    // seconds of black screen on each board-tab entry. The first bake is NOT
+    // done here: it waits behind the startup art gate (terrainReady) so the
+    // floor/landmark/decal images loading right below are baked in the first
+    // time, instead of an artless bake now plus a full re-bake moments later.
     // Dungeon fog-of-war persists within a season but resets when a new night
     // begins — loaded (and season-validated) in setSeason() once the current
     // seasonId is known. Starts dark here; the first syncBoard lights it.
@@ -886,22 +956,28 @@ export class BoardCanvas {
       warp: 'undercity/icons/teleport.png',
       witch: 'undercity/icons/bog_witch_hut.png',
     };
-    // Re-render with whatever art has arrived; draw() reads this.active.terrain
-    // fresh each frame, so each successful load pops in seamlessly.
-    for (const [region, src] of Object.entries(floorSrc)) {
+    // Every startup image counts down startupArtPending (on load OR error); the
+    // first bake waits for zero or the deadline, whichever comes first. Images
+    // that land after the gate opens trigger a coalesced re-bake instead.
+    const floorEntries = Object.entries(floorSrc);
+    const landmarkEntries = Object.entries(landmarkSrc);
+    this.startupArtPending = floorEntries.length + landmarkEntries.length;
+    for (const [region, src] of floorEntries) {
       const img = new Image();
       img.onload = () => {
         this.floorTex[region] = img;
-        this.scheduleRebuild();
+        this.onStartupArtSettled();
       };
+      img.onerror = () => this.onStartupArtSettled();
       img.src = src;
     }
-    for (const [type, src] of Object.entries(landmarkSrc)) {
+    for (const [type, src] of landmarkEntries) {
       const img = new Image();
       img.onload = () => {
         this.landmarkTex[type] = img;
-        this.scheduleRebuild();
+        this.onStartupArtSettled();
       };
+      img.onerror = () => this.onStartupArtSettled();
       img.src = src;
     }
     // Treasure hoard set-piece (+ its plundered variant), drawn dynamically per
@@ -912,8 +988,18 @@ export class BoardCanvas {
     const plundered = new Image();
     plundered.onload = () => (this.treasurePlunderedTex = plundered);
     plundered.src = 'undercity/icons/treasure_hoard_plundered.png';
-    // Image decals paint into the prerendered terrain; re-render as each lands.
-    preloadDecalImages(map, () => this.scheduleRebuild());
+    // Image decals paint into the prerendered terrain: they join the startup
+    // gate too. Decals already cached by an earlier board instance start no
+    // load and so add nothing to the pending count.
+    this.startupArtPending += preloadDecalImages(map, () => this.onStartupArtSettled());
+    if (this.startupArtPending <= 0) {
+      this.openTerrainGate();
+    } else {
+      this.artDeadline = setTimeout(() => {
+        this.artDeadline = null;
+        this.openTerrainGate();
+      }, ART_DEADLINE_MS);
+    }
     this.resize();
     if (this.interactive) this.initInput();
     window.addEventListener('resize', this.boundResize);
@@ -991,7 +1077,7 @@ export class BoardCanvas {
       this.freeOffscreenLayers(); // drop the pocket we just left
       this.clampCamera();
       if (this.ownPosition) this.centerOn(this.ownPosition, false);
-      const b = this.active.spec.bounds;
+      const b = this.activeSpec.bounds;
       this.ambient.setContext(
         target === OVERWORLD ? 'overworld' : (this.ownPosition?.split('_')[0] ?? 'overworld'),
         { x: b.x, y: b.y, w: b.w, h: b.h },
@@ -1322,7 +1408,7 @@ export class BoardCanvas {
     this.activeLayerId = target;
     this.freeOffscreenLayers(); // drop the pocket the spectator left
     this.clampCamera();
-    const b = this.active.spec.bounds;
+    const b = this.activeSpec.bounds;
     this.ambient.setContext(target === OVERWORLD ? 'overworld' : nodeId.split('_')[0], {
       x: b.x,
       y: b.y,
@@ -1378,7 +1464,7 @@ export class BoardCanvas {
     // just the current dungeon pocket); the letterboxed void matches the wall
     // color so it reads as more cave.
     const M = TERRAIN_MARGIN;
-    const b = this.active.spec.bounds;
+    const b = this.activeSpec.bounds;
     const fit = Math.min(
       this.viewW / (b.w + 2 * M),
       this.viewH / (b.h + 2 * M),
@@ -1600,6 +1686,8 @@ export class BoardCanvas {
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   start(): void {
+    if (this.running) return;
+    this.running = true;
     const own = this.players.find((p) => p.userId === this.ownUserId);
     const focus = own?.position ?? this.map.gate;
     // Defer the initial focus to the first animation frame: at start() time
@@ -1608,16 +1696,58 @@ export class BoardCanvas {
     // the tab is laid out, so a fresh resize() + centre puts your own token
     // dead-centre on entry.
     let didInitialFocus = false;
+    let lastLoopTs = 0;
+    let lastSleepMs = 0;
     const loop = (ts: number) => {
+      this.rafId = null;
+      if (!this.running) return;
       if (!didInitialFocus) {
         this.resize();
         this.centerOn(focus, false);
         didInitialFocus = true;
       }
+      const t0 = performance.now();
       this.draw(ts);
-      this.rafId = requestAnimationFrame(loop);
+      const jsCost = performance.now() - t0;
+      // Frame pacing. Chaining straight into the next rAF on a device that can't
+      // keep up leaves the main thread with no idle time at all — input,
+      // Angular, and the poll starve and the tab reads as frozen. The cost of a
+      // frame is more than draw()'s JS: the canvas commands rasterize after the
+      // callback returns (on the main thread where there's no GPU canvas), so
+      // measure the whole frame from the rAF timestamps — the gap since the last
+      // frame minus any pacing sleep we inserted — and take the larger of the
+      // two. When a frame overruns the budget (we're already under ~30 fps),
+      // sleep for as long as the frame took: the board then holds at most ~half
+      // the main thread — slower animation on an old phone, but a page that
+      // still answers taps.
+      const frameCost = lastLoopTs ? ts - lastLoopTs - lastSleepMs : 0;
+      const cost = Math.max(jsCost, frameCost);
+      lastLoopTs = ts;
+      if (cost > FRAME_BUDGET_MS) {
+        lastSleepMs = Math.min(cost, PACE_MAX_MS);
+        this.paceTimer = setTimeout(() => {
+          this.paceTimer = null;
+          if (this.running) this.rafId = requestAnimationFrame(loop);
+        }, lastSleepMs);
+      } else {
+        lastSleepMs = 0;
+        this.rafId = requestAnimationFrame(loop);
+      }
     };
     this.rafId = requestAnimationFrame(loop);
+  }
+
+  /** Cancel whichever wake-up (rAF or pacing sleep) the loop is waiting on. */
+  private cancelLoop(): void {
+    this.running = false;
+    if (this.rafId != null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    if (this.paceTimer !== null) {
+      clearTimeout(this.paceTimer);
+      this.paceTimer = null;
+    }
   }
 
   /** Pause the render loop without tearing anything down — the baked terrain,
@@ -1625,10 +1755,7 @@ export class BoardCanvas {
    *  instant. Used when the Board tab is hidden behind another tab so an
    *  off-screen canvas doesn't burn frames/battery. */
   pause(): void {
-    if (this.rafId) {
-      cancelAnimationFrame(this.rafId);
-      this.rafId = null;
-    }
+    this.cancelLoop();
   }
 
   /** Restart the render loop after a `pause()`. The canvas was likely sized 0×0
@@ -1636,14 +1763,14 @@ export class BoardCanvas {
    *  token runs again, landing the camera correctly on return. No-op if already
    *  running. */
   resume(): void {
-    if (this.rafId != null) return;
     this.start();
   }
 
   stop(): void {
-    if (this.rafId) {
-      cancelAnimationFrame(this.rafId);
-      this.rafId = null;
+    this.cancelLoop();
+    if (this.artDeadline !== null) {
+      clearTimeout(this.artDeadline);
+      this.artDeadline = null;
     }
     if (this.rebuildTimer !== null) {
       clearTimeout(this.rebuildTimer);
@@ -1688,6 +1815,18 @@ export class BoardCanvas {
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, this.viewW, this.viewH);
+
+    // Startup art gate (see terrainReady): until the floor/landmark art has
+    // settled — or the deadline passes — hold the first bake and show a quiet
+    // placeholder rather than baking an artless board we'd immediately redo.
+    if (!this.terrainReady) {
+      ctx.fillStyle = '#6f8a78';
+      ctx.font = '500 14px Roboto, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Preparing the board…', this.viewW / 2, this.viewH / 2);
+      return;
+    }
 
     ctx.save();
     ctx.scale(this.zoom, this.zoom);
@@ -1901,7 +2040,7 @@ export class BoardCanvas {
       }
     }
     // Hand-placed over-layer decals cover tokens (foreground dressing).
-    drawDecals(ctx, this.map, 'over', this.active.spec);
+    drawDecals(ctx, this.map, 'over', L.spec);
     // Steps-left die floats above your head (Mario Party style), above tokens.
     const ownT = placed.find((t) => t.p.userId === this.ownUserId);
     if (this.stepDie !== null && ownT) {

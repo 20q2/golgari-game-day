@@ -3074,6 +3074,36 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     this.store.openFacility.set({ kind: 'tradingPost' });
   }
 
+  /** The other warp mushrooms, read off the map rather than off the landing
+   *  event. The landing event is a one-shot: anything that overrides it (Savra's
+   *  brood squatting on the tile), anything that lands you on a mushroom without
+   *  one (a wild-warp fling), or simply dismissing the picker used to strand the
+   *  player on a warp they could see but not use — even though the server's warp
+   *  action accepts it the whole time you're standing there. Every other
+   *  facility already has a standing button; this is the same idea. */
+  protected readonly warpTargets = computed(() => {
+    const pos = this.store.you()?.position;
+    if (!pos) return [] as string[];
+    return (this.map?.nodes ?? [])
+      .filter((n) => n.type === 'warp' && n.id !== pos)
+      .map((n) => n.id);
+  });
+
+  /** Human label for a warp destination — the biome it lands you in. The ids
+   *  ('bog_r7') are not a choice anyone can make; the picker showed them raw. */
+  protected warpLabel(id: string): string {
+    if (id === 'isl_warp') return 'The central island';
+    return DUNGEONS[id.split('_')[0]]?.biomeName ?? id;
+  }
+
+  /** Open the warp picker for the mushroom under you. */
+  openWarp(): void {
+    const options = this.warpTargets();
+    if (!options.length) return;
+    this.showWarp.set(options);
+    this.store.openFacility.set({ kind: 'warp', warpOptions: options });
+  }
+
   async warpTo(to: string): Promise<void> {
     await this.run(async () => {
       await this.store.action('warp', { to });
@@ -3257,17 +3287,22 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  /** Battle-card art path per foe class (missing files fall back to icons). */
+  /** Battle-card art path per foe class (missing files fall back to icons).
+   *  Only the named-boss folders are special-cased; everything else is ordinary
+   *  creature art. It used to be the other way round — anything unrecognised
+   *  fell through to guardians/ — which silently 404'd every battle kind added
+   *  server-side after this was written (Savra's 'swarm' among them, whose art
+   *  ships in boss_spawns/). enemyArtUrl already knows that split, so deferring
+   *  to it means a new kind gets the right folder without touching this. */
   private npcSpriteUrl(evType: string, npcId: string): string {
-    // Wild/elite foes and the roaming enraged wilderness monster all wear real
-    // creature art from the enemies folder (the enraged one borrows an enemy
-    // sprite via its spriteId — see the callers).
-    if (evType === 'wild' || evType === 'elite' || evType === 'enraged')
-      return enemyArtUrl(npcId);   // boss familiars resolve to boss_spawns/
     // The wilderness World Event beast lives in its own art folder.
     if (evType === 'world') return `undercity/sigil_boss/${npcId}.png`;
     // Barriers, lair mini-bosses, and the island boss all share the guardians folder.
-    return `undercity/guardians/${npcId}.png`;
+    if (evType === 'barrier' || evType === 'lair' || evType === 'boss')
+      return `undercity/guardians/${npcId}.png`;
+    // Wild/elite foes, the roaming enraged monster and Savra's brood all wear
+    // real creature art; enemyArtUrl routes boss familiars to boss_spawns/.
+    return enemyArtUrl(npcId);
   }
 
   /** A beaten lair boss reforms at half strength as the "Vestige of <boss>"

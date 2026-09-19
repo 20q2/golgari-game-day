@@ -328,3 +328,65 @@ def test_the_back_room_opens_for_jelly_and_sells_legendaries(table):
     assert you['royalJelly'] == 0
     owned = list((you.get('gear') or {}).values()) + (you.get('gearStash') or [])
     assert stock[0]['item'] in owned
+
+
+def test_a_reseed_never_drops_a_swarm_under_a_standing_player(table):
+    """Fell the last swarm and the brood reseeds immediately (Royal Jelly must
+    stay farmable) — but it must never respawn on the tile a player is standing
+    on. It used to: board_distance(here, here) is 0, which is inside the seed
+    radius, and the placement is alphabetical, so the SAME tile was chosen every
+    time. The player killed the bug and the bug was instantly back underfoot,
+    forever — 'the bugs don't go away'."""
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    alex = db._get_player(table, sid, 'user-alex')
+    alex['poiClaims'] = sorted(data.SIGIL_LAIRS)[:data.SIGILS_REQUIRED]
+    db._maybe_awaken(table, sid, alex)
+
+    # Park the player on an ordinary swarmable tile and clear the board.
+    spot = sorted(db._swarmable_nodes(table, sid))[0]
+    alex = db._get_player(table, sid, 'user-alex')
+    alex['position'] = spot
+    db._put_player(table, alex)
+    db._set_swarm(table, sid, [])
+
+    regrown = db._tick_swarm(table, sid)
+    assert regrown, 'the brood still reseeds so Royal Jelly stays farmable'
+    assert spot not in regrown, 'a swarm respawned on top of a standing player'
+    assert spot not in db._swarm_nodes(table, sid)
+
+
+def test_a_split_never_spills_onto_a_standing_player(table):
+    """The same rule for the growth path: the brood may creep outward, but it
+    cannot crawl onto a tile someone is standing on."""
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    alex = db._get_player(table, sid, 'user-alex')
+    alex['poiClaims'] = sorted(data.SIGIL_LAIRS)[:data.SIGILS_REQUIRED]
+    db._maybe_awaken(table, sid, alex)
+
+    nodes = db._season_map(table, sid)
+    allowed = set(db._swarmable_nodes(table, sid))
+    # Find a swarmable tile with a swarmable neighbour; stand on the neighbour.
+    seed = next(n for n in sorted(allowed)
+                if any(nb in allowed for nb in (nodes[n].get('neighbors') or [])))
+    victim = next(nb for nb in sorted(nodes[seed].get('neighbors') or [])
+                  if nb in allowed)
+    alex = db._get_player(table, sid, 'user-alex')
+    alex['position'] = victim
+    db._put_player(table, alex)
+    db._set_swarm(table, sid, [seed])
+
+    grown = db._split_swarm(table, sid)
+    assert victim not in grown, 'the brood spilled onto a standing player'
+
+
+def test_the_brood_never_squats_on_a_warp_mushroom(table):
+    """Warp mushrooms are transit, not a place to be ambushed. A swarm sitting on
+    one replaces the warp picker with a fight, and the picker is a landing event
+    that never comes back — so the player is stranded on a warp they cannot use."""
+    act(table, 'join', starter='pest')
+    sid, _ = db._active_season(table)
+    swarmable = set(db._swarmable_nodes(table, sid))
+    for w in data.WARP_NODES:
+        assert w not in swarmable, f'a swarm may squat on the warp mushroom {w}'

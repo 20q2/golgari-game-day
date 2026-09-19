@@ -1115,22 +1115,52 @@ function motifPaved(
   _style: PathStyle,
   glowSpots: GlowSpot[],
 ): void {
-  const pts = sampleCurve(c, 18);
-  for (let i = 1; i < pts.length - 1; i++) {
-    const a = pts[i - 1];
-    const b = pts[i + 1];
-    ctx.save();
-    ctx.translate(pts[i].x, pts[i].y);
-    ctx.rotate(Math.atan2(b.y - a.y, b.x - a.x));
-    ctx.fillStyle = i % 2 ? '#7c968c' : '#2f423b';
-    ctx.fillRect(-5, -10, 10, 20);
-    ctx.restore();
+  // Perf: this motif is redrawn every frame (animatePaths lifts motifs out of
+  // the soft bake), and the original save/translate/rotate/fillRect/restore
+  // per stone was the single largest per-frame cost on the board — ~20% of
+  // wall time on desktop, enough to freeze the tab on an older phone. The
+  // stones never move, so the two alternating-colour polygon sets are built
+  // once per curve as Path2D objects and each frame is just two fills.
+  let paved = pavedCache.get(c);
+  if (!paved) {
+    const pts = sampleCurve(c, 18);
+    const light = new Path2D();
+    const dark = new Path2D();
+    for (let i = 1; i < pts.length - 1; i++) {
+      const a = pts[i - 1];
+      const b = pts[i + 1];
+      const ang = Math.atan2(b.y - a.y, b.x - a.x);
+      // Stone = 10 along the path × 20 across it, centred on the sample point.
+      const ux = Math.cos(ang) * 5;
+      const uy = Math.sin(ang) * 5;
+      const vx = -Math.sin(ang) * 10;
+      const vy = Math.cos(ang) * 10;
+      const p = i % 2 ? light : dark;
+      const { x, y } = pts[i];
+      p.moveTo(x - ux - vx, y - uy - vy);
+      p.lineTo(x + ux - vx, y + uy - vy);
+      p.lineTo(x + ux + vx, y + uy + vy);
+      p.lineTo(x - ux + vx, y - uy + vy);
+      p.closePath();
+    }
+    const rand = mulberry32(hashStr(`city-${c.a.id}-${c.b.id}`));
+    const glows: GlowSpot[] = [];
+    for (let i = 3; i < pts.length - 2; i += 6) {
+      glows.push({ x: pts[i].x, y: pts[i].y, r: 22, color: '120, 240, 170', phase: rand() * 6.28 });
+    }
+    paved = { light, dark, glows };
+    pavedCache.set(c, paved);
   }
-  const rand = mulberry32(hashStr(`city-${c.a.id}-${c.b.id}`));
-  for (let i = 3; i < pts.length - 2; i += 6) {
-    glowSpots.push({ x: pts[i].x, y: pts[i].y, r: 22, color: '120, 240, 170', phase: rand() * 6.28 });
-  }
+  ctx.fillStyle = '#7c968c';
+  ctx.fill(paved.light);
+  ctx.fillStyle = '#2f423b';
+  ctx.fill(paved.dark);
+  for (const g of paved.glows) glowSpots.push(g);
 }
+
+/** Per-curve prebuilt paving stones (see motifPaved). Keyed by the EdgeCurve
+ *  object itself, which the bake creates once per edge and reuses every frame. */
+const pavedCache = new WeakMap<EdgeCurve, { light: Path2D; dark: Path2D; glows: GlowSpot[] }>();
 
 /** Mosslight Cavern: a dark mossy trough with a bright glowing vein + spore-caps.
  *  Teal glow on teal ground was self-camouflaging, so this leans on VALUE
@@ -3559,15 +3589,21 @@ export function drawPathMotifs(
 
 const decalImages = new Map<string, HTMLImageElement>();
 
-/** Kick off loads for every image decal; `onLoad` fires per arrival. */
-export function preloadDecalImages(map: BoardMap, onLoad: () => void): void {
+/** Kick off loads for every image decal not already requested; `onSettle`
+ *  fires once per kicked-off image, on load OR error, so callers can count
+ *  arrivals down to zero. Returns how many loads were started. */
+export function preloadDecalImages(map: BoardMap, onSettle: () => void): number {
+  let started = 0;
   for (const d of map.decals ?? []) {
     if (d.kind !== 'image' || !d.src || decalImages.has(d.src)) continue;
     const img = new Image();
-    img.onload = onLoad;
+    img.onload = onSettle;
+    img.onerror = onSettle;
     img.src = d.src;
     decalImages.set(d.src, img);
+    started++;
   }
+  return started;
 }
 
 /** Natural size of a loaded image decal (world px at scale 1), else null. */

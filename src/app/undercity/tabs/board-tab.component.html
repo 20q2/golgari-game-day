@@ -323,6 +323,11 @@
                   <mat-icon class="mi">dialpad</mat-icon>
                 </button>
               }
+              @case ('warp') {
+                <button class="uc-btn facility-btn" title="Warp Mushroom" aria-label="Warp Mushroom" (click)="openWarp()">
+                  <mat-icon class="mi">cyclone</mat-icon>
+                </button>
+              }
             }
           }
         </div>
@@ -1129,7 +1134,7 @@
           @for (w of options; track w) {
             <button class="uc-btn" [disabled]="busy()" (click)="warpTo(w)">
               <mat-icon class="mi">{{ w === 'isl_warp' ? 'flag' : 'cyclone' }}</mat-icon>
-              {{ w === 'isl_warp' ? 'The central island' : w }}
+              {{ warpLabel(w) }}
             </button>
           }
         </div>

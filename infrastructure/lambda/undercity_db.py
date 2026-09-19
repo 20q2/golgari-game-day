@@ -5519,16 +5519,26 @@ def _swarmable_nodes(table, sid):
     event you choose to walk into, and an elite lying in wait in an unlit dungeon
     corridor is an ambush, which is the opposite of the point."""
     nodes = _season_map(table, sid)
-    banned = {'gate', 'boss', 'shop', 'barrier', 'lair', 'vault', 'ladder'}
+    banned = {'gate', 'boss', 'shop', 'barrier', 'lair', 'vault', 'ladder', 'warp'}
     return [nid for nid, n in nodes.items()
             if n.get('type') not in banned and n.get('region') != 'depths']
+
+
+def _occupied_nodes(table, sid):
+    """Tiles players are standing on right now. The brood may not be placed on
+    one: a swarm that appears underfoot is a fight you never chose to walk into,
+    and because the board reseeds the moment it is cleared, felling the last one
+    would drop a fresh swarm straight back onto the killer's own tile — the bug
+    that never goes away. You meet the brood by stepping onto it, never the
+    other way round."""
+    return {p.get('position') for p in _all_players(table, sid) if p.get('position')}
 
 
 def _seed_swarm(table, sid):
     """Release the brood: one swarm within SWARM_SEED_RADIUS of every living
     player, so nobody is too far behind to join the finale."""
     nodes = _season_map(table, sid)
-    allowed = set(_swarmable_nodes(table, sid))
+    allowed = set(_swarmable_nodes(table, sid)) - _occupied_nodes(table, sid)
     placed = []
     for p in _all_players(table, sid):
         here = p.get('position')
@@ -5548,7 +5558,7 @@ def _split_swarm(table, sid):
     """The brood copies itself: each existing swarm tries to spill onto a free
     neighbouring node, up to SWARM_MAX_NODES."""
     nodes = _season_map(table, sid)
-    allowed = set(_swarmable_nodes(table, sid))
+    allowed = set(_swarmable_nodes(table, sid)) - _occupied_nodes(table, sid)
     current = _swarm_nodes(table, sid)
     grown = list(current)
     for nid in current:
