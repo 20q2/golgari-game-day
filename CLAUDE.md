@@ -47,7 +47,10 @@ Single-table DynamoDB design (`pk`/`sk` strings, `user-index` GSI on `userId`+`t
 Stack and free-tier rationale documented in [infrastructure/README.md](infrastructure/README.md). Table `removalPolicy` is RETAIN — `cdk destroy` will not delete user data.
 
 ### Build output quirk
-`angular.json` sets `outputPath: docs` so deploys land in the GitHub Pages source folder. Angular's modern browser builder writes to `docs/browser/`, so `npm run build:prod` chains a Node one-liner (`flatten-build` in [package.json](package.json)) that copies everything up one level and removes `browser/`. If you change the output structure, update both that script and any GitHub Actions workflow expecting flat `docs/`. Note: [.github/workflows/deploy.yml](.github/workflows/deploy.yml) currently runs `npm run build` (development config) and uploads from `dist/golgari-palace-gameday` — that path doesn't match the current Angular config and the workflow targets `main` while the active branch is `master`. The working deploy path is the local `npm run deploy` script.
+`angular.json` sets `outputPath: docs` so deploys land in the GitHub Pages source folder. Angular's modern browser builder writes to `docs/browser/`, so `npm run build:prod` chains a Node one-liner (`flatten-build` in [package.json](package.json)) that copies everything up one level and removes `browser/`. If you change the output structure, update both that script and any GitHub Actions workflow expecting flat `docs/`. Deploys run through [.github/workflows/deploy.yml](.github/workflows/deploy.yml): every push to `main` runs `npm run build:prod` and publishes `docs/` as the Pages artifact, so **pushing to `main` is a deploy**. The `gh-pages` branch (and `npm run deploy`) is a stale legacy path — last updated 2025.
+
+### Browser floor
+The bundles need Safari 14.1+ / Chrome 85+ (ES2022 class fields, logical assignment). Web APIs newer than that must be guarded or shimmed: browser polyfills live in `src/polyfills/` and are imported first thing in [src/main.ts](src/main.ts) so they land before any lazy chunk. `canvas-round-rect.ts` exists because Safari < 16 / Chrome < 99 lack `ctx.roundRect`, which the board terrain bake calls inside the `BoardCanvas` constructor — without it the board never mounts and older phones see a black, flickering screen forever.
 
 ### The Undercity sub-game
 

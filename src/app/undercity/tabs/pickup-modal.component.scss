@@ -26,7 +26,11 @@
 .pu-card {
   position: relative;
   width: min(380px, 100%);
-  max-height: 88vh;
+  // Bound to the BACKDROP, not the viewport: this dialog lives inside the board
+  // tab (below the HUD, above the tab bar), so 88vh overran that box on phones
+  // and the bottom of the card — the last bag rows, the sell editor, the List
+  // button — sat behind the tab bar with no way to reach it.
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -36,7 +40,11 @@
   border-radius: 18px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
   color: #efe7d6;
-  overflow: hidden;
+  // The whole card scrolls. Scrolling only the bag list was the original intent,
+  // but a full bag plus an open price editor overflows the card on its own, so
+  // the pinned top block could bury the rows it was pointing at.
+  overflow: hidden auto;
+  overscroll-behavior: contain;
 }
 
 .pu-head {
@@ -197,7 +205,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow-y: auto;
 
   li {
     --rarity: #9aa7a0; // common (default)

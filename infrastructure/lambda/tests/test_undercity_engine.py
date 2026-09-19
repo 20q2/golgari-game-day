@@ -946,13 +946,14 @@ def test_vexing_no_longer_dodges():
     assert d.hp < 30   # the punish lands — no dodge
 
 
-def test_reach_negates_round1_punish_only():
+def test_reach_negates_the_first_punish_then_is_spent():
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'reach'}))
-    # Round 1: reach keeps the skirmisher out of range — punish finds only air.
+    # The first decisive blow: reach keeps the skirmisher out of range — it
+    # finds only air.
     resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
     assert d.hp == 30
-    # Round 2: no protection — the punish lands.
+    # The charge is spent — the next punish lands.
     resolve_round(a, d, 'aggress', 'feint', 2, FakeRng(uniform=1.0))
     assert d.hp < 30
 
@@ -965,8 +966,8 @@ def test_skitter_dodges_like_vexing():
     assert d.hp == 30   # punish dodged
 
 
-def test_outpace_negates_round1_like_reach():
-    # Outpace (Sporeback Skirmisher) reuses the Reach round-1 negate.
+def test_outpace_negates_the_first_punish_like_reach():
+    # Outpace (Sporeback Skirmisher) reuses the Reach once-a-fight negate.
     a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
     d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'outpace'}))
     resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
@@ -1917,3 +1918,63 @@ def test_web_venom_applies_rot_on_a_win():
     assert d.rot_stacks == 0
 
 
+
+
+def test_reach_charge_survives_a_won_round_1():
+    """Reach is a CHARGE, not a round-1 timer: winning (or drawing) round 1 must
+    not burn it. The old `rnd == 1` gate made the passive do nothing at all in
+    the ~2/3 of fights the skirmisher wasn't punished on the opening exchange."""
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'reach'}))
+    # Round 1: the skirmisher WINS the exchange — nothing to negate, charge held.
+    resolve_round(a, d, 'guard', 'feint', 1, FakeRng(uniform=1.0))
+    assert d.hp == 30
+    # Round 3: the first decisive blow against it — that one finds only air.
+    resolve_round(a, d, 'aggress', 'feint', 3, FakeRng(uniform=1.0))
+    assert d.hp == 30
+    # Round 4: the charge is spent — the punish lands.
+    resolve_round(a, d, 'aggress', 'feint', 4, FakeRng(uniform=1.0))
+    assert d.hp < 30
+
+
+def test_outpace_charge_survives_a_won_round_1():
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'outpace'}))
+    resolve_round(a, d, 'guard', 'feint', 1, FakeRng(uniform=1.0))
+    assert d.hp == 30
+    resolve_round(a, d, 'aggress', 'feint', 3, FakeRng(uniform=1.0))
+    assert d.hp == 30
+    resolve_round(a, d, 'aggress', 'feint', 4, FakeRng(uniform=1.0))
+    assert d.hp < 30
+
+
+def test_reach_charge_is_spent_only_once_per_fight():
+    """Two punishes in a row: the first misses, the second lands."""
+    a = fighter(atk=10, dfn=5, hp=30, max_hp=30)
+    d = fighter(atk=10, dfn=5, hp=30, max_hp=30, passives=frozenset({'reach'}))
+    resolve_round(a, d, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    assert d.hp == 30 and d.reach_used
+    resolve_round(a, d, 'aggress', 'feint', 2, FakeRng(uniform=1.0))
+    assert d.hp < 30
+
+
+def test_reach_charge_persists_across_the_round_boundary():
+    """The charge lives in the battle record, so it must round-trip through
+    _bt_snapshot/_bt_store — otherwise it refunds itself on every request and
+    Reach negates a punish EVERY round instead of once per fight."""
+    c = engine.Combatant(name='X', hp=30, max_hp=30, atk=10, dfn=5, spd=5,
+                         passives=frozenset({'reach'}))
+    snap = db._bt_snapshot(c)
+    assert snap['reach_used'] is False
+    c2 = db._bt_to_combatant(snap)
+    resolve_round(engine.Combatant(name='F', hp=30, max_hp=30, atk=10, dfn=5, spd=5),
+                  c2, 'aggress', 'feint', 1, FakeRng(uniform=1.0))
+    assert c2.hp == 30 and c2.reach_used
+    db._bt_store(c2, snap)
+    assert snap['reach_used'] is True
+    # Next request rehydrates from the stored snapshot: charge stays spent.
+    c3 = db._bt_to_combatant(snap)
+    assert c3.reach_used
+    resolve_round(engine.Combatant(name='F', hp=30, max_hp=30, atk=10, dfn=5, spd=5),
+                  c3, 'aggress', 'feint', 2, FakeRng(uniform=1.0))
+    assert c3.hp < 30

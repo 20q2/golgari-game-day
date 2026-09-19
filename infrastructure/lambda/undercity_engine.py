@@ -34,6 +34,7 @@ class Combatant:
     # internal battle state (mutated during a battle)
     rot_stacks: int = field(default=0, repr=False)
     first_win_used: bool = field(default=False, repr=False)
+    reach_used: bool = field(default=False, repr=False)   # reach/outpace charge spent
     dmg_penalty: int = field(default=0, repr=False)   # -damage on NEXT round (serrated)
     reveal_next: bool = field(default=False, repr=False)  # glint set a reveal
     struck_yet: bool = field(default=False, repr=False)
@@ -278,9 +279,16 @@ def resolve_round(attacker, defender, a_stance, d_stance, rnd, rng,
             # loser cancels the decisive punish (rot/swarm tail still applies).
             entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
                             'negated': True, 'winner': win_side})
-        elif (losr.has('reach') or losr.has('outpace')) and rnd == 1:
-            # Reach / Outpace: in round 1 the skirmisher stays out of range — the
-            # decisive blow finds only air (a guaranteed one-round negate).
+        elif (losr.has('reach') or losr.has('outpace')) and not losr.reach_used:
+            # Reach / Outpace: once per fight the skirmisher stays out of range and
+            # the decisive blow finds only air. It is a CHARGE, not a round-1 timer:
+            # it is spent on the first blow that would actually punish this fighter,
+            # whenever that comes. (It used to be gated on `rnd == 1`, which meant
+            # the passive did nothing at all in the ~2/3 of fights the skirmisher
+            # wasn't punished on the opening exchange — and when it did fire it
+            # negated the cheapest hit in the fight, since the frenzy ramp only
+            # starts at FRENZY_START.)
+            losr.reach_used = True
             entries.append({'round': rnd, 'by': win_side, 'dmg': 0,
                             'miss': True, 'winner': win_side})
         elif losr.has('skitter') and rng.random() < data.FLYBY_DODGE:

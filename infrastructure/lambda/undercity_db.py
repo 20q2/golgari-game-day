@@ -780,6 +780,7 @@ def _bt_snapshot(c):
         'flee_bonus': int(c.flee_bonus),
         'has_smoke_spore': bool(c.has_smoke_spore),
         'rot_stacks': int(c.rot_stacks), 'first_win_used': bool(c.first_win_used),
+        'reach_used': bool(c.reach_used),
         'dmg_penalty': int(c.dmg_penalty), 'reveal_next': bool(c.reveal_next),
         'aggress_ramp': int(c.aggress_ramp), 'feint_won': bool(c.feint_won),
         'armor_strip': int(c.armor_strip),
@@ -809,6 +810,7 @@ def _bt_to_combatant(s):
         pet_deflect_flat=int(s.get('pet_deflect_flat', 0)))
     c.rot_stacks = int(s.get('rot_stacks', 0))
     c.first_win_used = bool(s.get('first_win_used', False))
+    c.reach_used = bool(s.get('reach_used', False))
     c.dmg_penalty = int(s.get('dmg_penalty', 0))
     c.reveal_next = bool(s.get('reveal_next', False))
     c.aggress_ramp = int(s.get('aggress_ramp', 0))
@@ -826,6 +828,9 @@ def _bt_store(c, rec_side):
     rec_side['rot_stacks'] = int(c.rot_stacks)
     rec_side['dmg_penalty'] = int(c.dmg_penalty)
     rec_side['first_win_used'] = bool(c.first_win_used)
+    # Reach/Outpace is one charge per FIGHT, so it must cross the round
+    # boundary — without this it refunds itself every request.
+    rec_side['reach_used'] = bool(c.reach_used)
     rec_side['reveal_next'] = bool(c.reveal_next)
     rec_side['dfn'] = int(c.dfn)
     # atk/spd persist too so the Grave Growth / Doom Counters snowball (which

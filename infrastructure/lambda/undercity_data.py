@@ -132,7 +132,7 @@ TIER2 = {
     'golgari_longlegs': {
         'name': 'Golgari Longlegs', 'line': 'kraul', 'bonus': {'spd': 4},
         'passive': 'reach',
-        'blurb': 'Skirmisher. Reach: in round 1 the enemy’s decisive blow finds only air — you strike from outside its range.',
+        'blurb': 'Skirmisher. Reach: once a fight, the enemy’s first decisive blow finds only air — you strike from outside its range.',
     },
     'slitherhead': {
         'name': 'Slitherhead', 'line': 'saproling', 'bonus': {'spd': 4},
@@ -143,7 +143,7 @@ TIER2 = {
     'woodwraith_strangler': {
         'name': 'Sporeback Skirmisher', 'line': 'saproling', 'bonus': {'spd': 2, 'maxHp': 4},
         'passive': 'outpace',
-        'blurb': 'Skirmisher. Outpace: in round 1 the enemy’s decisive blow finds only air — you strike from outside its range.',
+        'blurb': 'Skirmisher. Outpace: once a fight, the enemy’s first decisive blow finds only air — you strike from outside its range.',
     },
     'shambling_shell': {
         'name': 'Shambling Shell', 'line': 'zombie', 'bonus': {'maxHp': 6, 'def': 2},

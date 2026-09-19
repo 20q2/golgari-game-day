@@ -790,7 +790,12 @@
 // with the wash baked into that binding. Text-shadows keep her dialog legible
 // over the misty chasm.
 .bridge-modal {
-  overflow: hidden;
+  // Clip horizontally, but KEEP the base modal's vertical scroll: the wash is
+  // clipped by border-radius on its own (any non-visible overflow rounds the
+  // corners), so a plain `overflow: hidden` bought nothing and cost the scroll
+  // — the tier-2 toll text plus the destination blurb ran past the fold on
+  // phones and the Turn back / Pay buttons were unreachable.
+  overflow: hidden auto;
   background-size: cover;
   background-position: center;
 
@@ -855,7 +860,9 @@
 .event-modal {
   // Biome scenery (bound inline) fills the whole card; the gradient in that
   // binding keeps it clear up top and dark enough for text lower down.
-  overflow: hidden;
+  // Horizontal clip only (the .event-banner bleeds into the padding) — vertical
+  // scroll stays on, same reason as .bridge-modal / .witch-modal.
+  overflow: hidden auto;
   background-size: cover;
   background-position: center top;
   // Materialize in place (fade + gentle grow) rather than the default pop-up,

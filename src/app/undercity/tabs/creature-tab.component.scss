@@ -1787,6 +1787,15 @@ $grim-lock: #c96a5a;
   position: relative;
   width: 100%;
   max-width: 480px;
+  // Six dialogs share this chrome (item, pet, merge, egg, boss codex, hatch
+  // reveal) and the tall ones — the pet sheet with its ability, stats, level bar
+  // and action stack, more still with the market price editor open — outgrow a
+  // phone. The backdrop is flex-end anchored, so an uncapped sheet grows off the
+  // TOP of the screen, taking the close button with it and never showing a
+  // scrollbar (overflow at block-start is not scrollable). Cap it and scroll.
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: rgba(20, 18, 14, 0.97);
   border: 1px solid rgba(183, 228, 199, 0.28);
   border-bottom: none;
