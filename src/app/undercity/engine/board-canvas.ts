@@ -39,6 +39,8 @@ import {
   TerrainArt,
   TERRAIN_MARGIN,
   TERRAIN_RES,
+  MIN_TERRAIN_RES,
+  scaledImage,
 } from './board-terrain';
 import { computeLayers, layerIndex, OVERWORLD, LayerSpec } from './board-layers';
 import { computeEnemyTiers, drawTierBadge, EnemyTier } from './board-enemy-tier';
@@ -454,6 +456,14 @@ const REBUILD_DEBOUNCE_MS = 300;
 const REBUILD_MIN_GAP_MS = 5000;
 // Minimum gap between two eviction recoveries (each is a full re-bake).
 const RECOVERY_MIN_GAP_MS = 15000;
+// Eviction recoveries per board before we stop re-baking altogether. Each
+// recovery also downshifts the terrain resolution (a smaller store is both
+// less likely to be evicted and cheaper to re-bake); a device that still loses
+// the store after that is one that can't hold this canvas at all, and re-baking
+// it every probe was a permanent bake→lost→bake lock. Past the cap the board
+// keeps running — discs, paths, tokens are vector-drawn every frame — over a
+// blank terrain, which beats a frozen phone.
+const MAX_RECOVERIES = 2;
 
 /** One render/view layer: its node subset + world bounds, and its terrain. */
 interface Layer {
@@ -542,6 +552,12 @@ export class BoardCanvas {
    *  because each one is a full re-bake, and on a memory-starved phone a re-bake
    *  can itself trigger the next eviction (see recoverLostCanvases). */
   private lastRecoveryMs = 0;
+  private recoveries = 0;
+  /** Set once MAX_RECOVERIES is exhausted: stop probing, stop re-baking. */
+  private recoveryExhausted = false;
+  /** Bake resolution for this board: TERRAIN_RES, downshifted on each eviction
+   *  recovery (a smaller store is less likely to be evicted again). */
+  private terrainRes = TERRAIN_RES;
   /** Wall-clock ms the last art-load rebuild finished (see scheduleRebuild). */
   private lastRebuildMs = 0;
   private rafId: number | null = null;
@@ -629,7 +645,7 @@ export class BoardCanvas {
       spec,
       terrain: renderTerrain(this.map, this.floorTex, this.landmarkTex, spec, {
         cleared: !!biome && this.clearedDungeons.has(biome),
-        resolution: TERRAIN_RES,
+        resolution: this.terrainRes,
         animateFlora: true,
         animatePaths: true,
       }),
@@ -781,7 +797,7 @@ export class BoardCanvas {
    * Probed at most every ~2s; one 1×1 readback is cheap.
    */
   private checkTerrainIntact(ts: number): void {
-    if (!this.terrainReady) return; // nothing baked yet — nothing to lose
+    if (!this.terrainReady || this.recoveryExhausted) return;
     if (ts - this.lastIntegrityTs < 2000) return;
     // Rate limit: a recovery is a full re-bake, and on a memory-starved phone
     // that allocation can be what triggers the next eviction — unbounded, that
@@ -810,8 +826,21 @@ export class BoardCanvas {
    * the visible one.
    */
   private recoverLostCanvases(): void {
-    console.warn('[undercity] canvas backing store evicted — rebuilding board terrain');
     this.lastRecoveryMs = performance.now();
+    this.recoveries++;
+    if (this.recoveries > MAX_RECOVERIES) {
+      // Still losing the store after downshifting twice: this device can't hold
+      // the terrain. Stop probing and re-baking — the rest of the board keeps
+      // drawing every frame — rather than lock the phone in a bake loop.
+      this.recoveryExhausted = true;
+      console.warn('[undercity] terrain lost again after downshift — giving up on baked terrain');
+      return;
+    }
+    // Shrink the store before re-baking: cheaper to rebuild, less to evict.
+    this.terrainRes = Math.max(MIN_TERRAIN_RES, +(this.terrainRes * 0.7).toFixed(2));
+    console.warn(
+      `[undercity] canvas backing store evicted — rebuilding board terrain at ${this.terrainRes} (recovery ${this.recoveries}/${MAX_RECOVERIES})`,
+    );
     for (const [id, layer] of [...this.layers]) {
       const spec = this.specById.get(id);
       if (!spec) continue;
@@ -2316,7 +2345,8 @@ export class BoardCanvas {
     const ctx = this.ctx;
     const h = 46; // world px
     const w = (img.width / img.height) * h;
-    ctx.drawImage(img, n.x - w / 2, n.y - h + DISC_RY * 0.3, w, h);
+    // 1024² source drawn at 46 px every frame: blit the cached small copy.
+    ctx.drawImage(scaledImage(img, w, h), n.x - w / 2, n.y - h + DISC_RY * 0.3, w, h);
   }
 
   /** A gilded name banner planted below a landmark, styled like the token name
@@ -2383,7 +2413,13 @@ export class BoardCanvas {
       const w = art.img.width * (GUARDIAN_H / art.img.height);
       const top = footAnchor - drawH + hopY;
       ctx.imageSmoothingEnabled = !art.pixelArt;
-      ctx.drawImage(art.img, cx - w / 2, top, w, drawH);
+      // Real guardian art can be a 1024² PNG (the Rot Sovereign): blit a copy
+      // pre-scaled to the base size instead of resampling it every frame.
+      const src =
+        art.img instanceof HTMLImageElement
+          ? scaledImage(art.img, w, GUARDIAN_H, !art.pixelArt)
+          : art.img;
+      ctx.drawImage(src, cx - w / 2, top, w, drawH);
       ctx.imageSmoothingEnabled = true;
     }
 
@@ -2486,7 +2522,10 @@ export class BoardCanvas {
     const w = art.img.width * (LAIR_H / art.img.height);
     const top = footAnchor - drawH;
     ctx.imageSmoothingEnabled = !art.pixelArt;
-    ctx.drawImage(art.img, cx - w / 2, top, w, drawH);
+    // The Moor Wyrm ships at 1024×559; draw the pre-scaled copy (see scaledImage).
+    const lairSrc =
+      art.img instanceof HTMLImageElement ? scaledImage(art.img, w, LAIR_H, !art.pixelArt) : art.img;
+    ctx.drawImage(lairSrc, cx - w / 2, top, w, drawH);
     ctx.imageSmoothingEnabled = true;
 
     // Boss-style health bar above the living sigil boss (a beaten vestige has
@@ -2519,7 +2558,9 @@ export class BoardCanvas {
     ctx.globalAlpha = HAZARD_OMEN_ALPHA;
     ctx.filter = HAZARD_OMEN_FILTER;
     ctx.imageSmoothingEnabled = !art.pixelArt;
-    ctx.drawImage(art.img, n.x - w / 2, n.y - h / 2 + bob, w, h);
+    const omenSrc =
+      art.img instanceof HTMLImageElement ? scaledImage(art.img, w, h, !art.pixelArt) : art.img;
+    ctx.drawImage(omenSrc, n.x - w / 2, n.y - h / 2 + bob, w, h);
     ctx.restore();
   }
 

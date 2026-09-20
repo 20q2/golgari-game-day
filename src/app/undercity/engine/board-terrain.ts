@@ -29,6 +29,11 @@ export const TERRAIN_MARGIN = 200;
  * passes no resolution (renders full-res) so editing stays pixel-crisp.
  */
 export const TERRAIN_RES = 0.6;
+/** Floor for the eviction-recovery downshift (BoardCanvas.recoverLostCanvases):
+ *  never bake below this. Note the bake is mostly per-node vector work, not
+ *  fill area — measured at 6x CPU throttle, 0.4 was only ~15% faster than 0.6 —
+ *  so the downshift is about backing-store memory, not speed. */
+export const MIN_TERRAIN_RES = 0.3;
 
 /**
  * Space types that draw an auto landmark sprite above their disc (building art
@@ -2823,6 +2828,51 @@ function drawLairSetPiece(
 /** Default gap from a space centre to its sprite seat (straight up). */
 const SPRITE_SEAT = 26;
 
+/**
+ * Downscaled copies of large source images, keyed by image and target size.
+ *
+ * Why: several board sprites ship as 1024² PNGs (witch hut, treasure hoard,
+ * the Rot Sovereign, the Moor Wyrm) but draw at 45–85 world px. Scaling the
+ * full-size source on every draw is what made `drawLandmarkImage` 58% of the
+ * whole terrain bake (profiled: 0.5s of a 0.86s bake on a desktop, so several
+ * seconds of frozen main thread on an old phone), and the hoards/guardians do
+ * the same scale-down every frame. Resample once — at 2× the target so the
+ * pixel-art look survives zoom — and blit the small copy from then on.
+ * Nearest-neighbour, matching the `imageSmoothingEnabled = false` the direct
+ * draws used. A not-yet-decoded image (0×0) is returned as-is.
+ */
+const scaledCache = new WeakMap<HTMLImageElement, Map<string, HTMLCanvasElement>>();
+export function scaledImage(
+  img: HTMLImageElement,
+  w: number,
+  h: number,
+  smooth = false,
+): CanvasImageSource {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const cw = Math.ceil(w * 2);
+  const ch = Math.ceil(h * 2);
+  // Nothing to gain (or nothing to sample yet): draw the source directly.
+  if (!iw || !ih || !cw || !ch || (iw <= cw && ih <= ch)) return img;
+  let sizes = scaledCache.get(img);
+  if (!sizes) {
+    sizes = new Map();
+    scaledCache.set(img, sizes);
+  }
+  const key = `${cw}x${ch}${smooth ? 's' : ''}`;
+  let c = sizes.get(key);
+  if (!c) {
+    c = document.createElement('canvas');
+    c.width = cw;
+    c.height = ch;
+    const cctx = c.getContext('2d')!;
+    cctx.imageSmoothingEnabled = smooth;
+    cctx.drawImage(img, 0, 0, cw, ch);
+    sizes.set(key, c);
+  }
+  return c;
+}
+
 function drawLandmarkImage(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -2838,14 +2888,13 @@ function drawLandmarkImage(
   const w = iw * scale;
   const h = ih * scale;
   const bottom = nodeY; // caller passes the exact seat point (see drawLandmark)
-  ctx.save();
   ctx.beginPath();
   ctx.ellipse(x, bottom, w * 0.34, w * 0.12, 0, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
   ctx.fill();
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(img, x - w / 2, bottom - h, w, h);
-  ctx.restore();
+  // Pre-scaled copy (see scaledImage): the nearest-neighbour resample happens
+  // once per image+size, not once per landmark per bake.
+  ctx.drawImage(scaledImage(img, w, h), x - w / 2, bottom - h, w, h);
 }
 
 /** Buildings anchor their base ~24px above the node so the coin disc stays clear. */

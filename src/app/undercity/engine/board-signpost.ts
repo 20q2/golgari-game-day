@@ -6,6 +6,7 @@
  */
 import { regionInfo, tunnelDest } from '../data/regions';
 import { NODE_R, DISC_RY } from './board-space';
+import { scaledImage } from './board-terrain';
 
 /** Structural node shape (compatible with BoardNode). */
 interface SignNode {
@@ -115,12 +116,17 @@ function drawPanel(
     ctx.roundRect(ix, iy, iw, ih, 4);
     ctx.clip();
     const scale = Math.max(iw / img.width, ih / img.height);
+    const dw = img.width * scale;
+    const dh = img.height * scale;
+    // The biome painting is a 1456×816 source drawn into a ~58×33 window, on
+    // every tunnel signpost, every frame: measured as ~85% of all drawImage
+    // time on the board. Blit the cached small copy (see scaledImage) instead.
     ctx.drawImage(
-      img,
-      ix + (iw - img.width * scale) / 2,
-      iy + (ih - img.height * scale) / 2,
-      img.width * scale,
-      img.height * scale,
+      scaledImage(img, dw, dh, true),
+      ix + (iw - dw) / 2,
+      iy + (ih - dh) / 2,
+      dw,
+      dh,
     );
     ctx.restore();
   }
