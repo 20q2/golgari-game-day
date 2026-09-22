@@ -79,3 +79,20 @@ def test_battle_start_omits_the_descriptor_for_a_wild_foe(table):
     # freshly joined player stands on their home gate, not an arbitrary node.
     ev = db._start_battle(table, sid, doc, 'wild', npc, node=doc['position'])
     assert 'form' not in ev['npc']
+
+
+def test_resumed_duel_still_carries_the_sprite(table):
+    """Reloading mid-duel rebuilds the fight from state.battle. That payload
+    must carry the descriptor too, or a refresh swaps the opponent's creature
+    for the paw print."""
+    _duel_pair(table)
+    act(table, 'battle', targetUserId='user-sam')
+
+    status, state = db.handle_state(table, {'userId': 'user-alex'})
+    assert status == 200, state
+
+    npc = state['battle']['npc']
+    assert npc['form'] == 'saproling'
+    assert npc['paint'] == {'body': 200, 'belly': 40, 'stripes': 200}
+    assert npc['hat'] == 'top_hat'
+    assert npc['spriteVariant'] == 'saproling_2'

@@ -5931,6 +5931,9 @@ def _battle_resume(rec, player_hp):
                                       npc.get('maxHp', npc.get('hp', 0))),
             'personality': npc.get('personality'),
             'tier': rec.get('npcTier'),
+            # The live combatant snapshot carries no cosmetics — the look comes
+            # off the stored spec, same source as `id`/`spriteId` above.
+            **_sprite_descriptor(rec.get('npcMeta') or {}),
         },
     }
 
