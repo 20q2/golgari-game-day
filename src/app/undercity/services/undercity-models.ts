@@ -606,6 +606,12 @@ export interface BattleResume {
     personality?: string;
     /** Size tier (1-3) for relative arena sprite scaling (server-stamped). */
     tier?: number;
+    /** Sprite descriptor for a player-derived foe (PvP clone, Golgari Throne)
+     *  so a reload redraws the real creature instead of the icon fallback. */
+    form?: string;
+    paint?: Record<string, number>;
+    hat?: string | null;
+    spriteVariant?: string | null;
   };
 }
 
