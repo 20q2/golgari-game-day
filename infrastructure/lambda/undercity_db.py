@@ -6028,7 +6028,8 @@ def _finish_pvp(table, sid, doc, rec, result):
     target = _get_player(table, sid, target_id) if target_id else None
     tname = rec['npcMeta'].get('name', 'their creature')
     out = {'type': 'pvp',
-           'npc': {'name': tname, 'id': rec['npcMeta'].get('id')},
+           'npc': {'name': tname, 'id': rec['npcMeta'].get('id'),
+                   **_sprite_descriptor(rec['npcMeta'])},
            'battle': result}
     outcome = result['outcome']
     away = {'kind': 'pvp', 'from': doc.get('username', '?'), 'at': _now()}
@@ -6699,7 +6700,9 @@ def _finish_boss(table, sid, doc, rec, result):
     node = rec['node']
     boss = data.ROT_SOVEREIGN
     hp_before = rec['ctx'].get('hpBefore', boss['hp'])
-    out = {'type': 'boss', 'npc': {'name': boss['name'], 'maxHp': boss['hp']},
+    out = {'type': 'boss',
+           'npc': {'name': boss['name'], 'maxHp': boss['hp'],
+                   **_sprite_descriptor(rec.get('npcMeta') or {})},
            'battle': result}
     dealt = max(0, hp_before - result['defenderHp'])
     doc['bossDamage'] = doc.get('bossDamage', 0) + dealt

@@ -96,3 +96,16 @@ def test_resumed_duel_still_carries_the_sprite(table):
     assert npc['paint'] == {'body': 200, 'belly': 40, 'stripes': 200}
     assert npc['hat'] == 'top_hat'
     assert npc['spriteVariant'] == 'saproling_2'
+
+
+def test_duel_result_card_carries_the_sprite(table, monkeypatch):
+    """The victory card is built from the finisher's out['npc']."""
+    sid, _, _ = _duel_pair(table)
+    act(table, 'battle', targetUserId='user-sam')
+
+    alex = db._get_player(table, sid, 'user-alex')
+    ev = _finish_started_battle(table, monkeypatch, alex, outcome='attacker')
+
+    assert ev['type'] == 'pvp'
+    assert ev['npc']['form'] == 'saproling'
+    assert ev['npc']['hat'] == 'top_hat'
