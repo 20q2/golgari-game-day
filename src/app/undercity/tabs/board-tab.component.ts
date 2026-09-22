@@ -162,7 +162,9 @@ interface LiveBattle {
 /** Payload for the pre-fight boss dialogue overlay (design 2026-08-04). */
 interface BossIntroView {
   name: string;
-  spriteUrl: string;
+  /** Null when the foe has neither a creature descriptor nor art on disk;
+   *  BossIntroComponent already renders an icon in that case. */
+  spriteUrl: string | null;
   lines: string[];
   vestige: boolean;
 }
@@ -2895,8 +2897,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
           this.pendingBossEv = { ev, preHp };
           this.bossIntro.set({
             name: ev.npc.name,
-            // Mirror the battle opener's sprite resolution (spriteId ?? id).
-            spriteUrl: this.npcSpriteUrl(ev.kind ?? ev.type, ev.npc.spriteId ?? ev.npc.id),
+            spriteUrl: this.foeSpriteUrl(ev.npc, ev.kind ?? ev.type),
             lines,
             vestige,
           });
@@ -2924,9 +2925,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
         },
         defender: {
           name: ev.npc.name,
-          // Art folder per foe class; a missing file falls back to the icon
-          // via the battle card's onerror handling.
-          spriteUrl: this.npcSpriteUrl(ev.type, ev.npc.id),
+          // A missing file falls back to the icon via the card's onerror.
+          spriteUrl: this.foeSpriteUrl(ev.npc, ev.type),
           icon: NPC_ICONS[ev.npc.id] ?? 'bug_report',
           startHp: ev.npc.hp,
           // The island boss carries a persistent HP pool: current hp can be
@@ -3305,6 +3305,27 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
     return enemyArtUrl(npcId);
   }
 
+  /** A foe's battle art. A player-derived foe — the PvP clone, the Golgari
+   *  Throne — ships a sprite descriptor and is recolored from the real
+   *  creature; everything else resolves to its art-folder PNG by id. Every
+   *  battle surface routes through here: four call sites used to decide this
+   *  separately and only one of them knew about descriptors, so duels drew the
+   *  paw-print icon everywhere else. */
+  private foeSpriteUrl(
+    npc: {
+      id?: string;
+      spriteId?: string;
+      form?: string;
+      paint?: Record<string, number>;
+      hat?: string | null;
+      spriteVariant?: string | null;
+    },
+    evType: string,
+  ): string | null {
+    if (npc.form) return this.spriteUrl(npc.form, npc.paint ?? {}, npc.hat, npc.spriteVariant);
+    return this.npcSpriteUrl(evType, npc.spriteId ?? npc.id ?? '');
+  }
+
   /** A beaten lair boss reforms at half strength as the "Vestige of <boss>"
    *  (server names it so). Detect it from the display name so its combat sprite
    *  wears the same drained filter it does in the overworld. */
@@ -3465,12 +3486,7 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       },
       defender: {
         name: ev.npc!.name,
-        // A PvP clone draws the target's own creature from the sprite descriptor
-        // the server sends; PvE foes use their art-folder sprite by id.
-        spriteUrl:
-          ev.kind === 'pvp' && ev.npc!.form
-            ? this.spriteUrl(ev.npc!.form, ev.npc!.paint ?? {}, ev.npc!.hat, ev.npc!.spriteVariant)
-            : this.npcSpriteUrl(ev.kind!, ev.npc!.spriteId ?? ev.npc!.id),
+        spriteUrl: this.foeSpriteUrl(ev.npc!, ev.kind!),
         icon: ev.kind === 'pvp' ? 'pets' : (NPC_ICONS[ev.npc!.id] ?? 'bug_report'),
         startHp: ev.npc!.hp,
         maxHp: ev.npc!.maxHp ?? ev.npc!.hp,
@@ -3517,8 +3533,8 @@ export class BoardTabComponent implements AfterViewInit, OnDestroy {
       },
       defender: {
         name: pb.npc.name,
-        spriteUrl: this.npcSpriteUrl(pb.kind, pb.npc.spriteId ?? pb.npc.id ?? ''),
-        icon: NPC_ICONS[pb.npc.id ?? ''] ?? 'bug_report',
+        spriteUrl: this.foeSpriteUrl(pb.npc, pb.kind),
+        icon: pb.kind === 'pvp' ? 'pets' : (NPC_ICONS[pb.npc.id ?? ''] ?? 'bug_report'),
         startHp: pb.npc.hp,
         maxHp: pb.npc.maxHp,
         level: pb.npc.level,

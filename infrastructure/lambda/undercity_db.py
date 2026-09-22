@@ -1002,6 +1002,20 @@ def _apply_mimicry(doc, npc):
     doc['buffs'] = buffs
 
 
+def _sprite_descriptor(npc):
+    """The four fields the client needs to draw a foe as a real creature rather
+    than an art-folder PNG. PvP clones and the Golgari Throne carry them;
+    ordinary NPCs do not, and for those we return {} so their payload never
+    grows empty keys — the client treats a present `form` as the signal to
+    recolor a creature sprite."""
+    if not (npc or {}).get('form'):
+        return {}
+    return {'form': npc.get('form'),
+            'paint': npc.get('paint') or {},
+            'hat': npc.get('hat'),
+            'spriteVariant': npc.get('spriteVariant')}
+
+
 def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None, region=None):
     """Snapshot combatants into doc['battle'], telegraph round 1, return the
     battle_start space event. Player buffs/stats freeze here; rewards resolve
@@ -1051,7 +1065,8 @@ def _start_battle(table, sid, doc, kind, npc, node=None, ctx=None, region=None):
                     'level': data.enemy_level(npc_snap['atk'], npc_snap['dfn'],
                                               npc_snap['spd'], npc_snap['maxHp']),
                     'personality': npc_snap['personality'],
-                    'tier': npc_tier},
+                    'tier': npc_tier,
+                    **_sprite_descriptor(npc)},
             'telegraph': shown, 'round': 1,
             'frenzyFrom': _frenzy_from(kind),
             'fleeChance': _flee_pct(rec),
@@ -5916,6 +5931,9 @@ def _battle_resume(rec, player_hp):
                                       npc.get('maxHp', npc.get('hp', 0))),
             'personality': npc.get('personality'),
             'tier': rec.get('npcTier'),
+            # The live combatant snapshot carries no cosmetics — the look comes
+            # off the stored spec, same source as `id`/`spriteId` above.
+            **_sprite_descriptor(rec.get('npcMeta') or {}),
         },
     }
 
@@ -6010,7 +6028,8 @@ def _finish_pvp(table, sid, doc, rec, result):
     target = _get_player(table, sid, target_id) if target_id else None
     tname = rec['npcMeta'].get('name', 'their creature')
     out = {'type': 'pvp',
-           'npc': {'name': tname, 'id': rec['npcMeta'].get('id')},
+           'npc': {'name': tname, 'id': rec['npcMeta'].get('id'),
+                   **_sprite_descriptor(rec['npcMeta'])},
            'battle': result}
     outcome = result['outcome']
     away = {'kind': 'pvp', 'from': doc.get('username', '?'), 'at': _now()}
@@ -6681,7 +6700,9 @@ def _finish_boss(table, sid, doc, rec, result):
     node = rec['node']
     boss = data.ROT_SOVEREIGN
     hp_before = rec['ctx'].get('hpBefore', boss['hp'])
-    out = {'type': 'boss', 'npc': {'name': boss['name'], 'maxHp': boss['hp']},
+    out = {'type': 'boss',
+           'npc': {'name': boss['name'], 'maxHp': boss['hp'],
+                   **_sprite_descriptor(rec.get('npcMeta') or {})},
            'battle': result}
     dealt = max(0, hp_before - result['defenderHp'])
     doc['bossDamage'] = doc.get('bossDamage', 0) + dealt
@@ -6916,7 +6937,9 @@ def _build_clone(target):
         'personality': personality,
         'bluff': data.clone_bluff(level),
         # Sprite descriptor so the client can draw the target's own creature as
-        # the foe (survives into the finisher and battle reloads via npcMeta).
+        # the foe. These reach the client only because _start_battle,
+        # _battle_resume and the finishers each splice in _sprite_descriptor();
+        # npcMeta alone is server-side storage and sends nothing.
         'form': target.get('form'), 'paint': target.get('paint') or {},
         'hat': target.get('hat'), 'spriteVariant': target.get('spriteVariant'),
     }
