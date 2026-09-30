@@ -1,0 +1,4178 @@
+{
+  "ok": true,
+  "season": "20260919-130131",
+  "exportedAt": "2026-09-20T05:58:21",
+  "players": [
+    {
+      "ver": 510,
+      "pendingPickups": [],
+      "spd": 11,
+      "spriteVariant": "insect_2",
+      "pvpWins": 2,
+      "spentThisLevel": {
+        "atk": 2,
+        "def": 0,
+        "spd": 0
+      },
+      "userId": "user-andrew",
+      "creatureName": "Mystique",
+      "rolls": 10,
+      "scrolls": [
+        "deep_step",
+        "spore_burst",
+        "sear_throne",
+        "rust_curse"
+      ],
+      "shiny": false,
+      "royalJelly": 0,
+      "grimoireSpells": {
+        "nightrunners_ledger": [
+          "glowveil",
+          "skitter_step"
+        ]
+      },
+      "taughtClaims": 0,
+      "tier": 3,
+      "bossDamage": 2800,
+      "materials": {
+        "ichor": 0,
+        "moltings": 13
+      },
+      "lastFinishedClaim": null,
+      "gear": {
+        "fang": "sanguine_fang",
+        "charm": "seer_charm",
+        "carapace": "bramble_carapace"
+      },
+      "species": "kraul",
+      "pokesReceived": 19,
+      "eggs": [],
+      "xp": 226,
+      "username": "Andrew",
+      "pk": "UNDERCITY#20260919-130131",
+      "activePetId": "pet-7f516c6b",
+      "incubator": null,
+      "rollRegenAt": "2026-09-20T02:01:26",
+      "stance": "fight",
+      "statPoints": 0,
+      "hp": 56,
+      "maxHp": 57,
+      "homeBiome": "cavern",
+      "petRecharge": {
+        "scout": 0
+      },
+      "highFiveCooldowns": {},
+      "buffs": [
+        {
+          "kind": "high_five"
+        }
+      ],
+      "wildWins": 18,
+      "spellCooldowns": {},
+      "equippedGrimoire": "nightrunners_ledger",
+      "effect": null,
+      "grimoires": [
+        "nightrunners_ledger"
+      ],
+      "joinedAt": "2026-09-19T16:05:00",
+      "def": 6,
+      "bag": [
+        "rot_bomb",
+        "ambush_musk",
+        "ambush_musk"
+      ],
+      "passives": [
+        "first_bite",
+        "reach",
+        "onslaught"
+      ],
+      "pendingMove": null,
+      "spores": 201,
+      "gearStash": [
+        "bramble_aegis",
+        "vampiric_maw"
+      ],
+      "awayEvents": [],
+      "paint": {
+        "stripes": 180,
+        "belly": -1,
+        "body": 200
+      },
+      "level": 10,
+      "atk": 25,
+      "pets": [
+        {
+          "mergeProgress": 0,
+          "level": 1,
+          "tier": 1,
+          "id": "pet-fc230221",
+          "species": "baby_broodspinner"
+        },
+        {
+          "level": 1,
+          "mergeProgress": 0,
+          "tier": 2,
+          "id": "pet-cb6cb207",
+          "species": "baby_winding_constrictor"
+        },
+        {
+          "id": "pet-2cb31fd7",
+          "species": "baby_gloomshrieker",
+          "mergeProgress": 0,
+          "tier": 1,
+          "level": 1
+        },
+        {
+          "level": 1,
+          "mergeProgress": 1,
+          "id": "pet-7f516c6b",
+          "species": "baby_leyline_prowler",
+          "tier": 4
+        },
+        {
+          "tier": 2,
+          "level": 1,
+          "id": "pet-e2ef9a59",
+          "mergeProgress": 0,
+          "species": "rat"
+        },
+        {
+          "tier": 1,
+          "species": "baby_leyline_prowler",
+          "mergeProgress": 0,
+          "level": 1,
+          "id": "pet-56be07d0"
+        },
+        {
+          "level": 1,
+          "tier": 2,
+          "species": "baby_darkheart_sliver",
+          "id": "pet-28f9abb9",
+          "mergeProgress": 0
+        }
+      ],
+      "composts": 3,
+      "hat": "birthday_blessing",
+      "hpUpdatedAt": "2026-09-20T02:15:44",
+      "form": "swamp_dragon",
+      "position": "isl_bg1",
+      "status": "Birthday jockey",
+      "lastActionAt": "2026-09-20T02:20:15",
+      "metrics": {
+        "spaces": 71,
+        "battle.pvp.win": 2,
+        "depths.sig1.win": 1,
+        "space.tunnel": 2,
+        "battle.wild.win": 12,
+        "space.shrine": 2,
+        "space.ossuary": 1,
+        "space.boss": 5,
+        "space.loot": 11,
+        "battle.barrier.win": 1,
+        "space.elite": 2,
+        "rerolls": 5,
+        "depths.sig2.win": 4,
+        "space.hazard": 1,
+        "space.warp": 1,
+        "space.lair": 4,
+        "dmgDealt": 4606,
+        "xpGained": 1051,
+        "battle.lair.win": 4,
+        "space.crystal_vein": 2,
+        "gear.found.t3": 1,
+        "depths.sig2.loss": 3,
+        "depths.sig0.win": 3,
+        "space.wild": 17,
+        "rolls": 63,
+        "space.trove": 2,
+        "space.shop": 5,
+        "gear.found.t2": 4,
+        "dmgTaken": 476,
+        "battles": 29,
+        "gear.capped.t3to2": 2,
+        "battle.wild.loss": 3,
+        "battle.elite.win": 2,
+        "battle.boss.win": 5,
+        "space.mystery": 4,
+        "space.cache": 2,
+        "deaths": 3,
+        "space.ladder": 8,
+        "space.barrier": 1,
+        "space.rest": 1,
+        "gear.found.t1": 3
+      },
+      "lastBiome": "garden",
+      "winRenown": 70,
+      "pokeCooldownUntil": "2026-09-20T01:26:29",
+      "rested": 15,
+      "rollNudged": true,
+      "shieldUntil": "2026-09-20T02:30:18",
+      "petSporeBank": 0,
+      "evolvedAt": "2026-09-19T21:03:12",
+      "poiClaims": [
+        "cache:cavern_cache",
+        "trove:cavern_trove",
+        "cavern_lair",
+        "cache:bog_cache",
+        "bog_lair",
+        "n286",
+        "n288",
+        "trove:garden_trove",
+        "garden_lair",
+        "boss"
+      ],
+      "restsUsed": [],
+      "veinStrikesLeft": 0,
+      "pvpRenownWins": 2,
+      "ruinLairs": {
+        "n288": {
+          "scavenged": false,
+          "respawnAt": "2026-09-19T21:08:48"
+        }
+      },
+      "ossuaryRollsLeft": 0,
+      "sk": "PLAYER#user-andrew"
+    },
+    {
+      "ver": 566,
+      "pendingPickups": [],
+      "spd": 14,
+      "rested": 0,
+      "spriteVariant": "zombie_2",
+      "pvpWins": 2,
+      "spentThisLevel": {
+        "spd": 2,
+        "def": 0,
+        "atk": 0
+      },
+      "userId": "user-brandon",
+      "creatureName": "Shambles",
+      "rolls": 9,
+      "scrolls": [
+        "deep_mend",
+        "spore_burst"
+      ],
+      "shiny": false,
+      "royalJelly": 9,
+      "grimoireSpells": {
+        "warcasters_screed": [
+          "rot_surge",
+          "spore_bolt"
+        ]
+      },
+      "tier": 3,
+      "taughtClaims": 0,
+      "bossDamage": 560,
+      "materials": {
+        "ichor": 5,
+        "moltings": 8
+      },
+      "lastFinishedClaim": null,
+      "gear": {
+        "carapace": "overgrown_bulwark",
+        "fang": "wyrm_venomtooth",
+        "charm": "wardens_charm"
+      },
+      "species": "zombie",
+      "pokesReceived": 15,
+      "eggs": [],
+      "xp": 829,
+      "username": "Brandon",
+      "pk": "UNDERCITY#20260919-130131",
+      "activePetId": "pet-beb4b140",
+      "incubator": {
+        "eggId": "egg-3e87c510",
+        "tier": 3,
+        "startedAt": "2026-09-20T01:08:43",
+        "spacesLeft": 5
+      },
+      "rollRegenAt": "2026-09-20T02:31:26",
+      "stance": "fight",
+      "statPoints": 0,
+      "maxHp": 85,
+      "hp": 146,
+      "homeBiome": "bone",
+      "petRecharge": {
+        "scout": 0
+      },
+      "highFiveCooldowns": {},
+      "buffs": [
+        {
+          "kind": "rot_surge"
+        }
+      ],
+      "wildWins": 33,
+      "spellCooldowns": {
+        "rot_surge": 6,
+        "spore_bolt": 4
+      },
+      "equippedGrimoire": "warcasters_screed",
+      "effect": null,
+      "grimoires": [
+        "warcasters_screed"
+      ],
+      "joinedAt": "2026-09-19T17:11:42",
+      "def": 22,
+      "bag": [
+        "loaded_die",
+        "marrow_draught",
+        "high_roller",
+        "mending_salve",
+        "scrying_spore"
+      ],
+      "passives": [
+        "regrowth",
+        "spikeshell",
+        "gorge",
+        "reclaim"
+      ],
+      "spores": 970,
+      "pendingMove": null,
+      "gearStash": [],
+      "awayEvents": [],
+      "paint": {
+        "belly": 130,
+        "stripes": 50,
+        "body": 50
+      },
+      "level": 12,
+      "atk": 5,
+      "pets": [
+        {
+          "species": "decimator_beetle",
+          "level": 2,
+          "mergeProgress": 0,
+          "tier": 2,
+          "id": "pet-75d69c84"
+        },
+        {
+          "tier": 3,
+          "mergeProgress": 0,
+          "species": "slime",
+          "id": "pet-beb4b140",
+          "level": 1
+        },
+        {
+          "species": "decimator_beetle",
+          "mergeProgress": 0,
+          "id": "pet-7b0adf2d",
+          "tier": 1,
+          "level": 1
+        }
+      ],
+      "hat": null,
+      "composts": 1,
+      "hpUpdatedAt": "2026-09-20T02:38:24",
+      "form": "grime_gorger",
+      "position": "lair_titan",
+      "metrics": {
+        "battle.wild.win": 20,
+        "space.lair": 4,
+        "space.mystery": 5,
+        "space.cache": 1,
+        "space.gate": 1,
+        "space.shop": 4,
+        "rolls": 78,
+        "battle.pvp.win": 2,
+        "space.shrine": 2,
+        "space.hazard": 7,
+        "battle.boss.win": 1,
+        "battles": 46,
+        "space.vault": 1,
+        "xpGained": 2184,
+        "battle.wild.loss": 1,
+        "space.ossuary": 1,
+        "gear.found.t3": 2,
+        "gear.found.t2": 1,
+        "battle.swarm.win": 7,
+        "space.warp": 8,
+        "space.boss": 1,
+        "battle.enraged.win": 1,
+        "battle.elite.win": 8,
+        "space.loot": 4,
+        "rerolls": 7,
+        "space.fog": 2,
+        "depths.sig2.win": 5,
+        "gear.found.t1": 1,
+        "space.ladder": 7,
+        "spaces": 83,
+        "dmgDealt": 3385,
+        "battle.barrier.win": 2,
+        "space.elite": 8,
+        "depths.sig0.win": 2,
+        "space.excavation": 3,
+        "deaths": 1,
+        "space.vault_lock": 1,
+        "battle.lair.win": 4,
+        "space.barrier": 2,
+        "space.wild": 21,
+        "depths.sig0.loss": 1,
+        "depths.sig1.win": 7,
+        "dmgTaken": 732
+      },
+      "lastActionAt": "2026-09-20T02:42:41",
+      "lastBiome": "garden",
+      "excavationDigsLeft": 0,
+      "winRenown": 153,
+      "shieldUntil": null,
+      "pokeCooldownUntil": "2026-09-20T00:57:58",
+      "status": "Rhbtngkdisjdng",
+      "rollNudged": true,
+      "evolvedAt": "2026-09-19T21:09:45",
+      "poiClaims": [
+        "bone_lair",
+        "cache:bone_cache",
+        "city_lair",
+        "bar_s",
+        "vault",
+        "bog_lair",
+        "boss",
+        "bar_e",
+        "lair_titan"
+      ],
+      "restsUsed": [],
+      "vaultPicksLeft": 0,
+      "forageRecharge": 0,
+      "mulch": 1,
+      "petSporeBank": 0,
+      "claims": [
+        "bog_r0"
+      ],
+      "ossuaryRollsLeft": 0,
+      "ruinLairs": {
+        "lair_titan": {
+          "respawnAt": "2026-09-20T02:08:24",
+          "scavenged": false
+        },
+        "n288": {
+          "hp": 23
+        }
+      },
+      "umoriCollectedWindow": 397747,
+      "sk": "PLAYER#user-brandon"
+    },
+    {
+      "ver": 30,
+      "spd": 3,
+      "pendingPickups": [],
+      "rested": 15,
+      "pvpWins": 0,
+      "spentThisLevel": {
+        "atk": 0,
+        "def": 0,
+        "spd": 0
+      },
+      "userId": "user-david",
+      "creatureName": "Buh",
+      "rolls": 10,
+      "scrolls": [],
+      "shiny": false,
+      "royalJelly": 0,
+      "grimoireSpells": {},
+      "taughtClaims": 0,
+      "tier": 1,
+      "bossDamage": 0,
+      "lastFinishedClaim": null,
+      "materials": {
+        "ichor": 0,
+        "moltings": 0
+      },
+      "gear": {
+        "fang": "torchfang"
+      },
+      "pokesReceived": 5,
+      "species": "zombie",
+      "eggs": [],
+      "xp": 12,
+      "username": "David",
+      "pk": "UNDERCITY#20260919-130131",
+      "activePetId": null,
+      "incubator": null,
+      "rollRegenAt": "2026-09-19T23:31:26",
+      "stance": "fight",
+      "statPoints": 0,
+      "hp": 18,
+      "maxHp": 30,
+      "homeBiome": "city",
+      "petRecharge": {},
+      "highFiveCooldowns": {},
+      "buffs": [],
+      "wildWins": 0,
+      "spellCooldowns": {},
+      "equippedGrimoire": null,
+      "effect": null,
+      "grimoires": [],
+      "joinedAt": "2026-09-19T20:41:10",
+      "def": 6,
+      "bag": [
+        "healing_moss"
+      ],
+      "passives": [
+        "regrowth"
+      ],
+      "spores": 0,
+      "pendingMove": null,
+      "awayEvents": [
+        {
+          "at": "2026-09-19T23:01:46",
+          "name": "Vestige of The Gitrog Monster",
+          "by": "Brandon",
+          "kind": "boss"
+        },
+        {
+          "name": "Savra, Queen of the Golgari",
+          "by": "Brandon",
+          "kind": "boss",
+          "at": "2026-09-19T23:04:49"
+        },
+        {
+          "name": "Enraged Leyline Prowler",
+          "at": "2026-09-20T00:41:33",
+          "by": "Brandon",
+          "kind": "boss"
+        },
+        {
+          "name": "Savra, Queen of the Golgari",
+          "kind": "boss",
+          "by": "Andrew",
+          "at": "2026-09-20T00:46:22"
+        },
+        {
+          "kind": "boss",
+          "name": "Savra, Queen of the Golgari",
+          "by": "Andrew",
+          "at": "2026-09-20T00:51:33"
+        },
+        {
+          "kind": "boss",
+          "by": "Andrew",
+          "name": "Savra, Queen of the Golgari",
+          "at": "2026-09-20T00:52:39"
+        },
+        {
+          "at": "2026-09-20T00:55:44",
+          "by": "Andrew",
+          "kind": "boss",
+          "name": "Savra, Queen of the Golgari"
+        },
+        {
+          "kind": "boss",
+          "by": "Brandon",
+          "name": "Golgari Grave-Troll",
+          "at": "2026-09-20T01:08:02"
+        },
+        {
+          "at": "2026-09-20T02:13:54",
+          "kind": "boss",
+          "name": "Savra, Queen of the Golgari",
+          "by": "Waffle"
+        },
+        {
+          "at": "2026-09-20T02:16:23",
+          "by": "Waffle",
+          "kind": "boss",
+          "name": "Savra, Queen of the Golgari"
+        }
+      ],
+      "gearStash": [],
+      "paint": {
+        "stripes": 130,
+        "belly": 50,
+        "body": 130
+      },
+      "level": 1,
+      "atk": 5,
+      "pets": [],
+      "composts": 1,
+      "hat": "wizard_hat",
+      "hpUpdatedAt": "2026-09-19T23:36:10",
+      "form": "zombie",
+      "position": "city_r0",
+      "pokeCooldownUntil": "2026-09-20T01:26:33",
+      "rollNudged": true,
+      "lastActionAt": "2026-09-19T23:36:10",
+      "shieldUntil": "2026-09-19T23:51:10",
+      "metrics": {
+        "battle.pvp.loss": 1,
+        "battles": 1,
+        "dmgDealt": 12,
+        "xpGained": 12,
+        "deaths": 1,
+        "dmgTaken": 9
+      },
+      "sk": "PLAYER#user-david"
+    },
+    {
+      "ver": 278,
+      "spd": 10,
+      "pendingPickups": [],
+      "rested": 12,
+      "pvpWins": 0,
+      "spentThisLevel": {
+        "def": 2,
+        "atk": 0,
+        "spd": 0
+      },
+      "userId": "user-pig",
+      "creatureName": "House centipede",
+      "rolls": 8,
+      "scrolls": [
+        "spore_burst"
+      ],
+      "shiny": false,
+      "royalJelly": 0,
+      "grimoireSpells": {
+        "gardeners_primer": [
+          "mend_flesh",
+          "harden_shell"
+        ]
+      },
+      "taughtClaims": 0,
+      "tier": 2,
+      "bossDamage": 0,
+      "lastFinishedClaim": null,
+      "materials": {
+        "ichor": 0,
+        "moltings": 5
+      },
+      "gear": {
+        "fang": "gutcleaver",
+        "carapace": "thornscrap_hide",
+        "charm": "wardens_charm"
+      },
+      "pokesReceived": 18,
+      "species": "kraul",
+      "eggs": [],
+      "xp": 104,
+      "username": "Pig",
+      "pk": "UNDERCITY#20260919-130131",
+      "activePetId": "pet-a2f3908b",
+      "incubator": null,
+      "rollRegenAt": "2026-09-19T21:31:26",
+      "statPoints": 0,
+      "stance": "fight",
+      "hp": 30,
+      "maxHp": 48,
+      "petRecharge": {},
+      "homeBiome": "bog",
+      "highFiveCooldowns": {},
+      "buffs": [],
+      "wildWins": 15,
+      "spellCooldowns": {},
+      "equippedGrimoire": "gardeners_primer",
+      "effect": null,
+      "grimoires": [
+        "gardeners_primer"
+      ],
+      "joinedAt": "2026-09-19T16:54:01",
+      "def": 6,
+      "bag": [
+        "fleetfoot_tonic",
+        "high_roller",
+        "high_roller",
+        "high_roller",
+        "scrying_spore"
+      ],
+      "passives": [
+        "first_bite",
+        "reach"
+      ],
+      "spores": 113,
+      "pendingMove": null,
+      "awayEvents": [
+        {
+          "from": "Brandon",
+          "at": "2026-09-19T22:57:56",
+          "kind": "spell_dodged",
+          "spell": "spore_bolt"
+        },
+        {
+          "name": "Vestige of The Gitrog Monster",
+          "kind": "boss",
+          "at": "2026-09-19T23:01:46",
+          "by": "Brandon"
+        },
+        {
+          "at": "2026-09-19T23:04:49",
+          "name": "Savra, Queen of the Golgari",
+          "by": "Brandon",
+          "kind": "boss"
+        },
+        {
+          "name": "Enraged Leyline Prowler",
+          "by": "Brandon",
+          "at": "2026-09-20T00:41:33",
+          "kind": "boss"
+        },
+        {
+          "by": "Andrew",
+          "at": "2026-09-20T00:46:22",
+          "kind": "boss",
+          "name": "Savra, Queen of the Golgari"
+        },
+        {
+          "name": "Savra, Queen of the Golgari",
+          "kind": "boss",
+          "by": "Andrew",
+          "at": "2026-09-20T00:51:33"
+        },
+        {
+          "by": "Andrew",
+          "name": "Savra, Queen of the Golgari",
+          "at": "2026-09-20T00:52:39",
+          "kind": "boss"
+        },
+        {
+          "at": "2026-09-20T00:55:44",
+          "by": "Andrew",
+          "kind": "boss",
+          "name": "Savra, Queen of the Golgari"
+        },
+        {
+          "at": "2026-09-20T01:08:02",
+          "name": "Golgari Grave-Troll",
+          "by": "Brandon",
+          "kind": "boss"
+        },
+        {
+          "at": "2026-09-20T01:09:08",
+          "kind": "spell_hit",
+          "dmg": 23,
+          "spell": "spore_bolt",
+          "from": "Brandon"
+        },
+        {
+          "name": "Savra, Queen of the Golgari",
+          "kind": "boss",
+          "by": "Waffle",
+          "at": "2026-09-20T02:13:54"
+        },
+        {
+          "kind": "boss",
+          "name": "Savra, Queen of the Golgari",
+          "by": "Waffle",
+          "at": "2026-09-20T02:16:23"
+        }
+      ],
+      "gearStash": [],
+      "paint": {
+        "stripes": 130,
+        "belly": 30,
+        "body": 30
+      },
+      "level": 7,
+      "atk": 14,
+      "pets": [
+        {
+          "level": 1,
+          "tier": 1,
+          "id": "pet-a2f3908b",
+          "mergeProgress": 0,
+          "species": "slime"
+        },
+        {
+          "species": "baby_gloomshrieker",
+          "level": 1,
+          "id": "pet-f67c556e",
+          "tier": 1,
+          "mergeProgress": 0
+        }
+      ],
+      "hat": "bow",
+      "composts": 2,
+      "hpUpdatedAt": "2026-09-20T01:09:08",
+      "form": "golgari_longlegs",
+      "position": "n124",
+      "metrics": {
+        "space.gate": 1,
+        "dmgDealt": 724,
+        "xpGained": 419,
+        "rolls": 38,
+        "battle.wild.win": 11,
+        "battle.elite.loss": 1,
+        "rerolls": 8,
+        "space.tunnel": 1,
+        "space.loot": 6,
+        "space.wild": 12,
+        "battle.elite.win": 3,
+        "space.ladder": 3,
+        "space.hazard": 4,
+        "gear.found.t1": 2,
+        "battle.lair.win": 1,
+        "space.elite": 4,
+        "depths.sig0.win": 4,
+        "space.lair": 1,
+        "dmgTaken": 143,
+        "deaths": 2,
+        "battles": 17,
+        "depths.sig0.loss": 1,
+        "spaces": 38,
+        "battle.wild.loss": 1,
+        "space.shop": 2,
+        "space.mystery": 4
+      },
+      "lastActionAt": "2026-09-19T21:39:33",
+      "lastBiome": "bog",
+      "winRenown": 43,
+      "pokeCooldownUntil": "2026-09-20T01:26:32",
+      "evolvedAt": "2026-09-19T17:34:18",
+      "shieldUntil": "2026-09-19T19:14:29",
+      "petSporeBank": 0,
+      "rollNudged": true,
+      "poiClaims": [
+        "bog_lair"
+      ],
+      "restsUsed": [],
+      "sk": "PLAYER#user-pig"
+    },
+    {
+      "ver": 488,
+      "pendingPickups": [],
+      "spd": 12,
+      "pvpWins": 2,
+      "spentThisLevel": {
+        "def": 2,
+        "spd": 0,
+        "atk": 0
+      },
+      "userId": "user-rumtin",
+      "creatureName": "Sexy Squirrel",
+      "rolls": 10,
+      "scrolls": [
+        "savage_roar"
+      ],
+      "shiny": false,
+      "royalJelly": 0,
+      "grimoireSpells": {
+        "warcasters_screed": [
+          "rot_surge",
+          "spore_bolt"
+        ]
+      },
+      "tier": 2,
+      "taughtClaims": 0,
+      "bossDamage": 0,
+      "materials": {
+        "moltings": 6,
+        "ichor": 0
+      },
+      "lastFinishedClaim": null,
+      "gear": {
+        "charm": "toxin_charm",
+        "fang": "gutcleaver",
+        "carapace": "overgrown_bulwark"
+      },
+      "pokesReceived": 17,
+      "species": "squirrel",
+      "eggs": [],
+      "xp": 124,
+      "username": "Rumtin",
+      "pk": "UNDERCITY#20260919-130131",
+      "activePetId": "pet-b84d0f3c",
+      "incubator": {
+        "eggId": "egg-ba7ffe45",
+        "startedAt": "2026-09-19T21:06:16",
+        "tier": 2,
+        "spacesLeft": 0
+      },
+      "rollRegenAt": "2026-09-19T23:01:26",
+      "stance": "fight",
+      "statPoints": 0,
+      "hp": 24,
+      "maxHp": 69,
+      "petRecharge": {},
+      "highFiveCooldowns": {},
+      "homeBiome": "bone",
+      "buffs": [
+        {
+          "kind": "rot_surge"
+        },
+        {
+          "kind": "acorn_fury"
+        },
+        {
+          "kind": "high_five"
+        }
+      ],
+      "wildWins": 19,
+      "spellCooldowns": {},
+      "equippedGrimoire": "warcasters_screed",
+      "effect": null,
+      "grimoires": [
+        "warcasters_screed",
+        "throneburner_codex"
+      ],
+      "joinedAt": "2026-09-19T16:18:39",
+      "def": 10,
+      "bag": [
+        "smoke_spore",
+        "scrying_spore",
+        "chitin_ward"
+      ],
+      "passives": [
+        "spell_haste",
+        "spell_mage"
+      ],
+      "spores": 133,
+      "pendingMove": null,
+      "awayEvents": [
+        {
+          "name": "Vestige of Slimefoot, the Stowaway",
+          "at": "2026-09-19T21:19:24",
+          "by": "Waffle",
+          "kind": "boss"
+        },
+        {
+          "kind": "boss",
+          "name": "Vestige of The Gitrog Monster",
+          "by": "Pig",
+          "at": "2026-09-19T21:38:56"
+        },
+        {
+          "kind": "pvp",
+          "from": "Waffle",
+          "at": "2026-09-19T22:22:24",
+          "outcome": "defended"
+        },
+        {
+          "kind": "boss",
+          "at": "2026-09-19T23:01:46",
+          "by": "Brandon",
+          "name": "Vestige of The Gitrog Monster"
+        },
+        {
+          "by": "Brandon",
+          "name": "Savra, Queen of the Golgari",
+          "at": "2026-09-19T23:04:49",
+          "kind": "boss"
+        },
+        {
+          "fromId": "user-waffle",
+          "from": "Waffle",
+          "at": "2026-09-19T23:42:39",
+          "kind": "high_five"
+        },
+        {
+          "at": "2026-09-20T00:38:58",
+          "spores": 44,
+          "kind": "pvp",
+          "from": "Brandon",
+          "outcome": "beaten"
+        },
+        {
+          "fromId": "user-brandon",
+          "kind": "high_five",
+          "from": "Brandon",
+          "at": "2026-09-20T00:39:08"
+        },
+        {
+          "name": "Enraged Leyline Prowler",
+          "by": "Brandon",
+          "at": "2026-09-20T00:41:33",
+          "kind": "boss"
+        },
+        {
+          "at": "2026-09-20T00:46:22",
+          "name": "Savra, Queen of the Golgari",
+          "kind": "boss",
+          "by": "Andrew"
+        },
+        {
+          "by": "Andrew",
+          "kind": "boss",
+          "at": "2026-09-20T00:51:33",
+          "name": "Savra, Queen of the Golgari"
+        },
+        {
+          "at": "2026-09-20T00:52:39",
+          "by": "Andrew",
+          "name": "Savra, Queen of the Golgari",
+          "kind": "boss"
+        },
+        {
+          "kind": "boss",
+          "at": "2026-09-20T00:55:44",
+          "by": "Andrew",
+          "name": "Savra, Queen of the Golgari"
+        },
+        {
+          "at": "2026-09-20T01:08:02",
+          "by": "Brandon",
+          "name": "Golgari Grave-Troll",
+          "kind": "boss"
+        },
+        {
+          "kind": "high_five",
+          "at": "2026-09-20T02:09:08",
+          "from": "Waffle",
+          "fromId": "user-waffle"
+        },
+        {
+          "by": "Waffle",
+          "name": "Savra, Queen of the Golgari",
+          "kind": "boss",
+          "at": "2026-09-20T02:13:54"
+        },
+        {
+          "by": "Waffle",
+          "at": "2026-09-20T02:16:23",
+          "kind": "boss",
+          "name": "Savra, Queen of the Golgari"
+        }
+      ],
+      "gearStash": [],
+      "paint": {
+        "belly": -1,
+        "body": -1,
+        "stripes": -1
+      },
+      "level": 10,
+      "atk": 14,
+      "pets": [
+        {
+          "tier": 2,
+          "species": "decimator_beetle",
+          "id": "pet-b84d0f3c",
+          "mergeProgress": 0,
+          "level": 2
+        }
+      ],
+      "composts": 2,
+      "hat": "bow",
+      "hpUpdatedAt": "2026-09-19T23:05:46",
+      "form": "squirrel_mage",
+      "position": "n298",
+      "pokeCooldownUntil": "2026-09-20T01:26:30",
+      "metrics": {
+        "space.elite": 3,
+        "battles": 23,
+        "space.wild": 16,
+        "battle.wild.win": 14,
+        "space.warp": 1,
+        "depths.sig2.win": 3,
+        "rerolls": 4,
+        "space.loot": 6,
+        "deaths": 2,
+        "space.witch": 1,
+        "gear.found.t2": 3,
+        "space.excavation": 4,
+        "space.lair": 3,
+        "space.tunnel": 2,
+        "space.shop": 2,
+        "battle.lair.win": 3,
+        "space.fog": 2,
+        "spaces": 60,
+        "gear.found.t1": 2,
+        "dmgTaken": 570,
+        "xpGained": 949,
+        "space.gate": 2,
+        "depths.sig1.win": 4,
+        "space.ladder": 5,
+        "battle.pvp.win": 2,
+        "space.cache": 2,
+        "rolls": 55,
+        "depths.sig2.loss": 1,
+        "battle.wild.loss": 2,
+        "space.mystery": 4,
+        "space.hazard": 5,
+        "depths.sig0.win": 1,
+        "battle.elite.win": 2,
+        "space.trove": 2,
+        "dmgDealt": 1265
+      },
+      "lastActionAt": "2026-09-19T21:06:38",
+      "lastBiome": "bone",
+      "shieldUntil": "2026-09-20T00:53:58",
+      "excavationDigsLeft": 0,
+      "winRenown": 70,
+      "status": "jerking Will under table",
+      "rested": 6,
+      "rollNudged": true,
+      "poiClaims": [
+        "bog_lair",
+        "cache:city_cache",
+        "trove:city_trove",
+        "city_lair",
+        "cache:garden_cache",
+        "trove:garden_trove",
+        "garden_lair"
+      ],
+      "evolvedAt": "2026-09-19T17:33:11",
+      "restsUsed": [],
+      "pvpRenownWins": 2,
+      "umoriCollectedWindow": 397744,
+      "sk": "PLAYER#user-rumtin"
+    },
+    {
+      "ver": 581,
+      "spd": 15,
+      "pendingPickups": [],
+      "pvpWins": 2,
+      "spentThisLevel": {
+        "atk": 0,
+        "def": 0,
+        "spd": 2
+      },
+      "userId": "user-waffle",
+      "creatureName": "Sekiro",
+      "rolls": 3,
+      "scrolls": [
+        "queens_bane",
+        "spore_burst"
+      ],
+      "shiny": false,
+      "royalJelly": 0,
+      "grimoireSpells": {},
+      "tier": 3,
+      "taughtClaims": 0,
+      "bossDamage": 1462,
+      "materials": {
+        "moltings": 12,
+        "ichor": 1
+      },
+      "lastFinishedClaim": null,
+      "gear": {
+        "fang": "wurm_tooth",
+        "charm": "brigands_idol",
+        "carapace": "warbrand_plate"
+      },
+      "pokesReceived": 19,
+      "species": "kraul",
+      "eggs": [
+        {
+          "tier": 1,
+          "id": "egg-bb2cf026"
+        }
+      ],
+      "xp": 1091,
+      "username": "Waffle",
+      "pk": "UNDERCITY#20260919-130131",
+      "activePetId": null,
+      "incubator": null,
+      "rollRegenAt": "2026-09-20T02:01:26",
+      "statPoints": 0,
+      "stance": "fight",
+      "maxHp": 63,
+      "hp": 3,
+      "highFiveCooldowns": {
+        "user-rumtin": "2026-09-20T02:39:08",
+        "user-andrew": "2026-09-20T02:45:55"
+      },
+      "petRecharge": {},
+      "homeBiome": "cavern",
+      "buffs": [],
+      "wildWins": 37,
+      "spellCooldowns": {},
+      "equippedGrimoire": null,
+      "effect": null,
+      "grimoires": [],
+      "joinedAt": "2026-09-19T16:16:54",
+      "def": 3,
+      "bag": [
+        "smoke_spore"
+      ],
+      "passives": [
+        "first_bite",
+        "venom_barb",
+        "onslaught"
+      ],
+      "spores": 675,
+      "pendingMove": null,
+      "gearStash": [],
+      "awayEvents": [],
+      "paint": {
+        "stripes": 50,
+        "belly": 50,
+        "body": 50
+      },
+      "level": 12,
+      "atk": 26,
+      "pets": [
+        {
+          "mergeProgress": 0,
+          "species": "decimator_beetle",
+          "id": "pet-9e0a22c9",
+          "tier": 1,
+          "level": 1
+        }
+      ],
+      "hat": "viking_helmet",
+      "composts": 8,
+      "hpUpdatedAt": "2026-09-20T02:16:23",
+      "form": "swamp_dragon",
+      "position": "boss",
+      "metrics": {
+        "space.crystal_vein": 2,
+        "space.gate": 2,
+        "space.shop": 9,
+        "space.loot": 9,
+        "dmgTaken": 845,
+        "battle.boss.win": 2,
+        "depths.sig0.win": 4,
+        "battle.pvp.win": 2,
+        "battles": 49,
+        "battle.world.loss": 1,
+        "space.ladder": 6,
+        "battle.lair.win": 3,
+        "battle.elite.loss": 4,
+        "blinks": 6,
+        "space.tunnel": 2,
+        "gear.found.t2": 4,
+        "battle.elite.win": 9,
+        "depths.sig1.win": 2,
+        "depths.sig2.win": 3,
+        "deaths": 8,
+        "space.wild": 18,
+        "rerolls": 8,
+        "spaces": 90,
+        "space.elite": 11,
+        "space.fog": 17,
+        "gear.found.t1": 2,
+        "battle.pvp.loss": 1,
+        "space.hazard": 5,
+        "space.lair": 3,
+        "space.boss": 3,
+        "space.mystery": 3,
+        "battle.boss.loss": 1,
+        "xpGained": 2446,
+        "battle.wild.win": 25,
+        "rolls": 83,
+        "gear.capped.t3to2": 1,
+        "dmgDealt": 5715,
+        "battle.wild.loss": 1
+      },
+      "lastActionAt": "2026-09-20T02:16:23",
+      "lastBiome": "cavern",
+      "winRenown": 136,
+      "pokeCooldownUntil": "2026-09-20T01:26:31",
+      "veinStrikesLeft": 0,
+      "rested": 0,
+      "rollNudged": true,
+      "shieldUntil": null,
+      "pvpRenownWins": 1,
+      "status": "I die twice!",
+      "evolvedAt": "2026-09-19T23:37:55",
+      "poiClaims": [
+        "cache:n322",
+        "bone_lair",
+        "city_lair",
+        "garden_lair",
+        "boss"
+      ],
+      "restsUsed": [],
+      "blinkCooldown": 1,
+      "sk": "PLAYER#user-waffle"
+    },
+    {
+      "ver": 39,
+      "pendingPickups": [],
+      "spd": 7,
+      "rested": 15,
+      "pvpWins": 0,
+      "spentThisLevel": {
+        "spd": 0,
+        "def": 0,
+        "atk": 0
+      },
+      "userId": "user-wheels",
+      "creatureName": "Von Squirrelbane",
+      "rolls": 10,
+      "scrolls": [],
+      "shiny": false,
+      "royalJelly": 0,
+      "grimoireSpells": {},
+      "tier": 1,
+      "taughtClaims": 0,
+      "bossDamage": 0,
+      "lastFinishedClaim": null,
+      "materials": {
+        "ichor": 0,
+        "moltings": 0
+      },
+      "gear": {
+        "carapace": "barricade_shell"
+      },
+      "species": "squirrel",
+      "pokesReceived": 9,
+      "eggs": [],
+      "xp": 10,
+      "username": "Wheels",
+      "pk": "UNDERCITY#20260919-130131",
+      "activePetId": null,
+      "incubator": null,
+      "rollRegenAt": "2026-09-19T21:31:26",
+      "statPoints": 2,
+      "stance": "fight",
+      "hp": 4,
+      "maxHp": 33,
+      "highFiveCooldowns": {},
+      "homeBiome": "city",
+      "petRecharge": {},
+      "buffs": [
+        {
+          "kind": "bone_chill"
+        }
+      ],
+      "wildWins": 0,
+      "spellCooldowns": {},
+      "equippedGrimoire": null,
+      "effect": null,
+      "grimoires": [],
+      "joinedAt": "2026-09-19T19:18:25",
+      "def": 4,
+      "bag": [
+        "healing_moss"
+      ],
+      "passives": [
+        "spell_haste"
+      ],
+      "spores": 0,
+      "pendingMove": null,
+      "gearStash": [],
+      "awayEvents": [
+        {
+          "name": "Vestige of The Gitrog Monster",
+          "at": "2026-09-19T21:38:56",
+          "kind": "boss",
+          "by": "Pig"
+        },
+        {
+          "kind": "boss",
+          "name": "Vestige of The Gitrog Monster",
+          "at": "2026-09-19T23:01:46",
+          "by": "Brandon"
+        },
+        {
+          "by": "Brandon",
+          "kind": "boss",
+          "name": "Savra, Queen of the Golgari",
+          "at": "2026-09-19T23:04:49"
+        },
+        {
+          "outcome": "defended",
+          "at": "2026-09-19T23:36:10",
+          "from": "David",
+          "kind": "pvp"
+        },
+        {
+          "at": "2026-09-20T00:41:33",
+          "kind": "boss",
+          "by": "Brandon",
+          "name": "Enraged Leyline Prowler"
+        },
+        {
+          "at": "2026-09-20T00:46:22",
+          "by": "Andrew",
+          "name": "Savra, Queen of the Golgari",
+          "kind": "boss"
+        },
+        {
+          "name": "Savra, Queen of the Golgari",
+          "kind": "boss",
+          "by": "Andrew",
+          "at": "2026-09-20T00:51:33"
+        },
+        {
+          "by": "Andrew",
+          "name": "Savra, Queen of the Golgari",
+          "at": "2026-09-20T00:52:39",
+          "kind": "boss"
+        },
+        {
+          "at": "2026-09-20T00:55:44",
+          "name": "Savra, Queen of the Golgari",
+          "kind": "boss",
+          "by": "Andrew"
+        },
+        {
+          "kind": "boss",
+          "by": "Brandon",
+          "name": "Golgari Grave-Troll",
+          "at": "2026-09-20T01:08:02"
+        },
+        {
+          "at": "2026-09-20T02:13:54",
+          "by": "Waffle",
+          "kind": "boss",
+          "name": "Savra, Queen of the Golgari"
+        },
+        {
+          "by": "Waffle",
+          "kind": "boss",
+          "at": "2026-09-20T02:16:23",
+          "name": "Savra, Queen of the Golgari"
+        }
+      ],
+      "paint": {
+        "body": 0,
+        "belly": 50,
+        "stripes": 0
+      },
+      "level": 2,
+      "atk": 5,
+      "pets": [],
+      "composts": 0,
+      "hat": "chef_hat",
+      "hpUpdatedAt": "2026-09-19T21:30:40",
+      "form": "squirrel",
+      "position": "city_r0",
+      "rollNudged": true,
+      "pokeCooldownUntil": "2026-09-20T01:26:34",
+      "lastActionAt": "2026-09-19T21:37:22",
+      "shieldUntil": "2026-09-19T23:51:10",
+      "metrics": {
+        "xpGained": 30
+      },
+      "sk": "PLAYER#user-wheels"
+    }
+  ],
+  "events": [
+    {
+      "ts": "2026-09-19T13:01:32.027",
+      "text": "The gates are sealed. The night begins soon…",
+      "pk": "UNDERCITY#20260919-130131",
+      "type": "season",
+      "sk": "EVENT#2026-09-19T13:01:32.027#52a243"
+    },
+    {
+      "ts": "2026-09-19T16:01:26.119",
+      "text": "A new night falls on the Undercity. The swarm stirs…",
+      "pk": "UNDERCITY#20260919-130131",
+      "type": "season",
+      "sk": "EVENT#2026-09-19T16:01:26.119#59ad38"
+    },
+    {
+      "ts": "2026-09-19T16:05:00.559",
+      "text": "Andrew's egg cracks open in Mosslight Cavern — a Kraul Grub named Mystique skitters out! (Darkvision: See 2 spaces away in dungeons.) Bravery earns +1 roll!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "hatch",
+      "sk": "EVENT#2026-09-19T16:05:00.559#814022"
+    },
+    {
+      "ts": "2026-09-19T16:09:27.461",
+      "text": "Andrew's Mystique reached level 2!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T16:09:27.461#d329c8"
+    },
+    {
+      "ts": "2026-09-19T16:16:55.120",
+      "text": "Waffle's egg cracks open in Mosslight Cavern — a Kraul Grub named Sekiro skitters out! (Darkvision: See 2 spaces away in dungeons.)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "hatch",
+      "sk": "EVENT#2026-09-19T16:16:55.120#e202cf"
+    },
+    {
+      "ts": "2026-09-19T16:18:31.820",
+      "text": "Andrew poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T16:18:31.820#19ae3a"
+    },
+    {
+      "ts": "2026-09-19T16:18:39.239",
+      "text": "Andrew: Ayyaayayayay",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "chat",
+      "sk": "EVENT#2026-09-19T16:18:39.239#132655"
+    },
+    {
+      "ts": "2026-09-19T16:18:39.789",
+      "text": "Rumtin's egg cracks open in Ossuary Fields — a Squirrel named Sexy Squirrel skitters out! (Marrowborn: +8 Max HP.)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "hatch",
+      "sk": "EVENT#2026-09-19T16:18:39.789#504efe"
+    },
+    {
+      "ts": "2026-09-19T16:18:49.115",
+      "text": "Andrew: Agagagagagag",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "chat",
+      "sk": "EVENT#2026-09-19T16:18:49.115#31514b"
+    },
+    {
+      "ts": "2026-09-19T16:18:50.389",
+      "text": "Waffle poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T16:18:50.389#a4f554"
+    },
+    {
+      "ts": "2026-09-19T16:19:03.940",
+      "text": "Waffle poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T16:19:03.940#a4bc37"
+    },
+    {
+      "ts": "2026-09-19T16:20:10.520",
+      "text": "Rumtin's Sexy Squirrel was composted by a Fiend Artisan.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T16:20:10.520#1f2912"
+    },
+    {
+      "ts": "2026-09-19T16:20:22.135",
+      "text": "Waffle's Sekiro reached level 2!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T16:20:22.135#4a3830"
+    },
+    {
+      "ts": "2026-09-19T16:21:44.120",
+      "text": "Andrew high-fived Waffle's Sekiro",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-19T16:21:44.120#be4c1a"
+    },
+    {
+      "ts": "2026-09-19T16:21:47.440",
+      "text": "Waffle high-fived Andrew's Mystique",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-19T16:21:47.440#ba80e6"
+    },
+    {
+      "ts": "2026-09-19T16:21:56.600",
+      "text": "Rumtin: POKE ME",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "chat",
+      "sk": "EVENT#2026-09-19T16:21:56.600#6a6910"
+    },
+    {
+      "ts": "2026-09-19T16:22:08.876",
+      "text": "Andrew hit a JACKPOT BLOOM in the tunnels!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "jackpot",
+      "sk": "EVENT#2026-09-19T16:22:08.876#93f621"
+    },
+    {
+      "ts": "2026-09-19T16:22:23.449",
+      "text": "Ouch! Waffle triggered a cave-in at level 5 of the crystal vein",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "vein",
+      "sk": "EVENT#2026-09-19T16:22:23.449#bcaadc"
+    },
+    {
+      "ts": "2026-09-19T16:39:23.095",
+      "text": "Rumtin's Sexy Squirrel reached level 2!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T16:39:23.095#d61ce5"
+    },
+    {
+      "ts": "2026-09-19T16:43:34.973",
+      "text": "\"CubeClimbers\" ended — Andrew won! Everyone earned rolls; Andrew took the spoils.",
+      "pk": "UNDERCITY#20260919-130131",
+      "type": "claim",
+      "sk": "EVENT#2026-09-19T16:43:34.973#4c996d"
+    },
+    {
+      "ts": "2026-09-19T16:44:40.122",
+      "text": "Rumtin cursed Andrew with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T16:44:40.122#10808d"
+    },
+    {
+      "ts": "2026-09-19T16:45:42.714",
+      "text": "Waffle's Sekiro reached level 3!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T16:45:42.714#613052"
+    },
+    {
+      "ts": "2026-09-19T16:45:42.774",
+      "text": "Andrew's Mystique reached level 3!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T16:45:42.774#34cf89"
+    },
+    {
+      "ts": "2026-09-19T16:52:00.209",
+      "text": "Waffle high-fived Andrew's Mystique",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-19T16:52:00.209#8fe882"
+    },
+    {
+      "ts": "2026-09-19T16:53:05.520",
+      "text": "Andrew high-fived Waffle's Sekiro",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-19T16:53:05.520#713057"
+    },
+    {
+      "ts": "2026-09-19T16:54:02.055",
+      "text": "Pig's egg cracks open in The Sedgemoor — a Kraul Grub named House centipede skitters out! (Mirefoot: Hazards cost you half, and rival spells more often miss you.) Bravery earns +1 roll!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "hatch",
+      "sk": "EVENT#2026-09-19T16:54:02.055#efa5da"
+    },
+    {
+      "ts": "2026-09-19T17:00:55.090",
+      "text": "Pig's House centipede reached level 2!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:00:55.090#9609e4"
+    },
+    {
+      "ts": "2026-09-19T17:02:26.060",
+      "text": "Rumtin's Sexy Squirrel reached level 3!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:02:26.060#3b7291"
+    },
+    {
+      "ts": "2026-09-19T17:02:47.884",
+      "text": "Waffle's Sekiro reached level 4!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:02:47.884#4a60d5"
+    },
+    {
+      "ts": "2026-09-19T17:02:54.724",
+      "text": "Pig's House centipede reached level 3!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:02:54.724#57aa36"
+    },
+    {
+      "ts": "2026-09-19T17:03:03.593",
+      "text": "Andrew's Mystique reached level 4!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:03:03.593#157d14"
+    },
+    {
+      "ts": "2026-09-19T17:03:23.200",
+      "text": "Waffle's Sekiro was composted by a Vulturous Zombie.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T17:03:23.200#de331f"
+    },
+    {
+      "ts": "2026-09-19T17:03:31.550",
+      "text": "Rumtin cursed The Gitrog Monster with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T17:03:31.550#ed420f"
+    },
+    {
+      "ts": "2026-09-19T17:03:51.697",
+      "text": "Andrew poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:03:51.697#408aa6"
+    },
+    {
+      "ts": "2026-09-19T17:03:52.397",
+      "text": "Rumtin poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:03:52.396#e6bd4f"
+    },
+    {
+      "ts": "2026-09-19T17:03:56.390",
+      "text": "Waffle poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:03:56.390#69b89e"
+    },
+    {
+      "ts": "2026-09-19T17:04:04.198",
+      "text": "Andrew: Boke",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "chat",
+      "sk": "EVENT#2026-09-19T17:04:04.198#b65ae6"
+    },
+    {
+      "ts": "2026-09-19T17:04:08.317",
+      "text": "Waffle poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:04:08.317#84696d"
+    },
+    {
+      "ts": "2026-09-19T17:05:04.206",
+      "text": "Waffle's Sekiro reached level 5!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:05:04.206#421f65"
+    },
+    {
+      "ts": "2026-09-19T17:05:17.578",
+      "text": "Waffle's creature evolves into Grave Scarab!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "evolve",
+      "sk": "EVENT#2026-09-19T17:05:17.578#7fc7d8"
+    },
+    {
+      "ts": "2026-09-19T17:05:46.600",
+      "text": "Andrew's Mystique reached level 5!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:05:46.600#70d5c7"
+    },
+    {
+      "ts": "2026-09-19T17:06:11.221",
+      "text": "Andrew's creature evolves into Golgari Longlegs!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "evolve",
+      "sk": "EVENT#2026-09-19T17:06:11.221#c45828"
+    },
+    {
+      "ts": "2026-09-19T17:11:42.931",
+      "text": "Brandon's egg cracks open in Ossuary Fields — a Zombie named Shambles skitters out! (Marrowborn: +8 Max HP.) Bravery earns +1 roll!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "hatch",
+      "sk": "EVENT#2026-09-19T17:11:42.931#558b26"
+    },
+    {
+      "ts": "2026-09-19T17:14:34.172",
+      "text": "Brandon unearthed the last relic at a dig site (+25 Spores, +1 Gemstones, +2 Moltings)! Fresh finds lie buried anew.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "excavation",
+      "sk": "EVENT#2026-09-19T17:14:34.171#86d50f"
+    },
+    {
+      "ts": "2026-09-19T17:15:06.380",
+      "text": "Brandon's Shambles reached level 2!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:15:06.380#a3defa"
+    },
+    {
+      "ts": "2026-09-19T17:18:55.892",
+      "text": "Brandon's Shambles was composted by a Rendclaw Troll.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T17:18:55.892#b37317"
+    },
+    {
+      "ts": "2026-09-19T17:20:17.981",
+      "text": "Waffle poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:20:17.981#2874f7"
+    },
+    {
+      "ts": "2026-09-19T17:20:31.192",
+      "text": "Waffle poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:20:31.192#b16be5"
+    },
+    {
+      "ts": "2026-09-19T17:20:40.957",
+      "text": "Waffle poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:20:40.957#d84764"
+    },
+    {
+      "ts": "2026-09-19T17:20:43.821",
+      "text": "Waffle poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:20:43.821#e7579a"
+    },
+    {
+      "ts": "2026-09-19T17:21:02.979",
+      "text": "Pig poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:21:02.979#979054"
+    },
+    {
+      "ts": "2026-09-19T17:21:20.292",
+      "text": "Andrew was first to plunder the treasure of Gloomroot Hollow!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "cache",
+      "sk": "EVENT#2026-09-19T17:21:20.292#286635"
+    },
+    {
+      "ts": "2026-09-19T17:21:35.872",
+      "text": "Andrew was first to crack a hidden trove in the deep dark!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "trove",
+      "sk": "EVENT#2026-09-19T17:21:35.872#130c04"
+    },
+    {
+      "ts": "2026-09-19T17:21:40.850",
+      "text": "Rumtin's Sexy Squirrel reached level 4!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:21:40.850#bb2bbc"
+    },
+    {
+      "ts": "2026-09-19T17:22:08.420",
+      "text": "Rumtin cursed The Gitrog Monster with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T17:22:08.420#27a1e4"
+    },
+    {
+      "ts": "2026-09-19T17:22:12.402",
+      "text": "Brandon's Shambles reached level 3!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:22:12.401#24820e"
+    },
+    {
+      "ts": "2026-09-19T17:22:24.155",
+      "text": "Pig's House centipede reached level 4!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:22:24.155#4d045a"
+    },
+    {
+      "ts": "2026-09-19T17:23:07.573",
+      "text": "A Grothoma has emerged in the wilderness — rally and bring it down together!",
+      "pk": "UNDERCITY#20260919-130131",
+      "type": "boss",
+      "sk": "EVENT#2026-09-19T17:23:07.572#4dab3d"
+    },
+    {
+      "ts": "2026-09-19T17:23:08.232",
+      "text": "Andrew's Mystique reached level 6!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:23:08.232#e3444d"
+    },
+    {
+      "ts": "2026-09-19T17:23:08.292",
+      "text": "Andrew cleared the Mosslight Cavern dungeon and claimed its Guild Sigil (1/3)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "sigil",
+      "sk": "EVENT#2026-09-19T17:23:08.292#3d827b"
+    },
+    {
+      "ts": "2026-09-19T17:23:52.721",
+      "text": "Ouch! Andrew triggered a cave-in at level 6 of the crystal vein",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "vein",
+      "sk": "EVENT#2026-09-19T17:23:52.721#2ae734"
+    },
+    {
+      "ts": "2026-09-19T17:31:26.024",
+      "text": "Ouch! Andrew triggered a cave-in at level 8 of the crystal vein",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "vein",
+      "sk": "EVENT#2026-09-19T17:31:26.024#e01d5c"
+    },
+    {
+      "ts": "2026-09-19T17:32:38.414",
+      "text": "Rumtin's Sexy Squirrel reached level 5!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:32:38.413#82cb78"
+    },
+    {
+      "ts": "2026-09-19T17:32:38.473",
+      "text": "Rumtin cleared the The Sedgemoor dungeon and claimed its Guild Sigil (1/3)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "sigil",
+      "sk": "EVENT#2026-09-19T17:32:38.473#3c5726"
+    },
+    {
+      "ts": "2026-09-19T17:33:11.630",
+      "text": "Rumtin's creature evolves into Squirrel Mage!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "evolve",
+      "sk": "EVENT#2026-09-19T17:33:11.630#3b0d59"
+    },
+    {
+      "ts": "2026-09-19T17:33:13.330",
+      "text": "Waffle's Sekiro reached level 6!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:33:13.330#2cffc7"
+    },
+    {
+      "ts": "2026-09-19T17:33:13.370",
+      "text": "Waffle was first to plunder the treasure of the depths!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "cache",
+      "sk": "EVENT#2026-09-19T17:33:13.370#0737f0"
+    },
+    {
+      "ts": "2026-09-19T17:33:58.510",
+      "text": "Rumtin high-fived Pig's House centipede",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-19T17:33:58.510#c0b9c3"
+    },
+    {
+      "ts": "2026-09-19T17:33:58.750",
+      "text": "Pig's House centipede reached level 5!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:33:58.750#9cc11b"
+    },
+    {
+      "ts": "2026-09-19T17:34:06.477",
+      "text": "Waffle's Sekiro was composted by a Vulturous Zombie.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T17:34:06.477#2ac60a"
+    },
+    {
+      "ts": "2026-09-19T17:34:18.744",
+      "text": "Pig's creature evolves into Golgari Longlegs!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "evolve",
+      "sk": "EVENT#2026-09-19T17:34:18.744#a89385"
+    },
+    {
+      "ts": "2026-09-19T17:34:23.514",
+      "text": "Rumtin cursed Pig with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T17:34:23.514#3c1b17"
+    },
+    {
+      "ts": "2026-09-19T17:35:35.115",
+      "text": "Waffle poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:35:35.115#fcd981"
+    },
+    {
+      "ts": "2026-09-19T17:35:39.344",
+      "text": "Pig poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:35:39.344#b7076d"
+    },
+    {
+      "ts": "2026-09-19T17:35:47.395",
+      "text": "Waffle poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:35:47.395#4075e5"
+    },
+    {
+      "ts": "2026-09-19T17:35:50.234",
+      "text": "Pig poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:35:50.234#8c809d"
+    },
+    {
+      "ts": "2026-09-19T17:36:20.355",
+      "text": "Pig poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:36:20.355#851222"
+    },
+    {
+      "ts": "2026-09-19T17:38:19.650",
+      "text": "Andrew high-fived Pig's House centipede",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-19T17:38:19.650#6aba99"
+    },
+    {
+      "ts": "2026-09-19T17:39:00.855",
+      "text": "Brandon's Shambles reached level 4!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T17:39:00.855#1b05ee"
+    },
+    {
+      "ts": "2026-09-19T17:52:36.888",
+      "text": "Waffle poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:52:36.888#d57e00"
+    },
+    {
+      "ts": "2026-09-19T17:52:43.068",
+      "text": "Waffle poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:52:43.068#718df7"
+    },
+    {
+      "ts": "2026-09-19T17:52:45.756",
+      "text": "Waffle poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:52:45.756#a31e95"
+    },
+    {
+      "ts": "2026-09-19T17:52:49.925",
+      "text": "Pig poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:52:49.925#b5b88c"
+    },
+    {
+      "ts": "2026-09-19T17:53:01.065",
+      "text": "Pig poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T17:53:01.065#9881de"
+    },
+    {
+      "ts": "2026-09-19T17:53:44.246",
+      "text": "Waffle's Sekiro was composted by a Poison-Tip Archer.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T17:53:44.246#2a2aa7"
+    },
+    {
+      "ts": "2026-09-19T17:53:56.448",
+      "text": "Rumtin blasted Andrew with Spore Bolt (24 damage)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T17:53:56.448#b00e63"
+    },
+    {
+      "ts": "2026-09-19T17:54:03.966",
+      "text": "Rumtin cursed Andrew with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T17:54:03.966#482fe5"
+    },
+    {
+      "ts": "2026-09-19T18:02:19.890",
+      "text": "Rumtin cursed Golgari Grave-Troll with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T18:02:19.890#1594a3"
+    },
+    {
+      "ts": "2026-09-19T18:02:25.794",
+      "text": "Rumtin blasted Andrew with Spore Bolt (24 damage)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T18:02:25.794#9405ac"
+    },
+    {
+      "ts": "2026-09-19T18:02:54.494",
+      "text": "Waffle high-fived Pig's House centipede",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-19T18:02:54.494#ab2e57"
+    },
+    {
+      "ts": "2026-09-19T18:04:30.057",
+      "text": "Waffle was flung down by the Grothoma.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T18:04:30.057#9cd8c4"
+    },
+    {
+      "ts": "2026-09-19T18:05:12.231",
+      "text": "Rumtin cursed Andrew with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T18:05:12.231#042a43"
+    },
+    {
+      "ts": "2026-09-19T18:05:17.035",
+      "text": "Rumtin blasted Andrew with Spore Bolt (24 damage)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T18:05:17.034#150681"
+    },
+    {
+      "ts": "2026-09-19T18:07:58.422",
+      "text": "Waffle poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:07:58.422#f078d1"
+    },
+    {
+      "ts": "2026-09-19T18:08:10.543",
+      "text": "Waffle poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:08:10.542#ceaefe"
+    },
+    {
+      "ts": "2026-09-19T18:08:18.415",
+      "text": "Waffle poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:08:18.415#3a8678"
+    },
+    {
+      "ts": "2026-09-19T18:08:21.312",
+      "text": "Waffle poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:08:21.311#bb5a6e"
+    },
+    {
+      "ts": "2026-09-19T18:08:44.366",
+      "text": "Rumtin poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:08:44.366#3a94dc"
+    },
+    {
+      "ts": "2026-09-19T18:09:48.136",
+      "text": "Rumtin's Sexy Squirrel reached level 6!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T18:09:48.135#2f4c32"
+    },
+    {
+      "ts": "2026-09-19T18:10:11.332",
+      "text": "Rumtin high-fived Andrew's Mystique",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-19T18:10:11.332#708628"
+    },
+    {
+      "ts": "2026-09-19T18:10:17.923",
+      "text": "Rumtin blasted Pig with Spore Bolt (26 damage)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T18:10:17.923#9fa6a7"
+    },
+    {
+      "ts": "2026-09-19T18:14:10.145",
+      "text": "Pig's House centipede was composted by a Large Bear.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T18:14:10.145#08aa2f"
+    },
+    {
+      "ts": "2026-09-19T18:14:37.743",
+      "text": "Andrew's Mystique reached level 7!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T18:14:37.743#6b2718"
+    },
+    {
+      "ts": "2026-09-19T18:14:55.665",
+      "text": "Pig's House centipede reached level 6!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T18:14:55.665#f78629"
+    },
+    {
+      "ts": "2026-09-19T18:14:59.713",
+      "text": "Rumtin cursed the Enraged Golgari Rot Wurm with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T18:14:59.713#44cc5e"
+    },
+    {
+      "ts": "2026-09-19T18:20:58.374",
+      "text": "Andrew was first to plunder the treasure of The Drownedway!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "cache",
+      "sk": "EVENT#2026-09-19T18:20:58.374#79b313"
+    },
+    {
+      "ts": "2026-09-19T18:21:31.221",
+      "text": "Brandon's Shambles reached level 5!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T18:21:31.221#b3be36"
+    },
+    {
+      "ts": "2026-09-19T18:22:39.854",
+      "text": "Brandon's creature evolves into Shambling Shell!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "evolve",
+      "sk": "EVENT#2026-09-19T18:22:39.854#fc1a3a"
+    },
+    {
+      "ts": "2026-09-19T18:23:06.640",
+      "text": "Waffle poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:23:06.640#474bc7"
+    },
+    {
+      "ts": "2026-09-19T18:23:19.675",
+      "text": "Waffle poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:23:19.675#1fd503"
+    },
+    {
+      "ts": "2026-09-19T18:23:23.281",
+      "text": "Waffle poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:23:23.281#8f6400"
+    },
+    {
+      "ts": "2026-09-19T18:23:27.004",
+      "text": "Waffle poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:23:27.004#43fb3b"
+    },
+    {
+      "ts": "2026-09-19T18:23:37.440",
+      "text": "Brandon's Shambles reached level 6!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T18:23:37.440#b7939a"
+    },
+    {
+      "ts": "2026-09-19T18:23:37.461",
+      "text": "Brandon cleared the Ossuary Fields dungeon and claimed its Guild Sigil (1/3)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "sigil",
+      "sk": "EVENT#2026-09-19T18:23:37.461#5345a6"
+    },
+    {
+      "ts": "2026-09-19T18:23:39.340",
+      "text": "Rumtin's Spore Bolt wounds Wight of the Reliquary from afar (16/42 HP)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T18:23:39.340#6173d2"
+    },
+    {
+      "ts": "2026-09-19T18:24:07.378",
+      "text": "Andrew poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:24:07.378#081388"
+    },
+    {
+      "ts": "2026-09-19T18:33:11.719",
+      "text": "Waffle's Sekiro reached level 7!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T18:33:11.719#1d208c"
+    },
+    {
+      "ts": "2026-09-19T18:33:18.757",
+      "text": "Brandon was first to plunder the treasure of The Marrow Pits!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "cache",
+      "sk": "EVENT#2026-09-19T18:33:18.757#12c68c"
+    },
+    {
+      "ts": "2026-09-19T18:38:42.538",
+      "text": "Waffle poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:38:42.538#ef3c41"
+    },
+    {
+      "ts": "2026-09-19T18:38:45.277",
+      "text": "Waffle poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:38:45.277#46ee69"
+    },
+    {
+      "ts": "2026-09-19T18:38:47.157",
+      "text": "Waffle poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:38:47.157#ad8880"
+    },
+    {
+      "ts": "2026-09-19T18:38:50.157",
+      "text": "Waffle poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:38:50.157#319ffe"
+    },
+    {
+      "ts": "2026-09-19T18:39:33.003",
+      "text": "Pig poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T18:39:33.003#57c19b"
+    },
+    {
+      "ts": "2026-09-19T18:40:49.764",
+      "text": "Brandon high-fived Waffle's Sekiro",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-19T18:40:49.764#d2eb15"
+    },
+    {
+      "ts": "2026-09-19T18:40:52.900",
+      "text": "\"Shuffle Dungeons\" ended in a group victory — the whole table earned rolls and spoils!",
+      "pk": "UNDERCITY#20260919-130131",
+      "type": "claim",
+      "sk": "EVENT#2026-09-19T18:40:52.900#fe5801"
+    },
+    {
+      "ts": "2026-09-19T18:42:53.885",
+      "text": "Rumtin was first to plunder the treasure of The Broodwarrens!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "cache",
+      "sk": "EVENT#2026-09-19T18:42:53.885#c00544"
+    },
+    {
+      "ts": "2026-09-19T18:43:23.500",
+      "text": "Rumtin's Sexy Squirrel reached level 7!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T18:43:23.500#588ea3"
+    },
+    {
+      "ts": "2026-09-19T18:44:13.006",
+      "text": "Rumtin was first to crack a hidden trove in the deep dark!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "trove",
+      "sk": "EVENT#2026-09-19T18:44:13.006#f88bc7"
+    },
+    {
+      "ts": "2026-09-19T18:45:54.018",
+      "text": "Rumtin's Spore Bolt wounds Ishkanah, Grafwidow from afar (57/84 HP)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T18:45:54.018#fb470d"
+    },
+    {
+      "ts": "2026-09-19T18:46:11.922",
+      "text": "Rumtin cursed Ishkanah, Grafwidow with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T18:46:11.922#65fc56"
+    },
+    {
+      "ts": "2026-09-19T18:56:32.416",
+      "text": "The Grothoma withdraws into the mire, bloodied. The spoils are dealt out by who bled it hardest.",
+      "pk": "UNDERCITY#20260919-130131",
+      "type": "boss",
+      "sk": "EVENT#2026-09-19T18:56:32.416#62a404"
+    },
+    {
+      "ts": "2026-09-19T18:58:21.696",
+      "text": "Pig high-fived Andrew's Mystique",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-19T18:58:21.696#8c5a27"
+    },
+    {
+      "ts": "2026-09-19T18:59:29.719",
+      "text": "Pig's House centipede was composted by a Gitrog Spawn.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T18:59:29.719#fb0598"
+    },
+    {
+      "ts": "2026-09-19T19:01:58.996",
+      "text": "Waffle poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:01:58.996#6ba409"
+    },
+    {
+      "ts": "2026-09-19T19:02:00.836",
+      "text": "Waffle poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:02:00.836#a9d451"
+    },
+    {
+      "ts": "2026-09-19T19:02:05.464",
+      "text": "Waffle poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:02:05.464#f498a3"
+    },
+    {
+      "ts": "2026-09-19T19:02:07.036",
+      "text": "Waffle poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:02:07.036#6aef1b"
+    },
+    {
+      "ts": "2026-09-19T19:02:34.640",
+      "text": "Pig poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:02:34.640#07ea42"
+    },
+    {
+      "ts": "2026-09-19T19:03:01.116",
+      "text": "Waffle's Sekiro reached level 8!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T19:03:01.116#dcc801"
+    },
+    {
+      "ts": "2026-09-19T19:03:58.880",
+      "text": "Brandon's Shambles reached level 7!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T19:03:58.880#ffe242"
+    },
+    {
+      "ts": "2026-09-19T19:04:12.400",
+      "text": "Waffle cleared the Ossuary Fields dungeon and claimed its Guild Sigil (1/3)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "sigil",
+      "sk": "EVENT#2026-09-19T19:04:12.400#b0cce7"
+    },
+    {
+      "ts": "2026-09-19T19:04:16.722",
+      "text": "Pig's House centipede reached level 7!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T19:04:16.722#6017b4"
+    },
+    {
+      "ts": "2026-09-19T19:05:05.200",
+      "text": "Rumtin's Spore Bolt wounds Ishkanah, Grafwidow from afar (30/84 HP)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T19:05:05.200#a81d5c"
+    },
+    {
+      "ts": "2026-09-19T19:05:12.252",
+      "text": "Rumtin cursed Ishkanah, Grafwidow with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T19:05:12.252#8e1ecc"
+    },
+    {
+      "ts": "2026-09-19T19:05:58.945",
+      "text": "Rumtin's Sexy Squirrel reached level 8!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T19:05:58.945#7356a6"
+    },
+    {
+      "ts": "2026-09-19T19:05:58.965",
+      "text": "Rumtin cleared the The Undercity dungeon and claimed its Guild Sigil (2/3)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "sigil",
+      "sk": "EVENT#2026-09-19T19:05:58.965#20281d"
+    },
+    {
+      "ts": "2026-09-19T19:17:02.862",
+      "text": "Brandon poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:17:02.862#aea010"
+    },
+    {
+      "ts": "2026-09-19T19:17:06.031",
+      "text": "Brandon poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:17:06.030#0de5e3"
+    },
+    {
+      "ts": "2026-09-19T19:17:13.255",
+      "text": "Brandon poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:17:13.255#9a70ed"
+    },
+    {
+      "ts": "2026-09-19T19:17:47.511",
+      "text": "Brandon poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:17:47.511#db37fe"
+    },
+    {
+      "ts": "2026-09-19T19:18:25.706",
+      "text": "Wheels's egg cracks open in The Undercity — a Squirrel named Von Squirrelbane skitters out! (City Rat: Hatch with a random Tier-1 item, equipped.)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-wheels",
+      "type": "hatch",
+      "sk": "EVENT#2026-09-19T19:18:25.706#e5ff74"
+    },
+    {
+      "ts": "2026-09-19T19:20:03.695",
+      "text": "Rumtin blasted Wheels with Spore Bolt (28 damage)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T19:20:03.695#85b738"
+    },
+    {
+      "ts": "2026-09-19T19:20:06.975",
+      "text": "Rumtin cursed Wheels with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T19:20:06.975#23229a"
+    },
+    {
+      "ts": "2026-09-19T19:20:40.855",
+      "text": "Rumtin blasted Wheels with Spore Bolt (28 damage)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T19:20:40.855#e007c4"
+    },
+    {
+      "ts": "2026-09-19T19:31:18.294",
+      "text": "Waffle poked Wheels's Von Squirrelbane (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:31:18.294#6520b7"
+    },
+    {
+      "ts": "2026-09-19T19:31:22.192",
+      "text": "Waffle poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:31:22.192#2f5b6d"
+    },
+    {
+      "ts": "2026-09-19T19:32:59.794",
+      "text": "Andrew cleared the The Sedgemoor dungeon and claimed its Guild Sigil (2/3)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "sigil",
+      "sk": "EVENT#2026-09-19T19:32:59.794#b40ac6"
+    },
+    {
+      "ts": "2026-09-19T19:34:02.964",
+      "text": "Brandon's Shambles reached level 8!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T19:34:02.964#02b9b6"
+    },
+    {
+      "ts": "2026-09-19T19:34:12.964",
+      "text": "Rumtin poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:34:12.964#f78d2b"
+    },
+    {
+      "ts": "2026-09-19T19:34:25.214",
+      "text": "Rumtin poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:34:25.214#4ac5e0"
+    },
+    {
+      "ts": "2026-09-19T19:34:31.324",
+      "text": "Andrew's Mystique reached level 8!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T19:34:31.324#9be169"
+    },
+    {
+      "ts": "2026-09-19T19:34:48.544",
+      "text": "Brandon cleared the The Undercity dungeon and claimed its Guild Sigil (2/3)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "sigil",
+      "sk": "EVENT#2026-09-19T19:34:48.544#f486d9"
+    },
+    {
+      "ts": "2026-09-19T19:36:31.854",
+      "text": "Andrew poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:36:31.854#54fc9f"
+    },
+    {
+      "ts": "2026-09-19T19:38:23.455",
+      "text": "Andrew's Mystique was composted by a Rendclaw Troll.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T19:38:23.455#43166f"
+    },
+    {
+      "ts": "2026-09-19T19:42:17.994",
+      "text": "Waffle poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:42:17.994#92a6b7"
+    },
+    {
+      "ts": "2026-09-19T19:50:21.260",
+      "text": "Waffle poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:50:21.260#cdb2c9"
+    },
+    {
+      "ts": "2026-09-19T19:50:33.185",
+      "text": "Waffle poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:50:33.185#521033"
+    },
+    {
+      "ts": "2026-09-19T19:50:35.220",
+      "text": "Waffle poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:50:35.220#8decd5"
+    },
+    {
+      "ts": "2026-09-19T19:50:37.360",
+      "text": "Waffle poked Wheels's Von Squirrelbane (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:50:37.360#8911e5"
+    },
+    {
+      "ts": "2026-09-19T19:51:34.960",
+      "text": "Brandon cracked the Guildvault and made off with 34 Spores! Fresh tumblers, fresh pot.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "vault_lock",
+      "sk": "EVENT#2026-09-19T19:51:34.960#d6193c"
+    },
+    {
+      "ts": "2026-09-19T19:52:21.425",
+      "text": "Rumtin poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T19:52:21.425#2ff732"
+    },
+    {
+      "ts": "2026-09-19T20:01:16.952",
+      "text": "Waffle poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:01:16.952#4fd544"
+    },
+    {
+      "ts": "2026-09-19T20:03:39.446",
+      "text": "Rumtin was first to plunder the treasure of The Rotcellar!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "cache",
+      "sk": "EVENT#2026-09-19T20:03:39.446#d4dd7d"
+    },
+    {
+      "ts": "2026-09-19T20:03:58.581",
+      "text": "Rumtin was first to crack a hidden trove in the deep dark!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "trove",
+      "sk": "EVENT#2026-09-19T20:03:58.581#24e384"
+    },
+    {
+      "ts": "2026-09-19T20:04:09.699",
+      "text": "Rumtin's Sexy Squirrel was composted by a Slimefoot's Saprolings.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T20:04:09.699#141fdd"
+    },
+    {
+      "ts": "2026-09-19T20:04:20.037",
+      "text": "Andrew's Mystique was composted by a Slimefoot's Saprolings.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T20:04:20.037#b58ae1"
+    },
+    {
+      "ts": "2026-09-19T20:04:55.914",
+      "text": "Waffle's Sekiro reached level 9!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T20:04:55.914#d99daf"
+    },
+    {
+      "ts": "2026-09-19T20:05:46.998",
+      "text": "Waffle poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:05:46.998#f30748"
+    },
+    {
+      "ts": "2026-09-19T20:06:00.758",
+      "text": "Waffle poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:06:00.758#b017f7"
+    },
+    {
+      "ts": "2026-09-19T20:06:05.398",
+      "text": "Waffle poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:06:05.398#aac88f"
+    },
+    {
+      "ts": "2026-09-19T20:06:09.567",
+      "text": "Waffle poked Wheels's Von Squirrelbane (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:06:09.567#b3cde8"
+    },
+    {
+      "ts": "2026-09-19T20:08:05.488",
+      "text": "Andrew shattered the Corpsejack Menace — a new route is open to all!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "barrier",
+      "sk": "EVENT#2026-09-19T20:08:05.488#4f0d3c"
+    },
+    {
+      "ts": "2026-09-19T20:08:14.526",
+      "text": "Andrew poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:08:14.526#20fee7"
+    },
+    {
+      "ts": "2026-09-19T20:08:48.201",
+      "text": "Andrew's Mystique reached level 9!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T20:08:48.201#302a62"
+    },
+    {
+      "ts": "2026-09-19T20:09:06.082",
+      "text": "Waffle cleared the The Undercity dungeon and claimed its Guild Sigil (2/3)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "sigil",
+      "sk": "EVENT#2026-09-19T20:09:06.082#2eca91"
+    },
+    {
+      "ts": "2026-09-19T20:16:28.635",
+      "text": "Brandon poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:16:28.635#25bc65"
+    },
+    {
+      "ts": "2026-09-19T20:23:48.718",
+      "text": "Brandon poked Wheels's Von Squirrelbane (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:23:48.718#ddc63d"
+    },
+    {
+      "ts": "2026-09-19T20:23:54.854",
+      "text": "Brandon poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:23:54.854#00340d"
+    },
+    {
+      "ts": "2026-09-19T20:23:56.937",
+      "text": "Brandon poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:23:56.937#b52ddc"
+    },
+    {
+      "ts": "2026-09-19T20:24:12.563",
+      "text": "Brandon poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:24:12.563#8ee11f"
+    },
+    {
+      "ts": "2026-09-19T20:25:49.997",
+      "text": "Waffle poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:25:49.997#22c92a"
+    },
+    {
+      "ts": "2026-09-19T20:26:05.177",
+      "text": "Waffle hit a JACKPOT BLOOM in the tunnels!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "jackpot",
+      "sk": "EVENT#2026-09-19T20:26:05.177#d81ce8"
+    },
+    {
+      "ts": "2026-09-19T20:26:39.237",
+      "text": "Brandon's Shambles reached level 9!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T20:26:39.237#9d0597"
+    },
+    {
+      "ts": "2026-09-19T20:26:39.257",
+      "text": "Brandon shattered the Wight of the Reliquary — a new route is open to all!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "barrier",
+      "sk": "EVENT#2026-09-19T20:26:39.257#1d3fa2"
+    },
+    {
+      "ts": "2026-09-19T20:27:17.499",
+      "text": "Brandon blasted Waffle with Spore Bolt (20 damage)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T20:27:17.499#d71095"
+    },
+    {
+      "ts": "2026-09-19T20:27:38.482",
+      "text": "Waffle cursed Brandon with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T20:27:38.482#b5dcef"
+    },
+    {
+      "ts": "2026-09-19T20:36:57.279",
+      "text": "Rumtin blasted Andrew with Spore Bolt (28 damage)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T20:36:57.278#36227d"
+    },
+    {
+      "ts": "2026-09-19T20:38:01.140",
+      "text": "\"Enchanters: East Quest\" ended — Andrew won! Everyone earned rolls; Andrew took the spoils.",
+      "pk": "UNDERCITY#20260919-130131",
+      "type": "claim",
+      "sk": "EVENT#2026-09-19T20:38:01.140#6b9490"
+    },
+    {
+      "ts": "2026-09-19T20:38:56.759",
+      "text": "Rumtin's Sexy Squirrel reached level 9!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T20:38:56.759#d3e73e"
+    },
+    {
+      "ts": "2026-09-19T20:39:20.299",
+      "text": "Rumtin's Spore Bolt wounds Slimefoot, the Stowaway from afar (62/92 HP)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T20:39:20.299#cb54b4"
+    },
+    {
+      "ts": "2026-09-19T20:39:22.699",
+      "text": "Rumtin cursed Slimefoot, the Stowaway with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T20:39:22.699#e377fe"
+    },
+    {
+      "ts": "2026-09-19T20:40:04.539",
+      "text": "Rumtin cleared the The Rot-Gardens dungeon and claimed its Guild Sigil (3/3)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "sigil",
+      "sk": "EVENT#2026-09-19T20:40:04.539#8ce672"
+    },
+    {
+      "ts": "2026-09-19T20:40:05.359",
+      "text": "Rumtin raises the third Guild Sigil — THE ROT-WARDS FALL! Savra's brood pours out across the Undercity, and the island lies open to every creature.",
+      "pk": "UNDERCITY#20260919-130131",
+      "type": "boss",
+      "sk": "EVENT#2026-09-19T20:40:05.359#cfa011"
+    },
+    {
+      "ts": "2026-09-19T20:40:30.701",
+      "text": "Rumtin blasted Andrew with Spore Bolt (30 damage)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T20:40:30.701#9f651b"
+    },
+    {
+      "ts": "2026-09-19T20:40:34.779",
+      "text": "Rumtin cursed Vestige of Slimefoot, the Stowaway with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T20:40:34.779#add31e"
+    },
+    {
+      "ts": "2026-09-19T20:41:10.724",
+      "text": "David's egg cracks open in The Undercity — a Zombie named Buh skitters out! (City Rat: Hatch with a random Tier-1 item, equipped.)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-david",
+      "type": "hatch",
+      "sk": "EVENT#2026-09-19T20:41:10.724#1b2704"
+    },
+    {
+      "ts": "2026-09-19T20:41:22.861",
+      "text": "Rumtin poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:41:22.861#aaf617"
+    },
+    {
+      "ts": "2026-09-19T20:41:25.373",
+      "text": "Rumtin poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:41:25.373#21f205"
+    },
+    {
+      "ts": "2026-09-19T20:41:28.984",
+      "text": "Waffle poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:41:28.984#04e2f3"
+    },
+    {
+      "ts": "2026-09-19T20:41:32.987",
+      "text": "Waffle poked David's Buh (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:41:32.987#dc0279"
+    },
+    {
+      "ts": "2026-09-19T20:41:35.503",
+      "text": "Waffle poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:41:35.503#f6585c"
+    },
+    {
+      "ts": "2026-09-19T20:41:36.089",
+      "text": "Rumtin poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:41:36.089#b4fe6b"
+    },
+    {
+      "ts": "2026-09-19T20:41:44.304",
+      "text": "Waffle poked Wheels's Von Squirrelbane",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:41:44.304#69e8a6"
+    },
+    {
+      "ts": "2026-09-19T20:41:50.442",
+      "text": "Andrew's Mystique was composted by a Rendclaw Troll.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T20:41:50.442#e0fd44"
+    },
+    {
+      "ts": "2026-09-19T20:42:13.604",
+      "text": "Andrew high-fived Waffle's Sekiro",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-19T20:42:13.604#37128d"
+    },
+    {
+      "ts": "2026-09-19T20:42:42.788",
+      "text": "Rumtin's Spore Bolt wounds the Enraged Golgari Rot Wurm from afar (10/40 HP)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T20:42:42.788#87800c"
+    },
+    {
+      "ts": "2026-09-19T20:42:53.024",
+      "text": "Rumtin cursed the Enraged Golgari Rot Wurm with Bone Chill!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T20:42:53.024#78db37"
+    },
+    {
+      "ts": "2026-09-19T20:44:39.384",
+      "text": "Andrew cleared the The Rot-Gardens dungeon and claimed its Guild Sigil (3/3)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "sigil",
+      "sk": "EVENT#2026-09-19T20:44:39.384#a5567e"
+    },
+    {
+      "ts": "2026-09-19T20:56:10.148",
+      "text": "\"Enchanters: East Quest\" wrapped up at the table — everyone earned rolls.",
+      "pk": "UNDERCITY#20260919-130131",
+      "type": "claim",
+      "sk": "EVENT#2026-09-19T20:56:10.148#59d62d"
+    },
+    {
+      "ts": "2026-09-19T20:57:10.425",
+      "text": "Rumtin sealed a bid at Umori's auction.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "umori-bid",
+      "sk": "EVENT#2026-09-19T20:57:10.425#049747"
+    },
+    {
+      "ts": "2026-09-19T20:58:10.989",
+      "text": "Rumtin's Spore Bolt wounds the Enraged Golgari Rot Wurm from afar (1/40 HP)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T20:58:10.989#7c5ac4"
+    },
+    {
+      "ts": "2026-09-19T20:58:22.274",
+      "text": "Rumtin poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:58:22.274#ca03cd"
+    },
+    {
+      "ts": "2026-09-19T20:58:23.805",
+      "text": "Rumtin poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:58:23.805#205627"
+    },
+    {
+      "ts": "2026-09-19T20:58:25.011",
+      "text": "Rumtin poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:58:25.011#359283"
+    },
+    {
+      "ts": "2026-09-19T20:58:25.909",
+      "text": "Rumtin poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:58:25.909#4141d4"
+    },
+    {
+      "ts": "2026-09-19T20:58:26.747",
+      "text": "Rumtin poked David's Buh (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:58:26.747#4953a2"
+    },
+    {
+      "ts": "2026-09-19T20:58:27.569",
+      "text": "Rumtin poked Wheels's Von Squirrelbane",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T20:58:27.569#c2946a"
+    },
+    {
+      "ts": "2026-09-19T21:02:54.226",
+      "text": "Andrew is the QUEENSLAYER — first to fell Savra, Queen of the Golgari!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "boss",
+      "sk": "EVENT#2026-09-19T21:02:54.226#115ca8"
+    },
+    {
+      "ts": "2026-09-19T21:02:54.266",
+      "text": "The Queen's death-cry echoes through the Undercity — every creature feels it. (+50% XP for the rest of the night!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "type": "boss",
+      "sk": "EVENT#2026-09-19T21:02:54.266#7116fa"
+    },
+    {
+      "ts": "2026-09-19T21:02:54.686",
+      "text": "Andrew's Mystique reached level 10!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T21:02:54.686#1fbd92"
+    },
+    {
+      "ts": "2026-09-19T21:02:55.206",
+      "text": "Andrew struck down SAVRA, QUEEN OF THE GOLGARI! The island trembles as she reforms.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "boss",
+      "sk": "EVENT#2026-09-19T21:02:55.206#ebaab1"
+    },
+    {
+      "ts": "2026-09-19T21:03:12.886",
+      "text": "Andrew's creature evolves into Swarm Lord! An APEX rises!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "evolve",
+      "sk": "EVENT#2026-09-19T21:03:12.886#a1888f"
+    },
+    {
+      "ts": "2026-09-19T21:05:46.066",
+      "text": "Rumtin's Sexy Squirrel reached level 10!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-rumtin",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T21:05:46.066#15ee7f"
+    },
+    {
+      "ts": "2026-09-19T21:08:05.533",
+      "text": "Brandon was first to plunder the Sunken Vault!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "vault",
+      "sk": "EVENT#2026-09-19T21:08:05.533#3ce30c"
+    },
+    {
+      "ts": "2026-09-19T21:08:54.053",
+      "text": "Brandon's Shambles reached level 10!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T21:08:54.053#6cebc7"
+    },
+    {
+      "ts": "2026-09-19T21:09:45.597",
+      "text": "Brandon's creature evolves into Grime Gorger! An APEX rises!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "evolve",
+      "sk": "EVENT#2026-09-19T21:09:45.597#4b9904"
+    },
+    {
+      "ts": "2026-09-19T21:12:26.838",
+      "text": "Waffle's Sekiro reached level 10!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T21:12:26.838#9dd13d"
+    },
+    {
+      "ts": "2026-09-19T21:15:02.526",
+      "text": "Brandon blasted David with Spore Bolt (21 damage)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T21:15:02.526#0054d6"
+    },
+    {
+      "ts": "2026-09-19T21:19:24.220",
+      "text": "Waffle cleared the The Rot-Gardens dungeon and claimed its Guild Sigil (3/3)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "sigil",
+      "sk": "EVENT#2026-09-19T21:19:24.220#5a3ff9"
+    },
+    {
+      "ts": "2026-09-19T21:38:56.833",
+      "text": "Pig cleared the The Sedgemoor dungeon and claimed its Guild Sigil (1/3)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-pig",
+      "type": "sigil",
+      "sk": "EVENT#2026-09-19T21:38:56.833#5b3eec"
+    },
+    {
+      "ts": "2026-09-19T22:17:11.834",
+      "text": "Waffle poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T22:17:11.834#8959cc"
+    },
+    {
+      "ts": "2026-09-19T22:17:25.141",
+      "text": "Waffle poked Wheels's Von Squirrelbane",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T22:17:25.141#04725b"
+    },
+    {
+      "ts": "2026-09-19T22:17:27.096",
+      "text": "Waffle poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T22:17:27.096#898074"
+    },
+    {
+      "ts": "2026-09-19T22:17:29.281",
+      "text": "Waffle poked David's Buh (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T22:17:29.280#694e12"
+    },
+    {
+      "ts": "2026-09-19T22:17:34.876",
+      "text": "Waffle poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T22:17:34.876#fd7ba8"
+    },
+    {
+      "ts": "2026-09-19T22:17:36.581",
+      "text": "Waffle poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T22:17:36.581#66fa21"
+    },
+    {
+      "ts": "2026-09-19T22:19:10.539",
+      "text": "Waffle's Sekiro reached level 11!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T22:19:10.539#4ebc23"
+    },
+    {
+      "ts": "2026-09-19T22:22:24.838",
+      "text": "Waffle's Sekiro was driven off by Rumtin's Sexy Squirrel.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T22:22:24.838#979d23"
+    },
+    {
+      "ts": "2026-09-19T22:57:56.695",
+      "text": "Brandon's Spore Bolt fizzled against Pig.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "spell",
+      "sk": "EVENT#2026-09-19T22:57:56.695#ca1098"
+    },
+    {
+      "ts": "2026-09-19T22:59:16.773",
+      "text": "Brandon's Shambles reached level 11!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T22:59:16.773#cd181c"
+    },
+    {
+      "ts": "2026-09-19T23:01:46.012",
+      "text": "Brandon cleared the The Sedgemoor dungeon and claimed its Guild Sigil (3/3)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "sigil",
+      "sk": "EVENT#2026-09-19T23:01:46.012#e4ab5b"
+    },
+    {
+      "ts": "2026-09-19T23:03:02.572",
+      "text": "Brandon's Grime Gorger works the ground — a cache rises from the filth.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "reclaim",
+      "sk": "EVENT#2026-09-19T23:03:02.572#a7e258"
+    },
+    {
+      "ts": "2026-09-19T23:04:49.594",
+      "text": "Brandon's Shambles reached level 12!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T23:04:49.594#00d46e"
+    },
+    {
+      "ts": "2026-09-19T23:04:50.194",
+      "text": "Brandon struck down SAVRA, QUEEN OF THE GOLGARI! The island trembles as she reforms.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "boss",
+      "sk": "EVENT#2026-09-19T23:04:50.194#65e3f3"
+    },
+    {
+      "ts": "2026-09-19T23:05:59.128",
+      "text": "Brandon high-fived Andrew's Mystique",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-19T23:05:59.127#e2c32a"
+    },
+    {
+      "ts": "2026-09-19T23:07:53.774",
+      "text": "Brandon poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-19T23:07:53.774#55c492"
+    },
+    {
+      "ts": "2026-09-19T23:36:10.320",
+      "text": "David's Buh was driven off by Wheels's Von Squirrelbane.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-david",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T23:36:10.320#882959"
+    },
+    {
+      "ts": "2026-09-19T23:36:10.380",
+      "text": "Wheels's Von Squirrelbane reached level 2!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-wheels",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T23:36:10.380#6e7d14"
+    },
+    {
+      "ts": "2026-09-19T23:37:35.419",
+      "text": "Waffle's Sekiro reached level 12!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "level",
+      "sk": "EVENT#2026-09-19T23:37:35.419#04c2a8"
+    },
+    {
+      "ts": "2026-09-19T23:37:55.501",
+      "text": "Waffle's creature evolves into Swarm Lord! An APEX rises!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "evolve",
+      "sk": "EVENT#2026-09-19T23:37:55.501#a459d0"
+    },
+    {
+      "ts": "2026-09-19T23:41:06.303",
+      "text": "Waffle's Sekiro was composted by a Deity of Scars.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T23:41:06.303#03498b"
+    },
+    {
+      "ts": "2026-09-19T23:42:39.645",
+      "text": "Waffle high-fived Rumtin's Sexy Squirrel",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-19T23:42:39.645#ff4b23"
+    },
+    {
+      "ts": "2026-09-19T23:43:25.722",
+      "text": "Waffle's Sekiro was composted by a Molderhulk.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "compost",
+      "sk": "EVENT#2026-09-19T23:43:25.722#66eba4"
+    },
+    {
+      "ts": "2026-09-20T00:36:37.679",
+      "text": "Waffle high-fived Brandon's Shambles",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-20T00:36:37.679#8f9dfe"
+    },
+    {
+      "ts": "2026-09-20T00:39:08.579",
+      "text": "Brandon high-fived Rumtin's Sexy Squirrel",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-20T00:39:08.579#a9cdb0"
+    },
+    {
+      "ts": "2026-09-20T00:40:38.079",
+      "text": "Brandon sealed a bid at Umori's auction.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "umori-bid",
+      "sk": "EVENT#2026-09-20T00:40:38.079#9f1f48"
+    },
+    {
+      "ts": "2026-09-20T00:41:33.019",
+      "text": "Brandon slew the Enraged Leyline Prowler in the wilderness!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "boss",
+      "sk": "EVENT#2026-09-20T00:41:33.019#38693e"
+    },
+    {
+      "ts": "2026-09-20T00:42:14.959",
+      "text": "Waffle was broken on the steps of Savra's throne.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "compost",
+      "sk": "EVENT#2026-09-20T00:42:14.959#995ee3"
+    },
+    {
+      "ts": "2026-09-20T00:42:58.342",
+      "text": "Waffle poked Brandon's Shambles (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-20T00:42:58.342#ed26d3"
+    },
+    {
+      "ts": "2026-09-20T00:42:59.919",
+      "text": "Waffle poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-20T00:42:59.919#182de1"
+    },
+    {
+      "ts": "2026-09-20T00:43:12.403",
+      "text": "Waffle poked David's Buh",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-20T00:43:12.403#710e02"
+    },
+    {
+      "ts": "2026-09-20T00:43:14.166",
+      "text": "Waffle poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "poke",
+      "sk": "EVENT#2026-09-20T00:43:14.166#7ba472"
+    },
+    {
+      "ts": "2026-09-20T00:44:41.706",
+      "text": "Brandon's Spore Bolt wounds Doomgape from afar (23/46 HP)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "spell",
+      "sk": "EVENT#2026-09-20T00:44:41.706#030348"
+    },
+    {
+      "ts": "2026-09-20T00:45:09.206",
+      "text": "Brandon poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-20T00:45:09.206#301926"
+    },
+    {
+      "ts": "2026-09-20T00:45:10.626",
+      "text": "Brandon poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-20T00:45:10.626#f9348b"
+    },
+    {
+      "ts": "2026-09-20T00:45:12.626",
+      "text": "Brandon poked Wheels's Von Squirrelbane",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-20T00:45:12.626#af9946"
+    },
+    {
+      "ts": "2026-09-20T00:46:22.978",
+      "text": "Andrew struck down SAVRA, QUEEN OF THE GOLGARI! The island trembles as she reforms.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "boss",
+      "sk": "EVENT#2026-09-20T00:46:22.978#2067a8"
+    },
+    {
+      "ts": "2026-09-20T00:51:34.244",
+      "text": "Andrew struck down SAVRA, QUEEN OF THE GOLGARI! The island trembles as she reforms.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "boss",
+      "sk": "EVENT#2026-09-20T00:51:34.244#a1b1dd"
+    },
+    {
+      "ts": "2026-09-20T00:52:40.046",
+      "text": "Andrew struck down SAVRA, QUEEN OF THE GOLGARI! The island trembles as she reforms.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "boss",
+      "sk": "EVENT#2026-09-20T00:52:40.046#1fbd66"
+    },
+    {
+      "ts": "2026-09-20T00:55:45.501",
+      "text": "Andrew struck down SAVRA, QUEEN OF THE GOLGARI! The island trembles as she reforms.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-andrew",
+      "type": "boss",
+      "sk": "EVENT#2026-09-20T00:55:45.500#920273"
+    },
+    {
+      "ts": "2026-09-20T01:08:02.566",
+      "text": "Brandon shattered the Golgari Grave-Troll — a new route is open to all!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "barrier",
+      "sk": "EVENT#2026-09-20T01:08:02.566#6cbbcd"
+    },
+    {
+      "ts": "2026-09-20T01:09:08.786",
+      "text": "Brandon blasted Pig with Spore Bolt (23 damage)!",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "spell",
+      "sk": "EVENT#2026-09-20T01:09:08.786#845d3a"
+    },
+    {
+      "ts": "2026-09-20T01:11:29.453",
+      "text": "Brandon poked Andrew's Mystique (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-20T01:11:29.453#6731f5"
+    },
+    {
+      "ts": "2026-09-20T01:11:30.386",
+      "text": "Brandon poked Rumtin's Sexy Squirrel (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-20T01:11:30.386#7e44ad"
+    },
+    {
+      "ts": "2026-09-20T01:11:31.606",
+      "text": "Brandon poked Waffle's Sekiro (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-20T01:11:31.606#a4146d"
+    },
+    {
+      "ts": "2026-09-20T01:11:32.553",
+      "text": "Brandon poked Pig's House centipede (+1 roll!)",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-20T01:11:32.553#fdded6"
+    },
+    {
+      "ts": "2026-09-20T01:11:33.446",
+      "text": "Brandon poked David's Buh",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-20T01:11:33.446#6ee879"
+    },
+    {
+      "ts": "2026-09-20T01:11:34.320",
+      "text": "Brandon poked Wheels's Von Squirrelbane",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-brandon",
+      "type": "poke",
+      "sk": "EVENT#2026-09-20T01:11:34.320#47c6d7"
+    },
+    {
+      "ts": "2026-09-20T02:09:08.239",
+      "text": "Waffle high-fived Rumtin's Sexy Squirrel",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-20T02:09:08.239#5e99e9"
+    },
+    {
+      "ts": "2026-09-20T02:13:55.468",
+      "text": "Waffle struck down SAVRA, QUEEN OF THE GOLGARI! The island trembles as she reforms.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "boss",
+      "sk": "EVENT#2026-09-20T02:13:55.468#acc7e0"
+    },
+    {
+      "ts": "2026-09-20T02:15:55.794",
+      "text": "Waffle high-fived Andrew's Mystique",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "high-five",
+      "sk": "EVENT#2026-09-20T02:15:55.794#f602b0"
+    },
+    {
+      "ts": "2026-09-20T02:16:23.874",
+      "text": "Waffle struck down SAVRA, QUEEN OF THE GOLGARI! The island trembles as she reforms.",
+      "pk": "UNDERCITY#20260919-130131",
+      "actor": "user-waffle",
+      "type": "boss",
+      "sk": "EVENT#2026-09-20T02:16:23.873#500a3d"
+    },
+    {
+      "ts": "2026-09-20T05:50:42.621",
+      "text": "The night ends. Andrew is champion of the Undercity with 630 Renown!",
+      "pk": "UNDERCITY#20260919-130131",
+      "type": "season",
+      "sk": "EVENT#2026-09-20T05:50:42.621#08fd4a"
+    }
+  ],
+  "chat": [
+    {
+      "ts": "2026-09-19T16:18:39.176",
+      "userId": "user-andrew",
+      "username": "Andrew",
+      "text": "Ayyaayayayay",
+      "id": "2026-09-19T16:18:39.176#e789e7",
+      "pk": "UNDERCITY#20260919-130131",
+      "sk": "CHAT#2026-09-19T16:18:39.176#e789e7"
+    },
+    {
+      "ts": "2026-09-19T16:18:49.076",
+      "userId": "user-andrew",
+      "username": "Andrew",
+      "text": "Agagagagagag",
+      "id": "2026-09-19T16:18:49.076#618f54",
+      "pk": "UNDERCITY#20260919-130131",
+      "sk": "CHAT#2026-09-19T16:18:49.076#618f54"
+    },
+    {
+      "ts": "2026-09-19T16:21:56.561",
+      "userId": "user-rumtin",
+      "username": "Rumtin",
+      "text": "POKE ME",
+      "pk": "UNDERCITY#20260919-130131",
+      "id": "2026-09-19T16:21:56.561#59a5e2",
+      "sk": "CHAT#2026-09-19T16:21:56.561#59a5e2"
+    },
+    {
+      "ts": "2026-09-19T17:04:04.139",
+      "userId": "user-andrew",
+      "username": "Andrew",
+      "text": "Boke",
+      "id": "2026-09-19T17:04:04.139#2b1b64",
+      "pk": "UNDERCITY#20260919-130131",
+      "sk": "CHAT#2026-09-19T17:04:04.139#2b1b64"
+    }
+  ],
+  "firsts": [
+    {
+      "by": "Andrew",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T18:20:58",
+      "kind": "cache",
+      "uid": "user-andrew",
+      "sk": "FIRST#bog_cache"
+    },
+    {
+      "by": "Rumtin",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T17:32:38",
+      "kind": "lair",
+      "uid": "user-rumtin",
+      "sk": "FIRST#bog_lair"
+    },
+    {
+      "by": "Brandon",
+      "at": "2026-09-19T18:33:18",
+      "pk": "UNDERCITY#20260919-130131",
+      "kind": "cache",
+      "uid": "user-brandon",
+      "sk": "FIRST#bone_cache"
+    },
+    {
+      "by": "Brandon",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T18:23:37",
+      "uid": "user-brandon",
+      "kind": "lair",
+      "sk": "FIRST#bone_lair"
+    },
+    {
+      "by": "Andrew",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T21:02:54",
+      "uid": "user-andrew",
+      "kind": "boss",
+      "sk": "FIRST#boss"
+    },
+    {
+      "by": "Andrew",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T17:21:20",
+      "kind": "cache",
+      "uid": "user-andrew",
+      "sk": "FIRST#cavern_cache"
+    },
+    {
+      "by": "Andrew",
+      "at": "2026-09-19T17:23:08",
+      "pk": "UNDERCITY#20260919-130131",
+      "uid": "user-andrew",
+      "kind": "lair",
+      "sk": "FIRST#cavern_lair"
+    },
+    {
+      "by": "Andrew",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T17:21:35",
+      "kind": "trove",
+      "uid": "user-andrew",
+      "sk": "FIRST#cavern_trove"
+    },
+    {
+      "by": "Rumtin",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T18:42:53",
+      "uid": "user-rumtin",
+      "kind": "cache",
+      "sk": "FIRST#city_cache"
+    },
+    {
+      "by": "Rumtin",
+      "at": "2026-09-19T19:05:58",
+      "pk": "UNDERCITY#20260919-130131",
+      "uid": "user-rumtin",
+      "kind": "lair",
+      "sk": "FIRST#city_lair"
+    },
+    {
+      "by": "Rumtin",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T18:44:12",
+      "uid": "user-rumtin",
+      "kind": "trove",
+      "sk": "FIRST#city_trove"
+    },
+    {
+      "by": "Rumtin",
+      "at": "2026-09-19T20:03:39",
+      "pk": "UNDERCITY#20260919-130131",
+      "uid": "user-rumtin",
+      "kind": "cache",
+      "sk": "FIRST#garden_cache"
+    },
+    {
+      "by": "Rumtin",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T20:40:04",
+      "uid": "user-rumtin",
+      "kind": "lair",
+      "sk": "FIRST#garden_lair"
+    },
+    {
+      "by": "Rumtin",
+      "at": "2026-09-19T20:03:58",
+      "pk": "UNDERCITY#20260919-130131",
+      "kind": "trove",
+      "uid": "user-rumtin",
+      "sk": "FIRST#garden_trove"
+    },
+    {
+      "by": "Waffle",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T17:33:13",
+      "uid": "user-waffle",
+      "kind": "cache",
+      "sk": "FIRST#n322"
+    },
+    {
+      "by": "Brandon",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T21:08:05",
+      "uid": "user-brandon",
+      "kind": "vault",
+      "sk": "FIRST#vault"
+    }
+  ],
+  "fogReveals": [
+    {
+      "by": "Waffle",
+      "at": "2026-09-19T23:43:37",
+      "pk": "UNDERCITY#20260919-130131",
+      "revealed": "loot",
+      "uid": "user-waffle",
+      "sk": "FOG#n245"
+    },
+    {
+      "by": "Waffle",
+      "at": "2026-09-19T17:36:51",
+      "pk": "UNDERCITY#20260919-130131",
+      "revealed": "elite",
+      "uid": "user-waffle",
+      "sk": "FOG#n250"
+    },
+    {
+      "by": "Waffle",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T17:53:33",
+      "revealed": "wild",
+      "uid": "user-waffle",
+      "sk": "FOG#n251"
+    },
+    {
+      "by": "Waffle",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-20T00:45:30",
+      "uid": "user-waffle",
+      "revealed": "wild",
+      "sk": "FOG#n261"
+    },
+    {
+      "by": "Waffle",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T17:04:49",
+      "revealed": "wild",
+      "uid": "user-waffle",
+      "sk": "FOG#n263"
+    },
+    {
+      "by": "Waffle",
+      "at": "2026-09-19T18:09:03",
+      "pk": "UNDERCITY#20260919-130131",
+      "uid": "user-waffle",
+      "revealed": "mystery",
+      "sk": "FOG#n265"
+    },
+    {
+      "by": "Waffle",
+      "at": "2026-09-19T17:02:13",
+      "pk": "UNDERCITY#20260919-130131",
+      "uid": "user-waffle",
+      "revealed": "wild",
+      "sk": "FOG#n268"
+    },
+    {
+      "by": "Waffle",
+      "at": "2026-09-19T22:19:47",
+      "pk": "UNDERCITY#20260919-130131",
+      "revealed": "loot",
+      "uid": "user-waffle",
+      "sk": "FOG#n271"
+    },
+    {
+      "by": "Brandon",
+      "at": "2026-09-20T00:39:45",
+      "pk": "UNDERCITY#20260919-130131",
+      "uid": "user-brandon",
+      "revealed": "elite",
+      "sk": "FOG#n274"
+    },
+    {
+      "by": "Waffle",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T17:32:59",
+      "revealed": "hazard",
+      "uid": "user-waffle",
+      "sk": "FOG#n281"
+    },
+    {
+      "by": "Rumtin",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T20:42:08",
+      "uid": "user-rumtin",
+      "revealed": "wild",
+      "sk": "FOG#n283"
+    },
+    {
+      "by": "Waffle",
+      "at": "2026-09-20T02:08:44",
+      "pk": "UNDERCITY#20260919-130131",
+      "revealed": "wild",
+      "uid": "user-waffle",
+      "sk": "FOG#n285"
+    },
+    {
+      "by": "Waffle",
+      "at": "2026-09-20T02:09:11",
+      "pk": "UNDERCITY#20260919-130131",
+      "uid": "user-waffle",
+      "revealed": "wild",
+      "sk": "FOG#n297"
+    },
+    {
+      "by": "Rumtin",
+      "at": "2026-09-19T20:57:53",
+      "pk": "UNDERCITY#20260919-130131",
+      "uid": "user-rumtin",
+      "revealed": "loot",
+      "sk": "FOG#n299"
+    },
+    {
+      "by": "Waffle",
+      "at": "2026-09-19T17:33:45",
+      "pk": "UNDERCITY#20260919-130131",
+      "revealed": "elite",
+      "uid": "user-waffle",
+      "sk": "FOG#n313"
+    },
+    {
+      "by": "Waffle",
+      "pk": "UNDERCITY#20260919-130131",
+      "at": "2026-09-19T17:33:13",
+      "uid": "user-waffle",
+      "revealed": "cache",
+      "sk": "FOG#n322"
+    }
+  ],
+  "worldEvent": {
+    "endsAt": "2026-09-19T18:53:07",
+    "node": "n261",
+    "spawned": true,
+    "nodes": [
+      "n260",
+      "n261",
+      "n262"
+    ],
+    "dead": true,
+    "dmg": {
+      "user-waffle": 177
+    },
+    "pk": "UNDERCITY#20260919-130131",
+    "sk": "WORLDEVENT"
+  },
+  "boss": {
+    "slayerName": "Andrew",
+    "slayerAt": "2026-09-19T21:02:54",
+    "pk": "UNDERCITY#20260919-130131",
+    "slayer": "user-andrew",
+    "sk": "BOSS"
+  },
+  "finale": {
+    "slayerName": "Andrew",
+    "slayerAt": "2026-09-19T21:02:54",
+    "pk": "UNDERCITY#20260919-130131",
+    "slayer": "user-andrew",
+    "sk": "BOSS"
+  },
+  "swarm": {
+    "splitAt": "2026-09-20T06:06:14",
+    "pk": "UNDERCITY#20260919-130131",
+    "nodes": [
+      "bone_r1",
+      "city_i0",
+      "city_i1",
+      "city_r1",
+      "city_r2",
+      "city_r4",
+      "city_r5",
+      "city_r6",
+      "city_r7",
+      "city_r8",
+      "city_r9",
+      "garden_r1",
+      "garden_r2",
+      "garden_r8",
+      "garden_r9",
+      "n128",
+      "n129",
+      "n130",
+      "n133",
+      "n301",
+      "n302",
+      "n303",
+      "n304",
+      "n305",
+      "n306",
+      "n307",
+      "n308",
+      "n309",
+      "n310",
+      "n311",
+      "n312",
+      "s0",
+      "t_city_bone0",
+      "t_city_bone1",
+      "t_garden_city0",
+      "t_garden_city1"
+    ],
+    "sk": "SWARM"
+  },
+  "enraged": {
+    "node": "n248",
+    "window": 331459,
+    "monsterId": "enr_carapace",
+    "dead": false,
+    "hp": 44,
+    "maxHp": 44,
+    "pk": "UNDERCITY#20260919-130131",
+    "buffs": [],
+    "sk": "ENRAGED"
+  },
+  "lairs": [
+    {
+      "hp": 48,
+      "pk": "UNDERCITY#20260919-130131",
+      "slain": true,
+      "sk": "LAIR#bog_lair"
+    },
+    {
+      "hp": 40,
+      "pk": "UNDERCITY#20260919-130131",
+      "slain": true,
+      "sk": "LAIR#bone_lair"
+    },
+    {
+      "hp": 44,
+      "pk": "UNDERCITY#20260919-130131",
+      "slain": true,
+      "sk": "LAIR#cavern_lair"
+    },
+    {
+      "hp": 42,
+      "pk": "UNDERCITY#20260919-130131",
+      "slain": true,
+      "sk": "LAIR#city_lair"
+    },
+    {
+      "hp": 46,
+      "pk": "UNDERCITY#20260919-130131",
+      "slain": true,
+      "sk": "LAIR#garden_lair"
+    }
+  ]
+}

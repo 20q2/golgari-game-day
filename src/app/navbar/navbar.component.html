@@ -16,12 +16,14 @@
       <span class="nav-text">Spectate</span>
     </a>
     <!-- Shadow War docs. Points at the in-app picker rather than straight at
-         the handout, so the DM kit is reachable without a second nav slot. -->
+         the handout, so the DM kit is reachable without a second nav slot.
+         Dropped on phones: the nav goes icon-only there, and a lone book glyph
+         earns less than the room it costs the rest of the bar. -->
     <a
       mat-button
       routerLink="/shadow-war"
       routerLinkActive="active"
-      class="nav-link"
+      class="nav-link wide-only"
       title="The Shadow War — player handout and DM kit"
     >
       <mat-icon>menu_book</mat-icon>

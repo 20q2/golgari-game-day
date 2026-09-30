@@ -225,3 +225,11 @@
     display: none !important;
   }
 }
+
+// Hidden once the nav collapses to icon-only (768px) — for links whose icon
+// alone doesn't carry the meaning.
+.wide-only {
+  @media (max-width: 768px) {
+    display: none !important;
+  }
+}
